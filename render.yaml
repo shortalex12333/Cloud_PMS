@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: celesteos-entity-extraction
+    runtime: python
+    plan: starter  # $7/month
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT api.app:app
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: MAX_BODY_KB
+        value: "64"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+    healthCheckPath: /health
