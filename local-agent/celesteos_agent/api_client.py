@@ -12,33 +12,46 @@ logger = get_logger(__name__)
 
 
 class APIClient:
-    """Client for CelesteOS Cloud API."""
+    """Client for CelesteOS Cloud API (Supabase compatible)."""
 
     def __init__(
         self,
         api_endpoint: str,
         yacht_signature: str,
+        supabase_service_key: Optional[str] = None,
         timeout: int = 300,
         verify_ssl: bool = True
     ):
         """Initialize API client.
 
         Args:
-            api_endpoint: Base API URL
+            api_endpoint: Base API URL (Supabase URL)
             yacht_signature: Yacht signature for authentication
+            supabase_service_key: Supabase service role key for auth
             timeout: Request timeout in seconds
             verify_ssl: Verify SSL certificates
         """
         self.api_endpoint = api_endpoint.rstrip('/')
         self.yacht_signature = yacht_signature
+        self.supabase_service_key = supabase_service_key
         self.timeout = timeout
         self.verify_ssl = verify_ssl
 
         self.session = requests.Session()
-        self.session.headers.update({
+
+        # Set headers for both yacht signature and Supabase auth
+        headers = {
             'X-Yacht-Signature': yacht_signature,
             'User-Agent': 'CelesteOS-Agent/1.0'
-        })
+        }
+
+        # Add Supabase authentication if provided
+        if supabase_service_key:
+            headers['Authorization'] = f'Bearer {supabase_service_key}'
+            headers['apikey'] = supabase_service_key
+            logger.info("Supabase authentication configured")
+
+        self.session.headers.update(headers)
 
     def _make_request(
         self,
@@ -116,7 +129,7 @@ class APIClient:
     ) -> Dict[str, Any]:
         """Initialize file upload.
 
-        POST /v1/ingest/init
+        POST /functions/v1/ingest/init (Supabase Edge Function)
 
         Args:
             filename: Original filename
@@ -136,9 +149,12 @@ class APIClient:
         """
         logger.info(f"Initializing upload: {filename} ({size_bytes} bytes)")
 
+        # Use Supabase Edge Functions format
+        endpoint = '/functions/v1/ingest-init'
+
         response = self._make_request(
             method='POST',
-            endpoint='/v1/ingest/init',
+            endpoint=endpoint,
             json_data={
                 'filename': filename,
                 'sha256': sha256,
@@ -160,7 +176,7 @@ class APIClient:
     ) -> Dict[str, Any]:
         """Upload a file chunk.
 
-        PATCH /v1/ingest/upload_chunk
+        PATCH /functions/v1/ingest-upload-chunk (Supabase Edge Function)
 
         Args:
             upload_id: Upload ID from init_upload
@@ -176,9 +192,12 @@ class APIClient:
             f"({len(chunk_data)} bytes)"
         )
 
+        # Use Supabase Edge Functions format
+        endpoint = '/functions/v1/ingest-upload-chunk'
+
         response = self._make_request(
             method='PATCH',
-            endpoint='/v1/ingest/upload_chunk',
+            endpoint=endpoint,
             data=chunk_data,
             headers={
                 'Content-Type': 'application/octet-stream',
@@ -201,7 +220,7 @@ class APIClient:
     ) -> Dict[str, Any]:
         """Complete file upload and trigger indexing.
 
-        POST /v1/ingest/complete
+        POST /functions/v1/ingest-complete (Supabase Edge Function)
 
         Args:
             upload_id: Upload ID from init_upload
@@ -224,9 +243,12 @@ class APIClient:
             f"{filename} ({total_chunks} chunks)"
         )
 
+        # Use Supabase Edge Functions format
+        endpoint = '/functions/v1/ingest-complete'
+
         response = self._make_request(
             method='POST',
-            endpoint='/v1/ingest/complete',
+            endpoint=endpoint,
             json_data={
                 'upload_id': upload_id,
                 'total_chunks': total_chunks,
@@ -301,12 +323,13 @@ class APIClient:
 
 
 class RetryableAPIClient(APIClient):
-    """API client with automatic retry logic."""
+    """API client with automatic retry logic (Supabase compatible)."""
 
     def __init__(
         self,
         api_endpoint: str,
         yacht_signature: str,
+        supabase_service_key: Optional[str] = None,
         timeout: int = 300,
         verify_ssl: bool = True,
         max_retries: int = 3,
@@ -315,14 +338,15 @@ class RetryableAPIClient(APIClient):
         """Initialize retryable API client.
 
         Args:
-            api_endpoint: Base API URL
+            api_endpoint: Base API URL (Supabase URL)
             yacht_signature: Yacht signature
+            supabase_service_key: Supabase service role key
             timeout: Request timeout
             verify_ssl: Verify SSL
             max_retries: Maximum retry attempts
             retry_delays: List of retry delays in seconds
         """
-        super().__init__(api_endpoint, yacht_signature, timeout, verify_ssl)
+        super().__init__(api_endpoint, yacht_signature, supabase_service_key, timeout, verify_ssl)
 
         self.max_retries = max_retries
         self.retry_delays = retry_delays or [5, 10, 30]
@@ -378,10 +402,10 @@ class RetryableAPIClient(APIClient):
         chunk_sha256: str,
         chunk_data: bytes
     ) -> Dict[str, Any]:
-        """Upload chunk with retry."""
+        """Upload chunk with retry (Supabase Edge Function)."""
         return self._make_request_with_retry(
             method='PATCH',
-            endpoint='/v1/ingest/upload_chunk',
+            endpoint='/functions/v1/ingest-upload-chunk',
             data=chunk_data,
             headers={
                 'Content-Type': 'application/octet-stream',

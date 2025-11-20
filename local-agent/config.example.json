@@ -1,7 +1,9 @@
 {
   "yacht_signature": "YOUR_YACHT_SIGNATURE_HERE",
   "yacht_name": "MY YACHT",
-  "api_endpoint": "https://api.celesteos.io",
+  "api_endpoint": "https://vzsohavtuotocgrfkfyd.supabase.co",
+  "supabase_url": "https://vzsohavtuotocgrfkfyd.supabase.co",
+  "supabase_anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1OTI4NzUsImV4cCI6MjA3OTE2ODg3NX0.JhJLvLSfLD3OtPDxTgHqgF8dNaZk8ius62jKN68E4WE",
   "api_timeout": 300,
   "api_verify_ssl": true,
   "nas_path": "/Volumes/YachtNAS/Engineering",
@@ -24,5 +26,6 @@
   "log_rotation_days": 7,
   "enabled": true,
   "auto_update_enabled": true,
-  "telemetry_enabled": true
+  "telemetry_enabled": true,
+  "_comment": "NOTE: Supabase service role key is stored in macOS Keychain, not in this config file!"
 }

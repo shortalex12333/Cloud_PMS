@@ -91,11 +91,21 @@ class CelesteOSDaemon:
 
             logger.info(f"Yacht: {yacht_identity.get('yacht_name', 'Unknown')}")
 
+            # Retrieve Supabase service role key from keychain
+            logger.info("Retrieving Supabase credentials from Keychain")
+            supabase_service_key = self.keychain.get_credential('supabase_service_role_key')
+
+            if not supabase_service_key:
+                logger.warning("Supabase service role key not found in Keychain")
+                logger.warning("Agent will attempt to connect without Supabase authentication")
+                logger.warning("This may cause authentication errors. Run setup to configure.")
+
             # Initialize API client
             logger.info("Initializing API client")
             api_client = RetryableAPIClient(
                 api_endpoint=self.config.api_endpoint,
                 yacht_signature=self.config.yacht_signature,
+                supabase_service_key=supabase_service_key,
                 timeout=self.config.api_timeout,
                 verify_ssl=self.config.api_verify_ssl,
                 max_retries=self.config.max_retries
@@ -105,6 +115,7 @@ class CelesteOSDaemon:
             logger.info("Testing API connectivity")
             if not api_client.ping():
                 logger.warning("API ping failed - uploads may fail")
+                logger.warning("Verify Supabase Edge Functions are deployed")
 
             # Initialize scanner
             logger.info("Initializing file scanner")

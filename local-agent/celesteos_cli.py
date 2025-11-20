@@ -40,8 +40,11 @@ def setup():
     yacht_name = click.prompt("Yacht Name (optional)", default="", show_default=False)
 
     # API Configuration
-    console.print("\n[bold]Cloud API Configuration[/bold]")
-    api_endpoint = click.prompt("API Endpoint", default="https://api.celesteos.io")
+    console.print("\n[bold]Cloud API Configuration (Supabase)[/bold]")
+    api_endpoint = click.prompt("Supabase URL", default="https://vzsohavtuotocgrfkfyd.supabase.co")
+
+    console.print("\n[yellow]Note: Supabase service role key will be stored securely in macOS Keychain[/yellow]")
+    supabase_service_key = click.prompt("Supabase Service Role Key", hide_input=True)
 
     # NAS Configuration
     console.print("\n[bold]NAS Configuration[/bold]")
@@ -84,11 +87,16 @@ def setup():
     config_manager.save(config)
     console.print(f"\n[green]✓ Configuration saved to {config_manager.config_path}[/green]")
 
-    # Store NAS password in keychain
+    # Store credentials in keychain
+    keychain = KeychainManager()
+
     if nas_password and nas_username:
-        keychain = KeychainManager()
         keychain.store_nas_password(nas_username, nas_password)
         console.print("[green]✓ NAS password stored in Keychain[/green]")
+
+    if supabase_service_key:
+        keychain.store_credential('supabase_service_role_key', supabase_service_key)
+        console.print("[green]✓ Supabase service role key stored in Keychain[/green]")
 
     # Initialize database
     config_manager.ensure_directories()
