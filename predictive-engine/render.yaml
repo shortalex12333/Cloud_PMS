@@ -1,0 +1,53 @@
+# ========================================
+# Render.com Deployment Configuration
+# CelesteOS Predictive Maintenance Engine
+# ========================================
+
+services:
+  # ========================================
+  # Web Service - FastAPI API Server
+  # ========================================
+  - type: web
+    name: celeste-predictive-api
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        value: https://vzsohavtuotocgrfkfyd.supabase.co
+      - key: SUPABASE_KEY
+        sync: false  # Mark as secret
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # ========================================
+  # Background Worker - Cron Jobs
+  # ========================================
+  - type: cron
+    name: celeste-predictive-worker
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 */6 * * *"  # Every 6 hours
+    command: python worker.py run-all
+    envVars:
+      - key: SUPABASE_URL
+        value: https://vzsohavtuotocgrfkfyd.supabase.co
+      - key: SUPABASE_KEY
+        sync: false  # Mark as secret
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    autoDeploy: true
