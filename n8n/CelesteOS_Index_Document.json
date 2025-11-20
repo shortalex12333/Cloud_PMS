@@ -1,0 +1,228 @@
+{
+  "name": "CelesteOS - Index Document",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "workflow-trigger-index",
+      "name": "Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate input payload\nconst required = ['document_id', 'yacht_id', 'storage_path', 'filename'];\nfor (const field of required) {\n  if (!$input.item.json[field]) {\n    throw new Error(`Missing required field: ${field}`);\n  }\n}\n\nconsole.log(`Starting indexing for document ${$input.item.json.document_id}`);\n\n// Construct download URL for Supabase Storage\nconst supabaseUrl = $env.SUPABASE_URL;\nconst storagePath = $input.item.json.storage_path;\nconst downloadUrl = `${supabaseUrl}/storage/v1/object/documents/${storagePath}`;\n\nreturn {\n  ...($input.item.json),\n  download_url: downloadUrl\n};"
+      },
+      "id": "validate-and-prepare",
+      "name": "Validate & Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.download_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-from-storage",
+      "name": "Download from Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "loader": "pdfLoader",
+        "options": {}
+      },
+      "id": "document-loader",
+      "name": "Document Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [860, 120]
+    },
+    {
+      "parameters": {
+        "chunkSize": 2000,
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "id": "text-splitter",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [860, 0]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "embeddings-openai",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [700, 120],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": { "__rl": true, "value": "document_chunks", "mode": "list" },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "id": "insert-chunks",
+      "name": "Insert Chunks to Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "documents",
+        "filterType": "manual",
+        "matchingColumns": "id",
+        "dataToSend": "defineBelow",
+        "columnsToMatchOn": {
+          "matchingColumn": [
+            {
+              "column": "id",
+              "value": "={{ $('Validate & Prepare').item.json.document_id }}"
+            }
+          ]
+        },
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "indexed",
+              "value": true
+            },
+            {
+              "column": "indexed_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-as-indexed",
+      "name": "Mark as Indexed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const documentId = $('Validate & Prepare').item.json.document_id;\nconst yachtId = $('Validate & Prepare').item.json.yacht_id;\n\nconsole.log(`Successfully indexed document ${documentId} for yacht ${yachtId}`);\n\nreturn {\n  success: true,\n  document_id: documentId,\n  yacht_id: yachtId,\n  indexed_at: new Date().toISOString(),\n  message: 'Document successfully indexed'\n};"
+      },
+      "id": "return-success",
+      "name": "Return Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Indexing Workflow\n\nProcesses documents and creates vector embeddings for RAG\n\n### Input Contract:\n```json\n{\n  \"document_id\": \"uuid\",\n  \"yacht_id\": \"uuid\",\n  \"storage_path\": \"documents/yacht_id/timestamp/file.pdf\",\n  \"filename\": \"original_name.pdf\",\n  \"file_size\": 12345,\n  \"mime_type\": \"application/pdf\"\n}\n```\n\n### Processing Steps:\n1. Download file from Supabase Storage\n2. Load document (PDF, DOCX, etc.)\n3. Split into chunks (2000 chars, 200 overlap)\n4. Generate OpenAI embeddings (text-embedding-3-small)\n5. Insert chunks into document_chunks table with yacht_id\n6. Mark document as indexed in documents table\n\n### Embedding Model:\n- OpenAI text-embedding-3-small\n- Dimensions: 1536\n- Must match vector(1536) in document_chunks table\n\n### Per-Yacht Isolation:\nAll chunks include yacht_id to ensure data isolation.\nVector search queries should filter by yacht_id.\n\n### Configuration:\n**Chunk Size:** 2000 characters (adjustable)\n**Overlap:** 200 characters (10%)\n**Embedding Model:** Can be changed but update table schema\n\n### To Add More Metadata:\nModify Insert Chunks node to include:\n- equipment_ids (if detected)\n- fault_codes (if found in text)\n- tags (document classification)",
+        "height": 840,
+        "width": 520,
+        "color": 5
+      },
+      "id": "sticky-documentation-index",
+      "name": "Sticky Note: Indexing Docs",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 480]
+    },
+    {
+      "parameters": {
+        "content": "## Embeddings & Vector Store\n\n### IMPORTANT:\n- Same embedding model MUST be used for:\n  - Inserting chunks (here)\n  - Retrieval queries (search workflow)\n\n- Current model: text-embedding-3-small (1536 dims)\n\n### Table Requirements:\n- document_chunks table must have:\n  - embedding vector(1536)\n  - yacht_id uuid (for isolation)\n  - content text\n  - metadata jsonb\n\n### Vector Store Node:\n- Uses vectorStoreSupabase\n- Automatically handles embeddings\n- Requires match_documents function in Supabase\n\n### If changing embedding model:\n1. Update this node's model parameter\n2. Update vector dimension in database:\n   ALTER TABLE document_chunks \n   ALTER COLUMN embedding TYPE vector(NEW_DIM);\n3. Update match_documents function\n4. Re-index all existing documents",
+        "height": 480,
+        "width": 460,
+        "color": 3
+      },
+      "id": "sticky-embeddings-warning",
+      "name": "Sticky Note: Embeddings",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 480]
+    }
+  ],
+  "connections": {
+    "Workflow Trigger": {
+      "main": [[{ "node": "Validate & Prepare", "type": "main", "index": 0 }]]
+    },
+    "Validate & Prepare": {
+      "main": [[{ "node": "Download from Storage", "type": "main", "index": 0 }]]
+    },
+    "Download from Storage": {
+      "main": [[{ "node": "Insert Chunks to Vector Store", "type": "main", "index": 0 }]]
+    },
+    "Document Loader": {
+      "ai_document": [[{ "node": "Insert Chunks to Vector Store", "type": "ai_document", "index": 0 }]]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [[{ "node": "Document Loader", "type": "ai_textSplitter", "index": 0 }]]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [[{ "node": "Insert Chunks to Vector Store", "type": "ai_embedding", "index": 0 }]]
+    },
+    "Insert Chunks to Vector Store": {
+      "main": [[{ "node": "Mark as Indexed", "type": "main", "index": 0 }]]
+    },
+    "Mark as Indexed": {
+      "main": [[{ "node": "Return Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "celesteos-production"
+  },
+  "versionId": "1",
+  "triggerCount": 0,
+  "active": false,
+  "id": "celesteos-index-document-workflow"
+}

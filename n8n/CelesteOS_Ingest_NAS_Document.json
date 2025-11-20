@@ -1,0 +1,182 @@
+{
+  "name": "CelesteOS - Ingest NAS Document",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-docs-nas-cloud",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger-ingest",
+      "name": "Webhook: Receive Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "celesteos-ingest-nas"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract data from webhook payload\nconst yachtId = $input.item.headers['x-yacht-id'];\nconst filename = $input.item.binary?.file?.fileName || $input.item.json?.filename || 'unknown.pdf';\nconst mimeType = $input.item.binary?.file?.mimeType || 'application/octet-stream';\nconst fileSize = $input.item.binary?.file?.fileSize || 0;\n\nif (!yachtId) {\n  throw new Error('Missing X-Yacht-ID header');\n}\n\nif (!$input.item.binary?.file) {\n  throw new Error('Missing file in request');\n}\n\n// Generate timestamp-based path (can add SHA256 later)\nconst timestamp = Date.now();\nconst storagePath = `documents/${yachtId}/${timestamp}/${filename}`;\n\nconsole.log(`Processing upload for yacht ${yachtId}: ${filename}`);\n\nreturn {\n  yacht_id: yachtId,\n  filename: filename,\n  mime_type: mimeType,\n  file_size: fileSize,\n  storage_path: storagePath,\n  timestamp: new Date().toISOString(),\n  // Keep binary data\n  binary: $input.item.binary\n};"
+      },
+      "id": "extract-upload-data",
+      "name": "Extract Upload Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/documents/={{ $json.storage_path }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ $json.mime_type }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "raw",
+        "rawBody": "={{ $binary.file.data }}",
+        "options": {}
+      },
+      "id": "upload-to-storage",
+      "name": "Upload to Supabase Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "documents",
+        "dataToSend": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "yacht_id",
+              "value": "={{ $('Extract Upload Data').item.json.yacht_id }}"
+            },
+            {
+              "column": "source",
+              "value": "nas"
+            },
+            {
+              "column": "filename",
+              "value": "={{ $('Extract Upload Data').item.json.filename }}"
+            },
+            {
+              "column": "content_type",
+              "value": "={{ $('Extract Upload Data').item.json.mime_type }}"
+            },
+            {
+              "column": "size_bytes",
+              "value": "={{ $('Extract Upload Data').item.json.file_size }}"
+            },
+            {
+              "column": "storage_path",
+              "value": "={{ $('Extract Upload Data').item.json.storage_path }}"
+            },
+            {
+              "column": "indexed",
+              "value": false
+            },
+            {
+              "column": "metadata",
+              "value": "={{ JSON.stringify({ uploaded_via: 'mvp_uploader', timestamp: $('Extract Upload Data').item.json.timestamp }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "insert-document-metadata",
+      "name": "Insert Document Metadata",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [860, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare payload for indexing workflow\nconst documentRow = $input.item.json[0]; // Supabase returns array\nconst uploadData = $('Extract Upload Data').item.json;\n\nif (!documentRow || !documentRow.id) {\n  throw new Error('Failed to create document record');\n}\n\nconsole.log(`Document ${documentRow.id} created, triggering indexing`);\n\nreturn {\n  document_id: documentRow.id,\n  yacht_id: uploadData.yacht_id,\n  storage_path: uploadData.storage_path,\n  filename: uploadData.filename,\n  file_size: uploadData.file_size,\n  mime_type: uploadData.mime_type\n};"
+      },
+      "id": "prepare-indexing-payload",
+      "name": "Prepare Indexing Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "value": "", "mode": "list" },
+        "options": {}
+      },
+      "id": "trigger-indexing",
+      "name": "Trigger: Index Document",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1260, 300],
+      "notes": "Configure this to point to 'CelesteOS - Index Document' workflow ID"
+    },
+    {
+      "parameters": {
+        "content": "## Ingestion Workflow\n\nThis workflow receives document uploads from Worker 4's mvp_uploader.py\n\n### Input Contract:\n- Method: POST\n- URL: https://api.celeste7.ai/webhook/ingest-docs-nas-cloud\n- Headers: X-Yacht-ID\n- Body: multipart/form-data with 'file' field\n\n### What it does:\n1. Receives file + yacht_id\n2. Uploads to Supabase Storage: documents/{yacht_id}/{timestamp}/{filename}\n3. Inserts metadata row into 'documents' table\n4. Triggers indexing workflow\n\n### Storage Path Convention:\n```\ndocuments/\n  {yacht_id}/\n    {timestamp}/\n      {original_filename}\n```\n\n### Metadata Fields:\n- yacht_id (from header)\n- source: 'nas'\n- filename\n- content_type (MIME)\n- size_bytes\n- storage_path\n- indexed: false (will be true after indexing)\n\n### Testing:\n```bash\ncurl -X POST https://api.celeste7.ai/webhook/ingest-docs-nas-cloud \\\n  -H \"X-Yacht-ID: test-yacht-123\" \\\n  -F \"file=@/path/to/test.pdf\"\n```",
+        "height": 680,
+        "width": 520,
+        "color": 4
+      },
+      "id": "sticky-documentation",
+      "name": "Sticky Note: Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 480]
+    }
+  ],
+  "connections": {
+    "Webhook: Receive Upload": {
+      "main": [[{ "node": "Extract Upload Data", "type": "main", "index": 0 }]]
+    },
+    "Extract Upload Data": {
+      "main": [[{ "node": "Upload to Supabase Storage", "type": "main", "index": 0 }]]
+    },
+    "Upload to Supabase Storage": {
+      "main": [[{ "node": "Insert Document Metadata", "type": "main", "index": 0 }]]
+    },
+    "Insert Document Metadata": {
+      "main": [[{ "node": "Prepare Indexing Payload", "type": "main", "index": 0 }]]
+    },
+    "Prepare Indexing Payload": {
+      "main": [[{ "node": "Trigger: Index Document", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "celesteos-production"
+  },
+  "versionId": "1",
+  "triggerCount": 1,
+  "active": false,
+  "id": "celesteos-ingest-nas-workflow"
+}
