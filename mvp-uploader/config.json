@@ -1,5 +1,5 @@
 {
   "yacht_id": "test-yacht-celeste7",
-  "folder_path": "/Users/celeste7/Documents/yacht-nas/ROOT",
+  "root_path": "/Users/celeste7/Documents/yacht-nas/ROOT",
   "webhook_url": "https://api.celeste7.ai/webhook/ingest-docs-nas-cloud"
 }

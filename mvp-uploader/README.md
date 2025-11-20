@@ -1,6 +1,6 @@
-# CelesteOS MVP Uploader
+# CelesteOS MVP Uploader with NAS Metadata
 
-**Simple script to test n8n webhook ingestion**
+**File upload script with directory structure metadata for yacht-aware storage**
 
 Worker 4 - Local Agent Engineer
 
@@ -8,11 +8,13 @@ Worker 4 - Local Agent Engineer
 
 ## Purpose
 
-This is a **minimal smoke test** to verify that the n8n webhook can receive files from the local agent.
+This script uploads yacht NAS documents to the ingestion webhook **with full directory metadata** for proper yacht-aware storage and indexing.
 
 **What it does:**
-- Scans a folder recursively
-- Uploads each file to the n8n webhook
+- Scans NAS folder recursively
+- Extracts directory hierarchy from file paths
+- Uploads each file with metadata to the n8n webhook
+- Sends yacht ID, system path, and directory structure
 - Prints success/failure for each upload
 
 **What it does NOT do:**
@@ -44,15 +46,17 @@ Edit `config.json`:
 ```json
 {
   "yacht_id": "test-yacht-celeste7",
-  "folder_path": "/Users/celeste7/Documents/yacht-nas/ROOT",
+  "root_path": "/Users/celeste7/Documents/yacht-nas/ROOT",
   "webhook_url": "https://api.celeste7.ai/webhook/ingest-docs-nas-cloud"
 }
 ```
 
 **Fields:**
-- `yacht_id` - Identifier sent in X-Yacht-ID header
-- `folder_path` - Local folder to scan (absolute path)
+- `yacht_id` - Yacht identifier (sent in X-Yacht-ID header and form data)
+- `root_path` - **NAS root folder** to scan (absolute path)
 - `webhook_url` - n8n webhook endpoint
+
+**Important:** Use `root_path` (not `folder_path`) - this is the base directory for extracting relative paths.
 
 ---
 
@@ -69,23 +73,26 @@ python3 mvp_uploader.py
 
 ```
 ============================================================
-CelesteOS MVP Uploader
+CelesteOS MVP Uploader with NAS Metadata
 Testing n8n webhook ingestion
 ============================================================
 
 Yacht ID: test-yacht-celeste7
+Root Path: /Users/celeste7/Documents/yacht-nas/ROOT
 Webhook: https://api.celeste7.ai/webhook/ingest-docs-nas-cloud
 
 📁 Scanning folder: /Users/celeste7/Documents/yacht-nas/ROOT
-✓ Found 5 files
+✓ Found 12 files
 
 ============================================================
 Starting uploads...
 ============================================================
 
 📤 Uploading: manual_CAT3516.pdf
-   Path: /Users/celeste7/Documents/yacht-nas/ROOT/manual_CAT3516.pdf
+   Path: /Users/celeste7/Documents/yacht-nas/ROOT/Engineering/MainEngine/manual_CAT3516.pdf
    Size: 2458624 bytes
+   System Path: Engineering/MainEngine
+   Directories: ['Engineering', 'MainEngine']
    ✅ SUCCESS (200 OK)
    Response: {
      "status": "received",
@@ -93,8 +100,10 @@ Starting uploads...
    }
 
 📤 Uploading: schematic_electrical.pdf
-   Path: /Users/celeste7/Documents/yacht-nas/ROOT/schematic_electrical.pdf
+   Path: /Users/celeste7/Documents/yacht-nas/ROOT/Electrical/schematic_electrical.pdf
    Size: 1024000 bytes
+   System Path: Electrical
+   Directories: ['Electrical']
    ✅ SUCCESS (200 OK)
 
 ...

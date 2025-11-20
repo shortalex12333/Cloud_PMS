@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CelesteOS MVP Uploader
-Minimal script to test n8n webhook ingestion.
+CelesteOS MVP Uploader with NAS Metadata
+Uploads files with directory structure metadata for yacht-aware storage.
 Worker 4 - Local Agent Engineer
 """
 
@@ -20,7 +20,7 @@ def load_config(config_path='config.json'):
             config = json.load(f)
 
         # Validate required fields
-        required = ['yacht_id', 'folder_path']
+        required = ['yacht_id', 'root_path']
         for field in required:
             if field not in config:
                 print(f"❌ ERROR: Missing required field '{field}' in config.json")
@@ -29,16 +29,59 @@ def load_config(config_path='config.json'):
         return config
     except FileNotFoundError:
         print(f"❌ ERROR: Config file not found: {config_path}")
-        print("Create config.json with yacht_id and folder_path")
+        print("Create config.json with yacht_id and root_path")
         sys.exit(1)
     except json.JSONDecodeError as e:
         print(f"❌ ERROR: Invalid JSON in config file: {e}")
         sys.exit(1)
 
 
-def scan_folder(folder_path):
+def extract_directory_metadata(file_path, root_path):
+    """Extract directory hierarchy metadata from file path.
+
+    Args:
+        file_path: Absolute path to file (Path object)
+        root_path: Root NAS path (Path object)
+
+    Returns:
+        dict with 'directories' (list) and 'system_path' (string)
+
+    Example:
+        file_path: /Users/celeste7/Documents/yacht-nas/ROOT/Engineering/MainEngine/manual.pdf
+        root_path: /Users/celeste7/Documents/yacht-nas/ROOT
+
+        Returns:
+            {
+                'directories': ['Engineering', 'MainEngine'],
+                'system_path': 'Engineering/MainEngine'
+            }
+    """
+    try:
+        # Get relative path from root
+        relative_path = file_path.relative_to(root_path)
+
+        # Extract directory parts (exclude the filename)
+        directories = list(relative_path.parts[:-1])
+
+        # Create system_path string
+        system_path = "/".join(directories) if directories else ""
+
+        return {
+            'directories': directories,
+            'system_path': system_path
+        }
+    except ValueError:
+        # File is not under root_path
+        print(f"   ⚠️  WARNING: File not under root_path: {file_path}")
+        return {
+            'directories': [],
+            'system_path': ''
+        }
+
+
+def scan_folder(root_path):
     """Recursively scan folder and return list of file paths."""
-    folder = Path(folder_path).expanduser()
+    folder = Path(root_path).expanduser()
 
     if not folder.exists():
         print(f"❌ ERROR: Folder does not exist: {folder}")
@@ -61,13 +104,28 @@ def scan_folder(folder_path):
     return files
 
 
-def upload_file(file_path, yacht_id, webhook_url):
-    """Upload a single file to the n8n webhook."""
+def upload_file(file_path, yacht_id, root_path, webhook_url):
+    """Upload a single file to the n8n webhook with metadata.
+
+    Args:
+        file_path: Path object for the file
+        yacht_id: Yacht identifier
+        root_path: Path object for NAS root
+        webhook_url: Webhook endpoint URL
+    """
     filename = file_path.name
+    local_path = str(file_path.absolute())
+
+    # Extract directory metadata
+    metadata = extract_directory_metadata(file_path, root_path)
+    directories = metadata['directories']
+    system_path = metadata['system_path']
 
     print(f"\n📤 Uploading: {filename}")
-    print(f"   Path: {file_path}")
+    print(f"   Path: {local_path}")
     print(f"   Size: {file_path.stat().st_size} bytes")
+    print(f"   System Path: {system_path if system_path else '(root level)'}")
+    print(f"   Directories: {directories}")
 
     try:
         # Prepare headers
@@ -77,19 +135,24 @@ def upload_file(file_path, yacht_id, webhook_url):
 
         # Prepare multipart form data
         with open(file_path, 'rb') as f:
-            files = {
+            files_payload = {
                 'file': (filename, f, 'application/octet-stream')
             }
 
+            # Form data with all metadata
             data = {
-                'filename': filename
+                'filename': filename,
+                'local_path': local_path,
+                'system_path': system_path,
+                'directories': json.dumps(directories),
+                'yacht_id': yacht_id
             }
 
             # Send POST request
             response = requests.post(
                 webhook_url,
                 headers=headers,
-                files=files,
+                files=files_payload,
                 data=data,
                 timeout=60
             )
@@ -124,7 +187,7 @@ def upload_file(file_path, yacht_id, webhook_url):
 def main():
     """Main execution function."""
     print("=" * 60)
-    print("CelesteOS MVP Uploader")
+    print("CelesteOS MVP Uploader with NAS Metadata")
     print("Testing n8n webhook ingestion")
     print("=" * 60)
     print()
@@ -133,15 +196,16 @@ def main():
     config = load_config()
 
     yacht_id = config['yacht_id']
-    folder_path = config['folder_path']
+    root_path = Path(config['root_path']).expanduser()
     webhook_url = config.get('webhook_url', 'https://api.celeste7.ai/webhook/ingest-docs-nas-cloud')
 
     print(f"Yacht ID: {yacht_id}")
+    print(f"Root Path: {root_path}")
     print(f"Webhook: {webhook_url}")
     print()
 
     # Scan folder
-    files = scan_folder(folder_path)
+    files = scan_folder(root_path)
 
     if not files:
         print("\n⚠️  No files found to upload")
@@ -156,7 +220,7 @@ def main():
     failed = 0
 
     for file_path in files:
-        success = upload_file(file_path, yacht_id, webhook_url)
+        success = upload_file(file_path, yacht_id, root_path, webhook_url)
         if success:
             successful += 1
         else:
