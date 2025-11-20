@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return {
         ...data,
-        yacht_name: data.yachts?.name,
+        yacht_name: (data as any).yachts?.name || null,
       } as User
     } catch (err) {
       console.error('Error in fetchUserProfile:', err)

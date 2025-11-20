@@ -1,72 +1,160 @@
-// Dashboard-specific TypeScript types
+// Dashboard-specific types for CelesteOS HOD Interface
 
-export interface DashboardMetrics {
-  total_equipment: number;
-  active_work_orders: number;
-  overdue_tasks: number;
-  high_risk_systems: number;
-  parts_low_stock: number;
-  completed_this_week: number;
+export interface DashboardData {
+  riskOverview: RiskOverviewData
+  workOrders: WorkOrdersData
+  inventory: InventoryData
+  faults: FaultsData
+  upcomingTasks: UpcomingTasksData
+  fleet?: FleetData
 }
 
-export interface EquipmentStatus {
-  id: string;
-  name: string;
-  status: 'operational' | 'needs_attention' | 'critical' | 'offline';
-  last_maintenance: string;
-  next_maintenance: string;
-  risk_score?: number;
+// Risk Overview Widget Types
+export interface RiskOverviewData {
+  topRisks: RiskItem[]
+  overallTrend: 'improving' | 'stable' | 'worsening'
+  lastUpdated: string
 }
 
-export interface WorkOrderSummary {
-  id: string;
-  title: string;
-  equipment_name?: string;
-  priority: 'routine' | 'important' | 'critical';
-  status: 'planned' | 'in_progress' | 'completed' | 'deferred' | 'cancelled';
-  due_date?: string;
-  assigned_to?: string;
+export interface RiskItem {
+  equipment_id: string
+  equipment_name: string
+  system_type: string
+  risk_score: number // 0.0 - 1.0
+  risk_level: 'low' | 'medium' | 'high' | 'critical'
+  trend: 'up' | 'down' | 'stable'
+  contributing_factors: string[]
+  last_issue?: string
+  last_issue_date?: string
 }
 
-export interface InventoryAlert {
-  part_id: string;
-  part_name: string;
-  current_quantity: number;
-  min_quantity: number;
-  location: string;
-  urgency: 'low' | 'medium' | 'high';
+// Work Orders Widget Types
+export interface WorkOrdersData {
+  overdue_count: number
+  due_this_week: number
+  high_priority: number
+  recent_overdue: WorkOrderItem[]
 }
 
-export interface PredictiveInsight {
-  equipment_id: string;
-  equipment_name: string;
-  risk_score: number;
-  summary: string;
-  contributing_factors: string[];
-  recommended_actions: string[];
-  trend: 'improving' | 'stable' | 'degrading';
+export interface WorkOrderItem {
+  id: string
+  title: string
+  equipment_name?: string
+  equipment_id?: string
+  days_overdue?: number
+  priority: 'routine' | 'important' | 'critical'
+  due_date?: string
+  status: string
 }
 
-export interface DashboardWidget {
-  id: string;
-  type: 'predictive' | 'work_orders' | 'equipment' | 'inventory' | 'custom';
-  title: string;
-  position: { x: number; y: number; w: number; h: number };
-  config?: Record<string, any>;
+// Inventory Widget Types
+export interface InventoryData {
+  low_stock_count: number
+  critical_items: InventoryItem[]
+}
+
+export interface InventoryItem {
+  id: string
+  part_name: string
+  part_number: string
+  system: string
+  current_qty: number
+  min_qty: number
+  location?: string
+  criticality: 'low' | 'medium' | 'high'
+}
+
+// Faults Widget Types
+export interface FaultsData {
+  last_7_days: number
+  last_30_days: number
+  critical_count: number
+  recent_critical: FaultItem[]
+  repeating_faults: FaultItem[]
+}
+
+export interface FaultItem {
+  id: string
+  fault_code?: string
+  equipment_name: string
+  equipment_id: string
+  title: string
+  severity: 'low' | 'medium' | 'high'
+  detected_at: string
+  resolved: boolean
+  occurrences?: number
+}
+
+// Upcoming Tasks Widget Types
+export interface UpcomingTasksData {
+  tasks: UpcomingTaskItem[]
+  total_count: number
+}
+
+export interface UpcomingTaskItem {
+  id: string
+  title: string
+  equipment_name?: string
+  equipment_id?: string
+  due_date: string
+  days_until_due: number
+  type: 'scheduled' | 'corrective' | 'inspection'
+  priority: string
+}
+
+// Fleet Widget Types (Optional - for multi-yacht)
+export interface FleetData {
+  yacht_count: number
+  comparisons: FleetComparison[]
+  alerts: FleetAlert[]
 }
 
 export interface FleetComparison {
-  yacht_id: string;
-  yacht_name: string;
-  metric_value: number;
-  benchmark_value: number;
-  variance_percent: number;
+  metric: string
+  this_yacht: number
+  fleet_average: number
+  ranking?: number
 }
 
-// Widget configurations
-export interface WidgetConfig {
-  refresh_interval?: number; // seconds
-  show_trend?: boolean;
-  max_items?: number;
-  filters?: Record<string, any>;
+export interface FleetAlert {
+  id: string
+  message: string
+  severity: 'info' | 'warning' | 'critical'
+  date: string
+}
+
+// Widget Props Types
+export interface WidgetProps {
+  className?: string
+  onNavigateToSearch?: (query: string) => void
+}
+
+export interface RiskOverviewWidgetProps extends WidgetProps {
+  data: RiskOverviewData | null
+  loading?: boolean
+}
+
+export interface WorkOrdersWidgetProps extends WidgetProps {
+  data: WorkOrdersData | null
+  loading?: boolean
+}
+
+export interface InventoryWidgetProps extends WidgetProps {
+  data: InventoryData | null
+  loading?: boolean
+}
+
+export interface FaultsWidgetProps extends WidgetProps {
+  data: FaultsData | null
+  loading?: boolean
+}
+
+export interface UpcomingTasksWidgetProps extends WidgetProps {
+  data: UpcomingTasksData | null
+  loading?: boolean
+}
+
+export interface FleetWidgetProps extends WidgetProps {
+  data: FleetData | null
+  loading?: boolean
 }
