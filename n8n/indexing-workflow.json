@@ -5,36 +5,58 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "indexing-start",
+        "responseMode": "onReceived",
         "options": {}
       },
       "id": "webhook-trigger",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300],
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
       "webhookId": "celesteos-indexing"
     },
     {
       "parameters": {
-        "functionCode": "// Extract webhook payload\nconst document_id = $input.item.json.document_id;\nconst yacht_id = $input.item.json.yacht_id;\nconst file_sha256 = $input.item.json.file_sha256;\nconst storage_path = $input.item.json.storage_path;\nconst filename = $input.item.json.filename;\nconst file_size = $input.item.json.file_size;\n\n// Log receipt\nconsole.log(`Received indexing request for document ${document_id}`);\n\n// Return data for next nodes\nreturn {\n  document_id,\n  yacht_id,\n  file_sha256,\n  storage_path,\n  filename,\n  file_size,\n  timestamp: new Date().toISOString()\n};"
+        "jsCode": "// Extract webhook payload\nconst document_id = $input.item.json.document_id;\nconst yacht_id = $input.item.json.yacht_id;\nconst file_sha256 = $input.item.json.file_sha256;\nconst storage_path = $input.item.json.storage_path;\nconst filename = $input.item.json.filename;\nconst file_size = $input.item.json.file_size;\n\n// Log receipt\nconsole.log(`Received indexing request for document ${document_id}`);\n\n// Return data for next nodes\nreturn {\n  document_id,\n  yacht_id,\n  file_sha256,\n  storage_path,\n  filename,\n  file_size,\n  timestamp: new Date().toISOString()\n};"
       },
       "id": "extract-metadata",
       "name": "Extract Metadata",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [450, 300]
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
         "operation": "update",
-        "table": "documents",
-        "updateKey": "id",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "status": "indexing",
-            "updated_at": "={{new Date().toISOString()}}"
-          }
+        "tableId": "documents",
+        "filterType": "manual",
+        "matchingColumns": "id",
+        "dataToSend": "defineBelow",
+        "columnsToMatchOn": {
+          "matchingColumn": [
+            {
+              "column": "id",
+              "value": "={{ $json.document_id }}"
+            }
+          ]
+        },
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "status",
+              "value": "indexing"
+            },
+            {
+              "column": "updated_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
         },
         "options": {}
       },
@@ -42,7 +64,10 @@
       "name": "Update Status: Indexing",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [650, 300],
+      "position": [
+        650,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "1",
@@ -52,23 +77,38 @@
     },
     {
       "parameters": {
-        "functionCode": "// Download file from Supabase Storage\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst bucket = $env.SUPABASE_STORAGE_BUCKET;\nconst storage_path = $input.item.json.storage_path;\n\n// Construct download URL\nconst downloadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${storage_path}`;\n\nreturn {\n  download_url: downloadUrl,\n  ...($input.item.json)\n};"
+        "jsCode": "// Download file from Supabase Storage\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst bucket = $env.SUPABASE_STORAGE_BUCKET;\nconst storage_path = $input.item.json.storage_path;\n\n// Construct download URL\nconst downloadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${storage_path}`;\n\nreturn {\n  download_url: downloadUrl,\n  authorization_header: `Bearer ${supabaseKey}`,\n  ...($input.item.json)\n};"
       },
       "id": "get-download-url",
       "name": "Get Download URL",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [850, 300]
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ]
     },
     {
       "parameters": {
-        "url": "={{$json.download_url}}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "method": "GET",
+        "url": "={{ $json.download_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization_header }}"
+            }
+          ]
+        },
         "options": {
           "response": {
             "response": {
-              "responseFormat": "file"
+              "fullResponse": false,
+              "responseFormat": "file",
+              "neverError": false
             }
           }
         }
@@ -76,8 +116,17 @@
       "id": "download-file",
       "name": "Download File",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [1050, 300]
+      "typeVersion": 4.2,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "Header Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -87,41 +136,78 @@
       "name": "Detect Document Type",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1250, 300]
+      "position": [
+        1250,
+        300
+      ]
     },
     {
       "parameters": {
+        "mode": "rules",
         "rules": {
           "values": [
             {
               "conditions": {
-                "string": [
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
                   {
-                    "value1": "={{$json.doc_type}}",
-                    "value2": "pdf"
+                    "leftValue": "={{ $json.doc_type }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
-                ]
-              }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
             },
             {
               "conditions": {
-                "string": [
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
                   {
-                    "value1": "={{$json.doc_type}}",
-                    "value2": "image"
+                    "leftValue": "={{ $json.doc_type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
-                ]
-              }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
             },
             {
               "conditions": {
-                "string": [
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
                   {
-                    "value1": "={{$json.doc_type}}",
-                    "value2": "txt"
+                    "leftValue": "={{ $json.doc_type }}",
+                    "rightValue": "txt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
-                ]
-              }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
             }
           ]
         },
@@ -132,97 +218,131 @@
       "id": "route-by-type",
       "name": "Route by Type",
       "type": "n8n-nodes-base.switch",
-      "typeVersion": 2,
-      "position": [1450, 300]
+      "typeVersion": 3.1,
+      "position": [
+        1450,
+        300
+      ]
     },
     {
       "parameters": {
-        "functionCode": "// OCR Processing Node (placeholder)\n// In production, call external OCR service\n\nconsole.log('Processing PDF/Image with OCR');\n\n// Simulated OCR result\nreturn {\n  ...($input.item.json),\n  extracted_text: 'Sample extracted text from OCR service',\n  page_count: 10,\n  ocr_completed: true\n};"
+        "jsCode": "// OCR Processing Node (placeholder)\n// In production, call external OCR service (e.g., Google Vision, AWS Textract)\n\nconsole.log('Processing PDF/Image with OCR');\n\n// TODO: Replace with actual OCR service call\n// Example:\n// const response = await axios.post('https://ocr-service.com/api/v1/extract', {\n//   file_url: $json.download_url,\n//   language: 'eng'\n// });\n\n// Simulated OCR result for development\nreturn {\n  ...($input.item.json),\n  extracted_text: 'Sample extracted text from OCR service. This is a placeholder that should be replaced with actual OCR output.',\n  page_count: 10,\n  ocr_completed: true,\n  ocr_confidence: 0.95\n};"
       },
       "id": "ocr-processor",
       "name": "OCR Processor",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [1650, 200]
+      "typeVersion": 2,
+      "position": [
+        1650,
+        200
+      ]
     },
     {
       "parameters": {
-        "functionCode": "// Text extraction for plain text files\nconst fileData = $input.item.binary.data;\nconst text = Buffer.from(fileData.data, 'base64').toString('utf-8');\n\nreturn {\n  ...($input.item.json),\n  extracted_text: text,\n  page_count: 1,\n  ocr_completed: false\n};"
+        "jsCode": "// Text extraction for plain text files\nconst fileData = $input.item.binary.data;\n\nif (!fileData) {\n  throw new Error('No binary data found');\n}\n\n// Decode base64 file data to UTF-8 text\nconst text = Buffer.from(fileData.data, 'base64').toString('utf-8');\n\nreturn {\n  ...($input.item.json),\n  extracted_text: text,\n  page_count: 1,\n  ocr_completed: false\n};"
       },
       "id": "text-extractor",
       "name": "Text Extractor",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [1650, 400]
+      "typeVersion": 2,
+      "position": [
+        1650,
+        400
+      ]
     },
     {
       "parameters": {
-        "functionCode": "// Text chunking logic\nconst text = $input.item.json.extracted_text;\nconst document_id = $input.item.json.document_id;\n\nconst TARGET_TOKENS = 500;\nconst MIN_TOKENS = 250;\nconst MAX_TOKENS = 800;\nconst OVERLAP_PERCENTAGE = 0.15;\n\n// Simple chunking by character count (1 token ≈ 4 characters)\nconst charsPerChunk = TARGET_TOKENS * 4;\nconst overlapChars = Math.floor(charsPerChunk * OVERLAP_PERCENTAGE);\n\nconst chunks = [];\nlet start = 0;\nlet chunk_index = 0;\n\nwhile (start < text.length) {\n  const end = Math.min(start + charsPerChunk, text.length);\n  const chunk_text = text.substring(start, end);\n  \n  chunks.push({\n    document_id,\n    chunk_index,\n    text: chunk_text,\n    start_pos: start,\n    end_pos: end,\n    length: chunk_text.length\n  });\n  \n  chunk_index++;\n  start = end - overlapChars;\n}\n\nconsole.log(`Created ${chunks.length} chunks`);\n\nreturn chunks;"
+        "jsCode": "// Text chunking logic based on indexing-pipeline.md specifications\nconst text = $input.item.json.extracted_text;\nconst document_id = $input.item.json.document_id;\nconst yacht_id = $input.item.json.yacht_id;\n\n// Chunking parameters per spec\nconst TARGET_TOKENS = 500;\nconst MIN_TOKENS = 250;\nconst MAX_TOKENS = 800;\nconst OVERLAP_PERCENTAGE = 0.15;\n\n// Approximate: 1 token ≈ 4 characters\nconst charsPerChunk = TARGET_TOKENS * 4;\nconst overlapChars = Math.floor(charsPerChunk * OVERLAP_PERCENTAGE);\n\nconst chunks = [];\nlet start = 0;\nlet chunk_index = 0;\n\nwhile (start < text.length) {\n  const end = Math.min(start + charsPerChunk, text.length);\n  const chunk_text = text.substring(start, end).trim();\n  \n  // Skip empty chunks\n  if (chunk_text.length > 0) {\n    chunks.push({\n      yacht_id,\n      document_id,\n      chunk_index,\n      text: chunk_text,\n      page_number: null, // Set from OCR if available\n      start_pos: start,\n      end_pos: end,\n      length: chunk_text.length,\n      word_count: chunk_text.split(/\\s+/).length\n    });\n    chunk_index++;\n  }\n  \n  start = end - overlapChars;\n  \n  // Prevent infinite loop\n  if (start >= text.length) break;\n}\n\nconsole.log(`Created ${chunks.length} chunks for document ${document_id}`);\n\nreturn chunks;"
       },
       "id": "chunk-text",
       "name": "Chunk Text",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [1850, 300]
+      "typeVersion": 2,
+      "position": [
+        1850,
+        300
+      ]
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "https://api.openai.com/v1/embeddings",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "Bearer {{$env.OPENAI_API_KEY}}"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "input",
-              "value": "={{$json.text}}"
-            },
-            {
-              "name": "model",
-              "value": "text-embedding-3-small"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {{ $json.text | quote }},\n  \"model\": \"text-embedding-3-small\"\n}",
         "options": {}
       },
       "id": "generate-embedding",
       "name": "Generate Embedding",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [2050, 300]
+      "typeVersion": 4.2,
+      "position": [
+        2050,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "3",
+          "name": "OpenAI API"
+        }
+      }
     },
     {
       "parameters": {
-        "functionCode": "// Extract embedding vector from OpenAI response\nconst embedding = $input.item.json.data[0].embedding;\n\nreturn {\n  document_id: $input.item.json.document_id,\n  chunk_index: $input.item.json.chunk_index,\n  text: $input.item.json.text,\n  embedding: embedding,\n  metadata: {\n    length: $input.item.json.length,\n    start_pos: $input.item.json.start_pos,\n    end_pos: $input.item.json.end_pos\n  }\n};"
+        "jsCode": "// Extract embedding vector from OpenAI response\nconst responseData = $input.item.json;\n\nif (!responseData.data || !responseData.data[0] || !responseData.data[0].embedding) {\n  throw new Error('Invalid OpenAI response: missing embedding data');\n}\n\nconst embedding = responseData.data[0].embedding;\n\n// Get original chunk data from input\nconst yacht_id = $input.item.json.yacht_id || $('Chunk Text').item.json.yacht_id;\nconst document_id = $input.item.json.document_id || $('Chunk Text').item.json.document_id;\nconst chunk_index = $input.item.json.chunk_index || $('Chunk Text').item.json.chunk_index;\nconst text = $input.item.json.text || $('Chunk Text').item.json.text;\nconst word_count = $input.item.json.word_count || $('Chunk Text').item.json.word_count;\nconst start_pos = $input.item.json.start_pos || $('Chunk Text').item.json.start_pos;\nconst end_pos = $input.item.json.end_pos || $('Chunk Text').item.json.end_pos;\n\nreturn {\n  yacht_id,\n  document_id,\n  chunk_index,\n  text,\n  embedding: JSON.stringify(embedding),\n  metadata: {\n    word_count,\n    start_pos,\n    end_pos,\n    embedding_model: 'text-embedding-3-small',\n    embedding_dimensions: embedding.length\n  }\n};"
       },
       "id": "format-chunk-data",
       "name": "Format Chunk Data",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [2250, 300]
+      "typeVersion": 2,
+      "position": [
+        2250,
+        300
+      ]
     },
     {
       "parameters": {
         "operation": "insert",
-        "table": "document_chunks",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "document_id": "={{$json.document_id}}",
-            "chunk_index": "={{$json.chunk_index}}",
-            "text": "={{$json.text}}",
-            "embedding": "={{JSON.stringify($json.embedding)}}",
-            "metadata": "={{JSON.stringify($json.metadata)}}"
-          }
+        "tableId": "document_chunks",
+        "dataToSend": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "yacht_id",
+              "value": "={{ $json.yacht_id }}"
+            },
+            {
+              "column": "document_id",
+              "value": "={{ $json.document_id }}"
+            },
+            {
+              "column": "chunk_index",
+              "value": "={{ $json.chunk_index }}"
+            },
+            {
+              "column": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "column": "embedding",
+              "value": "={{ $json.embedding }}"
+            },
+            {
+              "column": "metadata",
+              "value": "={{ JSON.stringify($json.metadata) }}"
+            }
+          ]
         },
         "options": {}
       },
@@ -230,7 +350,10 @@
       "name": "Insert Chunk to DB",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2450, 300],
+      "position": [
+        2450,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "1",
@@ -241,16 +364,37 @@
     {
       "parameters": {
         "operation": "update",
-        "table": "documents",
-        "updateKey": "id",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "status": "indexed",
-            "indexed": true,
-            "indexed_at": "={{new Date().toISOString()}}",
-            "updated_at": "={{new Date().toISOString()}}"
-          }
+        "tableId": "documents",
+        "filterType": "manual",
+        "matchingColumns": "id",
+        "dataToSend": "defineBelow",
+        "columnsToMatchOn": {
+          "matchingColumn": [
+            {
+              "column": "id",
+              "value": "={{ $('Extract Metadata').item.json.document_id }}"
+            }
+          ]
+        },
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "status",
+              "value": "indexed"
+            },
+            {
+              "column": "indexed",
+              "value": true
+            },
+            {
+              "column": "indexed_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "column": "updated_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
         },
         "options": {}
       },
@@ -258,7 +402,10 @@
       "name": "Update Status: Indexed",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2650, 300],
+      "position": [
+        2650,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "1",
@@ -269,16 +416,31 @@
     {
       "parameters": {
         "operation": "insert",
-        "table": "pipeline_logs",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "yacht_id": "={{$json.yacht_id}}",
-            "document_id": "={{$json.document_id}}",
-            "step": "indexing_complete",
-            "status": "completed",
-            "metadata": "={{JSON.stringify({timestamp: new Date().toISOString()})}}"
-          }
+        "tableId": "pipeline_logs",
+        "dataToSend": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "yacht_id",
+              "value": "={{ $('Extract Metadata').item.json.yacht_id }}"
+            },
+            {
+              "column": "document_id",
+              "value": "={{ $('Extract Metadata').item.json.document_id }}"
+            },
+            {
+              "column": "step",
+              "value": "indexing_complete"
+            },
+            {
+              "column": "status",
+              "value": "completed"
+            },
+            {
+              "column": "metadata",
+              "value": "={{ JSON.stringify({timestamp: new Date().toISOString(), chunks_created: $('Chunk Text').all().length}) }}"
+            }
+          ]
         },
         "options": {}
       },
@@ -286,7 +448,10 @@
       "name": "Log Completion",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2850, 300],
+      "position": [
+        2850,
+        300
+      ],
       "credentials": {
         "supabaseApi": {
           "id": "1",
@@ -297,58 +462,186 @@
   ],
   "connections": {
     "Webhook Trigger": {
-      "main": [[{"node": "Extract Metadata", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract Metadata": {
-      "main": [[{"node": "Update Status: Indexing", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Update Status: Indexing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Update Status: Indexing": {
-      "main": [[{"node": "Get Download URL", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Get Download URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Get Download URL": {
-      "main": [[{"node": "Download File", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Download File": {
-      "main": [[{"node": "Detect Document Type", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Detect Document Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Detect Document Type": {
-      "main": [[{"node": "Route by Type", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Route by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Route by Type": {
       "main": [
-        [{"node": "OCR Processor", "type": "main", "index": 0}],
-        [{"node": "OCR Processor", "type": "main", "index": 0}],
-        [{"node": "Text Extractor", "type": "main", "index": 0}]
+        [
+          {
+            "node": "OCR Processor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OCR Processor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Text Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "OCR Processor": {
-      "main": [[{"node": "Chunk Text", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Text Extractor": {
-      "main": [[{"node": "Chunk Text", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Chunk Text": {
-      "main": [[{"node": "Generate Embedding", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Embedding": {
-      "main": [[{"node": "Format Chunk Data", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Format Chunk Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Chunk Data": {
-      "main": [[{"node": "Insert Chunk to DB", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Insert Chunk to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Insert Chunk to DB": {
-      "main": [[{"node": "Update Status: Indexed", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Update Status: Indexed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Update Status: Indexed": {
-      "main": [[{"node": "Log Completion", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
+  "pinData": {},
   "settings": {
     "executionOrder": "v1"
   },
   "staticData": null,
   "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "celesteos-production"
+  },
+  "versionId": "1",
   "triggerCount": 1,
-  "updatedAt": "2024-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "active": false,
+  "id": "celesteos-indexing-workflow"
 }
