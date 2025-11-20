@@ -100,13 +100,13 @@ def execute_sql_file(filepath):
     print("\nPlease deploy manually using ONE of these methods:")
     print("\n1. Supabase Dashboard SQL Editor:")
     print("   - Go to https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd/sql")
-    print("   - Copy the contents of: supabase_schema.sql")
+    print("   - Copy the contents of: supabase_schema_v2.sql")
     print("   - Paste into the SQL editor")
     print("   - Click 'Run'")
     print("\n2. Get Database Password:")
     print("   - Go to https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd/settings/database")
     print("   - Copy the database password")
-    print("   - Run: PGPASSWORD='your_password' psql -h db.vzsohavtuotocgrfkfyd.supabase.co -p 5432 -U postgres -d postgres -f supabase_schema.sql")
+    print("   - Run: PGPASSWORD='your_password' psql -h db.vzsohavtuotocgrfkfyd.supabase.co -p 5432 -U postgres -d postgres -f supabase_schema_v2.sql")
     print("\n3. Install Supabase CLI:")
     print("   - Follow: https://supabase.com/docs/guides/cli")
     print("   - Run: supabase db push")
@@ -115,7 +115,7 @@ def execute_sql_file(filepath):
     return False
 
 if __name__ == "__main__":
-    sql_file = "/home/user/Cloud_PMS/supabase_schema.sql"
+    sql_file = "/home/user/Cloud_PMS/supabase_schema_v2.sql"
 
     if not os.path.exists(sql_file):
         print(f"Error: SQL file not found: {sql_file}")
