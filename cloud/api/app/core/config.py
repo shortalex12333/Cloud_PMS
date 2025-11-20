@@ -47,8 +47,9 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 100
 
-    # Indexing Pipeline (for triggering)
-    INDEXING_PIPELINE_URL: str = "http://localhost:9000"
+    # Indexing (n8n workflow webhook)
+    # Indexing is triggered via n8n webhook, not a separate service
+    INDEXING_WEBHOOK_URL: str = "https://api.celeste7.ai/webhook/v1/ingest/index"
 
     # Logging
     LOG_LEVEL: str = "INFO"

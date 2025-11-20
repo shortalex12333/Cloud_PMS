@@ -27,7 +27,8 @@ Set these in your n8n environment (.env file or system environment):
 ```bash
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key-here
-INDEXING_PIPELINE_URL=https://your-indexing-pipeline.com (optional, for triggering indexing)
+# Indexing webhook URL (n8n workflow for document indexing)
+INDEXING_WEBHOOK_URL=https://api.celeste7.ai/webhook/v1/ingest/index
 ```
 
 ## Workflow Import Instructions

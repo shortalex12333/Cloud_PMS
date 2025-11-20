@@ -69,8 +69,9 @@ CORS_ORIGINS=["http://localhost:3000","https://app.celesteos.com"]
 STORAGE_BUCKET_UPLOADS=yacht-uploads
 STORAGE_BUCKET_DOCUMENTS=yacht-documents
 
-# Indexing Pipeline (optional)
-INDEXING_PIPELINE_URL=http://localhost:9000
+# Indexing (n8n workflow webhook)
+# Indexing is handled by n8n workflow, not a separate service
+INDEXING_WEBHOOK_URL=https://api.celeste7.ai/webhook/v1/ingest/index
 ```
 
 ### 3. Run Development Server

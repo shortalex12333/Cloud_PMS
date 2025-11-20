@@ -218,7 +218,7 @@
     },
     {
       "parameters": {
-        "url": "={{process.env.INDEXING_PIPELINE_URL}}/trigger",
+        "url": "={{process.env.INDEXING_WEBHOOK_URL}}",
         "method": "POST",
         "sendBody": true,
         "bodyParameters": {
