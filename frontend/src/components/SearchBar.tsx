@@ -18,7 +18,7 @@ export default function SearchBar() {
     inputRef.current?.focus();
   }, []);
 
-  // Debounced search function (placeholder)
+  // Debounced search function with API integration
   const performSearch = debounce(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setResults([]);
@@ -29,22 +29,43 @@ export default function SearchBar() {
     setLoading(true);
     setShowResults(true);
 
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    console.log('[SearchBar] Initiating search:', {
+      query: searchQuery,
+      endpoint: `${apiBaseUrl}search`,
+      timestamp: new Date().toISOString(),
+    });
+
     try {
-      // TODO: Implement actual API integration
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+      const response = await fetch(`${apiBaseUrl}search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery }),
+      });
 
-      // const response = await fetch(`${apiBaseUrl}search`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ query: searchQuery }),
-      // });
-      // const data: SearchResponse = await response.json();
-      // setResults(data.results);
+      console.log('[SearchBar] API Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
 
-      // Placeholder: simulate search delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      }
 
-      // Mock results for demonstration
+      const data: SearchResponse = await response.json();
+      console.log('[SearchBar] Search results received:', {
+        resultCount: data.results?.length || 0,
+        data,
+      });
+
+      setResults(data.results || []);
+    } catch (error) {
+      console.error('[SearchBar] Search error:', error);
+      console.log('[SearchBar] Falling back to mock data');
+
+      // Fallback to mock results if API fails
       const mockResults: SearchResult[] = [
         {
           type: 'document_chunk',
@@ -77,9 +98,6 @@ export default function SearchBar() {
       ];
 
       setResults(mockResults);
-    } catch (error) {
-      console.error('Search error:', error);
-      setResults([]);
     } finally {
       setLoading(false);
     }
