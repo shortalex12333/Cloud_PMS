@@ -30,8 +30,10 @@ export default function SearchBar() {
     setShowResults(true);
 
     try {
-      // TODO: Replace with actual API call to /api/search
-      // const response = await fetch('/api/search', {
+      // TODO: Implement actual API integration
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
+      // const response = await fetch(`${apiBaseUrl}search`, {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify({ query: searchQuery }),
