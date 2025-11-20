@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (user) {
       console.log('[LoginPage] User already logged in, redirecting...');
-      const redirectTo = user.role === 'HOD' ? '/dashboard' : '/search';
+      const redirectTo = isHOD(user) ? '/dashboard' : '/search';
       router.push(redirectTo);
     }
   }, [user, router]);

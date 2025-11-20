@@ -4,6 +4,7 @@ import SearchBar from '@/components/SearchBar';
 import { Suspense } from 'react';
 import { withAuth } from '@/components/withAuth';
 import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
 function SearchPage() {
@@ -35,7 +36,7 @@ function SearchPage() {
 
         {/* Quick Actions */}
         <div className="mt-8 flex justify-center gap-2 text-xs text-muted-foreground">
-          {user?.role === 'HOD' && (
+          {isHOD(user) && (
             <Link
               href="/dashboard"
               className="px-3 py-1 rounded-md hover:bg-accent"

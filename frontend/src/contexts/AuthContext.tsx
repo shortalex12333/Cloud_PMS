@@ -5,10 +5,11 @@ import { supabase } from '@/lib/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
 // CelesteOS user type - GDPR-minimized
+// Role mapping: chief_engineer, captain, manager = HOD (Head of Department)
 export type CelesteUser = {
   id: string; // user_id
   email: string | null;
-  role: 'HOD' | 'Engineer' | 'Crew' | 'Guest' | 'Admin';
+  role: 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior';
   yachtId: string | null;
   displayName: string | null;
 };
@@ -19,6 +20,12 @@ export type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
+
+// Helper function to check if user is HOD (Head of Department)
+export function isHOD(user: CelesteUser | null): boolean {
+  if (!user) return false;
+  return ['chief_engineer', 'captain', 'manager'].includes(user.role);
+}
 
 export const AuthContext = createContext<AuthContextValue | undefined>(
   undefined
@@ -33,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, email, role, yacht_id, display_name')
+        .select('id, email, role, yacht_id, name')
         .eq('id', authUser.id)
         .single();
 
@@ -52,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: data.email,
         role: data.role as CelesteUser['role'],
         yachtId: data.yacht_id,
-        displayName: data.display_name,
+        displayName: data.name, // Database column is 'name'
       };
 
       console.log('[AuthContext] User profile loaded:', {

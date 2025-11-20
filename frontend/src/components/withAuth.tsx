@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 
 interface WithAuthOptions {
   requireHOD?: boolean;
@@ -38,7 +39,7 @@ export function withAuth<P extends object>(
         }
 
         // HOD required but user is not HOD → redirect to search
-        if (options?.requireHOD && user.role !== 'HOD') {
+        if (options?.requireHOD && !isHOD(user)) {
           console.log('[withAuth] HOD required but user role is:', user.role);
           router.push('/search');
           return;
@@ -70,7 +71,7 @@ export function withAuth<P extends object>(
     }
 
     // Check HOD requirement
-    if (options?.requireHOD && user.role !== 'HOD') {
+    if (options?.requireHOD && !isHOD(user)) {
       return null;
     }
 
