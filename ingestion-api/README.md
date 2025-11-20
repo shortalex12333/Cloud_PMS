@@ -99,7 +99,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 UPLOAD_TEMP_DIR=/tmp/celesteos-uploads
 MAX_FILE_SIZE=5368709120  # 5GB
 MAX_CHUNK_SIZE=33554432   # 32MB
-N8N_WEBHOOK_URL=http://localhost:5678/webhook/indexing
+N8N_WEBHOOK_URL=https://api.celeste7.ai/webhook/indexing
 ```
 
 ## Running

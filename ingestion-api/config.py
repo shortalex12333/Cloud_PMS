@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     max_chunk_size: int = 33554432  # 32MB
 
     # Queue
-    n8n_webhook_url: str = "http://localhost:5678/webhook/indexing"
+    n8n_webhook_url: str = "https://api.celeste7.ai/webhook/indexing"
 
     class Config:
         env_file = ".env"
