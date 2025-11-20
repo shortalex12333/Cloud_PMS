@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "agent_id": "GENERATED_ON_FIRST_RUN",
+
+  "cloud": {
+    "api_endpoint": "https://api.celesteos.com",
+    "yacht_signature": "YACHT_SIGNATURE_FROM_PROVISIONING",
+    "refresh_token": "REFRESH_TOKEN_FROM_PROVISIONING"
+  },
+
+  "nas": {
+    "mount_point": "/Volumes/CelesteOS_NAS",
+    "watch_directories": [
+      "/Volumes/CelesteOS_NAS/Engineering",
+      "/Volumes/CelesteOS_NAS/Manuals",
+      "/Volumes/CelesteOS_NAS/TechDrawings"
+    ],
+    "credentials": {
+      "use_keychain": true,
+      "keychain_service": "com.celesteos.local-agent",
+      "keychain_account": "nas_credentials"
+    }
+  },
+
+  "scanning": {
+    "scan_interval_minutes": 15,
+    "initial_scan_on_startup": true,
+    "max_file_size_mb": null,
+    "included_extensions": [
+      ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+      ".txt", ".md", ".csv", ".json",
+      ".msg", ".eml",
+      ".jpg", ".jpeg", ".png",
+      ".dwg", ".dxf"
+    ],
+    "excluded_extensions": [
+      ".iso", ".dmg", ".exe", ".zip", ".tar", ".gz",
+      ".mp4", ".mov", ".avi"
+    ]
+  },
+
+  "upload": {
+    "chunk_size_mb": 10,
+    "parallel_uploads": 5,
+    "max_retries": 5,
+    "initial_retry_delay_seconds": 30,
+    "request_timeout_seconds": 300,
+    "throttle_bandwidth_mbps": null
+  },
+
+  "storage": {
+    "manifest_db_path": "~/Library/Application Support/CelesteOS/manifest.sqlite",
+    "chunk_temp_dir": "~/Library/Application Support/CelesteOS/chunks",
+    "log_dir": "~/Library/Logs/CelesteOS",
+    "cleanup_old_chunks_hours": 24
+  },
+
+  "logging": {
+    "level": "INFO",
+    "max_file_size_mb": 10,
+    "max_backup_count": 5,
+    "console_output": true
+  },
+
+  "performance": {
+    "max_cpu_percent": 40,
+    "max_memory_mb": 1024,
+    "hash_buffer_size_mb": 1,
+    "scan_batch_size": 100
+  },
+
+  "telemetry": {
+    "enabled": true,
+    "report_interval_minutes": 60,
+    "include_system_metrics": true
+  },
+
+  "auto_update": {
+    "enabled": true,
+    "check_interval_hours": 6,
+    "update_channel": "stable"
+  }
+}

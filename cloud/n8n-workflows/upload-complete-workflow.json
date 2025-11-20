@@ -1,0 +1,479 @@
+{
+  "name": "CelesteOS Upload Complete",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/ingest/complete",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-complete",
+      "name": "Webhook - Upload Complete",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "celesteos-upload-complete"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.headers['x-yacht-signature']}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.headers['authorization']}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.body.upload_id}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validate-request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "yacht_signature",
+              "value": "={{$json.headers['x-yacht-signature']}}"
+            },
+            {
+              "name": "auth_token",
+              "value": "={{$json.headers['authorization'].replace('Bearer ', '')}}"
+            },
+            {
+              "name": "upload_id",
+              "value": "={{$json.body.upload_id}}"
+            }
+          ]
+        }
+      },
+      "id": "extract-data",
+      "name": "Extract Request Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT us.id, us.yacht_id, us.filename, us.file_size, us.file_sha256, us.mime_type, us.total_chunks, us.chunks_uploaded, us.status, us.source_type, us.source_path, us.nas_path, us.document_type, y.signature FROM upload_sessions us JOIN yachts y ON us.yacht_id = y.id WHERE us.id = '{{$json.upload_id}}' AND y.signature = '{{$json.yacht_signature}}' AND us.status = 'in_progress' LIMIT 1",
+        "options": {}
+      },
+      "id": "get-session",
+      "name": "Get Upload Session",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-credentials",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.id ? 1 : 0}}",
+              "operation": "equal",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "check-session-exists",
+      "name": "Check Session Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.chunks_uploaded}}",
+              "operation": "equal",
+              "value2": "={{$json.total_chunks}}"
+            }
+          ]
+        }
+      },
+      "id": "check-all-chunks",
+      "name": "Check All Chunks Uploaded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, chunk_index, temp_storage_path, chunk_sha256, status FROM upload_chunks WHERE upload_session_id = '{{$node[\"Get Upload Session\"].json.id}}' ORDER BY chunk_index ASC",
+        "options": {}
+      },
+      "id": "get-all-chunks",
+      "name": "Get All Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [1450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-credentials",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Assemble all chunks into final file\nconst { createClient } = require('@supabase/supabase-js');\nconst crypto = require('crypto');\n\nconst supabase = createClient(\n  process.env.SUPABASE_URL,\n  process.env.SUPABASE_SERVICE_KEY\n);\n\nconst chunks = items; // All chunks from previous node\nconst session = $node['Get Upload Session'].json;\n\n// Download all chunks and concatenate\nlet fileBuffer = Buffer.alloc(0);\n\nfor (const chunk of chunks) {\n  const { data, error } = await supabase.storage\n    .from('yacht-uploads')\n    .download(chunk.json.temp_storage_path);\n  \n  if (error) {\n    throw new Error(`Failed to download chunk ${chunk.json.chunk_index}: ${error.message}`);\n  }\n  \n  const chunkBuffer = Buffer.from(await data.arrayBuffer());\n  fileBuffer = Buffer.concat([fileBuffer, chunkBuffer]);\n}\n\n// Compute SHA256 of assembled file\nconst hash = crypto.createHash('sha256');\nhash.update(fileBuffer);\nconst computedSha256 = hash.digest('hex');\n\n// Verify against expected SHA256\nconst verified = (computedSha256 === session.file_sha256);\n\nif (!verified) {\n  throw new Error(`File SHA256 mismatch. Expected: ${session.file_sha256}, Computed: ${computedSha256}`);\n}\n\n// Upload final file to permanent storage\nconst finalPath = `${session.yacht_id}/documents/${session.file_sha256}`;\n\nconst { data: uploadData, error: uploadError } = await supabase.storage\n  .from('yacht-documents')\n  .upload(finalPath, fileBuffer, {\n    contentType: session.mime_type || 'application/octet-stream',\n    upsert: false\n  });\n\nif (uploadError) {\n  throw new Error(`Failed to upload final file: ${uploadError.message}`);\n}\n\nreturn {\n  verified: true,\n  computed_sha256: computedSha256,\n  final_storage_path: finalPath,\n  final_storage_bucket: 'yacht-documents',\n  file_size: fileBuffer.length\n};"
+      },
+      "id": "assemble-file",
+      "name": "Assemble and Verify File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "documents",
+        "columns": "yacht_id, sha256, original_filename, file_size, mime_type, source_type, source_path, nas_path, storage_bucket, storage_path, document_type, processing_status",
+        "values": "'{{$node[\"Get Upload Session\"].json.yacht_id}}', '{{$node[\"Get Upload Session\"].json.file_sha256}}', '{{$node[\"Get Upload Session\"].json.filename}}', {{$node[\"Assemble and Verify File\"].json.file_size}}, '{{$node[\"Get Upload Session\"].json.mime_type}}', '{{$node[\"Get Upload Session\"].json.source_type}}', '{{$node[\"Get Upload Session\"].json.source_path}}', '{{$node[\"Get Upload Session\"].json.nas_path}}', '{{$node[\"Assemble and Verify File\"].json.final_storage_bucket}}', '{{$node[\"Assemble and Verify File\"].json.final_storage_path}}', '{{$node[\"Get Upload Session\"].json.document_type}}', 'pending'",
+        "returnFields": "id, sha256",
+        "options": {}
+      },
+      "id": "create-document",
+      "name": "Create Document Record",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [1850, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-credentials",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT complete_upload_session('{{$node[\"Get Upload Session\"].json.id}}')",
+        "options": {}
+      },
+      "id": "mark-session-complete",
+      "name": "Mark Session Complete",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [2050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-credentials",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Clean up temporary chunk files\nconst { createClient } = require('@supabase/supabase-js');\n\nconst supabase = createClient(\n  process.env.SUPABASE_URL,\n  process.env.SUPABASE_SERVICE_KEY\n);\n\nconst chunks = $node['Get All Chunks'].json;\nconst session = $node['Get Upload Session'].json;\n\n// Delete all chunk files from temporary storage\nconst filesToDelete = chunks.map(chunk => chunk.temp_storage_path);\n\nconst { data, error } = await supabase.storage\n  .from('yacht-uploads')\n  .remove(filesToDelete);\n\nif (error) {\n  console.error(`Warning: Failed to cleanup temp files: ${error.message}`);\n  // Don't throw - cleanup failure shouldn't fail the upload\n}\n\nreturn {\n  cleaned_up: true,\n  files_deleted: filesToDelete.length\n};"
+      },
+      "id": "cleanup-chunks",
+      "name": "Cleanup Temporary Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [2250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "pipeline_logs",
+        "columns": "yacht_id, document_id, upload_session_id, pipeline_stage, log_level, message, details",
+        "values": "'{{$node[\"Get Upload Session\"].json.yacht_id}}', '{{$node[\"Create Document Record\"].json.id}}', '{{$node[\"Get Upload Session\"].json.id}}', 'upload', 'info', 'Upload completed successfully', '{\"filename\": \"{{$node[\"Get Upload Session\"].json.filename}}\", \"file_size\": {{$node[\"Assemble and Verify File\"].json.file_size}}, \"chunks\": {{$node[\"Get Upload Session\"].json.total_chunks}}}'",
+        "options": {}
+      },
+      "id": "log-completion",
+      "name": "Log Upload Completion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [2450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-credentials",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{process.env.INDEXING_PIPELINE_URL}}/trigger",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "document_id",
+              "value": "={{$node['Create Document Record'].json.id}}"
+            },
+            {
+              "name": "yacht_id",
+              "value": "={{$node['Get Upload Session'].json.yacht_id}}"
+            },
+            {
+              "name": "document_type",
+              "value": "={{$node['Get Upload Session'].json.document_type}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "trigger-indexing",
+      "name": "Trigger Indexing Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [2650, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"success\", \"message\": \"Upload completed and verified\", \"document_id\": \"{{$node['Create Document Record'].json.id}}\", \"sha256\": \"{{$node['Create Document Record'].json.sha256}}\", \"indexing_triggered\": true}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"error\", \"error\": \"Missing required parameters\"}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "error-request",
+      "name": "Error - Bad Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"error\", \"error\": \"Upload session not found\"}",
+        "options": {
+          "responseCode": 404
+        }
+      },
+      "id": "error-session",
+      "name": "Error - Session Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"error\", \"error\": \"Not all chunks uploaded\", \"uploaded\": {{$node['Get Upload Session'].json.chunks_uploaded}}, \"expected\": {{$node['Get Upload Session'].json.total_chunks}}}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "error-incomplete",
+      "name": "Error - Incomplete Upload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    }
+  ],
+  "connections": {
+    "Webhook - Upload Complete": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Request Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - Bad Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Request Data": {
+      "main": [
+        [
+          {
+            "node": "Get Upload Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Upload Session": {
+      "main": [
+        [
+          {
+            "node": "Check Session Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Session Exists": {
+      "main": [
+        [
+          {
+            "node": "Check All Chunks Uploaded",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - Session Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check All Chunks Uploaded": {
+      "main": [
+        [
+          {
+            "node": "Get All Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error - Incomplete Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Chunks": {
+      "main": [
+        [
+          {
+            "node": "Assemble and Verify File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble and Verify File": {
+      "main": [
+        [
+          {
+            "node": "Create Document Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Document Record": {
+      "main": [
+        [
+          {
+            "node": "Mark Session Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Session Complete": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Temporary Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Temporary Chunks": {
+      "main": [
+        [
+          {
+            "node": "Log Upload Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Upload Completion": {
+      "main": [
+        [
+          {
+            "node": "Trigger Indexing Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Indexing Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1.0.0",
+  "id": "celesteos-upload-complete",
+  "meta": {
+    "instanceId": "celesteos-production"
+  },
+  "tags": ["celesteos", "upload", "complete", "ingestion"]
+}
