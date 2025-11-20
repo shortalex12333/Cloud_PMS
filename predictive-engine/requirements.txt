@@ -1,0 +1,34 @@
+# ========================================
+# CelesteOS Predictive Maintenance Engine
+# Python Dependencies
+# ========================================
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+supabase==2.2.0
+postgrest==0.13.0
+python-dotenv==1.0.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+
+# Logging
+python-json-logger==2.0.7
+
+# Background Jobs (optional)
+apscheduler==3.10.4
+
+# Type checking (development)
+mypy==1.7.1
