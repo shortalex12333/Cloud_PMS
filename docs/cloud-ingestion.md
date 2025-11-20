@@ -359,7 +359,7 @@ SUPABASE_SERVICE_KEY=your-service-key
 SUPABASE_JWT_SECRET=your-jwt-secret
 SUPABASE_STORAGE_BUCKET=celesteos-documents
 
-N8N_WEBHOOK_URL=https://n8n.yourdomain.com/webhook/indexing-start
+N8N_WEBHOOK_URL=https://api.celeste7.ai/webhook/indexing-start
 N8N_WEBHOOK_SECRET=your-webhook-secret
 
 TEMP_UPLOAD_DIR=/var/celesteos/uploads

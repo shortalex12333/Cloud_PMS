@@ -146,10 +146,10 @@ CREATE POLICY chunks_yacht_isolation ON document_chunks
 
 1. In n8n, open the imported workflow
 2. Click on **Webhook Trigger** node
-3. Note the webhook URL (e.g., `https://your-n8n.com/webhook/indexing-start`)
+3. Note the webhook URL (should be: `https://api.celeste7.ai/webhook/indexing-start`)
 4. Copy this URL to your Ingestion API `.env` file:
    ```bash
-   N8N_WEBHOOK_URL=https://your-n8n.com/webhook/indexing-start
+   N8N_WEBHOOK_URL=https://api.celeste7.ai/webhook/indexing-start
    ```
 5. Click **Activate** in top-right corner
 
@@ -160,7 +160,7 @@ CREATE POLICY chunks_yacht_isolation ON document_chunks
 Send a POST request to the webhook:
 
 ```bash
-curl -X POST https://your-n8n.com/webhook/indexing-start \
+curl -X POST https://api.celeste7.ai/webhook/indexing-start \
   -H "Content-Type: application/json" \
   -d '{
     "document_id": "550e8400-e29b-41d4-a716-446655440000",
