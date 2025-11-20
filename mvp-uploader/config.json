@@ -1,5 +1,7 @@
 {
-  "yacht_id": "test-yacht-celeste7",
-  "root_path": "/Users/celeste7/Documents/yacht-nas/ROOT",
-  "webhook_url": "https://api.celeste7.ai/webhook/ingest-docs-nas-cloud"
+  "yacht_id": "43b4fa41-d61b-5ebc-b35d-aa49f2463e78",
+  "yacht_signature": "43b4fa41-d61b-5ebc-b35d-aa49f2463e78",
+  "root_path": "/tmp/yacht-single-test",
+  "webhook_url": "https://api.celeste7.ai/webhook/ingest-docs-nas-cloud",
+  "_comment": "yacht_signature is UUID5 derived from yacht name (deterministic). Use this for X-Yacht-Signature header."
 }

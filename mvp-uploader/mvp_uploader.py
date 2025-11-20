@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 import requests
 from datetime import datetime
+import mimetypes
 
 
 def load_config(config_path='config.json'):
@@ -133,10 +134,15 @@ def upload_file(file_path, yacht_id, root_path, webhook_url):
             'X-Yacht-ID': yacht_id
         }
 
+        # Detect mime type based on file extension
+        mime_type, _ = mimetypes.guess_type(filename)
+        if mime_type is None:
+            mime_type = 'application/octet-stream'
+
         # Prepare multipart form data
         with open(file_path, 'rb') as f:
             files_payload = {
-                'file': (filename, f, 'application/octet-stream')
+                'file': (filename, f, mime_type)
             }
 
             # Form data with all metadata
@@ -145,7 +151,9 @@ def upload_file(file_path, yacht_id, root_path, webhook_url):
                 'local_path': local_path,
                 'system_path': system_path,
                 'directories': json.dumps(directories),
-                'yacht_id': yacht_id
+                'yacht_id': yacht_id,
+                'file_size': str(file_path.stat().st_size),
+                'content_type': mime_type
             }
 
             # Send POST request
