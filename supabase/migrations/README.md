@@ -13,6 +13,10 @@
 | 5 | `20250101000004_seed_data.sql` | Seed user_roles (7 roles) | ✅ Ready |
 | 6 | `20250101000005_triggers.sql` | Automated triggers (auth, timestamps, audit) | ✅ Ready |
 | 7 | `20250101000006_business_functions.sql` | Business logic functions | ✅ Ready |
+| 8 | `20250101000007_create_storage_buckets.sql` | Create Supabase Storage buckets (documents, raw-uploads) | ✅ Ready |
+| 9 | `20250101000008_storage_helper_functions.sql` | Helper functions for storage path validation | ✅ Ready |
+| 10 | `20250101000009_storage_objects_rls.sql` | RLS policies for storage.objects (bucket access control) | ✅ Ready |
+| 11 | `20250101000010_documents_metadata_rls.sql` | Additional RLS for documents metadata table | ✅ Ready |
 
 ---
 
