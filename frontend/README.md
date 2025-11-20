@@ -1,6 +1,8 @@
 # CelesteOS Frontend
 
-Premium, minimal, streaming-first interface for CelesteOS - Engineering Intelligence for Yachts.
+Premium Next.js frontend for CelesteOS - Engineering Intelligence for Yachts.
+
+**🚀 Deploy:** See [DEPLOYMENT.md](./DEPLOYMENT.md) for Vercel deployment guide.
 
 ## Tech Stack
 
@@ -36,48 +38,39 @@ Premium, minimal, streaming-first interface for CelesteOS - Engineering Intellig
     index.d.ts              # TypeScript definitions
 ```
 
-## Getting Started
+## Deployment
 
-### Prerequisites
+### Vercel (Recommended - Production Ready)
 
-- Node.js 18+
-- npm or yarn
+**Quick Deploy:**
 
-### Installation
+1. Push code to GitHub
+2. Go to [vercel.com](https://vercel.com)
+3. Import repository → Select `frontend` directory
+4. Add environment variables (see [DEPLOYMENT.md](./DEPLOYMENT.md))
+5. Deploy
 
-```bash
-# Install dependencies
-npm install
+**Environment Variables Required:**
 
-# Copy environment variables
-cp .env.example .env.local
-
-# Add your Supabase credentials to .env.local
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_API_BASE_URL=https://api.celeste7.ai/webhook/
 ```
 
-### Development
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete instructions.
+
+### Local Development (Optional)
 
 ```bash
+npm install
+cp .env.example .env.local
+# Add credentials to .env.local
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
-
-### Build
-
-```bash
-npm run build
-npm start
-```
-
-## Environment Variables
-
-Create a `.env.local` file with:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
 
 ## Key Features
 
@@ -105,31 +98,26 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 ## API Integration
 
-The frontend is prepared for streaming API integration:
+Endpoints configured:
 
-- `POST /api/search` - Main search endpoint (placeholder)
-- Supabase client configured for auth & data
-- Type-safe with full TypeScript definitions
+- **Search:** `POST https://api.celeste7.ai/webhook/search`
+- **Auth:** Supabase authentication
+- **Data:** Supabase Postgres + pgvector
 
-## Deployment
+All endpoints are type-safe with full TypeScript definitions.
 
-### Vercel (Recommended)
+## Performance
 
-```bash
-vercel
-```
+Expected metrics on Vercel:
+- **First Load:** < 1s
+- **Search Response:** < 500ms
+- **Lighthouse Score:** 90+
 
-Configure environment variables in Vercel dashboard.
+## Browser Support
 
-## TODO
-
-- [ ] Connect Supabase authentication
-- [ ] Implement actual search API calls
-- [ ] Add streaming response handling
-- [ ] Connect dashboard to real data
-- [ ] Implement yacht signature validation
-- [ ] Add mobile photo upload
-- [ ] Create handover export functionality
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari 14+
 
 ## License
 
