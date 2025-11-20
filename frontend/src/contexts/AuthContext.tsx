@@ -35,31 +35,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CelesteUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile from users table
+  // Fetch user profile from user_profiles and user_roles tables
   const fetchUserProfile = useCallback(async (authUser: User) => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, email, role, yacht_id, name')
+      // Query user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id, email, yacht_id, name')
         .eq('id', authUser.id)
         .single();
 
-      if (error) {
-        console.error('[AuthContext] Error fetching user profile:', error);
+      if (profileError) {
+        console.error('[AuthContext] Error fetching user profile:', profileError);
         return null;
       }
 
-      if (!data) {
+      if (!profileData) {
         console.warn('[AuthContext] No user profile found for:', authUser.id);
         return null;
       }
 
+      // Query active role for this user
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authUser.id)
+        .eq('yacht_id', profileData.yacht_id)
+        .eq('is_active', true)
+        .lte('valid_from', new Date().toISOString())
+        .or('valid_until.is.null,valid_until.gt.' + new Date().toISOString())
+        .order('assigned_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (roleError) {
+        console.error('[AuthContext] Error fetching user role:', roleError);
+        // Default to 'crew' if no role found
+        console.warn('[AuthContext] No active role found, defaulting to crew');
+      }
+
       const celesteUser: CelesteUser = {
-        id: data.id,
-        email: data.email,
-        role: data.role as CelesteUser['role'],
-        yachtId: data.yacht_id,
-        displayName: data.name, // Database column is 'name'
+        id: profileData.id,
+        email: profileData.email,
+        role: (roleData?.role as CelesteUser['role']) || 'crew',
+        yachtId: profileData.yacht_id,
+        displayName: profileData.name,
       };
 
       console.log('[AuthContext] User profile loaded:', {
