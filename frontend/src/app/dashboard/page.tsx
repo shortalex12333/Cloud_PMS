@@ -1,10 +1,15 @@
+'use client';
+
 import EquipmentOverview from '@/components/DashboardWidgets/EquipmentOverview';
 import PredictiveOverview from '@/components/DashboardWidgets/PredictiveOverview';
 import WorkOrderStatus from '@/components/DashboardWidgets/WorkOrderStatus';
 import InventoryStatus from '@/components/DashboardWidgets/InventoryStatus';
 import { Suspense } from 'react';
+import { withAuth } from '@/components/withAuth';
+import { useAuth } from '@/hooks/useAuth';
 
-export default function DashboardPage() {
+function DashboardPage() {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -14,7 +19,7 @@ export default function DashboardPage() {
             <div>
               <h1 className="text-2xl font-semibold">Dashboard</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                HOD Overview & Configuration
+                HOD Overview & Configuration {user && `• ${user.displayName || user.email}`}
               </p>
             </div>
             <a
@@ -94,3 +99,6 @@ function WidgetSkeleton() {
     </div>
   );
 }
+
+// Export with HOD-only protection
+export default withAuth(DashboardPage, { requireHOD: true });

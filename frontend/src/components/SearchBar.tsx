@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import ResultCard from './ResultCard';
 import { debounce } from '@/lib/utils';
+import { celesteApi, CelesteApiError } from '@/lib/apiClient';
 import type { SearchResponse, SearchResult } from '@/types';
 
 export default function SearchBar() {
@@ -29,32 +30,17 @@ export default function SearchBar() {
     setLoading(true);
     setShowResults(true);
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
     console.log('[SearchBar] Initiating search:', {
       query: searchQuery,
-      endpoint: `${apiBaseUrl}search`,
       timestamp: new Date().toISOString(),
     });
 
     try {
-      const response = await fetch(`${apiBaseUrl}search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery }),
+      // Use authenticated API client
+      const data = await celesteApi.post<SearchResponse>('search', {
+        query: searchQuery,
       });
 
-      console.log('[SearchBar] API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
-      }
-
-      const data: SearchResponse = await response.json();
       console.log('[SearchBar] Search results received:', {
         resultCount: data.results?.length || 0,
         data,
@@ -63,6 +49,14 @@ export default function SearchBar() {
       setResults(data.results || []);
     } catch (error) {
       console.error('[SearchBar] Search error:', error);
+
+      // Show user-friendly error for auth issues
+      if (error instanceof CelesteApiError && error.status === 401) {
+        console.error('[SearchBar] Authentication required');
+        // AuthContext will handle redirect to login
+        return;
+      }
+
       console.log('[SearchBar] Falling back to mock data');
 
       // Fallback to mock results if API fails

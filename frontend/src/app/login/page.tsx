@@ -1,27 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      console.log('[LoginPage] User already logged in, redirecting...');
+      const redirectTo = user.role === 'HOD' ? '/dashboard' : '/search';
+      router.push(redirectTo);
+    }
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // TODO: Implement actual authentication
-    // Placeholder: simulate login
-    setTimeout(() => {
-      console.log('Login attempt:', { email });
-      // After successful login, redirect to search
-      router.push('/search');
-    }, 1000);
+    try {
+      await login(email, password);
+
+      // AuthContext will update user state, then useEffect will redirect
+      console.log('[LoginPage] Login successful');
+    } catch (err) {
+      console.error('[LoginPage] Login failed:', err);
+      setError(err instanceof Error ? err.message : 'Login failed');
+      setLoading(false);
+    }
   };
 
   return (
