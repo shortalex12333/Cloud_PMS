@@ -1,0 +1,354 @@
+{
+  "name": "CelesteOS Document Indexing Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "indexing-start",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "celesteos-indexing"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract webhook payload\nconst document_id = $input.item.json.document_id;\nconst yacht_id = $input.item.json.yacht_id;\nconst file_sha256 = $input.item.json.file_sha256;\nconst storage_path = $input.item.json.storage_path;\nconst filename = $input.item.json.filename;\nconst file_size = $input.item.json.file_size;\n\n// Log receipt\nconsole.log(`Received indexing request for document ${document_id}`);\n\n// Return data for next nodes\nreturn {\n  document_id,\n  yacht_id,\n  file_sha256,\n  storage_path,\n  filename,\n  file_size,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "extract-metadata",
+      "name": "Extract Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "documents",
+        "updateKey": "id",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "indexing",
+            "updated_at": "={{new Date().toISOString()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "update-status-indexing",
+      "name": "Update Status: Indexing",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Download file from Supabase Storage\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst bucket = $env.SUPABASE_STORAGE_BUCKET;\nconst storage_path = $input.item.json.storage_path;\n\n// Construct download URL\nconst downloadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${storage_path}`;\n\nreturn {\n  download_url: downloadUrl,\n  ...($input.item.json)\n};"
+      },
+      "id": "get-download-url",
+      "name": "Get Download URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.download_url}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-file",
+      "name": "Download File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detect document type and route to appropriate processor\nconst filename = $input.item.json.filename.toLowerCase();\n\nlet doc_type = 'unknown';\n\nif (filename.endsWith('.pdf')) {\n  doc_type = 'pdf';\n} else if (filename.endsWith('.docx')) {\n  doc_type = 'docx';\n} else if (filename.endsWith('.xlsx')) {\n  doc_type = 'xlsx';\n} else if (filename.endsWith('.txt')) {\n  doc_type = 'txt';\n} else if (filename.match(/\\.(jpg|jpeg|png|tiff|bmp)$/)) {\n  doc_type = 'image';\n} else if (filename.match(/\\.(msg|eml)$/)) {\n  doc_type = 'email';\n}\n\nreturn {\n  ...($input.item.json),\n  doc_type\n};"
+      },
+      "id": "detect-document-type",
+      "name": "Detect Document Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.doc_type}}",
+                    "value2": "pdf"
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.doc_type}}",
+                    "value2": "image"
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "string": [
+                  {
+                    "value1": "={{$json.doc_type}}",
+                    "value2": "txt"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "route-by-type",
+      "name": "Route by Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// OCR Processing Node (placeholder)\n// In production, call external OCR service\n\nconsole.log('Processing PDF/Image with OCR');\n\n// Simulated OCR result\nreturn {\n  ...($input.item.json),\n  extracted_text: 'Sample extracted text from OCR service',\n  page_count: 10,\n  ocr_completed: true\n};"
+      },
+      "id": "ocr-processor",
+      "name": "OCR Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Text extraction for plain text files\nconst fileData = $input.item.binary.data;\nconst text = Buffer.from(fileData.data, 'base64').toString('utf-8');\n\nreturn {\n  ...($input.item.json),\n  extracted_text: text,\n  page_count: 1,\n  ocr_completed: false\n};"
+      },
+      "id": "text-extractor",
+      "name": "Text Extractor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Text chunking logic\nconst text = $input.item.json.extracted_text;\nconst document_id = $input.item.json.document_id;\n\nconst TARGET_TOKENS = 500;\nconst MIN_TOKENS = 250;\nconst MAX_TOKENS = 800;\nconst OVERLAP_PERCENTAGE = 0.15;\n\n// Simple chunking by character count (1 token ≈ 4 characters)\nconst charsPerChunk = TARGET_TOKENS * 4;\nconst overlapChars = Math.floor(charsPerChunk * OVERLAP_PERCENTAGE);\n\nconst chunks = [];\nlet start = 0;\nlet chunk_index = 0;\n\nwhile (start < text.length) {\n  const end = Math.min(start + charsPerChunk, text.length);\n  const chunk_text = text.substring(start, end);\n  \n  chunks.push({\n    document_id,\n    chunk_index,\n    text: chunk_text,\n    start_pos: start,\n    end_pos: end,\n    length: chunk_text.length\n  });\n  \n  chunk_index++;\n  start = end - overlapChars;\n}\n\nconsole.log(`Created ${chunks.length} chunks`);\n\nreturn chunks;"
+      },
+      "id": "chunk-text",
+      "name": "Chunk Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.OPENAI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "input",
+              "value": "={{$json.text}}"
+            },
+            {
+              "name": "model",
+              "value": "text-embedding-3-small"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2050, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract embedding vector from OpenAI response\nconst embedding = $input.item.json.data[0].embedding;\n\nreturn {\n  document_id: $input.item.json.document_id,\n  chunk_index: $input.item.json.chunk_index,\n  text: $input.item.json.text,\n  embedding: embedding,\n  metadata: {\n    length: $input.item.json.length,\n    start_pos: $input.item.json.start_pos,\n    end_pos: $input.item.json.end_pos\n  }\n};"
+      },
+      "id": "format-chunk-data",
+      "name": "Format Chunk Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [2250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "document_chunks",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "document_id": "={{$json.document_id}}",
+            "chunk_index": "={{$json.chunk_index}}",
+            "text": "={{$json.text}}",
+            "embedding": "={{JSON.stringify($json.embedding)}}",
+            "metadata": "={{JSON.stringify($json.metadata)}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "insert-chunk",
+      "name": "Insert Chunk to DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "documents",
+        "updateKey": "id",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "indexed",
+            "indexed": true,
+            "indexed_at": "={{new Date().toISOString()}}",
+            "updated_at": "={{new Date().toISOString()}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "update-status-indexed",
+      "name": "Update Status: Indexed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2650, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "pipeline_logs",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "yacht_id": "={{$json.yacht_id}}",
+            "document_id": "={{$json.document_id}}",
+            "step": "indexing_complete",
+            "status": "completed",
+            "metadata": "={{JSON.stringify({timestamp: new Date().toISOString()})}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "log-completion",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2850, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Extract Metadata", "type": "main", "index": 0}]]
+    },
+    "Extract Metadata": {
+      "main": [[{"node": "Update Status: Indexing", "type": "main", "index": 0}]]
+    },
+    "Update Status: Indexing": {
+      "main": [[{"node": "Get Download URL", "type": "main", "index": 0}]]
+    },
+    "Get Download URL": {
+      "main": [[{"node": "Download File", "type": "main", "index": 0}]]
+    },
+    "Download File": {
+      "main": [[{"node": "Detect Document Type", "type": "main", "index": 0}]]
+    },
+    "Detect Document Type": {
+      "main": [[{"node": "Route by Type", "type": "main", "index": 0}]]
+    },
+    "Route by Type": {
+      "main": [
+        [{"node": "OCR Processor", "type": "main", "index": 0}],
+        [{"node": "OCR Processor", "type": "main", "index": 0}],
+        [{"node": "Text Extractor", "type": "main", "index": 0}]
+      ]
+    },
+    "OCR Processor": {
+      "main": [[{"node": "Chunk Text", "type": "main", "index": 0}]]
+    },
+    "Text Extractor": {
+      "main": [[{"node": "Chunk Text", "type": "main", "index": 0}]]
+    },
+    "Chunk Text": {
+      "main": [[{"node": "Generate Embedding", "type": "main", "index": 0}]]
+    },
+    "Generate Embedding": {
+      "main": [[{"node": "Format Chunk Data", "type": "main", "index": 0}]]
+    },
+    "Format Chunk Data": {
+      "main": [[{"node": "Insert Chunk to DB", "type": "main", "index": 0}]]
+    },
+    "Insert Chunk to DB": {
+      "main": [[{"node": "Update Status: Indexed", "type": "main", "index": 0}]]
+    },
+    "Update Status: Indexed": {
+      "main": [[{"node": "Log Completion", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

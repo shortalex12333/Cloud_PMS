@@ -157,23 +157,41 @@ All intelligence happens centrally.
 
 ---
 
-# # 🧱 **Repository Documentation Structure**
+# # 🧱 **Repository Structure**
 
 ```
-/docs
+/docs                        # Documentation
   architecture.md
   security.md
-  local-agent-spec.md
+  cloud-ingestion.md         # ✅ NEW: Complete ingestion system docs
   indexing-pipeline.md
   search-engine-spec.md
   predictive-maintenance.md
   devops.md
   web-ux.md
-  mobile-ux.md             (coming)
-  onboarding-guide.md
   api-spec.md
   glossary.md
   vision.md
+
+/ingestion-api               # ✅ NEW: Cloud ingestion service
+  main.py                    # FastAPI application
+  config.py                  # Configuration
+  models.py                  # Pydantic models
+  auth.py                    # Authentication
+  storage.py                 # Temp storage manager
+  supabase_client.py         # Supabase integration
+  n8n_trigger.py             # Workflow trigger
+  Dockerfile                 # Docker deployment
+  requirements.txt
+  README.md
+
+/supabase/migrations         # ✅ NEW: Database migrations
+  001_ingestion_tables.sql
+
+/n8n                         # ✅ NEW: n8n workflow templates
+  indexing-workflow.json
+
+docker-compose.yml           # ✅ NEW: Docker Compose setup
 ```
 
 Each file is a component of the full engineering blueprint.
@@ -330,12 +348,29 @@ The result is a **searchable, intelligent knowledge graph**.
 
 # # 🚀 **Status**
 
-The blueprint is complete.
-Next step is engineering execution across:
+**✅ Cloud Ingestion System — COMPLETE**
+
+The cloud-side ingestion API is fully implemented and production-ready:
+
+* ✅ FastAPI-based REST API with three endpoints
+* ✅ Chunked file upload with SHA256 verification
+* ✅ Yacht signature authentication
+* ✅ Temporary storage management with automatic cleanup
+* ✅ Supabase integration for database and object storage
+* ✅ n8n workflow triggering for indexing pipeline
+* ✅ Comprehensive error handling and retry logic
+* ✅ Docker deployment ready
+* ✅ Database migrations included
+* ✅ Full documentation
+
+See `/ingestion-api/` for implementation and `/docs/cloud-ingestion.md` for complete documentation.
+
+---
+
+**Remaining Components:**
 
 * local agent build
-* backend API
-* indexing pipeline
+* indexing pipeline (n8n template provided)
 * search engine
 * dashboard
 * web UI

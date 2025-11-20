@@ -1,0 +1,53 @@
+# CelesteOS Docker Compose Configuration
+# For development and testing
+
+version: '3.8'
+
+services:
+  ingestion-api:
+    build:
+      context: ./ingestion-api
+      dockerfile: Dockerfile
+    container_name: celesteos-ingestion-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ingestion-api:/app
+      - celesteos-uploads:/var/celesteos/uploads
+    environment:
+      - DEBUG=true
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      # Supabase - set these in .env file
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-celesteos-documents}
+      # n8n - set these in .env file
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET}
+      # Storage
+      - TEMP_UPLOAD_DIR=/var/celesteos/uploads
+      - MAX_CHUNK_SIZE=67108864
+      - UPLOAD_TIMEOUT_HOURS=6
+      # Rate limiting
+      - RATE_LIMIT_PER_YACHT_MINUTE=60
+      - RATE_LIMIT_PER_YACHT_HOUR=1000
+      # Retry
+      - MAX_RETRIES=3
+      - RETRY_DELAY_SECONDS=5
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  celesteos-uploads:
+    driver: local
+
+networks:
+  default:
+    name: celesteos-network
