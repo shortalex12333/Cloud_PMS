@@ -8,313 +8,504 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook-init",
-      "name": "Webhook - Upload Init",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789000",
+      "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300],
+      "typeVersion": 2,
+      "position": [240, 300],
       "webhookId": "celesteos-upload-init"
     },
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{$json.headers['x-yacht-signature']}}",
-              "operation": "isNotEmpty"
+              "id": "a1b2c3d4",
+              "leftValue": "={{ $json.headers['x-yacht-signature'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
             },
             {
-              "value1": "={{$json.headers['authorization']}}",
-              "operation": "isNotEmpty"
+              "id": "e5f6g7h8",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "validate-headers",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789001",
       "name": "Validate Headers",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [450, 300]
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [460, 300]
     },
     {
       "parameters": {
-        "values": {
-          "string": [
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
             {
+              "id": "field1",
               "name": "yacht_signature",
-              "value": "={{$json.headers['x-yacht-signature']}}"
+              "value": "={{ $json.headers['x-yacht-signature'] }}",
+              "type": "string"
             },
             {
+              "id": "field2",
               "name": "auth_token",
-              "value": "={{$json.headers['authorization'].replace('Bearer ', '')}}"
+              "value": "={{ $json.headers.authorization.replace('Bearer ', '') }}",
+              "type": "string"
             },
             {
+              "id": "field3",
               "name": "filename",
-              "value": "={{$json.body.filename}}"
+              "value": "={{ $json.body.filename }}",
+              "type": "string"
             },
             {
+              "id": "field4",
               "name": "file_size",
-              "value": "={{$json.body.file_size}}"
+              "value": "={{ $json.body.file_size }}",
+              "type": "number"
             },
             {
+              "id": "field5",
               "name": "file_sha256",
-              "value": "={{$json.body.file_sha256}}"
+              "value": "={{ $json.body.file_sha256 }}",
+              "type": "string"
             },
             {
+              "id": "field6",
               "name": "total_chunks",
-              "value": "={{$json.body.total_chunks}}"
+              "value": "={{ $json.body.total_chunks }}",
+              "type": "number"
             },
             {
+              "id": "field7",
               "name": "mime_type",
-              "value": "={{$json.body.mime_type}}"
+              "value": "={{ $json.body.mime_type }}",
+              "type": "string"
             },
             {
+              "id": "field8",
               "name": "source_type",
-              "value": "={{$json.body.source_type}}"
+              "value": "={{ $json.body.source_type }}",
+              "type": "string"
             },
             {
+              "id": "field9",
               "name": "source_path",
-              "value": "={{$json.body.source_path}}"
+              "value": "={{ $json.body.source_path }}",
+              "type": "string"
             },
             {
+              "id": "field10",
               "name": "nas_path",
-              "value": "={{$json.body.nas_path}}"
+              "value": "={{ $json.body.nas_path }}",
+              "type": "string"
             },
             {
+              "id": "field11",
               "name": "document_type",
-              "value": "={{$json.body.document_type}}"
+              "value": "={{ $json.body.document_type }}",
+              "type": "string"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "extract-data",
-      "name": "Extract Request Data",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789002",
+      "name": "Extract Data",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 1,
-      "position": [650, 300]
+      "typeVersion": 3.3,
+      "position": [680, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT id, name, status FROM yachts WHERE signature = '{{$json.yacht_signature}}' AND status = 'active' LIMIT 1",
-        "options": {}
+        "resource": "database",
+        "operation": "getAll",
+        "tableId": "yachts",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchAny": false,
+        "conditions": {
+          "conditions": [
+            {
+              "keyName": "signature",
+              "keyValue": "={{ $json.yacht_signature }}",
+              "condition": "equals"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "active",
+              "condition": "equals"
+            }
+          ]
+        }
       },
-      "id": "verify-yacht",
-      "name": "Verify Yacht Signature",
-      "type": "n8n-nodes-base.postgres",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789003",
+      "name": "Verify Yacht",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [850, 300],
+      "position": [900, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
         "conditions": {
-          "number": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{$json.id ? 1 : 0}}",
-              "operation": "equal",
-              "value2": 1
+              "id": "yacht-exists",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "check-yacht-exists",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789004",
       "name": "Check Yacht Exists",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [1050, 300]
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT id, user_id FROM user_tokens WHERE access_token = '{{$node[\"Extract Request Data\"].json.auth_token}}' AND expires_at > NOW() AND yacht_id = '{{$json.id}}' LIMIT 1",
-        "options": {}
+        "resource": "database",
+        "operation": "getAll",
+        "tableId": "user_tokens",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchAny": false,
+        "conditions": {
+          "conditions": [
+            {
+              "keyName": "access_token",
+              "keyValue": "={{ $('Extract Data').item.json.auth_token }}",
+              "condition": "equals"
+            },
+            {
+              "keyName": "yacht_id",
+              "keyValue": "={{ $json.id }}",
+              "condition": "equals"
+            }
+          ]
+        },
+        "options": {
+          "queryName": "gt.expires_at",
+          "queryValue": "now()"
+        }
       },
-      "id": "verify-token",
-      "name": "Verify JWT Token",
-      "type": "n8n-nodes-base.postgres",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789005",
+      "name": "Verify Token",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1250, 300],
+      "position": [1340, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
         "conditions": {
-          "number": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{$json.id ? 1 : 0}}",
-              "operation": "equal",
-              "value2": 1
+              "id": "token-valid",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "check-token-valid",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789006",
       "name": "Check Token Valid",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [1450, 300]
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1560, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT id FROM documents WHERE yacht_id = '{{$node[\"Verify Yacht Signature\"].json.id}}' AND sha256 = '{{$node[\"Extract Request Data\"].json.file_sha256}}' LIMIT 1",
-        "options": {}
-      },
-      "id": "check-duplicate",
-      "name": "Check for Duplicate File",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [1650, 300],
-      "credentials": {
-        "postgres": {
-          "id": "supabase-credentials",
-          "name": "Supabase Postgres"
-        }
-      }
-    },
-    {
-      "parameters": {
+        "resource": "database",
+        "operation": "getAll",
+        "tableId": "documents",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchAny": false,
         "conditions": {
-          "number": [
+          "conditions": [
             {
-              "value1": "={{$json.id ? 1 : 0}}",
-              "operation": "equal",
-              "value2": 0
+              "keyName": "yacht_id",
+              "keyValue": "={{ $('Verify Yacht').item.json.id }}",
+              "condition": "equals"
+            },
+            {
+              "keyName": "sha256",
+              "keyValue": "={{ $('Extract Data').item.json.file_sha256 }}",
+              "condition": "equals"
             }
           ]
         }
       },
-      "id": "check-not-duplicate",
-      "name": "Check Not Duplicate",
-      "type": "n8n-nodes-base.if",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789007",
+      "name": "Check Duplicate",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1850, 300]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "table": "upload_sessions",
-        "columns": "yacht_id, filename, file_size, file_sha256, mime_type, total_chunks, chunks_uploaded, status, source_type, source_path, nas_path, document_type",
-        "values": "'{{$node[\"Verify Yacht Signature\"].json.id}}', '{{$node[\"Extract Request Data\"].json.filename}}', {{$node[\"Extract Request Data\"].json.file_size}}, '{{$node[\"Extract Request Data\"].json.file_sha256}}', '{{$node[\"Extract Request Data\"].json.mime_type}}', {{$node[\"Extract Request Data\"].json.total_chunks}}, 0, 'in_progress', '{{$node[\"Extract Request Data\"].json.source_type}}', '{{$node[\"Extract Request Data\"].json.source_path}}', '{{$node[\"Extract Request Data\"].json.nas_path}}', '{{$node[\"Extract Request Data\"].json.document_type}}'",
-        "returnFields": "id, yacht_id, status",
-        "options": {}
-      },
-      "id": "create-upload-session",
-      "name": "Create Upload Session",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [2050, 300],
+      "position": [1780, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
-        "operation": "insert",
-        "table": "pipeline_logs",
-        "columns": "yacht_id, upload_session_id, pipeline_stage, log_level, message",
-        "values": "'{{$node[\"Verify Yacht Signature\"].json.id}}', '{{$json.id}}', 'upload', 'info', 'Upload session initiated for file: {{$node[\"Extract Request Data\"].json.filename}}'",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notExists"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "not_duplicate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "is_duplicate"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "log-init",
-      "name": "Log Upload Init",
-      "type": "n8n-nodes-base.postgres",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789008",
+      "name": "Route: Duplicate?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "tableId": "upload_sessions",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "yacht_id": "={{ $('Verify Yacht').item.json.id }}",
+            "filename": "={{ $('Extract Data').item.json.filename }}",
+            "file_size": "={{ $('Extract Data').item.json.file_size }}",
+            "file_sha256": "={{ $('Extract Data').item.json.file_sha256 }}",
+            "mime_type": "={{ $('Extract Data').item.json.mime_type }}",
+            "total_chunks": "={{ $('Extract Data').item.json.total_chunks }}",
+            "chunks_uploaded": 0,
+            "status": "in_progress",
+            "source_type": "={{ $('Extract Data').item.json.source_type }}",
+            "source_path": "={{ $('Extract Data').item.json.source_path }}",
+            "nas_path": "={{ $('Extract Data').item.json.nas_path }}",
+            "document_type": "={{ $('Extract Data').item.json.document_type }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789009",
+      "name": "Create Upload Session",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2250, 300],
+      "position": [2220, 200],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "tableId": "pipeline_logs",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "yacht_id": "={{ $('Verify Yacht').item.json.id }}",
+            "upload_session_id": "={{ $json.id }}",
+            "pipeline_stage": "upload",
+            "log_level": "info",
+            "message": "Upload session initiated for file: {{ $('Extract Data').item.json.filename }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789010",
+      "name": "Log Init",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2440, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\"status\": \"success\", \"upload_id\": \"{{$node['Create Upload Session'].json.id}}\", \"message\": \"Upload session created\", \"total_chunks\": {{$node['Extract Request Data'].json.total_chunks}}}",
+        "responseBody": "={{ {\n  \"status\": \"success\",\n  \"upload_id\": $json.id,\n  \"message\": \"Upload session created\",\n  \"total_chunks\": $('Extract Data').item.json.total_chunks\n} }}",
         "options": {
           "responseCode": 201
         }
       },
-      "id": "success-response",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789011",
       "name": "Success Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [2450, 300]
+      "typeVersion": 1.1,
+      "position": [2660, 200]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"Missing required headers: X-Yacht-Signature or Authorization\"}",
-        "options": {
-          "responseCode": 401
-        }
-      },
-      "id": "error-headers",
-      "name": "Error - Missing Headers",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [450, 500]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"Invalid yacht signature\"}",
-        "options": {
-          "responseCode": 403
-        }
-      },
-      "id": "error-yacht",
-      "name": "Error - Invalid Yacht",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1050, 500]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"Invalid or expired token\"}",
-        "options": {
-          "responseCode": 401
-        }
-      },
-      "id": "error-token",
-      "name": "Error - Invalid Token",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1450, 500]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\"status\": \"duplicate\", \"message\": \"File already exists\", \"document_id\": \"{{$node['Check for Duplicate File'].json.id}}\"}",
+        "responseBody": "={{ {\n  \"status\": \"duplicate\",\n  \"message\": \"File already exists\",\n  \"document_id\": $('Check Duplicate').item.json.id\n} }}",
         "options": {
           "responseCode": 200
         }
       },
-      "id": "duplicate-response",
-      "name": "Duplicate File Response",
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789012",
+      "name": "Duplicate Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1850, 500]
+      "typeVersion": 1.1,
+      "position": [2220, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"error\",\n  \"error\": \"Missing required headers: X-Yacht-Signature or Authorization\"\n} }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789013",
+      "name": "Error: Missing Headers",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"error\",\n  \"error\": \"Invalid yacht signature\"\n} }}",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789014",
+      "name": "Error: Invalid Yacht",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"status\": \"error\",\n  \"error\": \"Invalid or expired token\"\n} }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "d1a2b3c4-5678-90ab-cdef-123456789015",
+      "name": "Error: Invalid Token",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1560, 480]
     }
   ],
+  "pinData": {},
   "connections": {
-    "Webhook - Upload Init": {
+    "Webhook": {
       "main": [
         [
           {
@@ -329,32 +520,32 @@
       "main": [
         [
           {
-            "node": "Extract Request Data",
+            "node": "Extract Data",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Error - Missing Headers",
+            "node": "Error: Missing Headers",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract Request Data": {
+    "Extract Data": {
       "main": [
         [
           {
-            "node": "Verify Yacht Signature",
+            "node": "Verify Yacht",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify Yacht Signature": {
+    "Verify Yacht": {
       "main": [
         [
           {
@@ -369,21 +560,21 @@
       "main": [
         [
           {
-            "node": "Verify JWT Token",
+            "node": "Verify Token",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Error - Invalid Yacht",
+            "node": "Error: Invalid Yacht",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify JWT Token": {
+    "Verify Token": {
       "main": [
         [
           {
@@ -398,32 +589,32 @@
       "main": [
         [
           {
-            "node": "Check for Duplicate File",
+            "node": "Check Duplicate",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Error - Invalid Token",
+            "node": "Error: Invalid Token",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check for Duplicate File": {
+    "Check Duplicate": {
       "main": [
         [
           {
-            "node": "Check Not Duplicate",
+            "node": "Route: Duplicate?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Not Duplicate": {
+    "Route: Duplicate?": {
       "main": [
         [
           {
@@ -434,7 +625,7 @@
         ],
         [
           {
-            "node": "Duplicate File Response",
+            "node": "Duplicate Response",
             "type": "main",
             "index": 0
           }
@@ -445,14 +636,14 @@
       "main": [
         [
           {
-            "node": "Log Upload Init",
+            "node": "Log Init",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Log Upload Init": {
+    "Log Init": {
       "main": [
         [
           {
@@ -464,12 +655,15 @@
       ]
     }
   },
-  "active": true,
-  "settings": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
   "versionId": "1.0.0",
-  "id": "celesteos-upload-init",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "celesteos-production"
   },
-  "tags": ["celesteos", "upload", "ingestion"]
+  "id": "celesteos-upload-init",
+  "tags": []
 }

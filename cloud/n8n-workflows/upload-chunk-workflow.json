@@ -10,341 +10,355 @@
           "rawBody": true
         }
       },
-      "id": "webhook-chunk",
-      "name": "Webhook - Upload Chunk",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789000",
+      "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300],
+      "typeVersion": 2,
+      "position": [240, 300],
       "webhookId": "celesteos-upload-chunk"
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
             {
-              "value1": "={{$json.headers['x-yacht-signature']}}",
-              "operation": "isNotEmpty"
-            },
-            {
-              "value1": "={{$json.headers['authorization']}}",
-              "operation": "isNotEmpty"
-            },
-            {
-              "value1": "={{$json.headers['upload-id']}}",
-              "operation": "isNotEmpty"
-            },
-            {
-              "value1": "={{$json.headers['chunk-index']}}",
-              "operation": "isNotEmpty"
-            },
-            {
-              "value1": "={{$json.headers['chunk-sha256']}}",
-              "operation": "isNotEmpty"
-            }
-          ]
-        }
-      },
-      "id": "validate-headers",
-      "name": "Validate Headers",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [450, 300]
-    },
-    {
-      "parameters": {
-        "values": {
-          "string": [
-            {
+              "id": "field1",
               "name": "yacht_signature",
-              "value": "={{$json.headers['x-yacht-signature']}}"
+              "value": "={{ $json.headers['x-yacht-signature'] }}",
+              "type": "string"
             },
             {
+              "id": "field2",
               "name": "auth_token",
-              "value": "={{$json.headers['authorization'].replace('Bearer ', '')}}"
+              "value": "={{ $json.headers.authorization ? $json.headers.authorization.replace('Bearer ', '') : '' }}",
+              "type": "string"
             },
             {
+              "id": "field3",
               "name": "upload_id",
-              "value": "={{$json.headers['upload-id']}}"
+              "value": "={{ $json.headers['upload-id'] }}",
+              "type": "string"
             },
             {
+              "id": "field4",
               "name": "chunk_index",
-              "value": "={{$json.headers['chunk-index']}}"
+              "value": "={{ parseInt($json.headers['chunk-index']) }}",
+              "type": "number"
             },
             {
+              "id": "field5",
               "name": "chunk_sha256",
-              "value": "={{$json.headers['chunk-sha256']}}"
+              "value": "={{ $json.headers['chunk-sha256'] }}",
+              "type": "string"
+            },
+            {
+              "id": "field6",
+              "name": "chunk_data",
+              "value": "={{ $json.body }}",
+              "type": "string"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "extract-headers",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789001",
       "name": "Extract Headers",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 1,
-      "position": [650, 300]
+      "typeVersion": 3.3,
+      "position": [460, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT us.id, us.yacht_id, us.status, us.total_chunks, us.file_sha256, y.signature FROM upload_sessions us JOIN yachts y ON us.yacht_id = y.id WHERE us.id = '{{$json.upload_id}}' AND y.signature = '{{$json.yacht_signature}}' AND us.status = 'in_progress' LIMIT 1",
-        "options": {}
+        "resource": "database",
+        "operation": "getAll",
+        "tableId": "upload_sessions",
+        "returnAll": false,
+        "limit": 1,
+        "filterType": "manual",
+        "matchAny": false,
+        "conditions": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.upload_id }}",
+              "condition": "equals"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "in_progress",
+              "condition": "equals"
+            }
+          ]
+        }
       },
-      "id": "verify-session",
-      "name": "Verify Upload Session",
-      "type": "n8n-nodes-base.postgres",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789002",
+      "name": "Get Session",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [850, 300],
+      "position": [680, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
         "conditions": {
-          "number": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{$json.id ? 1 : 0}}",
-              "operation": "equal",
-              "value2": 1
+              "id": "session-exists",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
             }
-          ]
-        }
-      },
-      "id": "check-session-exists",
-      "name": "Check Session Exists",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [1050, 300]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT id FROM user_tokens WHERE access_token = '{{$node[\"Extract Headers\"].json.auth_token}}' AND expires_at > NOW() LIMIT 1",
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "id": "verify-token",
-      "name": "Verify JWT Token",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [1250, 300],
-      "credentials": {
-        "postgres": {
-          "id": "supabase-credentials",
-          "name": "Supabase Postgres"
-        }
-      }
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789003",
+      "name": "Check Session",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [900, 300]
     },
     {
       "parameters": {
-        "conditions": {
-          "number": [
-            {
-              "value1": "={{$json.id ? 1 : 0}}",
-              "operation": "equal",
-              "value2": 1
-            }
-          ]
-        }
+        "jsCode": "// Get chunk data from request\nconst chunkData = $('Extract Headers').item.json.chunk_data;\nconst expectedSha256 = $('Extract Headers').item.json.chunk_sha256;\n\n// Compute SHA256 of received chunk\nconst crypto = require('crypto');\nconst hash = crypto.createHash('sha256');\n\n// Handle different data formats\nlet buffer;\nif (Buffer.isBuffer(chunkData)) {\n  buffer = chunkData;\n} else if (typeof chunkData === 'string') {\n  buffer = Buffer.from(chunkData, chunkData.match(/^[A-Za-z0-9+/=]+$/) ? 'base64' : 'utf8');\n} else if (chunkData && chunkData.data) {\n  buffer = Buffer.from(chunkData.data, 'base64');\n} else {\n  throw new Error('Invalid chunk data format');\n}\n\nhash.update(buffer);\nconst computedSha256 = hash.digest('hex');\nconst verified = (computedSha256.toLowerCase() === expectedSha256.toLowerCase());\n\nreturn {\n  verified: verified,\n  computed_sha256: computedSha256,\n  expected_sha256: expectedSha256,\n  chunk_size: buffer.length,\n  chunk_buffer: buffer.toString('base64')\n};"
       },
-      "id": "check-token-valid",
-      "name": "Check Token Valid",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [1450, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "// Get chunk data from webhook body\nconst chunkData = items[0].binary.data;\nconst chunkBuffer = Buffer.from(chunkData.data, 'base64');\n\n// Compute SHA256 of received chunk\nconst crypto = require('crypto');\nconst hash = crypto.createHash('sha256');\nhash.update(chunkBuffer);\nconst computedSha256 = hash.digest('hex');\n\n// Get expected SHA256 from headers\nconst expectedSha256 = items[0].json.chunk_sha256;\n\n// Verify\nconst verified = (computedSha256 === expectedSha256);\n\nreturn {\n  verified: verified,\n  computed_sha256: computedSha256,\n  expected_sha256: expectedSha256,\n  chunk_size: chunkBuffer.length,\n  chunk_data: chunkBuffer.toString('base64')\n};"
-      },
-      "id": "verify-chunk-sha256",
-      "name": "Verify Chunk SHA256",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789004",
+      "name": "Verify SHA256",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [1650, 300]
+      "typeVersion": 2,
+      "position": [1120, 300]
     },
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{$json.verified}}",
-              "value2": true
+              "id": "sha256-valid",
+              "leftValue": "={{ $json.verified }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789005",
+      "name": "Check Hash Valid",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/yacht-uploads/{{ $('Get Session').item.json.yacht_id }}/{{ $('Extract Headers').item.json.upload_id }}/chunk_{{ $('Extract Headers').item.json.chunk_index }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ Buffer.from($('Verify SHA256').item.json.chunk_buffer, 'base64') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/octet-stream"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
-        }
-      },
-      "id": "check-sha256-valid",
-      "name": "Check SHA256 Valid",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [1850, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "// Upload chunk to Supabase Storage\nconst uploadId = items[0].json.upload_id;\nconst chunkIndex = items[0].json.chunk_index;\nconst chunkData = Buffer.from(items[0].json.chunk_data, 'base64');\nconst yachtId = $node['Verify Upload Session'].json.yacht_id;\n\n// Storage path: yacht-uploads/{yacht_id}/{upload_id}/chunk_{index}\nconst storagePath = `${yachtId}/${uploadId}/chunk_${chunkIndex}`;\n\n// Using Supabase Storage API (requires credentials)\nconst { createClient } = require('@supabase/supabase-js');\nconst supabase = createClient(\n  process.env.SUPABASE_URL,\n  process.env.SUPABASE_SERVICE_KEY\n);\n\nconst { data, error } = await supabase.storage\n  .from('yacht-uploads')\n  .upload(storagePath, chunkData, {\n    contentType: 'application/octet-stream',\n    upsert: false\n  });\n\nif (error) {\n  throw new Error(`Storage upload failed: ${error.message}`);\n}\n\nreturn {\n  storage_path: storagePath,\n  storage_bucket: 'yacht-uploads',\n  uploaded: true\n};"
-      },
-      "id": "upload-to-storage",
-      "name": "Upload Chunk to Storage",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [2050, 300]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "table": "upload_chunks",
-        "columns": "upload_session_id, yacht_id, chunk_index, chunk_sha256, chunk_size, temp_storage_path, status, verification_sha256, uploaded_at",
-        "values": "'{{$node[\"Extract Headers\"].json.upload_id}}', '{{$node[\"Verify Upload Session\"].json.yacht_id}}', {{$node[\"Extract Headers\"].json.chunk_index}}, '{{$node[\"Extract Headers\"].json.chunk_sha256}}', {{$node[\"Verify Chunk SHA256\"].json.chunk_size}}, '{{$json.storage_path}}', 'verified', '{{$node[\"Verify Chunk SHA256\"].json.computed_sha256}}', NOW()",
+        },
         "options": {}
       },
-      "id": "record-chunk",
-      "name": "Record Chunk Upload",
-      "type": "n8n-nodes-base.postgres",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789006",
+      "name": "Upload to Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "tableId": "upload_chunks",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "upload_session_id": "={{ $('Extract Headers').item.json.upload_id }}",
+            "yacht_id": "={{ $('Get Session').item.json.yacht_id }}",
+            "chunk_index": "={{ $('Extract Headers').item.json.chunk_index }}",
+            "chunk_sha256": "={{ $('Extract Headers').item.json.chunk_sha256 }}",
+            "chunk_size": "={{ $('Verify SHA256').item.json.chunk_size }}",
+            "temp_storage_path": "={{ $('Get Session').item.json.yacht_id }}/{{ $('Extract Headers').item.json.upload_id }}/chunk_{{ $('Extract Headers').item.json.chunk_index }}",
+            "status": "verified",
+            "verification_sha256": "={{ $('Verify SHA256').item.json.computed_sha256 }}",
+            "uploaded_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789007",
+      "name": "Record Chunk",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2250, 300],
+      "position": [1780, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT increment_chunks_uploaded('{{$node[\"Extract Headers\"].json.upload_id}}')",
+        "resource": "database",
+        "operation": "update",
+        "tableId": "upload_sessions",
+        "filterType": "manual",
+        "matchAny": false,
+        "conditions": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Extract Headers').item.json.upload_id }}",
+              "condition": "equals"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chunks_uploaded": "={{ $('Get Session').item.json.chunks_uploaded + 1 }}",
+            "last_chunk_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
         "options": {}
       },
-      "id": "increment-counter",
-      "name": "Increment Chunk Counter",
-      "type": "n8n-nodes-base.postgres",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789008",
+      "name": "Increment Counter",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2450, 300],
+      "position": [2000, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
+        "resource": "database",
         "operation": "insert",
-        "table": "pipeline_logs",
-        "columns": "yacht_id, upload_session_id, pipeline_stage, log_level, message, details",
-        "values": "'{{$node[\"Verify Upload Session\"].json.yacht_id}}', '{{$node[\"Extract Headers\"].json.upload_id}}', 'upload', 'info', 'Chunk uploaded successfully', '{\"chunk_index\": {{$node[\"Extract Headers\"].json.chunk_index}}, \"chunk_size\": {{$node[\"Verify Chunk SHA256\"].json.chunk_size}}}'",
+        "tableId": "pipeline_logs",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "yacht_id": "={{ $('Get Session').item.json.yacht_id }}",
+            "upload_session_id": "={{ $('Extract Headers').item.json.upload_id }}",
+            "pipeline_stage": "upload",
+            "log_level": "info",
+            "message": "Chunk {{ $('Extract Headers').item.json.chunk_index }} uploaded successfully",
+            "details": "={{ { chunk_index: $('Extract Headers').item.json.chunk_index, chunk_size: $('Verify SHA256').item.json.chunk_size } }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
         "options": {}
       },
-      "id": "log-chunk",
-      "name": "Log Chunk Upload",
-      "type": "n8n-nodes-base.postgres",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789009",
+      "name": "Log Chunk",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [2650, 300],
+      "position": [2220, 300],
       "credentials": {
-        "postgres": {
+        "supabaseApi": {
           "id": "supabase-credentials",
-          "name": "Supabase Postgres"
+          "name": "Supabase account"
         }
       }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\"status\": \"success\", \"chunk_index\": {{$node['Extract Headers'].json.chunk_index}}, \"verified\": true}",
+        "responseBody": "={{ {\n  \"status\": \"success\",\n  \"chunk_index\": $('Extract Headers').item.json.chunk_index,\n  \"verified\": true,\n  \"chunks_uploaded\": $('Get Session').item.json.chunks_uploaded + 1,\n  \"total_chunks\": $('Get Session').item.json.total_chunks\n} }}",
         "options": {
           "responseCode": 200
         }
       },
-      "id": "success-response",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789010",
       "name": "Success Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [2850, 300]
+      "typeVersion": 1.1,
+      "position": [2440, 300]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"Missing required headers\"}",
-        "options": {
-          "responseCode": 400
-        }
-      },
-      "id": "error-headers",
-      "name": "Error - Missing Headers",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [450, 500]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"Invalid upload session\"}",
+        "responseBody": "={{ {\n  \"status\": \"error\",\n  \"error\": \"Upload session not found or already completed\"\n} }}",
         "options": {
           "responseCode": 404
         }
       },
-      "id": "error-session",
-      "name": "Error - Invalid Session",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789011",
+      "name": "Error: Session Not Found",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1050, 500]
+      "typeVersion": 1.1,
+      "position": [900, 480]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"Invalid or expired token\"}",
-        "options": {
-          "responseCode": 401
-        }
-      },
-      "id": "error-token",
-      "name": "Error - Invalid Token",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1450, 500]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\"status\": \"error\", \"error\": \"SHA256 verification failed\", \"expected\": \"{{$node['Verify Chunk SHA256'].json.expected_sha256}}\", \"computed\": \"{{$node['Verify Chunk SHA256'].json.computed_sha256}}\"}",
+        "responseBody": "={{ {\n  \"status\": \"error\",\n  \"error\": \"SHA256 verification failed\",\n  \"expected\": $('Verify SHA256').item.json.expected_sha256,\n  \"computed\": $('Verify SHA256').item.json.computed_sha256\n} }}",
         "options": {
           "responseCode": 400
         }
       },
-      "id": "error-sha256",
-      "name": "Error - SHA256 Mismatch",
+      "id": "c1a2b3c4-5678-90ab-cdef-123456789012",
+      "name": "Error: SHA256 Mismatch",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1850, 500]
+      "typeVersion": 1.1,
+      "position": [1340, 480]
     }
   ],
+  "pinData": {},
   "connections": {
-    "Webhook - Upload Chunk": {
-      "main": [
-        [
-          {
-            "node": "Validate Headers",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Headers": {
+    "Webhook": {
       "main": [
         [
           {
             "node": "Extract Headers",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Error - Missing Headers",
             "type": "main",
             "index": 0
           }
@@ -355,134 +369,105 @@
       "main": [
         [
           {
-            "node": "Verify Upload Session",
+            "node": "Get Session",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify Upload Session": {
+    "Get Session": {
       "main": [
         [
           {
-            "node": "Check Session Exists",
+            "node": "Check Session",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Session Exists": {
+    "Check Session": {
       "main": [
         [
           {
-            "node": "Verify JWT Token",
+            "node": "Verify SHA256",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Error - Invalid Session",
+            "node": "Error: Session Not Found",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify JWT Token": {
+    "Verify SHA256": {
       "main": [
         [
           {
-            "node": "Check Token Valid",
+            "node": "Check Hash Valid",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check Token Valid": {
+    "Check Hash Valid": {
       "main": [
         [
           {
-            "node": "Verify Chunk SHA256",
+            "node": "Upload to Storage",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Error - Invalid Token",
+            "node": "Error: SHA256 Mismatch",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify Chunk SHA256": {
+    "Upload to Storage": {
       "main": [
         [
           {
-            "node": "Check SHA256 Valid",
+            "node": "Record Chunk",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check SHA256 Valid": {
+    "Record Chunk": {
       "main": [
         [
           {
-            "node": "Upload Chunk to Storage",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Error - SHA256 Mismatch",
+            "node": "Increment Counter",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upload Chunk to Storage": {
+    "Increment Counter": {
       "main": [
         [
           {
-            "node": "Record Chunk Upload",
+            "node": "Log Chunk",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Record Chunk Upload": {
-      "main": [
-        [
-          {
-            "node": "Increment Chunk Counter",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Increment Chunk Counter": {
-      "main": [
-        [
-          {
-            "node": "Log Chunk Upload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log Chunk Upload": {
+    "Log Chunk": {
       "main": [
         [
           {
@@ -494,12 +479,15 @@
       ]
     }
   },
-  "active": true,
-  "settings": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
   "versionId": "1.0.0",
-  "id": "celesteos-upload-chunk",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "celesteos-production"
   },
-  "tags": ["celesteos", "upload", "chunk", "ingestion"]
+  "id": "celesteos-upload-chunk",
+  "tags": []
 }
