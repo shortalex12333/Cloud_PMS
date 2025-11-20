@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Service Label -->
+    <key>Label</key>
+    <string>com.celesteos.agent</string>
+
+    <!-- Program Arguments -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/python3</string>
+        <string>/usr/local/bin/celesteos-daemon</string>
+    </array>
+
+    <!-- Run at Load -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Keep Alive -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <!-- Standard Output Path -->
+    <key>StandardOutPath</key>
+    <string>/Users/Shared/.celesteos/logs/daemon-stdout.log</string>
+
+    <!-- Standard Error Path -->
+    <key>StandardErrorPath</key>
+    <string>/Users/Shared/.celesteos/logs/daemon-stderr.log</string>
+
+    <!-- Working Directory -->
+    <key>WorkingDirectory</key>
+    <string>/Users/Shared/.celesteos</string>
+
+    <!-- Environment Variables -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+
+    <!-- Process Type -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <!-- Nice (Priority) -->
+    <key>Nice</key>
+    <integer>10</integer>
+
+    <!-- Throttle Interval (seconds between restarts) -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <!-- Disabled (set to false to enable) -->
+    <key>Disabled</key>
+    <false/>
+</dict>
+</plist>
