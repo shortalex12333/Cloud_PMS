@@ -144,3 +144,70 @@ export async function searchWithStream(query: string): Promise<ReadableStream | 
 
   return response.body;
 }
+
+/**
+ * Integration API - OAuth connections
+ * Ported from c.os.4.1 email/Microsoft integration
+ * Backend handles token storage in api_tokens table
+ */
+export const integrationsApi = {
+  // Microsoft Outlook OAuth
+  outlook: {
+    // Get OAuth authorization URL
+    // Backend generates URL with:
+    // - Client ID: 41f6dc82-8127-4330-97e0-c6b26e6aa967
+    // - Scopes: Mail.Read, User.Read, MailboxSettings.Read, offline_access
+    // - Redirect URI: /integrations/outlook/callback
+    // - State: user_id:random_string (for CSRF protection)
+    getAuthUrl: async (): Promise<{ url: string }> => {
+      return celesteApi.get('/api/integrations/outlook/auth-url');
+    },
+
+    // Get connection status
+    // Returns: { connected: boolean, email?: string, connectedAt?: string }
+    getStatus: async (): Promise<{ connected: boolean; email?: string; connectedAt?: string }> => {
+      return celesteApi.get('/api/integrations/outlook/status');
+    },
+
+    // Exchange OAuth code for tokens (called from callback page)
+    // Backend will:
+    // 1. Exchange code for access/refresh tokens via Microsoft token endpoint
+    // 2. Fetch user profile from Microsoft Graph
+    // 3. Store tokens in api_tokens table (type: 'device', scopes: ['mail:read'])
+    // 4. Link to current user via JWT
+    handleCallback: async (code: string): Promise<{ success: boolean }> => {
+      return celesteApi.get(`/api/integrations/outlook/callback?code=${encodeURIComponent(code)}`);
+    },
+
+    // Disconnect account
+    // Deletes tokens from api_tokens table
+    disconnect: async (): Promise<{ success: boolean }> => {
+      return celesteApi.post('/api/integrations/outlook/disconnect');
+    },
+  },
+
+  // LinkedIn OAuth
+  linkedin: {
+    // Get OAuth authorization URL
+    // Backend generates URL with LinkedIn OAuth2 params
+    // Redirect URI: /integrations/linkedin/callback
+    getAuthUrl: async (): Promise<{ url: string }> => {
+      return celesteApi.get('/api/integrations/linkedin/auth-url');
+    },
+
+    // Get connection status
+    getStatus: async (): Promise<{ connected: boolean; email?: string; connectedAt?: string }> => {
+      return celesteApi.get('/api/integrations/linkedin/status');
+    },
+
+    // Exchange OAuth code for tokens
+    handleCallback: async (code: string): Promise<{ success: boolean }> => {
+      return celesteApi.get(`/api/integrations/linkedin/callback?code=${encodeURIComponent(code)}`);
+    },
+
+    // Disconnect account
+    disconnect: async (): Promise<{ success: boolean }> => {
+      return celesteApi.post('/api/integrations/linkedin/disconnect');
+    },
+  },
+};

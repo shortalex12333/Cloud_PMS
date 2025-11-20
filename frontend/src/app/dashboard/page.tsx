@@ -22,12 +22,20 @@ function DashboardPage() {
                 HOD Overview & Configuration {user && `• ${user.displayName || user.email}`}
               </p>
             </div>
-            <a
-              href="/search"
-              className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              ← Back to Search
-            </a>
+            <div className="flex gap-2">
+              <a
+                href="/settings"
+                className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
+              >
+                Settings
+              </a>
+              <a
+                href="/search"
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                ← Back to Search
+              </a>
+            </div>
           </div>
         </div>
       </header>

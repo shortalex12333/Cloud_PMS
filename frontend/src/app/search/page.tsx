@@ -44,6 +44,12 @@ function SearchPage() {
               Dashboard →
             </Link>
           )}
+          <Link
+            href="/settings"
+            className="px-3 py-1 rounded-md hover:bg-accent"
+          >
+            Settings
+          </Link>
           <button
             onClick={() => logout()}
             className="px-3 py-1 rounded-md hover:bg-accent hover:text-destructive"
