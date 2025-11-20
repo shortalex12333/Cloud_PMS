@@ -53,21 +53,23 @@ CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
 CREATE INDEX idx_user_roles_yacht_id ON user_roles(yacht_id);
 
 -- =======================
--- STEP 3: RLS HELPER FUNCTIONS
+-- STEP 3: RLS HELPER FUNCTIONS (in public schema)
 -- =======================
 
-CREATE OR REPLACE FUNCTION auth.user_yacht_id()
+CREATE OR REPLACE FUNCTION public.user_yacht_id()
 RETURNS UUID
 LANGUAGE SQL
 STABLE
+SECURITY DEFINER
 AS $$
     SELECT yacht_id FROM public.users WHERE id = auth.uid() LIMIT 1;
 $$;
 
-CREATE OR REPLACE FUNCTION auth.is_hod()
+CREATE OR REPLACE FUNCTION public.is_hod()
 RETURNS BOOLEAN
 LANGUAGE SQL
 STABLE
+SECURITY DEFINER
 AS $$
     SELECT EXISTS (
         SELECT 1 FROM public.user_roles
@@ -78,10 +80,11 @@ AS $$
     );
 $$;
 
-CREATE OR REPLACE FUNCTION auth.user_role()
+CREATE OR REPLACE FUNCTION public.user_role()
 RETURNS TEXT
 LANGUAGE SQL
 STABLE
+SECURITY DEFINER
 AS $$
     SELECT role FROM public.user_roles
     WHERE user_id = auth.uid() AND is_primary = true
