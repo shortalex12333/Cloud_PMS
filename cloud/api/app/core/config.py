@@ -51,11 +51,12 @@ class Settings(BaseSettings):
     # Indexing is triggered via n8n webhook, not a separate service
     INDEXING_WEBHOOK_URL: str = "https://api.celeste7.ai/webhook/v1/ingest/index"
 
-    # Microsoft OAuth
+    # Microsoft OAuth (from c.os.4.1 working config)
     MICROSOFT_CLIENT_ID: str = "41f6dc82-8127-4330-97e0-c6b26e6aa967"
-    MICROSOFT_CLIENT_SECRET: str  # Required for OAuth
+    MICROSOFT_CLIENT_SECRET: str  # Required - from Azure Portal
     MICROSOFT_TENANT_ID: str = "common"
-    MICROSOFT_REDIRECT_URI: str = "https://api.celeste7.ai/v1/integrations/outlook/callback"
+    # Redirect URI registered in Azure app: https://celeste7.ai/auth/microsoft/callback
+    MICROSOFT_REDIRECT_URI: str = "https://celeste7.ai/auth/microsoft/callback"
 
     # Logging
     LOG_LEVEL: str = "INFO"
