@@ -1,24 +1,42 @@
 # 🚀 CelesteOS Schema Deployment Guide
 
-## ✅ Schema File Location
+## ⚠️ IMPORTANT: Use Schema V2.0
 
-The complete Supabase schema is saved in:
+**Deploy this file:**
 ```
-/home/user/Cloud_PMS/supabase_schema.sql
+/home/user/Cloud_PMS/supabase_schema_v2.sql
 ```
+
+**DO NOT deploy:**
+- ~~supabase_schema.sql~~ (V1.0 - has security flaws, deprecated)
+
+## 🔐 Auth Architecture
+
+**Before deploying**, read these docs:
+- `AUTH_INTEGRATION.md` - Complete auth flows and security model
+- `SCHEMA_ISSUES.md` - What was wrong with V1.0 and how V2.0 fixes it
+
+**Key architectural decisions:**
+- **Supabase Auth** (`auth.users`) for all human users
+- **bcrypt hashing** for agent secrets and API keys
+- **SHA256** only for file integrity (documents), NOT for authentication
+- **Three auth paths:**
+  - JWT token → `users.auth_user_id` → `yacht_id`
+  - Agent secret → `agents` → `yacht_id`
+  - API key → `api_keys` → `yacht_id`
 
 ---
 
-## 📋 What Was Created
+## 📋 What Was Created (V2.0)
 
-The schema includes **33 tables** organized into 7 functional groups:
+The schema includes **34 tables** organized into 7 functional groups:
 
-### Group 1: Core / Auth (7 tables)
-- `yachts` - Tenant isolation root
-- `yacht_signatures` - Authentication keys
-- `users` - Crew and managers
+### Group 1: Core / Auth (9 tables)
+- `yachts` - Tenant isolation root (with yacht_secret_hash)
+- `users` - Crew and managers (links to auth.users via auth_user_id)
+- `agents` - Local agent devices (Mac Studio/Mini)
+- `api_keys` - Service authentication (n8n, automations)
 - `user_roles` - RBAC definitions
-- `app_tokens` - API/device tokens
 - `search_queries` - Analytics and crew pain index
 - `event_logs` - Audit trail
 
@@ -80,7 +98,7 @@ This is the easiest and most reliable method.
    ```
 
 2. **Copy the SQL file**
-   - Open: `/home/user/Cloud_PMS/supabase_schema.sql`
+   - Open: `/home/user/Cloud_PMS/supabase_schema_v2.sql`
    - Select all and copy (Ctrl+A, Ctrl+C)
 
 3. **Paste into SQL Editor**
@@ -119,7 +137,7 @@ If you prefer command-line tools:
      -p 5432 \
      -U postgres \
      -d postgres \
-     -f /home/user/Cloud_PMS/supabase_schema.sql
+     -f /home/user/Cloud_PMS/supabase_schema_v2.sql
    ```
 
 3. **Verify**
@@ -154,7 +172,7 @@ If you prefer command-line tools:
 
 3. **Create migration**
    ```bash
-   cp supabase_schema.sql supabase/migrations/20250101000000_initial_schema.sql
+   cp supabase_schema_v2.sql supabase/migrations/20250101000000_initial_schema.sql
    ```
 
 4. **Push to Supabase**
@@ -272,7 +290,8 @@ WHERE schemaname = 'public';
 
 Full table documentation is available in:
 - `/home/user/Cloud_PMS/table_configs.md`
-- Inline SQL comments in `supabase_schema.sql`
+- `/home/user/Cloud_PMS/AUTH_INTEGRATION.md` - Authentication flows
+- Inline SQL comments in `supabase_schema_v2.sql`
 
 ---
 
