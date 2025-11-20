@@ -250,50 +250,108 @@ CREATE TRIGGER on_auth_user_created
 
 ## 🔒 Configure Row-Level Security (RLS) Policies
 
-### Example: Users Table RLS
+**✅ COMPLETE RLS POLICIES AVAILABLE**
 
-```sql
--- Users can only see their own yacht's users
-CREATE POLICY "Users can view own yacht users"
-  ON users FOR SELECT
-  USING (
-    yacht_id = (
-      SELECT yacht_id FROM users
-      WHERE auth_user_id = auth.uid()
-    )
-  );
+All RLS policies for 34 tables are ready to deploy:
 
--- Users can update their own record
-CREATE POLICY "Users can update own record"
-  ON users FOR UPDATE
-  USING (auth_user_id = auth.uid());
+**File:** `/home/user/Cloud_PMS/supabase_rls_policies.sql`
+
+### Deployment Instructions
+
+**Option 1: Supabase Dashboard (RECOMMENDED)**
+
+1. Open Supabase SQL Editor:
+   ```
+   https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd/sql
+   ```
+
+2. Copy the RLS policies file:
+   - Open: `/home/user/Cloud_PMS/supabase_rls_policies.sql`
+   - Select all and copy (Ctrl+A, Ctrl+C)
+
+3. Paste into SQL Editor and click **"Run"**
+
+⏱️ **Estimated time:** 1-2 minutes
+
+---
+
+**Option 2: Using psql (Command Line)**
+
+```bash
+PGPASSWORD='your_database_password' psql \
+  -h db.vzsohavtuotocgrfkfyd.supabase.co \
+  -p 5432 \
+  -U postgres \
+  -d postgres \
+  -f /home/user/Cloud_PMS/supabase_rls_policies.sql
 ```
 
-### Example: Equipment Table RLS
+---
+
+### What's Included
+
+The RLS policies file includes:
+
+**Helper Functions:**
+- `get_user_yacht_id()` - Returns current user's yacht_id
+- `get_user_role()` - Returns current user's role
+- `is_manager()` - Checks if user has manager-level permissions
+
+**Security Model:**
+- ✅ Per-yacht isolation (all queries filtered by yacht_id)
+- ✅ Role-based permissions (7 roles: chief_engineer, eto, captain, manager, deck, interior, vendor)
+- ✅ Users can only access their yacht's data
+- ✅ Managers have elevated permissions
+- ✅ System operations protected for indexing/predictive pipelines
+- ✅ All 34 tables covered with appropriate policies
+
+**Policy Coverage:**
+- Core/Auth tables: yachts, users, agents, api_keys, user_roles, search_queries, event_logs
+- PMS tables: equipment, work_orders, work_order_history, faults, hours_of_rest
+- Inventory tables: parts, equipment_parts, inventory_stock, suppliers, purchase_orders, purchase_order_items
+- Handover tables: handovers, handover_items
+- Document/RAG tables: documents, document_chunks, ocred_pages, embedding_jobs
+- GraphRAG tables: graph_nodes, graph_edges
+- Predictive tables: predictive_state, predictive_insights
+
+---
+
+### Verification After Deployment
 
 ```sql
--- Users can only see their yacht's equipment
-CREATE POLICY "Users can view own yacht equipment"
-  ON equipment FOR SELECT
-  USING (
-    yacht_id = (
-      SELECT yacht_id FROM users
-      WHERE auth_user_id = auth.uid()
-    )
-  );
-
--- Users can insert equipment for their yacht
-CREATE POLICY "Users can create equipment for own yacht"
-  ON equipment FOR INSERT
-  WITH CHECK (
-    yacht_id = (
-      SELECT yacht_id FROM users
-      WHERE auth_user_id = auth.uid()
-    )
-  );
+-- Check that policies are created
+SELECT
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;
 ```
 
-**Note:** Repeat similar policies for all 34 tables. See: https://supabase.com/docs/guides/auth/row-level-security
+**Expected:** 50+ policies across 34 tables
+
+---
+
+### Testing RLS Policies
+
+**Test as authenticated user:**
+
+```sql
+-- Set test user context (replace with real auth user ID)
+SET request.jwt.claims.sub = '<auth_user_id>';
+
+-- Should only see own yacht's equipment
+SELECT * FROM equipment;
+
+-- Should only see own yacht's users
+SELECT * FROM users;
+```
+
+**Reference:** https://supabase.com/docs/guides/auth/row-level-security
 
 ---
 
@@ -414,13 +472,14 @@ ORDER BY idx_scan DESC;
 - pgvector extension for semantic search
 - bcrypt-based authentication for agents/API keys
 - SHA256 file integrity for documents
-- Row-level security enabled (policies needed)
+- Row-level security enabled on all tables
 - Supabase Auth integration ready
+- **✅ Complete RLS policies (supabase_rls_policies.sql) - READY TO DEPLOY**
 
 **🔄 Next Actions:**
-1. Configure Supabase Auth providers
-2. Create RLS policies for all tables
-3. Build API authentication middleware
+1. **Deploy RLS policies** (`supabase_rls_policies.sql`) - See section above
+2. Configure Supabase Auth providers (Microsoft SSO)
+3. Build API authentication middleware (JWT/HMAC/API key)
 4. Implement indexing pipeline (n8n)
 5. Build search API endpoint
 6. Create local agent (Mac app)
