@@ -24,37 +24,32 @@ from app.models.integrations import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Microsoft OAuth configuration (copied from c.os.4.1)
-MICROSOFT_CONFIG = {
-    "tenant_id": "common",  # Use 'common' for multitenant apps
-    "client_id": "41f6dc82-8127-4330-97e0-c6b26e6aa967",
-    "client_secret": "<your-azure-client-secret>",  # TODO: Move to environment variable
-    "redirect_uri": "https://api.celeste7.ai/v1/integrations/outlook/callback",
-    "scopes": [
-        "https://graph.microsoft.com/Mail.Read",
-        "https://graph.microsoft.com/User.Read",
-        "https://graph.microsoft.com/MailboxSettings.Read",
-        "offline_access"
-    ]
-}
+# Microsoft OAuth scopes (copied from c.os.4.1)
+MICROSOFT_SCOPES = [
+    "https://graph.microsoft.com/Mail.Read",
+    "https://graph.microsoft.com/User.Read",
+    "https://graph.microsoft.com/MailboxSettings.Read",
+    "offline_access"
+]
 
 
 def generate_auth_url(state: str) -> str:
     """
     Generate Microsoft OAuth2 authorization URL
     Copied from c.os.4.1/server/routes/emailRoutes.ts:generateAuthUrl()
+    Uses configuration from settings (environment variables)
     """
     params = {
-        "client_id": MICROSOFT_CONFIG["client_id"],
+        "client_id": settings.MICROSOFT_CLIENT_ID,
         "response_type": "code",
-        "redirect_uri": MICROSOFT_CONFIG["redirect_uri"],
-        "scope": " ".join(MICROSOFT_CONFIG["scopes"]),
+        "redirect_uri": settings.MICROSOFT_REDIRECT_URI,
+        "scope": " ".join(MICROSOFT_SCOPES),
         "state": state,
         "prompt": "select_account",  # Allow user to pick account
         "response_mode": "query"
     }
 
-    authority = f"https://login.microsoftonline.com/{MICROSOFT_CONFIG['tenant_id']}"
+    authority = f"https://login.microsoftonline.com/{settings.MICROSOFT_TENANT_ID}"
     return f"{authority}/oauth2/v2.0/authorize?{urlencode(params)}"
 
 
@@ -158,13 +153,13 @@ async def outlook_callback(
         logger.info(f"✅ Received auth code for user_id: {user_id}")
 
         # Exchange authorization code for access token
-        token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+        token_url = f"https://login.microsoftonline.com/{settings.MICROSOFT_TENANT_ID}/oauth2/v2.0/token"
         token_data = {
-            "client_id": MICROSOFT_CONFIG["client_id"],
-            "client_secret": MICROSOFT_CONFIG["client_secret"],
-            "scope": " ".join(MICROSOFT_CONFIG["scopes"]),
+            "client_id": settings.MICROSOFT_CLIENT_ID,
+            "client_secret": settings.MICROSOFT_CLIENT_SECRET,
+            "scope": " ".join(MICROSOFT_SCOPES),
             "code": code,
-            "redirect_uri": MICROSOFT_CONFIG["redirect_uri"],
+            "redirect_uri": settings.MICROSOFT_REDIRECT_URI,
             "grant_type": "authorization_code"
         }
 
@@ -215,7 +210,7 @@ async def outlook_callback(
             provider_user_id=user_info.get("id") if user_info else None,
             provider_email=user_info.get("mail") or user_info.get("userPrincipalName") if user_info else None,
             display_name=user_info.get("displayName") if user_info else None,
-            scopes=MICROSOFT_CONFIG["scopes"]
+            scopes=MICROSOFT_SCOPES
         )
 
         # Store tokens in Supabase (upsert to handle re-auth)

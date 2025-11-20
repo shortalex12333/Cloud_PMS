@@ -31,11 +31,11 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_HOURS: int = 24
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # CORS
+    # CORS (Vercel deployment only)
     CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "https://app.celesteos.com"
+        "https://app.celesteos.com",
+        "https://celeste7.ai",
+        "https://*.celeste7.ai"  # Vercel preview deployments
     ]
 
     # Storage
@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     # Indexing (n8n workflow webhook)
     # Indexing is triggered via n8n webhook, not a separate service
     INDEXING_WEBHOOK_URL: str = "https://api.celeste7.ai/webhook/v1/ingest/index"
+
+    # Microsoft OAuth
+    MICROSOFT_CLIENT_ID: str = "41f6dc82-8127-4330-97e0-c6b26e6aa967"
+    MICROSOFT_CLIENT_SECRET: str  # Required for OAuth
+    MICROSOFT_TENANT_ID: str = "common"
+    MICROSOFT_REDIRECT_URI: str = "https://api.celeste7.ai/v1/integrations/outlook/callback"
 
     # Logging
     LOG_LEVEL: str = "INFO"
