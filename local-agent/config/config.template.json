@@ -3,7 +3,7 @@
   "agent_id": "GENERATED_ON_FIRST_RUN",
 
   "cloud": {
-    "api_endpoint": "https://api.celesteos.com",
+    "api_endpoint": "https://api.celeste7.ai/webhook",
     "yacht_signature": "YACHT_SIGNATURE_FROM_PROVISIONING",
     "refresh_token": "REFRESH_TOKEN_FROM_PROVISIONING"
   },

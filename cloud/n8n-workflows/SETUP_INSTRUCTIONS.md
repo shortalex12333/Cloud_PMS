@@ -69,7 +69,7 @@ n8n import:workflow --input=./upload-complete-workflow.json
 
 **Test**:
 ```bash
-curl -X POST https://your-n8n.com/webhook/v1/ingest/init \
+curl -X POST https://api.celeste7.ai/webhook/v1/ingest/init \
   -H "X-Yacht-Signature: test-yacht-123" \
   -H "Authorization: Bearer your-jwt-token" \
   -H "Content-Type: application/json" \
@@ -103,7 +103,7 @@ curl -X POST https://your-n8n.com/webhook/v1/ingest/init \
 
 **Test**:
 ```bash
-curl -X PATCH https://your-n8n.com/webhook/v1/ingest/upload_chunk \
+curl -X PATCH https://api.celeste7.ai/webhook/v1/ingest/upload_chunk \
   -H "X-Yacht-Signature: test-yacht-123" \
   -H "Authorization: Bearer your-jwt-token" \
   -H "Upload-ID: uuid-from-init" \
@@ -233,9 +233,9 @@ Once imported and credentials configured:
 ## Webhook URLs
 
 After activation, your webhook URLs will be:
-- Init: `https://your-n8n.com/webhook/v1/ingest/init`
-- Chunk: `https://your-n8n.com/webhook/v1/ingest/upload_chunk`
-- Complete: `https://your-n8n.com/webhook/v1/ingest/complete`
+- Init: `https://api.celeste7.ai/webhook/v1/ingest/init`
+- Chunk: `https://api.celeste7.ai/webhook/v1/ingest/upload_chunk`
+- Complete: `https://api.celeste7.ai/webhook/v1/ingest/complete`
 
 Update your local agent config.json with these URLs as the `api_endpoint`.
 
