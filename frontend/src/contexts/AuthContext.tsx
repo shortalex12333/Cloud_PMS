@@ -20,38 +20,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
   })
 
-  // Fetch user profile from database
+  // Fetch user profile from database (joins users + user_roles tables)
   const fetchUserProfile = async (authUserId: string): Promise<User | null> => {
     try {
+      // Query users table with user_roles join (get primary role)
       const { data, error } = await supabase
         .from('users')
         .select(`
           id,
           email,
           name,
-          role,
           yacht_id,
           is_active,
+          last_login_at,
           created_at,
           updated_at,
+          user_roles!inner (
+            role,
+            permissions,
+            expires_at
+          ),
           yachts (
             name
           )
         `)
         .eq('id', authUserId)
+        .eq('user_roles.is_primary', true)
+        .or('user_roles.expires_at.is.null,user_roles.expires_at.gt.now()')
         .single()
 
       if (error) {
-        console.error('Error fetching user profile:', error)
+        console.error('[AuthContext] Error fetching user profile:', error)
+        return null
+      }
+
+      // Extract primary role from joined data
+      const primaryRole = Array.isArray(data.user_roles)
+        ? data.user_roles[0]
+        : data.user_roles
+
+      if (!primaryRole) {
+        console.error('[AuthContext] No primary role found for user')
         return null
       }
 
       return {
-        ...data,
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: primaryRole.role,
+        yacht_id: data.yacht_id,
         yacht_name: (data as any).yachts?.name || null,
+        is_active: data.is_active,
+        permissions: primaryRole.permissions || {},
+        created_at: data.created_at,
+        updated_at: data.updated_at,
       } as User
     } catch (err) {
-      console.error('Error in fetchUserProfile:', err)
+      console.error('[AuthContext] Error in fetchUserProfile:', err)
       return null
     }
   }
