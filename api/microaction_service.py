@@ -52,7 +52,7 @@ from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
 
 # Import GraphRAG services
 from graphrag_population import get_population_service, GraphRAGPopulationService
-from graphrag_query import get_query_service, GraphRAGQueryService, query_result_to_dict
+from graphrag_query import get_query_service, GraphRAGQueryService
 
 # ========================================================================
 # LOGGING CONFIGURATION
@@ -719,7 +719,7 @@ async def health_check():
 
     return HealthResponse(
         status="healthy" if extractor is not None else "unhealthy",
-        version="3.0.0",
+        version="3.1.0",
         patterns_loaded=actions_count,
         total_requests=request_counter,
         uptime_seconds=uptime,
@@ -763,28 +763,38 @@ async def list_patterns():
 async def root():
     """Root endpoint with API information"""
     return {
-        "service": "CelesteOS Micro-Action Extraction API",
-        "version": "3.0.0",
+        "service": "CelesteOS Search & Extraction API",
+        "version": "3.1.0",
         "status": "running",
         "security": "JWT + Yacht Signature (2 headers only)",
         "docs": "/docs",
         "health": "/health",
-        "endpoints": {
-            "unified_extract": "POST /extract (RECOMMENDED - Modules A+B+C)",
-            "graphrag_query": "POST /graphrag/query (NEW - Intent-based GraphRAG search)",
-            "graphrag_populate": "POST /graphrag/populate (NEW - n8n workflow population)",
-            "graphrag_stats": "GET /graphrag/stats (NEW - Graph statistics)",
-            "extract": "POST /extract_microactions (legacy)",
-            "detailed": "POST /extract_detailed (legacy)",
-            "patterns": "GET /patterns"
+        "public_endpoints": {
+            "search": "POST /v1/search (PRIMARY - Frontend search bar)",
+            "extract": "POST /extract (NLP extraction - Modules A+B+C)"
+        },
+        "deprecated_endpoints": {
+            "extract_microactions": "POST /extract_microactions (use /extract)",
+            "extract_detailed": "POST /extract_detailed (use /extract)"
+        },
+        "internal_endpoints": {
+            "graphrag_populate": "POST /graphrag/populate (n8n workflow only)",
+            "graphrag_query": "POST /graphrag/query (internal - use /v1/search)",
+            "graphrag_stats": "GET /graphrag/stats (admin only)"
         },
         "architecture": {
-            "module_a": "Strict micro-action detector (verb-based)",
-            "module_b": "Maritime entity extractor (equipment, faults, measurements)",
-            "module_c": "Canonicalizer (normalization + weighting)",
-            "pipeline": "Unified extraction combining all modules",
-            "graphrag_population": "Graph population from GPT extraction (nodes, edges, maintenance)",
-            "graphrag_query": "Intent-based search with entity resolution and graph traversal"
+            "frontend_entrypoints": [
+                "POST /v1/search → unified search (cards + actions)",
+                "POST /v1/actions/execute → all mutations (action-endpoint-contract.md)"
+            ],
+            "internal_engines": [
+                "GraphRAG: Entity resolution + graph traversal",
+                "Modules A+B+C: Action detection + entity extraction + canonicalization"
+            ],
+            "response_specs": [
+                "Cards: search-engine-spec.md Section 8",
+                "Actions: micro-action-catalogue.md"
+            ]
         },
         "auth": {
             "headers": {
@@ -798,7 +808,107 @@ async def root():
 
 
 # ========================================================================
-# GRAPHRAG API ENDPOINTS
+# /v1/search - PUBLIC SEARCH ENDPOINT
+# ========================================================================
+
+class SearchRequest(BaseModel):
+    """Request model for unified search endpoint"""
+    query: str = Field(..., min_length=1, max_length=1000, description="User natural language query")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "query": "Engine is overheating, show historic data from 2nd engineer"
+            }
+        }
+
+
+@app.post("/v1/search", tags=["Search"])
+@limiter.limit("100/minute")
+async def search(
+    request: Request,
+    search_request: SearchRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **UNIFIED SEARCH ENDPOINT - Primary Search Interface**
+
+    The single public search endpoint for CelesteOS.
+    All frontend search bar queries flow through here.
+
+    **What it does:**
+    1. Extracts intent and entities from natural language query
+    2. Resolves entities to canonical IDs (equipment, parts, symptoms)
+    3. Executes intent-specific search patterns using GraphRAG
+    4. Returns result cards with attached micro-actions
+
+    **Supported Intents:**
+    - diagnose_fault: "What does error code E047 mean?"
+    - find_document: "Open main engine manual to lube oil section"
+    - equipment_history: "Engine is overheating, show historic data"
+    - find_part: "Find filter for port main engine"
+    - create_work_order: "Create work order for bilge pump"
+    - general_search: Fallback multi-source search
+
+    **Security (2 headers only):**
+    - Authorization: Bearer <supabase_jwt> (user authentication)
+    - X-Yacht-Signature: <sha256_signature> (yacht ownership proof)
+
+    **Response Structure:**
+    ```json
+    {
+        "query": "original query",
+        "intent": "detected_intent",
+        "entities": [...],
+        "cards": [
+            {
+                "type": "equipment|document_chunk|fault|part|work_order|...",
+                "title": "Card Title",
+                "actions": [
+                    {
+                        "label": "Create Work Order",
+                        "action": "create_work_order",
+                        "endpoint": "/v1/work-orders/create",
+                        "method": "POST",
+                        "payload_template": {...}
+                    }
+                ],
+                ...card_specific_fields
+            }
+        ],
+        "metadata": {...}
+    }
+    ```
+
+    **Card Types (search-engine-spec.md Section 8):**
+    - document_chunk, fault, work_order, part, equipment, predictive, handover
+
+    **Actions are executed via:**
+    POST /v1/actions/execute (see action-endpoint-contract.md)
+    """
+    if graphrag_query is None:
+        raise HTTPException(status_code=503, detail="Search service not initialized")
+
+    try:
+        yacht_id = auth.get("yacht_id")
+
+        # Call GraphRAG query service internally
+        result = graphrag_query.query(yacht_id, search_request.query)
+
+        logger.info(
+            f"/v1/search: yacht={yacht_id}, query='{search_request.query}', "
+            f"intent={result.get('intent')}, cards={len(result.get('cards', []))}"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"/v1/search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# ========================================================================
+# GRAPHRAG INTERNAL ENDPOINTS (not in public schema)
 # ========================================================================
 
 class GraphRAGQueryRequest(BaseModel):
@@ -819,6 +929,7 @@ class GraphRAGPopulateRequest(BaseModel):
     entities: List[Dict] = Field(default_factory=list, description="Extracted entities")
     relationships: List[Dict] = Field(default_factory=list, description="Extracted relationships")
     maintenance: Optional[List[Dict]] = Field(default=None, description="Extracted maintenance facts")
+    force_reprocess: bool = Field(default=False, description="Force re-processing even if already successful")
 
     class Config:
         schema_extra = {
@@ -833,12 +944,13 @@ class GraphRAGPopulateRequest(BaseModel):
                 ],
                 "maintenance": [
                     {"equipment": "Main Engine", "interval": "500 hours", "action": "replace"}
-                ]
+                ],
+                "force_reprocess": False
             }
         }
 
 
-@app.post("/graphrag/query", tags=["GraphRAG"])
+@app.post("/graphrag/query", tags=["Internal"], include_in_schema=False)
 @limiter.limit("100/minute")
 async def graphrag_query_endpoint(
     request: Request,
@@ -895,7 +1007,7 @@ async def graphrag_query_endpoint(
         raise HTTPException(status_code=500, detail=f"GraphRAG query failed: {str(e)}")
 
 
-@app.post("/graphrag/populate", tags=["GraphRAG"])
+@app.post("/graphrag/populate", tags=["Internal"], include_in_schema=False)
 @limiter.limit("200/minute")
 async def graphrag_populate_endpoint(
     request: Request,
@@ -945,7 +1057,8 @@ async def graphrag_populate_endpoint(
             chunk_id=populate_request.chunk_id,
             entities=populate_request.entities,
             relationships=populate_request.relationships,
-            maintenance_facts=populate_request.maintenance
+            maintenance_facts=populate_request.maintenance,
+            force_reprocess=populate_request.force_reprocess
         )
 
         logger.info(
@@ -970,7 +1083,7 @@ async def graphrag_populate_endpoint(
         raise HTTPException(status_code=500, detail=f"GraphRAG population failed: {str(e)}")
 
 
-@app.get("/graphrag/stats", tags=["GraphRAG"])
+@app.get("/graphrag/stats", tags=["Internal"], include_in_schema=False)
 @limiter.limit("60/minute")
 async def graphrag_stats_endpoint(
     request: Request,

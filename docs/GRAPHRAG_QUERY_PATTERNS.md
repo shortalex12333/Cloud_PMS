@@ -2,6 +2,87 @@
 
 This document defines the query patterns used by the Search Engine Brain (Worker 6) to transform user natural language queries into actionable GraphRAG queries.
 
+---
+
+## API Architecture
+
+**GraphRAG is an internal engine, NOT a public API surface.**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                                  │
+│                                                                   │
+│   Search Bar ──────────────► POST /v1/search                     │
+│   Action Buttons ──────────► POST /v1/actions/execute            │
+└──────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                    microaction_service.py                         │
+│                                                                   │
+│   POST /v1/search ─────► graphrag_query.query() ─────► Cards     │
+│                                     │                             │
+│                                     ▼                             │
+│                         - Entity Resolution                       │
+│                         - Intent Detection                        │
+│                         - Graph Traversal                         │
+│                         - Card Building                          │
+│                         - Action Attachment                      │
+└──────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                          RESPONSE                                 │
+│                                                                   │
+│   {                                                              │
+│     "query": "...",                                              │
+│     "intent": "diagnose_fault",                                  │
+│     "entities": [...],                                           │
+│     "cards": [                                                   │
+│       {                                                          │
+│         "type": "fault",                                         │
+│         "title": "Fault E047",                                   │
+│         "actions": [                                             │
+│           {                                                      │
+│             "label": "Create Work Order",                        │
+│             "action": "create_work_order",                       │
+│             "endpoint": "/v1/work-orders/create",               │
+│             "method": "POST",                                    │
+│             "payload_template": {...}                            │
+│           }                                                      │
+│         ]                                                        │
+│       }                                                          │
+│     ]                                                            │
+│   }                                                              │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Public Endpoints (Frontend Use)
+
+| Endpoint | Purpose | Spec |
+|----------|---------|------|
+| `POST /v1/search` | Unified search bar | search-engine-spec.md |
+| `POST /v1/actions/execute` | All mutations | action-endpoint-contract.md |
+
+### Internal Endpoints (n8n/Admin Only)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /graphrag/populate` | n8n workflow: populate graph from GPT extraction |
+| `POST /graphrag/query` | Internal: DO NOT call directly, use /v1/search |
+| `GET /graphrag/stats` | Admin: graph statistics |
+
+### Key Files
+
+- `api/graphrag_query.py` - Internal GraphRAG query service
+- `api/graphrag_population.py` - Graph population from n8n
+- `api/microaction_service.py` - Public API layer
+- `micro-action-catalogue.md` - Action definitions
+- `search-engine-spec.md` - Card types (Section 8)
+- `action-endpoint-contract.md` - Mutation routing
+
+---
+
 ## Query Intent Classification
 
 The system classifies user queries into intent categories, each with specific query patterns:
