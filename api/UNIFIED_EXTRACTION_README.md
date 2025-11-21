@@ -7,11 +7,10 @@
 This is the **single entry point** for all extraction requests in CelesteOS.
 
 ```bash
-# Example Request
+# Example Request (2 headers only)
 curl -X POST https://extract.core.celeste7.ai/extract \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "X-Celeste-Key: YOUR_API_KEY" \
   -H "X-Yacht-Signature: YOUR_YACHT_SIGNATURE" \
   -d '{"query": "create work order for bilge pump"}'
 ```
@@ -175,16 +174,17 @@ The unified extraction pipeline combines three isolated modules:
 
 **Description:** Unified extraction endpoint combining all modules - **This is the single entry point for all extraction requests**
 
-**Security:**
-- ✅ Multi-layer authentication (API key + JWT + yacht signature)
+**Security (2 headers only - clean & minimal):**
+- ✅ JWT authentication (Supabase) - auto-expires, no manual rotation
+- ✅ Yacht signature verification - proof of yacht ownership
 - ✅ Rate limiting (100 req/min per IP)
 - ✅ Strict CORS
+- ✅ No shared secrets to manage
 
 **Request Headers:**
 ```http
 Content-Type: application/json
 Authorization: Bearer <JWT_TOKEN>
-X-Celeste-Key: <API_KEY>
 X-Yacht-Signature: <YACHT_SIGNATURE>
 ```
 
@@ -359,12 +359,12 @@ const response = await fetch('https://extract.core.celeste7.ai/extract_microacti
 **New Approach:**
 ```javascript
 // NEW - Using /extract (unified) - PRIMARY ENDPOINT
+// Only 2 headers needed - clean & minimal
 const response = await fetch('https://extract.core.celeste7.ai/extract', {
   method: 'POST',
   headers: {
-    'Authorization': `Bearer ${jwt_token}`,
-    'X-Celeste-Key': api_key,
-    'X-Yacht-Signature': yacht_signature
+    'Authorization': `Bearer ${jwt_token}`,      // Supabase JWT
+    'X-Yacht-Signature': yacht_signature        // sha256(yacht_id + salt)
   },
   body: JSON.stringify({ query: "create work order for bilge pump" })
 });
@@ -390,12 +390,11 @@ const response = await fetch('https://extract.core.celeste7.ai/extract', {
 **Method:** `POST`
 **Authentication:** Custom
 
-**Headers:**
+**Headers (2 only - clean & minimal):**
 ```json
 {
   "Content-Type": "application/json",
   "Authorization": "Bearer {{$node['Supabase'].json['access_token']}}",
-  "X-Celeste-Key": "{{$env['CELESTE_API_KEY']}}",
   "X-Yacht-Signature": "{{$node['GenerateSignature'].json['signature']}}"
 }
 ```
@@ -419,10 +418,10 @@ const response = await fetch('https://extract.core.celeste7.ai/extract', {
 
 **n8n Example cURL:**
 ```bash
+# Only 2 headers needed - clean & minimal
 curl -X POST https://extract.core.celeste7.ai/extract \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT_TOKEN" \
-  -H "X-Celeste-Key: $CELESTE_API_KEY" \
   -H "X-Yacht-Signature: $YACHT_SIGNATURE" \
   -d '{
     "query": "create work order for bilge pump",
@@ -445,32 +444,48 @@ curl -X POST https://extract.core.celeste7.ai/extract \
 
 ## Security
 
-### Multi-Layer Authentication
+### Two-Layer Authentication (Clean & Minimal)
 
-1. **API Key Validation** (`X-Celeste-Key` header)
-   - Validates against `CELESTE_API_KEY` environment variable
+**Headers Required:**
+```http
+Authorization: Bearer <supabase_jwt>
+X-Yacht-Signature: <sha256_signature>
+```
 
-2. **JWT Validation** (`Authorization: Bearer` header)
-   - Decodes and validates Supabase JWT
-   - Extracts `user_id` and `yacht_id` from claims
+1. **JWT Validation** (`Authorization: Bearer` header)
+   - Validates Supabase JWT (auto-expires, no manual rotation needed)
+   - Extracts `user_id` and `yacht_id` from JWT claims
+   - Ensures user is authenticated
 
-3. **Yacht Signature Verification** (`X-Yacht-Signature` header)
+2. **Yacht Signature Verification** (`X-Yacht-Signature` header)
    - Verifies SHA256 hash: `sha256(yacht_id + YACHT_SALT)`
-   - Ensures request comes from authenticated yacht
+   - Ensures request comes from authorized yacht
+   - Prevents cross-yacht unauthorized access
+
+**Benefits:**
+- ✅ No shared secrets (API keys) to manage
+- ✅ JWT auto-expires (15min-1hr depending on Supabase config)
+- ✅ Supabase handles token refresh automatically
+- ✅ User identity built into JWT
+- ✅ Yacht ownership verified cryptographically
 
 ### Development Mode
 
 If security secrets are not configured, the service runs in **development mode**:
-- ✅ API key check skipped
-- ✅ JWT verification skipped (uses dev_user, dev_yacht)
-- ✅ Yacht signature check skipped
+- ⚠️ JWT verification skipped (uses dev_user, dev_yacht)
+- ⚠️ Yacht signature check skipped
 - ⚠️ Logs warning messages
 
 **Set Secrets in Render Dashboard:**
 ```bash
-CELESTE_API_KEY=<your-api-key>
-SUPABASE_JWT_SECRET=<supabase-jwt-secret>
-YACHT_SALT=<random-salt>
+SUPABASE_JWT_SECRET=<supabase-jwt-secret>  # For JWT validation
+YACHT_SALT=<random-salt>                   # For signature verification
+```
+
+**Generate YACHT_SALT:**
+```bash
+openssl rand -hex 32
+# Result: 64-character random hex string
 ```
 
 ---
@@ -486,14 +501,16 @@ YACHT_SALT=<random-salt>
 
 **Environment Variables:**
 ```yaml
+# Runtime
 PYTHON_VERSION: "3.11.8"
 ENVIRONMENT: "production"
 LOG_LEVEL: "info"
 AI_FALLBACK_THRESHOLD: "0.75"
 MIN_OUTPUT_CONFIDENCE: "0.70"
-CELESTE_API_KEY: <set in dashboard>
-SUPABASE_JWT_SECRET: <set in dashboard>
-YACHT_SALT: <set in dashboard>
+
+# Security (2 secrets only)
+SUPABASE_JWT_SECRET: <set in dashboard>  # For JWT validation
+YACHT_SALT: <set in dashboard>           # For yacht signature verification
 ```
 
 **Health Check:** `GET https://extract.core.celeste7.ai/health`

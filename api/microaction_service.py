@@ -97,9 +97,8 @@ app.add_middleware(
     allow_methods=["POST", "GET"],
     allow_headers=[
         "Content-Type",
-        "Authorization",
-        "X-Yacht-Signature",
-        "X-Celeste-Key"
+        "Authorization",      # JWT from Supabase
+        "X-Yacht-Signature"   # Yacht ownership proof
     ],
 )
 
@@ -126,28 +125,22 @@ request_counter = 0
 async def verify_security(
     request: Request,
     authorization: str = Header(None),
-    x_yacht_signature: str = Header(None),
-    x_celeste_key: str = Header(None)
+    x_yacht_signature: str = Header(None)
 ) -> Dict:
     """
-    Multi-layer security verification:
-    1. API Key validation
-    2. JWT validation and decoding
-    3. Yacht signature verification
+    Two-layer security verification (clean & minimal):
+    1. JWT validation (user authentication via Supabase)
+    2. Yacht signature verification (yacht ownership proof)
 
     Returns: {"user_id": str, "yacht_id": str}
+
+    No shared secrets. JWT auto-expires. Secure by default.
     """
 
-    # Layer 1: API Key
-    expected_api_key = os.getenv("CELESTE_API_KEY")
-    if expected_api_key and x_celeste_key != expected_api_key:
-        logger.warning("Invalid API key attempt")
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
-    # Layer 2: JWT
+    # Layer 1: JWT (User Authentication)
     if not authorization or not authorization.startswith("Bearer "):
         logger.warning("Missing or invalid JWT")
-        raise HTTPException(status_code=401, detail="Missing JWT")
+        raise HTTPException(status_code=401, detail="Missing JWT token")
 
     token = authorization.replace("Bearer ", "")
     try:
@@ -161,35 +154,41 @@ async def verify_security(
             user_id = payload.get("sub")
             yacht_id = payload.get("yacht_id")  # Custom claim
 
-            if not user_id or not yacht_id:
-                raise HTTPException(status_code=401, detail="Invalid JWT payload")
+            if not user_id:
+                raise HTTPException(status_code=401, detail="Invalid JWT payload: missing user_id")
+            if not yacht_id:
+                raise HTTPException(status_code=401, detail="Invalid JWT payload: missing yacht_id")
         else:
             # Development mode: skip JWT verification
-            logger.warning("JWT verification skipped (no SUPABASE_JWT_SECRET)")
+            logger.warning("⚠️  JWT verification skipped (no SUPABASE_JWT_SECRET) - DEV MODE")
             user_id = "dev_user"
             yacht_id = "dev_yacht"
     except jwt.ExpiredSignatureError:
-        logger.warning("Expired JWT")
-        raise HTTPException(status_code=401, detail="JWT expired")
+        logger.warning("Expired JWT token")
+        raise HTTPException(status_code=401, detail="JWT token expired")
     except jwt.InvalidTokenError as e:
-        logger.warning(f"Invalid JWT: {e}")
-        raise HTTPException(status_code=401, detail="Invalid JWT")
+        logger.warning(f"Invalid JWT token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid JWT token")
 
-    # Layer 3: Yacht Signature
+    # Layer 2: Yacht Signature (Yacht Ownership Proof)
     yacht_salt = os.getenv("YACHT_SALT")
     if yacht_salt:
+        if not x_yacht_signature:
+            logger.warning(f"Missing yacht signature for user_id={user_id}")
+            raise HTTPException(status_code=403, detail="Missing yacht signature")
+
         expected_sig = hashlib.sha256(
             f"{yacht_id}{yacht_salt}".encode()
         ).hexdigest()
 
         if x_yacht_signature != expected_sig:
-            logger.warning(f"Invalid yacht signature for yacht_id: {yacht_id}")
+            logger.warning(f"Invalid yacht signature for yacht_id={yacht_id}, user_id={user_id}")
             raise HTTPException(status_code=403, detail="Invalid yacht signature")
     else:
         # Development mode: skip signature verification
-        logger.warning("Yacht signature verification skipped (no YACHT_SALT)")
+        logger.warning("⚠️  Yacht signature verification skipped (no YACHT_SALT) - DEV MODE")
 
-    logger.info(f"Authenticated: user_id={user_id}, yacht_id={yacht_id}")
+    logger.info(f"✅ Authenticated: user_id={user_id}, yacht_id={yacht_id}")
     return {"user_id": user_id, "yacht_id": yacht_id}
 
 
@@ -430,8 +429,10 @@ async def startup_event():
         logger.info(f"✓ Configuration: AI fallback threshold = {config.ai_fallback_threshold}")
 
         # Security status
-        security_enabled = bool(os.getenv("CELESTE_API_KEY"))
-        logger.info(f"✓ Security: {'ENABLED' if security_enabled else 'DISABLED (dev mode)'}")
+        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        yacht_salt = os.getenv("YACHT_SALT")
+        security_enabled = bool(jwt_secret and yacht_salt)
+        logger.info(f"✓ Security: {'ENABLED (JWT + Yacht Signature)' if security_enabled else 'DISABLED (dev mode)'}")
 
         logger.info("✅ Service ready to accept requests")
 
@@ -490,10 +491,9 @@ async def unified_extract(
     - Extracts maritime entities (Module B: equipment, faults, measurements)
     - Canonicalizes and weights entities (Module C: normalization + importance)
 
-    **Security:**
-    - Requires valid API key (X-Celeste-Key)
-    - Requires valid JWT (Authorization: Bearer)
-    - Requires yacht signature (X-Yacht-Signature)
+    **Security (2 headers only):**
+    - Authorization: Bearer <supabase_jwt> (user authentication)
+    - X-Yacht-Signature: <sha256_signature> (yacht ownership proof)
 
     **Example Inputs:**
     - "create work order for bilge pump" → action + entity
@@ -563,9 +563,8 @@ async def extract_microactions(
     Returns list of canonical action names (e.g., ["create_work_order", "add_to_handover"]).
 
     **Security:**
-    - Requires valid API key (X-Celeste-Key)
-    - Requires valid JWT (Authorization: Bearer)
-    - Requires yacht signature (X-Yacht-Signature)
+    - Authorization: Bearer <supabase_jwt>
+    - X-Yacht-Signature: <sha256_signature>
 
     **Examples:**
     - "create work order" → ["create_work_order"]
@@ -707,11 +706,11 @@ async def health_check():
 
     return HealthResponse(
         status="healthy" if extractor is not None else "unhealthy",
-        version="1.0.1",
+        version="2.0.0",
         patterns_loaded=actions_count,
         total_requests=request_counter,
         uptime_seconds=uptime,
-        security_enabled=bool(os.getenv("CELESTE_API_KEY"))
+        security_enabled=bool(os.getenv("SUPABASE_JWT_SECRET") and os.getenv("YACHT_SALT"))
     )
 
 
@@ -754,7 +753,7 @@ async def root():
         "service": "CelesteOS Micro-Action Extraction API",
         "version": "2.0.0",
         "status": "running",
-        "security": "multi-layer (API key + JWT + yacht signature)",
+        "security": "JWT + Yacht Signature (2 headers only)",
         "docs": "/docs",
         "health": "/health",
         "endpoints": {
@@ -768,6 +767,14 @@ async def root():
             "module_b": "Maritime entity extractor (equipment, faults, measurements)",
             "module_c": "Canonicalizer (normalization + weighting)",
             "pipeline": "Unified extraction combining all modules"
+        },
+        "auth": {
+            "headers": {
+                "Authorization": "Bearer <supabase_jwt>",
+                "X-Yacht-Signature": "sha256(yacht_id + salt)"
+            },
+            "no_shared_secrets": True,
+            "jwt_auto_expires": True
         }
     }
 
