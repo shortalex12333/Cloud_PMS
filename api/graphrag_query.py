@@ -31,8 +31,10 @@ GUARDRAILS:
 
 import os
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from enum import Enum
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 from unified_extraction_pipeline import get_pipeline
 
@@ -43,6 +45,81 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# RESOLUTION & SCORING (4-Step Pipeline)
+# ============================================================================
+# Priority order:
+# 1. Regex/canonical rules (existing patterns from Modules A+B)
+# 2. resolve_entity_alias() / resolve_symptom_alias()
+# 3. Graph hints (connected nodes, edges)
+# 4. Vector similarity (fallback)
+# ============================================================================
+
+@dataclass
+class ResolutionScore:
+    """Confidence scores for entity resolution"""
+    regex_score: float = 0.0      # Step 1: Pattern match confidence
+    alias_score: float = 0.0      # Step 2: DB alias resolution confidence
+    graph_score: float = 0.0      # Step 3: Graph connectivity score
+    vector_score: float = 0.0     # Step 4: Embedding similarity score
+
+    @property
+    def total(self) -> float:
+        """Weighted total score"""
+        # Weights: regex > alias > graph > vector
+        return (
+            self.regex_score * 0.40 +
+            self.alias_score * 0.30 +
+            self.graph_score * 0.20 +
+            self.vector_score * 0.10
+        )
+
+    @property
+    def is_confident(self) -> bool:
+        """True if resolution is confident enough for write actions"""
+        return self.total >= 0.6 or self.regex_score >= 0.8
+
+
+@dataclass
+class ResultScore:
+    """Scoring for search result ranking"""
+    text_score: float = 0.0       # Lexical + embedding similarity
+    entity_score: float = 0.0     # Exact match on equipment_id, symptom_code, etc
+    graph_score: float = 0.0      # Connectivity to main entities
+    recency_score: float = 0.0    # Newer items get boost for history queries
+
+    @property
+    def total(self) -> float:
+        """Weighted total score for ranking"""
+        return (
+            self.text_score * 0.30 +
+            self.entity_score * 0.35 +
+            self.graph_score * 0.20 +
+            self.recency_score * 0.15
+        )
+
+
+@dataclass
+class ResolvedEntity:
+    """Entity with resolution metadata"""
+    text: str
+    type: str
+    canonical: str
+    canonical_id: Optional[str] = None
+    symptom_code: Optional[str] = None
+    score: ResolutionScore = field(default_factory=ResolutionScore)
+
+    def to_dict(self) -> Dict:
+        return {
+            "text": self.text,
+            "type": self.type,
+            "canonical": self.canonical,
+            "canonical_id": self.canonical_id,
+            "symptom_code": self.symptom_code,
+            "confidence": self.score.total
+        }
 
 
 # ============================================================================
@@ -257,27 +334,97 @@ class GraphRAGQueryService:
         return QueryIntent.GENERAL_SEARCH
 
     def _resolve_entities(self, yacht_id: str, extraction: Dict) -> List[Dict]:
-        """Resolve entities using DB helper functions"""
+        """
+        Resolve entities using 4-step priority pipeline.
+
+        RESOLUTION PIPELINE:
+        1. Regex/canonical rules (from Module B extraction) - highest priority
+        2. resolve_entity_alias() / resolve_symptom_alias() - database lookup
+        3. Graph hints - check graph_nodes for matching labels
+        4. Vector similarity - fallback (not yet implemented)
+
+        Returns List[Dict] with confidence scores for ranking.
+        """
         resolved = []
         for entity in extraction.get("canonical_entities", []):
-            r = {
-                "text": entity.get("value", ""),
-                "type": entity.get("type", ""),
-                "canonical": entity.get("canonical", ""),
-                "canonical_id": None
-            }
+            score = ResolutionScore()
             etype = entity.get("type", "")
             canonical = entity.get("canonical", "")
+            value = entity.get("value", "")
 
+            # STEP 1: Regex/canonical rules (already applied in Module B)
+            # The confidence from extraction IS the regex score
+            regex_confidence = entity.get("confidence", 0.0)
+            score.regex_score = regex_confidence
+
+            resolved_entity = ResolvedEntity(
+                text=value,
+                type=etype,
+                canonical=canonical,
+                score=score
+            )
+
+            # STEP 2: Database alias resolution
             if etype in ("equipment", "part", "fault_code", "supplier"):
-                r["canonical_id"] = self._resolve_entity_alias(yacht_id, etype, canonical)
+                canonical_id = self._resolve_entity_alias(yacht_id, etype, canonical)
+                if canonical_id:
+                    resolved_entity.canonical_id = canonical_id
+                    score.alias_score = 0.9  # High confidence on DB match
+                else:
+                    # Try with original value as fallback
+                    canonical_id = self._resolve_entity_alias(yacht_id, etype, value)
+                    if canonical_id:
+                        resolved_entity.canonical_id = canonical_id
+                        score.alias_score = 0.7  # Lower confidence on value match
+
             elif etype in ("maritime_term", "symptom"):
-                code = self._resolve_symptom_alias(entity.get("value", ""))
+                code = self._resolve_symptom_alias(value)
                 if code:
-                    r["canonical_id"] = code
-                    r["symptom_code"] = code
-            resolved.append(r)
+                    resolved_entity.canonical_id = code
+                    resolved_entity.symptom_code = code
+                    score.alias_score = 0.85
+
+            # STEP 3: Graph hints (if no alias match, check graph_nodes)
+            if not resolved_entity.canonical_id and self.client:
+                graph_id = self._resolve_via_graph(yacht_id, etype, value, canonical)
+                if graph_id:
+                    resolved_entity.canonical_id = graph_id
+                    score.graph_score = 0.6  # Lower confidence on graph-only match
+
+            # STEP 4: Vector similarity (placeholder for future)
+            # If still no match, could query embeddings here
+            # score.vector_score = self._resolve_via_vector(yacht_id, value)
+
+            resolved.append(resolved_entity.to_dict())
+
         return resolved
+
+    def _resolve_via_graph(self, yacht_id: str, etype: str, value: str, canonical: str) -> Optional[str]:
+        """
+        Step 3: Try to resolve entity via graph_nodes label matching.
+        Used when alias resolution fails.
+        """
+        if not self.client:
+            return None
+
+        try:
+            # Search graph_nodes for matching labels
+            type_map = {"equipment": "equipment", "part": "part", "fault_code": "fault", "symptom": "symptom"}
+            node_type = type_map.get(etype, etype)
+
+            result = self.client.table("graph_nodes").select("canonical_id").eq(
+                "yacht_id", yacht_id
+            ).eq("node_type", node_type).or_(
+                f"label.ilike.%{value}%,label.ilike.%{canonical}%"
+            ).limit(1).execute()
+
+            if result.data and result.data[0].get("canonical_id"):
+                return result.data[0]["canonical_id"]
+            return None
+
+        except Exception as e:
+            logger.debug(f"Graph resolution failed for {value}: {e}")
+            return None
 
     def _resolve_entity_alias(self, yacht_id: str, etype: str, alias: str) -> Optional[str]:
         if not self.client:
