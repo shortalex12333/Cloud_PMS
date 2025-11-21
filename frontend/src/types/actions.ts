@@ -987,7 +987,7 @@ export function requiresReason(action: MicroAction): boolean {
  */
 export function canPerformAction(
   action: MicroAction,
-  userRole: 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew'
+  userRole: 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior'
 ): boolean {
   const metadata = ACTION_REGISTRY[action];
   if (!metadata.role_restricted) return true;
