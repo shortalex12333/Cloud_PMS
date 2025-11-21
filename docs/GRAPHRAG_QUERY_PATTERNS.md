@@ -83,6 +83,384 @@ This document defines the query patterns used by the Search Engine Brain (Worker
 
 ---
 
+## GOLD STANDARD: End-to-End Worked Example
+
+**Query**: "Engine is overheating, show historic data from the 2nd engineer"
+
+This is the reference implementation for the `equipment_history` intent with person filtering.
+
+---
+
+### Step 1: Request Body
+
+```http
+POST /v1/search HTTP/1.1
+Host: extract.core.celeste7.ai
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+X-Yacht-Signature: sha256(yacht_id + salt)
+Content-Type: application/json
+
+{
+  "query": "Engine is overheating, show historic data from the 2nd engineer"
+}
+```
+
+**yacht_id** is extracted from the JWT payload (`payload.yacht_id`).
+
+---
+
+### Step 2: Intent Classification & Entity Extraction
+
+The pipeline runs three modules:
+
+#### Module A: Action Detection
+```python
+# Pattern matched: r"show\s+(historic|history|historical)\s+(data|records?)"
+# Confidence: 0.90
+{
+    "action": "view_history",
+    "confidence": 0.90,
+    "verb": "show",
+    "matched_text": "show historic data"
+}
+```
+
+#### Module B: Entity Extraction
+```python
+# Entities extracted:
+[
+    {"type": "equipment", "value": "Engine", "canonical": "MAIN_ENGINE", "confidence": 0.92},
+    {"type": "maritime_term", "value": "overheating", "canonical": "TEMPERATURE_HIGH", "confidence": 0.80},
+    {"type": "person", "value": "2nd engineer", "canonical": "2ND_ENGINEER", "confidence": 0.85}
+]
+```
+
+#### Module C: Canonicalization
+```python
+# Canonical mappings:
+{
+    "MAIN_ENGINE": "equipment",      # Resolved via resolve_entity_alias()
+    "TEMPERATURE_HIGH": "symptom",   # Resolved via resolve_symptom_alias()
+    "2ND_ENGINEER": "person"         # Used for filtering
+}
+```
+
+#### Intent Determination
+```python
+# microactions[0].action = "view_history" → intent_map["view_history"] = EQUIPMENT_HISTORY
+intent = QueryIntent.EQUIPMENT_HISTORY
+```
+
+---
+
+### Step 3: Entity Resolution (Database Calls)
+
+```sql
+-- 1. Resolve equipment alias → canonical_id
+SELECT resolve_entity_alias(
+    p_yacht_id := 'yacht-uuid-123',
+    p_entity_type := 'equipment',
+    p_alias_text := 'MAIN_ENGINE'
+);
+-- Returns: 'equipment-uuid-456'
+
+-- 2. Resolve symptom alias → symptom_code
+SELECT resolve_symptom_alias(
+    p_alias_text := 'overheating'
+);
+-- Returns: 'OVERHEAT'
+```
+
+---
+
+### Step 4: Query Execution (SQL)
+
+#### Query 4.1: Work Orders (filtered by person + symptom)
+```sql
+SELECT
+    wo.id, wo.title, wo.description, wo.status,
+    wo.created_by, wo.created_at, wo.resolution, wo.equipment_id
+FROM work_orders wo
+WHERE wo.yacht_id = 'yacht-uuid-123'
+  AND wo.equipment_id = 'equipment-uuid-456'
+  AND wo.created_by ILIKE '%2nd engineer%'
+  AND wo.description ILIKE '%overheating%'
+ORDER BY wo.created_at DESC
+LIMIT 10;
+```
+
+#### Query 4.2: Handover Items (filtered by person + symptom)
+```sql
+SELECT
+    hi.id, hi.summary, hi.content, hi.author, hi.created_at, hi.equipment_id
+FROM handover_items hi
+WHERE hi.yacht_id = 'yacht-uuid-123'
+  AND hi.equipment_id = 'equipment-uuid-456'
+  AND hi.author ILIKE '%2nd engineer%'
+  AND hi.content ILIKE '%overheating%'
+ORDER BY hi.created_at DESC
+LIMIT 5;
+```
+
+#### Query 4.3: Related Documents (symptom mentions)
+```sql
+SELECT DISTINCT
+    dc.id, dc.document_id, dc.content, dc.section_title,
+    dc.page_number, dc.storage_path
+FROM document_chunks dc
+WHERE dc.yacht_id = 'yacht-uuid-123'
+  AND dc.content ILIKE '%overheating%'
+ORDER BY dc.created_at DESC
+LIMIT 5;
+```
+
+#### Query 4.4: Graph Traversal (equipment → symptom edges)
+```sql
+-- Find historic symptom occurrences via graph
+SELECT
+    ge.created_at,
+    gn_from.label AS equipment_label,
+    gn_to.label AS symptom_label,
+    ge.source_chunk_id,
+    ge.confidence
+FROM graph_edges ge
+JOIN graph_nodes gn_from ON ge.from_node_id = gn_from.id
+JOIN graph_nodes gn_to ON ge.to_node_id = gn_to.id
+WHERE ge.yacht_id = 'yacht-uuid-123'
+  AND ge.edge_type = 'HAS_SYMPTOM'
+  AND gn_from.canonical_id = 'equipment-uuid-456'
+  AND (gn_to.label ILIKE '%overheat%' OR gn_to.canonical_id = 'OVERHEAT')
+ORDER BY ge.created_at DESC
+LIMIT 10;
+```
+
+---
+
+### Step 5: Final JSON Response
+
+```json
+{
+  "query": "Engine is overheating, show historic data from the 2nd engineer",
+  "intent": "equipment_history",
+  "entities": [
+    {
+      "text": "Engine",
+      "type": "equipment",
+      "canonical": "MAIN_ENGINE",
+      "canonical_id": "equipment-uuid-456"
+    },
+    {
+      "text": "overheating",
+      "type": "maritime_term",
+      "canonical": "TEMPERATURE_HIGH",
+      "canonical_id": "OVERHEAT",
+      "symptom_code": "OVERHEAT"
+    },
+    {
+      "text": "2nd engineer",
+      "type": "person",
+      "canonical": "2ND_ENGINEER",
+      "canonical_id": null
+    }
+  ],
+  "cards": [
+    {
+      "type": "equipment",
+      "title": "Engine",
+      "equipment_id": "equipment-uuid-456",
+      "symptom_detected": "overheating",
+      "symptom_code": "OVERHEAT",
+      "person_filter": "2ND_ENGINEER",
+      "actions": [
+        {
+          "label": "View History",
+          "action": "view_history",
+          "endpoint": "/v1/work-orders/history",
+          "method": "GET",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "equipment-uuid-456"
+          },
+          "constraints": {}
+        },
+        {
+          "label": "Create Work Order",
+          "action": "create_work_order",
+          "endpoint": "/v1/work-orders/create",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "equipment-uuid-456",
+            "title": "",
+            "description": "",
+            "priority": ""
+          },
+          "constraints": {"requires_equipment_id": true}
+        },
+        {
+          "label": "Add Note",
+          "action": "add_note",
+          "endpoint": "/v1/notes/create",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "equipment-uuid-456",
+            "note_text": ""
+          },
+          "constraints": {"requires_equipment_id": true, "requires_note_text": true}
+        },
+        {
+          "label": "Add to Handover",
+          "action": "add_to_handover",
+          "endpoint": "/v1/handover/add-item",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "equipment-uuid-456",
+            "summary_text": ""
+          },
+          "constraints": {}
+        }
+      ]
+    },
+    {
+      "type": "work_order",
+      "title": "Port ME High Temp Alarm Investigation",
+      "work_order_id": "wo-uuid-789",
+      "status": "completed",
+      "equipment_id": "equipment-uuid-456",
+      "created_by": "2nd Engineer - John Smith",
+      "created_at": "2024-08-15T10:30:00Z",
+      "resolution": "Cleaned heat exchanger, replaced zinc anodes",
+      "actions": [
+        {
+          "label": "View History",
+          "action": "view_history",
+          "endpoint": "/v1/work-orders/history",
+          "method": "GET",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "equipment-uuid-456"
+          },
+          "constraints": {}
+        },
+        {
+          "label": "Add to Handover",
+          "action": "add_to_handover",
+          "endpoint": "/v1/handover/add-item",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "equipment-uuid-456",
+            "summary_text": ""
+          },
+          "constraints": {}
+        }
+      ]
+    },
+    {
+      "type": "handover",
+      "title": "Engine temp issue - ongoing",
+      "handover_id": "hi-uuid-101",
+      "author": "2nd Engineer - John Smith",
+      "content": "ME overheating at 1450 RPM noted. Scheduled heat exchanger inspection...",
+      "created_at": "2024-08-14T18:00:00Z",
+      "actions": [
+        {
+          "label": "Add to Handover",
+          "action": "add_to_handover",
+          "endpoint": "/v1/handover/add-item",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "equipment_id": "",
+            "summary_text": ""
+          },
+          "constraints": {}
+        }
+      ]
+    },
+    {
+      "type": "document_chunk",
+      "title": "Troubleshooting - High Temperature Alarms",
+      "document_id": "doc-uuid-202",
+      "page_number": 147,
+      "text_preview": "If engine temperature exceeds 95°C at normal RPM, check: 1) Coolant level 2) Heat exchanger fouling 3) Thermostat operation...",
+      "storage_path": "/manuals/caterpillar-3512/troubleshooting.pdf",
+      "actions": [
+        {
+          "label": "Open Document",
+          "action": "open_document",
+          "endpoint": "/v1/documents/open",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "storage_path": "/manuals/caterpillar-3512/troubleshooting.pdf"
+          },
+          "constraints": {}
+        },
+        {
+          "label": "Add to Handover",
+          "action": "add_document_to_handover",
+          "endpoint": "/v1/handover/add-document",
+          "method": "POST",
+          "payload_template": {
+            "yacht_id": "yacht-uuid-123",
+            "document_id": "doc-uuid-202",
+            "context": ""
+          },
+          "constraints": {}
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "entity_count": 3,
+    "card_count": 4
+  }
+}
+```
+
+---
+
+### Step 6: Frontend Action Execution
+
+When user clicks "Create Work Order" on the equipment card:
+
+```http
+POST /v1/actions/execute HTTP/1.1
+Host: api.celeste7.ai
+Authorization: Bearer <jwt>
+X-Yacht-Signature: <signature>
+Content-Type: application/json
+
+{
+  "action": "create_work_order",
+  "payload": {
+    "yacht_id": "yacht-uuid-123",
+    "equipment_id": "equipment-uuid-456",
+    "title": "Engine Overheating Investigation",
+    "description": "Engine is overheating, show historic data from the 2nd engineer",
+    "priority": "high"
+  }
+}
+```
+
+**All mutations flow through `/v1/actions/execute`** - the frontend NEVER calls individual endpoints directly.
+
+---
+
+### Confidence Thresholds Applied
+
+| Stage | Threshold | Applied |
+|-------|-----------|---------|
+| Action detection | min_confidence >= 0.4 | `view_history` @ 0.90 ✓ |
+| Entity extraction | N/A (all extracted) | 3 entities returned |
+| Entity resolution | N/A (best match) | 2/3 resolved to canonical_id |
+| Card generation | N/A (all shown) | 4 cards returned |
+
+---
+
 ## Query Intent Classification
 
 The system classifies user queries into intent categories, each with specific query patterns:
@@ -586,3 +964,227 @@ Each query pattern uses confidence scoring based on:
 3. **Multiple actions are common** - Most queries return informational action + suggested mutation
 4. **Mutations require confirmation** - Set `requires_confirmation: true` for any data changes
 5. **Context preservation** - Include source chunk IDs for audit trail
+
+---
+
+## n8n Graph_RAG_Digest Integration
+
+The `Graph_RAG_Digest` n8n workflow calls `POST /graphrag/populate` to populate the graph tables after GPT extraction.
+
+### Workflow Flow
+
+```
+┌─────────────────────┐
+│  Index_docs         │  Chunks document into document_chunks
+│  (n8n workflow)     │  Sets extraction_status = 'pending'
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Graph_RAG_Digest   │  Reads chunks with status='pending'
+│  (n8n workflow)     │  Calls GPT for entity/relationship extraction
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  POST /graphrag/    │  Population service
+│  populate           │  Resolves entities → inserts graph tables
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Database Updates   │
+│  - graph_nodes      │  Entities with canonical_id
+│  - graph_edges      │  Relationships with source_chunk_id
+│  - maintenance_     │  Extracted maintenance facts
+│    templates        │
+│  - document_chunks  │  extraction_status = success/failed/partial
+└─────────────────────┘
+```
+
+### Request Body Format
+
+```json
+POST /graphrag/populate HTTP/1.1
+Host: extract.core.celeste7.ai
+Authorization: Bearer <jwt_with_yacht_id>
+X-Yacht-Signature: <signature>
+Content-Type: application/json
+
+{
+  "chunk_id": "uuid-chunk-456",
+  "entities": [
+    {
+      "label": "Main Engine",
+      "type": "equipment",
+      "confidence": 0.95,
+      "properties": {
+        "oem": "Caterpillar",
+        "model": "3512"
+      }
+    },
+    {
+      "label": "Oil Filter",
+      "type": "part",
+      "confidence": 0.90,
+      "properties": {
+        "part_number": "1R-0750"
+      }
+    },
+    {
+      "label": "overheating",
+      "type": "symptom",
+      "confidence": 0.85
+    }
+  ],
+  "relationships": [
+    {
+      "from": "Main Engine",
+      "to": "Oil Filter",
+      "type": "uses_part",
+      "confidence": 0.88
+    },
+    {
+      "from": "Main Engine",
+      "to": "overheating",
+      "type": "has_symptom",
+      "confidence": 0.82
+    }
+  ],
+  "maintenance": [
+    {
+      "equipment": "Main Engine",
+      "part": "Oil Filter",
+      "interval": "500 hours",
+      "action": "replace",
+      "action_description": "Replace engine oil and filter",
+      "tools": ["Filter wrench", "Oil drain pan"]
+    }
+  ],
+  "force_reprocess": false
+}
+```
+
+### Response Format
+
+```json
+{
+  "success": true,
+  "status": "success",
+  "chunk_id": "uuid-chunk-456",
+  "nodes_inserted": 3,
+  "nodes_resolved": 2,
+  "edges_inserted": 2,
+  "maintenance_inserted": 1,
+  "errors": []
+}
+```
+
+### Idempotency Rules
+
+| Existing Status | force_reprocess | Behavior |
+|-----------------|-----------------|----------|
+| `success` | `false` | **SKIP** - Returns existing counts |
+| `success` | `true` | **REPROCESS** - Deletes and re-inserts |
+| `processing` | any | **BLOCK** - Returns error (concurrent request) |
+| `failed` | any | **REPROCESS** - Retries extraction |
+| `partial` | any | **REPROCESS** - Completes extraction |
+| `pending` | any | **PROCESS** - First-time extraction |
+
+### Database Fields Populated
+
+#### document_chunks (updated)
+```sql
+UPDATE document_chunks SET
+  graph_extraction_status = 'success',  -- pending/processing/success/failed/partial/empty
+  extracted_entity_count = 3,
+  extracted_relationship_count = 2,
+  graph_extraction_errors = NULL        -- Array of error messages if failed
+WHERE id = $chunk_id;
+```
+
+#### graph_nodes (inserted)
+```sql
+INSERT INTO graph_nodes (yacht_id, node_type, ref_table, ref_id, label, canonical_id, properties)
+VALUES
+  ($yacht_id, 'equipment', 'document_chunks', $chunk_id, 'Main Engine', 'equipment-uuid-123', '{"oem": "Caterpillar"}'),
+  ($yacht_id, 'part', 'document_chunks', $chunk_id, 'Oil Filter', 'part-uuid-456', '{"part_number": "1R-0750"}'),
+  ($yacht_id, 'symptom', 'document_chunks', $chunk_id, 'overheating', 'OVERHEAT', '{}')
+ON CONFLICT (yacht_id, ref_id, label, node_type) DO UPDATE SET
+  canonical_id = EXCLUDED.canonical_id,
+  properties = EXCLUDED.properties;
+```
+
+#### graph_edges (inserted)
+```sql
+INSERT INTO graph_edges (yacht_id, edge_type, from_node_id, to_node_id, from_label, to_label, source_chunk_id, confidence, properties)
+VALUES
+  ($yacht_id, 'USES_PART', $node_1_id, $node_2_id, 'Main Engine', 'Oil Filter', $chunk_id, 0.88, '{}'),
+  ($yacht_id, 'HAS_SYMPTOM', $node_1_id, $node_3_id, 'Main Engine', 'overheating', $chunk_id, 0.82, '{}')
+ON CONFLICT (yacht_id, edge_type, from_label, to_label, source_chunk_id) DO UPDATE SET
+  confidence = EXCLUDED.confidence;
+```
+
+#### maintenance_templates (inserted)
+```sql
+INSERT INTO maintenance_templates (yacht_id, source_chunk_id, equipment_id, part_id, interval_hours, action, action_description, tools_required, raw_extraction)
+VALUES
+  ($yacht_id, $chunk_id, 'equipment-uuid-123', 'part-uuid-456', 500, 'replace', 'Replace engine oil and filter', '["Filter wrench", "Oil drain pan"]', '{"equipment_label": "Main Engine", "confidence": 0.90}')
+ON CONFLICT (source_chunk_id, equipment_id, part_id, action) DO UPDATE SET
+  interval_hours = EXCLUDED.interval_hours,
+  action_description = EXCLUDED.action_description;
+```
+
+### n8n Code Node Example
+
+```javascript
+// In n8n Code node after GPT extraction
+const extractionResult = $input.first().json;
+const chunkId = $input.first().json.chunk_id;
+
+// Call population endpoint
+const response = await this.helpers.httpRequest({
+  method: 'POST',
+  url: 'https://extract.core.celeste7.ai/graphrag/populate',
+  headers: {
+    'Authorization': `Bearer ${$credentials.supabaseJwt}`,
+    'X-Yacht-Signature': $credentials.yachtSignature,
+    'Content-Type': 'application/json'
+  },
+  body: {
+    chunk_id: chunkId,
+    entities: extractionResult.entities || [],
+    relationships: extractionResult.relationships || [],
+    maintenance: extractionResult.maintenance || [],
+    force_reprocess: false
+  }
+});
+
+return { json: response };
+```
+
+### Verification Queries
+
+After population, verify with:
+
+```sql
+-- Check extraction status
+SELECT id, graph_extraction_status, extracted_entity_count, extracted_relationship_count
+FROM document_chunks
+WHERE id = $chunk_id;
+
+-- Check nodes created
+SELECT node_type, label, canonical_id
+FROM graph_nodes
+WHERE ref_id = $chunk_id;
+
+-- Check edges created
+SELECT edge_type, from_label, to_label, confidence
+FROM graph_edges
+WHERE source_chunk_id = $chunk_id;
+
+-- Check maintenance templates
+SELECT equipment_id, part_id, interval_hours, action
+FROM maintenance_templates
+WHERE source_chunk_id = $chunk_id;
+```

@@ -401,27 +401,71 @@ class GraphRAGQueryService:
         EQUIPMENT_HISTORY Pattern:
         1. Resolve equipment → canonical_id
         2. Traverse graph_edges for faults/symptoms/work_orders
-        Returns: equipment card + work_order cards
+        3. Filter by person/role if specified
+        4. Include handover items if symptom context present
+        Returns: equipment card + work_order cards + handover cards
         """
         cards = []
         equip = [e for e in entities if e.get("type") == "equipment"]
         symptoms = [e for e in entities if e.get("type") in ("maritime_term", "symptom")]
+        persons = [e for e in entities if e.get("type") == "person"]
+        person_filter = persons[0].get("canonical") if persons else None
 
         for e in equip:
             eid = e.get("canonical_id")
+            symptom_text = symptoms[0].get("text") if symptoms else None
+            symptom_code = symptoms[0].get("symptom_code") if symptoms else None
+
+            # Equipment card with detected symptom
             cards.append(build_card(
                 CardType.EQUIPMENT, e.get("text", "Equipment"), yacht_id,
                 actions=["view_history", "create_work_order", "add_note", "add_to_handover"],
                 equipment_id=eid,
-                symptom_detected=symptoms[0].get("text") if symptoms else None
+                symptom_detected=symptom_text,
+                symptom_code=symptom_code,
+                person_filter=person_filter
             ))
 
-            for wo in self._get_work_orders(yacht_id, eid)[:5]:
+            # Get work orders filtered by person if specified
+            work_orders = self._get_work_orders_filtered(yacht_id, eid, person_filter, symptom_text)
+            for wo in work_orders[:5]:
                 cards.append(build_card(
                     CardType.WORK_ORDER, wo.get("title", "Work Order"), yacht_id,
                     actions=["view_history", "add_to_handover"],
-                    work_order_id=wo.get("id"), status=wo.get("status"), equipment_id=eid
+                    work_order_id=wo.get("id"),
+                    status=wo.get("status"),
+                    equipment_id=eid,
+                    created_by=wo.get("created_by"),
+                    created_at=wo.get("created_at"),
+                    resolution=wo.get("resolution")
                 ))
+
+            # Get handover items if symptom present
+            if symptom_text:
+                handovers = self._get_handover_items(yacht_id, eid, person_filter, symptom_text)
+                for hi in handovers[:3]:
+                    cards.append(build_card(
+                        CardType.HANDOVER, hi.get("summary", "Handover Item"), yacht_id,
+                        actions=["add_to_handover"],
+                        handover_id=hi.get("id"),
+                        author=hi.get("author"),
+                        content=hi.get("content", "")[:200],
+                        created_at=hi.get("created_at")
+                    ))
+
+            # Get graph-related documents mentioning this symptom + equipment
+            if symptom_text:
+                docs = self._get_symptom_documents(yacht_id, eid, symptom_text)
+                for doc in docs[:3]:
+                    cards.append(build_card(
+                        CardType.DOCUMENT_CHUNK, doc.get("section_title", "Related Document"), yacht_id,
+                        actions=["open_document", "add_document_to_handover"],
+                        document_id=doc.get("document_id"),
+                        page_number=doc.get("page_number"),
+                        text_preview=doc.get("content", "")[:200],
+                        storage_path=doc.get("storage_path", "")
+                    ))
+
         return cards
 
     def _query_create_wo(self, yacht_id: str, query: str, entities: List[Dict]) -> List[Dict]:
@@ -500,6 +544,114 @@ class GraphRAGQueryService:
             return self.client.table("work_orders").select("*").eq("yacht_id", yacht_id).eq(
                 "equipment_id", equipment_id
             ).order("created_at", desc=True).limit(10).execute().data or []
+        except Exception:
+            return []
+
+    def _get_work_orders_filtered(
+        self, yacht_id: str, equipment_id: str, person_filter: str = None, symptom_text: str = None
+    ) -> List[Dict]:
+        """
+        Get work orders with optional person and symptom filters.
+
+        SQL equivalent:
+        SELECT wo.*
+        FROM work_orders wo
+        WHERE wo.yacht_id = $yacht_id
+          AND wo.equipment_id = $equipment_id
+          AND ($person_filter IS NULL OR wo.created_by ILIKE '%' || $person_filter || '%')
+          AND ($symptom_text IS NULL OR wo.description ILIKE '%' || $symptom_text || '%')
+        ORDER BY wo.created_at DESC
+        LIMIT 10;
+        """
+        if not self.client:
+            return []
+        try:
+            query = self.client.table("work_orders").select(
+                "id,title,description,status,created_by,created_at,resolution,equipment_id"
+            ).eq("yacht_id", yacht_id)
+
+            if equipment_id:
+                query = query.eq("equipment_id", equipment_id)
+
+            # Filter by person/role (created_by column)
+            if person_filter:
+                # Convert "2ND_ENGINEER" to search pattern
+                search_term = person_filter.replace("_", " ").replace("2ND", "2nd")
+                query = query.ilike("created_by", f"%{search_term}%")
+
+            # Filter by symptom in description
+            if symptom_text:
+                query = query.ilike("description", f"%{symptom_text}%")
+
+            return query.order("created_at", desc=True).limit(10).execute().data or []
+        except Exception:
+            return []
+
+    def _get_handover_items(
+        self, yacht_id: str, equipment_id: str = None, person_filter: str = None, symptom_text: str = None
+    ) -> List[Dict]:
+        """
+        Get handover items with optional filters.
+
+        SQL equivalent:
+        SELECT hi.*
+        FROM handover_items hi
+        WHERE hi.yacht_id = $yacht_id
+          AND ($equipment_id IS NULL OR hi.equipment_id = $equipment_id)
+          AND ($person_filter IS NULL OR hi.author ILIKE '%' || $person_filter || '%')
+          AND ($symptom_text IS NULL OR hi.content ILIKE '%' || $symptom_text || '%')
+        ORDER BY hi.created_at DESC
+        LIMIT 5;
+        """
+        if not self.client:
+            return []
+        try:
+            query = self.client.table("handover_items").select(
+                "id,summary,content,author,created_at,equipment_id"
+            ).eq("yacht_id", yacht_id)
+
+            if equipment_id:
+                query = query.eq("equipment_id", equipment_id)
+
+            if person_filter:
+                search_term = person_filter.replace("_", " ").replace("2ND", "2nd")
+                query = query.ilike("author", f"%{search_term}%")
+
+            if symptom_text:
+                query = query.ilike("content", f"%{symptom_text}%")
+
+            return query.order("created_at", desc=True).limit(5).execute().data or []
+        except Exception:
+            return []
+
+    def _get_symptom_documents(self, yacht_id: str, equipment_id: str, symptom_text: str) -> List[Dict]:
+        """
+        Get documents mentioning symptom and equipment via graph traversal.
+
+        SQL equivalent (using graph_edges):
+        SELECT DISTINCT dc.id, dc.document_id, dc.content, dc.section_title,
+               dc.page_number, dc.storage_path
+        FROM document_chunks dc
+        JOIN graph_nodes gn ON gn.ref_id = dc.id AND gn.ref_table = 'document_chunks'
+        JOIN graph_edges ge ON ge.from_node_id = gn.id OR ge.to_node_id = gn.id
+        WHERE dc.yacht_id = $yacht_id
+          AND (gn.canonical_id = $equipment_id OR gn.label ILIKE '%engine%')
+          AND (
+              dc.content ILIKE '%' || $symptom_text || '%'
+              OR ge.edge_type = 'HAS_SYMPTOM'
+          )
+        ORDER BY dc.created_at DESC
+        LIMIT 5;
+        """
+        if not self.client:
+            return []
+        try:
+            # First, search document_chunks directly for symptom mentions
+            return self.client.table("document_chunks").select(
+                "id,document_id,content,section_title,page_number,storage_path"
+            ).eq("yacht_id", yacht_id).ilike(
+                "content", f"%{symptom_text}%"
+            ).limit(5).execute().data or []
         except Exception:
             return []
 
