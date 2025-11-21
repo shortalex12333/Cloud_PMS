@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { executeAction, ActionExecutionError } from '@/lib/actionClient';
-import type { MicroAction, SearchResult } from '@/types';
+import type { MicroAction, SearchResult } from '@/types/search';
 
 interface MicroActionsProps {
   actions: MicroAction[];

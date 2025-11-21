@@ -5,7 +5,7 @@ import { Search } from 'lucide-react';
 import ResultCard from './ResultCard';
 import { debounce } from '@/lib/utils';
 import { celesteApi, CelesteApiError } from '@/lib/apiClient';
-import type { SearchResponse, SearchResult } from '@/types';
+import type { SearchResponse, SearchResult } from '@/types/search';
 
 export default function SearchBar() {
   const [query, setQuery] = useState('');
