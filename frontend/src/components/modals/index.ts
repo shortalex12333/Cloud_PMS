@@ -13,12 +13,19 @@ export { ReportFaultModal } from './ReportFaultModal';
 export { AddPartModal } from './AddPartModal';
 export { OrderPartModal } from './OrderPartModal';
 export { LogPartUsageModal } from './LogPartUsageModal';
+export { CreatePurchaseRequestModal } from './CreatePurchaseRequestModal';
 
 // Phase 4 - Audit-Sensitive EDIT Modals
 export { EditInvoiceAmountModal } from './EditInvoiceAmountModal';
 export { EditWorkOrderDetailsModal } from './EditWorkOrderDetailsModal';
 export { EditPartQuantityModal } from './EditPartQuantityModal';
 export { EditEquipmentDetailsModal } from './EditEquipmentDetailsModal';
+export { EditFaultDetailsModal } from './EditFaultDetailsModal';
+
+// Phase 4 - LINKING Selection Modals
+export { AddToHandoverModal } from './AddToHandoverModal';
+export { LinkEquipmentToFaultModal } from './LinkEquipmentToFaultModal';
+export { LinkPartsToWorkOrderModal } from './LinkPartsToWorkOrderModal';
 
 /**
  * Usage example:
