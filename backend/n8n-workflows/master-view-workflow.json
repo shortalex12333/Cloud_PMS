@@ -148,13 +148,125 @@
     },
     {
       "parameters": {
-        "functionCode": "// Build unified response card\nconst action = $input.first().json.action_name;\nconst data = $input.first().json;\n\n// Map action to card type\nconst cardTypeMap = {\n  view_equipment_details: 'equipment',\n  view_part_stock: 'part',\n  view_fault_history: 'fault_list',\n  view_work_order_history: 'work_order_list',\n  view_hours_of_rest: 'hor_table'\n};\n\nconst cardType = cardTypeMap[action] || 'generic';\n\n// Build micro_actions based on card type\nlet microActions = [];\nif (cardType === 'equipment') {\n  microActions = [\n    { action_name: 'view_equipment_history', label: 'View History' },\n    { action_name: 'view_equipment_parts', label: 'View Parts' },\n    { action_name: 'view_linked_faults', label: 'View Faults' },\n    { action_name: 'add_equipment_note', label: 'Add Note' },\n    { action_name: 'create_work_order', label: 'Create Work Order' }\n  ];\n} else if (cardType === 'part') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'log_part_usage', label: 'Log Usage' },\n    { action_name: 'view_part_usage', label: 'View Usage History' }\n  ];\n}\n\nreturn {\n  json: {\n    success: true,\n    card_type: cardType,\n    card: data,\n    micro_actions: microActions,\n    streaming_chunks: []\n  }\n};"
+        "functionCode": "// Dynamic SQL Filter Builder for LIST queries\n// Builds WHERE clauses based on filters parameter\nconst data = $input.first().json;\nconst filters = data.parameters?.filters || {};\nconst limit = data.parameters?.limit || 50;\nconst offset = data.parameters?.offset || 0;\nconst sortBy = data.parameters?.sort_by || 'created_at';\nconst sortOrder = data.parameters?.sort_order || 'desc';\n\nconst whereClauses = [];\nconst params = [];\n\n// Location filters\nif (filters.location) {\n  if (filters.location.deck) {\n    whereClauses.push(`deck = '${filters.location.deck}'`);\n  }\n  if (filters.location.room) {\n    whereClauses.push(`room = '${filters.location.room}'`);\n  }\n  if (filters.location.storage) {\n    whereClauses.push(`storage = '${filters.location.storage}'`);\n  }\n}\n\n// Status filters\nif (filters.status && filters.status.length > 0) {\n  const statusList = filters.status.map(s => `'${s}'`).join(',');\n  whereClauses.push(`status IN (${statusList})`);\n}\n\n// Time range filters\nif (filters.time_range) {\n  whereClauses.push(`created_at >= '${filters.time_range.start}'`);\n  whereClauses.push(`created_at <= '${filters.time_range.end}'`);\n}\n\n// Quantity filters\nif (filters.quantity) {\n  const op = filters.quantity.operator;\n  const val = filters.quantity.value;\n  \n  if (op === 'lt') {\n    whereClauses.push(`stock_quantity < ${val}`);\n  } else if (op === 'lte') {\n    whereClauses.push(`stock_quantity <= ${val}`);\n  } else if (op === 'gt') {\n    whereClauses.push(`stock_quantity > ${val}`);\n  } else if (op === 'gte') {\n    whereClauses.push(`stock_quantity >= ${val}`);\n  } else if (op === 'eq') {\n    whereClauses.push(`stock_quantity = ${val}`);\n  } else if (op === 'between' && Array.isArray(val)) {\n    whereClauses.push(`stock_quantity BETWEEN ${val[0]} AND ${val[1]}`);\n  }\n}\n\n// Build final WHERE clause\nconst whereClause = whereClauses.length > 0 \n  ? 'AND ' + whereClauses.join(' AND ')\n  : '';\n\nreturn {\n  json: {\n    ...data,\n    sql_where: whereClause,\n    sql_order: `ORDER BY ${sortBy} ${sortOrder.toUpperCase()}`,\n    sql_limit: `LIMIT ${limit} OFFSET ${offset}`,\n    limit: limit,\n    offset: offset\n  }\n};"
+      },
+      "id": "build-sql-filter",
+      "name": "Build SQL Filter",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  p.id,\n  p.part_name,\n  p.part_number,\n  p.stock_quantity,\n  p.min_stock_level,\n  p.location,\n  p.deck,\n  p.room,\n  p.storage,\n  p.unit_cost,\n  p.supplier,\n  p.created_at,\n  p.updated_at\nFROM parts p\nWHERE p.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
+      },
+      "id": "view-parts-list",
+      "name": "view_parts_list",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 600],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  wo.id,\n  wo.title,\n  wo.description,\n  wo.priority,\n  wo.status,\n  wo.created_at,\n  wo.completed_at,\n  wo.assigned_to,\n  e.name as equipment_name,\n  u.name as assigned_to_name\nFROM work_orders wo\nLEFT JOIN equipment e ON e.id = wo.equipment_id\nLEFT JOIN users u ON u.id = wo.assigned_to\nWHERE wo.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
+      },
+      "id": "view-work-orders-list",
+      "name": "view_work_orders_list",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 700],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  f.id,\n  f.title,\n  f.description,\n  f.severity,\n  f.status,\n  f.created_at,\n  f.resolved_at,\n  f.deck,\n  f.room,\n  e.name as equipment_name,\n  u.name as reporter_name\nFROM faults f\nLEFT JOIN equipment e ON e.id = f.equipment_id\nLEFT JOIN users u ON u.id = f.created_by\nWHERE f.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
+      },
+      "id": "view-faults-list",
+      "name": "view_faults_list",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 800],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total\nFROM parts p\nWHERE p.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}};"
+      },
+      "id": "count-parts-list",
+      "name": "Count Parts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 600],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total\nFROM work_orders wo\nWHERE wo.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}};"
+      },
+      "id": "count-work-orders-list",
+      "name": "Count Work Orders",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 700],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total\nFROM faults f\nWHERE f.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}};"
+      },
+      "id": "count-faults-list",
+      "name": "Count Faults",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 800],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build unified response card\nconst action = $input.first().json.action_name;\nconst data = $input.first().json;\n\n// Map action to card type\nconst cardTypeMap = {\n  view_equipment_details: 'equipment',\n  view_part_stock: 'part',\n  view_fault_history: 'fault_list',\n  view_work_order_history: 'work_order_list',\n  view_hours_of_rest: 'hor_table',\n  view_parts_list: 'parts_list',\n  view_work_orders_list: 'work_orders_list',\n  view_faults_list: 'faults_list'\n};\n\nconst cardType = cardTypeMap[action] || 'generic';\n\n// Build micro_actions based on card type\nlet microActions = [];\nif (cardType === 'equipment') {\n  microActions = [\n    { action_name: 'view_equipment_history', label: 'View History' },\n    { action_name: 'view_equipment_parts', label: 'View Parts' },\n    { action_name: 'view_linked_faults', label: 'View Faults' },\n    { action_name: 'add_equipment_note', label: 'Add Note' },\n    { action_name: 'create_work_order', label: 'Create Work Order' }\n  ];\n} else if (cardType === 'part') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'log_part_usage', label: 'Log Usage' },\n    { action_name: 'view_part_usage', label: 'View Usage History' }\n  ];\n} else if (cardType === 'parts_list') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'export_parts_list', label: 'Export' }\n  ];\n} else if (cardType === 'work_orders_list') {\n  microActions = [\n    { action_name: 'create_work_order', label: 'Create Work Order' },\n    { action_name: 'export_work_orders', label: 'Export' }\n  ];\n} else if (cardType === 'faults_list') {\n  microActions = [\n    { action_name: 'report_fault', label: 'Report Fault' },\n    { action_name: 'export_faults_list', label: 'Export' }\n  ];\n}\n\n// For list queries, include pagination metadata\nlet paginationMeta = null;\nif (cardType.endsWith('_list')) {\n  paginationMeta = {\n    limit: data.limit || 50,\n    offset: data.offset || 0,\n    total: data.total || 0,\n    has_more: (data.offset || 0) + (data.limit || 50) < (data.total || 0)\n  };\n}\n\nreturn {\n  json: {\n    success: true,\n    card_type: cardType,\n    card: data,\n    micro_actions: microActions,\n    pagination: paginationMeta,\n    streaming_chunks: []\n  }\n};"
       },
       "id": "build-response-view",
       "name": "Build Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1250, 200]
+      "position": [1450, 400]
     },
     {
       "parameters": {
@@ -263,6 +375,114 @@
         [
           {
             "node": "view_hours_of_rest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SQL Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SQL Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SQL Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SQL Filter": {
+      "main": [
+        [
+          {
+            "node": "view_parts_list",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "view_work_orders_list",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "view_faults_list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_parts_list": {
+      "main": [
+        [
+          {
+            "node": "Count Parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_work_orders_list": {
+      "main": [
+        [
+          {
+            "node": "Count Work Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_faults_list": {
+      "main": [
+        [
+          {
+            "node": "Count Faults",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Parts": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Work Orders": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Faults": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
             "type": "main",
             "index": 0
           }
