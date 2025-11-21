@@ -937,6 +937,175 @@ GROUP BY sc.symptom_code, sc.canonical_name, sc.category;
 
 ---
 
+## Resolution & Ranking Pipeline
+
+The `/v1/search` endpoint uses a **4-step priority pipeline** for entity resolution and a **weighted scoring formula** for result ranking.
+
+### 4-Step Entity Resolution
+
+Entities from user queries are resolved in priority order. Once resolved at any step, later steps are skipped.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        RESOLUTION PIPELINE                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  User Query: "Engine is overheating"                                    │
+│                      │                                                   │
+│                      ▼                                                   │
+│  ┌────────────────────────────────────────────┐                         │
+│  │ STEP 1: Regex/Canonical Rules (Weight: 0.40)│                        │
+│  │ Module B pattern: "engine" → MAIN_ENGINE    │                        │
+│  │ Confidence: 0.92 (from pattern match)       │                        │
+│  └────────────────────────────────────────────┘                         │
+│                      │                                                   │
+│                      ▼                                                   │
+│  ┌────────────────────────────────────────────┐                         │
+│  │ STEP 2: DB Alias Lookup (Weight: 0.30)      │                        │
+│  │ SELECT resolve_entity_alias(                │                        │
+│  │   'yacht-uuid', 'equipment', 'MAIN_ENGINE') │                        │
+│  │ → Returns: 'equipment-uuid-456'             │                        │
+│  │ Confidence: 0.90 (DB match found)           │                        │
+│  └────────────────────────────────────────────┘                         │
+│                      │                                                   │
+│                      ▼                                                   │
+│  ┌────────────────────────────────────────────┐                         │
+│  │ STEP 3: Graph Hints (Weight: 0.20)          │                        │
+│  │ (SKIPPED - already resolved in Step 2)      │                        │
+│  │ Would query graph_nodes by label match      │                        │
+│  └────────────────────────────────────────────┘                         │
+│                      │                                                   │
+│                      ▼                                                   │
+│  ┌────────────────────────────────────────────┐                         │
+│  │ STEP 4: Vector Similarity (Weight: 0.10)    │                        │
+│  │ (SKIPPED - already resolved)                │                        │
+│  │ Fallback: embedding similarity search       │                        │
+│  └────────────────────────────────────────────┘                         │
+│                                                                          │
+│  FINAL: canonical_id = 'equipment-uuid-456'                             │
+│         total_score = (0.92 × 0.40) + (0.90 × 0.30) = 0.638            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Resolution Scoring Formula
+
+```python
+@dataclass
+class ResolutionScore:
+    regex_score: float = 0.0      # Step 1: Pattern match
+    alias_score: float = 0.0      # Step 2: DB alias lookup
+    graph_score: float = 0.0      # Step 3: Graph node match
+    vector_score: float = 0.0     # Step 4: Embedding similarity
+
+    @property
+    def total(self) -> float:
+        return (
+            self.regex_score * 0.40 +
+            self.alias_score * 0.30 +
+            self.graph_score * 0.20 +
+            self.vector_score * 0.10
+        )
+
+    @property
+    def is_confident(self) -> bool:
+        """True if safe for write actions"""
+        return self.total >= 0.6 or self.regex_score >= 0.8
+```
+
+### Result Ranking Formula
+
+After resolution, search results are ranked using:
+
+```python
+@dataclass
+class ResultScore:
+    text_score: float = 0.0       # Lexical + embedding similarity
+    entity_score: float = 0.0     # Exact match on equipment_id, symptom_code
+    graph_score: float = 0.0      # Connectivity to main entities
+    recency_score: float = 0.0    # Newer items boosted for history queries
+
+    @property
+    def total(self) -> float:
+        return (
+            self.text_score * 0.30 +
+            self.entity_score * 0.35 +
+            self.graph_score * 0.20 +
+            self.recency_score * 0.15
+        )
+```
+
+### Handling Ambiguous Queries
+
+**Rule: Low confidence = read-only actions only.**
+
+When `ResolutionScore.is_confident == False`:
+1. Return cards with read-only actions (`view_history`, `open_document`)
+2. Suppress write actions (`create_work_order`, `order_part`)
+3. Include `requires_confirmation: true` on any suggested mutations
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CONFIDENCE → ACTION MATRIX                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Score >= 0.8 (HIGH)       → All actions enabled                        │
+│  ├── create_work_order     ✓                                            │
+│  ├── order_part            ✓                                            │
+│  └── add_to_handover       ✓                                            │
+│                                                                          │
+│  Score 0.6-0.8 (MEDIUM)    → Write actions need confirmation            │
+│  ├── create_work_order     ✓ (requires_confirmation: true)              │
+│  ├── order_part            ✗ suppressed                                 │
+│  └── add_to_handover       ✓                                            │
+│                                                                          │
+│  Score < 0.6 (LOW)         → Read-only actions only                     │
+│  ├── view_history          ✓                                            │
+│  ├── open_document         ✓                                            │
+│  └── create_work_order     ✗ suppressed                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### SQL: Step-by-Step Resolution
+
+```sql
+-- STEP 1: Already done in Python (Module B patterns)
+
+-- STEP 2: DB Alias Lookup
+SELECT resolve_entity_alias(
+    p_yacht_id := $yacht_id,
+    p_entity_type := 'equipment',
+    p_alias_text := $canonical
+);
+-- Returns: canonical_id (UUID) or NULL
+
+-- STEP 2b: Symptom Alias Lookup
+SELECT resolve_symptom_alias(
+    p_alias_text := $symptom_text
+);
+-- Returns: symptom_code (e.g., 'OVERHEAT') or NULL
+
+-- STEP 3: Graph Hints (if Step 2 returns NULL)
+SELECT canonical_id
+FROM graph_nodes
+WHERE yacht_id = $yacht_id
+  AND node_type = $entity_type
+  AND (
+      label ILIKE '%' || $value || '%'
+      OR label ILIKE '%' || $canonical || '%'
+  )
+LIMIT 1;
+
+-- STEP 4: Vector Similarity (if Step 3 returns NULL)
+-- Would use pgvector extension:
+-- SELECT id FROM equipment
+-- WHERE yacht_id = $yacht_id
+-- ORDER BY embedding <-> query_embedding
+-- LIMIT 1;
+```
+
+---
+
 ## Confidence Scoring
 
 Each query pattern uses confidence scoring based on:
