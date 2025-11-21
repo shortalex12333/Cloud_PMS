@@ -432,10 +432,17 @@ async def startup_event():
         pipeline = get_pipeline()
         logger.info("✓ Unified extraction pipeline initialized (Modules A + B + C)")
 
-        # Initialize GraphRAG services
+        # Initialize GraphRAG services (now uses GPT extraction + vector search)
         graphrag_population = get_population_service()
         graphrag_query = get_query_service()
-        logger.info("✓ GraphRAG services initialized (population + query)")
+
+        # Check GPT availability
+        if graphrag_query and graphrag_query.gpt:
+            logger.info("✓ GPT Extractor: GPT-4o-mini + text-embedding-3-small")
+        else:
+            logger.warning("⚠ GPT Extractor not available - check OPENAI_API_KEY")
+
+        logger.info("✓ GraphRAG services initialized (population + query + vector search)")
 
         # Load configuration
         config = get_config('production')
