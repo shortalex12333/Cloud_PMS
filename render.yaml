@@ -8,7 +8,7 @@
 # 4. Connect your GitHub repository
 # 5. Render will auto-detect this file and deploy
 #
-# Service will be available at: https://YOUR-SERVICE-NAME.onrender.com
+# Service will be available at: https://extract.core.celeste7.ai
 
 services:
   - type: web
@@ -48,9 +48,7 @@ services:
         value: "0.70"
 
       # Security secrets (set manually in Render Dashboard, NOT in git)
-      - key: CELESTE_API_KEY
-        sync: false
-
+      # Two-layer auth: JWT + Yacht Signature (clean & minimal)
       - key: SUPABASE_JWT_SECRET
         sync: false
 
