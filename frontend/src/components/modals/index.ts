@@ -16,6 +16,9 @@ export { LogPartUsageModal } from './LogPartUsageModal';
 
 // Phase 4 - Audit-Sensitive EDIT Modals
 export { EditInvoiceAmountModal } from './EditInvoiceAmountModal';
+export { EditWorkOrderDetailsModal } from './EditWorkOrderDetailsModal';
+export { EditPartQuantityModal } from './EditPartQuantityModal';
+export { EditEquipmentDetailsModal } from './EditEquipmentDetailsModal';
 
 /**
  * Usage example:
