@@ -107,32 +107,63 @@ export async function GET(request: NextRequest) {
     // Store tokens in Supabase
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get user's yacht_id from users table
+    const { data: userRecord, error: userError } = await supabase
+      .from('users')
+      .select('yacht_id')
+      .eq('auth_user_id', userId)
+      .single();
+
+    if (userError || !userRecord?.yacht_id) {
+      console.error('[Outlook Callback] Failed to get user yacht_id:', userError);
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 400 }
+      );
+    }
+
+    // Check for existing OAuth token for this user
+    const { data: existingToken } = await supabase
+      .from('api_tokens')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('token_type', 'oauth')
+      .eq('token_name', 'microsoft_outlook')
+      .single();
+
+    // Build token record matching api_tokens schema
     const tokenRecord = {
+      id: existingToken?.id || crypto.randomUUID(),
       user_id: userId,
-      provider: 'microsoft',
-      token_type: 'device',
-      access_token_hash: hashToken(tokenData.access_token),
-      refresh_token_encrypted: tokenData.refresh_token, // TODO: encrypt properly
+      yacht_id: userRecord.yacht_id,
+      token_hash: hashToken(tokenData.access_token),
+      token_type: 'oauth',
+      token_name: 'microsoft_outlook',
+      scopes: ['Mail.Read', 'User.Read', 'MailboxSettings.Read', 'offline_access'],
+      issued_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
-      scopes: ['mail:read', 'user:read'],
-      email: userEmail,
-      display_name: displayName,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      is_revoked: false,
+      metadata: {
+        provider: 'microsoft',
+        email: userEmail,
+        display_name: displayName,
+        refresh_token: tokenData.refresh_token, // TODO: encrypt in production
+        access_token: tokenData.access_token, // Needed for API calls
+      },
     };
 
     // Upsert to handle reconnections
     const { error: upsertError } = await supabase
       .from('api_tokens')
       .upsert(tokenRecord, {
-        onConflict: 'user_id,provider',
+        onConflict: 'id',
         ignoreDuplicates: false
       });
 
     if (upsertError) {
       console.error('[Outlook Callback] Failed to store tokens:', upsertError);
       return NextResponse.json(
-        { error: 'Failed to store tokens' },
+        { error: 'Failed to store tokens', detail: upsertError.message },
         { status: 500 }
       );
     }

@@ -34,12 +34,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check for existing Microsoft token
+    // Check for existing Microsoft OAuth token
     const { data: tokenData, error: tokenError } = await supabase
       .from('api_tokens')
-      .select('email, display_name, created_at, expires_at')
+      .select('metadata, issued_at, expires_at, is_revoked')
       .eq('user_id', user.id)
-      .eq('provider', 'microsoft')
+      .eq('token_type', 'oauth')
+      .eq('token_name', 'microsoft_outlook')
       .single();
 
     if (tokenError || !tokenData) {
@@ -48,14 +49,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if token is expired
+    // Check if token is expired or revoked
     const isExpired = new Date(tokenData.expires_at) < new Date();
+    const isRevoked = tokenData.is_revoked;
+
+    // Extract email from metadata
+    const metadata = tokenData.metadata as { email?: string; display_name?: string } || {};
 
     return NextResponse.json({
-      connected: !isExpired,
-      email: tokenData.email,
-      displayName: tokenData.display_name,
-      connectedAt: tokenData.created_at,
+      connected: !isExpired && !isRevoked,
+      email: metadata.email || '',
+      displayName: metadata.display_name || '',
+      connectedAt: tokenData.issued_at,
       expiresAt: tokenData.expires_at,
     });
 

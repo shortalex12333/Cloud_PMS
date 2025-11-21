@@ -36,15 +36,20 @@ export async function POST(request: NextRequest) {
 
     console.log('[Outlook Disconnect] Removing tokens for user:', user.id);
 
-    // Delete Microsoft tokens
-    const { error: deleteError } = await supabase
+    // Revoke Microsoft OAuth token (soft delete)
+    const { error: revokeError } = await supabase
       .from('api_tokens')
-      .delete()
+      .update({
+        is_revoked: true,
+        revoked_at: new Date().toISOString(),
+        revoked_by: user.id,
+      })
       .eq('user_id', user.id)
-      .eq('provider', 'microsoft');
+      .eq('token_type', 'oauth')
+      .eq('token_name', 'microsoft_outlook');
 
-    if (deleteError) {
-      console.error('[Outlook Disconnect] Failed to delete tokens:', deleteError);
+    if (revokeError) {
+      console.error('[Outlook Disconnect] Failed to revoke tokens:', revokeError);
       return NextResponse.json(
         { success: false, error: 'Failed to disconnect' },
         { status: 500 }

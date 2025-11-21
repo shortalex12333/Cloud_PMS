@@ -11,8 +11,9 @@ export default function OutlookCallbackContent() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Get authorization code from URL
+      // Get authorization code and state from URL
       const code = searchParams.get('code');
+      const state = searchParams.get('state');
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
 
@@ -38,22 +39,33 @@ export default function OutlookCallbackContent() {
         return;
       }
 
+      // No state = CSRF issue or invalid flow
+      if (!state) {
+        console.error('[OutlookCallback] No state parameter received');
+        setStatus('error');
+        setErrorMessage('Invalid OAuth state - please try again');
+        setTimeout(() => {
+          router.replace('/settings?error=outlook');
+        }, 2000);
+        return;
+      }
+
       try {
         console.log('[OutlookCallback] Exchanging code for tokens...');
 
         // Call backend to exchange code for tokens
-        // Backend will:
-        // 1. Exchange code for access/refresh tokens
-        // 2. Store tokens in Supabase api_tokens table
-        // 3. Link to current user via JWT
-        const response = await fetch(`/api/integrations/outlook/callback?code=${encodeURIComponent(code)}`);
+        // Pass both code and state (state contains user_id for linking)
+        const response = await fetch(
+          `/api/integrations/outlook/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+        );
 
         if (!response.ok) {
-          throw new Error(`Backend error: ${response.status}`);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Backend error: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('[OutlookCallback] Token exchange successful:', data);
+        console.log('[OutlookCallback] Token exchange successful:', data.email);
 
         setStatus('success');
 
