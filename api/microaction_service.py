@@ -206,7 +206,8 @@ async def verify_security(
 
 class ExtractionRequest(BaseModel):
     """Request model for extraction endpoint"""
-    query: str = Field(..., min_length=1, max_length=500, description="User query to extract micro-actions from")
+    query: str = Field(..., min_length=1, max_length=1000, description="Text to extract entities from")
+    include_embedding: bool = Field(default=True, description="Include text-embedding-3-small embedding in response")
     include_metadata: bool = Field(default=False, description="Include detailed match metadata in response")
     validate_combination: bool = Field(default=True, description="Validate that detected actions make sense together")
 
@@ -493,69 +494,124 @@ async def log_requests(request: Request, call_next):
 # API ENDPOINTS
 # ========================================================================
 
-@app.post("/extract", response_model=UnifiedExtractionResponse, tags=["Unified Extraction"])
+@app.post("/extract", tags=["Entity Extraction"])
 @limiter.limit("100/minute")
-async def unified_extract(
+async def extract(
     request: Request,
     extraction_request: ExtractionRequest,
     auth: Dict = Depends(verify_security)
 ):
     """
-    **UNIFIED EXTRACTION ENDPOINT - Single Source of Truth**
+    **GPT ENTITY EXTRACTION ENDPOINT**
 
-    Combines micro-action detection, entity extraction, and canonicalization into
-    a single structured response.
+    Extracts entities and detects action from natural language using GPT-4o-mini.
+    Optionally returns text-embedding-3-small embedding for RAG.
 
     **What it does:**
-    - Detects actionable intents (Module A: strict verb-based patterns)
-    - Extracts maritime entities (Module B: equipment, faults, measurements)
-    - Canonicalizes and weights entities (Module C: normalization + importance)
+    - GPT-4o-mini extracts entities (equipment, parts, symptoms, fault codes, persons)
+    - GPT-4o-mini detects action intent (create_work_order, view_history, etc.)
+    - text-embedding-3-small generates 1536-dim embedding (if include_embedding=true)
 
     **Security (2 headers only):**
-    - Authorization: Bearer <supabase_jwt> (user authentication)
-    - X-Yacht-Signature: <sha256_signature> (yacht ownership proof)
+    - Authorization: Bearer <supabase_jwt>
+    - X-Yacht-Signature: <sha256_signature>
 
-    **Example Inputs:**
-    - "create work order for bilge pump" → action + entity
-    - "bilge manifold" → entity only
-    - "diagnose E047 on ME1" → action + fault_code + equipment
-    - "tell me bilge pump" → entity only (no false action)
-    - "sea water pump pressure low" → equipment + maritime term
+    **Request:**
+    ```json
+    {
+        "query": "Engine is overheating, show historic data from 2nd engineer",
+        "include_embedding": true
+    }
+    ```
 
     **Response:**
-    - intent: High-level categorization (create, update, view, action, search)
-    - microactions: List of detected actions with confidence scores
-    - entities: Raw entity detections
-    - canonical_entities: Normalized entities with importance weights
-    - scores: Confidence metrics
-    - metadata: Processing info (latency, modules run, counts)
+    ```json
+    {
+        "entities": [
+            {"type": "equipment", "value": "Main Engine", "canonical": "MAIN_ENGINE", "confidence": 0.95},
+            {"type": "symptom", "value": "overheating", "canonical": "OVERHEAT", "confidence": 0.90},
+            {"type": "person", "value": "2nd engineer", "canonical": "2ND_ENGINEER", "confidence": 0.85}
+        ],
+        "action": "view_history",
+        "action_confidence": 0.92,
+        "person_filter": "2ND_ENGINEER",
+        "embedding": [0.023, -0.045, ...],  // 1536 floats if include_embedding=true
+        "metadata": {
+            "model": "gpt-4o-mini",
+            "embedding_model": "text-embedding-3-small",
+            "latency_ms": 312
+        }
+    }
+    ```
 
-    **Non-Negotiable Rules:**
-    - Maritime terms NEVER trigger micro-actions
-    - Phrasal patterns ("tell me", "find the") do NOT detect actions
-    - Actions require explicit verbs at start of query
-    - Entities are extracted independently of actions
+    **n8n Integration:**
+    - Call this endpoint to get entities + embedding
+    - Use embedding with match_documents() for RAG retrieval
+    - Build cards and responses in n8n
     """
-    if pipeline is None:
-        raise HTTPException(status_code=503, detail="Unified pipeline not initialized")
+    import time
+    start = time.time()
+
+    # Check if GPT extractor is available
+    if graphrag_query is None or graphrag_query.gpt is None:
+        # Fallback to regex pipeline
+        if pipeline is None:
+            raise HTTPException(status_code=503, detail="Extraction service not initialized")
+
+        result = pipeline.extract(extraction_request.query)
+        latency_ms = int((time.time() - start) * 1000)
+
+        return {
+            "entities": result.get("canonical_entities", []),
+            "action": result.get("intent", "general_search"),
+            "action_confidence": 0.7,
+            "person_filter": None,
+            "embedding": None,
+            "metadata": {
+                "model": "regex_fallback",
+                "embedding_model": None,
+                "latency_ms": latency_ms,
+                "fallback": True
+            }
+        }
 
     try:
-        # Run unified extraction pipeline (Modules A → B → C)
-        result = pipeline.extract(extraction_request.query)
+        gpt = graphrag_query.gpt
+
+        # GPT extraction
+        extraction = gpt.extract(extraction_request.query)
+
+        # Generate embedding if requested
+        embedding = None
+        if extraction_request.include_embedding:
+            embedding = gpt.embed(extraction_request.query)
+
+        latency_ms = int((time.time() - start) * 1000)
 
         logger.info(
-            f"Unified extraction: query='{extraction_request.query}', "
-            f"intent={result['intent']}, "
-            f"actions={result['metadata']['action_count']}, "
-            f"entities={result['metadata']['entity_count']}, "
-            f"latency={result['metadata']['latency_ms']}ms, "
-            f"user_id={auth['user_id']}, yacht_id={auth['yacht_id']}"
+            f"GPT extraction: query='{extraction_request.query}', "
+            f"action={extraction.action}, "
+            f"entities={len(extraction.entities)}, "
+            f"latency={latency_ms}ms, "
+            f"yacht_id={auth.get('yacht_id')}"
         )
 
-        return result
+        return {
+            "entities": [e.to_dict() for e in extraction.entities],
+            "action": extraction.action,
+            "action_confidence": extraction.action_confidence,
+            "person_filter": extraction.person_filter,
+            "embedding": embedding,
+            "metadata": {
+                "model": "gpt-4o-mini",
+                "embedding_model": "text-embedding-3-small" if embedding else None,
+                "embedding_dimensions": 1536 if embedding else None,
+                "latency_ms": latency_ms
+            }
+        }
 
     except Exception as e:
-        logger.error(f"Unified extraction failed: {e}")
+        logger.error(f"GPT extraction failed: {e}")
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
