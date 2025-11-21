@@ -50,6 +50,10 @@ from microaction_config import get_config, ExtractionConfig, ValidationRules
 # Import unified extraction pipeline
 from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
 
+# Import GraphRAG services
+from graphrag_population import get_population_service, GraphRAGPopulationService
+from graphrag_query import get_query_service, GraphRAGQueryService, query_result_to_dict
+
 # ========================================================================
 # LOGGING CONFIGURATION
 # ========================================================================
@@ -111,6 +115,10 @@ extractor: Optional[MicroActionExtractor] = None
 
 # Unified pipeline instance (Modules A, B, C)
 pipeline: Optional[UnifiedExtractionPipeline] = None
+
+# GraphRAG services
+graphrag_population: Optional[GraphRAGPopulationService] = None
+graphrag_query: Optional[GraphRAGQueryService] = None
 
 # Configuration (default to production)
 config: ExtractionConfig = get_config('production')
@@ -407,7 +415,7 @@ startup_time = time.time()
 @app.on_event("startup")
 async def startup_event():
     """Load extractor and patterns at startup (runs once)"""
-    global extractor, pipeline, config
+    global extractor, pipeline, config, graphrag_population, graphrag_query
     logger.info("🚀 Starting Micro-Action Extraction Service...")
 
     try:
@@ -423,6 +431,11 @@ async def startup_event():
         # Initialize unified pipeline (Modules A, B, C)
         pipeline = get_pipeline()
         logger.info("✓ Unified extraction pipeline initialized (Modules A + B + C)")
+
+        # Initialize GraphRAG services
+        graphrag_population = get_population_service()
+        graphrag_query = get_query_service()
+        logger.info("✓ GraphRAG services initialized (population + query)")
 
         # Load configuration
         config = get_config('production')
@@ -706,7 +719,7 @@ async def health_check():
 
     return HealthResponse(
         status="healthy" if extractor is not None else "unhealthy",
-        version="2.0.0",
+        version="3.0.0",
         patterns_loaded=actions_count,
         total_requests=request_counter,
         uptime_seconds=uptime,
@@ -751,13 +764,16 @@ async def root():
     """Root endpoint with API information"""
     return {
         "service": "CelesteOS Micro-Action Extraction API",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "running",
         "security": "JWT + Yacht Signature (2 headers only)",
         "docs": "/docs",
         "health": "/health",
         "endpoints": {
             "unified_extract": "POST /extract (RECOMMENDED - Modules A+B+C)",
+            "graphrag_query": "POST /graphrag/query (NEW - Intent-based GraphRAG search)",
+            "graphrag_populate": "POST /graphrag/populate (NEW - n8n workflow population)",
+            "graphrag_stats": "GET /graphrag/stats (NEW - Graph statistics)",
             "extract": "POST /extract_microactions (legacy)",
             "detailed": "POST /extract_detailed (legacy)",
             "patterns": "GET /patterns"
@@ -766,7 +782,9 @@ async def root():
             "module_a": "Strict micro-action detector (verb-based)",
             "module_b": "Maritime entity extractor (equipment, faults, measurements)",
             "module_c": "Canonicalizer (normalization + weighting)",
-            "pipeline": "Unified extraction combining all modules"
+            "pipeline": "Unified extraction combining all modules",
+            "graphrag_population": "Graph population from GPT extraction (nodes, edges, maintenance)",
+            "graphrag_query": "Intent-based search with entity resolution and graph traversal"
         },
         "auth": {
             "headers": {
@@ -777,6 +795,226 @@ async def root():
             "jwt_auto_expires": True
         }
     }
+
+
+# ========================================================================
+# GRAPHRAG API ENDPOINTS
+# ========================================================================
+
+class GraphRAGQueryRequest(BaseModel):
+    """Request model for GraphRAG query endpoint"""
+    query: str = Field(..., min_length=1, max_length=1000, description="User natural language query")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "query": "Engine is overheating, show historic data from 2nd engineer"
+            }
+        }
+
+
+class GraphRAGPopulateRequest(BaseModel):
+    """Request model for GraphRAG population endpoint (n8n workflow use)"""
+    chunk_id: str = Field(..., description="Source document chunk ID")
+    entities: List[Dict] = Field(default_factory=list, description="Extracted entities")
+    relationships: List[Dict] = Field(default_factory=list, description="Extracted relationships")
+    maintenance: Optional[List[Dict]] = Field(default=None, description="Extracted maintenance facts")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "chunk_id": "uuid-chunk-123",
+                "entities": [
+                    {"label": "Main Engine", "type": "equipment", "confidence": 0.95},
+                    {"label": "Oil Filter", "type": "part", "confidence": 0.90}
+                ],
+                "relationships": [
+                    {"from": "Main Engine", "to": "Oil Filter", "type": "uses_part"}
+                ],
+                "maintenance": [
+                    {"equipment": "Main Engine", "interval": "500 hours", "action": "replace"}
+                ]
+            }
+        }
+
+
+@app.post("/graphrag/query", tags=["GraphRAG"])
+@limiter.limit("100/minute")
+async def graphrag_query_endpoint(
+    request: Request,
+    query_request: GraphRAGQueryRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **GraphRAG Query Endpoint**
+
+    Execute an intent-based search using the Graph RAG layer.
+
+    This endpoint:
+    1. Detects intent and extracts entities from the query
+    2. Resolves entities to canonical IDs (equipment, parts, symptoms)
+    3. Traverses the knowledge graph for relationships
+    4. Returns result cards and suggested micro-actions
+
+    **Supported Intents:**
+    - find_document_section: "Open Cat main engine manual to lube oil section"
+    - equipment_history: "Engine is overheating, show historic data"
+    - diagnose_fault: "What does error code E047 mean?"
+    - find_part: "Find filter for port main engine"
+    - maintenance_lookup: "When is oil change due on generator 1?"
+
+    **Security:**
+    - Authorization: Bearer <supabase_jwt>
+    - X-Yacht-Signature: <sha256_signature>
+
+    **Response:**
+    - intent: Detected query intent
+    - resolved_entities: Entities matched to canonical IDs
+    - cards: Result cards (equipment, document, fault, part, etc.)
+    - suggested_actions: Micro-actions with payloads (requires_confirmation flag)
+    - graph_stats: Current graph statistics for the yacht
+    """
+    if graphrag_query is None:
+        raise HTTPException(status_code=503, detail="GraphRAG query service not initialized")
+
+    try:
+        yacht_id = auth.get("yacht_id")
+
+        result = graphrag_query.query(yacht_id, query_request.query)
+
+        logger.info(
+            f"GraphRAG query: yacht={yacht_id}, query='{query_request.query}', "
+            f"intent={result.intent.value}, cards={len(result.cards)}, "
+            f"actions={len(result.suggested_actions)}"
+        )
+
+        return query_result_to_dict(result)
+
+    except Exception as e:
+        logger.error(f"GraphRAG query failed: {e}")
+        raise HTTPException(status_code=500, detail=f"GraphRAG query failed: {str(e)}")
+
+
+@app.post("/graphrag/populate", tags=["GraphRAG"])
+@limiter.limit("200/minute")
+async def graphrag_populate_endpoint(
+    request: Request,
+    populate_request: GraphRAGPopulateRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **GraphRAG Population Endpoint**
+
+    Populate graph tables from GPT extraction results.
+
+    This endpoint is called by n8n Graph_RAG_Digest workflow after GPT extraction.
+
+    **What it does:**
+    1. Resolves extracted entities to canonical IDs
+    2. Inserts graph_nodes with canonical links
+    3. Inserts graph_edges with proper edge types
+    4. Inserts maintenance_templates if extraction contains maintenance facts
+    5. Updates document_chunks.extraction_status
+
+    **Security:**
+    - Authorization: Bearer <supabase_jwt>
+    - X-Yacht-Signature: <sha256_signature>
+
+    **Expected Input:**
+    - chunk_id: The document chunk that was processed
+    - entities: List of extracted entities from GPT
+    - relationships: List of extracted relationships from GPT
+    - maintenance: Optional list of maintenance facts
+
+    **Response:**
+    - success: Whether population succeeded
+    - status: Extraction status (success, empty, failed, partial)
+    - nodes_inserted: Number of graph nodes inserted
+    - nodes_resolved: Number of nodes resolved to canonical IDs
+    - edges_inserted: Number of graph edges inserted
+    - maintenance_inserted: Number of maintenance templates inserted
+    """
+    if graphrag_population is None:
+        raise HTTPException(status_code=503, detail="GraphRAG population service not initialized")
+
+    try:
+        yacht_id = auth.get("yacht_id")
+
+        result = graphrag_population.populate_from_extraction(
+            yacht_id=yacht_id,
+            chunk_id=populate_request.chunk_id,
+            entities=populate_request.entities,
+            relationships=populate_request.relationships,
+            maintenance_facts=populate_request.maintenance
+        )
+
+        logger.info(
+            f"GraphRAG populate: yacht={yacht_id}, chunk={populate_request.chunk_id}, "
+            f"status={result.status.value}, nodes={result.nodes_inserted}, "
+            f"edges={result.edges_inserted}"
+        )
+
+        return {
+            "success": result.status.value != "failed",
+            "status": result.status.value,
+            "chunk_id": result.chunk_id,
+            "nodes_inserted": result.nodes_inserted,
+            "nodes_resolved": result.nodes_resolved,
+            "edges_inserted": result.edges_inserted,
+            "maintenance_inserted": result.maintenance_inserted,
+            "errors": result.errors
+        }
+
+    except Exception as e:
+        logger.error(f"GraphRAG population failed: {e}")
+        raise HTTPException(status_code=500, detail=f"GraphRAG population failed: {str(e)}")
+
+
+@app.get("/graphrag/stats", tags=["GraphRAG"])
+@limiter.limit("60/minute")
+async def graphrag_stats_endpoint(
+    request: Request,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **GraphRAG Statistics Endpoint**
+
+    Get graph statistics for the authenticated yacht.
+
+    Uses v_graph_stats and v_extraction_status views.
+
+    **Response:**
+    - graph_stats: Node/edge counts, resolution rate
+    - extraction_stats: Chunk processing status breakdown
+    """
+    if graphrag_query is None:
+        raise HTTPException(status_code=503, detail="GraphRAG query service not initialized")
+
+    try:
+        yacht_id = auth.get("yacht_id")
+
+        graph_stats = graphrag_query._get_graph_stats(yacht_id)
+
+        # Also get extraction status breakdown
+        extraction_stats = {}
+        if graphrag_query.client:
+            try:
+                result = graphrag_query.client.table("v_extraction_status").select("*").eq(
+                    "yacht_id", yacht_id
+                ).execute()
+                extraction_stats = result.data if result.data else []
+            except Exception:
+                pass
+
+        return {
+            "yacht_id": yacht_id,
+            "graph_stats": graph_stats,
+            "extraction_stats": extraction_stats
+        }
+
+    except Exception as e:
+        logger.error(f"GraphRAG stats failed: {e}")
+        raise HTTPException(status_code=500, detail=f"GraphRAG stats failed: {str(e)}")
 
 
 # ========================================================================
