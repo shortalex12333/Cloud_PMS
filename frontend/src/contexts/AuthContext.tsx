@@ -35,51 +35,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CelesteUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile from user_profiles and user_roles tables
+  // Fetch user profile from users table (production schema)
   const fetchUserProfile = useCallback(async (authUser: User) => {
     try {
-      // Query user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('id, email, yacht_id, name')
-        .eq('id', authUser.id)
-        .single();
-
-      if (profileError) {
-        console.error('[AuthContext] Error fetching user profile:', profileError);
-        return null;
-      }
-
-      if (!profileData) {
-        console.warn('[AuthContext] No user profile found for:', authUser.id);
-        return null;
-      }
-
-      // Query active role for this user
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', authUser.id)
-        .eq('yacht_id', profileData.yacht_id)
+      // Query user profile - production uses 'users' table with role column
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, yacht_id, name, role')
+        .eq('email', authUser.email)
         .eq('is_active', true)
-        .lte('valid_from', new Date().toISOString())
-        .or('valid_until.is.null,valid_until.gt.' + new Date().toISOString())
-        .order('assigned_at', { ascending: false })
-        .limit(1)
         .single();
 
-      if (roleError) {
-        console.error('[AuthContext] Error fetching user role:', roleError);
-        // Default to 'crew' if no role found
-        console.warn('[AuthContext] No active role found, defaulting to crew');
+      if (userError) {
+        console.error('[AuthContext] Error fetching user profile:', userError);
+        return null;
+      }
+
+      if (!userData) {
+        console.warn('[AuthContext] No user profile found for:', authUser.email);
+        return null;
       }
 
       const celesteUser: CelesteUser = {
-        id: profileData.id,
-        email: profileData.email,
-        role: (roleData?.role as CelesteUser['role']) || 'crew',
-        yachtId: profileData.yacht_id,
-        displayName: profileData.name,
+        id: userData.id,
+        email: userData.email,
+        role: userData.role as CelesteUser['role'],
+        yachtId: userData.yacht_id,
+        displayName: userData.name,
       };
 
       console.log('[AuthContext] User profile loaded:', {
