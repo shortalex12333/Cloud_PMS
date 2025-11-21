@@ -11,6 +11,11 @@ Deployment specs (Render):
 - Warm response: ~100-200ms (regex-only)
 - Concurrent requests: 10-20
 
+Security:
+- Multi-layer authentication (API key + JWT + yacht signature)
+- Strict CORS
+- Rate limiting (100 req/min per IP)
+
 Endpoints:
 - POST /extract_microactions - Main extraction endpoint
 - POST /extract_detailed - Extended extraction with metadata
@@ -20,14 +25,23 @@ Endpoints:
 Similar architecture to maritime entity extraction service.
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 from typing import List, Dict, Optional
 import time
 import logging
+import os
+import jwt
+import hashlib
 from pathlib import Path
+
+# Rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # Import extraction modules
 from microaction_extractor import MicroActionExtractor, get_extractor
@@ -50,18 +64,40 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="CelesteOS Micro-Action Extraction API",
     description="Extract actionable intents from natural language queries for maritime operations",
-    version="1.0.0",
+    version="1.0.1",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# CORS middleware for n8n and frontend access
+# ========================================================================
+# RATE LIMITING SETUP
+# ========================================================================
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# ========================================================================
+# STRICT CORS CONFIGURATION
+# ========================================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to specific origins
+    allow_origins=[
+        "https://app.celeste7.ai",
+        "https://api.celeste7.ai",
+        "http://localhost:3000",  # For local development
+        "http://localhost:8000"   # For local testing
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST", "GET"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Yacht-Signature",
+        "X-Celeste-Key"
+    ],
 )
 
 # ========================================================================
@@ -76,6 +112,80 @@ config: ExtractionConfig = get_config('production')
 
 # Request counter for monitoring
 request_counter = 0
+
+# ========================================================================
+# SECURITY VERIFICATION
+# ========================================================================
+
+async def verify_security(
+    request: Request,
+    authorization: str = Header(None),
+    x_yacht_signature: str = Header(None),
+    x_celeste_key: str = Header(None)
+) -> Dict:
+    """
+    Multi-layer security verification:
+    1. API Key validation
+    2. JWT validation and decoding
+    3. Yacht signature verification
+
+    Returns: {"user_id": str, "yacht_id": str}
+    """
+
+    # Layer 1: API Key
+    expected_api_key = os.getenv("CELESTE_API_KEY")
+    if expected_api_key and x_celeste_key != expected_api_key:
+        logger.warning("Invalid API key attempt")
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    # Layer 2: JWT
+    if not authorization or not authorization.startswith("Bearer "):
+        logger.warning("Missing or invalid JWT")
+        raise HTTPException(status_code=401, detail="Missing JWT")
+
+    token = authorization.replace("Bearer ", "")
+    try:
+        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        if jwt_secret:
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"]
+            )
+            user_id = payload.get("sub")
+            yacht_id = payload.get("yacht_id")  # Custom claim
+
+            if not user_id or not yacht_id:
+                raise HTTPException(status_code=401, detail="Invalid JWT payload")
+        else:
+            # Development mode: skip JWT verification
+            logger.warning("JWT verification skipped (no SUPABASE_JWT_SECRET)")
+            user_id = "dev_user"
+            yacht_id = "dev_yacht"
+    except jwt.ExpiredSignatureError:
+        logger.warning("Expired JWT")
+        raise HTTPException(status_code=401, detail="JWT expired")
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Invalid JWT: {e}")
+        raise HTTPException(status_code=401, detail="Invalid JWT")
+
+    # Layer 3: Yacht Signature
+    yacht_salt = os.getenv("YACHT_SALT")
+    if yacht_salt:
+        expected_sig = hashlib.sha256(
+            f"{yacht_id}{yacht_salt}".encode()
+        ).hexdigest()
+
+        if x_yacht_signature != expected_sig:
+            logger.warning(f"Invalid yacht signature for yacht_id: {yacht_id}")
+            raise HTTPException(status_code=403, detail="Invalid yacht signature")
+    else:
+        # Development mode: skip signature verification
+        logger.warning("Yacht signature verification skipped (no YACHT_SALT)")
+
+    logger.info(f"Authenticated: user_id={user_id}, yacht_id={yacht_id}")
+    return {"user_id": user_id, "yacht_id": yacht_id}
+
 
 # ========================================================================
 # PYDANTIC MODELS
@@ -165,6 +275,7 @@ class HealthResponse(BaseModel):
     patterns_loaded: int
     total_requests: int
     uptime_seconds: float
+    security_enabled: bool
 
 
 class PatternsResponse(BaseModel):
@@ -189,13 +300,20 @@ async def startup_event():
     try:
         # Initialize extractor (this loads and compiles all patterns)
         extractor = get_extractor()
-        logger.info(f"✓ Loaded {len(extractor.patterns)} patterns")
+
+        # Get actions from correct path in JSON
+        actions = extractor.patterns.get('actions', {})
+        logger.info(f"✓ Loaded {len(extractor.patterns)} pattern groups")
         logger.info(f"✓ Compiled {len(extractor.compiled_patterns)} action patterns")
         logger.info(f"✓ Built gazetteer with {len(extractor.gazetteer)} terms")
 
         # Load configuration
         config = get_config('production')
         logger.info(f"✓ Configuration: AI fallback threshold = {config.ai_fallback_threshold}")
+
+        # Security status
+        security_enabled = bool(os.getenv("CELESTE_API_KEY"))
+        logger.info(f"✓ Security: {'ENABLED' if security_enabled else 'DISABLED (dev mode)'}")
 
         logger.info("✅ Service ready to accept requests")
 
@@ -237,11 +355,21 @@ async def log_requests(request: Request, call_next):
 # ========================================================================
 
 @app.post("/extract_microactions", response_model=ExtractionResponse, tags=["Extraction"])
-async def extract_microactions(request: ExtractionRequest):
+@limiter.limit("100/minute")
+async def extract_microactions(
+    request: Request,
+    extraction_request: ExtractionRequest,
+    auth: Dict = Depends(verify_security)
+):
     """
     Main extraction endpoint. Extract micro-actions from natural language query.
 
     Returns list of canonical action names (e.g., ["create_work_order", "add_to_handover"]).
+
+    **Security:**
+    - Requires valid API key (X-Celeste-Key)
+    - Requires valid JWT (Authorization: Bearer)
+    - Requires yacht signature (X-Yacht-Signature)
 
     **Examples:**
     - "create work order" → ["create_work_order"]
@@ -256,12 +384,12 @@ async def extract_microactions(request: ExtractionRequest):
 
     try:
         # Run extraction
-        if request.include_metadata:
-            result = extractor.extract_with_details(request.query)
+        if extraction_request.include_metadata:
+            result = extractor.extract_with_details(extraction_request.query)
             actions = result['micro_actions']
             has_unsupported = result['has_unsupported']
         else:
-            actions = extractor.extract_microactions(request.query)
+            actions = extractor.extract_microactions(extraction_request.query)
             has_unsupported = False
 
         # Calculate latency
@@ -269,7 +397,7 @@ async def extract_microactions(request: ExtractionRequest):
 
         # Validate action combination if requested
         validation = None
-        if request.validate_combination and actions:
+        if extraction_request.validate_combination and actions:
             validation = ValidationRules.validate_action_combination(actions)
 
         # Build response
@@ -277,14 +405,14 @@ async def extract_microactions(request: ExtractionRequest):
             micro_actions=actions,
             count=len(actions),
             latency_ms=latency_ms,
-            query=request.query,
+            query=extraction_request.query,
             has_unsupported=has_unsupported,
             validation=validation
         )
 
         logger.info(
-            f"Extracted {len(actions)} actions from '{request.query}' "
-            f"in {latency_ms}ms: {actions}"
+            f"Extracted {len(actions)} actions from '{extraction_request.query}' "
+            f"in {latency_ms}ms for user_id={auth['user_id']}, yacht_id={auth['yacht_id']}: {actions}"
         )
 
         return response
@@ -295,7 +423,12 @@ async def extract_microactions(request: ExtractionRequest):
 
 
 @app.post("/extract_detailed", response_model=DetailedExtractionResponse, tags=["Extraction"])
-async def extract_detailed(request: ExtractionRequest):
+@limiter.limit("50/minute")
+async def extract_detailed(
+    request: Request,
+    extraction_request: ExtractionRequest,
+    auth: Dict = Depends(verify_security)
+):
     """
     Extended extraction endpoint with detailed match metadata.
 
@@ -314,14 +447,14 @@ async def extract_detailed(request: ExtractionRequest):
 
     try:
         # Run detailed extraction
-        result = extractor.extract_with_details(request.query)
+        result = extractor.extract_with_details(extraction_request.query)
 
         # Calculate latency
         latency_ms = int((time.time() - start_time) * 1000)
 
         # Validate action combination
         validation = None
-        if request.validate_combination and result['micro_actions']:
+        if extraction_request.validate_combination and result['micro_actions']:
             validation = ValidationRules.validate_action_combination(result['micro_actions'])
 
         # Build response
@@ -329,7 +462,7 @@ async def extract_detailed(request: ExtractionRequest):
             micro_actions=result['micro_actions'],
             count=result['unique_actions'],
             latency_ms=latency_ms,
-            query=request.query,
+            query=extraction_request.query,
             has_unsupported=result['has_unsupported'],
             matches=result['matches'],
             total_matches=result['total_matches'],
@@ -352,12 +485,19 @@ async def health_check():
     """
     uptime = time.time() - startup_time
 
+    # Get actions count correctly
+    actions_count = 0
+    if extractor and extractor.patterns:
+        actions = extractor.patterns.get('actions', {})
+        actions_count = len(actions)
+
     return HealthResponse(
         status="healthy" if extractor is not None else "unhealthy",
-        version="1.0.0",
-        patterns_loaded=len(extractor.patterns) if extractor else 0,
+        version="1.0.1",
+        patterns_loaded=actions_count,
         total_requests=request_counter,
-        uptime_seconds=uptime
+        uptime_seconds=uptime,
+        security_enabled=bool(os.getenv("CELESTE_API_KEY"))
     )
 
 
@@ -374,11 +514,10 @@ async def list_patterns():
     actions_by_category = {}
     all_actions = []
 
-    for action_name, action_data in extractor.patterns.items():
-        # Skip meta keys
-        if action_name.startswith('_'):
-            continue
+    # Get actions from correct path in JSON
+    actions = extractor.patterns.get('actions', {})
 
+    for action_name, action_data in actions.items():
         category = action_data.get('category', 'other')
 
         if category not in actions_by_category:
@@ -399,8 +538,9 @@ async def root():
     """Root endpoint with API information"""
     return {
         "service": "CelesteOS Micro-Action Extraction API",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "status": "running",
+        "security": "multi-layer (API key + JWT + yacht signature)",
         "docs": "/docs",
         "health": "/health",
         "endpoints": {
@@ -422,9 +562,10 @@ def extract_for_n8n(query: str) -> Dict:
     Usage in n8n:
     1. HTTP Request node
     2. Method: POST
-    3. URL: https://your-render-url.onrender.com/extract_microactions
-    4. Body: {"query": "create work order and add to handover"}
-    5. Response: {"micro_actions": ["create_work_order", "add_to_handover"], "count": 2, "latency_ms": 102}
+    3. URL: https://extract.core.celeste7.ai/extract_microactions
+    4. Headers: Authorization, X-Yacht-Signature, X-Celeste-Key
+    5. Body: {"query": "create work order and add to handover"}
+    6. Response: {"micro_actions": ["create_work_order", "add_to_handover"], "count": 2, "latency_ms": 102}
     """
     if extractor is None:
         return {"error": "Service not initialized", "micro_actions": []}

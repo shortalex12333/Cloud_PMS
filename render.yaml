@@ -32,7 +32,7 @@ services:
     # Environment variables
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.11.8"
 
       - key: ENVIRONMENT
         value: production
@@ -47,8 +47,12 @@ services:
       - key: MIN_OUTPUT_CONFIDENCE
         value: "0.70"
 
-    # Disk storage (not needed for this service, all in-memory)
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 1  # Minimum size
+      # Security secrets (set manually in Render Dashboard, NOT in git)
+      - key: CELESTE_API_KEY
+        sync: false
+
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      - key: YACHT_SALT
+        sync: false
