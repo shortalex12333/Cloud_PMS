@@ -1,12 +1,32 @@
 # Unified Extraction Endpoint - Documentation
 
+## Quick Start
+
+**🚀 Primary Endpoint:** `https://extract.core.celeste7.ai/extract`
+
+This is the **single entry point** for all extraction requests in CelesteOS.
+
+```bash
+# Example Request
+curl -X POST https://extract.core.celeste7.ai/extract \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "X-Celeste-Key: YOUR_API_KEY" \
+  -H "X-Yacht-Signature: YOUR_YACHT_SIGNATURE" \
+  -d '{"query": "create work order for bilge pump"}'
+```
+
+**Response:** Unified JSON with actions, entities, confidence scores, and canonical mappings.
+
+---
+
 ## Overview
 
 The **Unified Extraction Endpoint** (`POST /extract`) is the single source of truth for all NLP extraction logic in CelesteOS. It combines micro-action detection, maritime entity extraction, and canonicalization into one structured response.
 
 **Version:** 2.0.0
-**Endpoint:** `POST /extract`
-**Status:** Production-ready
+**Production URL:** `https://extract.core.celeste7.ai/extract`
+**Status:** Production-ready ✅
 
 ---
 
@@ -149,9 +169,11 @@ The unified extraction pipeline combines three isolated modules:
 
 ## API Endpoint
 
-### `POST /extract`
+### `POST /extract` - **Primary Endpoint**
 
-**Description:** Unified extraction endpoint combining all modules
+**Production URL:** `https://extract.core.celeste7.ai/extract`
+
+**Description:** Unified extraction endpoint combining all modules - **This is the single entry point for all extraction requests**
 
 **Security:**
 - ✅ Multi-layer authentication (API key + JWT + yacht signature)
@@ -326,8 +348,8 @@ Total tests: 15
 
 **Old Approach:**
 ```javascript
-// OLD - Using /extract_microactions
-const response = await fetch('/extract_microactions', {
+// OLD - Using /extract_microactions (deprecated)
+const response = await fetch('https://extract.core.celeste7.ai/extract_microactions', {
   method: 'POST',
   body: JSON.stringify({ query: "create work order" })
 });
@@ -336,8 +358,8 @@ const response = await fetch('/extract_microactions', {
 
 **New Approach:**
 ```javascript
-// NEW - Using /extract (unified)
-const response = await fetch('/extract', {
+// NEW - Using /extract (unified) - PRIMARY ENDPOINT
+const response = await fetch('https://extract.core.celeste7.ai/extract', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${jwt_token}`,
@@ -362,7 +384,9 @@ const response = await fetch('/extract', {
 
 ### HTTP Request Node Configuration
 
-**URL:** `https://YOUR-SERVICE.onrender.com/extract`
+**⭐ Primary Endpoint:** `https://extract.core.celeste7.ai/extract`
+
+**URL:** `https://extract.core.celeste7.ai/extract`
 **Method:** `POST`
 **Authentication:** Custom
 
@@ -389,9 +413,23 @@ const response = await fetch('/extract', {
 1. **User Input** → Capture query
 2. **Supabase Auth** → Get JWT token
 3. **Generate Signature** → Compute yacht signature
-4. **HTTP Request** → Call `/extract` endpoint
+4. **HTTP Request** → Call `https://extract.core.celeste7.ai/extract`
 5. **Route by Intent** → Switch based on `intent` field
 6. **Execute Action** → Call appropriate workflow
+
+**n8n Example cURL:**
+```bash
+curl -X POST https://extract.core.celeste7.ai/extract \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "X-Celeste-Key: $CELESTE_API_KEY" \
+  -H "X-Yacht-Signature: $YACHT_SIGNATURE" \
+  -d '{
+    "query": "create work order for bilge pump",
+    "include_metadata": false,
+    "validate_combination": true
+  }'
+```
 
 ---
 
@@ -458,9 +496,13 @@ SUPABASE_JWT_SECRET: <set in dashboard>
 YACHT_SALT: <set in dashboard>
 ```
 
-**Health Check:** `GET /health`
+**Health Check:** `GET https://extract.core.celeste7.ai/health`
+
+**API Docs:** `GET https://extract.core.celeste7.ai/docs`
 
 **Auto-Deploy:** Enabled (push to `claude/build-frontend-pages-*` triggers deploy)
+
+**Custom Domain:** `extract.core.celeste7.ai`
 
 ---
 
@@ -512,10 +554,12 @@ YACHT_SALT: <set in dashboard>
 
 ## Support
 
+- **Production URL:** `https://extract.core.celeste7.ai/extract`
+- **API Documentation:** `https://extract.core.celeste7.ai/docs`
+- **Health Check:** `https://extract.core.celeste7.ai/health`
 - **GitHub Issues:** https://github.com/shortalex12333/Cloud_PMS/issues
-- **Documentation:** This file
+- **Technical Docs:** This file (`api/UNIFIED_EXTRACTION_README.md`)
 - **Test Suite:** `api/test_unified_extraction.py`
-- **API Docs:** `https://YOUR-SERVICE.onrender.com/docs`
 
 ---
 
