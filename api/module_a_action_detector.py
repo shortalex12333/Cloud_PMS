@@ -80,6 +80,15 @@ class StrictMicroActionDetector:
                 (r"^finish\s+(the\s+)?work\s*order", 0.90, "finish"),
             ],
 
+            # History/Data actions - EXPLICIT VERBS ONLY
+            "view_history": [
+                (r"^show\s+(me\s+)?(the\s+)?(historic|history|historical)\s+(data|records?)?", 0.93, "show"),
+                (r"show\s+(historic|history|historical)\s+(data|records?)", 0.90, "show"),
+                (r"^view\s+(the\s+)?(historic|history|historical)", 0.92, "view"),
+                (r"^display\s+(the\s+)?history", 0.90, "display"),
+                (r"^get\s+(the\s+)?history", 0.88, "get"),
+            ],
+
             # Handover actions - EXPLICIT VERBS ONLY
             "add_to_handover": [
                 (r"^add\s+(this\s+|it\s+)?to\s+(the\s+)?handover", 0.95, "add"),

@@ -128,13 +128,24 @@ class MaritimeEntityExtractor:
             "oil leak": ["oil\\s+leak", "oil\\s+leaking"],
             "pressure drop": ["pressure\\s+drop", "low\\s+pressure"],
             "pressure high": ["high\\s+pressure", "pressure\\s+high"],
-            "temperature high": ["high\\s+temp", "overheating", "temp\\s+high"],
+            "temperature high": ["high\\s+temp", "overheating", "temp\\s+high", "is\\s+overheating"],
             "temperature low": ["low\\s+temp", "temp\\s+low"],
             "vibration": ["vibration", "vibrating"],
             "noise": ["noise", "knocking", "grinding"],
             "alarm": ["alarm", "alert", "warning"],
             "shutdown": ["shutdown", "shut\\s+down", "tripped"],
             "failure": ["failure", "failed", "fault"],
+        }
+
+        # Person/Role patterns
+        self.person_patterns = {
+            "captain": ["captain", "master"],
+            "chief_engineer": ["chief\\s+engineer", "ce", "c\\.?e\\.?"],
+            "2nd_engineer": ["2nd\\s+engineer", "second\\s+engineer", "2e"],
+            "3rd_engineer": ["3rd\\s+engineer", "third\\s+engineer", "3e"],
+            "electrician": ["electrician", "eto"],
+            "bosun": ["bosun", "bo'?sun"],
+            "1st_officer": ["1st\\s+officer", "first\\s+officer", "chief\\s+officer"],
         }
 
         # Compile patterns
@@ -160,6 +171,11 @@ class MaritimeEntityExtractor:
         self.compiled_maritime_terms = {
             canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
             for canonical, patterns in self.maritime_terms.items()
+        }
+
+        self.compiled_persons = {
+            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
+            for canonical, patterns in self.person_patterns.items()
         }
 
         self.compiled_fault_codes = [
@@ -250,6 +266,18 @@ class MaritimeEntityExtractor:
                         value=match.group(0),
                         canonical=canonical.upper().replace(" ", "_"),
                         confidence=0.80,
+                        span=(match.start(), match.end())
+                    ))
+
+        # Extract persons/roles
+        for canonical, patterns in self.compiled_persons.items():
+            for pattern in patterns:
+                for match in pattern.finditer(query):
+                    entities.append(EntityDetection(
+                        type="person",
+                        value=match.group(0),
+                        canonical=canonical.upper(),
+                        confidence=0.85,
                         span=(match.start(), match.end())
                     ))
 
