@@ -1,15 +1,15 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components and action type updates
+// @ts-nocheck - Phase 3: Requires shadcn/ui components
 /**
  * WorkOrdersListPage
  *
  * Complete work orders list view with filtering, sorting, and pagination
- * Demonstrates Phase 3 Core filtering system in action
+ * Demonstrates Phase 3 Core filtering system with React Query
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
+import { useWorkOrdersList } from '@/hooks/useListViews';
 import { useActionHandler } from '@/hooks/useActionHandler';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { StatusFilter, type StatusOption } from '@/components/filters/StatusFilter';
@@ -53,25 +53,15 @@ export default function WorkOrdersListPage() {
     defaultSortOrder: 'desc',
   });
 
-  const { execute, isLoading } = useActionHandler();
-  const [workOrders, setWorkOrders] = useState<any[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  // Use React Query for data fetching with automatic caching
+  const { data, isLoading, error } = useWorkOrdersList(queryParams);
 
-  // Fetch work orders whenever filters change
-  useEffect(() => {
-    const fetchWorkOrders = async () => {
-      const response = await execute('view_work_orders_list', {
-        parameters: queryParams,
-      });
+  // Extract work orders and pagination from response
+  const workOrders = data?.card?.rows || [];
+  const totalCount = data?.pagination?.total || 0;
 
-      if (response?.success && response.card) {
-        setWorkOrders(response.card.rows || []);
-        setTotalCount(response.pagination?.total || 0);
-      }
-    };
-
-    fetchWorkOrders();
-  }, [queryParams, execute]);
+  // Still need useActionHandler for button actions (create_work_order, etc.)
+  const { execute } = useActionHandler();
 
   // Loading state
   if (isLoading && workOrders.length === 0) {

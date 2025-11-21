@@ -1,15 +1,15 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components and action type updates
+// @ts-nocheck - Phase 3: Requires shadcn/ui components
 /**
  * FaultsListPage
  *
  * Complete faults list view with filtering, sorting, and pagination
- * Demonstrates Phase 3 Core filtering system in action
+ * Demonstrates Phase 3 Core filtering system with React Query
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
+import { useFaultsList } from '@/hooks/useListViews';
 import { useActionHandler } from '@/hooks/useActionHandler';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { LocationFilter } from '@/components/filters/LocationFilter';
@@ -61,25 +61,15 @@ export default function FaultsListPage() {
     defaultSortOrder: 'desc',
   });
 
-  const { execute, isLoading } = useActionHandler();
-  const [faults, setFaults] = useState<any[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  // Use React Query for data fetching with automatic caching
+  const { data, isLoading, error } = useFaultsList(queryParams);
 
-  // Fetch faults whenever filters change
-  useEffect(() => {
-    const fetchFaults = async () => {
-      const response = await execute('view_faults_list', {
-        parameters: queryParams,
-      });
+  // Extract faults and pagination from response
+  const faults = data?.card?.rows || [];
+  const totalCount = data?.pagination?.total || 0;
 
-      if (response?.success && response.card) {
-        setFaults(response.card.rows || []);
-        setTotalCount(response.pagination?.total || 0);
-      }
-    };
-
-    fetchFaults();
-  }, [queryParams, execute]);
+  // Still need useActionHandler for button actions (report_fault, etc.)
+  const { execute } = useActionHandler();
 
   // Loading state
   if (isLoading && faults.length === 0) {

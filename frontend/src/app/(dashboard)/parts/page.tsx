@@ -1,15 +1,15 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components and action type updates
+// @ts-nocheck - Phase 3: Requires shadcn/ui components
 /**
  * PartsListPage
  *
  * Complete parts list view with filtering, sorting, and pagination
- * Demonstrates Phase 3 Core filtering system in action
+ * Demonstrates Phase 3 Core filtering system with React Query
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
+import { usePartsList } from '@/hooks/useListViews';
 import { useActionHandler } from '@/hooks/useActionHandler';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { LocationFilter } from '@/components/filters/LocationFilter';
@@ -61,25 +61,15 @@ export default function PartsListPage() {
     defaultSortOrder: 'desc',
   });
 
-  const { execute, isLoading } = useActionHandler();
-  const [parts, setParts] = useState<any[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  // Use React Query for data fetching with automatic caching
+  const { data, isLoading, error } = usePartsList(queryParams);
 
-  // Fetch parts whenever filters change
-  useEffect(() => {
-    const fetchParts = async () => {
-      const response = await execute('view_parts_list', {
-        parameters: queryParams,
-      });
+  // Extract parts and pagination from response
+  const parts = data?.card?.rows || [];
+  const totalCount = data?.pagination?.total || 0;
 
-      if (response?.success && response.card) {
-        setParts(response.card.rows || []);
-        setTotalCount(response.pagination?.total || 0);
-      }
-    };
-
-    fetchParts();
-  }, [queryParams, execute]);
+  // Still need useActionHandler for button actions (add_part, etc.)
+  const { execute } = useActionHandler();
 
   // Loading state
   if (isLoading && parts.length === 0) {
