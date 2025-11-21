@@ -1,7 +1,14 @@
+'use client';
+
 import SearchBar from '@/components/SearchBar';
 import { Suspense } from 'react';
+import { withAuth } from '@/components/withAuth';
+import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
-export default function SearchPage() {
+function SearchPage() {
+  const { user, logout } = useAuth();
   return (
     <div className="spotlight-container">
       <div className="w-full max-w-4xl">
@@ -11,6 +18,11 @@ export default function SearchPage() {
           <p className="text-sm text-muted-foreground">
             Search anything — manuals, faults, history, parts, or ask a question
           </p>
+          {user && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {user.displayName || user.email} • {user.role}
+            </p>
+          )}
         </div>
 
         {/* Search Interface */}
@@ -22,16 +34,33 @@ export default function SearchPage() {
           <SearchBar />
         </Suspense>
 
-        {/* Quick Actions (Optional) */}
+        {/* Quick Actions */}
         <div className="mt-8 flex justify-center gap-2 text-xs text-muted-foreground">
-          <button className="px-3 py-1 rounded-md hover:bg-accent">
-            Recent searches
-          </button>
-          <button className="px-3 py-1 rounded-md hover:bg-accent">
-            Dashboard →
+          {isHOD(user) && (
+            <Link
+              href="/dashboard"
+              className="px-3 py-1 rounded-md hover:bg-accent"
+            >
+              Dashboard →
+            </Link>
+          )}
+          <Link
+            href="/settings"
+            className="px-3 py-1 rounded-md hover:bg-accent"
+          >
+            Settings
+          </Link>
+          <button
+            onClick={() => logout()}
+            className="px-3 py-1 rounded-md hover:bg-accent hover:text-destructive"
+          >
+            Logout
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+// Export with authentication protection (any authenticated user)
+export default withAuth(SearchPage);

@@ -1,7 +1,7 @@
 'use client';
 
 import { TrendingUp, AlertTriangle } from 'lucide-react';
-import type { PredictiveInsight } from '@/types';
+import type { PredictiveInsight } from '@/types/dashboard';
 
 export default function PredictiveOverview() {
   // TODO: Fetch from API
@@ -13,6 +13,7 @@ export default function PredictiveOverview() {
       summary: 'Repeated high-pressure faults detected',
       contributing_factors: ['Pressure spikes', 'Frequent restarts'],
       recommended_actions: ['Inspect compressor', 'Check refrigerant levels'],
+      trend: 'degrading',
     },
     {
       equipment_id: '2',
@@ -21,6 +22,7 @@ export default function PredictiveOverview() {
       summary: 'Leak pattern emerging',
       contributing_factors: ['Seal degradation', 'Increased maintenance'],
       recommended_actions: ['Replace seal kit', 'Monitor oil levels'],
+      trend: 'stable',
     },
   ];
 

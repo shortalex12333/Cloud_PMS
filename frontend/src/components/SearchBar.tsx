@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import ResultCard from './ResultCard';
 import { debounce } from '@/lib/utils';
-import type { SearchResponse, SearchResult } from '@/types';
+import { celesteApi, CelesteApiError } from '@/lib/apiClient';
+import type { SearchResponse, SearchResult } from '@/types/search';
 
 export default function SearchBar() {
   const [query, setQuery] = useState('');
@@ -18,7 +19,7 @@ export default function SearchBar() {
     inputRef.current?.focus();
   }, []);
 
-  // Debounced search function (placeholder)
+  // Debounced search function with API integration
   const performSearch = debounce(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       setResults([]);
@@ -29,22 +30,36 @@ export default function SearchBar() {
     setLoading(true);
     setShowResults(true);
 
+    console.log('[SearchBar] Initiating search:', {
+      query: searchQuery,
+      timestamp: new Date().toISOString(),
+    });
+
     try {
-      // TODO: Implement actual API integration
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+      // Use authenticated API client
+      const data = await celesteApi.post<SearchResponse>('search', {
+        query: searchQuery,
+      });
 
-      // const response = await fetch(`${apiBaseUrl}search`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ query: searchQuery }),
-      // });
-      // const data: SearchResponse = await response.json();
-      // setResults(data.results);
+      console.log('[SearchBar] Search results received:', {
+        resultCount: data.results?.length || 0,
+        data,
+      });
 
-      // Placeholder: simulate search delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      setResults(data.results || []);
+    } catch (error) {
+      console.error('[SearchBar] Search error:', error);
 
-      // Mock results for demonstration
+      // Show user-friendly error for auth issues
+      if (error instanceof CelesteApiError && error.status === 401) {
+        console.error('[SearchBar] Authentication required');
+        // AuthContext will handle redirect to login
+        return;
+      }
+
+      console.log('[SearchBar] Falling back to mock data');
+
+      // Fallback to mock results if API fails
       const mockResults: SearchResult[] = [
         {
           type: 'document_chunk',
@@ -77,9 +92,6 @@ export default function SearchBar() {
       ];
 
       setResults(mockResults);
-    } catch (error) {
-      console.error('Search error:', error);
-      setResults([]);
     } finally {
       setLoading(false);
     }

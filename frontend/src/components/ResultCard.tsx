@@ -3,7 +3,7 @@
 import { FileText, AlertTriangle, Wrench, Package, Activity } from 'lucide-react';
 import MicroActions from './MicroActions';
 import { cn } from '@/lib/utils';
-import type { SearchResult, ResultCardType } from '@/types';
+import type { SearchResult, ResultCardType } from '@/types/search';
 
 interface ResultCardProps {
   result: SearchResult;
@@ -73,7 +73,7 @@ export default function ResultCard({ result }: ResultCardProps) {
           )}
 
           {/* Micro Actions */}
-          <MicroActions actions={actions} resultId={result.id} />
+          <MicroActions actions={actions} result={result} />
         </div>
 
         {/* Score Badge (optional, can be hidden) */}
