@@ -1,6 +1,22 @@
-// API client for Celeste backend with automatic JWT authentication
+/**
+ * Secure API Client for Celeste Backend
+ *
+ * All requests include:
+ * - JWT (Authorization: Bearer <token>)
+ * - Yacht signature (X-Yacht-Signature: <hash>)
+ *
+ * Security guarantees:
+ * - Auto-refresh expired tokens
+ * - Retry 401s once with new token
+ * - Never log JWT or yacht signature
+ * - Fail fast if authentication unavailable
+ */
 
 import { supabase } from './supabaseClient';
+import { getAuthHeaders, handle401, getYachtId, AuthError } from './authHelpers';
+
+// Re-export AuthError for convenience
+export { AuthError };
 
 // Use same env var as actionClient for consistency
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.celeste7.ai';
@@ -17,83 +33,96 @@ export class CelesteApiError extends Error {
 }
 
 /**
- * Call Celeste API with automatic JWT authentication
- * Uses Supabase session JWT in Authorization header
- * DO NOT send Outlook tokens or any external auth tokens
+ * Call Celeste API with secure authentication
+ *
+ * Every request includes:
+ * - Authorization: Bearer <JWT>
+ * - X-Yacht-Signature: <sha256(yacht_id + salt)>
+ *
+ * Automatically retries 401s with token refresh.
+ *
+ * @param path - API path (e.g., '/search', '/v1/actions/execute')
+ * @param options - Fetch options (method, body, etc.)
+ * @returns Parsed JSON response
+ * @throws CelesteApiError on request failure
+ * @throws AuthError if authentication unavailable
  */
 export async function callCelesteApi<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
-  // Get current Supabase session for JWT
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+  const executeRequest = async (): Promise<T> => {
+    // Get yacht_id from user profile
+    const yachtId = await getYachtId();
 
-  if (sessionError) {
-    console.error('[apiClient] Session error:', sessionError);
-    throw new CelesteApiError(401, 'Authentication required');
-  }
+    // Get secure auth headers (JWT + yacht signature)
+    const authHeaders = await getAuthHeaders(yachtId);
 
-  if (!session) {
-    console.error('[apiClient] No active session');
-    throw new CelesteApiError(401, 'Not authenticated');
-  }
+    const url = `${API_BASE_URL}${path}`;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...options?.headers, // Allow overriding content-type if needed
+    };
 
-  const url = `${API_BASE_URL}${path}`;
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${session.access_token}`,
-    ...options?.headers,
-  };
+    // Security: DO NOT log JWT, yacht_signature, or Authorization header
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[apiClient] Request:', {
+        method: options?.method || 'GET',
+        path, // Log path, not full URL
+        hasAuth: true, // Confirm auth present without logging token
+      });
+    }
 
-  console.log('[apiClient] Request:', {
-    method: options?.method || 'GET',
-    url,
-    hasAuth: !!session.access_token,
-    userId: session.user.id,
-  });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[apiClient] Response:', {
+          status: response.status,
+          ok: response.ok,
+        });
+      }
 
-    console.log('[apiClient] Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-    });
+      // Handle 401 Unauthorized - retry with token refresh
+      if (response.status === 401) {
+        console.warn('[apiClient] 401 Unauthorized, attempting token refresh...');
+        return await handle401(() => executeRequest());
+      }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new CelesteApiError(
+          response.status,
+          errorData.message || `API Error: ${response.statusText}`,
+          errorData
+        );
+      }
+
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return {} as T;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof CelesteApiError || error instanceof AuthError) {
+        throw error;
+      }
+
+      console.error('[apiClient] Request failed:', error);
       throw new CelesteApiError(
-        response.status,
-        errorData.message || `API Error: ${response.statusText}`,
-        errorData
+        500,
+        error instanceof Error ? error.message : 'Network error'
       );
     }
+  };
 
-    // Handle empty responses
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      return {} as T;
-    }
-
-    return response.json();
-  } catch (error) {
-    if (error instanceof CelesteApiError) {
-      throw error;
-    }
-
-    console.error('[apiClient] Request failed:', error);
-    throw new CelesteApiError(
-      500,
-      error instanceof Error ? error.message : 'Network error'
-    );
-  }
+  return executeRequest();
 }
 
 /**
@@ -119,25 +148,36 @@ export const celesteApi = {
 
 /**
  * Search API with streaming support
+ *
+ * Opens streaming connection with JWT + yacht signature.
+ * If token expires during typing, caller should close and reopen.
+ *
+ * @param query - Search query string
+ * @returns ReadableStream of search results
+ * @throws CelesteApiError on connection failure
+ * @throws AuthError if authentication unavailable
  */
 export async function searchWithStream(query: string): Promise<ReadableStream | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Get yacht_id from user profile
+  const yachtId = await getYachtId();
 
-  if (!session) {
-    throw new CelesteApiError(401, 'Not authenticated');
-  }
+  // Get secure auth headers (JWT + yacht signature)
+  const authHeaders = await getAuthHeaders(yachtId);
 
-  const url = `${API_BASE_URL}search`;
+  const url = `${API_BASE_URL}/search`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
+      ...authHeaders,
     },
     body: JSON.stringify({ query, stream: true }),
   });
+
+  // Handle 401 - don't auto-retry for streams, let caller handle reconnection
+  if (response.status === 401) {
+    throw new CelesteApiError(401, 'Authentication expired, please refresh');
+  }
 
   if (!response.ok) {
     throw new CelesteApiError(response.status, 'Search stream failed');
@@ -210,5 +250,90 @@ export const integrationsApi = {
     disconnect: async (): Promise<{ success: boolean }> => {
       return celesteApi.post('/api/integrations/linkedin/disconnect');
     },
+  },
+};
+
+/**
+ * Document Viewer API
+ *
+ * Secure document access for both cloud storage and local NAS mode.
+ * All document requests require JWT + yacht signature.
+ *
+ * Security model:
+ * - Cloud mode: Documents served via backend with auth verification
+ * - Local NAS mode: Pre-signed URLs generated with JWT validation
+ * - No direct file access without authentication
+ */
+export const documentsApi = {
+  /**
+   * Get secure document URL
+   *
+   * Returns a pre-signed URL or authenticated endpoint for document access.
+   * Works for both cloud storage and local NAS mode.
+   *
+   * @param documentId - Document ID
+   * @param mode - 'cloud' or 'nas'
+   * @returns Secure document URL with embedded auth
+   * @throws CelesteApiError if document not found or access denied
+   */
+  getSecureUrl: async (
+    documentId: string,
+    mode: 'cloud' | 'nas' = 'cloud'
+  ): Promise<{ url: string; expiresAt: number }> => {
+    return celesteApi.post('/v1/documents/secure-url', {
+      document_id: documentId,
+      mode,
+    });
+  },
+
+  /**
+   * Stream document with auth headers
+   *
+   * For direct document streaming (e.g., PDFs, images).
+   * Returns blob URL that can be used in <iframe> or <img>.
+   *
+   * @param documentId - Document ID
+   * @returns Blob URL for document
+   * @throws CelesteApiError if document not found or access denied
+   */
+  streamDocument: async (documentId: string): Promise<string> => {
+    // Get yacht_id from user profile
+    const yachtId = await getYachtId();
+
+    // Get secure auth headers
+    const authHeaders = await getAuthHeaders(yachtId);
+
+    const url = `${API_BASE_URL}/v1/documents/${documentId}/stream`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: authHeaders,
+    });
+
+    // Handle 401 - document access requires valid auth
+    if (response.status === 401) {
+      throw new CelesteApiError(401, 'Authentication required to view document');
+    }
+
+    if (response.status === 403) {
+      throw new CelesteApiError(403, 'Access denied to this document');
+    }
+
+    if (!response.ok) {
+      throw new CelesteApiError(response.status, 'Failed to load document');
+    }
+
+    // Convert response to blob and create object URL
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  },
+
+  /**
+   * Get document metadata
+   *
+   * @param documentId - Document ID
+   * @returns Document metadata (title, type, size, etc.)
+   */
+  getMetadata: async (documentId: string) => {
+    return celesteApi.get(`/v1/documents/${documentId}/metadata`);
   },
 };
