@@ -34,22 +34,36 @@ export const AuthContext = createContext<AuthContextValue | undefined>(
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CelesteUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const fetchingRef = React.useRef(false);
 
   // Fetch user profile from users table (production schema)
   const fetchUserProfile = useCallback(async (authUser: User) => {
-    try {
-      console.log('[AuthContext] Fetching profile for:', authUser.email);
+    // Prevent concurrent fetches
+    if (fetchingRef.current) {
+      console.log('[AuthContext] ⏸️ Already fetching, skipping...');
+      return null;
+    }
 
+    fetchingRef.current = true;
+    console.log('[AuthContext] ▶ fetchUserProfile START for:', authUser.email);
+
+    try {
       // Query user profile - production uses 'users' table with role column
+      console.log('[AuthContext] Executing Supabase query...');
+
+      const queryStart = Date.now();
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, email, yacht_id, name, role, is_active')
         .eq('email', authUser.email)
         .eq('is_active', true)
-        .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
+        .maybeSingle();
+
+      const queryTime = Date.now() - queryStart;
+      console.log(`[AuthContext] Query completed in ${queryTime}ms`);
 
       if (userError) {
-        console.error('[AuthContext] Error fetching user profile:', {
+        console.error('[AuthContext] ❌ Query returned error:', {
           message: userError.message,
           details: userError.details,
           hint: userError.hint,
@@ -59,10 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!userData) {
-        console.warn('[AuthContext] No user profile found for:', authUser.email);
-        console.warn('[AuthContext] User may not exist in public.users table');
+        console.warn('[AuthContext] ⚠️ No user profile found for:', authUser.email);
+        console.warn('[AuthContext] User exists in auth.users but NOT in public.users table');
+        console.warn('[AuthContext] This user needs to be created in public.users');
         return null;
       }
+
+      console.log('[AuthContext] ✅ User data received:', userData);
 
       const celesteUser: CelesteUser = {
         id: userData.id,
@@ -72,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: userData.name,
       };
 
-      console.log('[AuthContext] User profile loaded:', {
+      console.log('[AuthContext] ✅ User profile loaded successfully:', {
         id: celesteUser.id,
         role: celesteUser.role,
         yachtId: celesteUser.yachtId,
@@ -80,8 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return celesteUser;
     } catch (err) {
-      console.error('[AuthContext] Exception fetching user profile:', err);
+      console.error('[AuthContext] ❌ Exception in fetchUserProfile:', err);
       return null;
+    } finally {
+      fetchingRef.current = false;
+      console.log('[AuthContext] ◀ fetchUserProfile END');
     }
   }, []);
 
