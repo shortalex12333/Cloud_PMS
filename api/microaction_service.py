@@ -47,6 +47,9 @@ from slowapi.middleware import SlowAPIMiddleware
 from microaction_extractor import MicroActionExtractor, get_extractor
 from microaction_config import get_config, ExtractionConfig, ValidationRules
 
+# Import unified extraction pipeline
+from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
+
 # ========================================================================
 # LOGGING CONFIGURATION
 # ========================================================================
@@ -106,6 +109,9 @@ app.add_middleware(
 
 # Extractor instance (singleton, loaded at startup)
 extractor: Optional[MicroActionExtractor] = None
+
+# Unified pipeline instance (Modules A, B, C)
+pipeline: Optional[UnifiedExtractionPipeline] = None
 
 # Configuration (default to production)
 config: ExtractionConfig = get_config('production')
@@ -286,6 +292,114 @@ class PatternsResponse(BaseModel):
 
 
 # ========================================================================
+# UNIFIED EXTRACTION MODELS (Modules A + B + C)
+# ========================================================================
+
+class MicroActionDetection(BaseModel):
+    """Single micro-action detection with confidence"""
+    action: str = Field(..., description="Canonical action name (e.g., 'create_work_order')")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence (0.0-1.0)")
+    verb: str = Field(..., description="Verb that triggered detection (e.g., 'create')")
+    matched_text: str = Field(..., description="Text that matched the pattern")
+
+
+class EntityDetectionModel(BaseModel):
+    """Single entity detection (raw)"""
+    type: str = Field(..., description="Entity type (equipment, fault_code, measurement, etc.)")
+    value: str = Field(..., description="Original text")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Detection confidence")
+
+
+class CanonicalEntityModel(BaseModel):
+    """Canonical entity with weight"""
+    type: str = Field(..., description="Entity type")
+    value: str = Field(..., description="Original value")
+    canonical: str = Field(..., description="Canonical/normalized form (e.g., 'MAIN_ENGINE_1')")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Adjusted confidence")
+    weight: float = Field(..., ge=0.0, le=1.0, description="Importance weight for search ranking")
+
+
+class ExtractionScores(BaseModel):
+    """Confidence and quality scores"""
+    intent_confidence: float = Field(..., ge=0.0, le=1.0, description="Best action confidence")
+    entity_confidence: float = Field(..., ge=0.0, le=1.0, description="Average entity confidence")
+    entity_weights: Dict[str, float] = Field(..., description="Average weight per entity type")
+
+
+class ExtractionMetadata(BaseModel):
+    """Extraction metadata"""
+    query: str = Field(..., description="Original query")
+    latency_ms: int = Field(..., description="Processing latency in milliseconds")
+    modules_run: List[str] = Field(..., description="Modules executed in pipeline")
+    action_count: int = Field(..., description="Number of actions detected")
+    entity_count: int = Field(..., description="Number of entities detected")
+
+
+class UnifiedExtractionResponse(BaseModel):
+    """
+    Unified extraction response combining micro-actions, entities, and canonical mappings.
+
+    This is the single source of truth for ALL extraction logic.
+    """
+    intent: Optional[str] = Field(None, description="High-level intent (create, update, view, action, search)")
+    microactions: List[MicroActionDetection] = Field(default_factory=list, description="Detected micro-actions with confidence")
+    entities: List[EntityDetectionModel] = Field(default_factory=list, description="Raw entity detections")
+    canonical_entities: List[CanonicalEntityModel] = Field(default_factory=list, description="Canonical entities with weights")
+    scores: ExtractionScores = Field(..., description="Confidence and quality scores")
+    metadata: ExtractionMetadata = Field(..., description="Extraction metadata")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "intent": "action",
+                "microactions": [
+                    {
+                        "action": "diagnose_fault",
+                        "confidence": 0.93,
+                        "verb": "diagnose",
+                        "matched_text": "diagnose E047"
+                    }
+                ],
+                "entities": [
+                    {"type": "fault_code", "value": "E047", "confidence": 0.95},
+                    {"type": "equipment", "value": "ME1", "confidence": 0.92}
+                ],
+                "canonical_entities": [
+                    {
+                        "type": "fault_code",
+                        "value": "E047",
+                        "canonical": "E047",
+                        "confidence": 0.95,
+                        "weight": 1.0
+                    },
+                    {
+                        "type": "equipment",
+                        "value": "ME1",
+                        "canonical": "MAIN_ENGINE_1",
+                        "confidence": 0.87,
+                        "weight": 0.95
+                    }
+                ],
+                "scores": {
+                    "intent_confidence": 0.93,
+                    "entity_confidence": 0.91,
+                    "entity_weights": {
+                        "fault_code": 0.95,
+                        "equipment": 0.87
+                    }
+                },
+                "metadata": {
+                    "query": "diagnose E047 on ME1",
+                    "latency_ms": 45,
+                    "modules_run": ["action_detector", "entity_extractor", "canonicalizer"],
+                    "action_count": 1,
+                    "entity_count": 2
+                }
+            }
+        }
+
+
+# ========================================================================
 # STARTUP & SHUTDOWN EVENTS
 # ========================================================================
 
@@ -294,7 +408,7 @@ startup_time = time.time()
 @app.on_event("startup")
 async def startup_event():
     """Load extractor and patterns at startup (runs once)"""
-    global extractor, config
+    global extractor, pipeline, config
     logger.info("🚀 Starting Micro-Action Extraction Service...")
 
     try:
@@ -306,6 +420,10 @@ async def startup_event():
         logger.info(f"✓ Loaded {len(extractor.patterns)} pattern groups")
         logger.info(f"✓ Compiled {len(extractor.compiled_patterns)} action patterns")
         logger.info(f"✓ Built gazetteer with {len(extractor.gazetteer)} terms")
+
+        # Initialize unified pipeline (Modules A, B, C)
+        pipeline = get_pipeline()
+        logger.info("✓ Unified extraction pipeline initialized (Modules A + B + C)")
 
         # Load configuration
         config = get_config('production')
@@ -353,6 +471,73 @@ async def log_requests(request: Request, call_next):
 # ========================================================================
 # API ENDPOINTS
 # ========================================================================
+
+@app.post("/extract", response_model=UnifiedExtractionResponse, tags=["Unified Extraction"])
+@limiter.limit("100/minute")
+async def unified_extract(
+    request: Request,
+    extraction_request: ExtractionRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **UNIFIED EXTRACTION ENDPOINT - Single Source of Truth**
+
+    Combines micro-action detection, entity extraction, and canonicalization into
+    a single structured response.
+
+    **What it does:**
+    - Detects actionable intents (Module A: strict verb-based patterns)
+    - Extracts maritime entities (Module B: equipment, faults, measurements)
+    - Canonicalizes and weights entities (Module C: normalization + importance)
+
+    **Security:**
+    - Requires valid API key (X-Celeste-Key)
+    - Requires valid JWT (Authorization: Bearer)
+    - Requires yacht signature (X-Yacht-Signature)
+
+    **Example Inputs:**
+    - "create work order for bilge pump" → action + entity
+    - "bilge manifold" → entity only
+    - "diagnose E047 on ME1" → action + fault_code + equipment
+    - "tell me bilge pump" → entity only (no false action)
+    - "sea water pump pressure low" → equipment + maritime term
+
+    **Response:**
+    - intent: High-level categorization (create, update, view, action, search)
+    - microactions: List of detected actions with confidence scores
+    - entities: Raw entity detections
+    - canonical_entities: Normalized entities with importance weights
+    - scores: Confidence metrics
+    - metadata: Processing info (latency, modules run, counts)
+
+    **Non-Negotiable Rules:**
+    - Maritime terms NEVER trigger micro-actions
+    - Phrasal patterns ("tell me", "find the") do NOT detect actions
+    - Actions require explicit verbs at start of query
+    - Entities are extracted independently of actions
+    """
+    if pipeline is None:
+        raise HTTPException(status_code=503, detail="Unified pipeline not initialized")
+
+    try:
+        # Run unified extraction pipeline (Modules A → B → C)
+        result = pipeline.extract(extraction_request.query)
+
+        logger.info(
+            f"Unified extraction: query='{extraction_request.query}', "
+            f"intent={result['intent']}, "
+            f"actions={result['metadata']['action_count']}, "
+            f"entities={result['metadata']['entity_count']}, "
+            f"latency={result['metadata']['latency_ms']}ms, "
+            f"user_id={auth['user_id']}, yacht_id={auth['yacht_id']}"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Unified extraction failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
 
 @app.post("/extract_microactions", response_model=ExtractionResponse, tags=["Extraction"])
 @limiter.limit("100/minute")
@@ -538,15 +723,22 @@ async def root():
     """Root endpoint with API information"""
     return {
         "service": "CelesteOS Micro-Action Extraction API",
-        "version": "1.0.1",
+        "version": "2.0.0",
         "status": "running",
         "security": "multi-layer (API key + JWT + yacht signature)",
         "docs": "/docs",
         "health": "/health",
         "endpoints": {
-            "extract": "POST /extract_microactions",
-            "detailed": "POST /extract_detailed",
+            "unified_extract": "POST /extract (RECOMMENDED - Modules A+B+C)",
+            "extract": "POST /extract_microactions (legacy)",
+            "detailed": "POST /extract_detailed (legacy)",
             "patterns": "GET /patterns"
+        },
+        "architecture": {
+            "module_a": "Strict micro-action detector (verb-based)",
+            "module_b": "Maritime entity extractor (equipment, faults, measurements)",
+            "module_c": "Canonicalizer (normalization + weighting)",
+            "pipeline": "Unified extraction combining all modules"
         }
     }
 
