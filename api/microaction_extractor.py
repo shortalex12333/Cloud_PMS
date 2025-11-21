@@ -79,10 +79,10 @@ class MicroActionExtractor:
         """Compile regex patterns for each action"""
         compiled = {}
 
-        for action_name, action_data in self.patterns.items():
-            if action_name in ['_meta', '_conjunctions', '_unsupported_indicators']:
-                continue
+        # Get actions from the 'actions' key in the JSON
+        actions = self.patterns.get('actions', {})
 
+        for action_name, action_data in actions.items():
             patterns_list = []
             weight = action_data.get('weight', 1.0)
 
@@ -106,10 +106,10 @@ class MicroActionExtractor:
         """
         gazetteer = {}
 
-        for action_name, action_data in self.patterns.items():
-            if action_name in ['_meta', '_conjunctions', '_unsupported_indicators']:
-                continue
+        # Get actions from the 'actions' key in the JSON
+        actions = self.patterns.get('actions', {})
 
+        for action_name, action_data in actions.items():
             # Map synonyms
             for synonym in action_data.get('synonyms', []):
                 gazetteer[synonym.lower()] = action_name
@@ -153,7 +153,7 @@ class MicroActionExtractor:
         Detect conjunction positions to split multi-action queries.
         Returns list of positions where conjunctions occur.
         """
-        conjunction_patterns = self.patterns.get('_conjunctions', {}).get('patterns', [])
+        conjunction_patterns = self.patterns.get('conjunctions', {}).get('patterns', [])
         positions = []
 
         for pattern_str in conjunction_patterns:
@@ -204,19 +204,30 @@ class MicroActionExtractor:
         # Check for multi-word phrases first (longer matches take priority)
         sorted_terms = sorted(self.gazetteer.keys(), key=len, reverse=True)
 
-        for term in sorted_terms:
-            if term in cleaned_text:
-                action_name = self.gazetteer[term]
-                start_pos = cleaned_text.find(term)
+        # Track already matched spans to avoid duplicates
+        matched_spans = set()
 
-                matches.append(MicroActionMatch(
-                    action_name=action_name,
-                    confidence=0.85 * self.source_multipliers['gazetteer'],
-                    source='gazetteer',
-                    match_text=term,
-                    start_pos=start_pos,
-                    end_pos=start_pos + len(term)
-                ))
+        for term in sorted_terms:
+            # Use word boundary regex to avoid substring matches
+            # e.g., "po" won't match in "report"
+            pattern = r'\b' + re.escape(term) + r'\b'
+            for match in re.finditer(pattern, cleaned_text, re.IGNORECASE):
+                action_name = self.gazetteer[term]
+                start_pos = match.start()
+                end_pos = match.end()
+
+                # Skip if this span overlaps with already matched span
+                span = (start_pos, end_pos)
+                if span not in matched_spans:
+                    matches.append(MicroActionMatch(
+                        action_name=action_name,
+                        confidence=0.85 * self.source_multipliers['gazetteer'],
+                        source='gazetteer',
+                        match_text=match.group(0),
+                        start_pos=start_pos,
+                        end_pos=end_pos
+                    ))
+                    matched_spans.add(span)
 
         return matches
 
@@ -343,7 +354,7 @@ class MicroActionExtractor:
             all_matches.extend(ai_matches)
 
         # Check for unsupported indicators
-        unsupported_patterns = self.patterns.get('_unsupported_indicators', {}).get('patterns', [])
+        unsupported_patterns = self.patterns.get('unsupported_indicators', {}).get('patterns', [])
         has_unsupported = any(
             re.search(pattern, user_input, re.IGNORECASE)
             for pattern in unsupported_patterns
