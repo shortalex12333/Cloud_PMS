@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { withAuth } from '@/components/withAuth';
+import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 // Integration status type
@@ -11,6 +12,20 @@ interface IntegrationStatus {
   connected: boolean;
   email?: string;
   connectedAt?: string;
+}
+
+// Helper for authenticated API calls
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
 }
 
 function SettingsContent() {
@@ -33,7 +48,7 @@ function SettingsContent() {
     const fetchStatuses = async () => {
       try {
         // Fetch Outlook status
-        const outlookRes = await fetch('/api/integrations/outlook/status');
+        const outlookRes = await authFetch('/api/integrations/outlook/status');
         if (outlookRes.ok) {
           const data = await outlookRes.json();
           setOutlookStatus(data);
@@ -46,7 +61,7 @@ function SettingsContent() {
 
       try {
         // Fetch LinkedIn status
-        const linkedinRes = await fetch('/api/integrations/linkedin/status');
+        const linkedinRes = await authFetch('/api/integrations/linkedin/status');
         if (linkedinRes.ok) {
           const data = await linkedinRes.json();
           setLinkedinStatus(data);
@@ -69,7 +84,7 @@ function SettingsContent() {
     if (connected === 'outlook') {
       setOutlookLoading(true);
       // Refresh Outlook status
-      fetch('/api/integrations/outlook/status')
+      authFetch('/api/integrations/outlook/status')
         .then(res => res.json())
         .then(data => setOutlookStatus(data))
         .finally(() => setOutlookLoading(false));
@@ -81,7 +96,7 @@ function SettingsContent() {
     if (connected === 'linkedin') {
       setLinkedinLoading(true);
       // Refresh LinkedIn status
-      fetch('/api/integrations/linkedin/status')
+      authFetch('/api/integrations/linkedin/status')
         .then(res => res.json())
         .then(data => setLinkedinStatus(data))
         .finally(() => setLinkedinLoading(false));
@@ -101,7 +116,7 @@ function SettingsContent() {
   const handleConnectOutlook = async () => {
     setConnectingOutlook(true);
     try {
-      const res = await fetch('/api/integrations/outlook/auth-url');
+      const res = await authFetch('/api/integrations/outlook/auth-url');
       const data = await res.json();
 
       if (data.url) {
@@ -122,7 +137,7 @@ function SettingsContent() {
 
     setOutlookLoading(true);
     try {
-      await fetch('/api/integrations/outlook/disconnect', { method: 'POST' });
+      await authFetch('/api/integrations/outlook/disconnect', { method: 'POST' });
       setOutlookStatus({ connected: false });
     } catch (error) {
       console.error('[Settings] Error disconnecting Outlook:', error);
@@ -135,7 +150,7 @@ function SettingsContent() {
   const handleConnectLinkedin = async () => {
     setConnectingLinkedin(true);
     try {
-      const res = await fetch('/api/integrations/linkedin/auth-url');
+      const res = await authFetch('/api/integrations/linkedin/auth-url');
       const data = await res.json();
 
       if (data.url) {
@@ -156,7 +171,7 @@ function SettingsContent() {
 
     setLinkedinLoading(true);
     try {
-      await fetch('/api/integrations/linkedin/disconnect', { method: 'POST' });
+      await authFetch('/api/integrations/linkedin/disconnect', { method: 'POST' });
       setLinkedinStatus({ connected: false });
     } catch (error) {
       console.error('[Settings] Error disconnecting LinkedIn:', error);
