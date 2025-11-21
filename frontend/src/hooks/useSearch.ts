@@ -44,7 +44,7 @@ export function useSearch() {
     }));
 
     try {
-      const response = await api.search.search(request);
+      const response = await api.search.search(request.query, request.filters);
 
       setState({
         query: request.query,
@@ -81,7 +81,7 @@ export function useSearch() {
     }));
 
     try {
-      const stream = api.search.streamSearch(request);
+      const stream = api.search.searchStream(request.query) as any;
 
       for await (const event of stream) {
         if (event.type === 'data' && event.data) {
