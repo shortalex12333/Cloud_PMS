@@ -37,7 +37,7 @@ export default function SearchBar() {
 
     try {
       // Use authenticated API client
-      const data = await celesteApi.post<SearchResponse>('search', {
+      const data = await celesteApi.post<SearchResponse>('/search', {
         query: searchQuery,
       });
 
