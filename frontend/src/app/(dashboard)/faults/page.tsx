@@ -21,6 +21,9 @@ import { FaultCard } from '@/components/cards/FaultCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle } from 'lucide-react';
 
+// Force dynamic rendering (required for useSearchParams in useFilters)
+export const dynamic = 'force-dynamic';
+
 // Fault status options
 const STATUS_OPTIONS: StatusOption[] = [
   { value: 'open', label: 'Open', color: 'red' },

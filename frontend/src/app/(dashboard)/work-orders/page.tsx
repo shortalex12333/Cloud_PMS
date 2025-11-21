@@ -20,6 +20,9 @@ import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, ClipboardList } from 'lucide-react';
 
+// Force dynamic rendering (required for useSearchParams in useFilters)
+export const dynamic = 'force-dynamic';
+
 // Work order status options
 const STATUS_OPTIONS: StatusOption[] = [
   { value: 'pending', label: 'Pending', color: 'gray' },

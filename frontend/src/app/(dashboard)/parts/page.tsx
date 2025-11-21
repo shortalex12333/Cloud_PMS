@@ -21,6 +21,9 @@ import { PartCard } from '@/components/cards/PartCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, PackageSearch } from 'lucide-react';
 
+// Force dynamic rendering (required for useSearchParams in useFilters)
+export const dynamic = 'force-dynamic';
+
 // Part status options
 const STATUS_OPTIONS: StatusOption[] = [
   { value: 'in_stock', label: 'In Stock', color: 'green' },
