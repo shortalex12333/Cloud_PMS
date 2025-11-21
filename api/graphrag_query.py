@@ -2,11 +2,16 @@
 GraphRAG Query Service (Internal Engine)
 =========================================
 
-Internal search engine layer using Graph RAG.
+Internal search engine layer using Graph RAG with GPT extraction.
 NOT a public API endpoint - called by /v1/search.
 
-ARCHITECTURE (from search-engine-spec.md):
+ARCHITECTURE:
     Frontend → POST /v1/search → graphrag_query.query() → Cards + Actions → Frontend
+
+EXTRACTION:
+    - GPT-4o-mini for entity extraction (same model understanding as index time)
+    - text-embedding-3-small for query embeddings (same as index time)
+    - match_documents() for vector similarity search
 
 CARD TYPES (Section 8):
 - document_chunk, fault, work_order, part, equipment, predictive, handover
@@ -36,7 +41,8 @@ from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from unified_extraction_pipeline import get_pipeline
+# GPT-based extraction (replaces regex pipeline)
+from gpt_extractor import get_gpt_extractor, GPTExtractor, ExtractionResult
 
 try:
     from supabase import create_client, Client
@@ -275,7 +281,12 @@ def build_card(card_type: CardType, title: str, yacht_id: str, actions: List[str
 # ============================================================================
 
 class GraphRAGQueryService:
-    """Internal GraphRAG query service - called by /v1/search"""
+    """
+    Internal GraphRAG query service - called by /v1/search.
+
+    Uses GPT-4o-mini for entity extraction and text-embedding-3-small for embeddings.
+    Same models as used at index time for consistent semantic matching.
+    """
 
     def __init__(self, supabase_url: str = None, supabase_key: str = None):
         self.supabase_url = supabase_url or os.getenv("SUPABASE_URL")
@@ -286,18 +297,55 @@ class GraphRAGQueryService:
         else:
             self.client = None
 
-        self.pipeline = get_pipeline()
+        # GPT extractor for entity extraction + embeddings
+        try:
+            self.gpt = get_gpt_extractor()
+        except Exception as e:
+            logger.warning(f"GPT extractor not available: {e}. Falling back to basic search.")
+            self.gpt = None
 
     def query(self, yacht_id: str, query_text: str) -> Dict:
         """
-        Execute GraphRAG query. Returns spec-compliant response.
+        Execute GraphRAG query using GPT extraction + vector search.
+
+        Pipeline:
+        1. GPT-4o-mini extracts entities and detects action
+        2. text-embedding-3-small generates query embedding
+        3. match_documents() finds similar documents
+        4. Resolve entities against DB aliases
+        5. Build cards from results
 
         Called internally by /v1/search, NOT directly by frontend.
         """
-        extraction = self.pipeline.extract(query_text)
-        intent = self._determine_intent(extraction)
-        entities = self._resolve_entities(yacht_id, extraction)
-        cards = self._execute_query(yacht_id, intent, query_text, entities)
+        # Step 1: GPT extraction (entities + action)
+        if self.gpt:
+            extraction = self.gpt.extract(query_text)
+            intent = self._determine_intent_from_gpt(extraction)
+            person_filter = extraction.person_filter
+        else:
+            # Fallback if GPT not available
+            extraction = None
+            intent = QueryIntent.GENERAL_SEARCH
+            person_filter = None
+
+        # Step 2: Generate query embedding for vector search
+        query_embedding = None
+        if self.gpt:
+            query_embedding = self.gpt.embed(query_text)
+
+        # Step 3: Vector search via match_documents()
+        similar_docs = []
+        if query_embedding and self.client:
+            similar_docs = self._match_documents(yacht_id, query_embedding, match_count=10)
+
+        # Step 4: Resolve entities against DB
+        if extraction:
+            entities = self._resolve_entities_from_gpt(yacht_id, extraction)
+        else:
+            entities = []
+
+        # Step 5: Build cards
+        cards = self._execute_query(yacht_id, intent, query_text, entities, similar_docs, person_filter)
 
         return {
             "query": query_text,
@@ -306,32 +354,117 @@ class GraphRAGQueryService:
             "cards": cards,
             "metadata": {
                 "entity_count": len(entities),
-                "card_count": len(cards)
+                "card_count": len(cards),
+                "vector_matches": len(similar_docs),
+                "extraction_confidence": extraction.action_confidence if extraction else 0.0
             }
         }
 
-    def _determine_intent(self, extraction: Dict) -> QueryIntent:
-        """Map detected actions to intent taxonomy"""
-        microactions = extraction.get("microactions", [])
-        if microactions:
-            action = microactions[0].get("action", "")
-            intent_map = {
-                "diagnose_fault": QueryIntent.DIAGNOSE_FAULT,
-                "open_document": QueryIntent.FIND_DOCUMENT,
-                "find_document": QueryIntent.FIND_DOCUMENT,
-                "create_work_order": QueryIntent.CREATE_WORK_ORDER,
-                "add_to_handover": QueryIntent.ADD_TO_HANDOVER,
-                "find_part": QueryIntent.FIND_PART,
-                "view_history": QueryIntent.EQUIPMENT_HISTORY,
-            }
-            return intent_map.get(action, QueryIntent.GENERAL_SEARCH)
+    def _match_documents(self, yacht_id: str, query_embedding: List[float], match_count: int = 10) -> List[Dict]:
+        """
+        Vector similarity search using match_documents() Supabase function.
 
-        entities = extraction.get("canonical_entities", [])
-        if any(e.get("type") == "fault_code" for e in entities):
-            return QueryIntent.DIAGNOSE_FAULT
-        if any(e.get("type") == "part" for e in entities):
-            return QueryIntent.FIND_PART
-        return QueryIntent.GENERAL_SEARCH
+        This is the SAME function used in rag_baseline.json for retrieval.
+        Uses cosine similarity: 1 - (embedding <=> query_embedding)
+
+        Args:
+            yacht_id: Filter by yacht
+            query_embedding: 1536-dim embedding from text-embedding-3-small
+            match_count: Number of results to return
+
+        Returns:
+            List of matching documents with similarity scores
+        """
+        if not self.client:
+            return []
+
+        try:
+            result = self.client.rpc('match_documents', {
+                'filter': {"yacht_id": yacht_id},
+                'match_count': match_count,
+                'query_embedding': query_embedding
+            }).execute()
+
+            return result.data or []
+
+        except Exception as e:
+            logger.error(f"match_documents failed: {e}")
+            # Fallback to basic text search
+            return []
+
+    def _determine_intent_from_gpt(self, extraction: ExtractionResult) -> QueryIntent:
+        """Map GPT-detected action to intent taxonomy"""
+        action = extraction.action if extraction else "general_search"
+
+        intent_map = {
+            "diagnose_fault": QueryIntent.DIAGNOSE_FAULT,
+            "open_document": QueryIntent.FIND_DOCUMENT,
+            "find_document": QueryIntent.FIND_DOCUMENT,
+            "find_manual": QueryIntent.FIND_DOCUMENT,
+            "create_work_order": QueryIntent.CREATE_WORK_ORDER,
+            "add_to_handover": QueryIntent.ADD_TO_HANDOVER,
+            "find_part": QueryIntent.FIND_PART,
+            "check_stock": QueryIntent.FIND_PART,
+            "order_parts": QueryIntent.FIND_PART,
+            "view_history": QueryIntent.EQUIPMENT_HISTORY,
+            "general_search": QueryIntent.GENERAL_SEARCH,
+        }
+
+        return intent_map.get(action, QueryIntent.GENERAL_SEARCH)
+
+    def _resolve_entities_from_gpt(self, yacht_id: str, extraction: ExtractionResult) -> List[Dict]:
+        """
+        Resolve GPT-extracted entities against database.
+
+        Pipeline:
+        1. GPT confidence (already provided)
+        2. DB alias lookup
+        3. Graph hints (if alias fails)
+        4. Vector similarity (fallback - already done in match_documents)
+        """
+        resolved = []
+
+        for entity in extraction.entities:
+            score = ResolutionScore()
+            score.regex_score = entity.confidence  # GPT confidence = "regex" score
+
+            resolved_entity = ResolvedEntity(
+                text=entity.value,
+                type=entity.type,
+                canonical=entity.canonical,
+                score=score
+            )
+
+            # Step 2: DB alias lookup
+            if entity.type in ("equipment", "part", "fault_code", "supplier"):
+                canonical_id = self._resolve_entity_alias(yacht_id, entity.type, entity.canonical)
+                if canonical_id:
+                    resolved_entity.canonical_id = canonical_id
+                    score.alias_score = 0.9
+                else:
+                    # Try with original value
+                    canonical_id = self._resolve_entity_alias(yacht_id, entity.type, entity.value)
+                    if canonical_id:
+                        resolved_entity.canonical_id = canonical_id
+                        score.alias_score = 0.7
+
+            elif entity.type in ("symptom", "maritime_term"):
+                code = self._resolve_symptom_alias(entity.value)
+                if code:
+                    resolved_entity.canonical_id = code
+                    resolved_entity.symptom_code = code
+                    score.alias_score = 0.85
+
+            # Step 3: Graph hints (if no alias match)
+            if not resolved_entity.canonical_id and self.client:
+                graph_id = self._resolve_via_graph(yacht_id, entity.type, entity.value, entity.canonical)
+                if graph_id:
+                    resolved_entity.canonical_id = graph_id
+                    score.graph_score = 0.6
+
+            resolved.append(resolved_entity.to_dict())
+
+        return resolved
 
     def _resolve_entities(self, yacht_id: str, extraction: Dict) -> List[Dict]:
         """
