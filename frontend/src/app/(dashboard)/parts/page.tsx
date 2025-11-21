@@ -1,15 +1,14 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components
 /**
  * PartsListPage
  *
  * Complete parts list view with filtering, sorting, and pagination
- * Demonstrates Phase 3 Core filtering system with React Query
+ * Demonstrates Phase 3 Core filtering system in action
  */
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
-import { usePartsList } from '@/hooks/useListViews';
 import { useActionHandler } from '@/hooks/useActionHandler';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { LocationFilter } from '@/components/filters/LocationFilter';
@@ -20,9 +19,6 @@ import { SortControls, type SortField } from '@/components/ui/SortControls';
 import { PartCard } from '@/components/cards/PartCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, PackageSearch } from 'lucide-react';
-
-// Force dynamic rendering (required for useSearchParams in useFilters)
-export const dynamic = 'force-dynamic';
 
 // Part status options
 const STATUS_OPTIONS: StatusOption[] = [
@@ -64,15 +60,25 @@ export default function PartsListPage() {
     defaultSortOrder: 'desc',
   });
 
-  // Use React Query for data fetching with automatic caching
-  const { data, isLoading, error } = usePartsList(queryParams);
+  const { execute, isLoading } = useActionHandler();
+  const [parts, setParts] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Extract parts and pagination from response
-  const parts = data?.card?.rows || [];
-  const totalCount = data?.pagination?.total || 0;
+  // Fetch parts whenever filters change
+  useEffect(() => {
+    const fetchParts = async () => {
+      const response = await execute('view_parts_list', {
+        parameters: queryParams,
+      });
 
-  // Still need useActionHandler for button actions (add_part, etc.)
-  const { execute } = useActionHandler();
+      if (response?.success && response.card) {
+        setParts(response.card.rows || []);
+        setTotalCount(response.pagination?.total || 0);
+      }
+    };
+
+    fetchParts();
+  }, [queryParams, execute]);
 
   // Loading state
   if (isLoading && parts.length === 0) {

@@ -158,6 +158,35 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals",
+              "value2": "view_parts_list"
+            },
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals",
+              "value2": "view_work_orders_list"
+            },
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals",
+              "value2": "view_faults_list"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-to-query",
+      "name": "Route to Query",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1050, 600]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT \n  p.id,\n  p.part_name,\n  p.part_number,\n  p.stock_quantity,\n  p.min_stock_level,\n  p.location,\n  p.deck,\n  p.room,\n  p.storage,\n  p.unit_cost,\n  p.supplier,\n  p.created_at,\n  p.updated_at\nFROM parts p\nWHERE p.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
       },
@@ -165,7 +194,7 @@
       "name": "view_parts_list",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1050, 600],
+      "position": [1250, 600],
       "credentials": {
         "postgres": {
           "id": "supabase-db",
@@ -182,7 +211,7 @@
       "name": "view_work_orders_list",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1050, 700],
+      "position": [1250, 700],
       "credentials": {
         "postgres": {
           "id": "supabase-db",
@@ -199,7 +228,7 @@
       "name": "view_faults_list",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1050, 800],
+      "position": [1250, 800],
       "credentials": {
         "postgres": {
           "id": "supabase-db",
@@ -216,7 +245,7 @@
       "name": "Count Parts",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1250, 600],
+      "position": [1450, 600],
       "credentials": {
         "postgres": {
           "id": "supabase-db",
@@ -233,7 +262,7 @@
       "name": "Count Work Orders",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1250, 700],
+      "position": [1450, 700],
       "credentials": {
         "postgres": {
           "id": "supabase-db",
@@ -250,7 +279,7 @@
       "name": "Count Faults",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1250, 800],
+      "position": [1450, 800],
       "credentials": {
         "postgres": {
           "id": "supabase-db",
@@ -260,13 +289,13 @@
     },
     {
       "parameters": {
-        "functionCode": "// Build unified response card\nconst action = $input.first().json.action_name;\nconst data = $input.first().json;\n\n// Map action to card type\nconst cardTypeMap = {\n  view_equipment_details: 'equipment',\n  view_part_stock: 'part',\n  view_fault_history: 'fault_list',\n  view_work_order_history: 'work_order_list',\n  view_hours_of_rest: 'hor_table',\n  view_parts_list: 'parts_list',\n  view_work_orders_list: 'work_orders_list',\n  view_faults_list: 'faults_list'\n};\n\nconst cardType = cardTypeMap[action] || 'generic';\n\n// Build micro_actions based on card type\nlet microActions = [];\nif (cardType === 'equipment') {\n  microActions = [\n    { action_name: 'view_equipment_history', label: 'View History' },\n    { action_name: 'view_equipment_parts', label: 'View Parts' },\n    { action_name: 'view_linked_faults', label: 'View Faults' },\n    { action_name: 'add_equipment_note', label: 'Add Note' },\n    { action_name: 'create_work_order', label: 'Create Work Order' }\n  ];\n} else if (cardType === 'part') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'log_part_usage', label: 'Log Usage' },\n    { action_name: 'view_part_usage', label: 'View Usage History' }\n  ];\n} else if (cardType === 'parts_list') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'export_parts_list', label: 'Export' }\n  ];\n} else if (cardType === 'work_orders_list') {\n  microActions = [\n    { action_name: 'create_work_order', label: 'Create Work Order' },\n    { action_name: 'export_work_orders', label: 'Export' }\n  ];\n} else if (cardType === 'faults_list') {\n  microActions = [\n    { action_name: 'report_fault', label: 'Report Fault' },\n    { action_name: 'export_faults_list', label: 'Export' }\n  ];\n}\n\n// For list queries, include pagination metadata\nlet paginationMeta = null;\nif (cardType.endsWith('_list')) {\n  paginationMeta = {\n    limit: data.limit || 50,\n    offset: data.offset || 0,\n    total: data.total || 0,\n    has_more: (data.offset || 0) + (data.limit || 50) < (data.total || 0)\n  };\n}\n\nreturn {\n  json: {\n    success: true,\n    card_type: cardType,\n    card: data,\n    micro_actions: microActions,\n    pagination: paginationMeta,\n    streaming_chunks: []\n  }\n};"
+        "functionCode": "// Build unified response card\n// Input comes from count nodes, which have both query results and count\nconst countData = $input.first().json;\nconst action = countData.action_name;\n\n// Get the total count from this node's input\nconst totalCount = countData.total || 0;\n\n// Map action to card type\nconst cardTypeMap = {\n  view_equipment_details: 'equipment',\n  view_part_stock: 'part',\n  view_fault_history: 'fault_list',\n  view_work_order_history: 'work_order_list',\n  view_hours_of_rest: 'hor_table',\n  view_parts_list: 'parts_list',\n  view_work_orders_list: 'work_orders_list',\n  view_faults_list: 'faults_list'\n};\n\nconst cardType = cardTypeMap[action] || 'generic';\n\n// Build micro_actions based on card type\nlet microActions = [];\nif (cardType === 'equipment') {\n  microActions = [\n    { action_name: 'view_equipment_history', label: 'View History' },\n    { action_name: 'view_equipment_parts', label: 'View Parts' },\n    { action_name: 'view_linked_faults', label: 'View Faults' },\n    { action_name: 'add_equipment_note', label: 'Add Note' },\n    { action_name: 'create_work_order', label: 'Create Work Order' }\n  ];\n} else if (cardType === 'part') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'log_part_usage', label: 'Log Usage' },\n    { action_name: 'view_part_usage', label: 'View Usage History' }\n  ];\n} else if (cardType === 'parts_list') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'export_parts_list', label: 'Export' }\n  ];\n} else if (cardType === 'work_orders_list') {\n  microActions = [\n    { action_name: 'create_work_order', label: 'Create Work Order' },\n    { action_name: 'export_work_orders', label: 'Export' }\n  ];\n} else if (cardType === 'faults_list') {\n  microActions = [\n    { action_name: 'report_fault', label: 'Report Fault' },\n    { action_name: 'export_faults_list', label: 'Export' }\n  ];\n}\n\n// For list queries, include pagination metadata\nlet paginationMeta = null;\nif (cardType.endsWith('_list')) {\n  paginationMeta = {\n    limit: countData.limit || 50,\n    offset: countData.offset || 0,\n    total: totalCount,\n    has_more: (countData.offset || 0) + (countData.limit || 50) < totalCount\n  };\n}\n\nreturn {\n  json: {\n    success: true,\n    card_type: cardType,\n    card: countData,\n    micro_actions: microActions,\n    pagination: paginationMeta,\n    streaming_chunks: []\n  }\n};"
       },
       "id": "build-response-view",
       "name": "Build Response",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1450, 400]
+      "position": [1650, 700]
     },
     {
       "parameters": {
@@ -406,15 +435,30 @@
       "main": [
         [
           {
+            "node": "Route to Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Query": {
+      "main": [
+        [
+          {
             "node": "view_parts_list",
             "type": "main",
             "index": 0
-          },
+          }
+        ],
+        [
           {
             "node": "view_work_orders_list",
             "type": "main",
             "index": 0
-          },
+          }
+        ],
+        [
           {
             "node": "view_faults_list",
             "type": "main",

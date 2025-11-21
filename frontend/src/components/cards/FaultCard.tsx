@@ -128,7 +128,7 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
           fault_description: fault.description,
           suggested_title: `Fix: ${fault.title}`,
         }}
-        onSuccess={(workOrderId: string) => {
+        onSuccess={(workOrderId) => {
           console.log('Work order created:', workOrderId);
           // Optionally: refresh data, navigate to WO, etc.
         }}

@@ -1,4 +1,3 @@
-// @ts-nocheck - Requires shadcn/ui components
 /**
  * ConfirmationDialog Component
  *

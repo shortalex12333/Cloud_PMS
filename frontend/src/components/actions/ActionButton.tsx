@@ -1,4 +1,3 @@
-// @ts-nocheck - Requires shadcn/ui components to be installed
 /**
  * ActionButton Component
  *

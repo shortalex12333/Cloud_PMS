@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components and action type updates
 /**
  * SortControls Component
  *

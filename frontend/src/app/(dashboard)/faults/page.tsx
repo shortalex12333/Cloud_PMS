@@ -1,15 +1,14 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components
 /**
  * FaultsListPage
  *
  * Complete faults list view with filtering, sorting, and pagination
- * Demonstrates Phase 3 Core filtering system with React Query
+ * Demonstrates Phase 3 Core filtering system in action
  */
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
-import { useFaultsList } from '@/hooks/useListViews';
 import { useActionHandler } from '@/hooks/useActionHandler';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { LocationFilter } from '@/components/filters/LocationFilter';
@@ -20,9 +19,6 @@ import { SortControls, type SortField } from '@/components/ui/SortControls';
 import { FaultCard } from '@/components/cards/FaultCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle } from 'lucide-react';
-
-// Force dynamic rendering (required for useSearchParams in useFilters)
-export const dynamic = 'force-dynamic';
 
 // Fault status options
 const STATUS_OPTIONS: StatusOption[] = [
@@ -64,15 +60,25 @@ export default function FaultsListPage() {
     defaultSortOrder: 'desc',
   });
 
-  // Use React Query for data fetching with automatic caching
-  const { data, isLoading, error } = useFaultsList(queryParams);
+  const { execute, isLoading } = useActionHandler();
+  const [faults, setFaults] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Extract faults and pagination from response
-  const faults = data?.card?.rows || [];
-  const totalCount = data?.pagination?.total || 0;
+  // Fetch faults whenever filters change
+  useEffect(() => {
+    const fetchFaults = async () => {
+      const response = await execute('view_faults_list', {
+        parameters: queryParams,
+      });
 
-  // Still need useActionHandler for button actions (report_fault, etc.)
-  const { execute } = useActionHandler();
+      if (response?.success && response.card) {
+        setFaults(response.card.rows || []);
+        setTotalCount(response.pagination?.total || 0);
+      }
+    };
+
+    fetchFaults();
+  }, [queryParams, execute]);
 
   // Loading state
   if (isLoading && faults.length === 0) {

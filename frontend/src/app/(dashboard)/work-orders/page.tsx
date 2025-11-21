@@ -1,15 +1,14 @@
-// @ts-nocheck - Phase 3: Requires shadcn/ui components
 /**
  * WorkOrdersListPage
  *
  * Complete work orders list view with filtering, sorting, and pagination
- * Demonstrates Phase 3 Core filtering system with React Query
+ * Demonstrates Phase 3 Core filtering system in action
  */
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
-import { useWorkOrdersList } from '@/hooks/useListViews';
 import { useActionHandler } from '@/hooks/useActionHandler';
 import { FilterBar } from '@/components/filters/FilterBar';
 import { StatusFilter, type StatusOption } from '@/components/filters/StatusFilter';
@@ -19,9 +18,6 @@ import { SortControls, type SortField } from '@/components/ui/SortControls';
 import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
 import { Button } from '@/components/ui/button';
 import { Loader2, ClipboardList } from 'lucide-react';
-
-// Force dynamic rendering (required for useSearchParams in useFilters)
-export const dynamic = 'force-dynamic';
 
 // Work order status options
 const STATUS_OPTIONS: StatusOption[] = [
@@ -56,15 +52,25 @@ export default function WorkOrdersListPage() {
     defaultSortOrder: 'desc',
   });
 
-  // Use React Query for data fetching with automatic caching
-  const { data, isLoading, error } = useWorkOrdersList(queryParams);
+  const { execute, isLoading } = useActionHandler();
+  const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Extract work orders and pagination from response
-  const workOrders = data?.card?.rows || [];
-  const totalCount = data?.pagination?.total || 0;
+  // Fetch work orders whenever filters change
+  useEffect(() => {
+    const fetchWorkOrders = async () => {
+      const response = await execute('view_work_orders_list', {
+        parameters: queryParams,
+      });
 
-  // Still need useActionHandler for button actions (create_work_order, etc.)
-  const { execute } = useActionHandler();
+      if (response?.success && response.card) {
+        setWorkOrders(response.card.rows || []);
+        setTotalCount(response.pagination?.total || 0);
+      }
+    };
+
+    fetchWorkOrders();
+  }, [queryParams, execute]);
 
   // Loading state
   if (isLoading && workOrders.length === 0) {
