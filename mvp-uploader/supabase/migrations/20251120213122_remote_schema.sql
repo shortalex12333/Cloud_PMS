@@ -1,7 +1,3 @@
-
-\restrict LvRpyC4XKNPiNuNhcOOBmSUbhfFL8hnOV4fOdZaHhipT7PzohvwkgLX6phIMR9i
-
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
