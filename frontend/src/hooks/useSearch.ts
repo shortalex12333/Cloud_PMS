@@ -6,17 +6,21 @@
 
 import { useState, useCallback } from 'react';
 import { api } from '../lib/api';
-import {
-  SearchRequest,
+import type { SearchRequest } from '@/types';
+import type {
   SearchResponse,
-  SearchResultCard,
+  SearchResult,
   MicroAction,
-} from '../types';
+} from '@/types/search';
 
 interface SearchState {
   query: string;
-  results: SearchResultCard[];
-  actions: MicroAction[];
+  results: SearchResult[];
+  actions: Array<{
+    label: string;
+    action: MicroAction;
+    context?: Record<string, any>;
+  }>;
   loading: boolean;
   streaming: boolean;
   error: string | null;
