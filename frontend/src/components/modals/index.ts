@@ -27,6 +27,12 @@ export { AddToHandoverModal } from './AddToHandoverModal';
 export { LinkEquipmentToFaultModal } from './LinkEquipmentToFaultModal';
 export { LinkPartsToWorkOrderModal } from './LinkPartsToWorkOrderModal';
 
+// Phase 4 - Advanced/RAG Modal
+export { DiagnoseFaultModal } from './DiagnoseFaultModal';
+
+// Phase 4 - Special Utility Modal
+export { CompleteWorkOrderModal } from './CompleteWorkOrderModal';
+
 /**
  * Usage example:
  *
