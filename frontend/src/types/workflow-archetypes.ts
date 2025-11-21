@@ -237,8 +237,10 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   open_vessel: 'VIEW',
   view_smart_summary: 'VIEW',
 
-  // UPDATE (18)
+  // UPDATE (21)
   mark_work_order_complete: 'UPDATE',
+  complete_work_order: 'UPDATE',
+  edit_part_quantity: 'UPDATE',
   assign_work_order: 'UPDATE',
   approve_work_order: 'UPDATE',
   update_hours_of_rest: 'UPDATE',
@@ -258,9 +260,11 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   edit_fault_details: 'UPDATE',
   edit_note: 'UPDATE',
 
-  // CREATE (14)
+  // CREATE (16)
   create_work_order: 'CREATE',
   create_work_order_from_fault: 'CREATE',
+  report_fault: 'CREATE',
+  add_part: 'CREATE',
   create_purchase_request: 'CREATE',
   add_item_to_purchase: 'CREATE',
   add_worklist_task: 'CREATE',
@@ -289,13 +293,15 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   request_predictive_insight: 'RAG',
   add_predictive_insight_to_handover: 'RAG',
 
-  // LINKING (6)
+  // LINKING (8)
   add_to_handover: 'LINKING',
   add_document_to_handover: 'LINKING',
   add_fault_photo: 'LINKING',
   add_work_order_photo: 'LINKING',
   add_checklist_photo: 'LINKING',
   edit_handover_section: 'LINKING',
+  link_equipment_to_fault: 'LINKING',
+  link_parts_to_work_order: 'LINKING',
 
   // DELETE (1) - Treated as UPDATE in practice
   delete_item: 'UPDATE',

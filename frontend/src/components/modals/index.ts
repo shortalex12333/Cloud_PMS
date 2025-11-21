@@ -5,8 +5,8 @@
  * Phase 4 - Modal Components & Action Completion
  */
 
-// Phase 1 - Example Modal
-export { CreateWorkOrderModal } from './CreateWorkOrderModal';
+// Phase 1 - Example Modal (located in actions/modals)
+export { CreateWorkOrderModal } from '../actions/modals/CreateWorkOrderModal';
 
 // Phase 4 - High-Priority CREATE Modals
 export { ReportFaultModal } from './ReportFaultModal';

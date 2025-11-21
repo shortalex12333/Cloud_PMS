@@ -11,22 +11,26 @@
 // ============================================================================
 
 export type MicroAction =
-  // FAULT & DIAGNOSIS (7 actions)
+  // FAULT & DIAGNOSIS (9 actions)
   | 'diagnose_fault'
+  | 'report_fault'
   | 'show_manual_section'
   | 'view_fault_history'
   | 'suggest_parts'
   | 'create_work_order_from_fault'
   | 'add_fault_note'
   | 'add_fault_photo'
+  | 'link_equipment_to_fault'
 
-  // WORK ORDER / PMS (8 actions)
+  // WORK ORDER / PMS (11 actions)
   | 'create_work_order'
   | 'view_work_order_history'
   | 'mark_work_order_complete'
+  | 'complete_work_order'
   | 'add_work_order_note'
   | 'add_work_order_photo'
   | 'add_parts_to_work_order'
+  | 'link_parts_to_work_order'
   | 'view_work_order_checklist'
   | 'assign_work_order'
 
@@ -38,12 +42,14 @@ export type MicroAction =
   | 'view_equipment_manual'
   | 'add_equipment_note'
 
-  // INVENTORY / PARTS (7 actions)
+  // INVENTORY / PARTS (9 actions)
   | 'view_part_stock'
+  | 'add_part'
   | 'order_part'
   | 'view_part_location'
   | 'view_part_usage'
   | 'log_part_usage'
+  | 'edit_part_quantity'
   | 'scan_part_barcode'
   | 'view_linked_equipment'
 
@@ -363,6 +369,23 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     icon: 'Camera',
     description: 'Upload photo evidence of fault condition',
   },
+  report_fault: {
+    action_name: 'report_fault',
+    label: 'Report Fault',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'AlertCircle',
+    description: 'Report a new fault on equipment',
+  },
+  link_equipment_to_fault: {
+    action_name: 'link_equipment_to_fault',
+    label: 'Link Equipment',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_light',
+    icon: 'Link',
+    description: 'Link equipment to an existing fault',
+  },
 
   // WORK ORDER / PMS
   create_work_order: {
@@ -390,6 +413,23 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     requires_confirmation: true,
     icon: 'CheckCircle',
     description: 'Close work order and log completion',
+  },
+  complete_work_order: {
+    action_name: 'complete_work_order',
+    label: 'Complete Work Order',
+    cluster: 'do_maintenance',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'CheckCircle',
+    description: 'Complete work order with outcome details',
+  },
+  link_parts_to_work_order: {
+    action_name: 'link_parts_to_work_order',
+    label: 'Link Parts',
+    cluster: 'do_maintenance',
+    side_effect_type: 'mutation_light',
+    icon: 'Link',
+    description: 'Link parts to a work order',
   },
   add_work_order_note: {
     action_name: 'add_work_order_note',
@@ -491,6 +531,25 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     side_effect_type: 'read_only',
     icon: 'Package',
     description: 'Display current stock level and location',
+  },
+  add_part: {
+    action_name: 'add_part',
+    label: 'Add Part',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'Plus',
+    description: 'Add a new part to inventory',
+  },
+  edit_part_quantity: {
+    action_name: 'edit_part_quantity',
+    label: 'Edit Quantity',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    requires_reason: true,
+    icon: 'Edit',
+    description: 'Adjust part quantity with audit trail',
   },
   order_part: {
     action_name: 'order_part',

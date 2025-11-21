@@ -124,7 +124,7 @@ export function useActionHandler() {
           context: {
             ...context,
             user_id: user.id,
-            yacht_id: user.yacht_id,
+            yacht_id: user.yachtId,
           },
           parameters: {
             user_input: context.user_input || null,
@@ -132,7 +132,7 @@ export function useActionHandler() {
           },
           session: {
             user_id: user.id,
-            yacht_id: user.yacht_id,
+            yacht_id: user.yachtId,
             timestamp: new Date().toISOString(),
           },
         };

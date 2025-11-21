@@ -12,6 +12,7 @@
 'use client';
 
 import { useState } from 'react';
+import { type LucideIcon } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -59,9 +60,9 @@ export function ActionButton({
   const [showConfirm, setShowConfirm] = useState(false);
   const metadata = getActionMetadata(action);
 
-  // Get icon component
-  const IconComponent = showIcon
-    ? LucideIcons[metadata.icon as keyof typeof LucideIcons] || LucideIcons.Circle
+  // Get icon component - cast to LucideIcon for proper typing
+  const IconComponent: LucideIcon | null = showIcon
+    ? (LucideIcons[metadata.icon as keyof typeof LucideIcons] as LucideIcon) || LucideIcons.Circle
     : null;
 
   const needsConfirmation = requiresConfirmation(action);
@@ -136,7 +137,7 @@ export function ActionButton({
           title={`Confirm: ${metadata.label}`}
           description={`Are you sure you want to ${metadata.description.toLowerCase()}?`}
           confirmLabel={metadata.label}
-          onConfirm={executeDirectly}
+          onConfirm={async () => { await executeDirectly(); }}
           isLoading={isLoading}
           destructive={action === 'delete_item'}
         />
