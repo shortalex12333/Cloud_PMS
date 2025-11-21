@@ -52,15 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] Executing Supabase query...');
 
       const queryStart = Date.now();
+
+      // Step 1: Get user profile from users table
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, email, yacht_id, name, role, is_active')
+        .select('auth_user_id, email, yacht_id, name')
         .eq('email', authUser.email)
-        .eq('is_active', true)
         .maybeSingle();
-
-      const queryTime = Date.now() - queryStart;
-      console.log(`[AuthContext] Query completed in ${queryTime}ms`);
 
       if (userError) {
         console.error('[AuthContext] ❌ Query returned error:', {
@@ -81,10 +79,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('[AuthContext] ✅ User data received:', userData);
 
+      // Step 2: Get user role from user_role_assignments table
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_role_assignments')
+        .select('role')
+        .eq('user_id', userData.auth_user_id)
+        .eq('yacht_id', userData.yacht_id)
+        .maybeSingle();
+
+      const queryTime = Date.now() - queryStart;
+      console.log(`[AuthContext] Query completed in ${queryTime}ms`);
+
+      if (roleError) {
+        console.error('[AuthContext] ❌ Error fetching role:', roleError);
+      }
+
+      if (!roleData) {
+        console.warn('[AuthContext] ⚠️ No role assignment found, defaulting to crew');
+      }
+
       const celesteUser: CelesteUser = {
-        id: userData.id,
+        id: userData.auth_user_id,
         email: userData.email,
-        role: userData.role as CelesteUser['role'],
+        role: (roleData?.role as CelesteUser['role']) || 'crew',
         yachtId: userData.yacht_id,
         displayName: userData.name,
       };
