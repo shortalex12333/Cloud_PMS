@@ -539,7 +539,7 @@ async def unified_extract(
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
-@app.post("/extract_microactions", response_model=ExtractionResponse, tags=["Extraction"])
+@app.post("/extract_microactions", response_model=ExtractionResponse, tags=["Extraction (Deprecated)"])
 @limiter.limit("100/minute")
 async def extract_microactions(
     request: Request,
@@ -547,7 +547,18 @@ async def extract_microactions(
     auth: Dict = Depends(verify_security)
 ):
     """
-    Main extraction endpoint. Extract micro-actions from natural language query.
+    **⚠️ DEPRECATED - Use POST /extract instead**
+
+    This endpoint is maintained for backwards compatibility but will be removed in v3.0.0.
+
+    Please migrate to POST /extract which provides:
+    - ✅ Unified action + entity extraction
+    - ✅ Canonical entity mappings
+    - ✅ Intent categorization
+    - ✅ Entity importance weighting
+    - ✅ Better confidence scoring
+
+    **Legacy endpoint:** Extract micro-actions from natural language query.
 
     Returns list of canonical action names (e.g., ["create_work_order", "add_to_handover"]).
 
@@ -562,6 +573,10 @@ async def extract_microactions(
     - "show all open work orders" → ["list_work_orders"]
     - "what's the weather" → [] (unsupported)
     """
+    logger.warning(
+        f"DEPRECATED endpoint /extract_microactions called by user_id={auth['user_id']}. "
+        "Please migrate to /extract"
+    )
     if extractor is None:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
@@ -607,7 +622,7 @@ async def extract_microactions(
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
-@app.post("/extract_detailed", response_model=DetailedExtractionResponse, tags=["Extraction"])
+@app.post("/extract_detailed", response_model=DetailedExtractionResponse, tags=["Extraction (Deprecated)"])
 @limiter.limit("50/minute")
 async def extract_detailed(
     request: Request,
@@ -615,7 +630,17 @@ async def extract_detailed(
     auth: Dict = Depends(verify_security)
 ):
     """
-    Extended extraction endpoint with detailed match metadata.
+    **⚠️ DEPRECATED - Use POST /extract instead**
+
+    This endpoint is maintained for backwards compatibility but will be removed in v3.0.0.
+
+    Please migrate to POST /extract which provides:
+    - ✅ Unified action + entity extraction
+    - ✅ Complete metadata in every response
+    - ✅ Better structured output
+    - ✅ Entity weighting and canonical mappings
+
+    **Legacy endpoint:** Extended extraction endpoint with detailed match metadata.
 
     Returns:
     - All detected micro-actions
@@ -625,6 +650,10 @@ async def extract_detailed(
 
     Useful for debugging and understanding extraction decisions.
     """
+    logger.warning(
+        f"DEPRECATED endpoint /extract_detailed called by user_id={auth['user_id']}. "
+        "Please migrate to /extract"
+    )
     if extractor is None:
         raise HTTPException(status_code=503, detail="Service not initialized")
 
