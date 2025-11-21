@@ -38,21 +38,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch user profile from users table (production schema)
   const fetchUserProfile = useCallback(async (authUser: User) => {
     try {
+      console.log('[AuthContext] Fetching profile for:', authUser.email);
+
       // Query user profile - production uses 'users' table with role column
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, email, yacht_id, name, role')
+        .select('id, email, yacht_id, name, role, is_active')
         .eq('email', authUser.email)
         .eq('is_active', true)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
 
       if (userError) {
-        console.error('[AuthContext] Error fetching user profile:', userError);
+        console.error('[AuthContext] Error fetching user profile:', {
+          message: userError.message,
+          details: userError.details,
+          hint: userError.hint,
+          code: userError.code,
+        });
         return null;
       }
 
       if (!userData) {
         console.warn('[AuthContext] No user profile found for:', authUser.email);
+        console.warn('[AuthContext] User may not exist in public.users table');
         return null;
       }
 
@@ -85,10 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('[AuthContext] Current session:', session ? 'exists' : 'none');
       if (session?.user) {
-        fetchUserProfile(session.user).then((profile) => {
-          setUser(profile);
-          setLoading(false);
-        });
+        fetchUserProfile(session.user)
+          .then((profile) => {
+            setUser(profile);
+          })
+          .catch((err) => {
+            console.error('[AuthContext] Failed to fetch profile on init:', err);
+            setUser(null);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
       } else {
         setLoading(false);
       }
