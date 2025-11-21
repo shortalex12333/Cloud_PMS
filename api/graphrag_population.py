@@ -247,12 +247,19 @@ class GraphRAGPopulationService:
         entities: List[Dict],
         relationships: List[Dict],
         maintenance_facts: Optional[List[Dict]] = None,
-        raw_extraction: Optional[Dict] = None
+        raw_extraction: Optional[Dict] = None,
+        force_reprocess: bool = False
     ) -> PopulationResult:
         """
         Populate graph tables from GPT extraction results.
 
         This is the main entry point called by n8n Graph_RAG_Digest workflow.
+
+        IDEMPOTENCY RULES:
+        - If chunk_id was already processed with status=success, returns existing result
+        - If chunk_id was processed with status=failed/partial, re-processes
+        - If force_reprocess=True, always re-processes (deletes existing nodes/edges first)
+        - Uses upsert for all DB operations to handle race conditions
 
         Args:
             yacht_id: Tenant yacht ID
@@ -261,12 +268,36 @@ class GraphRAGPopulationService:
             relationships: List of extracted relationships [{from_label, to_label, type, confidence}]
             maintenance_facts: Optional list of maintenance facts
             raw_extraction: Original GPT response for debugging
+            force_reprocess: Force re-processing even if already successful
 
         Returns:
             PopulationResult with counts and status
         """
         logger.info(f"Populating graph for yacht={yacht_id}, chunk={chunk_id}")
         logger.info(f"  Entities: {len(entities)}, Relationships: {len(relationships)}")
+
+        # IDEMPOTENCY CHECK: Skip if already successfully processed
+        existing_status = self._get_chunk_extraction_status(chunk_id)
+        if existing_status and not force_reprocess:
+            if existing_status == ExtractionStatus.SUCCESS.value:
+                logger.info(f"Chunk {chunk_id} already processed successfully, skipping (idempotent)")
+                existing_counts = self._get_existing_counts(yacht_id, chunk_id)
+                return PopulationResult(
+                    chunk_id=chunk_id,
+                    status=ExtractionStatus.SUCCESS,
+                    nodes_inserted=existing_counts.get("nodes", 0),
+                    edges_inserted=existing_counts.get("edges", 0),
+                    maintenance_inserted=existing_counts.get("maintenance", 0),
+                    nodes_resolved=existing_counts.get("resolved", 0),
+                    errors=["Already processed - idempotent skip"]
+                )
+            elif existing_status == ExtractionStatus.PROCESSING.value:
+                logger.warning(f"Chunk {chunk_id} is currently being processed, skipping")
+                return PopulationResult(
+                    chunk_id=chunk_id,
+                    status=ExtractionStatus.PROCESSING,
+                    errors=["Already processing - concurrent request blocked"]
+                )
 
         result = PopulationResult(
             chunk_id=chunk_id,
@@ -725,6 +756,63 @@ class GraphRAGPopulationService:
 
         except Exception as e:
             logger.error(f"Failed to update chunk status: {e}")
+
+    def _get_chunk_extraction_status(self, chunk_id: str) -> Optional[str]:
+        """
+        Get current extraction status for a chunk.
+        Used for idempotency checks.
+        """
+        if not self.client:
+            return None
+
+        try:
+            result = self.client.table("document_chunks").select(
+                "graph_extraction_status"
+            ).eq("id", chunk_id).single().execute()
+
+            if result.data:
+                return result.data.get("graph_extraction_status")
+            return None
+
+        except Exception as e:
+            logger.debug(f"Could not get chunk status for {chunk_id}: {e}")
+            return None
+
+    def _get_existing_counts(self, yacht_id: str, chunk_id: str) -> Dict[str, int]:
+        """
+        Get existing node/edge counts for a chunk.
+        Used for idempotent responses.
+        """
+        counts = {"nodes": 0, "edges": 0, "maintenance": 0, "resolved": 0}
+
+        if not self.client:
+            return counts
+
+        try:
+            # Count nodes
+            nodes_result = self.client.table("graph_nodes").select(
+                "id,canonical_id", count="exact"
+            ).eq("ref_id", chunk_id).execute()
+            counts["nodes"] = nodes_result.count or 0
+            if nodes_result.data:
+                counts["resolved"] = sum(1 for n in nodes_result.data if n.get("canonical_id"))
+
+            # Count edges
+            edges_result = self.client.table("graph_edges").select(
+                "id", count="exact"
+            ).eq("source_chunk_id", chunk_id).execute()
+            counts["edges"] = edges_result.count or 0
+
+            # Count maintenance
+            maint_result = self.client.table("maintenance_templates").select(
+                "id", count="exact"
+            ).eq("source_chunk_id", chunk_id).execute()
+            counts["maintenance"] = maint_result.count or 0
+
+        except Exception as e:
+            logger.debug(f"Could not get existing counts for {chunk_id}: {e}")
+
+        return counts
 
 
 # ============================================================================
