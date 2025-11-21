@@ -155,12 +155,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session?.user) {
         const profile = await fetchUserProfile(session.user);
         setUser(profile);
+        setLoading(false); // ← FIX: End loading state
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setLoading(false); // ← FIX: End loading state
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         // Optionally refresh user profile on token refresh
         const profile = await fetchUserProfile(session.user);
         setUser(profile);
+        // Don't change loading state on token refresh
       }
     });
 
