@@ -195,26 +195,28 @@ class SupabaseDB:
             return []
 
     # ===== NOTES QUERIES =====
+    # Notes are stored in work_order_history.notes column, not a separate table
 
     async def get_notes_by_equipment(
         self,
         equipment_id: UUID,
         days_back: int = 365
     ) -> List[Dict[str, Any]]:
-        """Get notes related to equipment"""
+        """Get notes related to equipment from work_order_history"""
         try:
             cutoff = datetime.now() - timedelta(days=days_back)
-            # Assuming notes table has equipment_id field
+            # Notes are in work_order_history.notes column
             response = (
-                self.client.table("notes")
-                .select("*")
+                self.client.table("work_order_history")
+                .select("id,equipment_id,notes,completed_at,completed_by")
                 .eq("equipment_id", str(equipment_id))
-                .gte("created_at", cutoff.isoformat())
+                .gte("completed_at", cutoff.isoformat())
+                .not_.is_("notes", "null")  # Only rows with notes
                 .execute()
             )
             return response.data
         except APIError as e:
-            logger.error(f"Error fetching notes: {e}")
+            logger.error(f"Error fetching notes from work_order_history: {e}")
             return []
 
     # ===== GRAPH QUERIES =====
