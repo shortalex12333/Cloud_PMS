@@ -5,7 +5,7 @@ Aggregates all v1 endpoints
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, search, work_orders, handovers, notes, documents, integrations
+from app.api.v1.endpoints import auth, search, work_orders, handovers, notes, documents, integrations, actions
 
 api_router = APIRouter()
 
@@ -17,3 +17,4 @@ api_router.include_router(handovers.router)
 api_router.include_router(notes.router)
 api_router.include_router(documents.router)
 api_router.include_router(integrations.router, prefix="/integrations", tags=["integrations"])
+api_router.include_router(actions.router)
