@@ -132,25 +132,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] Initializing auth state...');
 
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthContext] Current session:', session ? 'exists' : 'none');
-      if (session?.user) {
-        fetchUserProfile(session.user)
-          .then((profile) => {
-            setUser(profile);
-          })
-          .catch((err) => {
-            console.error('[AuthContext] Failed to fetch profile on init:', err);
-            setUser(null);
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      } else {
-        setLoading(false);
-      }
-    });
+    // Timeout for getSession - if Supabase is unreachable, don't hang forever
+    const sessionTimeout = 5000;
+    let didTimeout = false;
+
+    const timeoutId = setTimeout(() => {
+      didTimeout = true;
+      console.warn('[AuthContext] ⚠️ getSession timeout - Supabase may be unreachable');
+      setLoading(false); // Allow UI to render regardless
+    }, sessionTimeout);
+
+    // Check current session with error handling
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (didTimeout) {
+          console.log('[AuthContext] Session response received after timeout, ignoring');
+          return;
+        }
+        clearTimeout(timeoutId);
+
+        if (error) {
+          console.error('[AuthContext] getSession error:', error);
+          setLoading(false);
+          return;
+        }
+
+        console.log('[AuthContext] Current session:', session ? 'exists' : 'none');
+        if (session?.user) {
+          fetchUserProfile(session.user)
+            .then((profile) => {
+              setUser(profile);
+            })
+            .catch((err) => {
+              console.error('[AuthContext] Failed to fetch profile on init:', err);
+              setUser(null);
+            })
+            .finally(() => {
+              setLoading(false);
+            });
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (didTimeout) return;
+        clearTimeout(timeoutId);
+        console.error('[AuthContext] ❌ getSession exception:', err);
+        setLoading(false); // Always allow UI to render
+      });
 
     // Subscribe to auth state changes
     const {
@@ -174,6 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [fetchUserProfile]);
