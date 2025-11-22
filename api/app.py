@@ -44,10 +44,14 @@ def extract():
     """
     Entity extraction endpoint.
     Accepts text/plain or application/json with 'text' field.
-    Returns entities grouped by type as arrays of strings.
 
-    MVP Mode (default): Returns only entities
-    Debug Mode: Add {"debug": true} to get full metadata
+    MVP Mode (default): Returns entities + provenance with in-house weights
+    - entities: grouped by type as arrays of strings
+    - entities_provenance: full data (text, source, confidence, adjusted_confidence, span)
+    - action: classified intent
+    - needs_ai: whether AI fallback was used
+
+    Debug Mode: Add {"debug": true} to get full metadata including latency
     """
     global request_count, error_count, p95_latencies
 
@@ -92,13 +96,16 @@ def extract():
             f"latency={latency:.1f}ms"
         )
 
-        # MVP Mode: Return ONLY entities (clean output)
+        # MVP Mode: Return entities with provenance (source, confidence, weights)
         if not debug_mode:
             return jsonify({
-                'entities': result.get('entities', {})
+                'entities': result.get('entities', {}),
+                'entities_provenance': result.get('entities_provenance', {}),
+                'action': result.get('metadata', {}).get('action'),
+                'needs_ai': result.get('metadata', {}).get('needs_ai', False)
             }), 200
         else:
-            # Debug Mode: Return full response with metadata
+            # Debug Mode: Return full response with all metadata
             return jsonify(result), 200
 
     except Exception as e:
