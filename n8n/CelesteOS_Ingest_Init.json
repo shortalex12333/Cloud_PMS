@@ -1,0 +1,312 @@
+{
+  "name": "CelesteOS - Ingest Init",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/ingest/init",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-init",
+      "name": "Webhook - Ingest Init",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ingest-init"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate X-Yacht-Signature header and request body\nconst headers = $input.item.json.headers;\nconst body = $input.item.json.body;\n\n// Get yacht signature from header\nconst yachtSignature = headers['x-yacht-signature'] || headers['X-Yacht-Signature'];\n\nif (!yachtSignature) {\n  throw new Error('Missing X-Yacht-Signature header');\n}\n\n// Validate required fields\nif (!body.filename || !body.sha256 || !body.size_bytes) {\n  throw new Error('Missing required fields: filename, sha256, size_bytes');\n}\n\n// Validate SHA256 format (64 hex chars)\nconst sha256Regex = /^[a-f0-9]{64}$/i;\nif (!sha256Regex.test(body.sha256)) {\n  throw new Error('Invalid SHA256 format');\n}\n\n// Validate file size\nif (body.size_bytes <= 0) {\n  throw new Error('Invalid file size');\n}\n\n// Check file extension\nconst allowedExtensions = ['.pdf', '.docx', '.xlsx', '.pptx', '.txt', '.msg', '.eml', '.jpg', '.jpeg', '.png', '.tiff', '.bmp', '.gif'];\nconst ext = '.' + body.filename.split('.').pop().toLowerCase();\nif (!allowedExtensions.includes(ext)) {\n  throw new Error(`File type not allowed: ${ext}`);\n}\n\n// Sanitize filename\nlet filename = body.filename.replace(/\\.\\./g, '').replace(/[\\/\\\\]/g, '_');\nif (filename.length > 255) {\n  const namePart = filename.substring(0, 255 - ext.length);\n  filename = namePart + ext;\n}\n\n// Calculate expected chunks (32MB per chunk)\nconst CHUNK_SIZE = 33554432; // 32MB\nconst expectedChunks = Math.ceil(body.size_bytes / CHUNK_SIZE);\n\n// Generate upload_id\nconst uploadId = $now.toMillis().toString(36) + Math.random().toString(36).substring(2, 15);\n\nreturn {\n  yacht_signature: yachtSignature,\n  filename: filename,\n  sha256: body.sha256.toLowerCase(),\n  size_bytes: body.size_bytes,\n  source: body.source || 'nas',\n  expected_chunks: expectedChunks,\n  upload_id: uploadId\n};"
+      },
+      "id": "validate-request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "tableId": "yachts",
+        "filterType": "string",
+        "filterString": "signature=eq.{{ $json.yacht_signature }}",
+        "returnAll": false,
+        "limit": 1
+      },
+      "id": "lookup-yacht",
+      "name": "Lookup Yacht",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yacht-exists",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-yacht-exists",
+      "name": "Yacht Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get yacht data and input from previous nodes\nconst yacht = $('Lookup Yacht').first().json;\nconst input = $('Validate Request').first().json;\n\n// Check yacht is active\nif (yacht.status !== 'active') {\n  throw new Error('Yacht account is not active');\n}\n\nconst yachtId = yacht.id;\nconst uploadId = input.upload_id;\nconst now = new Date().toISOString();\n\n// Prepare upload session record\nreturn {\n  id: uploadId,\n  yacht_id: yachtId,\n  filename: input.filename,\n  file_sha256: input.sha256,\n  file_size: input.size_bytes,\n  source: input.source,\n  expected_chunks: input.expected_chunks,\n  chunks_received: 0,\n  chunks_received_set: [],\n  chunk_hashes: {},\n  status: 'INITIATED',\n  created_at: now,\n  updated_at: now,\n  storage_key: `yachts/${yachtId}/temp/${uploadId}/`\n};"
+      },
+      "id": "prepare-session",
+      "name": "Prepare Upload Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "upload_sessions",
+        "fieldsToSend": "autoMapInputData",
+        "options": {}
+      },
+      "id": "create-session",
+      "name": "Create Upload Session",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare success response\nconst session = $input.first().json;\n\nreturn {\n  upload_id: session.id,\n  storage_key: session.storage_key,\n  expected_chunks: session.expected_chunks,\n  status: 'pending'\n};"
+      },
+      "id": "format-success",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"detail\": \"Invalid yacht signature\" }",
+        "options": {
+          "responseCode": 401,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-unauthorized",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "document_ingestion_log",
+        "fieldsToSend": "defineBelow",
+        "fields": {
+          "values": [
+            {
+              "name": "yacht_id",
+              "value": "={{ $('Prepare Upload Session').first().json.yacht_id }}"
+            },
+            {
+              "name": "upload_id",
+              "value": "={{ $('Prepare Upload Session').first().json.id }}"
+            },
+            {
+              "name": "event_type",
+              "value": "init"
+            },
+            {
+              "name": "status",
+              "value": "initiated"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ filename: $('Prepare Upload Session').first().json.filename, size_bytes: $('Prepare Upload Session').first().json.file_size, expected_chunks: $('Prepare Upload Session').first().json.expected_chunks }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-init-event",
+      "name": "Log Init Event",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1560, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Ingest Init": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Lookup Yacht",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Yacht": {
+      "main": [
+        [
+          {
+            "node": "Yacht Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yacht Exists?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Upload Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Upload Session": {
+      "main": [
+        [
+          {
+            "node": "Create Upload Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Upload Session": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Init Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "ingestion",
+      "name": "ingestion"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "1"
+}

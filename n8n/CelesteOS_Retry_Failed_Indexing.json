@@ -1,0 +1,350 @@
+{
+  "name": "CelesteOS - Retry Failed Indexing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-retry",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "internal/indexer/retry_failed",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-retry",
+      "name": "Webhook - Manual Retry",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 500],
+      "webhookId": "retry-failed-indexing"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "tableId": "documents",
+        "filterType": "string",
+        "filterString": "indexed=eq.false&status=eq.ready_for_indexing",
+        "returnAll": false,
+        "limit": 50,
+        "options": {
+          "orderByUI": {
+            "values": [
+              {
+                "column": "created_at",
+                "direction": "asc"
+              }
+            ]
+          }
+        }
+      },
+      "id": "get-pending-docs",
+      "name": "Get Pending Documents",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-docs",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-docs",
+      "name": "Has Pending Docs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "split-batches",
+      "name": "Split Into Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare indexing trigger payload\nconst doc = $input.first().json;\n\nreturn {\n  document_id: doc.id,\n  yacht_id: doc.yacht_id,\n  file_sha256: doc.sha256 || '',\n  storage_path: doc.storage_path || '',\n  filename: doc.filename || '',\n  file_size: doc.size_bytes || 0\n};"
+      },
+      "id": "prepare-trigger-payload",
+      "name": "Prepare Trigger Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $env.INDEX_DOCUMENT_WORKFLOW_ID || 'CelesteOS_Index_Document' }}",
+        "options": {}
+      },
+      "id": "trigger-indexing-retry",
+      "name": "Trigger Indexing",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1380, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Count successes and failures\nconst items = $input.all();\nlet retried = 0;\nlet failed = 0;\n\nfor (const item of items) {\n  if (item.error) {\n    failed++;\n  } else {\n    retried++;\n  }\n}\n\nreturn {\n  status: 'ok',\n  retried: retried,\n  failed: failed,\n  total_processed: items.length\n};"
+      },
+      "id": "count-results",
+      "name": "Count Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "document_ingestion_log",
+        "fieldsToSend": "defineBelow",
+        "fields": {
+          "values": [
+            {
+              "name": "event_type",
+              "value": "retry_batch"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.failed === 0 ? 'success' : 'partial' }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ retried: $json.retried, failed: $json.failed, total: $json.total_processed }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-retry-batch",
+      "name": "Log Retry Batch",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1820, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-retry-result",
+      "name": "Respond Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2040, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\", \"retried\": 0, \"message\": \"No pending documents\" }",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-no-pending",
+      "name": "Respond No Pending",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [940, 500]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Manual Retry": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Documents": {
+      "main": [
+        [
+          {
+            "node": "Has Pending Docs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Pending Docs?": {
+      "main": [
+        [
+          {
+            "node": "Split Into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond No Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Into Batches": {
+      "main": [
+        [
+          {
+            "node": "Prepare Trigger Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Count Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Trigger Payload": {
+      "main": [
+        [
+          {
+            "node": "Trigger Indexing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Indexing": {
+      "main": [
+        [
+          {
+            "node": "Split Into Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Results": {
+      "main": [
+        [
+          {
+            "node": "Log Retry Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Retry Batch": {
+      "main": [
+        [
+          {
+            "node": "Respond Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "ingestion",
+      "name": "ingestion"
+    },
+    {
+      "id": "cron",
+      "name": "cron"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "1"
+}

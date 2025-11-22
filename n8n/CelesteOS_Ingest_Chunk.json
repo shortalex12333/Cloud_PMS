@@ -1,0 +1,405 @@
+{
+  "name": "CelesteOS - Ingest Chunk",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "PATCH",
+        "path": "v1/ingest/upload_chunk",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-chunk",
+      "name": "Webhook - Upload Chunk",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ingest-chunk"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate headers\nconst headers = $input.item.json.headers;\n\nconst yachtSignature = headers['x-yacht-signature'] || headers['X-Yacht-Signature'];\nconst uploadId = headers['upload-id'] || headers['Upload-ID'];\nconst chunkIndex = parseInt(headers['chunk-index'] || headers['Chunk-Index'], 10);\nconst chunkSha256 = (headers['chunk-sha256'] || headers['Chunk-SHA256'] || '').toLowerCase();\n\n// Validate required headers\nif (!yachtSignature) throw new Error('Missing X-Yacht-Signature header');\nif (!uploadId) throw new Error('Missing Upload-ID header');\nif (isNaN(chunkIndex) || chunkIndex < 0) throw new Error('Invalid Chunk-Index header');\nif (!chunkSha256 || chunkSha256.length !== 64) throw new Error('Invalid Chunk-SHA256 header');\n\n// Get raw body (chunk data)\nconst chunkData = $input.item.json.body;\nlet chunkSize = 0;\n\nif (typeof chunkData === 'string') {\n  chunkSize = Buffer.from(chunkData, 'base64').length;\n} else if (Buffer.isBuffer(chunkData)) {\n  chunkSize = chunkData.length;\n}\n\nif (chunkSize === 0) {\n  throw new Error('Empty chunk data received');\n}\n\n// Max chunk size: 64MB\nconst MAX_CHUNK_SIZE = 67108864;\nif (chunkSize > MAX_CHUNK_SIZE) {\n  throw new Error(`Chunk size ${chunkSize} exceeds maximum ${MAX_CHUNK_SIZE} bytes`);\n}\n\nreturn {\n  yacht_signature: yachtSignature,\n  upload_id: uploadId,\n  chunk_index: chunkIndex,\n  chunk_sha256: chunkSha256,\n  chunk_size: chunkSize,\n  chunk_data: chunkData\n};"
+      },
+      "id": "validate-chunk-headers",
+      "name": "Validate Chunk Headers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "tableId": "upload_sessions",
+        "filterType": "string",
+        "filterString": "id=eq.{{ $json.upload_id }}",
+        "returnAll": false,
+        "limit": 1
+      },
+      "id": "get-session",
+      "name": "Get Upload Session",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "session-exists",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-session-exists",
+      "name": "Session Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate session and tenant isolation\nconst session = $('Get Upload Session').first().json;\nconst input = $('Validate Chunk Headers').first().json;\n\n// Lookup yacht by signature to verify tenant isolation\nconst yachtSignature = input.yacht_signature;\n\n// Check session status\nif (!['INITIATED', 'UPLOADING'].includes(session.status)) {\n  throw new Error(`Upload is in state '${session.status}', cannot receive chunks`);\n}\n\n// Check chunk index bounds\nif (input.chunk_index >= session.expected_chunks) {\n  throw new Error(`Chunk index ${input.chunk_index} out of range [0, ${session.expected_chunks - 1}]`);\n}\n\n// Check if chunk already received (idempotency)\nconst chunksReceivedSet = session.chunks_received_set || [];\nconst chunkHashes = session.chunk_hashes || {};\n\nlet isDuplicate = false;\nif (chunksReceivedSet.includes(input.chunk_index)) {\n  // Chunk already received, check hash matches\n  const previousHash = chunkHashes[input.chunk_index.toString()];\n  if (previousHash && previousHash === input.chunk_sha256) {\n    isDuplicate = true;\n  } else {\n    throw new Error('Chunk hash mismatch on re-upload');\n  }\n}\n\nreturn {\n  session: session,\n  input: input,\n  is_duplicate: isDuplicate,\n  storage_path: `${session.storage_key}chunk_${String(input.chunk_index).padStart(6, '0')}.bin`\n};"
+      },
+      "id": "validate-session",
+      "name": "Validate Session & Tenant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-duplicate",
+              "leftValue": "={{ $json.is_duplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-duplicate",
+      "name": "Is Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/celesteos-documents/{{ $json.storage_path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.input.chunk_data }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "upload-chunk-storage",
+      "name": "Upload Chunk to Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-service-key",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update session with new chunk\nconst validated = $('Validate Session & Tenant').first().json;\nconst session = validated.session;\nconst input = validated.input;\n\n// Add chunk to tracking\nconst chunksReceivedSet = [...(session.chunks_received_set || [])];\nconst chunkHashes = { ...(session.chunk_hashes || {}) };\n\nif (!chunksReceivedSet.includes(input.chunk_index)) {\n  chunksReceivedSet.push(input.chunk_index);\n  chunkHashes[input.chunk_index.toString()] = input.chunk_sha256;\n}\n\nreturn {\n  id: session.id,\n  chunks_received: chunksReceivedSet.length,\n  chunks_received_set: chunksReceivedSet,\n  chunk_hashes: chunkHashes,\n  status: 'UPLOADING',\n  updated_at: new Date().toISOString()\n};"
+      },
+      "id": "prepare-update",
+      "name": "Prepare Session Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 100]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "upload_sessions",
+        "filtersUI": {
+          "filterValues": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsToSend": "defineBelow",
+        "fields": {
+          "values": [
+            {
+              "name": "chunks_received",
+              "value": "={{ $json.chunks_received }}"
+            },
+            {
+              "name": "chunks_received_set",
+              "value": "={{ JSON.stringify($json.chunks_received_set) }}"
+            },
+            {
+              "name": "chunk_hashes",
+              "value": "={{ JSON.stringify($json.chunk_hashes) }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "updated_at",
+              "value": "={{ $json.updated_at }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-session",
+      "name": "Update Session",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2000, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds",
+          "name": "Supabase Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\", \"message\": \"Chunk received\" }",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-chunk-ok",
+      "name": "Respond Chunk OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2220, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\", \"message\": \"Chunk already received (idempotent)\" }",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-duplicate-ok",
+      "name": "Respond Duplicate OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"detail\": \"Upload session not found or expired\" }",
+        "options": {
+          "responseCode": 404,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-not-found",
+      "name": "Respond Not Found",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - Upload Chunk": {
+      "main": [
+        [
+          {
+            "node": "Validate Chunk Headers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Chunk Headers": {
+      "main": [
+        [
+          {
+            "node": "Get Upload Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Upload Session": {
+      "main": [
+        [
+          {
+            "node": "Session Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session Exists?": {
+      "main": [
+        [
+          {
+            "node": "Validate Session & Tenant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Session & Tenant": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Respond Duplicate OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload Chunk to Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Chunk to Storage": {
+      "main": [
+        [
+          {
+            "node": "Prepare Session Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Session Update": {
+      "main": [
+        [
+          {
+            "node": "Update Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Session": {
+      "main": [
+        [
+          {
+            "node": "Respond Chunk OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "ingestion",
+      "name": "ingestion"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "1"
+}
