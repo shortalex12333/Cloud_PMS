@@ -205,9 +205,12 @@ async def upload_chunk(
 
     Headers required:
     - Upload-ID: UUID of upload session
-    - Chunk-Index: Index of this chunk
+    - Chunk-Index: Index of this chunk (0-based)
     - Chunk-SHA256: SHA256 hash of this chunk
     - Content-Type: application/octet-stream
+
+    This endpoint is idempotent - re-uploading the same chunk with the same
+    hash will succeed without error. Re-uploading with a different hash will fail.
     """
     upload_id = upload_headers["upload_id"]
     chunk_index = upload_headers["chunk_index"]
@@ -219,58 +222,83 @@ async def upload_chunk(
         if not state:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Upload session not found"
+                detail="Upload session not found or expired"
             )
 
-        # Verify yacht_id matches
+        # TENANT ISOLATION: Verify yacht_id matches upload owner
         if state.yacht_id != yacht_id:
+            logger.warning(
+                f"Tenant isolation violation: yacht {yacht_id} attempted to upload "
+                f"chunk to upload {upload_id} owned by yacht {state.yacht_id}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Upload does not belong to this yacht"
             )
 
-        # Verify chunk index is valid
-        if chunk_index >= state.total_chunks:
+        # Verify upload is in valid state for receiving chunks
+        if state.status not in ["INITIATED", "UPLOADING"]:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Upload is in state '{state.status}', cannot receive chunks"
+            )
+
+        # Verify chunk index is valid (0-based indexing)
+        if chunk_index < 0 or chunk_index >= state.expected_chunks:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Chunk index {chunk_index} exceeds total chunks {state.total_chunks}"
+                detail=f"Chunk index {chunk_index} out of range [0, {state.expected_chunks - 1}]"
             )
 
         # Read chunk data
         chunk_data = await request.body()
 
+        # Verify chunk is not empty
+        if len(chunk_data) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Empty chunk data received"
+            )
+
         # Verify chunk size
         if len(chunk_data) > settings.MAX_CHUNK_SIZE:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Chunk size exceeds maximum {settings.MAX_CHUNK_SIZE} bytes"
+                detail=f"Chunk size {len(chunk_data)} exceeds maximum {settings.MAX_CHUNK_SIZE} bytes"
             )
 
-        # Save chunk
-        success = await storage_manager.save_chunk(
+        # Save chunk with hash verification and idempotency
+        success, is_duplicate, error_msg = await storage_manager.save_chunk(
             upload_id=upload_id,
             chunk_index=chunk_index,
             chunk_data=chunk_data,
-            chunk_sha256=chunk_sha256
+            chunk_sha256=chunk_sha256,
+            state=state
         )
 
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Chunk hash verification failed"
+                detail=f"Chunk validation failed: {error_msg}"
             )
 
-        # Update state
-        state.chunks_received += 1
-        state.status = "UPLOADING"
-        await storage_manager.save_state(state)
+        # Update state only if not a duplicate
+        if not is_duplicate:
+            state.chunks_received += 1
+            state.chunks_received_set.add(chunk_index)
+            state.chunk_hashes[chunk_index] = chunk_sha256
+            state.status = "UPLOADING"
+            await storage_manager.save_state(state)
 
         logger.info(
-            f"Received chunk {chunk_index}/{state.total_chunks} "
-            f"for upload {upload_id}"
+            f"Received chunk {chunk_index + 1}/{state.expected_chunks} "
+            f"for upload {upload_id} (duplicate={is_duplicate})"
         )
 
-        return UploadChunkResponse(status="ok")
+        return UploadChunkResponse(
+            status="ok",
+            message="Chunk received" if not is_duplicate else "Chunk already received (idempotent)"
+        )
 
     except HTTPException:
         raise
@@ -291,13 +319,14 @@ async def ingest_complete(
     Complete upload, assemble file, verify, upload to storage, and trigger indexing
 
     This endpoint:
-    1. Verifies all chunks are present
-    2. Assembles chunks into final file
-    3. Verifies final SHA256
-    4. Uploads to Supabase Storage
-    5. Creates document record in database
-    6. Triggers n8n indexing workflow
-    7. Cleans up temporary files
+    1. Verifies expected_chunks matches what was set at init
+    2. Verifies all chunks are present (using chunk tracking set)
+    3. Assembles chunks into final file
+    4. Verifies final SHA256 matches
+    5. Uploads to Supabase Storage (tenant-isolated path)
+    6. Creates document record in database
+    7. Queues for indexing (n8n or stub queue)
+    8. Cleans up temporary files
     """
     upload_id = request.upload_id
 
@@ -307,46 +336,80 @@ async def ingest_complete(
         if not state:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Upload session not found"
+                detail="Upload session not found or expired"
             )
 
-        # Verify yacht_id matches
+        # TENANT ISOLATION: Verify yacht_id matches upload owner
         if state.yacht_id != yacht_id:
+            logger.warning(
+                f"Tenant isolation violation: yacht {yacht_id} attempted to complete "
+                f"upload {upload_id} owned by yacht {state.yacht_id}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Upload does not belong to this yacht"
             )
 
-        # Verify all chunks received
-        if state.chunks_received != request.total_chunks:
+        # Verify upload is in valid state for completion
+        if state.status not in ["INITIATED", "UPLOADING"]:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Missing chunks: received {state.chunks_received}, expected {request.total_chunks}"
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Upload is in state '{state.status}', cannot complete"
             )
 
-        # Verify SHA256 matches
+        # INTEGRITY CHECK 1: Verify total_chunks matches expected_chunks from init
+        if request.total_chunks != state.expected_chunks:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"total_chunks mismatch: request says {request.total_chunks}, "
+                       f"init expected {state.expected_chunks}"
+            )
+
+        # INTEGRITY CHECK 2: Verify all chunks received using chunk tracking set
+        all_received, missing_chunks = storage_manager.verify_all_chunks_received(state)
+        if not all_received:
+            missing_preview = missing_chunks[:10]  # Show first 10 missing
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing {len(missing_chunks)} chunks. Missing indices: {missing_preview}"
+                       + ("..." if len(missing_chunks) > 10 else "")
+            )
+
+        # INTEGRITY CHECK 3: Verify SHA256 from request matches init
         if state.file_sha256 != request.sha256:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="SHA256 mismatch"
+                detail=f"SHA256 mismatch: init={state.file_sha256[:16]}..., "
+                       f"complete={request.sha256[:16]}..."
             )
 
-        logger.info(f"Completing upload {upload_id}")
+        # INTEGRITY CHECK 4: Verify filename matches
+        if state.filename != request.filename:
+            logger.warning(
+                f"Filename changed between init and complete: "
+                f"init='{state.filename}', complete='{request.filename}'"
+            )
+            # Allow this but log it - could be intentional rename
 
-        # Assemble file
+        logger.info(
+            f"Completing upload {upload_id}: {state.chunks_received} chunks, "
+            f"{state.file_size} bytes, sha256={state.file_sha256[:16]}..."
+        )
+
+        # Assemble file from chunks
         assembled_path = await storage_manager.assemble_file(upload_id)
         if not assembled_path:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to assemble file"
+                detail="Failed to assemble file from chunks"
             )
 
-        # Verify assembled file
+        # INTEGRITY CHECK 5: Verify assembled file SHA256 matches expected
         verified = await storage_manager.verify_file(upload_id, assembled_path)
         if not verified:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File verification failed"
+                detail="Assembled file SHA256 verification failed - data corruption detected"
             )
 
         # Update state
@@ -356,7 +419,7 @@ async def ingest_complete(
         # Detect content type
         content_type, _ = mimetypes.guess_type(state.filename)
 
-        # Upload to Supabase Storage
+        # Upload to Supabase Storage (tenant-isolated path)
         storage_path = await supabase_manager.upload_to_storage(
             yacht_id=yacht_id,
             file_sha256=state.file_sha256,
@@ -384,11 +447,13 @@ async def ingest_complete(
             status="completed",
             metadata={
                 "storage_path": storage_path,
-                "document_id": str(document_id)
+                "document_id": str(document_id),
+                "chunks_received": state.chunks_received,
+                "file_size": state.file_size
             }
         )
 
-        # Trigger n8n indexing workflow
+        # QUEUE FOR INDEXING: Try n8n, fallback to stub queue with logging
         triggered = await n8n_trigger.trigger_indexing(
             document_id=document_id,
             yacht_id=yacht_id,
@@ -399,9 +464,24 @@ async def ingest_complete(
         )
 
         if not triggered:
+            # Stub queue fallback: log the job for manual/later processing
             logger.warning(
-                f"Failed to trigger indexing for document {document_id}, "
-                "but document is saved"
+                f"STUB_QUEUE: Failed to trigger n8n indexing for document {document_id}. "
+                f"Logging for manual processing. yacht_id={yacht_id}, "
+                f"storage_path={storage_path}, filename={state.filename}"
+            )
+            # Log to stub queue table (document is still saved, just not indexed yet)
+            await supabase_manager.log_ingestion_event(
+                yacht_id=yacht_id,
+                upload_id=upload_id,
+                document_id=document_id,
+                event_type="indexing_queued",
+                status="stub_queue",
+                metadata={
+                    "reason": "n8n_trigger_failed",
+                    "storage_path": storage_path,
+                    "filename": state.filename
+                }
             )
 
         # Clean up temporary files
@@ -409,13 +489,15 @@ async def ingest_complete(
 
         logger.info(
             f"Successfully completed upload {upload_id}, "
-            f"created document {document_id}"
+            f"created document {document_id}, queued_for_indexing={triggered}"
         )
 
         return IngestionCompleteResponse(
             document_id=document_id,
             status="received",
-            queued_for_indexing=triggered
+            queued_for_indexing=triggered,
+            message="Document stored and queued for indexing" if triggered
+                    else "Document stored, indexing pending (stub queue)"
         )
 
     except HTTPException:
@@ -442,6 +524,62 @@ async def ingest_complete(
         )
 
 
+# ==================== STATUS ENDPOINTS ====================
+
+
+@app.get("/v1/ingest/status/{upload_id}")
+async def get_upload_status(
+    upload_id: UUID,
+    yacht_id: UUID = Depends(yacht_auth.validate_yacht_signature)
+):
+    """
+    Get the status of an upload session
+
+    Returns chunk progress, status, and any error messages.
+    Useful for resuming uploads after connection issues.
+    """
+    try:
+        state = await storage_manager.load_state(upload_id)
+        if not state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Upload session not found or expired"
+            )
+
+        # TENANT ISOLATION: Verify yacht_id matches
+        if state.yacht_id != yacht_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Upload does not belong to this yacht"
+            )
+
+        # Get missing chunks for resume capability
+        missing_chunks = storage_manager.get_missing_chunks(state)
+
+        return {
+            "upload_id": str(upload_id),
+            "status": state.status,
+            "filename": state.filename,
+            "file_size": state.file_size,
+            "expected_chunks": state.expected_chunks,
+            "chunks_received": state.chunks_received,
+            "chunks_missing": len(missing_chunks),
+            "missing_chunk_indices": missing_chunks[:50],  # First 50 for debugging
+            "created_at": state.created_at.isoformat(),
+            "updated_at": state.updated_at.isoformat(),
+            "error_message": state.error_message
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting upload status: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting upload status"
+        )
+
+
 # ==================== INTERNAL ENDPOINTS ====================
 
 
@@ -455,17 +593,135 @@ async def start_indexing(
     Called by n8n or internal scheduler
     """
     try:
-        # Trigger indexing
-        # This could fetch document from database and trigger processing
-        logger.info(f"Starting indexing for document {document_id}")
+        logger.info(f"Starting indexing for document {document_id}, yacht {yacht_id}")
 
-        return {"status": "started", "document_id": str(document_id)}
+        # Fetch document from database to get storage_path and other metadata
+        result = supabase_manager.client.table("documents").select("*").eq(
+            "id", str(document_id)
+        ).eq(
+            "yacht_id", str(yacht_id)  # Tenant isolation
+        ).execute()
 
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or does not belong to yacht"
+            )
+
+        doc = result.data[0]
+
+        # Trigger n8n indexing
+        triggered = await n8n_trigger.trigger_indexing(
+            document_id=document_id,
+            yacht_id=yacht_id,
+            file_sha256=doc.get("sha256", ""),
+            storage_path=doc.get("storage_path", ""),
+            filename=doc.get("filename", ""),
+            file_size=doc.get("size_bytes", 0)
+        )
+
+        if triggered:
+            return {"status": "started", "document_id": str(document_id)}
+        else:
+            return {"status": "queued_stub", "document_id": str(document_id)}
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error starting indexing: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error starting indexing"
+        )
+
+
+@app.post("/internal/indexer/retry_failed")
+async def retry_failed_indexing():
+    """
+    Retry indexing for all documents in stub queue
+
+    Fetches documents that failed to trigger n8n and retries them.
+    Called by cron scheduler or manually.
+    """
+    try:
+        # Find documents that are ready for indexing but not indexed
+        result = supabase_manager.client.table("documents").select(
+            "id, yacht_id, sha256, storage_path, filename, size_bytes"
+        ).eq(
+            "indexed", False
+        ).eq(
+            "status", "ready_for_indexing"
+        ).limit(50).execute()
+
+        if not result.data:
+            return {"status": "ok", "retried": 0, "message": "No pending documents"}
+
+        retried = 0
+        failed = 0
+
+        for doc in result.data:
+            try:
+                triggered = await n8n_trigger.trigger_indexing(
+                    document_id=UUID(doc["id"]),
+                    yacht_id=UUID(doc["yacht_id"]),
+                    file_sha256=doc.get("sha256", ""),
+                    storage_path=doc.get("storage_path", ""),
+                    filename=doc.get("filename", ""),
+                    file_size=doc.get("size_bytes", 0)
+                )
+
+                if triggered:
+                    retried += 1
+                    logger.info(f"Successfully retried indexing for document {doc['id']}")
+                else:
+                    failed += 1
+
+            except Exception as e:
+                logger.error(f"Error retrying document {doc['id']}: {e}")
+                failed += 1
+
+        return {
+            "status": "ok",
+            "retried": retried,
+            "failed": failed,
+            "total_pending": len(result.data)
+        }
+
+    except Exception as e:
+        logger.error(f"Error in retry_failed_indexing: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrying failed indexing"
+        )
+
+
+@app.get("/internal/stub_queue/list")
+async def list_stub_queue(limit: int = 50):
+    """
+    List documents in the stub indexing queue
+
+    Returns documents that are stored but not yet indexed.
+    """
+    try:
+        result = supabase_manager.client.table("documents").select(
+            "id, yacht_id, filename, storage_path, size_bytes, created_at, status"
+        ).eq(
+            "indexed", False
+        ).order(
+            "created_at", desc=True
+        ).limit(limit).execute()
+
+        return {
+            "status": "ok",
+            "count": len(result.data) if result.data else 0,
+            "documents": result.data or []
+        }
+
+    except Exception as e:
+        logger.error(f"Error listing stub queue: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error listing stub queue"
         )
 
 

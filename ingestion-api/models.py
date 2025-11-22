@@ -77,7 +77,10 @@ class IngestionState(BaseModel):
     file_sha256: str
     file_size: int
     total_chunks: int
+    expected_chunks: int  # Set at init, must match total_chunks at complete
     chunks_received: int = 0
+    chunks_received_set: set[int] = set()  # Track which specific chunks received
+    chunk_hashes: dict[int, str] = {}  # Track hash of each chunk for verification
     status: Literal[
         "INITIATED",
         "UPLOADING",
@@ -91,6 +94,9 @@ class IngestionState(BaseModel):
     created_at: datetime
     updated_at: datetime
     source: str = "nas"
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class DocumentMetadata(BaseModel):

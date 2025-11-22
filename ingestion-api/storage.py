@@ -59,7 +59,7 @@ class TempStorageManager:
         upload_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Created upload directory: {upload_dir}")
 
-        # Create initial state
+        # Create initial state with chunk tracking
         state = IngestionState(
             upload_id=upload_id,
             yacht_id=yacht_id,
@@ -67,7 +67,10 @@ class TempStorageManager:
             file_sha256=file_sha256,
             file_size=file_size,
             total_chunks=total_chunks,
+            expected_chunks=total_chunks,  # Store expected count for verification
             chunks_received=0,
+            chunks_received_set=set(),  # Track which chunks received
+            chunk_hashes={},  # Track hash of each chunk
             status="INITIATED",
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
@@ -84,8 +87,15 @@ class TempStorageManager:
         meta_path = self.get_meta_path(state.upload_id)
         state.updated_at = datetime.utcnow()
 
+        # Convert state to dict with proper serialization for sets
+        state_dict = state.model_dump(mode="json")
+        # Convert set to list for JSON serialization
+        state_dict["chunks_received_set"] = list(state.chunks_received_set)
+        # Convert dict keys to strings for JSON
+        state_dict["chunk_hashes"] = {str(k): v for k, v in state.chunk_hashes.items()}
+
         with open(meta_path, "w") as f:
-            json.dump(state.model_dump(mode="json"), f, indent=2, default=str)
+            json.dump(state_dict, f, indent=2, default=str)
 
     async def load_state(self, upload_id: UUID) -> Optional[IngestionState]:
         """Load upload state from metadata file"""
@@ -97,6 +107,23 @@ class TempStorageManager:
         try:
             with open(meta_path, "r") as f:
                 data = json.load(f)
+
+            # Convert list back to set for chunks_received_set
+            if "chunks_received_set" in data:
+                data["chunks_received_set"] = set(data["chunks_received_set"])
+            else:
+                data["chunks_received_set"] = set()
+
+            # Convert string keys back to int for chunk_hashes
+            if "chunk_hashes" in data:
+                data["chunk_hashes"] = {int(k): v for k, v in data["chunk_hashes"].items()}
+            else:
+                data["chunk_hashes"] = {}
+
+            # Handle legacy state files without expected_chunks
+            if "expected_chunks" not in data:
+                data["expected_chunks"] = data.get("total_chunks", 0)
+
             return IngestionState(**data)
         except Exception as e:
             logger.error(f"Error loading state for {upload_id}: {e}")
@@ -107,24 +134,54 @@ class TempStorageManager:
         upload_id: UUID,
         chunk_index: int,
         chunk_data: bytes,
-        chunk_sha256: str
-    ) -> bool:
+        chunk_sha256: str,
+        state: IngestionState
+    ) -> tuple[bool, bool, str]:
         """
         Save a chunk to disk and verify its hash
 
+        Args:
+            upload_id: Upload session ID
+            chunk_index: Index of the chunk (0-based)
+            chunk_data: Raw chunk bytes
+            chunk_sha256: Expected SHA256 hash of chunk
+            state: Current upload state for idempotency check
+
         Returns:
-            True if saved successfully, False otherwise
+            Tuple of (success, is_duplicate, error_message)
+            - success: True if chunk saved/verified successfully
+            - is_duplicate: True if this chunk was already received (idempotent)
+            - error_message: Error description if success is False
         """
         import hashlib
+
+        # Check if chunk was already received (idempotency)
+        if chunk_index in state.chunks_received_set:
+            # Verify the hash matches what we received before
+            previous_hash = state.chunk_hashes.get(chunk_index)
+            if previous_hash and previous_hash == chunk_sha256:
+                logger.info(
+                    f"Duplicate chunk {chunk_index} for upload {upload_id} - "
+                    f"hash matches, returning success (idempotent)"
+                )
+                return (True, True, "")
+            else:
+                # Hash mismatch on re-upload - this is suspicious
+                logger.warning(
+                    f"Duplicate chunk {chunk_index} for upload {upload_id} - "
+                    f"hash mismatch! Previous: {previous_hash}, new: {chunk_sha256}"
+                )
+                return (False, True, "Chunk hash mismatch on re-upload")
 
         # Verify chunk hash
         computed_hash = hashlib.sha256(chunk_data).hexdigest()
         if computed_hash != chunk_sha256:
-            logger.error(
-                f"Chunk hash mismatch for {upload_id} chunk {chunk_index}: "
-                f"expected {chunk_sha256}, got {computed_hash}"
+            error_msg = (
+                f"Chunk hash mismatch for chunk {chunk_index}: "
+                f"expected {chunk_sha256}, computed {computed_hash}"
             )
-            return False
+            logger.error(f"{upload_id}: {error_msg}")
+            return (False, False, error_msg)
 
         # Save chunk
         chunk_path = self.get_chunk_path(upload_id, chunk_index)
@@ -133,10 +190,39 @@ class TempStorageManager:
             with open(chunk_path, "wb") as f:
                 f.write(chunk_data)
             logger.info(f"Saved chunk {chunk_index} for upload {upload_id}")
-            return True
+            return (True, False, "")
         except Exception as e:
-            logger.error(f"Error saving chunk {chunk_index}: {e}")
-            return False
+            error_msg = f"Error saving chunk {chunk_index}: {e}"
+            logger.error(error_msg)
+            return (False, False, error_msg)
+
+    def get_missing_chunks(self, state: IngestionState) -> list[int]:
+        """
+        Get list of missing chunk indices
+
+        Args:
+            state: Current upload state
+
+        Returns:
+            List of missing chunk indices (0-based)
+        """
+        expected = set(range(state.expected_chunks))
+        received = state.chunks_received_set
+        missing = sorted(expected - received)
+        return missing
+
+    def verify_all_chunks_received(self, state: IngestionState) -> tuple[bool, list[int]]:
+        """
+        Verify all expected chunks have been received
+
+        Args:
+            state: Current upload state
+
+        Returns:
+            Tuple of (all_received, missing_chunks)
+        """
+        missing = self.get_missing_chunks(state)
+        return (len(missing) == 0, missing)
 
     async def assemble_file(self, upload_id: UUID) -> Optional[Path]:
         """
