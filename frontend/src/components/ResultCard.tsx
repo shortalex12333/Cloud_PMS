@@ -7,9 +7,10 @@ import type { SearchResult, ResultCardType } from '@/types/search';
 
 interface ResultCardProps {
   result: SearchResult;
+  className?: string;
 }
 
-export default function ResultCard({ result }: ResultCardProps) {
+export default function ResultCard({ result, className }: ResultCardProps) {
   const { type, title, subtitle, preview, score, actions } = result;
 
   // Get icon based on result type
@@ -46,7 +47,7 @@ export default function ResultCard({ result }: ResultCardProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
+    <div className={cn("bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer group", className)}>
       <div className="flex items-start gap-3">
         {/* Icon */}
         <div className={cn('mt-1', getColorClass(type))}>
