@@ -59,7 +59,7 @@ CREATE TABLE documents (
 
     -- Constraints
     CONSTRAINT valid_source_type CHECK (source_type IN ('nas', 'email', 'mobile_upload', 'manual_upload')),
-    CONSTRAINT valid_processing_status CHECK (processing_status IN ('pending', 'processing', 'completed', 'failed'))
+    CONSTRAINT valid_processing_status CHECK (processing_status IN ('pending', 'processing', 'completed', 'failed', 'deleted'))
 );
 
 -- Indexes for documents
@@ -633,6 +633,166 @@ BEGIN
     RETURN deleted_count;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- FILE CHANGE DETECTION FUNCTIONS (for local agent sync)
+-- ============================================================================
+
+-- Check if a file exists by SHA256 hash for a yacht
+-- Returns: document record if exists, NULL if new file
+CREATE OR REPLACE FUNCTION check_file_by_hash(
+    p_yacht_id UUID,
+    p_sha256 TEXT
+)
+RETURNS TABLE (
+    id UUID,
+    nas_path TEXT,
+    processing_status TEXT,
+    indexed_at TIMESTAMPTZ
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT d.id, d.nas_path, d.processing_status, d.indexed_at
+    FROM documents d
+    WHERE d.yacht_id = p_yacht_id
+      AND d.sha256 = p_sha256
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check if a file exists by NAS path for a yacht
+-- Returns: document record with hash (to detect modifications)
+CREATE OR REPLACE FUNCTION check_file_by_path(
+    p_yacht_id UUID,
+    p_nas_path TEXT
+)
+RETURNS TABLE (
+    id UUID,
+    sha256 TEXT,
+    processing_status TEXT,
+    indexed_at TIMESTAMPTZ
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT d.id, d.sha256, d.processing_status, d.indexed_at
+    FROM documents d
+    WHERE d.yacht_id = p_yacht_id
+      AND d.nas_path = p_nas_path
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Batch check multiple files at once (for efficient sync)
+-- Input: yacht_id and array of {path, sha256} pairs as JSONB
+-- Returns: status for each file (new, modified, unchanged, processing)
+CREATE OR REPLACE FUNCTION check_files_batch(
+    p_yacht_id UUID,
+    p_files JSONB  -- Array of {"path": "...", "sha256": "..."}
+)
+RETURNS TABLE (
+    file_path TEXT,
+    file_sha256 TEXT,
+    status TEXT,           -- 'new', 'modified', 'unchanged', 'processing'
+    document_id UUID
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH input_files AS (
+        SELECT
+            f->>'path' AS path,
+            f->>'sha256' AS sha256
+        FROM jsonb_array_elements(p_files) AS f
+    ),
+    matched AS (
+        SELECT
+            i.path,
+            i.sha256 AS input_sha256,
+            d.id AS doc_id,
+            d.sha256 AS db_sha256,
+            d.processing_status
+        FROM input_files i
+        LEFT JOIN documents d ON d.yacht_id = p_yacht_id AND d.nas_path = i.path
+    )
+    SELECT
+        m.path,
+        m.input_sha256,
+        CASE
+            WHEN m.doc_id IS NULL THEN 'new'
+            WHEN m.processing_status IN ('pending', 'processing') THEN 'processing'
+            WHEN m.db_sha256 != m.input_sha256 THEN 'modified'
+            ELSE 'unchanged'
+        END AS status,
+        m.doc_id
+    FROM matched m;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get all indexed paths for a yacht (to detect deletions)
+CREATE OR REPLACE FUNCTION get_indexed_paths(
+    p_yacht_id UUID
+)
+RETURNS TABLE (
+    nas_path TEXT,
+    sha256 TEXT,
+    document_id UUID
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT d.nas_path, d.sha256, d.id
+    FROM documents d
+    WHERE d.yacht_id = p_yacht_id
+      AND d.nas_path IS NOT NULL
+      AND d.processing_status = 'completed';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Mark a document as deleted (soft delete by updating status)
+CREATE OR REPLACE FUNCTION mark_document_deleted(
+    p_document_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    rows_updated INTEGER;
+BEGIN
+    UPDATE documents
+    SET processing_status = 'deleted',
+        updated_at = NOW()
+    WHERE id = p_document_id;
+
+    GET DIAGNOSTICS rows_updated = ROW_COUNT;
+    RETURN rows_updated > 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update document hash when file is modified (triggers reprocessing)
+CREATE OR REPLACE FUNCTION update_document_hash(
+    p_document_id UUID,
+    p_new_sha256 TEXT,
+    p_new_file_size BIGINT DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    rows_updated INTEGER;
+BEGIN
+    UPDATE documents
+    SET sha256 = p_new_sha256,
+        file_size = COALESCE(p_new_file_size, file_size),
+        processing_status = 'pending',  -- Reset to pending for reprocessing
+        indexed_at = NULL,
+        updated_at = NOW()
+    WHERE id = p_document_id;
+
+    GET DIAGNOSTICS rows_updated = ROW_COUNT;
+    RETURN rows_updated > 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION check_file_by_hash IS 'Check if file exists by SHA256 (for deduplication)';
+COMMENT ON FUNCTION check_file_by_path IS 'Check if file exists by NAS path (for modification detection)';
+COMMENT ON FUNCTION check_files_batch IS 'Batch check multiple files - returns new/modified/unchanged status';
+COMMENT ON FUNCTION get_indexed_paths IS 'Get all indexed file paths for deletion detection';
+COMMENT ON FUNCTION mark_document_deleted IS 'Soft delete a document when file is removed from NAS';
+COMMENT ON FUNCTION update_document_hash IS 'Update hash when file is modified, triggers reprocessing';
 
 -- ============================================================================
 -- GRANT PERMISSIONS
