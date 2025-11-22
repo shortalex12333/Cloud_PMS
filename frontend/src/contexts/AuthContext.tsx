@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const queryPromise = supabase
         .from('users')
-        .select('id, email, yacht_id, name, role')
+        .select('id, auth_user_id, email, yacht_id, name, metadata')
         .eq('email', authUser.email)
         .maybeSingle();
 
@@ -97,11 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('[AuthContext] ✅ User data received:', userData);
 
-      // User role is in the users table directly (v1 schema)
+      // Role may be in metadata.role or default to 'crew'
+      const metadata = userData.metadata as { role?: string } | null;
+      const userRole = metadata?.role || 'crew';
+
       const celesteUser: CelesteUser = {
-        id: userData.id,
+        id: userData.auth_user_id || userData.id,
         email: userData.email,
-        role: (userData.role as CelesteUser['role']) || 'crew',
+        role: userRole as CelesteUser['role'],
         yachtId: userData.yacht_id,
         displayName: userData.name,
       };
