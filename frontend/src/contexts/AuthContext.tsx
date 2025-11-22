@@ -49,23 +49,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Query user profile - production uses 'users' table with role column
-      console.log('[AuthContext] Executing Supabase query...');
+      console.log('[AuthContext] Executing Supabase query to users table...');
 
       const queryStart = Date.now();
 
-      // Step 1: Get user profile from users table
-      const { data: userData, error: userError } = await supabase
+      // Step 1: Get user profile from users table with timeout
+      // RLS can cause queries to hang indefinitely if not configured properly
+      const timeoutMs = 10000;
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+        setTimeout(() => resolve({
+          data: null,
+          error: { message: `Query timeout after ${timeoutMs}ms - check RLS policies on users table` }
+        }), timeoutMs)
+      );
+
+      const queryPromise = supabase
         .from('users')
         .select('auth_user_id, email, yacht_id, name')
         .eq('email', authUser.email)
         .maybeSingle();
 
+      // Race between query and timeout
+      const { data: userData, error: userError } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]);
+
+      const queryTime = Date.now() - queryStart;
+      console.log(`[AuthContext] Users query completed in ${queryTime}ms`);
+
       if (userError) {
         console.error('[AuthContext] ❌ Query returned error:', {
           message: userError.message,
-          details: userError.details,
-          hint: userError.hint,
-          code: userError.code,
+          details: (userError as any).details,
+          hint: (userError as any).hint,
+          code: (userError as any).code,
         });
         return null;
       }
