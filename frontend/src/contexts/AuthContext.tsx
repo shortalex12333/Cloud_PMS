@@ -20,33 +20,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
   })
 
-  // Fetch user profile from database (joins users + user_roles tables)
+  // Fetch user profile from database (uses existing users + user_yacht_roles tables)
   const fetchUserProfile = async (authUserId: string): Promise<User | null> => {
     try {
-      // Query users table with user_roles join (get primary role)
+      // Query users table - uses auth_user_id to link to Supabase auth
       const { data, error } = await supabase
         .from('users')
         .select(`
           id,
+          auth_user_id,
+          yacht_id,
           email,
           name,
-          yacht_id,
           is_active,
-          last_login_at,
+          metadata,
           created_at,
           updated_at,
-          user_roles!inner (
+          user_yacht_roles (
             role,
-            permissions,
-            expires_at
+            scopes,
+            is_active,
+            valid_from,
+            valid_until
           ),
           yachts (
             name
           )
         `)
-        .eq('id', authUserId)
-        .eq('user_roles.is_primary', true)
-        .or('user_roles.expires_at.is.null,user_roles.expires_at.gt.now()')
+        .eq('auth_user_id', authUserId)
         .single()
 
       if (error) {
@@ -54,25 +55,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null
       }
 
-      // Extract primary role from joined data
-      const primaryRole = Array.isArray(data.user_roles)
-        ? data.user_roles[0]
-        : data.user_roles
+      // Extract active role from user_yacht_roles
+      const roles = Array.isArray(data.user_yacht_roles)
+        ? data.user_yacht_roles
+        : data.user_yacht_roles ? [data.user_yacht_roles] : []
 
-      if (!primaryRole) {
-        console.error('[AuthContext] No primary role found for user')
-        return null
-      }
+      const activeRole = roles.find((r: any) =>
+        r.is_active &&
+        (!r.valid_until || new Date(r.valid_until) > new Date())
+      )
 
       return {
         id: data.id,
         email: data.email,
         name: data.name,
-        role: primaryRole.role,
+        role: activeRole?.role || 'readonly',
         yacht_id: data.yacht_id,
         yacht_name: (data as any).yachts?.name || null,
         is_active: data.is_active,
-        permissions: primaryRole.permissions || {},
+        permissions: activeRole?.scopes || [],
         created_at: data.created_at,
         updated_at: data.updated_at,
       } as User
