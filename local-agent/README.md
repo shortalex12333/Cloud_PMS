@@ -1,79 +1,27 @@
 # CelesteOS Local Agent
 
-**Version:** 1.0
-**Platform:** macOS (Mac Studio / Mac Mini)
-**Purpose:** NAS document ingestion agent for CelesteOS
+**Version:** 1.1.0
+**Platform:** macOS 12.0+ (Monterey or later)
+**Purpose:** Yacht NAS document sync agent for CelesteOS cloud
 
 ---
 
-## 📁 Folder Structure
+## Quick Install
 
+```bash
+# Clone or download the local-agent folder
+cd local-agent
+
+# Run the installer
+chmod +x scripts/install.sh
+./scripts/install.sh
 ```
-local-agent/
-├── README.md                   # This file
-├── schema.sql                  # SQLite database schema
-├── requirements.txt            # Python dependencies
-├── config.example.json         # Example configuration
-├── setup.py                    # Installation script
-│
-├── celesteos_agent/            # Main Python package
-│   ├── __init__.py
-│   ├── config.py               # Configuration management
-│   ├── database.py             # SQLite database wrapper
-│   ├── keychain.py             # macOS Keychain integration
-│   ├── scanner.py              # NAS file scanner
-│   ├── hasher.py               # SHA256 computation
-│   ├── chunker.py              # File chunking & compression
-│   ├── uploader.py             # Cloud upload manager
-│   ├── api_client.py           # Cloud API client
-│   ├── scheduler.py            # Cron/scheduling logic
-│   ├── state_machine.py        # Upload state management
-│   ├── logger.py               # Structured logging
-│   └── utils.py                # Helper utilities
-│
-├── celesteos_daemon.py         # Background daemon process
-├── celesteos_cli.py            # Command-line interface
-│
-├── gui/                        # macOS GUI application
-│   ├── swift/                  # Swift/SwiftUI native GUI
-│   │   ├── CelesteOSAgent.xcodeproj
-│   │   ├── CelesteOSAgent/
-│   │   │   ├── ContentView.swift
-│   │   │   ├── SettingsView.swift
-│   │   │   ├── StatusView.swift
-│   │   │   └── Assets.xcassets
-│   │   └── README.md
-│   │
-│   └── python/                 # Python/tkinter fallback GUI
-│       ├── main.py
-│       ├── setup_window.py
-│       └── status_window.py
-│
-├── scripts/                    # Utility scripts
-│   ├── install.sh              # Installation script
-│   ├── uninstall.sh            # Uninstall script
-│   └── test_nas_connection.sh  # NAS connection tester
-│
-├── launchd/                    # macOS LaunchAgent configs
-│   └── com.celesteos.agent.plist
-│
-├── logs/                       # Log files (created at runtime)
-│   └── .gitkeep
-│
-├── tmp/                        # Temporary chunk storage
-│   └── .gitkeep
-│
-└── tests/                      # Unit tests
-    ├── test_scanner.py
-    ├── test_hasher.py
-    ├── test_chunker.py
-    ├── test_uploader.py
-    └── test_api_client.py
-```
+
+This installs to `~/.celesteos/` and creates a background service.
 
 ---
 
-## 🎯 Overview
+## What It Does
 
 The CelesteOS Local Agent is a lightweight daemon that runs on the yacht's Mac Studio. It:
 

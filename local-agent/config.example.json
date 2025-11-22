@@ -1,15 +1,15 @@
 {
   "yacht_signature": "YOUR_YACHT_SIGNATURE_HERE",
-  "yacht_name": "MY YACHT",
-  "api_endpoint": "https://vzsohavtuotocgrfkfyd.supabase.co",
-  "supabase_url": "https://vzsohavtuotocgrfkfyd.supabase.co",
-  "supabase_anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1OTI4NzUsImV4cCI6MjA3OTE2ODg3NX0.JhJLvLSfLD3OtPDxTgHqgF8dNaZk8ius62jKN68E4WE",
+  "yacht_name": "MY YACHT NAME",
+  "api_endpoint": "https://YOUR_PROJECT.supabase.co",
+  "supabase_url": "https://YOUR_PROJECT.supabase.co",
+  "supabase_anon_key": "YOUR_SUPABASE_ANON_KEY",
   "api_timeout": 300,
   "api_verify_ssl": true,
-  "nas_path": "/Volumes/YachtNAS/Engineering",
+  "nas_path": "/Volumes/YachtNAS/ROOT",
   "nas_type": "smb",
   "nas_host": "192.168.1.100",
-  "nas_share": "Engineering",
+  "nas_share": "YachtDocuments",
   "nas_username": "yacht_user",
   "scan_interval_minutes": 15,
   "deep_scan_interval_hours": 1,
@@ -27,5 +27,11 @@
   "enabled": true,
   "auto_update_enabled": true,
   "telemetry_enabled": true,
-  "_comment": "NOTE: Supabase service role key is stored in macOS Keychain, not in this config file!"
+  "_comments": {
+    "yacht_signature": "Unique identifier for this yacht (from CelesteOS cloud setup)",
+    "api_endpoint": "Your Supabase project URL",
+    "supabase_service_key": "Stored securely in macOS Keychain - NOT in this file",
+    "nas_path": "Local mount point where yacht NAS is accessible",
+    "nas_type": "smb, nfs, or local (for direct-attached storage)"
+  }
 }
