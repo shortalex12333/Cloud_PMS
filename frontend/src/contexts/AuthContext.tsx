@@ -110,14 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: userData.name,
       };
 
-      const totalTime = Date.now() - queryStart;
-      console.log(`[AuthContext] Query completed in ${totalTime}ms`);
-
-      console.log('[AuthContext] ✅ User profile loaded successfully:', {
-        id: celesteUser.id,
-        role: celesteUser.role,
-        yachtId: celesteUser.yachtId,
-      });
+      console.log('[AuthContext] ✅ User profile loaded:', celesteUser.email);
 
       return celesteUser;
     } catch (err) {

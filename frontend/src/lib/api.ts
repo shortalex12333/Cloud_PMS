@@ -1,6 +1,7 @@
 // API client for CelesteOS backend
 
 import type { SearchResponse } from '@/types/search';
+import { supabase } from './supabaseClient';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.celeste7.ai/webhook/';
 
@@ -16,16 +17,36 @@ export class ApiError extends Error {
   }
 }
 
-// Generic fetch wrapper with error handling
+// Get auth headers from Supabase session
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return { 'Authorization': `Bearer ${session.access_token}` };
+    }
+  } catch (err) {
+    console.warn('[API] Failed to get auth session:', err);
+  }
+  return {};
+}
+
+// Generic fetch wrapper with error handling and auth
 async function fetchAPI<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  includeAuth = true
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
-  const defaultHeaders = {
+  const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  // Add auth headers if requested
+  if (includeAuth) {
+    const authHeaders = await getAuthHeaders();
+    Object.assign(defaultHeaders, authHeaders);
+  }
 
   const response = await fetch(url, {
     ...options,
@@ -49,21 +70,34 @@ async function fetchAPI<T>(
 
 // Search API
 export const searchAPI = {
-  // Main search endpoint
-  search: async (query: string, filters?: any): Promise<SearchResponse> => {
+  // Main search endpoint - includes JWT in header, yacht_id in body
+  search: async (query: string, filters?: any, yachtId?: string | null): Promise<SearchResponse> => {
     return fetchAPI<SearchResponse>('search', {
       method: 'POST',
-      body: JSON.stringify({ query, filters }),
+      body: JSON.stringify({
+        query,
+        filters,
+        yacht_id: yachtId || undefined,
+      }),
     });
   },
 
-  // Streaming search (for progressive results)
-  searchStream: async (query: string): Promise<ReadableStream<Uint8Array> | null> => {
+  // Streaming search (for progressive results) - includes auth
+  searchStream: async (query: string, yachtId?: string | null): Promise<ReadableStream<Uint8Array> | null> => {
     const url = `${API_BASE_URL}search`;
+    const authHeaders = await getAuthHeaders();
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, stream: true }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+      },
+      body: JSON.stringify({
+        query,
+        stream: true,
+        yacht_id: yachtId || undefined,
+      }),
     });
 
     if (!response.ok) {

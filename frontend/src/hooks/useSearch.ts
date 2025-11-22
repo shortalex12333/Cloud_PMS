@@ -2,10 +2,12 @@
  * CelesteOS Search Hook
  *
  * Provides search functionality with streaming support.
+ * Automatically includes JWT token and yacht_id from auth context.
  */
 
 import { useState, useCallback } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from './useAuth';
 import type { SearchRequest } from '@/types';
 import type {
   SearchResponse,
@@ -27,6 +29,7 @@ interface SearchState {
 }
 
 export function useSearch() {
+  const { user } = useAuth();
   const [state, setState] = useState<SearchState>({
     query: '',
     results: [],
@@ -38,6 +41,7 @@ export function useSearch() {
 
   /**
    * Perform search (non-streaming)
+   * JWT token is auto-included via api.ts, yacht_id passed from user context
    */
   const search = useCallback(async (request: SearchRequest) => {
     setState(prev => ({
@@ -48,7 +52,12 @@ export function useSearch() {
     }));
 
     try {
-      const response = await api.search.search(request.query, request.filters);
+      // Pass yacht_id from authenticated user
+      const response = await api.search.search(
+        request.query,
+        request.filters,
+        user?.yachtId
+      );
 
       setState({
         query: request.query,
@@ -68,10 +77,11 @@ export function useSearch() {
       }));
       throw error;
     }
-  }, []);
+  }, [user?.yachtId]);
 
   /**
    * Perform streaming search
+   * JWT token is auto-included via api.ts, yacht_id passed from user context
    */
   const searchStream = useCallback(async (request: SearchRequest) => {
     setState(prev => ({
@@ -85,7 +95,8 @@ export function useSearch() {
     }));
 
     try {
-      const stream = api.search.searchStream(request.query) as any;
+      // Pass yacht_id from authenticated user
+      const stream = api.search.searchStream(request.query, user?.yachtId) as any;
 
       for await (const event of stream) {
         if (event.type === 'data' && event.data) {
@@ -119,7 +130,7 @@ export function useSearch() {
       }));
       throw error;
     }
-  }, []);
+  }, [user?.yachtId]);
 
   /**
    * Clear search results
