@@ -124,14 +124,15 @@ export async function getJWTMetadata(): Promise<JWTMetadata> {
  *
  * Computes SHA-256 hash of yacht_id + YACHT_SALT.
  * Backend must validate signatures using the same algorithm.
+ * Returns null if yacht_id is missing (allows requests without yacht scope).
  *
  * @param yachtId - Yacht ID from user session
- * @returns Hex-encoded SHA-256 signature
- * @throws AuthError if yacht_id is missing
+ * @returns Hex-encoded SHA-256 signature, or null if no yacht_id
  */
-export async function getYachtSignature(yachtId: string | null): Promise<string> {
+export async function getYachtSignature(yachtId: string | null): Promise<string | null> {
   if (!yachtId) {
-    throw new AuthError('No yacht_id available', 'NO_YACHT_ID');
+    console.warn('[authHelpers] No yacht_id, skipping yacht signature');
+    return null;
   }
 
   // Compute SHA-256 hash of yacht_id + salt
@@ -148,20 +149,25 @@ export async function getYachtSignature(yachtId: string | null): Promise<string>
  * Get authentication headers for backend requests
  *
  * This is the primary function that all API calls should use.
- * Returns both JWT and yacht signature headers.
+ * Returns JWT header always, yacht signature only if available.
  *
  * @param yachtId - Yacht ID from user context
- * @returns Headers object with Authorization and X-Yacht-Signature
- * @throws AuthError if authentication is unavailable
+ * @returns Headers object with Authorization and optionally X-Yacht-Signature
+ * @throws AuthError if JWT is unavailable
  */
 export async function getAuthHeaders(yachtId: string | null): Promise<HeadersInit> {
   const jwt = await getValidJWT();
   const yachtSignature = await getYachtSignature(yachtId);
 
-  return {
+  const headers: HeadersInit = {
     Authorization: `Bearer ${jwt}`,
-    'X-Yacht-Signature': yachtSignature,
   };
+
+  if (yachtSignature) {
+    (headers as Record<string, string>)['X-Yacht-Signature'] = yachtSignature;
+  }
+
+  return headers;
 }
 
 /**
@@ -183,27 +189,40 @@ export async function isAuthenticated(): Promise<boolean> {
 /**
  * Get yacht ID from current session
  *
- * Helper to extract yacht_id from user profile
+ * Helper to extract yacht_id from user profile.
+ * Uses fast timeout to avoid RLS hangs.
  *
  * @returns yacht_id or null
  */
 export async function getYachtId(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (!session) {
+    if (!session) {
+      return null;
+    }
+
+    // Fast timeout - don't let RLS block requests
+    const timeoutMs = 2000;
+    const timeoutPromise = new Promise<{ data: null }>((resolve) =>
+      setTimeout(() => resolve({ data: null }), timeoutMs)
+    );
+
+    const queryPromise = supabase
+      .from('users')
+      .select('yacht_id')
+      .eq('email', session.user.email)
+      .maybeSingle();
+
+    const { data: userData } = await Promise.race([queryPromise, timeoutPromise]);
+
+    return userData?.yacht_id || null;
+  } catch (err) {
+    console.warn('[authHelpers] Failed to get yacht_id:', err);
     return null;
   }
-
-  // Fetch user profile to get yacht_id
-  const { data: userData } = await supabase
-    .from('users')
-    .select('yacht_id')
-    .eq('email', session.user.email)
-    .maybeSingle();
-
-  return userData?.yacht_id || null;
 }
 
 /**
