@@ -128,8 +128,8 @@ class SearchResponse(BaseModel):
     entities: EntityExtractionResult = Field(..., description="Extracted entities")
     intent: IntentDetectionResult = Field(..., description="Detected intent")
 
-    # Results
-    results: List[ResultCard] = Field(default_factory=list, description="Search results")
+    # Results - accepts both legacy ResultCard and new SearchResultCard
+    results: List[Any] = Field(default_factory=list, description="Search results (SearchResultCard)")
 
     # Metadata
     latency_ms: Optional[int] = Field(None, description="Processing time in milliseconds")

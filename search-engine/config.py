@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     graph_max_depth: int = 3
     chunk_overlap_percentage: float = 0.15
 
+    # Feature Flags
+    graph_rag_enabled: bool = False  # Disabled by default until GraphRAG is ready
+    predictive_enabled: bool = False  # Disabled by default
+
+    # Keyword Search (for fusion without graph)
+    keyword_search_enabled: bool = True
+    keyword_boost_factor: float = 0.15
+
     class Config:
         env_file = ".env"
         case_sensitive = False
