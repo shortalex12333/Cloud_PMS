@@ -36,10 +36,8 @@ export default function SearchBar() {
     });
 
     try {
-      // Use authenticated API client
-      const data = await celesteApi.post<SearchResponse>('/search', {
-        query: searchQuery,
-      });
+      // Use authenticated API client with full context payload
+      const data = await celesteApi.search<SearchResponse>(searchQuery);
 
       console.log('[SearchBar] Search results received:', {
         resultCount: data.results?.length || 0,

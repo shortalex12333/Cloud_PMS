@@ -126,6 +126,38 @@ export async function callCelesteApi<T>(
 }
 
 /**
+ * Get user auth context for request payload
+ * Extracts user details from Supabase session
+ */
+async function getUserAuthContext(): Promise<{
+  user_id: string;
+  yacht_id: string | null;
+  role: string;
+  email: string;
+} | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return null;
+
+    // Get yacht_id with timeout
+    const yachtId = await getYachtId();
+
+    // Get role from user metadata or default
+    const role = (session.user.user_metadata?.role as string) || 'crew';
+
+    return {
+      user_id: session.user.id,
+      yacht_id: yachtId,
+      role,
+      email: session.user.email || '',
+    };
+  } catch (err) {
+    console.warn('[apiClient] Failed to get user context:', err);
+    return null;
+  }
+}
+
+/**
  * Convenience methods for common HTTP verbs
  */
 export const celesteApi = {
@@ -144,6 +176,35 @@ export const celesteApi = {
     }),
 
   delete: <T>(path: string) => callCelesteApi<T>(path, { method: 'DELETE' }),
+
+  /**
+   * Search with full context payload
+   * Sends auth + context as per search-engine-spec
+   */
+  search: async <T>(query: string, options?: { filters?: any; streamId?: string }): Promise<T> => {
+    const authContext = await getUserAuthContext();
+
+    const payload = {
+      query,
+      auth: authContext ? {
+        user_id: authContext.user_id,
+        yacht_id: authContext.yacht_id,
+        role: authContext.role,
+        email: authContext.email,
+      } : undefined,
+      context: {
+        client_ts: Math.floor(Date.now() / 1000),
+        stream_id: options?.streamId || crypto.randomUUID(),
+        source: 'web',
+      },
+      filters: options?.filters,
+    };
+
+    return callCelesteApi<T>('/search', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 /**
