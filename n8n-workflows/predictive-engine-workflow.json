@@ -1,0 +1,339 @@
+{
+  "name": "Predictive Maintenance Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, yacht_id, name, system_type, manufacturer, criticality FROM equipment WHERE yacht_id IS NOT NULL",
+        "options": {}
+      },
+      "id": "get_equipment",
+      "name": "Get All Equipment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT equipment_id, COUNT(*) as fault_count, MAX(detected_at) as last_fault, array_agg(DISTINCT fault_code) as fault_codes FROM faults WHERE detected_at > NOW() - INTERVAL '90 days' GROUP BY equipment_id",
+        "options": {}
+      },
+      "id": "get_faults",
+      "name": "Get Fault Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT equipment_id, COUNT(*) as wo_count, COUNT(*) FILTER (WHERE status = 'overdue' OR (due_date < NOW() AND status != 'completed')) as overdue_count, COUNT(*) FILTER (WHERE type = 'corrective') as corrective_count FROM work_orders WHERE created_at > NOW() - INTERVAL '90 days' GROUP BY equipment_id",
+        "options": {}
+      },
+      "id": "get_work_orders",
+      "name": "Get Work Order Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 400],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT equipment_id, COUNT(*) as note_count FROM work_order_history WHERE notes IS NOT NULL AND notes != '' AND completed_at > NOW() - INTERVAL '90 days' GROUP BY equipment_id",
+        "options": {}
+      },
+      "id": "get_notes",
+      "name": "Get Notes Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 600],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "id",
+              "field2": "equipment_id"
+            }
+          ]
+        },
+        "joinMode": "keepMatches",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge_faults",
+      "name": "Merge Faults",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "id",
+              "field2": "equipment_id"
+            }
+          ]
+        },
+        "joinMode": "keepMatches",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge_wo",
+      "name": "Merge Work Orders",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "id",
+              "field2": "equipment_id"
+            }
+          ]
+        },
+        "joinMode": "keepMatches",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge_notes",
+      "name": "Merge Notes",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate risk score for each equipment\n// Formula: 0.35*fault + 0.25*work_order + 0.15*notes + 0.15*corrective + 0.10*criticality\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Normalize fault signal (0-1)\n  const faultCount = parseInt(data.fault_count) || 0;\n  const faultSignal = Math.min(faultCount / 10, 1.0); // 10+ faults = max risk\n  \n  // Normalize work order signal (0-1)\n  const overdueCount = parseInt(data.overdue_count) || 0;\n  const woSignal = Math.min(overdueCount / 5, 1.0); // 5+ overdue = max risk\n  \n  // Normalize notes signal (0-1) - more notes = more problems\n  const noteCount = parseInt(data.note_count) || 0;\n  const notesSignal = Math.min(noteCount / 10, 1.0);\n  \n  // Normalize corrective signal (0-1)\n  const correctiveCount = parseInt(data.corrective_count) || 0;\n  const correctiveSignal = Math.min(correctiveCount / 5, 1.0);\n  \n  // Criticality signal\n  const criticality = data.criticality || 'low';\n  const criticalitySignal = criticality === 'high' ? 1.0 : \n                            criticality === 'medium' ? 0.5 : 0.2;\n  \n  // Calculate weighted risk score\n  const riskScore = (\n    0.35 * faultSignal +\n    0.25 * woSignal +\n    0.15 * notesSignal +\n    0.15 * correctiveSignal +\n    0.10 * criticalitySignal\n  );\n  \n  // Determine trend (placeholder - would need historical data)\n  const trend = '→';\n  \n  // Determine risk category\n  let category;\n  if (riskScore >= 0.75) category = 'high';\n  else if (riskScore >= 0.60) category = 'emerging';\n  else if (riskScore >= 0.40) category = 'monitor';\n  else category = 'normal';\n  \n  results.push({\n    json: {\n      yacht_id: data.yacht_id,\n      equipment_id: data.id,\n      equipment_name: data.name,\n      risk_score: Math.round(riskScore * 10000) / 10000,\n      trend: trend,\n      category: category,\n      fault_signal: Math.round(faultSignal * 10000) / 10000,\n      work_order_signal: Math.round(woSignal * 10000) / 10000,\n      crew_signal: Math.round(notesSignal * 10000) / 10000,\n      part_signal: 0,\n      global_signal: Math.round(criticalitySignal * 10000) / 10000,\n      updated_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "calculate_risk",
+      "name": "Calculate Risk Scores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO predictive_state (yacht_id, equipment_id, equipment_name, risk_score, trend, fault_signal, work_order_signal, crew_signal, part_signal, global_signal, updated_at) VALUES ('{{ $json.yacht_id }}', '{{ $json.equipment_id }}', '{{ $json.equipment_name }}', {{ $json.risk_score }}, '{{ $json.trend }}', {{ $json.fault_signal }}, {{ $json.work_order_signal }}, {{ $json.crew_signal }}, {{ $json.part_signal }}, {{ $json.global_signal }}, '{{ $json.updated_at }}') ON CONFLICT (yacht_id, equipment_id) DO UPDATE SET equipment_name = EXCLUDED.equipment_name, risk_score = EXCLUDED.risk_score, trend = EXCLUDED.trend, fault_signal = EXCLUDED.fault_signal, work_order_signal = EXCLUDED.work_order_signal, crew_signal = EXCLUDED.crew_signal, part_signal = EXCLUDED.part_signal, global_signal = EXCLUDED.global_signal, updated_at = EXCLUDED.updated_at",
+        "options": {}
+      },
+      "id": "save_risk",
+      "name": "Save to predictive_state",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1380, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "high_risk",
+              "leftValue": "={{ $json.risk_score }}",
+              "rightValue": 0.6,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter_high_risk",
+      "name": "Filter High Risk",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate insights for high-risk equipment\n\nconst insights = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  let severity = 'medium';\n  if (data.risk_score >= 0.75) severity = 'critical';\n  else if (data.risk_score >= 0.6) severity = 'high';\n  \n  // Build explanation based on signals\n  const factors = [];\n  if (data.fault_signal > 0.5) factors.push('high fault frequency');\n  if (data.work_order_signal > 0.5) factors.push('overdue maintenance tasks');\n  if (data.crew_signal > 0.5) factors.push('frequent crew notes indicating issues');\n  \n  const explanation = factors.length > 0 \n    ? `Contributing factors: ${factors.join(', ')}.`\n    : 'Multiple minor indicators combined.';\n  \n  insights.push({\n    json: {\n      yacht_id: data.yacht_id,\n      equipment_id: data.equipment_id,\n      equipment_name: data.equipment_name,\n      insight_type: 'fault_prediction',\n      severity: severity,\n      summary: `${data.equipment_name} shows elevated risk (${(data.risk_score * 100).toFixed(1)}%)`,\n      explanation: explanation,\n      recommended_action: 'Schedule inspection and review recent fault history',\n      contributing_signals: JSON.stringify({\n        fault: data.fault_signal,\n        work_order: data.work_order_signal,\n        crew: data.crew_signal\n      }),\n      created_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn insights;"
+      },
+      "id": "generate_insights",
+      "name": "Generate Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1820, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO predictive_insights (yacht_id, equipment_id, equipment_name, insight_type, severity, summary, explanation, recommended_action, contributing_signals, created_at) VALUES ('{{ $json.yacht_id }}', '{{ $json.equipment_id }}', '{{ $json.equipment_name }}', '{{ $json.insight_type }}', '{{ $json.severity }}', '{{ $json.summary }}', '{{ $json.explanation }}', '{{ $json.recommended_action }}', '{{ $json.contributing_signals }}', '{{ $json.created_at }}')",
+        "options": {}
+      },
+      "id": "save_insights",
+      "name": "Save Insights",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2040, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [
+          { "node": "Get All Equipment", "type": "main", "index": 0 },
+          { "node": "Get Fault Stats", "type": "main", "index": 0 },
+          { "node": "Get Work Order Stats", "type": "main", "index": 0 },
+          { "node": "Get Notes Stats", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get All Equipment": {
+      "main": [
+        [
+          { "node": "Merge Faults", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Fault Stats": {
+      "main": [
+        [
+          { "node": "Merge Faults", "type": "main", "index": 1 }
+        ]
+      ]
+    },
+    "Merge Faults": {
+      "main": [
+        [
+          { "node": "Merge Work Orders", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Work Order Stats": {
+      "main": [
+        [
+          { "node": "Merge Work Orders", "type": "main", "index": 1 }
+        ]
+      ]
+    },
+    "Merge Work Orders": {
+      "main": [
+        [
+          { "node": "Merge Notes", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Notes Stats": {
+      "main": [
+        [
+          { "node": "Merge Notes", "type": "main", "index": 1 }
+        ]
+      ]
+    },
+    "Merge Notes": {
+      "main": [
+        [
+          { "node": "Calculate Risk Scores", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calculate Risk Scores": {
+      "main": [
+        [
+          { "node": "Save to predictive_state", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save to predictive_state": {
+      "main": [
+        [
+          { "node": "Filter High Risk", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filter High Risk": {
+      "main": [
+        [
+          { "node": "Generate Insights", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Generate Insights": {
+      "main": [
+        [
+          { "node": "Save Insights", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
