@@ -13,7 +13,7 @@
  */
 
 import { supabase } from './supabaseClient';
-import { getAuthHeaders, handle401, getYachtId, AuthError } from './authHelpers';
+import { getAuthHeaders, handle401, getYachtId, getYachtSignature, AuthError } from './authHelpers';
 
 // Re-export AuthError for convenience
 export { AuthError };
@@ -125,15 +125,66 @@ export async function callCelesteApi<T>(
   return executeRequest();
 }
 
+// Valid roles per roles.md spec
+type ValidRole = 'Engineer' | 'HOD' | 'Captain' | 'ETO' | 'Fleet Manager' | 'Admin' | 'Owner Tech Representative';
+
+// Map internal roles to spec-compliant roles
+function mapToValidRole(role: string | null | undefined): ValidRole {
+  const roleMap: Record<string, ValidRole> = {
+    'chief_engineer': 'Engineer',
+    'engineer': 'Engineer',
+    'eto': 'ETO',
+    'captain': 'Captain',
+    'manager': 'HOD',
+    'hod': 'HOD',
+    'fleet_manager': 'Fleet Manager',
+    'admin': 'Admin',
+    'owner': 'Owner Tech Representative',
+    'crew': 'Engineer', // Default crew to Engineer for search access
+    'deck': 'Engineer',
+    'interior': 'Engineer',
+  };
+  return roleMap[role?.toLowerCase() || ''] || 'Engineer';
+}
+
+// Get browser/client info for telemetry
+function getClientTelemetry() {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isMobile = /Mobile|Android|iPhone/i.test(ua);
+
+  return {
+    client_version: '1.0.0', // TODO: pull from package.json
+    platform: isMobile ? 'mobile_web' : 'desktop_web',
+    input_mode: 'keyboard' as const,
+    locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+}
+
+// Session ID - persistent for the browser session
+let _sessionId: string | null = null;
+function getSessionId(): string {
+  if (!_sessionId) {
+    _sessionId = typeof sessionStorage !== 'undefined'
+      ? sessionStorage.getItem('celeste_session_id') || crypto.randomUUID()
+      : crypto.randomUUID();
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('celeste_session_id', _sessionId);
+    }
+  }
+  return _sessionId;
+}
+
 /**
- * Get user auth context for request payload
- * Extracts user details from Supabase session
+ * Get full auth context for search payload
+ * Includes user_id, yacht_id, role, email, yacht_signature
  */
-async function getUserAuthContext(): Promise<{
+async function getFullAuthContext(): Promise<{
   user_id: string;
   yacht_id: string | null;
-  role: string;
+  role: ValidRole;
   email: string;
+  yacht_signature: string | null;
 } | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -142,17 +193,22 @@ async function getUserAuthContext(): Promise<{
     // Get yacht_id with timeout
     const yachtId = await getYachtId();
 
-    // Get role from user metadata or default
-    const role = (session.user.user_metadata?.role as string) || 'crew';
+    // Get yacht signature
+    const yachtSignature = await getYachtSignature(yachtId);
+
+    // Get role from user metadata and map to valid role
+    const rawRole = (session.user.user_metadata?.role as string) || 'crew';
+    const role = mapToValidRole(rawRole);
 
     return {
       user_id: session.user.id,
       yacht_id: yachtId,
       role,
       email: session.user.email || '',
+      yacht_signature: yachtSignature,
     };
   } catch (err) {
-    console.warn('[apiClient] Failed to get user context:', err);
+    console.warn('[apiClient] Failed to get auth context:', err);
     return null;
   }
 }
@@ -178,26 +234,37 @@ export const celesteApi = {
   delete: <T>(path: string) => callCelesteApi<T>(path, { method: 'DELETE' }),
 
   /**
-   * Search with full context payload
-   * Sends auth + context as per search-engine-spec
+   * Search with full context payload per search-engine-spec.md
    */
-  search: async <T>(query: string, options?: { filters?: any; streamId?: string }): Promise<T> => {
-    const authContext = await getUserAuthContext();
+  search: async <T>(query: string, options?: {
+    filters?: any;
+    streamId?: string;
+    queryType?: 'free-text' | 'fault' | 'equipment' | 'document' | 'work-order';
+  }): Promise<T> => {
+    const authContext = await getFullAuthContext();
+    const telemetry = getClientTelemetry();
+    const sessionId = getSessionId();
 
     const payload = {
       query,
+      query_type: options?.queryType || 'free-text',
       auth: authContext ? {
         user_id: authContext.user_id,
         yacht_id: authContext.yacht_id,
         role: authContext.role,
         email: authContext.email,
+        yacht_signature: authContext.yacht_signature,
       } : undefined,
       context: {
         client_ts: Math.floor(Date.now() / 1000),
         stream_id: options?.streamId || crypto.randomUUID(),
+        session_id: sessionId,
         source: 'web',
+        locale: telemetry.locale,
+        timezone: telemetry.timezone,
+        client_version: telemetry.client_version,
+        platform: 'browser',
       },
-      filters: options?.filters,
     };
 
     return callCelesteApi<T>('/search', {
