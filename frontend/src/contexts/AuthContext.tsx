@@ -78,6 +78,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const queryTime = Date.now() - queryStart;
       console.log(`[AuthContext] Users query completed in ${queryTime}ms`);
 
+      // Fallback profile using auth.users data when public.users query fails
+      const fallbackProfile: CelesteUser = {
+        id: authUser.id,
+        email: authUser.email || null,
+        role: 'crew', // Default role
+        yachtId: null,
+        displayName: authUser.email || null,
+      };
+
       if (userError) {
         console.error('[AuthContext] ❌ Query returned error:', {
           message: userError.message,
@@ -85,14 +94,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           hint: (userError as any).hint,
           code: (userError as any).code,
         });
-        return null;
+        console.warn('[AuthContext] ⚠️ Using fallback profile from auth.users');
+        return fallbackProfile;
       }
 
       if (!userData) {
         console.warn('[AuthContext] ⚠️ No user profile found for:', authUser.email);
-        console.warn('[AuthContext] User exists in auth.users but NOT in public.users table');
-        console.warn('[AuthContext] This user needs to be created in public.users');
-        return null;
+        console.warn('[AuthContext] Using fallback profile - user can still access system');
+        return fallbackProfile;
       }
 
       console.log('[AuthContext] ✅ User data received:', userData);
@@ -121,7 +130,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return celesteUser;
     } catch (err) {
       console.error('[AuthContext] ❌ Exception in fetchUserProfile:', err);
-      return null;
+      // Return fallback profile so user can still access the system
+      console.warn('[AuthContext] ⚠️ Using fallback profile due to exception');
+      return {
+        id: authUser.id,
+        email: authUser.email || null,
+        role: 'crew' as const,
+        yachtId: null,
+        displayName: authUser.email || null,
+      };
     } finally {
       fetchingRef.current = false;
       console.log('[AuthContext] ◀ fetchUserProfile END');
