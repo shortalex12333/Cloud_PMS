@@ -84,8 +84,11 @@ async def root():
         "status": "running",
         "endpoints": {
             "health": "/health",
-            "risk_state": "/v1/predictive/state",
+            "risk_state": "/v1/predictive/state?equipment_id=<uuid>",
+            "top_risks": "/v1/predictive/top-risks?yacht_id=<uuid>",
             "insights": "/v1/predictive/insights",
+            "anomalies": "/v1/predictive/anomalies",
+            "predictive_card": "/v1/predictive/predictive-cards/{equipment_id}",
             "run_manual": "/v1/predictive/run",
             "run_for_yacht": "/v1/predictive/run-for-yacht"
         }

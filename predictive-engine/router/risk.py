@@ -249,3 +249,54 @@ async def get_equipment_risk_state(
     except Exception as e:
         logger.error(f"Error retrieving equipment risk state: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/top-risks")
+async def get_top_risks(
+    yacht_id: str = Query(..., description="Yacht ID"),
+    limit: int = Query(10, description="Maximum number of risks to return", ge=1, le=50),
+    x_yacht_signature: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Get top highest-risk equipment for a yacht.
+
+    Returns a small list of equipment with the highest risk scores,
+    sorted by risk_score descending.
+
+    Args:
+        yacht_id: Yacht UUID
+        limit: Max number of results (default 10, max 50)
+
+    Returns:
+        List of top risk states with equipment details
+    """
+    try:
+        yacht_uuid = UUID(yacht_id)
+
+        # Get all risk states for yacht (already sorted by risk_score desc)
+        risk_states = await db.get_risk_state_by_yacht(yacht_uuid)
+
+        if not risk_states:
+            return {
+                "yacht_id": yacht_id,
+                "top_risks": [],
+                "total_equipment": 0,
+                "message": "No risk data available for this yacht"
+            }
+
+        # Return top N highest risks
+        top_risks = risk_states[:limit]
+
+        return {
+            "yacht_id": yacht_id,
+            "top_risks": top_risks,
+            "total_equipment": len(risk_states),
+            "returned_count": len(top_risks)
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {e}")
+    except Exception as e:
+        logger.error(f"Error retrieving top risks: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
