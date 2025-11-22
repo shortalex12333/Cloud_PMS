@@ -219,6 +219,82 @@ INSERT INTO ignore_patterns (pattern, pattern_type, description) VALUES
     ('.cache', 'extension', 'Cache files');
 
 -- ============================================================
+-- TOMBSTONES
+-- Tracks deleted/moved files for cloud notification
+-- ============================================================
+CREATE TABLE tombstones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_path TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    file_sha256 TEXT, -- Last known hash
+    file_size INTEGER,
+    deleted_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    reason TEXT NOT NULL CHECK (reason IN ('deleted', 'moved', 'renamed', 'replaced')),
+    new_path TEXT, -- If moved/renamed, the new path
+    reported_to_cloud BOOLEAN NOT NULL DEFAULT 0,
+    reported_at INTEGER,
+    cloud_response TEXT, -- JSON response from cloud
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE INDEX idx_tombstones_reported ON tombstones(reported_to_cloud);
+CREATE INDEX idx_tombstones_deleted_at ON tombstones(deleted_at);
+CREATE INDEX idx_tombstones_file_path ON tombstones(file_path);
+
+-- ============================================================
+-- TELEMETRY EVENTS
+-- Local event storage for later batch upload
+-- ============================================================
+CREATE TABLE telemetry_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL CHECK (event_type IN (
+        'scan_started', 'scan_completed', 'scan_failed',
+        'file_discovered', 'file_modified', 'file_deleted',
+        'upload_started', 'upload_chunk_completed', 'upload_completed', 'upload_failed',
+        'daemon_started', 'daemon_stopped', 'error_occurred',
+        'resume_detected', 'hash_computed', 'tombstone_created'
+    )),
+    timestamp INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    yacht_id TEXT,
+    file_path TEXT,
+    file_sha256 TEXT,
+    file_size INTEGER,
+    chunk_index INTEGER,
+    total_chunks INTEGER,
+    duration_ms INTEGER,
+    error_message TEXT,
+    metadata TEXT, -- JSON for additional context
+    uploaded_to_cloud BOOLEAN NOT NULL DEFAULT 0,
+    uploaded_at INTEGER,
+    batch_id TEXT -- For grouping uploads
+);
+
+CREATE INDEX idx_telemetry_uploaded ON telemetry_events(uploaded_to_cloud);
+CREATE INDEX idx_telemetry_event_type ON telemetry_events(event_type);
+CREATE INDEX idx_telemetry_timestamp ON telemetry_events(timestamp);
+
+-- ============================================================
+-- UPLOAD STATE (Lightweight per-file resume state)
+-- ============================================================
+CREATE TABLE upload_state (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    upload_queue_id INTEGER NOT NULL UNIQUE,
+    file_sha256 TEXT NOT NULL,
+    total_chunks INTEGER NOT NULL,
+    chunks_completed TEXT NOT NULL DEFAULT '[]', -- JSON array of completed chunk indices
+    last_chunk_uploaded INTEGER DEFAULT -1,
+    bytes_uploaded INTEGER NOT NULL DEFAULT 0,
+    state_version INTEGER NOT NULL DEFAULT 1, -- For optimistic locking
+    last_activity INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (upload_queue_id) REFERENCES upload_queue(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_upload_state_queue_id ON upload_state(upload_queue_id);
+CREATE INDEX idx_upload_state_sha256 ON upload_state(file_sha256);
+
+-- ============================================================
 -- TRIGGERS FOR AUTOMATIC TIMESTAMP UPDATES
 -- ============================================================
 

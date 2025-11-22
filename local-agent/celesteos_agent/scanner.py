@@ -1,6 +1,7 @@
 """
 NAS file scanner for CelesteOS Local Agent.
 Discovers, tracks, and monitors files on NAS.
+Handles new, modified, and deleted file detection.
 """
 
 import os
@@ -14,30 +15,44 @@ from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from .logger import get_logger
 from .database import Database
+from .change_detector import ChangeDetector, ChangeType, FileChange
+from .telemetry import TelemetryCollector
 
 logger = get_logger(__name__)
 
 
 class FileScanner:
-    """Scans NAS filesystem for documents."""
+    """Scans NAS filesystem for documents with change detection."""
 
-    def __init__(self, db: Database, nas_path: str, ignore_patterns: List[Dict[str, Any]]):
+    def __init__(
+        self,
+        db: Database,
+        nas_path: str,
+        ignore_patterns: List[Dict[str, Any]],
+        telemetry: Optional[TelemetryCollector] = None
+    ):
         """Initialize file scanner.
 
         Args:
             db: Database instance
             nas_path: Path to NAS root
             ignore_patterns: List of ignore pattern dicts
+            telemetry: Optional telemetry collector
         """
         self.db = db
         self.nas_path = Path(nas_path).expanduser()
         self.ignore_patterns = ignore_patterns
         self.mime = magic.Magic(mime=True)
+        self.telemetry = telemetry
+
+        # Initialize change detector
+        self.change_detector = ChangeDetector(db, nas_path)
 
         # Statistics
         self.files_discovered = 0
         self.files_changed = 0
         self.files_deleted = 0
+        self.files_new = 0
         self.scan_start_time = 0
 
     def should_ignore(self, path: Path) -> bool:
@@ -154,12 +169,19 @@ class FileScanner:
             raise
 
     def _full_scan(self, max_depth: int) -> None:
-        """Perform full recursive scan.
+        """Perform full recursive scan with change detection.
+
+        Detects:
+        - New files (on filesystem but not in DB)
+        - Modified files (SHA256 changed)
+        - Deleted files (in DB but not on filesystem)
 
         Args:
             max_depth: Maximum directory depth
         """
         seen_paths: Set[str] = set()
+
+        logger.info(f"Phase 1: Discovering files on filesystem...")
 
         for root, dirs, files in os.walk(self.nas_path, followlinks=False):
             root_path = Path(root)
@@ -189,39 +211,200 @@ class FileScanner:
                 try:
                     relative_path = str(file_path.relative_to(self.nas_path))
                     seen_paths.add(relative_path)
-
-                    # Get file info
-                    stat = file_path.stat()
-
-                    # Detect MIME type
-                    try:
-                        mime_type = self.mime.from_file(str(file_path))
-                    except Exception:
-                        mime_type = 'application/octet-stream'
-
-                    # Store in database (will compute hash later)
-                    # For now, use empty SHA256
-                    # Hasher will compute actual hash
-
                     self.files_discovered += 1
 
                     if self.files_discovered % 100 == 0:
-                        logger.info(f"Scanned {self.files_discovered} files...")
+                        logger.info(f"Discovered {self.files_discovered} files...")
 
                 except Exception as e:
                     logger.warning(f"Error processing {file_path}: {e}")
                     continue
 
-        # Mark files not seen as deleted
-        # (This would require querying all known files and comparing)
-        # For now, we'll do this in a separate cleanup phase
+        logger.info(f"Phase 1 complete: {len(seen_paths)} files on filesystem")
+        logger.info(f"Phase 2: Detecting changes...")
+
+        # Use change detector for comprehensive change detection
+        changes, stats = self.change_detector.detect_changes_full(seen_paths)
+
+        # Process changes and update database
+        for change in changes:
+            try:
+                if change.change_type == ChangeType.NEW:
+                    # Insert new file
+                    self.db.upsert_file(
+                        file_path=change.file_path,
+                        filename=change.filename,
+                        file_size=change.file_size,
+                        file_extension=Path(change.filename).suffix.lstrip('.'),
+                        mime_type=change.mime_type or 'application/octet-stream',
+                        sha256=change.new_sha256,
+                        last_modified=change.last_modified
+                    )
+                    self.files_new += 1
+
+                    # Log telemetry
+                    if self.telemetry:
+                        self.telemetry.log_file_discovered(
+                            change.file_path,
+                            change.new_sha256,
+                            change.file_size
+                        )
+
+                elif change.change_type == ChangeType.MODIFIED:
+                    # Update modified file
+                    self.db.upsert_file(
+                        file_path=change.file_path,
+                        filename=change.filename,
+                        file_size=change.file_size,
+                        file_extension=Path(change.filename).suffix.lstrip('.'),
+                        mime_type=change.mime_type or 'application/octet-stream',
+                        sha256=change.new_sha256,
+                        last_modified=change.last_modified
+                    )
+                    self.files_changed += 1
+
+                    # Log telemetry
+                    if self.telemetry:
+                        self.telemetry.log_file_modified(
+                            change.file_path,
+                            change.old_sha256,
+                            change.new_sha256,
+                            change.file_size
+                        )
+
+                elif change.change_type == ChangeType.DELETED:
+                    # Mark file as deleted
+                    self.db.mark_file_deleted(change.file_path)
+                    self.files_deleted += 1
+
+                    # Log telemetry
+                    if self.telemetry:
+                        self.telemetry.log_file_deleted(
+                            change.file_path,
+                            change.old_sha256
+                        )
+
+                    # Tombstone is already created by change_detector
+
+                elif change.change_type == ChangeType.MOVED:
+                    # Mark old path as deleted (tombstone already created)
+                    self.db.mark_file_deleted(change.file_path)
+                    self.files_deleted += 1
+
+                    # Log telemetry
+                    if self.telemetry:
+                        self.telemetry.log_file_deleted(
+                            change.file_path,
+                            change.old_sha256
+                        )
+
+            except Exception as e:
+                logger.error(f"Error processing change for {change.file_path}: {e}")
+
+        logger.info(
+            f"Phase 2 complete: {self.files_new} new, "
+            f"{self.files_changed} modified, {self.files_deleted} deleted"
+        )
 
     def _incremental_scan(self) -> None:
-        """Perform incremental scan (check only known files)."""
-        # Get all known files from database
-        # For each file, check if it still exists and if modified time changed
-        # This is faster than full scan but doesn't discover new files
-        pass
+        """Perform incremental scan (check only known files).
+
+        Faster than full scan - only checks files already in database.
+        Detects modified and deleted files, but NOT new files.
+        Use full scan periodically to discover new files.
+        """
+        logger.info("Starting incremental scan of known files...")
+
+        # Get all known files from database (excluding deleted)
+        with self.db.get_connection() as conn:
+            rows = conn.execute("""
+                SELECT id, file_path, filename, file_size, sha256, last_modified
+                FROM files
+                WHERE status != 'deleted'
+            """).fetchall()
+
+        known_files = [dict(row) for row in rows]
+        logger.info(f"Checking {len(known_files)} known files...")
+
+        modified_count = 0
+        deleted_count = 0
+        unchanged_count = 0
+
+        for idx, file_record in enumerate(known_files):
+            file_path = file_record['file_path']
+            absolute_path = self.nas_path / file_path
+
+            try:
+                if not absolute_path.exists():
+                    # File deleted
+                    self.db.mark_file_deleted(file_path)
+
+                    # Create tombstone
+                    with self.db.get_connection() as conn:
+                        conn.execute("""
+                            INSERT INTO tombstones (
+                                file_path, filename, file_sha256, file_size, reason
+                            ) VALUES (?, ?, ?, ?, 'deleted')
+                        """, (
+                            file_path,
+                            file_record['filename'],
+                            file_record['sha256'],
+                            file_record['file_size']
+                        ))
+
+                    # Log telemetry
+                    if self.telemetry:
+                        self.telemetry.log_file_deleted(file_path, file_record['sha256'])
+
+                    deleted_count += 1
+                    logger.debug(f"File deleted: {file_path}")
+                    continue
+
+                # Check for modification using change detector
+                change = self.change_detector.detect_single_file_change(absolute_path)
+
+                if change and change.change_type == ChangeType.MODIFIED:
+                    # File modified - update database
+                    self.db.upsert_file(
+                        file_path=file_path,
+                        filename=change.filename,
+                        file_size=change.file_size,
+                        file_extension=Path(change.filename).suffix.lstrip('.'),
+                        mime_type=change.mime_type or 'application/octet-stream',
+                        sha256=change.new_sha256,
+                        last_modified=change.last_modified
+                    )
+
+                    # Log telemetry
+                    if self.telemetry:
+                        self.telemetry.log_file_modified(
+                            file_path,
+                            change.old_sha256,
+                            change.new_sha256,
+                            change.file_size
+                        )
+
+                    modified_count += 1
+                    logger.debug(f"File modified: {file_path}")
+
+                else:
+                    unchanged_count += 1
+
+            except Exception as e:
+                logger.warning(f"Error checking file {file_path}: {e}")
+                continue
+
+            # Progress logging
+            if (idx + 1) % 100 == 0:
+                logger.info(f"Checked {idx + 1}/{len(known_files)} files...")
+
+        self.files_changed = modified_count
+        self.files_deleted = deleted_count
+
+        logger.info(
+            f"Incremental scan complete: {modified_count} modified, "
+            f"{deleted_count} deleted, {unchanged_count} unchanged"
+        )
 
     def discover_file(self, file_path: Path) -> Optional[Dict[str, Any]]:
         """Discover and register a single file.
