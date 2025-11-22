@@ -48,18 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] ▶ fetchUserProfile START for:', authUser.email);
 
     try {
-      // Query user profile - production uses 'users' table with role column
-      console.log('[AuthContext] Executing Supabase query to users table...');
+      console.log('[AuthContext] Fetching user profile...');
 
-      const queryStart = Date.now();
-
-      // Step 1: Get user profile from users table with timeout
-      // RLS can cause queries to hang indefinitely if not configured properly
-      const timeoutMs = 10000;
+      // Fast timeout - if RLS blocks, fail fast and use fallback (2 seconds max)
+      const timeoutMs = 2000;
       const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
         setTimeout(() => resolve({
           data: null,
-          error: { message: `Query timeout after ${timeoutMs}ms - check RLS policies on users table` }
+          error: { message: 'Query timeout - using fallback profile' }
         }), timeoutMs)
       );
 
@@ -69,14 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('email', authUser.email)
         .maybeSingle();
 
-      // Race between query and timeout
       const { data: userData, error: userError } = await Promise.race([
         queryPromise,
         timeoutPromise
       ]);
-
-      const queryTime = Date.now() - queryStart;
-      console.log(`[AuthContext] Users query completed in ${queryTime}ms`);
 
       // Fallback profile using auth.users data when public.users query fails
       const fallbackProfile: CelesteUser = {
@@ -149,8 +141,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] Initializing auth state...');
 
-    // Timeout for getSession - if Supabase is unreachable, don't hang forever
-    const sessionTimeout = 5000;
+    // Fast timeout - don't wait if Supabase is slow/unreachable
+    const sessionTimeout = 2000;
     let didTimeout = false;
 
     const timeoutId = setTimeout(() => {
