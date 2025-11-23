@@ -22,9 +22,10 @@ export type AuthContextValue = {
 };
 
 // Helper function to check if user is HOD (Head of Department)
+// HOD roles: chief_engineer, eto, captain, manager
 export function isHOD(user: CelesteUser | null): boolean {
   if (!user) return false;
-  return ['chief_engineer', 'captain', 'manager'].includes(user.role);
+  return ['chief_engineer', 'eto', 'captain', 'manager'].includes(user.role);
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(
