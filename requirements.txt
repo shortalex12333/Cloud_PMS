@@ -1,0 +1,57 @@
+# CelesteOS Local Agent - Python Dependencies
+# Python 3.9+ required
+
+# Core dependencies
+requests==2.31.0           # HTTP client for API calls
+urllib3==2.1.0             # URL handling
+
+# Database
+# Note: sqlite3 is built-in to Python
+
+# File operations & monitoring
+watchdog==3.0.0            # File system monitoring
+python-magic==0.4.27       # MIME type detection
+
+# Compression
+# Note: gzip is built-in to Python
+
+# Cryptography & hashing
+# Note: hashlib (SHA256) is built-in to Python
+
+# macOS Keychain integration
+keyring==24.3.0            # Cross-platform keyring access
+pyobjc-framework-Security==10.1 # macOS Security framework
+
+# Networking
+netifaces==0.11.0          # Network interface detection
+pysmb==1.2.9.1             # SMB/CIFS client for NAS
+
+# Scheduling
+schedule==1.2.0            # Job scheduling
+APScheduler==3.10.4        # Advanced scheduling
+
+# Logging
+python-json-logger==2.0.7  # JSON structured logging
+
+# CLI
+click==8.1.7               # CLI framework
+rich==13.7.0               # Rich terminal output
+tabulate==0.9.0            # Table formatting
+
+# Web UI (Debug/Quality Inspection)
+flask==3.0.0               # Web framework for debug UI
+
+# Configuration
+pydantic==2.5.3            # Config validation
+python-dotenv==1.0.0       # Environment variable loading
+
+# GUI (optional, for Python GUI fallback)
+# Uncomment if not using Swift GUI
+# tkinter is built-in to Python on macOS
+
+# Development dependencies (optional)
+# pytest==7.4.3            # Testing framework
+# pytest-cov==4.1.0        # Coverage reporting
+# black==23.12.1           # Code formatting
+# flake8==7.0.0            # Linting
+# mypy==1.8.0              # Type checking
