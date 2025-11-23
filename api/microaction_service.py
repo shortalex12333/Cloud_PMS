@@ -54,6 +54,9 @@ from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
 from graphrag_population import get_population_service, GraphRAGPopulationService
 from graphrag_query import get_query_service, GraphRAGQueryService
 
+# Import Situation Engine
+from situation_engine import SituationEngine, get_situation_engine, Severity
+
 # ========================================================================
 # LOGGING CONFIGURATION
 # ========================================================================
@@ -119,6 +122,9 @@ pipeline: Optional[UnifiedExtractionPipeline] = None
 # GraphRAG services
 graphrag_population: Optional[GraphRAGPopulationService] = None
 graphrag_query: Optional[GraphRAGQueryService] = None
+
+# Situation Engine (v1 situation-aware search)
+situation_engine: Optional[SituationEngine] = None
 
 # Configuration (default to production)
 config: ExtractionConfig = get_config('production')
@@ -416,7 +422,7 @@ startup_time = time.time()
 @app.on_event("startup")
 async def startup_event():
     """Load extractor and patterns at startup (runs once)"""
-    global extractor, pipeline, config, graphrag_population, graphrag_query
+    global extractor, pipeline, config, graphrag_population, graphrag_query, situation_engine
     logger.info("🚀 Starting Micro-Action Extraction Service...")
 
     try:
@@ -444,6 +450,13 @@ async def startup_event():
             logger.warning("⚠ GPT Extractor not available - check OPENAI_API_KEY")
 
         logger.info("✓ GraphRAG services initialized (population + query + vector search)")
+
+        # Initialize Situation Engine (uses GraphRAG's Supabase client)
+        if graphrag_query and graphrag_query.client:
+            situation_engine = SituationEngine(graphrag_query.client)
+            logger.info("✓ Situation Engine initialized (v1 situation-aware search)")
+        else:
+            logger.warning("⚠ Situation Engine not initialized - no Supabase client")
 
         # Load configuration
         config = get_config('production')
@@ -782,7 +795,7 @@ async def health_check():
 
     return HealthResponse(
         status="healthy" if extractor is not None else "unhealthy",
-        version="3.1.0",
+        version="3.2.0",
         patterns_loaded=actions_count,
         total_requests=request_counter,
         uptime_seconds=uptime,
@@ -827,14 +840,15 @@ async def root():
     """Root endpoint with API information"""
     return {
         "service": "CelesteOS Search & Extraction API",
-        "version": "3.1.0",
+        "version": "3.2.0",
         "status": "running",
         "security": "JWT + Yacht Signature (2 headers only)",
         "docs": "/docs",
         "health": "/health",
         "public_endpoints": {
-            "search": "POST /v1/search (PRIMARY - Frontend search bar)",
-            "extract": "POST /extract (NLP extraction - Modules A+B+C)"
+            "search_v1": "POST /v1/search (Cards + actions)",
+            "search_v2": "POST /v2/search (SITUATION-AWARE - Recommended)",
+            "extract": "POST /extract (NLP extraction + embedding)"
         },
         "deprecated_endpoints": {
             "extract_microactions": "POST /extract_microactions (use /extract)",
@@ -842,21 +856,24 @@ async def root():
         },
         "internal_endpoints": {
             "graphrag_populate": "POST /graphrag/populate (n8n workflow only)",
-            "graphrag_query": "POST /graphrag/query (internal - use /v1/search)",
+            "graphrag_query": "POST /graphrag/query (internal - use /v2/search)",
             "graphrag_stats": "GET /graphrag/stats (admin only)"
         },
         "architecture": {
             "frontend_entrypoints": [
-                "POST /v1/search → unified search (cards + actions)",
+                "POST /v2/search → situation-aware search (cards + actions + recommendations)",
+                "POST /v1/search → basic search (cards + actions)",
                 "POST /v1/actions/execute → all mutations (action-endpoint-contract.md)"
             ],
             "internal_engines": [
+                "Situation Engine: Pattern detection + policy recommendations",
                 "GraphRAG: Entity resolution + graph traversal",
                 "Modules A+B+C: Action detection + entity extraction + canonicalization"
             ],
             "response_specs": [
                 "Cards: search-engine-spec.md Section 8",
-                "Actions: micro-action-catalogue.md"
+                "Actions: micro-action-catalogue.md",
+                "Situations: RECURRENT_SYMPTOM, RECURRENT_SYMPTOM_PRE_EVENT, HIGH_RISK_EQUIPMENT"
             ]
         },
         "auth": {
@@ -967,6 +984,192 @@ async def search(
 
     except Exception as e:
         logger.error(f"/v1/search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# ========================================================================
+# /v2/search - SITUATION-AWARE SEARCH ENDPOINT
+# ========================================================================
+
+@app.post("/v2/search", tags=["Search"])
+@limiter.limit("100/minute")
+async def situational_search(
+    request: Request,
+    search_request: SearchRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **SITUATION-AWARE SEARCH ENDPOINT - PhD-Level Intelligence**
+
+    Extends /v1/search with:
+    - Situation detection (recurrent symptoms, pre-charter risk, etc.)
+    - Risk assessment (if ignored vs if acted)
+    - Recommended actions with reasoning
+    - Evidence-based explanations
+
+    **Response Structure:**
+    ```json
+    {
+        "situation": {
+            "type": "RECURRENT_SYMPTOM_PRE_EVENT",
+            "label": "Main Engine overheating (3rd time in 6 weeks)",
+            "severity": "high",
+            "context": "Charter in 72h",
+            "evidence": ["3 overheating events in 42 days", "Last fix was palliative"]
+        },
+        "risk": {
+            "if_ignored": "high",
+            "if_acted": "low",
+            "confidence": "approximate"
+        },
+        "recommended_actions": [
+            {
+                "action": "create_work_order",
+                "template": "inspection_root_cause",
+                "reason": "Recurring issue suggests underlying cause not addressed",
+                "urgency": "urgent"
+            }
+        ],
+        "cards": [...],
+        "meta": {...}
+    }
+    ```
+
+    **Situation Types (v1):**
+    - RECURRENT_SYMPTOM: Same symptom >= 3 times in 60 days
+    - RECURRENT_SYMPTOM_PRE_EVENT: Same + critical event within 72h
+    - HIGH_RISK_EQUIPMENT: Equipment with risk_score > 0.7
+
+    **Note:** `situation`, `risk`, and `recommended_actions` may be null if no pattern detected.
+    """
+    if graphrag_query is None:
+        raise HTTPException(status_code=503, detail="Search service not initialized")
+
+    import time as time_module
+    start_time = time_module.time()
+
+    try:
+        yacht_id = auth.get("yacht_id")
+        user_id = auth.get("user_id")
+
+        # 1. Run GPT extraction
+        extraction = None
+        embedding = None
+        resolved_entities = []
+
+        if graphrag_query.gpt:
+            extraction = graphrag_query.gpt.extract(search_request.query)
+            embedding = graphrag_query.gpt.embed(search_request.query)
+
+            # Convert extraction entities to resolved format
+            # Note: These are LLM-extracted, need DB resolution for IDs
+            for e in extraction.entities:
+                resolved_entities.append({
+                    'type': e.type,
+                    'value': e.value,
+                    'canonical': e.canonical,
+                    'confidence': e.confidence,
+                    'entity_id': None  # Would need DB resolver
+                })
+
+        # 2. Get vessel context
+        vessel_context = {}
+        if situation_engine and graphrag_query.client:
+            try:
+                ctx_result = graphrag_query.client.rpc('get_vessel_context', {
+                    'p_yacht_id': yacht_id
+                }).execute()
+                if ctx_result.data:
+                    ctx = ctx_result.data[0] if isinstance(ctx_result.data, list) else ctx_result.data
+                    vessel_context = {
+                        'current_status': ctx.get('current_status'),
+                        'next_event_type': ctx.get('next_event_type'),
+                        'hours_until_event': ctx.get('hours_until_event'),
+                        'time_pressure': ctx.get('time_pressure'),
+                        'is_pre_charter_critical': ctx.get('is_pre_charter_critical')
+                    }
+            except Exception as ctx_err:
+                logger.warning(f"Could not get vessel context: {ctx_err}")
+
+        # 3. Detect situation
+        situation = None
+        recommendations = []
+
+        if situation_engine and resolved_entities:
+            situation = situation_engine.detect_situation(
+                yacht_id=yacht_id,
+                resolved_entities=resolved_entities,
+                vessel_context=vessel_context
+            )
+
+            if situation:
+                recommendations = situation_engine.get_recommendations(
+                    situation=situation,
+                    yacht_id=yacht_id,
+                    resolved_entities=resolved_entities
+                )
+
+                # Log symptom report if equipment + symptom detected
+                equipment_entities = [e for e in resolved_entities if e.get('type') == 'equipment']
+                symptom_entities = [e for e in resolved_entities if e.get('type') == 'symptom']
+
+                if equipment_entities and symptom_entities:
+                    situation_engine.log_symptom_report(
+                        yacht_id=yacht_id,
+                        equipment_label=equipment_entities[0].get('canonical', equipment_entities[0].get('value', '')),
+                        symptom_code=symptom_entities[0].get('canonical', symptom_entities[0].get('value', '')),
+                        symptom_label=symptom_entities[0].get('value', ''),
+                        user_id=user_id
+                    )
+
+        # 4. Run standard search (reuse v1 logic)
+        search_result = graphrag_query.query(yacht_id, search_request.query)
+        cards = search_result.get('cards', [])
+
+        # 5. Log suggestion
+        if situation_engine:
+            situation_engine.log_suggestion(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                query_text=search_request.query,
+                intent=extraction.action if extraction else search_result.get('intent'),
+                situation=situation,
+                recommendations=recommendations
+            )
+
+        # 6. Build response
+        latency_ms = int((time_module.time() - start_time) * 1000)
+
+        response = {
+            'situation': situation.to_dict() if situation else None,
+            'risk': {
+                'if_ignored': situation.severity.value if situation else None,
+                'if_acted': 'low' if situation else None,
+                'confidence': 'approximate'
+            } if situation else None,
+            'recommended_actions': [r.to_dict() for r in recommendations],
+            'cards': cards,
+            'meta': {
+                'yacht_id': yacht_id,
+                'user_id': user_id,
+                'query': search_request.query,
+                'intent': extraction.action if extraction else search_result.get('intent'),
+                'entities': resolved_entities,
+                'vessel_context': vessel_context if vessel_context else None,
+                'latency_ms': latency_ms
+            }
+        }
+
+        logger.info(
+            f"/v2/search: yacht={yacht_id}, query='{search_request.query}', "
+            f"situation={'detected: ' + situation.type if situation else 'none'}, "
+            f"cards={len(cards)}, latency={latency_ms}ms"
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"/v2/search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
