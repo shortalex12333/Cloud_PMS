@@ -13,6 +13,8 @@ This n8n workflow calculates equipment risk scores and generates predictive insi
 Tables `predictive_state` and `predictive_insights` already exist in Supabase.
 **No SQL setup needed.**
 
+See `schema_reference.sql` for table definitions and column types.
+
 ### 2. Add Postgres Credentials in n8n
 
 In n8n, go to **Credentials** → **New** → **Postgres**
@@ -71,14 +73,14 @@ Toggle the workflow to **Active**.
 ## Tables Used
 
 ### Reads From:
-- `equipment` - equipment list
-- `faults` - fault events
-- `work_orders` - maintenance tasks
-- `work_order_history` - completed work with notes
+- `equipment` - equipment list with criticality
+- `faults` - fault events (90-day window)
+- `work_orders` - maintenance tasks, overdue status
+- `notes` - crew notes linked to equipment
 
 ### Writes To:
-- `predictive_state` - risk scores
-- `predictive_insights` - recommendations
+- `predictive_state` - risk_score, confidence, contributing_factors (jsonb), last_calculated_at
+- `predictive_insights` - title, description, recommendation, severity, metadata (jsonb)
 
 ## Risk Score Formula
 
