@@ -3,7 +3,9 @@
 import type { SearchResponse } from '@/types/search';
 import { supabase } from './supabaseClient';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.celeste7.ai/webhook/';
+// Normalize base URL to ensure consistent trailing slash handling
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.celeste7.ai/webhook';
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '') + '/';
 
 // API error handling
 export class ApiError extends Error {

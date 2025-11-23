@@ -27,7 +27,7 @@ export default function EquipmentOverview() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.celeste7.ai/webhook';
+        const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.celeste7.ai/webhook').replace(/\/+$/, '');
         const response = await fetch(`${baseUrl}/v1/equipment/overview`);
 
         if (!response.ok) throw new Error('API unavailable');
