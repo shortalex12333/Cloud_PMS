@@ -256,35 +256,68 @@ class SituationEngine:
         self,
         situation: Situation,
         yacht_id: str,
-        resolved_entities: List[Dict]
+        resolved_entities: List[Dict],
+        user_role: str = "crew"
     ) -> List[Recommendation]:
         """
         Get recommended actions for a detected situation.
-        Hard-coded policies for v1.
+        Role-aware policies for v1.
 
         Args:
             situation: Detected situation
             yacht_id: UUID of the yacht
             resolved_entities: List of resolved entities
+            user_role: User role (captain, chief_engineer, engineer, crew, management)
 
         Returns:
-            Ordered list of recommended actions
+            Ordered list of recommended actions tailored to user role
         """
-        if situation.type in ("RECURRENT_SYMPTOM", "RECURRENT_SYMPTOM_PRE_EVENT"):
-            return self._policy_recurrent_symptom(situation, yacht_id, resolved_entities)
+        if situation is None:
+            return []
 
-        if situation.type == "HIGH_RISK_EQUIPMENT":
-            return self._policy_high_risk(situation, yacht_id, resolved_entities)
+        # Branch by role: captain/management get high-level recs, engineers get actionable recs
+        if user_role in ("captain", "management"):
+            return self._get_recommendations_for_captain(situation, yacht_id, resolved_entities)
+        else:
+            return self._get_recommendations_for_engineering(situation, yacht_id, resolved_entities)
 
-        return []
-
-    def _policy_recurrent_symptom(
+    def _get_recommendations_for_engineering(
         self,
         situation: Situation,
         yacht_id: str,
         resolved_entities: List[Dict]
     ) -> List[Recommendation]:
-        """Policy for recurrent symptom situations."""
+        """Engineering-focused recommendations: actionable WOs and diagnostics."""
+        if situation.type in ("RECURRENT_SYMPTOM", "RECURRENT_SYMPTOM_PRE_EVENT"):
+            return self._policy_recurrent_symptom_engineering(situation, yacht_id, resolved_entities)
+
+        if situation.type == "HIGH_RISK_EQUIPMENT":
+            return self._policy_high_risk_engineering(situation, yacht_id, resolved_entities)
+
+        return []
+
+    def _get_recommendations_for_captain(
+        self,
+        situation: Situation,
+        yacht_id: str,
+        resolved_entities: List[Dict]
+    ) -> List[Recommendation]:
+        """Captain/management-focused recommendations: risk framing and coordination."""
+        if situation.type in ("RECURRENT_SYMPTOM", "RECURRENT_SYMPTOM_PRE_EVENT"):
+            return self._policy_recurrent_symptom_captain(situation, yacht_id, resolved_entities)
+
+        if situation.type == "HIGH_RISK_EQUIPMENT":
+            return self._policy_high_risk_captain(situation, yacht_id, resolved_entities)
+
+        return []
+
+    def _policy_recurrent_symptom_engineering(
+        self,
+        situation: Situation,
+        yacht_id: str,
+        resolved_entities: List[Dict]
+    ) -> List[Recommendation]:
+        """Engineering policy for recurrent symptom situations."""
         recommendations = []
 
         # Primary action: Create root cause investigation WO
@@ -315,13 +348,55 @@ class SituationEngine:
 
         return recommendations
 
-    def _policy_high_risk(
+    def _policy_recurrent_symptom_captain(
         self,
         situation: Situation,
         yacht_id: str,
         resolved_entities: List[Dict]
     ) -> List[Recommendation]:
-        """Policy for high risk equipment situations."""
+        """Captain policy for recurrent symptom situations."""
+        recommendations = []
+
+        # Risk assessment and coordination
+        if situation.type == "RECURRENT_SYMPTOM_PRE_EVENT":
+            recommendations.append(Recommendation(
+                action="review_charter_risk",
+                template=None,
+                reason="Recurring issue before charter - assess operational risk",
+                urgency="high"
+            ))
+            recommendations.append(Recommendation(
+                action="coordinate_with_engineering",
+                template=None,
+                reason="Confirm engineering team has root cause investigation underway",
+                urgency="high"
+            ))
+        else:
+            recommendations.append(Recommendation(
+                action="review_maintenance_status",
+                template=None,
+                reason="Recurring issue - review with chief engineer",
+                urgency="normal"
+            ))
+
+        # For high severity, suggest contingency planning
+        if situation.severity == Severity.HIGH:
+            recommendations.append(Recommendation(
+                action="prepare_contingency",
+                template=None,
+                reason="High-severity recurring issue - consider backup plans",
+                urgency="elevated"
+            ))
+
+        return recommendations
+
+    def _policy_high_risk_engineering(
+        self,
+        situation: Situation,
+        yacht_id: str,
+        resolved_entities: List[Dict]
+    ) -> List[Recommendation]:
+        """Engineering policy for high risk equipment situations."""
         return [
             Recommendation(
                 action="view_predictive_analysis",
@@ -336,6 +411,32 @@ class SituationEngine:
                 urgency="elevated" if situation.severity == Severity.HIGH else "normal"
             )
         ]
+
+    def _policy_high_risk_captain(
+        self,
+        situation: Situation,
+        yacht_id: str,
+        resolved_entities: List[Dict]
+    ) -> List[Recommendation]:
+        """Captain policy for high risk equipment situations."""
+        recommendations = [
+            Recommendation(
+                action="review_risk_summary",
+                template=None,
+                reason="Equipment flagged as elevated risk - review status",
+                urgency="normal"
+            )
+        ]
+
+        if situation.severity == Severity.HIGH:
+            recommendations.append(Recommendation(
+                action="coordinate_with_engineering",
+                template=None,
+                reason="High-risk equipment - ensure proactive inspection scheduled",
+                urgency="elevated"
+            ))
+
+        return recommendations
 
     def _get_last_wo(self, yacht_id: str, equipment_label: str) -> Optional[Dict]:
         """Get the most recent work order for this equipment."""

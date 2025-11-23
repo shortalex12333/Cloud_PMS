@@ -795,7 +795,7 @@ async def health_check():
 
     return HealthResponse(
         status="healthy" if extractor is not None else "unhealthy",
-        version="3.2.0",
+        version="3.3.0",
         patterns_loaded=actions_count,
         total_requests=request_counter,
         uptime_seconds=uptime,
@@ -991,6 +991,11 @@ async def search(
 # /v2/search - SITUATION-AWARE SEARCH ENDPOINT
 # ========================================================================
 
+# Confidence thresholds for entity disambiguation
+CONFIDENCE_THRESHOLD = 0.5       # Below this = too uncertain, skip situation detection
+AMBIGUITY_THRESHOLD = 0.05       # If top 2 candidates within this = ambiguous
+
+
 @app.post("/v2/search", tags=["Search"])
 @limiter.limit("100/minute")
 async def situational_search(
@@ -999,37 +1004,34 @@ async def situational_search(
     auth: Dict = Depends(verify_security)
 ):
     """
-    **SITUATION-AWARE SEARCH ENDPOINT - PhD-Level Intelligence**
+    **SITUATION-AWARE SEARCH ENDPOINT - V1 Agent**
 
     Extends /v1/search with:
     - Situation detection (recurrent symptoms, pre-charter risk, etc.)
-    - Risk assessment (if ignored vs if acted)
-    - Recommended actions with reasoning
-    - Evidence-based explanations
+    - Role-aware recommendations (engineer vs captain)
+    - Confidence thresholds & disambiguation
+    - Action-ready payloads
 
     **Response Structure:**
     ```json
     {
-        "situation": {
-            "type": "RECURRENT_SYMPTOM_PRE_EVENT",
-            "label": "Main Engine overheating (3rd time in 6 weeks)",
-            "severity": "high",
-            "context": "Charter in 72h",
-            "evidence": ["3 overheating events in 42 days", "Last fix was palliative"]
-        },
-        "risk": {
-            "if_ignored": "high",
-            "if_acted": "low",
-            "confidence": "approximate"
-        },
+        "situation": {...},
+        "risk": {...},
         "recommended_actions": [
             {
                 "action": "create_work_order",
-                "template": "inspection_root_cause",
-                "reason": "Recurring issue suggests underlying cause not addressed",
+                "label": "Create work order: Main engine overheating",
+                "reason": "Recurring issue before charter",
+                "payload": {
+                    "equipment_id": "uuid",
+                    "title": "Main engine overheating",
+                    "priority": "high",
+                    "due_before": "2025-11-25T00:00:00Z"
+                },
                 "urgency": "urgent"
             }
         ],
+        "disambiguation": null,  // or {"type": "equipment", "options": [...]}
         "cards": [...],
         "meta": {...}
     }
@@ -1040,7 +1042,7 @@ async def situational_search(
     - RECURRENT_SYMPTOM_PRE_EVENT: Same + critical event within 72h
     - HIGH_RISK_EQUIPMENT: Equipment with risk_score > 0.7
 
-    **Note:** `situation`, `risk`, and `recommended_actions` may be null if no pattern detected.
+    **Note:** If `disambiguation` is present, no situation/actions are generated.
     """
     if graphrag_query is None:
         raise HTTPException(status_code=503, detail="Search service not initialized")
@@ -1051,6 +1053,7 @@ async def situational_search(
     try:
         yacht_id = auth.get("yacht_id")
         user_id = auth.get("user_id")
+        user_role = auth.get("role", "crew")  # Get role from auth
 
         # 1. Run GPT extraction
         extraction = None
@@ -1062,7 +1065,6 @@ async def situational_search(
             embedding = graphrag_query.gpt.embed(search_request.query)
 
             # Convert extraction entities to resolved format
-            # Note: These are LLM-extracted, need DB resolution for IDs
             for e in extraction.entities:
                 resolved_entities.append({
                     'type': e.type,
@@ -1072,9 +1074,43 @@ async def situational_search(
                     'entity_id': None  # Would need DB resolver
                 })
 
-        # 2. Get vessel context
+        # 2. Check confidence thresholds & disambiguation
+        disambiguation = None
+        skip_situation = False
+
+        # Check equipment entities specifically
+        equipment_candidates = [e for e in resolved_entities if e.get('type') == 'equipment']
+        if equipment_candidates:
+            equipment_candidates.sort(key=lambda x: x.get('confidence', 0), reverse=True)
+            top_confidence = equipment_candidates[0].get('confidence', 0)
+
+            # Too uncertain - skip situation detection
+            if top_confidence < CONFIDENCE_THRESHOLD:
+                logger.info(f"Entity confidence {top_confidence:.2f} below threshold {CONFIDENCE_THRESHOLD}, skipping situation")
+                skip_situation = True
+
+            # Ambiguous - offer disambiguation
+            elif len(equipment_candidates) > 1:
+                second_confidence = equipment_candidates[1].get('confidence', 0)
+                if (top_confidence - second_confidence) < AMBIGUITY_THRESHOLD:
+                    disambiguation = {
+                        'type': 'equipment',
+                        'message': 'Multiple equipment matches found. Please clarify:',
+                        'options': [
+                            {
+                                'id': c.get('entity_id'),
+                                'label': c.get('canonical', c.get('value')),
+                                'score': round(c.get('confidence', 0), 2)
+                            }
+                            for c in equipment_candidates[:3]
+                        ]
+                    }
+                    skip_situation = True
+                    logger.info(f"Ambiguous equipment ({top_confidence:.2f} vs {second_confidence:.2f}), offering disambiguation")
+
+        # 3. Get vessel context
         vessel_context = {}
-        if situation_engine and graphrag_query.client:
+        if situation_engine and graphrag_query.client and not skip_situation:
             try:
                 ctx_result = graphrag_query.client.rpc('get_vessel_context', {
                     'p_yacht_id': yacht_id
@@ -1084,6 +1120,7 @@ async def situational_search(
                     vessel_context = {
                         'current_status': ctx.get('current_status'),
                         'next_event_type': ctx.get('next_event_type'),
+                        'next_event_at': ctx.get('next_event_at'),
                         'hours_until_event': ctx.get('hours_until_event'),
                         'time_pressure': ctx.get('time_pressure'),
                         'is_pre_charter_critical': ctx.get('is_pre_charter_critical')
@@ -1091,11 +1128,12 @@ async def situational_search(
             except Exception as ctx_err:
                 logger.warning(f"Could not get vessel context: {ctx_err}")
 
-        # 3. Detect situation
+        # 4. Detect situation (only if confident)
         situation = None
         recommendations = []
+        suggestion_id = None
 
-        if situation_engine and resolved_entities:
+        if situation_engine and resolved_entities and not skip_situation:
             situation = situation_engine.detect_situation(
                 yacht_id=yacht_id,
                 resolved_entities=resolved_entities,
@@ -1103,10 +1141,12 @@ async def situational_search(
             )
 
             if situation:
+                # Role-aware recommendations
                 recommendations = situation_engine.get_recommendations(
                     situation=situation,
                     yacht_id=yacht_id,
-                    resolved_entities=resolved_entities
+                    resolved_entities=resolved_entities,
+                    user_role=user_role
                 )
 
                 # Log symptom report if equipment + symptom detected
@@ -1122,13 +1162,13 @@ async def situational_search(
                         user_id=user_id
                     )
 
-        # 4. Run standard search (reuse v1 logic)
+        # 5. Run standard search
         search_result = graphrag_query.query(yacht_id, search_request.query)
         cards = search_result.get('cards', [])
 
-        # 5. Log suggestion
+        # 6. Log suggestion and get suggestion_id
         if situation_engine:
-            situation_engine.log_suggestion(
+            suggestion_id = situation_engine.log_suggestion(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 query_text=search_request.query,
@@ -1137,7 +1177,31 @@ async def situational_search(
                 recommendations=recommendations
             )
 
-        # 6. Build response
+        # 7. Build action-ready recommended_actions
+        recommended_actions = []
+        for rec in recommendations:
+            action_item = rec.to_dict()
+            action_item['id'] = suggestion_id  # Link to suggestion for feedback
+
+            # Build action-ready payload for executable actions
+            if rec.action == 'create_work_order':
+                equipment = next((e for e in resolved_entities if e.get('type') == 'equipment'), {})
+                symptom = next((e for e in resolved_entities if e.get('type') == 'symptom'), {})
+                action_item['label'] = f"Create work order: {equipment.get('canonical', equipment.get('value', 'Equipment'))} {symptom.get('canonical', symptom.get('value', ''))}"
+                action_item['payload'] = {
+                    'equipment_id': equipment.get('entity_id'),
+                    'equipment_label': equipment.get('canonical', equipment.get('value')),
+                    'title': f"{equipment.get('canonical', equipment.get('value', ''))} {symptom.get('canonical', symptom.get('value', ''))}".strip(),
+                    'priority': 'high' if situation and situation.severity.value == 'high' else 'normal',
+                    'due_before': vessel_context.get('next_event_at') if vessel_context.get('is_pre_charter_critical') else None
+                }
+            else:
+                action_item['label'] = rec.action.replace('_', ' ').title()
+                action_item['payload'] = {}
+
+            recommended_actions.append(action_item)
+
+        # 8. Build response
         latency_ms = int((time_module.time() - start_time) * 1000)
 
         response = {
@@ -1147,22 +1211,31 @@ async def situational_search(
                 'if_acted': 'low' if situation else None,
                 'confidence': 'approximate'
             } if situation else None,
-            'recommended_actions': [r.to_dict() for r in recommendations],
+            'recommended_actions': recommended_actions,
+            'disambiguation': disambiguation,
             'cards': cards,
             'meta': {
                 'yacht_id': yacht_id,
                 'user_id': user_id,
+                'user_role': user_role,
+                'suggestion_id': suggestion_id,
                 'query': search_request.query,
                 'intent': extraction.action if extraction else search_result.get('intent'),
                 'entities': resolved_entities,
                 'vessel_context': vessel_context if vessel_context else None,
+                'confidence_check': {
+                    'threshold': CONFIDENCE_THRESHOLD,
+                    'skipped_situation': skip_situation,
+                    'reason': 'ambiguous' if disambiguation else ('low_confidence' if skip_situation else None)
+                },
                 'latency_ms': latency_ms
             }
         }
 
         logger.info(
-            f"/v2/search: yacht={yacht_id}, query='{search_request.query}', "
+            f"/v2/search: yacht={yacht_id}, role={user_role}, query='{search_request.query}', "
             f"situation={'detected: ' + situation.type if situation else 'none'}, "
+            f"disambiguation={'yes' if disambiguation else 'no'}, "
             f"cards={len(cards)}, latency={latency_ms}ms"
         )
 
@@ -1171,6 +1244,194 @@ async def situational_search(
     except Exception as e:
         logger.error(f"/v2/search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# ========================================================================
+# /v1/actions - ACTION EXECUTION ENDPOINTS
+# ========================================================================
+
+class ActionExecuteRequest(BaseModel):
+    """Request model for action execution"""
+    suggestion_id: Optional[str] = Field(None, description="Link to the suggestion that triggered this action")
+    action_type: str = Field(..., description="Type of action: create_work_order, run_diagnostic, etc.")
+    payload: Dict = Field(..., description="Action-specific payload")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "suggestion_id": "uuid",
+                "action_type": "create_work_order",
+                "payload": {
+                    "equipment_id": "uuid",
+                    "title": "Main engine overheating",
+                    "priority": "high",
+                    "due_before": "2025-11-25T00:00:00Z"
+                }
+            }
+        }
+
+
+class FeedbackRequest(BaseModel):
+    """Request model for suggestion feedback"""
+    user_action_taken: str = Field(..., description="What the user did: accepted, ignored, modified")
+    action_execution_id: Optional[str] = Field(None, description="If action was executed, link to execution")
+
+
+VALID_ACTION_TYPES = {
+    'create_work_order',
+    'run_diagnostic',
+    'schedule_inspection',
+    'configure_alert',
+    'view_predictive_analysis',
+    'create_handover_note',
+    'log_symptom'
+}
+
+
+@app.post("/v1/actions/execute", tags=["Actions"])
+@limiter.limit("30/minute")
+async def execute_action(
+    request: Request,
+    action_request: ActionExecuteRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    Execute a recommended action (e.g., create work order).
+
+    **Flow:**
+    1. Validates action_type
+    2. Logs execution in action_executions table
+    3. For create_work_order: creates the WO in work_orders table
+    4. Updates suggestion_log if suggestion_id provided
+
+    **Returns:**
+    - execution_id: UUID of the action execution record
+    - result_id: UUID of created resource (e.g., work order ID)
+    - status: 'completed' or 'failed'
+    """
+    if graphrag_query is None or graphrag_query.client is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        yacht_id = auth.get("yacht_id")
+        user_id = auth.get("user_id")
+
+        # Validate action_type
+        if action_request.action_type not in VALID_ACTION_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid action_type. Must be one of: {', '.join(VALID_ACTION_TYPES)}"
+            )
+
+        # 1. Log execution via RPC
+        exec_result = graphrag_query.client.rpc('execute_action', {
+            'p_yacht_id': yacht_id,
+            'p_user_id': user_id,
+            'p_action_type': action_request.action_type,
+            'p_action_payload': action_request.payload,
+            'p_suggestion_id': action_request.suggestion_id
+        }).execute()
+
+        execution_id = exec_result.data if exec_result.data else None
+
+        if not execution_id:
+            raise HTTPException(status_code=500, detail="Failed to create action execution record")
+
+        # 2. Execute the actual action
+        result_id = None
+        status = 'completed'
+        error_message = None
+
+        if action_request.action_type == 'create_work_order':
+            # Create work order in DB
+            try:
+                wo_result = graphrag_query.client.table('work_orders').insert({
+                    'yacht_id': yacht_id,
+                    'title': action_request.payload.get('title', 'New Work Order'),
+                    'priority': action_request.payload.get('priority', 'normal'),
+                    'status': 'open',
+                    'created_by': user_id,
+                    'equipment_id': action_request.payload.get('equipment_id'),
+                    'due_date': action_request.payload.get('due_before')
+                }).execute()
+
+                if wo_result.data:
+                    result_id = wo_result.data[0].get('id')
+            except Exception as wo_err:
+                logger.error(f"Failed to create work order: {wo_err}")
+                status = 'failed'
+                error_message = str(wo_err)
+
+        # 3. Update execution record with result
+        graphrag_query.client.rpc('complete_action', {
+            'p_execution_id': execution_id,
+            'p_status': status,
+            'p_result_id': result_id,
+            'p_error_message': error_message
+        }).execute()
+
+        logger.info(f"/v1/actions/execute: yacht={yacht_id}, action={action_request.action_type}, status={status}, result_id={result_id}")
+
+        return {
+            'execution_id': execution_id,
+            'result_id': result_id,
+            'status': status,
+            'error': error_message
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"/v1/actions/execute failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Action execution failed: {str(e)}")
+
+
+@app.post("/v1/suggestions/{suggestion_id}/feedback", tags=["Actions"])
+@limiter.limit("60/minute")
+async def log_feedback(
+    suggestion_id: str,
+    request: Request,
+    feedback: FeedbackRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    Record user feedback on a suggestion.
+
+    **user_action_taken values:**
+    - `accepted`: User executed the recommended action
+    - `ignored`: User dismissed without acting
+    - `modified`: User took a different but related action
+    """
+    if graphrag_query is None or graphrag_query.client is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        # Validate user_action_taken
+        if feedback.user_action_taken not in ('accepted', 'ignored', 'modified'):
+            raise HTTPException(
+                status_code=400,
+                detail="user_action_taken must be: accepted, ignored, or modified"
+            )
+
+        # Log feedback via RPC
+        result = graphrag_query.client.rpc('log_suggestion_feedback', {
+            'p_suggestion_id': suggestion_id,
+            'p_user_action_taken': feedback.user_action_taken,
+            'p_action_execution_id': feedback.action_execution_id
+        }).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Suggestion not found")
+
+        logger.info(f"/v1/suggestions/{suggestion_id}/feedback: action={feedback.user_action_taken}")
+
+        return {'status': 'recorded', 'suggestion_id': suggestion_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"/v1/suggestions/{suggestion_id}/feedback failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to record feedback: {str(e)}")
 
 
 # ========================================================================
