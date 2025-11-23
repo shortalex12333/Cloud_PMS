@@ -108,5 +108,5 @@ function WidgetSkeleton() {
   );
 }
 
-// Export with HOD-only protection
-export default withAuth(DashboardContent, { requireHOD: true });
+// Export with authentication protection (all authenticated users can view)
+export default withAuth(DashboardContent);
