@@ -6,11 +6,12 @@ import { withAuth } from '@/components/withAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { LayoutDashboard, Settings } from 'lucide-react';
 
 function SearchContent() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   return (
-    <div className="spotlight-container">
+    <div className="spotlight-container relative min-h-screen">
       <div className="w-full max-w-4xl">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -33,31 +34,29 @@ function SearchContent() {
         >
           <SearchBar />
         </Suspense>
+      </div>
 
-        {/* Quick Actions */}
-        <div className="mt-8 flex justify-center gap-2 text-xs text-muted-foreground">
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-center gap-8">
           {isHOD(user) && (
             <Link
               href="/dashboard"
-              className="px-3 py-1 rounded-md hover:bg-accent"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
             >
-              Dashboard →
+              <LayoutDashboard className="h-4 w-4" />
+              <span>Dashboard</span>
             </Link>
           )}
           <Link
             href="/settings"
-            className="px-3 py-1 rounded-md hover:bg-accent"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
           >
-            Settings
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
           </Link>
-          <button
-            onClick={() => logout()}
-            className="px-3 py-1 rounded-md hover:bg-accent hover:text-destructive"
-          >
-            Logout
-          </button>
         </div>
-      </div>
+      </nav>
     </div>
   );
 }
