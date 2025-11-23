@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "predictive-run",
+        "responseMode": "responseNode",
         "options": {}
       },
       "id": "webhook",
@@ -35,7 +36,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT equipment_id, COUNT(*) as fault_count, MAX(detected_at) as last_fault, array_agg(DISTINCT fault_code) as fault_codes FROM faults WHERE detected_at > NOW() - INTERVAL '90 days' AND yacht_id = '{{ $('Webhook').item.json.body.yacht_id }}' GROUP BY equipment_id",
+        "query": "SELECT equipment_id, COUNT(*) as fault_count, MAX(detected_at) as last_fault, array_agg(DISTINCT fault_code) as fault_codes FROM faults WHERE yacht_id = '{{ $json.body.yacht_id }}' AND detected_at > NOW() - INTERVAL '90 days' GROUP BY equipment_id",
         "options": {}
       },
       "id": "get_faults",
@@ -53,7 +54,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT equipment_id, COUNT(*) as wo_count, COUNT(*) FILTER (WHERE status = 'overdue' OR (due_date < NOW() AND status != 'completed')) as overdue_count, COUNT(*) FILTER (WHERE type = 'corrective') as corrective_count FROM work_orders WHERE created_at > NOW() - INTERVAL '90 days' AND yacht_id = '{{ $('Webhook').item.json.body.yacht_id }}' GROUP BY equipment_id",
+        "query": "SELECT equipment_id, COUNT(*) as wo_count, COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND status NOT IN ('completed', 'cancelled')) as overdue_count, COUNT(*) FILTER (WHERE type = 'corrective') as corrective_count FROM work_orders WHERE yacht_id = '{{ $json.body.yacht_id }}' AND created_at > NOW() - INTERVAL '90 days' GROUP BY equipment_id",
         "options": {}
       },
       "id": "get_work_orders",
@@ -71,7 +72,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT equipment_id, COUNT(*) as note_count FROM work_order_history WHERE notes IS NOT NULL AND notes != '' AND completed_at > NOW() - INTERVAL '90 days' AND yacht_id = '{{ $('Webhook').item.json.body.yacht_id }}' GROUP BY equipment_id",
+        "query": "SELECT equipment_id, COUNT(*) as note_count FROM notes WHERE yacht_id = '{{ $json.body.yacht_id }}' AND equipment_id IS NOT NULL AND created_at > NOW() - INTERVAL '90 days' GROUP BY equipment_id",
         "options": {}
       },
       "id": "get_notes",
@@ -151,7 +152,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Calculate risk score for each equipment\nconst results = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Normalize fault signal (0-1)\n  const faultCount = parseInt(data.fault_count) || 0;\n  const faultSignal = Math.min(faultCount / 10, 1.0);\n  \n  // Normalize work order signal (0-1)\n  const overdueCount = parseInt(data.overdue_count) || 0;\n  const woSignal = Math.min(overdueCount / 5, 1.0);\n  \n  // Normalize notes signal (0-1)\n  const noteCount = parseInt(data.note_count) || 0;\n  const notesSignal = Math.min(noteCount / 10, 1.0);\n  \n  // Normalize corrective signal (0-1)\n  const correctiveCount = parseInt(data.corrective_count) || 0;\n  const correctiveSignal = Math.min(correctiveCount / 5, 1.0);\n  \n  // Criticality signal\n  const criticality = data.criticality || 'low';\n  const criticalitySignal = criticality === 'high' ? 1.0 : \n                            criticality === 'medium' ? 0.5 : 0.2;\n  \n  // Calculate weighted risk score\n  const riskScore = (\n    0.35 * faultSignal +\n    0.25 * woSignal +\n    0.15 * notesSignal +\n    0.15 * correctiveSignal +\n    0.10 * criticalitySignal\n  );\n  \n  const trend = '→';\n  \n  let category;\n  if (riskScore >= 0.75) category = 'high';\n  else if (riskScore >= 0.60) category = 'emerging';\n  else if (riskScore >= 0.40) category = 'monitor';\n  else category = 'normal';\n  \n  results.push({\n    json: {\n      yacht_id: data.yacht_id,\n      equipment_id: data.id,\n      equipment_name: data.name,\n      risk_score: Math.round(riskScore * 10000) / 10000,\n      trend: trend,\n      category: category,\n      fault_signal: Math.round(faultSignal * 10000) / 10000,\n      work_order_signal: Math.round(woSignal * 10000) / 10000,\n      crew_signal: Math.round(notesSignal * 10000) / 10000,\n      part_signal: 0,\n      global_signal: Math.round(criticalitySignal * 10000) / 10000,\n      updated_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+        "jsCode": "// Calculate risk score for each equipment\n// Uses ACTUAL predictive_state columns from Supabase\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Normalize signals (0-1)\n  const faultCount = parseInt(data.fault_count) || 0;\n  const faultSignal = Math.min(faultCount / 10, 1.0);\n  \n  const overdueCount = parseInt(data.overdue_count) || 0;\n  const woSignal = Math.min(overdueCount / 5, 1.0);\n  \n  const noteCount = parseInt(data.note_count) || 0;\n  const notesSignal = Math.min(noteCount / 10, 1.0);\n  \n  const correctiveCount = parseInt(data.corrective_count) || 0;\n  const correctiveSignal = Math.min(correctiveCount / 5, 1.0);\n  \n  const criticality = data.criticality || 'low';\n  const criticalitySignal = criticality === 'high' ? 1.0 : \n                            criticality === 'medium' ? 0.5 : 0.2;\n  \n  // Calculate weighted risk score\n  const riskScore = (\n    0.35 * faultSignal +\n    0.25 * woSignal +\n    0.15 * notesSignal +\n    0.15 * correctiveSignal +\n    0.10 * criticalitySignal\n  );\n  \n  // Confidence based on data availability\n  let dataPoints = 0;\n  if (faultCount > 0) dataPoints++;\n  if (overdueCount > 0 || parseInt(data.wo_count) > 0) dataPoints++;\n  if (noteCount > 0) dataPoints++;\n  const confidence = Math.min(dataPoints / 3, 1.0);\n  \n  // contributing_factors as JSONB (matches actual schema)\n  const contributingFactors = {\n    fault_signal: Math.round(faultSignal * 1000) / 1000,\n    work_order_signal: Math.round(woSignal * 1000) / 1000,\n    notes_signal: Math.round(notesSignal * 1000) / 1000,\n    corrective_signal: Math.round(correctiveSignal * 1000) / 1000,\n    criticality_signal: Math.round(criticalitySignal * 1000) / 1000,\n    fault_count: faultCount,\n    overdue_count: overdueCount,\n    note_count: noteCount\n  };\n  \n  results.push({\n    json: {\n      yacht_id: data.yacht_id,\n      equipment_id: data.id,\n      equipment_name: data.name,\n      risk_score: Math.round(riskScore * 10000) / 10000,\n      confidence: Math.round(confidence * 1000) / 1000,\n      contributing_factors: JSON.stringify(contributingFactors),\n      last_calculated_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "calculate_risk",
       "name": "Calculate Risk Scores",
@@ -162,7 +163,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO predictive_state (yacht_id, equipment_id, equipment_name, risk_score, trend, fault_signal, work_order_signal, crew_signal, part_signal, global_signal, updated_at) VALUES ('{{ $json.yacht_id }}', '{{ $json.equipment_id }}', '{{ $json.equipment_name }}', {{ $json.risk_score }}, '{{ $json.trend }}', {{ $json.fault_signal }}, {{ $json.work_order_signal }}, {{ $json.crew_signal }}, {{ $json.part_signal }}, {{ $json.global_signal }}, '{{ $json.updated_at }}') ON CONFLICT (yacht_id, equipment_id) DO UPDATE SET equipment_name = EXCLUDED.equipment_name, risk_score = EXCLUDED.risk_score, trend = EXCLUDED.trend, fault_signal = EXCLUDED.fault_signal, work_order_signal = EXCLUDED.work_order_signal, crew_signal = EXCLUDED.crew_signal, part_signal = EXCLUDED.part_signal, global_signal = EXCLUDED.global_signal, updated_at = EXCLUDED.updated_at",
+        "query": "INSERT INTO predictive_state (yacht_id, equipment_id, risk_score, confidence, contributing_factors, last_calculated_at, updated_at) VALUES ('{{ $json.yacht_id }}', '{{ $json.equipment_id }}', {{ $json.risk_score }}, {{ $json.confidence }}, '{{ $json.contributing_factors }}'::jsonb, '{{ $json.last_calculated_at }}', NOW()) ON CONFLICT (yacht_id, equipment_id) DO UPDATE SET risk_score = EXCLUDED.risk_score, confidence = EXCLUDED.confidence, contributing_factors = EXCLUDED.contributing_factors, last_calculated_at = EXCLUDED.last_calculated_at, updated_at = NOW()",
         "options": {}
       },
       "id": "save_risk",
@@ -208,7 +209,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Generate insights for high-risk equipment\nconst insights = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  let severity = 'medium';\n  if (data.risk_score >= 0.75) severity = 'critical';\n  else if (data.risk_score >= 0.6) severity = 'high';\n  \n  const factors = [];\n  if (data.fault_signal > 0.5) factors.push('high fault frequency');\n  if (data.work_order_signal > 0.5) factors.push('overdue maintenance tasks');\n  if (data.crew_signal > 0.5) factors.push('frequent crew notes indicating issues');\n  \n  const explanation = factors.length > 0 \n    ? `Contributing factors: ${factors.join(', ')}.`\n    : 'Multiple minor indicators combined.';\n  \n  insights.push({\n    json: {\n      yacht_id: data.yacht_id,\n      equipment_id: data.equipment_id,\n      equipment_name: data.equipment_name,\n      insight_type: 'fault_prediction',\n      severity: severity,\n      summary: `${data.equipment_name} shows elevated risk (${(data.risk_score * 100).toFixed(1)}%)`,\n      explanation: explanation,\n      recommended_action: 'Schedule inspection and review recent fault history',\n      contributing_signals: JSON.stringify({\n        fault: data.fault_signal,\n        work_order: data.work_order_signal,\n        crew: data.crew_signal\n      }),\n      created_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn insights;"
+        "jsCode": "// Generate insights using ACTUAL predictive_insights columns\n\nconst insights = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  const factors = JSON.parse(data.contributing_factors);\n  \n  let severity = 'medium';\n  if (data.risk_score >= 0.75) severity = 'critical';\n  else if (data.risk_score >= 0.6) severity = 'high';\n  \n  // Build description based on signals\n  const issues = [];\n  if (factors.fault_signal > 0.5) issues.push('high fault frequency');\n  if (factors.work_order_signal > 0.5) issues.push('overdue maintenance tasks');\n  if (factors.notes_signal > 0.5) issues.push('frequent crew notes');\n  \n  const description = issues.length > 0 \n    ? `Contributing factors: ${issues.join(', ')}.`\n    : 'Multiple minor indicators combined.';\n  \n  insights.push({\n    json: {\n      yacht_id: data.yacht_id,\n      equipment_id: data.equipment_id,\n      insight_type: 'risk_alert',\n      title: `${data.equipment_name} - Elevated Risk`,\n      description: description,\n      recommendation: 'Schedule inspection and review recent fault history',\n      severity: severity,\n      metadata: data.contributing_factors\n    }\n  });\n}\n\nreturn insights;"
       },
       "id": "generate_insights",
       "name": "Generate Insights",
@@ -219,7 +220,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO predictive_insights (yacht_id, equipment_id, equipment_name, insight_type, severity, summary, explanation, recommended_action, contributing_signals, created_at) VALUES ('{{ $json.yacht_id }}', '{{ $json.equipment_id }}', '{{ $json.equipment_name }}', '{{ $json.insight_type }}', '{{ $json.severity }}', '{{ $json.summary }}', '{{ $json.explanation }}', '{{ $json.recommended_action }}', '{{ $json.contributing_signals }}', '{{ $json.created_at }}')",
+        "query": "INSERT INTO predictive_insights (yacht_id, equipment_id, insight_type, title, description, recommendation, severity, metadata) VALUES ('{{ $json.yacht_id }}', '{{ $json.equipment_id }}', '{{ $json.insight_type }}', '{{ $json.title }}', '{{ $json.description }}', '{{ $json.recommendation }}', '{{ $json.severity }}', '{{ $json.metadata }}'::jsonb)",
         "options": {}
       },
       "id": "save_insights",
@@ -237,13 +238,12 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"status\": \"success\", \"message\": \"Predictive computation complete\", \"yacht_id\": $('Webhook').item.json.body.yacht_id, \"equipment_processed\": $('Calculate Risk Scores').all().length, \"timestamp\": new Date().toISOString() } }}",
-        "options": {}
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Predictive engine completed', equipment_processed: $input.all().length }) }}"
       },
       "id": "respond",
-      "name": "Respond Success",
+      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [2260, 300]
     }
   ],
@@ -338,7 +338,7 @@
     "Save Insights": {
       "main": [
         [
-          { "node": "Respond Success", "type": "main", "index": 0 }
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
         ]
       ]
     }
@@ -350,5 +350,5 @@
   "tags": [],
   "triggerCount": 0,
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "versionId": "2"
 }

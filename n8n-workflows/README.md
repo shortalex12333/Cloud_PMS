@@ -8,9 +8,10 @@ This n8n workflow calculates equipment risk scores and generates predictive insi
 
 ## Setup Instructions
 
-### 1. Create Tables in Supabase
+### 1. Tables Already Exist
 
-Run `create_predictive_tables.sql` in Supabase SQL Editor.
+Tables `predictive_state` and `predictive_insights` already exist in Supabase.
+**No SQL setup needed.**
 
 ### 2. Add Postgres Credentials in n8n
 

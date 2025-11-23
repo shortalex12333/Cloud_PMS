@@ -21,7 +21,6 @@ Built the **Predictive Maintenance Engine** for CelesteOS. This calculates equip
 n8n-workflows/
 ├── predictive-engine-workflow.json    # Cron: runs every 6 hours
 ├── predictive-webhook-trigger.json    # Webhook: on-demand trigger
-├── create_predictive_tables.sql       # SQL: run in Supabase first
 └── README.md                          # Setup instructions
 ```
 
@@ -64,42 +63,17 @@ predictive-engine/                      # NOT USING - was built before
 
 ## Setup Steps
 
-### 1. Create Tables in Supabase
+### 1. Tables Already Exist
 
-Run `n8n-workflows/create_predictive_tables.sql` in Supabase SQL Editor:
+**No SQL setup needed.** Tables `predictive_state` and `predictive_insights` already exist in Supabase.
 
-```sql
-CREATE TABLE predictive_state (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    yacht_id UUID NOT NULL,
-    equipment_id UUID NOT NULL,
-    equipment_name TEXT,
-    risk_score NUMERIC(5,4) NOT NULL,
-    trend VARCHAR(1) NOT NULL DEFAULT '→',
-    fault_signal NUMERIC(5,4) DEFAULT 0,
-    work_order_signal NUMERIC(5,4) DEFAULT 0,
-    crew_signal NUMERIC(5,4) DEFAULT 0,
-    part_signal NUMERIC(5,4) DEFAULT 0,
-    global_signal NUMERIC(5,4) DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_yacht_equipment UNIQUE (yacht_id, equipment_id)
-);
+**Actual Schema Used:**
 
-CREATE TABLE predictive_insights (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    yacht_id UUID NOT NULL,
-    equipment_id UUID,
-    equipment_name TEXT,
-    insight_type VARCHAR(50) NOT NULL,
-    severity VARCHAR(20) NOT NULL,
-    summary TEXT NOT NULL,
-    explanation TEXT,
-    recommended_action TEXT,
-    contributing_signals JSONB DEFAULT '{}'::JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+`predictive_state`:
+- id, yacht_id, equipment_id, risk_score, confidence, contributing_factors (jsonb), last_calculated_at, metadata, created_at, updated_at
+
+`predictive_insights`:
+- id, yacht_id, equipment_id, insight_type, title, description, recommendation, severity, acknowledged, acknowledged_by, acknowledged_at, metadata, created_at
 
 ### 2. Add Postgres Credential in n8n
 
@@ -178,9 +152,9 @@ risk_score =
 ## Known Issues / Limitations
 
 1. **NOT TESTED against live Supabase** - API returned 403 (IP restricted?)
-2. **Column names assumed** from `table_configs.md` - may need adjustment
-3. **Trend calculation** is placeholder (always `→`) - needs historical comparison
-4. **No ML** - purely statistical/rule-based as per spec
+2. **Trend calculation** not implemented - would need historical comparison
+3. **No ML** - purely statistical/rule-based as per spec
+4. **Insights not deduplicated** - creates new row each run (may want cleanup logic)
 
 ---
 
@@ -207,9 +181,8 @@ f1ac1bf fix(predictive): Query work_order_history.notes instead of non-existent 
 ## Questions for Review
 
 1. Should `predictive-engine/` Python folder be deleted?
-2. Are the column names in SQL queries correct for your actual tables?
-3. Do you need the webhook path to be different from `/webhook/predictive-run`?
-4. Should insights be deduplicated (currently creates new row each run)?
+2. Do you need the webhook path to be different from `/webhook/predictive-run`?
+3. Should insights be deduplicated (currently creates new row each run)?
 
 ---
 
