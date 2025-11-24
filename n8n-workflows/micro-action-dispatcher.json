@@ -49,11 +49,11 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', '{{ $node[\"Extract Input\"].json.title }}', 'Auto-generated from predictive engine threshold crossing', 'critical', 'pending', 'predictive_engine', '{{ $node[\"Extract Input\"].json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
+        "query": "INSERT INTO predictive_insights (yacht_id, equipment_id, insight_type, title, description, recommendation, severity, metadata) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'threshold_crossing', '{{ $node[\"Extract Input\"].json.title }}', 'Auto-generated from predictive engine - critical risk threshold crossed', 'Immediate inspection and maintenance recommended', 'critical', jsonb_build_object('source', 'micro_action_dispatcher', 'original_insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}')) ON CONFLICT DO NOTHING",
         "options": {}
       },
       "id": "handover_critical",
-      "name": "Insert Handover (Critical)",
+      "name": "Insert Insight (Critical)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [700, 100],
@@ -64,7 +64,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO notifications (yacht_id, user_id, title, message, type, priority, metadata, created_at) SELECT '{{ $node[\"Extract Input\"].json.yacht_id }}', u.id, '{{ $node[\"Extract Input\"].json.title }}', 'Critical risk detected on {{ $node[\"Extract Input\"].json.equipment_name }}. Immediate action required.', 'risk_alert', 'critical', jsonb_build_object('equipment_id', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}'), NOW() FROM users u JOIN yacht_crew yc ON u.id = yc.user_id WHERE yc.yacht_id = '{{ $node[\"Extract Input\"].json.yacht_id }}' AND yc.role IN ('captain', 'chief_engineer', 'eto')",
+        "query": "INSERT INTO notifications (yacht_id, equipment_id, type, title, message, priority, metadata) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'risk_alert', '{{ $node[\"Extract Input\"].json.title }}', 'Critical risk detected on {{ $node[\"Extract Input\"].json.equipment_name }}. Immediate action required.', 'critical', jsonb_build_object('insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}', 'severity', 'critical'))",
         "options": {}
       },
       "id": "notify_critical",
@@ -94,11 +94,11 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', '{{ $node[\"Extract Input\"].json.title }}', 'Auto-generated from predictive engine threshold crossing', 'high', 'pending', 'predictive_engine', '{{ $node[\"Extract Input\"].json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
+        "query": "INSERT INTO predictive_insights (yacht_id, equipment_id, insight_type, title, description, recommendation, severity, metadata) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'threshold_crossing', '{{ $node[\"Extract Input\"].json.title }}', 'Auto-generated from predictive engine - high risk threshold crossed', 'Schedule inspection within 48 hours', 'high', jsonb_build_object('source', 'micro_action_dispatcher', 'original_insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}')) ON CONFLICT DO NOTHING",
         "options": {}
       },
       "id": "handover_high",
-      "name": "Insert Handover (High)",
+      "name": "Insert Insight (High)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [700, 450],
@@ -138,7 +138,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Collect results for critical actions\nreturn [{ json: { actions: ['handover', 'notification', 'equipment_flag'], severity: 'critical' } }];"
+        "jsCode": "// Collect results for critical actions\nreturn [{ json: { actions: ['insight', 'notification', 'equipment_flag'], severity: 'critical' } }];"
       },
       "id": "merge_critical",
       "name": "Merge Critical Actions",
@@ -148,7 +148,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Collect results for high actions\nreturn [{ json: { actions: ['handover', 'search_priority'], severity: 'high' } }];"
+        "jsCode": "// Collect results for high actions\nreturn [{ json: { actions: ['insight', 'search_priority'], severity: 'high' } }];"
       },
       "id": "merge_high",
       "name": "Merge High Actions",
@@ -202,12 +202,12 @@
     "Switch Severity": {
       "main": [
         [
-          { "node": "Insert Handover (Critical)", "type": "main", "index": 0 },
+          { "node": "Insert Insight (Critical)", "type": "main", "index": 0 },
           { "node": "Create Notifications (Critical)", "type": "main", "index": 0 },
           { "node": "Flag Equipment (Critical)", "type": "main", "index": 0 }
         ],
         [
-          { "node": "Insert Handover (High)", "type": "main", "index": 0 },
+          { "node": "Insert Insight (High)", "type": "main", "index": 0 },
           { "node": "Add Search Priority (High)", "type": "main", "index": 0 }
         ],
         [
@@ -215,7 +215,7 @@
         ]
       ]
     },
-    "Insert Handover (Critical)": {
+    "Insert Insight (Critical)": {
       "main": [[{ "node": "Merge Critical Actions", "type": "main", "index": 0 }]]
     },
     "Create Notifications (Critical)": {
@@ -224,7 +224,7 @@
     "Flag Equipment (Critical)": {
       "main": [[{ "node": "Merge Critical Actions", "type": "main", "index": 0 }]]
     },
-    "Insert Handover (High)": {
+    "Insert Insight (High)": {
       "main": [[{ "node": "Merge High Actions", "type": "main", "index": 0 }]]
     },
     "Add Search Priority (High)": {
