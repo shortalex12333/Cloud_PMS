@@ -259,7 +259,13 @@ POST https://api.celeste7.ai/webhook/predictive-run
 | ≥0.45 | elevated | search_priority |
 
 ### Setup MVP2
-1. Run `supabase/migrations/predictive_event_triggers.sql` in Supabase
+1. Run migrations in order in Supabase SQL Editor:
+   - `001_enable_pg_net_and_predictive_tables.sql`
+   - `002_predictive_event_notifier.sql`
+   - `003_fault_triggers.sql`
+   - `004_work_order_triggers.sql`
+   - `005_note_triggers.sql`
+   - `006_part_triggers.sql`
 2. Import all MVP2 workflows into n8n
 3. Activate workflows
 4. Test with: `curl -X POST https://api.celeste7.ai/webhook/internal/predictive-event -d '{"event":"fault_created","equipment_id":"...","yacht_id":"..."}'`
