@@ -510,6 +510,76 @@ async def log_requests(request: Request, call_next):
 import re
 
 # ========================================================================
+# ENTITY LEARNING: Log unknown/low-confidence entities
+# GPT is a TEACHER (offline batch), not a live RESOLVER
+# ========================================================================
+
+UNKNOWN_ENTITY_CONFIDENCE_THRESHOLD = 0.5  # Log if below this
+
+def log_unknown_entities(
+    client,
+    yacht_id: str,
+    user_id: str,
+    entities: list,
+    intent: str,
+    query: str,
+    lane: str
+) -> int:
+    """
+    Log entities with low confidence for offline learning.
+
+    Returns number of entities logged.
+
+    Rules:
+    - Only log if confidence < 0.5
+    - Don't log for trivial lookup intents with decent confidence
+    - Don't log terms that are too short (<2 chars) or too long (>100 chars)
+    """
+    if not client:
+        return 0
+
+    logged_count = 0
+
+    for entity in entities:
+        confidence = entity.get('confidence', 0.8)
+        raw_value = entity.get('value', '')
+        entity_type = entity.get('type', 'unknown')
+
+        # Skip high confidence
+        if confidence >= UNKNOWN_ENTITY_CONFIDENCE_THRESHOLD:
+            continue
+
+        # Skip trivial lookups with decent confidence
+        if intent in ('find_document', 'find_work_order') and confidence > 0.3:
+            continue
+
+        # Skip too short or too long
+        if len(raw_value.strip()) < 2 or len(raw_value.strip()) > 100:
+            continue
+
+        try:
+            # Call the SQL function
+            result = client.rpc('log_unknown_entity', {
+                'p_yacht_id': yacht_id,
+                'p_user_id': user_id,
+                'p_raw_value': raw_value,
+                'p_entity_type_guess': entity_type,
+                'p_confidence': confidence,
+                'p_intent': intent,
+                'p_context_query': query[:500],  # Truncate long queries
+                'p_lane': lane
+            }).execute()
+
+            if result.data:
+                logged_count += 1
+                logger.debug(f"Logged unknown entity: {raw_value} ({entity_type}, conf={confidence:.2f})")
+
+        except Exception as e:
+            logger.warning(f"Failed to log unknown entity: {e}")
+
+    return logged_count
+
+# ========================================================================
 # LANE ROUTING LOGIC (all guards + intent classification)
 # ========================================================================
 
@@ -769,10 +839,28 @@ async def extract(
 
         latency_ms = int((time.time() - start) * 1000)
 
+        # Convert entities to dict for response and learning
+        entities_dict = [e.to_dict() for e in extraction.entities]
+
+        # Log unknown/low-confidence entities for offline learning
+        # GPT is TEACHER, not live resolver
+        unknown_logged = 0
+        if graphrag_query and graphrag_query.client:
+            unknown_logged = log_unknown_entities(
+                client=graphrag_query.client,
+                yacht_id=auth.get('yacht_id'),
+                user_id=auth.get('user_id'),
+                entities=entities_dict,
+                intent=routing['intent'],
+                query=query,
+                lane='GPT'
+            )
+
         logger.info(
             f"GPT: query='{query}', "
             f"action={extraction.action}, "
             f"entities={len(extraction.entities)}, "
+            f"unknown_logged={unknown_logged}, "
             f"latency={latency_ms}ms, "
             f"yacht_id={auth.get('yacht_id')}"
         )
@@ -782,7 +870,7 @@ async def extract(
             'lane_reason': routing['lane_reason'],
             'intent': routing['intent'],
             'intent_confidence': max(routing['intent_confidence'], extraction.action_confidence),
-            'entities': [e.to_dict() for e in extraction.entities],
+            'entities': entities_dict,
             'action': extraction.action,
             'action_confidence': extraction.action_confidence,
             'person_filter': extraction.person_filter,
@@ -791,7 +879,8 @@ async def extract(
                 'model': 'gpt-4o-mini',
                 'embedding_model': 'text-embedding-3-small' if embedding else None,
                 'embedding_dimensions': 1536 if embedding else None,
-                'latency_ms': latency_ms
+                'latency_ms': latency_ms,
+                'unknown_entities_logged': unknown_logged
             }
         }
 
