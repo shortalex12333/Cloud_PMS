@@ -1,0 +1,219 @@
+{
+  "name": "Predictive Event Handler (MVP2)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "internal/predictive-event",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "POST /internal/predictive-event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "webhookId": "predictive-event"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate payload\nconst body = $input.first().json.body || $input.first().json;\n\nconst event = body.event;\nconst equipment_id = body.equipment_id;\nconst yacht_id = body.yacht_id;\n\nif (!event || !equipment_id || !yacht_id) {\n  return [{\n    json: {\n      valid: false,\n      error: 'Missing required fields: event, equipment_id, yacht_id'\n    }\n  }];\n}\n\nconst validEvents = [\n  'fault_created',\n  'fault_resolved',\n  'wo_created',\n  'wo_updated',\n  'wo_overdue',\n  'wo_completed',\n  'note_added',\n  'part_used'\n];\n\nif (!validEvents.includes(event)) {\n  return [{\n    json: {\n      valid: false,\n      error: `Invalid event type: ${event}. Valid: ${validEvents.join(', ')}`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    event,\n    equipment_id,\n    yacht_id,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "validate",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "valid_check",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check_valid",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $json.error }) }}"
+      },
+      "id": "respond_error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [660, 450]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputKey": "fault", "value": "={{ $json.event.startsWith('fault') }}" },
+            { "outputKey": "wo", "value": "={{ $json.event.startsWith('wo') }}" },
+            { "outputKey": "note", "value": "={{ $json.event === 'note_added' }}" },
+            { "outputKey": "part", "value": "={{ $json.event === 'part_used' }}" }
+          ]
+        },
+        "options": { "allMatchingOutputs": false }
+      },
+      "id": "switch_event",
+      "name": "Switch Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [660, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine signal weight adjustment based on event\nconst data = $input.first().json;\n\nlet signal_weight = 'fault_signal';\nlet weight_delta = 0.035; // 10% of fault weight\n\nif (data.event === 'fault_resolved') {\n  weight_delta = -0.02; // Slight decrease on resolution\n}\n\nreturn [{\n  json: {\n    ...data,\n    signal_weight,\n    weight_delta,\n    event_category: 'fault'\n  }\n}];"
+      },
+      "id": "fault_weight",
+      "name": "Fault Weight",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine signal weight adjustment based on event\nconst data = $input.first().json;\n\nlet signal_weight = 'work_order_signal';\nlet weight_delta = 0.025; // Base WO weight\n\nswitch(data.event) {\n  case 'wo_overdue':\n    weight_delta = 0.05; // Higher impact for overdue\n    break;\n  case 'wo_completed':\n    weight_delta = -0.03; // Decrease on completion\n    break;\n  case 'wo_created':\n    weight_delta = 0.015;\n    break;\n  default:\n    weight_delta = 0.02;\n}\n\nreturn [{\n  json: {\n    ...data,\n    signal_weight,\n    weight_delta,\n    event_category: 'work_order'\n  }\n}];"
+      },
+      "id": "wo_weight",
+      "name": "WO Weight",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Note signal weight\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    ...data,\n    signal_weight: 'notes_signal',\n    weight_delta: 0.015,\n    event_category: 'note'\n  }\n}];"
+      },
+      "id": "note_weight",
+      "name": "Note Weight",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Part usage signal weight\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    ...data,\n    signal_weight: 'part_signal',\n    weight_delta: 0.01,\n    event_category: 'part'\n  }\n}];"
+      },
+      "id": "part_weight",
+      "name": "Part Weight",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 450]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": { "values": [] },
+        "joinMode": "keepEverything",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge_all",
+      "name": "Merge All",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL || 'https://api.celeste7.ai/webhook' }}/internal/predictive-recompute",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "equipment_id", "value": "={{ $json.equipment_id }}" },
+            { "name": "yacht_id", "value": "={{ $json.yacht_id }}" },
+            { "name": "event", "value": "={{ $json.event }}" },
+            { "name": "event_category", "value": "={{ $json.event_category }}" },
+            { "name": "signal_weight", "value": "={{ $json.signal_weight }}" },
+            { "name": "weight_delta", "value": "={{ $json.weight_delta }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "call_recompute",
+      "name": "Call Recompute Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Event processed', equipment_id: $('Validate Payload').item.json.equipment_id }) }}"
+      },
+      "id": "respond_success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1540, 200]
+    }
+  ],
+  "connections": {
+    "POST /internal/predictive-event": {
+      "main": [[{ "node": "Validate Payload", "type": "main", "index": 0 }]]
+    },
+    "Validate Payload": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "Switch Event Type", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch Event Type": {
+      "main": [
+        [{ "node": "Fault Weight", "type": "main", "index": 0 }],
+        [{ "node": "WO Weight", "type": "main", "index": 0 }],
+        [{ "node": "Note Weight", "type": "main", "index": 0 }],
+        [{ "node": "Part Weight", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fault Weight": {
+      "main": [[{ "node": "Merge All", "type": "main", "index": 0 }]]
+    },
+    "WO Weight": {
+      "main": [[{ "node": "Merge All", "type": "main", "index": 0 }]]
+    },
+    "Note Weight": {
+      "main": [[{ "node": "Merge All", "type": "main", "index": 0 }]]
+    },
+    "Part Weight": {
+      "main": [[{ "node": "Merge All", "type": "main", "index": 0 }]]
+    },
+    "Merge All": {
+      "main": [[{ "node": "Call Recompute Workflow", "type": "main", "index": 0 }]]
+    },
+    "Call Recompute Workflow": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["predictive", "mvp2", "event-driven"],
+  "triggerCount": 0,
+  "versionId": "1"
+}

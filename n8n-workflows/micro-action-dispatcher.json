@@ -1,0 +1,254 @@
+{
+  "name": "Micro-Action Dispatcher (MVP2)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "internal/micro-action-dispatch",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [{ "name": "Content-Type", "value": "application/json" }]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "POST /internal/micro-action-dispatch",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "webhookId": "micro-action-dispatch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract input\nconst body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    insight_id: body.insight_id,\n    equipment_id: body.equipment_id,\n    yacht_id: body.yacht_id,\n    severity: body.severity,\n    equipment_name: body.equipment_name || 'Unknown Equipment',\n    title: body.title || 'Risk Alert'\n  }\n}];"
+      },
+      "id": "extract_input",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputKey": "critical", "value": "={{ $json.severity === 'critical' }}" },
+            { "outputKey": "high", "value": "={{ $json.severity === 'high' }}" },
+            { "outputKey": "elevated", "value": "={{ $json.severity === 'elevated' }}" }
+          ]
+        },
+        "options": { "allMatchingOutputs": false }
+      },
+      "id": "switch_severity",
+      "name": "Switch Severity",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', '{{ $('Extract Input').item.json.title }}', 'Auto-generated from predictive engine threshold crossing', 'critical', 'pending', 'predictive_engine', '{{ $('Extract Input').item.json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
+        "options": {}
+      },
+      "id": "handover_critical",
+      "name": "Insert Handover (Critical)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [700, 100],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO notifications (yacht_id, user_id, title, message, type, priority, metadata, created_at) SELECT '{{ $('Extract Input').item.json.yacht_id }}', u.id, '{{ $('Extract Input').item.json.title }}', 'Critical risk detected on {{ $('Extract Input').item.json.equipment_name }}. Immediate action required.', 'risk_alert', 'critical', jsonb_build_object('equipment_id', '{{ $('Extract Input').item.json.equipment_id }}', 'insight_id', '{{ $('Extract Input').item.json.insight_id }}'), NOW() FROM users u JOIN yacht_crew yc ON u.id = yc.user_id WHERE yc.yacht_id = '{{ $('Extract Input').item.json.yacht_id }}' AND yc.role IN ('captain', 'chief_engineer', 'eto')",
+        "options": {}
+      },
+      "id": "notify_critical",
+      "name": "Create Notifications (Critical)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [700, 200],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE equipment SET attention_flag = true, attention_reason = 'Critical risk threshold crossed', attention_updated_at = NOW() WHERE id = '{{ $('Extract Input').item.json.equipment_id }}'",
+        "options": {}
+      },
+      "id": "flag_equipment_critical",
+      "name": "Flag Equipment (Critical)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [700, 300],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', '{{ $('Extract Input').item.json.title }}', 'Auto-generated from predictive engine threshold crossing', 'high', 'pending', 'predictive_engine', '{{ $('Extract Input').item.json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
+        "options": {}
+      },
+      "id": "handover_high",
+      "name": "Insert Handover (High)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [700, 450],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO search_suggestions (yacht_id, equipment_id, suggestion_text, priority, category, metadata, expires_at, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', 'Check {{ $('Extract Input').item.json.equipment_name }} - elevated risk detected', 10, 'predictive_alert', jsonb_build_object('insight_id', '{{ $('Extract Input').item.json.insight_id }}', 'severity', '{{ $('Extract Input').item.json.severity }}'), NOW() + INTERVAL '7 days', NOW()) ON CONFLICT DO NOTHING",
+        "options": {}
+      },
+      "id": "search_priority_high",
+      "name": "Add Search Priority (High)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [700, 550],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO search_suggestions (yacht_id, equipment_id, suggestion_text, priority, category, metadata, expires_at, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', 'Monitor {{ $('Extract Input').item.json.equipment_name }} - risk increasing', 5, 'predictive_alert', jsonb_build_object('insight_id', '{{ $('Extract Input').item.json.insight_id }}', 'severity', '{{ $('Extract Input').item.json.severity }}'), NOW() + INTERVAL '7 days', NOW()) ON CONFLICT DO NOTHING",
+        "options": {}
+      },
+      "id": "search_priority_elevated",
+      "name": "Add Search Priority (Elevated)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [700, 700],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect results for critical actions\nreturn [{ json: { actions: ['handover', 'notification', 'equipment_flag'], severity: 'critical' } }];"
+      },
+      "id": "merge_critical",
+      "name": "Merge Critical Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect results for high actions\nreturn [{ json: { actions: ['handover', 'search_priority'], severity: 'high' } }];"
+      },
+      "id": "merge_high",
+      "name": "Merge High Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect results for elevated actions\nreturn [{ json: { actions: ['search_priority'], severity: 'elevated' } }];"
+      },
+      "id": "merge_elevated",
+      "name": "Merge Elevated Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 700]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": { "values": [] },
+        "joinMode": "keepEverything",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge_all",
+      "name": "Merge All Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1180, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, equipment_id: $('Extract Input').item.json.equipment_id, severity: $('Extract Input').item.json.severity, actions_triggered: $json.actions || ['completed'] }) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1400, 400]
+    }
+  ],
+  "connections": {
+    "POST /internal/micro-action-dispatch": {
+      "main": [[{ "node": "Extract Input", "type": "main", "index": 0 }]]
+    },
+    "Extract Input": {
+      "main": [[{ "node": "Switch Severity", "type": "main", "index": 0 }]]
+    },
+    "Switch Severity": {
+      "main": [
+        [
+          { "node": "Insert Handover (Critical)", "type": "main", "index": 0 },
+          { "node": "Create Notifications (Critical)", "type": "main", "index": 0 },
+          { "node": "Flag Equipment (Critical)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Insert Handover (High)", "type": "main", "index": 0 },
+          { "node": "Add Search Priority (High)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Add Search Priority (Elevated)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Insert Handover (Critical)": {
+      "main": [[{ "node": "Merge Critical Actions", "type": "main", "index": 0 }]]
+    },
+    "Create Notifications (Critical)": {
+      "main": [[{ "node": "Merge Critical Actions", "type": "main", "index": 0 }]]
+    },
+    "Flag Equipment (Critical)": {
+      "main": [[{ "node": "Merge Critical Actions", "type": "main", "index": 0 }]]
+    },
+    "Insert Handover (High)": {
+      "main": [[{ "node": "Merge High Actions", "type": "main", "index": 0 }]]
+    },
+    "Add Search Priority (High)": {
+      "main": [[{ "node": "Merge High Actions", "type": "main", "index": 0 }]]
+    },
+    "Add Search Priority (Elevated)": {
+      "main": [[{ "node": "Merge Elevated Actions", "type": "main", "index": 0 }]]
+    },
+    "Merge Critical Actions": {
+      "main": [[{ "node": "Merge All Results", "type": "main", "index": 0 }]]
+    },
+    "Merge High Actions": {
+      "main": [[{ "node": "Merge All Results", "type": "main", "index": 0 }]]
+    },
+    "Merge Elevated Actions": {
+      "main": [[{ "node": "Merge All Results", "type": "main", "index": 0 }]]
+    },
+    "Merge All Results": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["predictive", "mvp2", "micro-actions"],
+  "triggerCount": 0,
+  "versionId": "1"
+}

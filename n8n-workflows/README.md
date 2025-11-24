@@ -10,14 +10,23 @@ This folder contains n8n workflows for the predictive maintenance engine and das
 
 ## Workflows
 
-### 1. Predictive Engine (Background Jobs)
+### 1. Predictive Engine - MVP1 (Cron-Based)
 
 | File | Trigger | Purpose |
 |------|---------|---------|
 | `predictive-engine-workflow.json` | Cron (every 6 hours) | Calculate risk scores for all equipment |
 | `predictive-webhook-trigger.json` | POST `/predictive-run` | On-demand risk calculation |
 
-### 2. Dashboard API Endpoints
+### 2. Predictive Engine - MVP2 (Event-Driven)
+
+| File | Trigger | Purpose |
+|------|---------|---------|
+| `predictive-event-handler.json` | POST `/internal/predictive-event` | Receive events from DB triggers |
+| `predictive-recompute-equipment.json` | POST `/internal/predictive-recompute` | Recompute single equipment risk |
+| `micro-action-dispatcher.json` | POST `/internal/micro-action-dispatch` | Trigger actions on threshold crossing |
+| `predictive-cron-safety-pass.json` | Cron (daily) | Fallback full recalculation |
+
+### 3. Dashboard API Endpoints
 
 | File | Endpoint | Widget |
 |------|----------|--------|
@@ -204,3 +213,53 @@ POST https://api.celeste7.ai/webhook/predictive-run
   "needs_attention": 8
 }
 ```
+
+---
+
+## MVP2 Event-Driven Architecture
+
+### Flow
+```
+[Database Event: fault/wo/note/part change]
+    ↓
+[Supabase Trigger → HTTP POST]
+    ↓
+[predictive-event-handler]
+    ↓
+[predictive-recompute-equipment]
+    ├── Query signals for SINGLE equipment
+    ├── Calculate risk score
+    ├── UPSERT predictive_state
+    └── Check threshold crossing
+          ↓
+    [If crossed → micro-action-dispatcher]
+          ├── Insert handover_items (critical/high)
+          ├── Create notifications (critical)
+          ├── Flag equipment attention (critical)
+          └── Add search_suggestions (high/elevated)
+```
+
+### Events Supported
+| Event | Source | Trigger |
+|-------|--------|---------|
+| `fault_created` | `faults` | INSERT |
+| `fault_resolved` | `faults` | UPDATE (status→resolved) |
+| `wo_created` | `work_orders` | INSERT |
+| `wo_updated` | `work_orders` | UPDATE |
+| `wo_overdue` | `work_orders` | due_date < NOW |
+| `wo_completed` | `work_orders` | UPDATE (status→completed) |
+| `note_added` | `notes` | INSERT (where equipment_id) |
+| `part_used` | `parts` | UPDATE (quantity decreased) |
+
+### Threshold Actions
+| Threshold | Severity | Actions |
+|-----------|----------|---------|
+| ≥0.75 | critical | handover + notification + equipment_flag |
+| ≥0.60 | high | handover + search_priority |
+| ≥0.45 | elevated | search_priority |
+
+### Setup MVP2
+1. Run `supabase/migrations/predictive_event_triggers.sql` in Supabase
+2. Import all MVP2 workflows into n8n
+3. Activate workflows
+4. Test with: `curl -X POST https://api.celeste7.ai/webhook/internal/predictive-event -d '{"event":"fault_created","equipment_id":"...","yacht_id":"..."}'`

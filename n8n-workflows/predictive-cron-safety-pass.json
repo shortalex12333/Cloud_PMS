@@ -1,0 +1,127 @@
+{
+  "name": "Predictive Cron Safety Pass (MVP2 Fallback)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "cron",
+      "name": "Daily at Midnight",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id as equipment_id, yacht_id, name FROM equipment WHERE yacht_id IS NOT NULL ORDER BY yacht_id, name",
+        "options": {}
+      },
+      "id": "get_all_equipment",
+      "name": "Get All Equipment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 300],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "split_batches",
+      "name": "Split Into Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL || 'https://api.celeste7.ai/webhook' }}/internal/predictive-recompute",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "equipment_id", "value": "={{ $json.equipment_id }}" },
+            { "name": "yacht_id", "value": "={{ $json.yacht_id }}" },
+            { "name": "event", "value": "safety_pass" },
+            { "name": "event_category", "value": "manual" }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
+          }
+        }
+      },
+      "id": "call_recompute",
+      "name": "Call Recompute for Each",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate results\nconst items = $input.all();\nconst success = items.filter(i => i.json.success).length;\nconst failed = items.filter(i => !i.json.success).length;\n\nreturn [{\n  json: {\n    total_processed: items.length,\n    success_count: success,\n    failed_count: failed,\n    completed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate_results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO system_logs (event_type, event_data, created_at) VALUES ('predictive_safety_pass', '{{ JSON.stringify($json) }}'::jsonb, NOW())",
+        "options": {}
+      },
+      "id": "log_completion",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1100, 300],
+      "credentials": {
+        "postgres": { "id": "supabase_postgres", "name": "Supabase Postgres" }
+      }
+    }
+  ],
+  "connections": {
+    "Daily at Midnight": {
+      "main": [[{ "node": "Get All Equipment", "type": "main", "index": 0 }]]
+    },
+    "Get All Equipment": {
+      "main": [[{ "node": "Split Into Batches", "type": "main", "index": 0 }]]
+    },
+    "Split Into Batches": {
+      "main": [
+        [{ "node": "Call Recompute for Each", "type": "main", "index": 0 }],
+        [{ "node": "Aggregate Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Call Recompute for Each": {
+      "main": [[{ "node": "Split Into Batches", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Results": {
+      "main": [[{ "node": "Log Completion", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["predictive", "mvp2", "cron", "fallback"],
+  "triggerCount": 0,
+  "versionId": "1"
+}
