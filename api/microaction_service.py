@@ -507,6 +507,162 @@ async def log_requests(request: Request, call_next):
 # API ENDPOINTS
 # ========================================================================
 
+import re
+
+# ========================================================================
+# LANE ROUTING LOGIC (all guards + intent classification)
+# ========================================================================
+
+def classify_intent(query: str) -> tuple:
+    """Classify query intent using regex rules. Returns (intent, confidence)."""
+    query_lower = query.lower()
+
+    INTENT_RULES = [
+        (r'overheating|vibrat|leak|noise|smoke|low pressure|high temp|alarm|warning|error|fault|code|not working|broken|failed|issue|problem', 'diagnose_issue', 0.9),
+        (r'manual|document|pdf|schematic|diagram|certificate|drawing|spec|datasheet', 'find_document', 0.85),
+        (r'work order|wo|maintenance.*scheduled|task|job|repair|service.*history', 'find_work_order', 0.85),
+        (r'part|spare|filter|belt|impeller|gasket|zinc|seal|bearing|pump', 'find_part', 0.85),
+        (r'predict|risk|likely|upcoming|due|health|condition|failure.*probability', 'predictive', 0.8),
+        (r'handover|shift|brief|status|summary|update|report', 'handover', 0.8),
+        (r'who|engineer|captain|chief|crew|eto|bosun|assigned', 'find_user', 0.75),
+        (r'system|hvac|propulsion|electrical|navigation|safety|stabiliser|watermaker', 'find_system', 0.7),
+    ]
+
+    for pattern, intent, confidence in INTENT_RULES:
+        if re.search(pattern, query_lower):
+            return intent, confidence
+
+    return 'general_search', 0.5
+
+
+def route_to_lane(query: str, mode: str = None) -> dict:
+    """
+    Determine which processing lane to use.
+    Returns: {lane, lane_reason, intent, intent_confidence, skip_gpt, ...}
+    """
+    query_lower = query.lower().strip()
+    words = query.split()
+    word_count = len(words)
+    char_count = len(query)
+
+    # Classify intent first
+    intent, intent_confidence = classify_intent(query)
+
+    # Problem/temporal detection
+    PROBLEM_WORDS = re.compile(r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|not working|broken|failed|failing|issue|problem|keeps|again|recurring|repeat|since|before charter|this morning|last time|still')
+    TEMPORAL_WORDS = re.compile(r'before charter|after maintenance|since|this morning|last week|yesterday|upcoming|scheduled|due|next|prior to')
+
+    has_problem_words = bool(PROBLEM_WORDS.search(query_lower))
+    has_temporal_context = bool(TEMPORAL_WORDS.search(query_lower))
+
+    base_result = {
+        'intent': intent,
+        'intent_confidence': intent_confidence,
+        'word_count': word_count,
+        'has_problem_words': has_problem_words,
+        'has_temporal_context': has_temporal_context,
+    }
+
+    # ========== GUARD 0: PASTE-DUMP ==========
+    if word_count > 50 or char_count > 300:
+        return {
+            **base_result,
+            'lane': 'BLOCKED',
+            'lane_reason': 'paste_dump',
+            'block_message': 'This looks like a large paste. Try a shorter search, or upload as a document/handover.',
+            'skip_gpt': True,
+        }
+
+    # ========== GUARD 1: TOO VAGUE ==========
+    if word_count <= 2 and intent == 'general_search' and not has_problem_words:
+        return {
+            **base_result,
+            'lane': 'BLOCKED',
+            'lane_reason': 'too_vague',
+            'block_message': None,
+            'suggestions': [
+                'Try naming the equipment, e.g. "main engine overheating"',
+                'Or search for a document, e.g. "CAT 3512 manual"',
+                'Or a work order, e.g. "WO-1234"'
+            ],
+            'skip_gpt': True,
+        }
+
+    # ========== GUARD 2: NON-DOMAIN QUERIES ==========
+    NON_DOMAIN = re.compile(r'^(what is|what\'s|who is|tell me about|explain)\s+(quantum|bitcoin|crypto|ai|weather|news|stock)|^(tell me a joke|hello|hi there|hey|good morning|thanks|thank you)$|^(what time|what day|what date)|^(how are you|how do you feel)', re.IGNORECASE)
+    DOMAIN_KEYWORDS = re.compile(r'engine|pump|generator|hvac|watermaker|stabiliser|nav|radar|wo|work order|manual|part|filter|impeller|seal|bearing|crew|captain|handover|fault|alarm|maintenance|service|repair|inspection|certificate', re.IGNORECASE)
+
+    if NON_DOMAIN.search(query_lower) and not DOMAIN_KEYWORDS.search(query_lower):
+        return {
+            **base_result,
+            'lane': 'BLOCKED',
+            'lane_reason': 'non_domain',
+            'block_message': 'Celeste is for yacht operations. Ask about equipment, faults, work orders, handovers, or documents.',
+            'skip_gpt': True,
+        }
+
+    # ========== LANE A: NO_LLM (cheap lookup) ==========
+    DIRECT_LOOKUP = [
+        r'^wo[-\s]?\d+$',
+        r'^doc[-\s]?\d+$',
+        r'^e\d{2,4}$',
+        r'^[a-z]{2,4}[-\s]?\d+$',
+        r'^\d{3,}\s*manual$',
+        r'^cat\s+\d+\s*manual$',
+        r'^mtu\s+\d+',
+        r'^kohler\s+',
+    ]
+    is_direct_lookup = any(re.match(p, query_lower) for p in DIRECT_LOOKUP)
+    is_simple_lookup = word_count <= 4 and intent in ['find_document', 'find_work_order', 'find_part'] and not has_problem_words and not has_temporal_context
+    is_forced_lookup = mode in ['document_search', 'work_order_search']
+
+    if is_direct_lookup or is_simple_lookup or is_forced_lookup:
+        return {
+            **base_result,
+            'lane': 'NO_LLM',
+            'lane_reason': 'direct_lookup_pattern' if is_direct_lookup else 'forced_mode' if is_forced_lookup else 'simple_lookup',
+            'skip_gpt': True,
+        }
+
+    # ========== LANE B: RULES_ONLY (simple commands) ==========
+    COMMAND_PATTERNS = [
+        (r'^create\s+(work\s*order|wo)', 'create_work_order'),
+        (r'^open\s+(work\s*order|wo)', 'open_work_order'),
+        (r'^close\s+(work\s*order|wo)', 'close_work_order'),
+        (r'^log\s+', 'log_entry'),
+        (r'^add\s+note', 'add_note'),
+        (r'^schedule\s+', 'schedule_task'),
+    ]
+    for pattern, action in COMMAND_PATTERNS:
+        if re.match(pattern, query_lower):
+            target_match = re.search(r'(?:for|on|to|:)\s*(.+)$', query_lower)
+            return {
+                **base_result,
+                'lane': 'RULES_ONLY',
+                'lane_reason': 'command_pattern',
+                'command_action': action,
+                'command_target': target_match.group(1).strip() if target_match else None,
+                'skip_gpt': True,
+            }
+
+    # ========== LANE C: GPT (full agent mode) ==========
+    if has_problem_words or has_temporal_context or intent == 'diagnose_issue' or (intent == 'general_search' and word_count >= 5):
+        return {
+            **base_result,
+            'lane': 'GPT',
+            'lane_reason': 'problem_words' if has_problem_words else 'temporal_context' if has_temporal_context else 'diagnosis_intent' if intent == 'diagnose_issue' else 'complex_query',
+            'skip_gpt': False,
+        }
+
+    # Default: simple lookup
+    return {
+        **base_result,
+        'lane': 'NO_LLM',
+        'lane_reason': 'default_fallback',
+        'skip_gpt': True,
+    }
+
+
 @app.post("/extract", tags=["Entity Extraction"])
 @limiter.limit("100/minute")
 async def extract(
@@ -515,76 +671,88 @@ async def extract(
     auth: Dict = Depends(verify_security)
 ):
     """
-    **GPT ENTITY EXTRACTION ENDPOINT**
+    **SMART EXTRACTION ENDPOINT WITH LANE ROUTING**
 
-    Extracts entities and detects action from natural language using GPT-4o-mini.
-    Optionally returns text-embedding-3-small embedding for RAG.
+    Routes queries to appropriate lane and extracts entities when needed.
 
-    **What it does:**
-    - GPT-4o-mini extracts entities (equipment, parts, symptoms, fault codes, persons)
-    - GPT-4o-mini detects action intent (create_work_order, view_history, etc.)
-    - text-embedding-3-small generates 1536-dim embedding (if include_embedding=true)
+    **Lanes:**
+    - BLOCKED: Rejects paste-dumps, vague queries, non-domain queries
+    - NO_LLM: Cheap lookups (WO-1234, CAT manual) - no GPT cost
+    - RULES_ONLY: Simple commands (create WO) - no GPT cost
+    - GPT: Full extraction for complex queries
 
-    **Security (2 headers only):**
-    - Authorization: Bearer <supabase_jwt>
-    - X-Yacht-Signature: <sha256_signature>
-
-    **Request:**
-    ```json
-    {
-        "query": "Engine is overheating, show historic data from 2nd engineer",
-        "include_embedding": true
-    }
-    ```
-
-    **Response:**
-    ```json
-    {
-        "entities": [
-            {"type": "equipment", "value": "Main Engine", "canonical": "MAIN_ENGINE", "confidence": 0.95},
-            {"type": "symptom", "value": "overheating", "canonical": "OVERHEAT", "confidence": 0.90},
-            {"type": "person", "value": "2nd engineer", "canonical": "2ND_ENGINEER", "confidence": 0.85}
-        ],
-        "action": "view_history",
-        "action_confidence": 0.92,
-        "person_filter": "2ND_ENGINEER",
-        "embedding": [0.023, -0.045, ...],  // 1536 floats if include_embedding=true
-        "metadata": {
-            "model": "gpt-4o-mini",
-            "embedding_model": "text-embedding-3-small",
-            "latency_ms": 312
-        }
-    }
-    ```
-
-    **n8n Integration:**
-    - Call this endpoint to get entities + embedding
-    - Use embedding with match_documents() for RAG retrieval
-    - Build cards and responses in n8n
+    **Response includes:**
+    - lane: Which processing path to use
+    - lane_reason: Why this lane was chosen
+    - entities: (GPT lane only) Extracted entities
+    - embedding: (GPT lane + include_embedding) Vector embedding
     """
     import time
     start = time.time()
 
-    # Check if GPT extractor is available
+    query = extraction_request.query
+    mode = getattr(extraction_request, 'mode', None)
+
+    # Route to lane FIRST (cheap regex checks)
+    routing = route_to_lane(query, mode)
+    lane = routing['lane']
+
+    # ========== BLOCKED: Return immediately ==========
+    if lane == 'BLOCKED':
+        latency_ms = int((time.time() - start) * 1000)
+        logger.info(f"BLOCKED: query='{query[:50]}...', reason={routing['lane_reason']}")
+        return {
+            'lane': lane,
+            'lane_reason': routing['lane_reason'],
+            'block_message': routing.get('block_message'),
+            'suggestions': routing.get('suggestions', []),
+            'intent': routing['intent'],
+            'intent_confidence': routing['intent_confidence'],
+            'entities': [],
+            'embedding': None,
+            'metadata': {'latency_ms': latency_ms, 'model': None}
+        }
+
+    # ========== NO_LLM / RULES_ONLY: Skip GPT ==========
+    if lane in ['NO_LLM', 'RULES_ONLY']:
+        latency_ms = int((time.time() - start) * 1000)
+        logger.info(f"{lane}: query='{query}', reason={routing['lane_reason']}")
+        return {
+            'lane': lane,
+            'lane_reason': routing['lane_reason'],
+            'intent': routing['intent'],
+            'intent_confidence': routing['intent_confidence'],
+            'command_action': routing.get('command_action'),
+            'command_target': routing.get('command_target'),
+            'entities': [],
+            'embedding': None,
+            'metadata': {'latency_ms': latency_ms, 'model': 'regex_only'}
+        }
+
+    # ========== GPT LANE: Full extraction ==========
     if graphrag_query is None or graphrag_query.gpt is None:
         # Fallback to regex pipeline
         if pipeline is None:
             raise HTTPException(status_code=503, detail="Extraction service not initialized")
 
-        result = pipeline.extract(extraction_request.query)
+        result = pipeline.extract(query)
         latency_ms = int((time.time() - start) * 1000)
 
         return {
-            "entities": result.get("canonical_entities", []),
-            "action": result.get("intent", "general_search"),
-            "action_confidence": 0.7,
-            "person_filter": None,
-            "embedding": None,
-            "metadata": {
-                "model": "regex_fallback",
-                "embedding_model": None,
-                "latency_ms": latency_ms,
-                "fallback": True
+            'lane': 'GPT',
+            'lane_reason': routing['lane_reason'],
+            'intent': routing['intent'],
+            'intent_confidence': routing['intent_confidence'],
+            'entities': result.get("canonical_entities", []),
+            'action': result.get("intent", "general_search"),
+            'action_confidence': 0.7,
+            'person_filter': None,
+            'embedding': None,
+            'metadata': {
+                'model': 'regex_fallback',
+                'embedding_model': None,
+                'latency_ms': latency_ms,
+                'fallback': True
             }
         }
 
@@ -592,17 +760,17 @@ async def extract(
         gpt = graphrag_query.gpt
 
         # GPT extraction
-        extraction = gpt.extract(extraction_request.query)
+        extraction = gpt.extract(query)
 
         # Generate embedding if requested
         embedding = None
         if extraction_request.include_embedding:
-            embedding = gpt.embed(extraction_request.query)
+            embedding = gpt.embed(query)
 
         latency_ms = int((time.time() - start) * 1000)
 
         logger.info(
-            f"GPT extraction: query='{extraction_request.query}', "
+            f"GPT: query='{query}', "
             f"action={extraction.action}, "
             f"entities={len(extraction.entities)}, "
             f"latency={latency_ms}ms, "
@@ -610,16 +778,20 @@ async def extract(
         )
 
         return {
-            "entities": [e.to_dict() for e in extraction.entities],
-            "action": extraction.action,
-            "action_confidence": extraction.action_confidence,
-            "person_filter": extraction.person_filter,
-            "embedding": embedding,
-            "metadata": {
-                "model": "gpt-4o-mini",
-                "embedding_model": "text-embedding-3-small" if embedding else None,
-                "embedding_dimensions": 1536 if embedding else None,
-                "latency_ms": latency_ms
+            'lane': 'GPT',
+            'lane_reason': routing['lane_reason'],
+            'intent': routing['intent'],
+            'intent_confidence': max(routing['intent_confidence'], extraction.action_confidence),
+            'entities': [e.to_dict() for e in extraction.entities],
+            'action': extraction.action,
+            'action_confidence': extraction.action_confidence,
+            'person_filter': extraction.person_filter,
+            'embedding': embedding,
+            'metadata': {
+                'model': 'gpt-4o-mini',
+                'embedding_model': 'text-embedding-3-small' if embedding else None,
+                'embedding_dimensions': 1536 if embedding else None,
+                'latency_ms': latency_ms
             }
         }
 
