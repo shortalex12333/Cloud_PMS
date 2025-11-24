@@ -1,0 +1,124 @@
+{
+  "name": "Dashboard API - Work Orders Status",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "v1/work-orders/status",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "GET /v1/work-orders/status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "webhookId": "work-orders-status"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND status NOT IN ('completed', 'cancelled')) as overdue, COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress, COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '7 days') as completed_this_week FROM work_orders",
+        "options": {}
+      },
+      "id": "get_stats",
+      "name": "Get Work Order Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT wo.id, wo.title, e.name as equipment_name, EXTRACT(DAY FROM (CURRENT_DATE - wo.due_date))::int as days_overdue FROM work_orders wo LEFT JOIN equipment e ON wo.equipment_id = e.id WHERE wo.due_date < CURRENT_DATE AND wo.status NOT IN ('completed', 'cancelled') ORDER BY wo.due_date ASC LIMIT 5",
+        "options": {}
+      },
+      "id": "get_overdue",
+      "name": "Get Overdue Items",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "joinMode": "keepEverything",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [440, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine stats and overdue items\nconst items = $input.all();\n\n// Find stats (has 'total' field)\nconst statsItem = items.find(i => i.json.total !== undefined);\nconst stats = statsItem ? statsItem.json : { total: 0, overdue: 0, in_progress: 0, completed_this_week: 0 };\n\n// Find overdue items (have 'days_overdue' field)\nconst overdueItems = items\n  .filter(i => i.json.days_overdue !== undefined)\n  .map(i => ({\n    id: i.json.id,\n    title: i.json.title || 'Untitled Work Order',\n    equipment_name: i.json.equipment_name || 'Unknown Equipment',\n    days_overdue: parseInt(i.json.days_overdue) || 0\n  }));\n\nreturn [{\n  json: {\n    total: parseInt(stats.total) || 0,\n    overdue: parseInt(stats.overdue) || 0,\n    in_progress: parseInt(stats.in_progress) || 0,\n    completed_this_week: parseInt(stats.completed_this_week) || 0,\n    overdue_items: overdueItems\n  }\n}];"
+      },
+      "id": "transform",
+      "name": "Transform Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [880, 100]
+    }
+  ],
+  "connections": {
+    "GET /v1/work-orders/status": {
+      "main": [[
+        { "node": "Get Work Order Stats", "type": "main", "index": 0 },
+        { "node": "Get Overdue Items", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get Work Order Stats": {
+      "main": [[{ "node": "Merge Data", "type": "main", "index": 0 }]]
+    },
+    "Get Overdue Items": {
+      "main": [[{ "node": "Merge Data", "type": "main", "index": 1 }]]
+    },
+    "Merge Data": {
+      "main": [[{ "node": "Transform Response", "type": "main", "index": 0 }]]
+    },
+    "Transform Response": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["dashboard"],
+  "triggerCount": 0,
+  "versionId": "1"
+}

@@ -1,10 +1,32 @@
-# Predictive Maintenance Engine - n8n Workflow
+# n8n Workflows for CelesteOS
 
 ## Overview
 
-This n8n workflow calculates equipment risk scores and generates predictive insights.
+This folder contains n8n workflows for the predictive maintenance engine and dashboard API endpoints.
 
-**Runs:** Every 6 hours (configurable)
+**Base URL:** `https://api.celeste7.ai/webhook`
+
+---
+
+## Workflows
+
+### 1. Predictive Engine (Background Jobs)
+
+| File | Trigger | Purpose |
+|------|---------|---------|
+| `predictive-engine-workflow.json` | Cron (every 6 hours) | Calculate risk scores for all equipment |
+| `predictive-webhook-trigger.json` | POST `/predictive-run` | On-demand risk calculation |
+
+### 2. Dashboard API Endpoints
+
+| File | Endpoint | Widget |
+|------|----------|--------|
+| `dashboard-predictive-top-risks.json` | GET `/v1/predictive/top-risks` | PredictiveOverview |
+| `dashboard-work-orders-status.json` | GET `/v1/work-orders/status` | WorkOrderStatus |
+| `dashboard-inventory-low-stock.json` | GET `/v1/inventory/low-stock` | InventoryStatus |
+| `dashboard-equipment-overview.json` | GET `/v1/equipment/overview` | EquipmentOverview |
+
+---
 
 ## Setup Instructions
 
@@ -115,4 +137,70 @@ To run manually, click **Execute Workflow** in n8n.
 Add a Webhook node if you want to trigger via API:
 ```
 POST https://api.celeste7.ai/webhook/predictive-run
+```
+
+---
+
+## Dashboard API Response Formats
+
+### GET /v1/predictive/top-risks
+```json
+{
+  "risks": [
+    {
+      "equipment_id": "uuid",
+      "equipment_name": "HVAC Chiller #3",
+      "risk_score": 0.78,
+      "summary": "High fault frequency, Overdue maintenance",
+      "contributing_factors": ["5 faults in 90 days", "2 overdue tasks"]
+    }
+  ]
+}
+```
+
+### GET /v1/work-orders/status
+```json
+{
+  "total": 42,
+  "overdue": 3,
+  "in_progress": 8,
+  "completed_this_week": 12,
+  "overdue_items": [
+    {
+      "id": "uuid",
+      "title": "Replace HVAC filters",
+      "equipment_name": "HVAC System",
+      "days_overdue": 5
+    }
+  ]
+}
+```
+
+### GET /v1/inventory/low-stock
+```json
+{
+  "low_stock_count": 5,
+  "on_order": 8,
+  "total_parts": 234,
+  "low_stock_items": [
+    {
+      "id": "uuid",
+      "name": "Racor 2040 Filter",
+      "part_number": "2040N2",
+      "quantity": 1,
+      "min_quantity": 4,
+      "system": "Fuel System"
+    }
+  ]
+}
+```
+
+### GET /v1/equipment/overview
+```json
+{
+  "total": 156,
+  "critical": 12,
+  "operational": 144,
+  "needs_attention": 8
+}
 ```

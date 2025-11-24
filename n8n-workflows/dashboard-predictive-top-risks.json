@@ -1,0 +1,81 @@
+{
+  "name": "Dashboard API - Predictive Top Risks",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "v1/predictive/top-risks",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "GET /v1/predictive/top-risks",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "webhookId": "predictive-top-risks"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT ps.equipment_id, e.name as equipment_name, ps.risk_score, ps.confidence, ps.contributing_factors, ps.last_calculated_at FROM predictive_state ps JOIN equipment e ON ps.equipment_id = e.id WHERE ps.risk_score >= 0.5 ORDER BY ps.risk_score DESC LIMIT 10",
+        "options": {}
+      },
+      "id": "get_risks",
+      "name": "Query Top Risks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform to dashboard expected format\nconst risks = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Parse contributing_factors if it's a string\n  let factors = data.contributing_factors;\n  if (typeof factors === 'string') {\n    try { factors = JSON.parse(factors); } catch (e) { factors = {}; }\n  }\n  \n  // Build summary from contributing factors\n  const issues = [];\n  if (factors.fault_signal > 0.5) issues.push('High fault frequency');\n  if (factors.work_order_signal > 0.5) issues.push('Overdue maintenance');\n  if (factors.notes_signal > 0.5) issues.push('Frequent crew concerns');\n  if (factors.corrective_signal > 0.5) issues.push('Recurring repairs');\n  \n  const summary = issues.length > 0 \n    ? issues.join(', ')\n    : 'Multiple minor indicators detected';\n  \n  // Build contributing_factors array for dashboard\n  const factorsList = [];\n  if (factors.fault_count > 0) factorsList.push(`${factors.fault_count} faults in 90 days`);\n  if (factors.overdue_count > 0) factorsList.push(`${factors.overdue_count} overdue tasks`);\n  if (factors.note_count > 0) factorsList.push(`${factors.note_count} crew notes`);\n  \n  risks.push({\n    equipment_id: data.equipment_id,\n    equipment_name: data.equipment_name || 'Unknown Equipment',\n    risk_score: parseFloat(data.risk_score) || 0,\n    summary: summary,\n    contributing_factors: factorsList.length > 0 ? factorsList : ['Risk score elevated']\n  });\n}\n\nreturn [{ json: { risks } }];"
+      },
+      "id": "transform",
+      "name": "Transform Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "GET /v1/predictive/top-risks": {
+      "main": [[{ "node": "Query Top Risks", "type": "main", "index": 0 }]]
+    },
+    "Query Top Risks": {
+      "main": [[{ "node": "Transform Response", "type": "main", "index": 0 }]]
+    },
+    "Transform Response": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["dashboard"],
+  "triggerCount": 0,
+  "versionId": "1"
+}

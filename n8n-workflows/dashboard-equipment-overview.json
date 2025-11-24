@@ -1,0 +1,81 @@
+{
+  "name": "Dashboard API - Equipment Overview",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "v1/equipment/overview",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "GET /v1/equipment/overview",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "webhookId": "equipment-overview"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE criticality = 'high' OR criticality = 'critical') as critical, COUNT(*) FILTER (WHERE status = 'operational' OR status IS NULL) as operational, COUNT(*) FILTER (WHERE status IN ('needs_attention', 'maintenance_required', 'warning')) as needs_attention FROM equipment",
+        "options": {}
+      },
+      "id": "get_stats",
+      "name": "Get Equipment Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform to dashboard expected format\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    total: parseInt(data.total) || 0,\n    critical: parseInt(data.critical) || 0,\n    operational: parseInt(data.operational) || 0,\n    needs_attention: parseInt(data.needs_attention) || 0\n  }\n}];"
+      },
+      "id": "transform",
+      "name": "Transform Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "GET /v1/equipment/overview": {
+      "main": [[{ "node": "Get Equipment Stats", "type": "main", "index": 0 }]]
+    },
+    "Get Equipment Stats": {
+      "main": [[{ "node": "Transform Response", "type": "main", "index": 0 }]]
+    },
+    "Transform Response": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["dashboard"],
+  "triggerCount": 0,
+  "versionId": "1"
+}

@@ -1,0 +1,124 @@
+{
+  "name": "Dashboard API - Inventory Low Stock",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "v1/inventory/low-stock",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "GET /v1/inventory/low-stock",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "webhookId": "inventory-low-stock"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total_parts, COUNT(*) FILTER (WHERE quantity < min_quantity) as low_stock_count, COUNT(*) FILTER (WHERE on_order > 0) as on_order FROM parts",
+        "options": {}
+      },
+      "id": "get_stats",
+      "name": "Get Inventory Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT p.id, p.name, p.part_number, p.quantity, p.min_quantity, e.system_type as system FROM parts p LEFT JOIN equipment e ON p.equipment_id = e.id WHERE p.quantity < p.min_quantity ORDER BY (p.min_quantity - p.quantity) DESC LIMIT 10",
+        "options": {}
+      },
+      "id": "get_low_stock",
+      "name": "Get Low Stock Items",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [220, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase_postgres",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "joinMode": "keepEverything",
+        "outputDataFrom": "both",
+        "options": {}
+      },
+      "id": "merge",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [440, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine stats and low stock items\nconst items = $input.all();\n\n// Find stats (has 'total_parts' field)\nconst statsItem = items.find(i => i.json.total_parts !== undefined);\nconst stats = statsItem ? statsItem.json : { total_parts: 0, low_stock_count: 0, on_order: 0 };\n\n// Find low stock items (have 'min_quantity' field but not 'total_parts')\nconst lowStockItems = items\n  .filter(i => i.json.min_quantity !== undefined && i.json.total_parts === undefined)\n  .map(i => ({\n    id: i.json.id,\n    name: i.json.name || 'Unknown Part',\n    part_number: i.json.part_number || '',\n    quantity: parseInt(i.json.quantity) || 0,\n    min_quantity: parseInt(i.json.min_quantity) || 0,\n    system: i.json.system || 'General'\n  }));\n\nreturn [{\n  json: {\n    low_stock_count: parseInt(stats.low_stock_count) || 0,\n    on_order: parseInt(stats.on_order) || 0,\n    total_parts: parseInt(stats.total_parts) || 0,\n    low_stock_items: lowStockItems\n  }\n}];"
+      },
+      "id": "transform",
+      "name": "Transform Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [880, 100]
+    }
+  ],
+  "connections": {
+    "GET /v1/inventory/low-stock": {
+      "main": [[
+        { "node": "Get Inventory Stats", "type": "main", "index": 0 },
+        { "node": "Get Low Stock Items", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get Inventory Stats": {
+      "main": [[{ "node": "Merge Data", "type": "main", "index": 0 }]]
+    },
+    "Get Low Stock Items": {
+      "main": [[{ "node": "Merge Data", "type": "main", "index": 1 }]]
+    },
+    "Merge Data": {
+      "main": [[{ "node": "Transform Response", "type": "main", "index": 0 }]]
+    },
+    "Transform Response": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["dashboard"],
+  "triggerCount": 0,
+  "versionId": "1"
+}
