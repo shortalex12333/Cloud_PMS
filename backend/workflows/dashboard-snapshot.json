@@ -1,0 +1,325 @@
+{
+  "name": "Dashboard Snapshot Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "internal/dashboard-refresh",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "trigger-webhook",
+      "name": "POST /internal/dashboard-refresh",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 200],
+      "webhookId": "dashboard-refresh"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT yacht_id FROM yachts WHERE status = 'active'",
+        "options": {}
+      },
+      "id": "get-yachts",
+      "name": "Get Active Yachts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [240, 100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "id": "batch-yachts",
+      "name": "Process in Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [480, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const yachtId = $input.first().json.yacht_id;\n\nreturn [{ json: { yacht_id: yachtId, start_time: Date.now() } }];"
+      },
+      "id": "prepare-yacht",
+      "name": "Prepare Yacht Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT ps.equipment_id, ps.risk_score, ps.risk_level, ps.trend, ps.contributing_factors, e.name as equipment_name, e.system_type FROM predictive_state ps JOIN equipment e ON ps.equipment_id = e.id WHERE ps.yacht_id = '{{ $json.yacht_id }}' AND ps.risk_score >= 0.6 ORDER BY ps.risk_score DESC LIMIT 10",
+        "options": {}
+      },
+      "id": "get-high-risk",
+      "name": "Get High Risk Equipment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, -100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT ps.equipment_id, e.name as equipment_name, ps.risk_score as current_score, ps.previous_risk_score as previous_score, (ps.risk_score - COALESCE(ps.previous_risk_score, 0)) as delta, CASE WHEN ps.risk_score > COALESCE(ps.previous_risk_score, 0) THEN 'up' WHEN ps.risk_score < COALESCE(ps.previous_risk_score, 0) THEN 'down' ELSE 'stable' END as direction FROM predictive_state ps JOIN equipment e ON ps.equipment_id = e.id WHERE ps.yacht_id = '{{ $('Prepare Yacht Context').item.json.yacht_id }}' AND ps.updated_at >= CURRENT_DATE AND ABS(ps.risk_score - COALESCE(ps.previous_risk_score, 0)) > 0.05 ORDER BY ABS(ps.risk_score - COALESCE(ps.previous_risk_score, 0)) DESC",
+        "options": {}
+      },
+      "id": "get-risk-movements",
+      "name": "Get Risk Movements",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, 100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT wo.id as work_order_id, wo.title, wo.equipment_id, e.name as equipment_name, wo.due_date, EXTRACT(DAY FROM CURRENT_DATE - wo.due_date::date)::int as days_overdue, wo.priority FROM work_orders wo LEFT JOIN equipment e ON wo.equipment_id = e.id WHERE wo.yacht_id = '{{ $('Prepare Yacht Context').item.json.yacht_id }}' AND wo.status IN ('planned', 'in_progress') AND wo.due_date < CURRENT_DATE ORDER BY wo.due_date ASC LIMIT 20",
+        "options": {}
+      },
+      "id": "get-overdue",
+      "name": "Get Overdue Critical",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT sl.part_id, p.name as part_name, sl.quantity as current_qty, sl.min_quantity as min_qty, (sl.min_quantity - sl.quantity) as shortage FROM stock_levels sl JOIN parts p ON sl.part_id = p.id WHERE sl.yacht_id = '{{ $('Prepare Yacht Context').item.json.yacht_id }}' AND sl.quantity < sl.min_quantity ORDER BY (sl.min_quantity - sl.quantity) DESC LIMIT 15",
+        "options": {}
+      },
+      "id": "get-inventory-gaps",
+      "name": "Get Inventory Gaps",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, 500],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total_equipment FROM equipment WHERE yacht_id = '{{ $('Prepare Yacht Context').item.json.yacht_id }}'",
+        "options": {}
+      },
+      "id": "get-summary-1",
+      "name": "Get Summary Stats",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, 700],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst yachtId = $('Prepare Yacht Context').first().json.yacht_id;\nconst startTime = $('Prepare Yacht Context').first().json.start_time;\n\n// Categorize data\nlet highRisk = [];\nlet riskMovements = [];\nlet overdueCritical = [];\nlet inventoryGaps = [];\nlet summaryStats = { total_equipment: 0 };\n\nitems.forEach(item => {\n  const d = item.json;\n  if (d.risk_score !== undefined && d.equipment_name) {\n    if (d.current_score !== undefined) {\n      riskMovements.push(d);\n    } else {\n      highRisk.push(d);\n    }\n  }\n  if (d.work_order_id) overdueCritical.push(d);\n  if (d.shortage !== undefined) inventoryGaps.push(d);\n  if (d.total_equipment !== undefined) summaryStats.total_equipment = parseInt(d.total_equipment);\n});\n\nconst snapshot = {\n  yacht_id: yachtId,\n  snapshot_type: 'briefing',\n  high_risk_equipment: highRisk,\n  risk_movements: riskMovements,\n  unstable_systems: [],\n  patterns_7d: [],\n  overdue_critical: overdueCritical,\n  inventory_gaps: inventoryGaps,\n  inspections_due: [],\n  crew_frustration: [],\n  summary_stats: {\n    ...summaryStats,\n    high_risk_count: highRisk.length,\n    overdue_wo_count: overdueCritical.length,\n    low_stock_count: inventoryGaps.length\n  },\n  generated_at: new Date().toISOString(),\n  generation_duration_ms: Date.now() - startTime,\n  valid_until: new Date(Date.now() + 30 * 60 * 1000).toISOString()\n};\n\nreturn [{ json: snapshot }];"
+      },
+      "id": "build-snapshot",
+      "name": "Build Snapshot Object",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO dashboard_snapshot (yacht_id, snapshot_type, high_risk_equipment, risk_movements, unstable_systems, patterns_7d, overdue_critical, inventory_gaps, inspections_due, crew_frustration, summary_stats, generated_at, generation_duration_ms, valid_until) VALUES ('{{ $json.yacht_id }}', '{{ $json.snapshot_type }}', '{{ JSON.stringify($json.high_risk_equipment) }}'::jsonb, '{{ JSON.stringify($json.risk_movements) }}'::jsonb, '{{ JSON.stringify($json.unstable_systems) }}'::jsonb, '{{ JSON.stringify($json.patterns_7d) }}'::jsonb, '{{ JSON.stringify($json.overdue_critical) }}'::jsonb, '{{ JSON.stringify($json.inventory_gaps) }}'::jsonb, '{{ JSON.stringify($json.inspections_due) }}'::jsonb, '{{ JSON.stringify($json.crew_frustration) }}'::jsonb, '{{ JSON.stringify($json.summary_stats) }}'::jsonb, '{{ $json.generated_at }}', {{ $json.generation_duration_ms }}, '{{ $json.valid_until }}') RETURNING id",
+        "options": {}
+      },
+      "id": "insert-snapshot",
+      "name": "Insert Snapshot",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1680, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { processed: true, yacht_id: $('Prepare Yacht Context').first().json.yacht_id } }];"
+      },
+      "id": "mark-done",
+      "name": "Mark Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all();\nconst successCount = results.filter(r => r.json.processed).length;\n\nreturn [{\n  json: {\n    status: 'completed',\n    yachts_processed: successCount,\n    completed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "final-summary",
+      "name": "Final Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO system_logs (event_type, event_data) VALUES ('dashboard_snapshot_batch', '{{ JSON.stringify($json) }}'::jsonb)",
+        "options": {}
+      },
+      "id": "log-completion",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2400, 100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Dashboard snapshots refreshed' }) }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2640, 200]
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes": {
+      "main": [[{ "node": "Get Active Yachts", "type": "main", "index": 0 }]]
+    },
+    "POST /internal/dashboard-refresh": {
+      "main": [[{ "node": "Get Active Yachts", "type": "main", "index": 0 }]]
+    },
+    "Get Active Yachts": {
+      "main": [[{ "node": "Process in Batches", "type": "main", "index": 0 }]]
+    },
+    "Process in Batches": {
+      "main": [
+        [{ "node": "Prepare Yacht Context", "type": "main", "index": 0 }],
+        [{ "node": "Final Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Yacht Context": {
+      "main": [[
+        { "node": "Get High Risk Equipment", "type": "main", "index": 0 },
+        { "node": "Get Risk Movements", "type": "main", "index": 0 },
+        { "node": "Get Overdue Critical", "type": "main", "index": 0 },
+        { "node": "Get Inventory Gaps", "type": "main", "index": 0 },
+        { "node": "Get Summary Stats", "type": "main", "index": 0 }
+      ]]
+    },
+    "Get High Risk Equipment": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 0 }]]
+    },
+    "Get Risk Movements": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 0 }]]
+    },
+    "Get Overdue Critical": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 0 }]]
+    },
+    "Get Inventory Gaps": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 0 }]]
+    },
+    "Get Summary Stats": {
+      "main": [[{ "node": "Merge All Data", "type": "main", "index": 0 }]]
+    },
+    "Merge All Data": {
+      "main": [[{ "node": "Build Snapshot Object", "type": "main", "index": 0 }]]
+    },
+    "Build Snapshot Object": {
+      "main": [[{ "node": "Insert Snapshot", "type": "main", "index": 0 }]]
+    },
+    "Insert Snapshot": {
+      "main": [[{ "node": "Mark Complete", "type": "main", "index": 0 }]]
+    },
+    "Mark Complete": {
+      "main": [[{ "node": "Process in Batches", "type": "main", "index": 0 }]]
+    },
+    "Final Summary": {
+      "main": [[{ "node": "Log Completion", "type": "main", "index": 0 }]]
+    },
+    "Log Completion": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": ["celesteos", "dashboard", "snapshot"]
+}

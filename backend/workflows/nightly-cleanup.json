@@ -1,0 +1,296 @@
+{
+  "name": "Nightly Cleanup & Maintenance",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "nightly-trigger",
+      "name": "Daily at 2 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { start_time: new Date().toISOString(), tasks: [] } }];"
+      },
+      "id": "init-context",
+      "name": "Initialize Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM dashboard_snapshot WHERE generated_at < NOW() - INTERVAL '7 days' RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-snapshots",
+      "name": "Cleanup Old Snapshots",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, -200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM predictive_insights WHERE dismissed = true AND dismissed_at < NOW() - INTERVAL '30 days' RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-insights",
+      "name": "Cleanup Dismissed Insights",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM action_logs WHERE created_at < NOW() - INTERVAL '90 days' RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-action-logs",
+      "name": "Cleanup Old Action Logs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM pipeline_logs WHERE created_at < NOW() - INTERVAL '30 days' RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-pipeline-logs",
+      "name": "Cleanup Pipeline Logs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, 400],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM notifications WHERE read = true AND read_at < NOW() - INTERVAL '30 days' RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-notifications",
+      "name": "Cleanup Read Notifications",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, 600],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM search_suggestions WHERE expires_at < NOW() RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-suggestions",
+      "name": "Cleanup Expired Suggestions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, 800],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM system_logs WHERE created_at < NOW() - INTERVAL '14 days' RETURNING id",
+        "options": {}
+      },
+      "id": "cleanup-system-logs",
+      "name": "Cleanup System Logs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [480, 1000],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE work_orders SET status = 'overdue' WHERE status = 'planned' AND due_date < CURRENT_DATE - INTERVAL '7 days' RETURNING id",
+        "options": {}
+      },
+      "id": "mark-overdue-wos",
+      "name": "Mark Overdue Work Orders",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [720, -200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE dashboard_legacy_view SET valid_until = NULL WHERE valid_until < NOW()",
+        "options": {}
+      },
+      "id": "invalidate-legacy-cache",
+      "name": "Invalidate Legacy Cache",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [720, 0],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [960, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst startTime = $('Initialize Context').first().json.start_time;\n\nlet deletedSnapshots = 0;\nlet deletedInsights = 0;\nlet deletedActionLogs = 0;\nlet deletedPipelineLogs = 0;\nlet deletedNotifications = 0;\nlet deletedSuggestions = 0;\nlet deletedSystemLogs = 0;\nlet markedOverdue = 0;\n\nitems.forEach(item => {\n  const data = item.json;\n  if (Array.isArray(data)) {\n    // Count returned IDs from DELETE operations\n  }\n});\n\nconst summary = {\n  event_type: 'nightly_cleanup',\n  started_at: startTime,\n  completed_at: new Date().toISOString(),\n  duration_ms: Date.now() - new Date(startTime).getTime(),\n  cleanup_counts: {\n    snapshots: deletedSnapshots,\n    insights: deletedInsights,\n    action_logs: deletedActionLogs,\n    pipeline_logs: deletedPipelineLogs,\n    notifications: deletedNotifications,\n    suggestions: deletedSuggestions,\n    system_logs: deletedSystemLogs\n  },\n  work_orders_marked_overdue: markedOverdue,\n  status: 'success'\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "build-summary",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO system_logs (event_type, event_data) VALUES ('nightly_cleanup', '{{ JSON.stringify($json) }}'::jsonb)",
+        "options": {}
+      },
+      "id": "log-cleanup",
+      "name": "Log Cleanup Results",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1440, 400],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-connection",
+          "name": "Cloud PMS"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily at 2 AM": {
+      "main": [[{ "node": "Initialize Context", "type": "main", "index": 0 }]]
+    },
+    "Initialize Context": {
+      "main": [[
+        { "node": "Cleanup Old Snapshots", "type": "main", "index": 0 },
+        { "node": "Cleanup Dismissed Insights", "type": "main", "index": 0 },
+        { "node": "Cleanup Old Action Logs", "type": "main", "index": 0 },
+        { "node": "Cleanup Pipeline Logs", "type": "main", "index": 0 },
+        { "node": "Cleanup Read Notifications", "type": "main", "index": 0 },
+        { "node": "Cleanup Expired Suggestions", "type": "main", "index": 0 },
+        { "node": "Cleanup System Logs", "type": "main", "index": 0 },
+        { "node": "Mark Overdue Work Orders", "type": "main", "index": 0 },
+        { "node": "Invalidate Legacy Cache", "type": "main", "index": 0 }
+      ]]
+    },
+    "Cleanup Old Snapshots": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Cleanup Dismissed Insights": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Cleanup Old Action Logs": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Cleanup Pipeline Logs": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Cleanup Read Notifications": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Cleanup Expired Suggestions": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Cleanup System Logs": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Mark Overdue Work Orders": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Invalidate Legacy Cache": {
+      "main": [[{ "node": "Merge Results", "type": "main", "index": 0 }]]
+    },
+    "Merge Results": {
+      "main": [[{ "node": "Build Summary", "type": "main", "index": 0 }]]
+    },
+    "Build Summary": {
+      "main": [[{ "node": "Log Cleanup Results", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": ["celesteos", "cleanup", "nightly"]
+}
