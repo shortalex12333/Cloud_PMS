@@ -49,7 +49,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', '{{ $('Extract Input').item.json.title }}', 'Auto-generated from predictive engine threshold crossing', 'critical', 'pending', 'predictive_engine', '{{ $('Extract Input').item.json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
+        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', '{{ $node[\"Extract Input\"].json.title }}', 'Auto-generated from predictive engine threshold crossing', 'critical', 'pending', 'predictive_engine', '{{ $node[\"Extract Input\"].json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
         "options": {}
       },
       "id": "handover_critical",
@@ -64,7 +64,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO notifications (yacht_id, user_id, title, message, type, priority, metadata, created_at) SELECT '{{ $('Extract Input').item.json.yacht_id }}', u.id, '{{ $('Extract Input').item.json.title }}', 'Critical risk detected on {{ $('Extract Input').item.json.equipment_name }}. Immediate action required.', 'risk_alert', 'critical', jsonb_build_object('equipment_id', '{{ $('Extract Input').item.json.equipment_id }}', 'insight_id', '{{ $('Extract Input').item.json.insight_id }}'), NOW() FROM users u JOIN yacht_crew yc ON u.id = yc.user_id WHERE yc.yacht_id = '{{ $('Extract Input').item.json.yacht_id }}' AND yc.role IN ('captain', 'chief_engineer', 'eto')",
+        "query": "INSERT INTO notifications (yacht_id, user_id, title, message, type, priority, metadata, created_at) SELECT '{{ $node[\"Extract Input\"].json.yacht_id }}', u.id, '{{ $node[\"Extract Input\"].json.title }}', 'Critical risk detected on {{ $node[\"Extract Input\"].json.equipment_name }}. Immediate action required.', 'risk_alert', 'critical', jsonb_build_object('equipment_id', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}'), NOW() FROM users u JOIN yacht_crew yc ON u.id = yc.user_id WHERE yc.yacht_id = '{{ $node[\"Extract Input\"].json.yacht_id }}' AND yc.role IN ('captain', 'chief_engineer', 'eto')",
         "options": {}
       },
       "id": "notify_critical",
@@ -79,7 +79,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE equipment SET attention_flag = true, attention_reason = 'Critical risk threshold crossed', attention_updated_at = NOW() WHERE id = '{{ $('Extract Input').item.json.equipment_id }}'",
+        "query": "UPDATE equipment SET attention_flag = true, attention_reason = 'Critical risk threshold crossed', attention_updated_at = NOW() WHERE id = '{{ $node[\"Extract Input\"].json.equipment_id }}'",
         "options": {}
       },
       "id": "flag_equipment_critical",
@@ -94,7 +94,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', '{{ $('Extract Input').item.json.title }}', 'Auto-generated from predictive engine threshold crossing', 'high', 'pending', 'predictive_engine', '{{ $('Extract Input').item.json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
+        "query": "INSERT INTO handover_items (yacht_id, equipment_id, title, description, priority, status, source, source_id, created_at) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', '{{ $node[\"Extract Input\"].json.title }}', 'Auto-generated from predictive engine threshold crossing', 'high', 'pending', 'predictive_engine', '{{ $node[\"Extract Input\"].json.insight_id }}', NOW()) ON CONFLICT DO NOTHING",
         "options": {}
       },
       "id": "handover_high",
@@ -109,7 +109,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO search_suggestions (yacht_id, equipment_id, suggestion_text, priority, category, metadata, expires_at, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', 'Check {{ $('Extract Input').item.json.equipment_name }} - elevated risk detected', 10, 'predictive_alert', jsonb_build_object('insight_id', '{{ $('Extract Input').item.json.insight_id }}', 'severity', '{{ $('Extract Input').item.json.severity }}'), NOW() + INTERVAL '7 days', NOW()) ON CONFLICT DO NOTHING",
+        "query": "INSERT INTO search_suggestions (yacht_id, equipment_id, suggestion_text, priority, category, metadata, expires_at, created_at) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'Check {{ $node[\"Extract Input\"].json.equipment_name }} - elevated risk detected', 10, 'predictive_alert', jsonb_build_object('insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}', 'severity', '{{ $node[\"Extract Input\"].json.severity }}'), NOW() + INTERVAL '7 days', NOW()) ON CONFLICT DO NOTHING",
         "options": {}
       },
       "id": "search_priority_high",
@@ -124,7 +124,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO search_suggestions (yacht_id, equipment_id, suggestion_text, priority, category, metadata, expires_at, created_at) VALUES ('{{ $('Extract Input').item.json.yacht_id }}', '{{ $('Extract Input').item.json.equipment_id }}', 'Monitor {{ $('Extract Input').item.json.equipment_name }} - risk increasing', 5, 'predictive_alert', jsonb_build_object('insight_id', '{{ $('Extract Input').item.json.insight_id }}', 'severity', '{{ $('Extract Input').item.json.severity }}'), NOW() + INTERVAL '7 days', NOW()) ON CONFLICT DO NOTHING",
+        "query": "INSERT INTO search_suggestions (yacht_id, equipment_id, suggestion_text, priority, category, metadata, expires_at, created_at) VALUES ('{{ $node[\"Extract Input\"].json.yacht_id }}', '{{ $node[\"Extract Input\"].json.equipment_id }}', 'Monitor {{ $node[\"Extract Input\"].json.equipment_name }} - risk increasing', 5, 'predictive_alert', jsonb_build_object('insight_id', '{{ $node[\"Extract Input\"].json.insight_id }}', 'severity', '{{ $node[\"Extract Input\"].json.severity }}'), NOW() + INTERVAL '7 days', NOW()) ON CONFLICT DO NOTHING",
         "options": {}
       },
       "id": "search_priority_elevated",
@@ -183,7 +183,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, equipment_id: $('Extract Input').item.json.equipment_id, severity: $('Extract Input').item.json.severity, actions_triggered: $json.actions || ['completed'] }) }}"
+        "responseBody": "={{ JSON.stringify({ success: true, equipment_id: $node[\"Extract Input\"].json.equipment_id, severity: $node[\"Extract Input\"].json.severity, actions_triggered: $json.actions || ['completed'] }) }}"
       },
       "id": "respond",
       "name": "Respond",
@@ -250,5 +250,5 @@
   "staticData": null,
   "tags": ["predictive", "mvp2", "micro-actions"],
   "triggerCount": 0,
-  "versionId": "1"
+  "versionId": "2"
 }
