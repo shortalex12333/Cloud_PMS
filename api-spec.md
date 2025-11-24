@@ -33,34 +33,53 @@ All endpoints require:
 
 # # 🔐 **0. Authentication Model**
 
-## **0.1 Yacht Signature**
+## **0.1 Required Headers (All Endpoints)**
 
-Sent in header:
-
-```
-X-Yacht-Signature: <signature>
-```
-
-Used to validate yacht identity and route storage to the correct bucket/schema.
-
-## **0.2 User Token**
-
-Sent in header:
+All CelesteOS backend endpoints require the following headers:
 
 ```
-Authorization: Bearer <jwt>
+Authorization: Bearer <supabase_jwt>
+X-Yacht-Signature: <sha256(yacht_id + YACHT_SALT)>
+Content-Type: application/json
 ```
 
-JWT contains:
+## **0.2 Identity Extraction (Backend Responsibility)**
 
-* user_id
-* yacht_id
-* role
+The backend extracts identity directly from JWT claims:
+
+* `user_id`
+* `yacht_id`
+* `role`
+* `email`
+* `expires`
+
+**The frontend MUST NOT send `user_id` or `yacht_id` in the request body.**
+
+## **0.3 Yacht Signature Validation**
+
+* Yacht signature = `sha256(yacht_id + YACHT_SALT)`
+* The `yacht_id` used to compute the signature MUST match the `yacht_id` claim in the JWT
+* If signature does not match JWT claim → request rejected (403)
+* Used to validate yacht identity and route storage to the correct bucket/schema
+
+## **0.4 Request Body Rules**
+
+The request body must **never** contain:
+
+* Raw JWT tokens
+* `NEXT_PUBLIC_*` environment variables
+* `user_id`
+* `yacht_id`
+* Any frontend configuration values
+
+Only domain-specific payload fields are allowed in the body.
+
+## **0.5 User Token Details**
 
 Token validity: 24h
 Refresh token: 30 days
 
-## **0.3 Device Tokens (Mobile)**
+## **0.6 Device Tokens (Mobile)**
 
 Mobile uploads (photos/notes) use device-scoped token with limited privileges.
 
@@ -179,27 +198,47 @@ The universal search bar calls this endpoint.
 
 ## **3.1 `POST /v1/search`**
 
-### **Request**
+### **Headers (Required)**
+
+```
+Authorization: Bearer <supabase_jwt>
+X-Yacht-Signature: <sha256(yacht_id + YACHT_SALT)>
+Content-Type: application/json
+```
+
+### **Request Body (Minimal)**
+
+```json
+{
+  "query": "fault code 123 on main engine"
+}
+```
+
+### **Request Body (With Optional Filters)**
 
 ```json
 {
   "query": "fault code 123 on main engine",
-  "mode": "auto", 
+  "mode": "auto",
   "filters": {
-    "equipment_id": null,
-    "document_type": null
+    "equipment_id": "uuid",
+    "document_type": "manual"
   }
 }
 ```
 
+**Note:** `user_id` and `yacht_id` are extracted from the JWT by the backend. Do NOT include them in the request body.
+
 ### **Backend Steps**
 
-1. Entity extraction
-2. Intent detection
-3. Standard RAG retrieval
-4. Graph RAG (if needed)
-5. Fusion + ranking
-6. Generate standardised result cards
+1. Validate JWT + yacht signature
+2. Extract `user_id`, `yacht_id`, `role` from JWT claims
+3. Entity extraction
+4. Intent detection
+5. Standard RAG retrieval
+6. Graph RAG (if needed)
+7. Fusion + ranking
+8. Generate standardised result cards
 
 ### **Response**
 
