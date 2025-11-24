@@ -3,12 +3,14 @@
 import SearchBar from '@/components/SearchBar';
 import { Suspense } from 'react';
 import { withAuth } from '@/components/withAuth';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, isHOD } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { LayoutDashboard, Settings } from 'lucide-react';
+import { Zap, Settings } from 'lucide-react';
 
 function SearchContent() {
   const { user } = useAuth();
+  const showBriefing = isHOD(user);
+
   return (
     <div className="spotlight-container relative min-h-screen">
       <div className="w-full max-w-4xl">
@@ -38,13 +40,15 @@ function SearchContent() {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-center gap-8">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Dashboard</span>
-          </Link>
+          {showBriefing && (
+            <Link
+              href="/briefing"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <Zap className="h-4 w-4" />
+              <span>Briefing</span>
+            </Link>
+          )}
           <Link
             href="/settings"
             className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
