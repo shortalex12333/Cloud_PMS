@@ -230,35 +230,176 @@ interface ActionSuggestion {
 }
 ```
 
-**Frontend Pattern:**
+### CRITICAL: Proper Search Streaming Implementation
+
+**❌ WRONG: Sending every keystroke**
 ```typescript
-// 1. User searches
-const searchResults = await search('fault E047 main engine');
+// DON'T DO THIS - Causes 50-100 requests per query
+<input onChange={(e) => search(e.target.value)} />
+```
 
-// 2. Display result cards with micro-actions
-searchResults.results.forEach(result => {
-  // Render card
+**Problems with keystroke streaming:**
+- 50-100 requests per query → n8n webhook spam
+- GPT extraction runs on "m", "ma", "mai", "main" → costs explode
+- Vector search on garbage → Supabase rate limits
+- Feedback logs filled with noise → learning pipeline poisoned
+- Situational detection triggers prematurely
+- n8n queue backpressure, Render CPU spikes
 
-  // For each action suggestion
-  result.actions.forEach(action => {
-    // Render action button
-    <button onClick={() => executeAction(action)}>
-      {action.label}
-    </button>
-  });
-});
+**✅ CORRECT: Debounced streaming (Spotlight/Raycast model)**
 
-// 3. Execute action when clicked
-async function executeAction(action) {
+```typescript
+// hooks/useSearch.ts
+import { useState, useEffect, useRef } from 'react';
+
+export function useSearch() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const controllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Clear previous debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Minimum length filter - avoid garbage
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      setResults(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Debounce: wait 200ms after user stops typing
+    debounceTimerRef.current = setTimeout(async () => {
+      // Cancel previous request
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
+
+      // Create new abort controller
+      controllerRef.current = new AbortController();
+      setIsLoading(true);
+
+      try {
+        const response = await fetch('/v1/search', {
+          method: 'POST',
+          signal: controllerRef.current.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            query: trimmedQuery,
+            mode: 'auto',
+          }),
+        });
+
+        const data = await response.json();
+        setResults(data);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Search error:', error);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }, 200); // 200ms debounce - industry standard
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
+    };
+  }, [query]);
+
+  return { query, setQuery, results, isLoading };
+}
+```
+
+**Usage in component:**
+```tsx
+export function SearchBar() {
+  const { query, setQuery, results, isLoading } = useSearch();
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search equipment, faults, documents..."
+      />
+      {isLoading && <Spinner />}
+      {results && <ResultsList results={results} />}
+    </div>
+  );
+}
+```
+
+**Key principles:**
+1. **Debounce 200ms** - Only send when user pauses typing
+2. **Cancel previous requests** - AbortController ensures latest wins
+3. **Minimum length = 2 chars** - Avoid single-letter noise
+4. **Show loading state** - UX feedback during fetch
+5. **Handle Enter key** - Optional instant search on Enter
+
+**Why this matters:**
+- ✅ GPT extraction only runs on meaningful queries
+- ✅ n8n receives 1 request instead of 50
+- ✅ Feedback learning gets real terms, not keystrokes
+- ✅ Situational detection triggers correctly
+- ✅ Cost reduction: 98% fewer GPT calls
+- ✅ Better entity extraction confidence
+- ✅ Cleaner logs, stable ranking
+
+**Result rendering pattern:**
+```typescript
+// Display result cards with micro-actions
+{results?.results.map(result => (
+  <ResultCard key={result.id}>
+    <ResultContent result={result} />
+
+    {/* Render suggested actions */}
+    <ActionButtons>
+      {result.actions?.map(action => (
+        <Button
+          key={action.action}
+          onClick={() => executeAction(action)}
+        >
+          {action.label}
+        </Button>
+      ))}
+    </ActionButtons>
+  </ResultCard>
+))}
+
+// Execute action when clicked
+async function executeAction(action: ActionSuggestion) {
   const response = await fetch('/v1/actions/execute', {
     method: 'POST',
-    headers: { ... },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
     body: JSON.stringify({
       action: action.action,
       context: action.payload_template.context || {},
       payload: action.payload_template.payload || {}
     })
   });
+
+  const result = await response.json();
+  if (result.status === 'success') {
+    toast.success('Action completed');
+    // Refresh data if needed
+  }
 }
 ```
 
