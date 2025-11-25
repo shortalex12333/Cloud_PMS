@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getYachtId, getYachtSignature } from '@/lib/authHelpers';
+import { ensureFreshToken } from '@/lib/tokenRefresh';
 import type { SearchResult } from '@/types/search';
 
 // Constants
@@ -174,8 +175,8 @@ async function* streamSearch(
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.celeste7.ai';
   const streamId = crypto.randomUUID();
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const jwt = session?.access_token;
+  // Get fresh token (auto-refreshes if expiring soon)
+  const jwt = await ensureFreshToken();
   const yachtId = await getYachtId();
   const yachtSignature = await getYachtSignature(yachtId);
 
@@ -260,8 +261,8 @@ async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchRe
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.celeste7.ai';
   const streamId = crypto.randomUUID();
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const jwt = session?.access_token;
+  // Get fresh token (auto-refreshes if expiring soon)
+  const jwt = await ensureFreshToken();
   const yachtId = await getYachtId();
   const yachtSignature = await getYachtSignature(yachtId);
 

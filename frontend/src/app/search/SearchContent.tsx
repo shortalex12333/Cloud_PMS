@@ -3,7 +3,8 @@
 import SearchBar from '@/components/SearchBar';
 import { Suspense } from 'react';
 import { withAuth } from '@/components/withAuth';
-import { useAuth, isHOD } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { Zap, Settings } from 'lucide-react';
 

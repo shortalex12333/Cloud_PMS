@@ -20,7 +20,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
-import { useAuth, isHOD } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
+import { isHOD } from '@/contexts/AuthContext';
 
 // ============================================================================
 // TYPES

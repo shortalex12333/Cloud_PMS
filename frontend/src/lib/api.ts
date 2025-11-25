@@ -2,6 +2,7 @@
 
 import type { SearchResponse } from '@/types/search';
 import { supabase } from './supabaseClient';
+import { ensureFreshToken } from './tokenRefresh';
 
 // Normalize base URL to ensure consistent trailing slash handling
 const rawBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.celeste7.ai/webhook';
@@ -19,15 +20,13 @@ export class ApiError extends Error {
   }
 }
 
-// Get auth headers from Supabase session
+// Get auth headers with fresh token (auto-refreshes if expiring soon)
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      return { 'Authorization': `Bearer ${session.access_token}` };
-    }
+    const token = await ensureFreshToken();
+    return { 'Authorization': `Bearer ${token}` };
   } catch (err) {
-    console.warn('[API] Failed to get auth session:', err);
+    console.warn('[API] Failed to get fresh token:', err);
   }
   return {};
 }
