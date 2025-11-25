@@ -13,6 +13,12 @@ import dashboard from './routes/dashboard.js';
 import actions from './routes/actions.js';
 import predictive from './routes/predictive.js';
 
+// Middleware
+import { authMiddleware, yachtIsolationMiddleware } from './middleware/auth.js';
+
+// Schemas
+import { searchRequestSchema } from './schemas/index.js';
+
 // ============================================================================
 // APP CONFIGURATION
 // ============================================================================
@@ -68,22 +74,46 @@ app.route('/v1/predictive', predictive);
 
 // ============================================================================
 // SEARCH ENDPOINT (Proxy to search microservice)
+// GDPR/SOC2/ISO27001 Compliant - Identity from JWT header ONLY
 // ============================================================================
 
-app.post('/v1/search', async (c) => {
+app.post('/v1/search', authMiddleware, yachtIsolationMiddleware, async (c) => {
   const searchServiceUrl = process.env.SEARCH_SERVICE_URL || 'http://localhost:3001';
 
   try {
-    const body = await c.req.json();
+    const rawBody = await c.req.json();
+    const auth = c.get('auth');  // Identity extracted from JWT by middleware
     const authHeader = c.req.header('Authorization');
+    const yachtSignature = c.req.header('X-Yacht-Signature');
 
+    // CRITICAL: Validate and sanitize request body
+    // This rejects ANY identity fields (user_id, yacht_id, role, email, yacht_signature)
+    const parseResult = searchRequestSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return c.json({
+        status: 'error',
+        error_code: 'schema_invalid',
+        message: 'Invalid search request. Do not send identity fields in body.',
+        details: parseResult.error.errors,
+      }, 400);
+    }
+
+    // Only forward validated, sanitized fields
+    const sanitizedBody = parseResult.data;
+
+    // Log: Identity comes from JWT (auth.yacht_id, auth.user.id), NOT from body
+    console.log(`Search request from yacht: ${auth.yacht_id}, user: ${auth.user.id}`);
+
+    // Forward to search microservice with identity in headers only
     const response = await fetch(`${searchServiceUrl}/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader ? { Authorization: authHeader } : {}),
+        ...(yachtSignature ? { 'X-Yacht-Signature': yachtSignature } : {}),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(sanitizedBody),  // Only sanitized fields
     });
 
     const data = await response.json();

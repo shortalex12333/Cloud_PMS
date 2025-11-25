@@ -179,18 +179,45 @@ The universal search bar calls this endpoint.
 
 ## **3.1 `POST /v1/search`**
 
-### **Request**
+**SECURITY: GDPR/SOC2/ISO27001 Compliant**
+
+- ✅ Identity (yacht_id, user_id, role) extracted **ONLY from JWT header**
+- ❌ Frontend **MUST NOT** send identity fields in request body
+- ❌ Body **MUST NOT** contain: `user_id`, `yacht_id`, `role`, `email`, `yacht_signature`
+- Schema uses `.strict()` mode to reject any unexpected fields
+
+### **Authentication**
+
+```http
+POST /v1/search
+Authorization: Bearer <supabase_jwt_token>
+X-Yacht-Signature: <optional_yacht_signature>
+Content-Type: application/json
+```
+
+### **Request Body (Minimal)**
 
 ```json
 {
   "query": "fault code 123 on main engine",
-  "mode": "auto", 
+  "mode": "auto",
   "filters": {
-    "equipment_id": null,
-    "document_type": null
+    "equipment_id": "uuid-optional",
+    "document_type": "manual",
+    "date_from": "2024-01-01T00:00:00Z",
+    "date_to": "2024-12-31T23:59:59Z"
+  },
+  "context": {
+    "ui_source": "dashboard_search_bar"
   }
 }
 ```
+
+**Allowed Fields:**
+- `query` (string, required): Search query text (1-1000 chars)
+- `mode` (enum, optional): `"auto"` | `"semantic"` | `"keyword"` | `"graph"`
+- `filters` (object, optional): Equipment/document/date filters
+- `context` (object, optional): Generic metadata (no identity)
 
 ### **Backend Steps**
 

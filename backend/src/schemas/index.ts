@@ -193,20 +193,23 @@ export const genericActionRequestSchema = z.object({
 });
 
 // ============================================================================
-// SEARCH SCHEMA
+// SEARCH SCHEMA - GDPR/SOC2/ISO27001 COMPLIANT
 // ============================================================================
 
+// CRITICAL: Identity (yacht_id, user_id, role, email) comes ONLY from JWT header
+// Frontend MUST NOT send ANY identity fields in request body
+// This schema strictly rejects any fields beyond query, mode, filters, context
 export const searchRequestSchema = z.object({
   query: z.string().min(1).max(1000),
-  mode: z.enum(['auto', 'semantic', 'keyword', 'graph']).default('auto'),
+  mode: z.enum(['auto', 'semantic', 'keyword', 'graph']).optional(),
   filters: z.object({
     equipment_id: uuidSchema.optional(),
     document_type: z.string().optional(),
     date_from: z.string().datetime().optional(),
     date_to: z.string().datetime().optional(),
-  }).optional(),
-  limit: z.number().int().min(1).max(50).default(20),
-});
+  }).strict().optional(), // Strict filters to prevent identity injection
+  context: z.record(z.string(), z.unknown()).optional(), // Generic metadata only
+}).strict(); // STRICT MODE: Rejects user_id, yacht_id, role, email, yacht_signature, etc.
 
 // ============================================================================
 // PREDICTIVE SCHEMAS

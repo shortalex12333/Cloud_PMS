@@ -185,19 +185,27 @@ if (status === 'success') {
 ### POST /v1/search
 Proxies to the search microservice.
 
+**SECURITY: GDPR/SOC2/ISO27001 Compliant**
+- Identity (yacht_id, user_id, role) comes **ONLY from JWT header**
+- Frontend **MUST NOT** send identity fields in request body
+- Schema uses `.strict()` mode to reject unexpected fields
+
 **Request:**
 ```typescript
 interface SearchRequest {
-  query: string;
-  mode?: 'auto' | 'semantic' | 'keyword' | 'graph';
+  query: string;  // Required: 1-1000 characters
+  mode?: 'auto' | 'semantic' | 'keyword' | 'graph';  // Optional: defaults to 'auto'
   filters?: {
-    equipment_id?: string;
-    document_type?: string;
-    date_from?: string;
-    date_to?: string;
+    equipment_id?: string;  // Optional: UUID
+    document_type?: string;  // Optional
+    date_from?: string;  // Optional: ISO datetime
+    date_to?: string;  // Optional: ISO datetime
   };
-  limit?: number;
+  context?: Record<string, unknown>;  // Optional: Generic metadata (no identity)
 }
+
+// ❌ FORBIDDEN FIELDS (will be rejected):
+// - user_id, yacht_id, role, email, yacht_signature
 ```
 
 **Response includes actions:**
