@@ -160,10 +160,13 @@ async def verify_security(
     try:
         jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
         if jwt_secret:
+            from datetime import timedelta
             payload = jwt.decode(
                 token,
                 jwt_secret,
-                algorithms=["HS256"]
+                algorithms=["HS256"],
+                audience="authenticated",
+                leeway=timedelta(minutes=5)  # ← ADD CLOCK SKEW TOLERANCE
             )
             user_id = payload.get("sub")
             yacht_id = payload.get("yacht_id")  # Custom claim
