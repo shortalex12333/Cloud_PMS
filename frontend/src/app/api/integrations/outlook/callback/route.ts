@@ -9,9 +9,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Azure App credentials from environment
-const AZURE_APP_ID = process.env.AZURE_APP_ID || '';
+const AZURE_APP_ID = process.env.AZURE_APP_ID || '41f6dc82-8127-4330-97e0-c6b26e6aa967';
 const AZURE_CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || '';
 const AZURE_TENANT = 'common';
+
+// Log config status on startup (without exposing secrets)
+if (!AZURE_CLIENT_SECRET) {
+  console.error('[Outlook Callback] CRITICAL: AZURE_CLIENT_SECRET not configured!');
+}
 
 // Token endpoint
 const TOKEN_URL = `https://login.microsoftonline.com/${AZURE_TENANT}/oauth2/v2.0/token`;
@@ -59,6 +64,16 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[Outlook Callback] Exchanging code for tokens, user:', userId);
+    console.log('[Outlook Callback] Using redirect_uri:', REDIRECT_URI);
+
+    // Validate credentials are present
+    if (!AZURE_CLIENT_SECRET) {
+      console.error('[Outlook Callback] Missing AZURE_CLIENT_SECRET environment variable');
+      return NextResponse.json(
+        { error: 'Server misconfiguration: missing Azure credentials' },
+        { status: 500 }
+      );
+    }
 
     // Exchange code for tokens
     const tokenResponse = await fetch(TOKEN_URL, {
@@ -77,9 +92,18 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json();
-      console.error('[Outlook Callback] Token exchange failed:', errorData);
+      console.error('[Outlook Callback] Token exchange failed:', JSON.stringify(errorData, null, 2));
+
+      // Provide helpful error messages
+      let errorMessage = 'Token exchange failed';
+      if (errorData.error === 'invalid_grant') {
+        errorMessage = 'Authorization code expired or already used. Please try again.';
+      } else if (errorData.error_description?.includes('redirect_uri')) {
+        errorMessage = `Redirect URI mismatch. Expected: ${REDIRECT_URI}. Please check Azure App Registration.`;
+      }
+
       return NextResponse.json(
-        { error: 'Token exchange failed', detail: errorData },
+        { error: errorMessage, detail: errorData },
         { status: 400 }
       );
     }
