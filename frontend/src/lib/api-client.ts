@@ -60,7 +60,7 @@ async function apiGet<T>(endpoint: string, params?: Record<string, string>): Pro
 /**
  * Make authenticated POST request
  */
-async function apiPost<T>(endpoint: string, payload: Record<string, unknown>): Promise<T> {
+async function apiPost<T, P extends object = object>(endpoint: string, payload: P): Promise<T> {
   const token = await ensureFreshToken()
   const session = await getCurrentSession()
 
