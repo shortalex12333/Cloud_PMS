@@ -1,93 +1,155 @@
-import { useState, useCallback } from 'react'
-import { search as apiSearch, SearchFilters, SearchResponse, SearchResult, SearchAction } from '@/lib/api-client'
-
-// Re-export types for convenience
-export type { SearchFilters, SearchResponse, SearchResult, SearchAction }
-
-export type SearchResultType = SearchResult['type']
-
 /**
- * Search state
+ * CelesteOS Search Hook
+ *
+ * Provides search functionality with streaming support.
+ * Automatically includes JWT token and yacht_id from auth context.
  */
-export interface SearchState {
-  isLoading: boolean
-  error: string | null
-  response: SearchResponse | null
+
+import { useState, useCallback } from 'react';
+import { api } from '../lib/api';
+import { useAuth } from './useAuth';
+import type { SearchRequest } from '@/types';
+import type {
+  SearchResponse,
+  SearchResult,
+  MicroAction,
+} from '@/types/search';
+
+interface SearchState {
+  query: string;
+  results: SearchResult[];
+  actions: Array<{
+    label: string;
+    action: MicroAction;
+    context?: Record<string, any>;
+  }>;
+  loading: boolean;
+  streaming: boolean;
+  error: string | null;
 }
 
-/**
- * Hook for making authenticated search requests to the CelesteOS API.
- *
- * Uses centralized API client with:
- * - Base URL: https://api.celeste7.ai/webhook/v1/search
- * - Automatic JWT token refresh before requests
- * - Loading and error states
- *
- * @example
- * ```tsx
- * const { search, isLoading, error, response } = useSearch()
- *
- * const handleSearch = async () => {
- *   await search('fault code E047 on main engine')
- * }
- * ```
- */
 export function useSearch() {
+  const { user } = useAuth();
   const [state, setState] = useState<SearchState>({
-    isLoading: false,
+    query: '',
+    results: [],
+    actions: [],
+    loading: false,
+    streaming: false,
     error: null,
-    response: null
-  })
+  });
 
-  const search = useCallback(async (
-    query: string,
-    filters?: SearchFilters
-  ): Promise<SearchResponse | null> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
+  /**
+   * Perform search (non-streaming)
+   * JWT token is auto-included via api.ts, yacht_id passed from user context
+   */
+  const search = useCallback(async (request: SearchRequest) => {
+    setState(prev => ({
+      ...prev,
+      query: request.query,
+      loading: true,
+      error: null,
+    }));
 
     try {
-      const data = await apiSearch(query, filters)
+      // Pass yacht_id from authenticated user
+      const response = await api.search.search(
+        request.query,
+        request.filters,
+        user?.yachtId
+      );
 
       setState({
-        isLoading: false,
+        query: request.query,
+        results: response.results,
+        actions: response.actions,
+        loading: false,
+        streaming: false,
         error: null,
-        response: data
-      })
+      });
 
-      return data
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Search failed'
-
-      setState({
-        isLoading: false,
-        error: errorMessage,
-        response: null
-      })
-
-      // Re-throw authentication errors so caller can redirect to login
-      if (errorMessage === 'Not authenticated' || errorMessage === 'Failed to refresh token') {
-        throw err
-      }
-
-      return null
+      return response;
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Search failed',
+      }));
+      throw error;
     }
-  }, [])
+  }, [user?.yachtId]);
 
-  const clearResults = useCallback(() => {
-    setState({
-      isLoading: false,
+  /**
+   * Perform streaming search
+   * JWT token is auto-included via api.ts, yacht_id passed from user context
+   */
+  const searchStream = useCallback(async (request: SearchRequest) => {
+    setState(prev => ({
+      ...prev,
+      query: request.query,
+      results: [],
+      actions: [],
+      streaming: true,
+      loading: true,
       error: null,
-      response: null
-    })
-  }, [])
+    }));
+
+    try {
+      // Pass yacht_id from authenticated user
+      const stream = api.search.searchStream(request.query, user?.yachtId) as any;
+
+      for await (const event of stream) {
+        if (event.type === 'data' && event.data) {
+          setState(prev => ({
+            ...prev,
+            results: event.data!.results,
+            actions: event.data!.actions,
+            loading: false,
+          }));
+        } else if (event.type === 'complete') {
+          setState(prev => ({
+            ...prev,
+            streaming: false,
+            loading: false,
+          }));
+        } else if (event.type === 'error') {
+          setState(prev => ({
+            ...prev,
+            streaming: false,
+            loading: false,
+            error: event.error || 'Stream error',
+          }));
+        }
+      }
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        streaming: false,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Search stream failed',
+      }));
+      throw error;
+    }
+  }, [user?.yachtId]);
+
+  /**
+   * Clear search results
+   */
+  const clear = useCallback(() => {
+    setState({
+      query: '',
+      results: [],
+      actions: [],
+      loading: false,
+      streaming: false,
+      error: null,
+    });
+  }, []);
 
   return {
+    ...state,
     search,
-    clearResults,
-    isLoading: state.isLoading,
-    error: state.error,
-    response: state.response,
-    results: state.response?.results || [],
-    actions: state.response?.actions || []
-  }
+    searchStream,
+    clear,
+  };
 }

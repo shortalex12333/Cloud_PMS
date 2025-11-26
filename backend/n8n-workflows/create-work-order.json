@@ -1,0 +1,220 @@
+{
+  "name": "Create Work Order",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-work-order",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Create Work Order",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "create-work-order"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract and validate JWT token\nconst authHeader = $input.item.json.headers.authorization;\n\nif (!authHeader || !authHeader.startsWith('Bearer ')) {\n  return {\n    json: {\n      success: false,\n      error: 'Unauthorized - Missing token',\n      statusCode: 401\n    }\n  };\n}\n\nconst token = authHeader.substring(7);\n\n// In production, validate JWT with Supabase\n// For now, extract payload (mock)\ntry {\n  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());\n  \n  return {\n    json: {\n      user_id: payload.sub,\n      yacht_id: payload.yacht_id || 'default_yacht',\n      requestBody: $input.item.json.body,\n      token: token\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      success: false,\n      error: 'Invalid token',\n      statusCode: 401\n    }\n  };\n}"
+      },
+      "id": "validate-jwt",
+      "name": "Validate JWT",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.success}}",
+              "operation": "notEqual",
+              "value2": "false"
+            }
+          ]
+        }
+      },
+      "id": "check-auth",
+      "name": "Check Auth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO work_orders (\n  yacht_id,\n  title,\n  description,\n  priority,\n  equipment_id,\n  fault_id,\n  assigned_to,\n  created_by,\n  status,\n  created_at,\n  updated_at\n) VALUES (\n  '{{$json.yacht_id}}',\n  '{{$json.requestBody.title}}',\n  '{{$json.requestBody.description}}',\n  '{{$json.requestBody.priority}}',\n  {{$json.requestBody.equipment_id ? \"'\" + $json.requestBody.equipment_id + \"'\" : \"NULL\"}},\n  {{$json.requestBody.fault_id ? \"'\" + $json.requestBody.fault_id + \"'\" : \"NULL\"}},\n  {{$json.requestBody.assigned_to ? \"'\" + $json.requestBody.assigned_to + \"'\" : \"NULL\"}},\n  '{{$json.user_id}}',\n  'pending',\n  NOW(),\n  NOW()\n) RETURNING id, title, status, created_at;",
+        "additionalFields": {}
+      },
+      "id": "insert-work-order",
+      "name": "Insert Work Order (Supabase)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [850, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_logs (\n  yacht_id,\n  user_id,\n  action_name,\n  entity_type,\n  entity_id,\n  severity,\n  details,\n  created_at\n) VALUES (\n  '{{$json.yacht_id}}',\n  '{{$json.user_id}}',\n  'create_work_order',\n  'work_order',\n  '{{$json.id}}',\n  'low',\n  jsonb_build_object(\n    'title', '{{$json.title}}',\n    'priority', '{{$json.requestBody.priority}}',\n    'equipment_id', {{$json.requestBody.equipment_id ? \"'\" + $json.requestBody.equipment_id + \"'\" : \"NULL\"}}\n  ),\n  NOW()\n);",
+        "additionalFields": {}
+      },
+      "id": "create-audit-log",
+      "name": "Create Audit Log",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build success response\nconst workOrder = $input.first().json;\n\nreturn {\n  json: {\n    success: true,\n    message: 'Work order created successfully',\n    data: {\n      work_order_id: workOrder.id,\n      title: workOrder.title,\n      status: workOrder.status,\n      created_at: workOrder.created_at\n    },\n    statusCode: 201\n  }\n};"
+      },
+      "id": "build-success-response",
+      "name": "Build Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build error response\nconst error = $input.first().json;\n\nreturn {\n  json: {\n    success: false,\n    error: error.error || 'Unauthorized',\n    statusCode: error.statusCode || 401\n  }\n};"
+      },
+      "id": "build-error-response",
+      "name": "Build Error Response (Auth)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseCode": "={{$json.statusCode || 200}}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Create Work Order": {
+      "main": [
+        [
+          {
+            "node": "Validate JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate JWT": {
+      "main": [
+        [
+          {
+            "node": "Check Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Auth": {
+      "main": [
+        [
+          {
+            "node": "Insert Work Order (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Response (Auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Work Order (Supabase)": {
+      "main": [
+        [
+          {
+            "node": "Create Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Build Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Success Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Response (Auth)": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 0,
+  "active": false
+}

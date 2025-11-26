@@ -1,10 +1,9 @@
-import { SearchBar } from '@/components/SearchBar'
+import { redirect } from 'next/navigation';
 
+// Force dynamic rendering to avoid prerendering issues
+export const dynamic = 'force-dynamic';
+
+// Root page redirects to search
 export default function Home() {
-  return (
-    <main style={{ padding: '2rem' }}>
-      <h1>CelesteOS</h1>
-      <SearchBar />
-    </main>
-  )
+  redirect('/search');
 }
