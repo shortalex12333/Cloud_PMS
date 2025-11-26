@@ -11,10 +11,14 @@ export { supabase } from './supabase-client'
 export {
   ensureFreshToken,
   getCurrentSession,
+  getAuthContext,
+  calculateYachtSignature,
   isAuthenticated,
-  signOut
+  hasYachtAssigned,
+  signOut,
+  setUserYachtId
 } from './auth-helpers'
-export type { SessionInfo } from './auth-helpers'
+export type { SessionInfo, AuthContext } from './auth-helpers'
 
 // API client
 export { api, default as apiClient } from './api-client'
