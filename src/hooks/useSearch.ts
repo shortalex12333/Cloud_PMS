@@ -80,8 +80,6 @@ interface SearchPayload {
   auth: {
     user_id: string
     yacht_id: string | null
-    role: string
-    email: string | undefined
     yacht_signature: null
   }
   context: {
@@ -139,8 +137,6 @@ export function useSearch() {
         auth: {
           user_id: session.userId,
           yacht_id: session.yachtId,
-          role: session.role,
-          email: session.email,
           yacht_signature: null
         },
         context: {
