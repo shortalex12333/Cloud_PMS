@@ -1,4 +1,4 @@
-import { ensureFreshToken, getCurrentSession } from './auth-helpers'
+import { ensureFreshToken, getCurrentSession, getAuthContext, AuthContext } from './auth-helpers'
 
 /**
  * CelesteOS API Client
@@ -110,11 +110,7 @@ export interface SearchContext {
 export interface SearchPayload {
   query: string
   query_type: 'free-text'
-  auth: {
-    user_id: string
-    yacht_id: string | null
-    yacht_signature: null
-  }
+  auth: AuthContext
   context: SearchContext
   filters?: SearchFilters
   stream: boolean
@@ -157,16 +153,12 @@ export interface SearchResponse {
  */
 export async function search(query: string, filters?: SearchFilters): Promise<SearchResponse> {
   const token = await ensureFreshToken()
-  const session = await getCurrentSession()
+  const authContext = await getAuthContext()
 
   const payload: SearchPayload = {
     query,
     query_type: 'free-text',
-    auth: {
-      user_id: session.userId,
-      yacht_id: session.yachtId,
-      yacht_signature: null
-    },
+    auth: authContext,
     context: {
       client_ts: Math.floor(Date.now() / 1000),
       stream_id: crypto.randomUUID(),
