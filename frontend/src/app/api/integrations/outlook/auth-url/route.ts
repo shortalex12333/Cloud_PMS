@@ -9,7 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Azure App credentials from environment
-const AZURE_APP_ID = process.env.AZURE_APP_ID || '';
+// Fallback to known app ID from Azure portal
+const AZURE_APP_ID = process.env.AZURE_APP_ID || '41f6dc82-8127-4330-97e0-c6b26e6aa967';
 const AZURE_TENANT = 'common'; // Multi-tenant
 
 // OAuth configuration
