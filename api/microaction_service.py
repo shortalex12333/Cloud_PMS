@@ -36,6 +36,7 @@ import os
 import jwt
 import hashlib
 from pathlib import Path
+from datetime import datetime, timezone
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -215,6 +216,10 @@ class ExtractionRequest(BaseModel):
     include_embedding: bool = Field(default=True, description="Include text-embedding-3-small embedding in response")
     include_metadata: bool = Field(default=False, description="Include detailed match metadata in response")
     validate_combination: bool = Field(default=True, description="Validate that detected actions make sense together")
+    # Optional context fields for n8n workflow
+    session_id: Optional[str] = Field(default=None, description="Session ID for tracking")
+    conversation_id: Optional[str] = Field(default=None, description="Conversation ID for tracking")
+    search_strategy: Optional[str] = Field(default=None, description="Search strategy used")
 
     @validator('query')
     def clean_query(cls, v):
@@ -864,6 +869,10 @@ async def extract(
             f"yacht_id={auth.get('yacht_id')}"
         )
 
+        # Extract context information for n8n workflow
+        user_agent = request.headers.get("user-agent")
+        timestamp = datetime.now(timezone.utc).isoformat()
+
         return {
             'lane': 'GPT',
             'lane_reason': routing['lane_reason'],
@@ -874,6 +883,17 @@ async def extract(
             'action_confidence': extraction.action_confidence,
             'person_filter': extraction.person_filter,
             'embedding': embedding,
+            'context': {
+                'userId': auth.get('user_id'),
+                'query': query,
+                'timestamp': timestamp,
+                'search_strategy': extraction_request.search_strategy,
+                'session_id': extraction_request.session_id,
+                'conversation_id': extraction_request.conversation_id,
+                'client_info': {
+                    'user_agent': user_agent
+                }
+            },
             'metadata': {
                 'model': 'gpt-4o-mini',
                 'embedding_model': 'text-embedding-3-small' if embedding else None,
