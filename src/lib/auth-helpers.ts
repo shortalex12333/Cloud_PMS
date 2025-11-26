@@ -46,16 +46,14 @@ export async function ensureFreshToken(): Promise<string> {
 export interface SessionInfo {
   token: string
   userId: string
-  email: string | undefined
   yachtId: string | null
-  role: string
 }
 
 /**
  * Get current session with user and yacht info.
  * Use this alongside ensureFreshToken for API calls.
  *
- * @returns Session info including token, userId, email, yachtId, and role
+ * @returns Session info including token, userId, and yachtId
  * @throws Error if not authenticated
  */
 export async function getCurrentSession(): Promise<SessionInfo> {
@@ -68,9 +66,7 @@ export async function getCurrentSession(): Promise<SessionInfo> {
   return {
     token: session.access_token,
     userId: session.user.id,
-    email: session.user.email,
-    yachtId: session.user.user_metadata?.yacht_id || null,
-    role: session.user.user_metadata?.role || 'Engineer'
+    yachtId: session.user.user_metadata?.yacht_id || null
   }
 }
 
