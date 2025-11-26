@@ -1,0 +1,105 @@
+{
+  "name": "Master RAG Workflow",
+  "nodes": [
+    {
+      "parameters": {"httpMethod": "POST", "path": "rag", "responseMode": "responseNode", "options": {}},
+      "id": "webhook-rag",
+      "name": "Webhook - RAG",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "rag"
+    },
+    {
+      "parameters": {"functionCode": "const authHeader = $input.item.json.headers.authorization;\nif (!authHeader || !authHeader.startsWith('Bearer ')) return { json: { success: false, error: 'Unauthorized', statusCode: 401 } };\nconst token = authHeader.substring(7);\ntry {\n  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());\n  const requestBody = $input.item.json.body;\n  return { json: { action_name: requestBody.action_name, context: requestBody.context, parameters: requestBody.parameters, session: requestBody.session, user_id: payload.sub, yacht_id: payload.yacht_id || requestBody.session.yacht_id, token: token } };\n} catch (error) { return { json: { success: false, error: 'Invalid token', statusCode: 401 } }; }"},
+      "id": "validate-jwt-rag",
+      "name": "Validate JWT",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {"conditions": {"string": [{"value1": "={{$json.success}}", "operation": "notEqual", "value2": "false"}]}},
+      "id": "check-auth-rag",
+      "name": "Check Auth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {"conditions": {"string": [{"value1": "={{$json.action_name}}", "operation": "equals"}]}, "options": {}},
+      "id": "switch-action-rag",
+      "name": "Switch on action_name",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {"functionCode": "// RAG: Embed user query\nconst userQuery = $input.first().json.parameters.user_input;\nconst equipmentId = $input.first().json.context.equipment_id;\n\n// In production: call OpenAI embeddings API\n// For now, return mock embedding\nconst embedding = [0.1, 0.2, 0.3]; // 1536-dim vector\n\nreturn {\n  json: {\n    query: userQuery,\n    equipment_id: equipmentId,\n    embedding: embedding\n  }\n};"},
+      "id": "embed-query",
+      "name": "Embed Query (OpenAI)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {"operation": "executeQuery", "query": "-- Vector search (requires pgvector extension)\nSELECT \n  ds.id,\n  ds.section_title,\n  ds.section_content,\n  d.title as document_title,\n  (ds.embedding <=> '{{$json.embedding}}'::vector) as similarity\nFROM document_sections ds\nJOIN documents d ON d.id = ds.document_id\nWHERE d.equipment_id = '{{$json.equipment_id}}'\n  AND d.yacht_id = '{{$json.yacht_id}}'\nORDER BY similarity ASC\nLIMIT 5;"},
+      "id": "vector-search",
+      "name": "Vector Search (Supabase pgvector)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 100],
+      "credentials": {"postgres": {"id": "supabase-db", "name": "Supabase Database"}}
+    },
+    {
+      "parameters": {"functionCode": "// Build RAG prompt with retrieved context\nconst query = $input.first().json.query;\nconst context = $input.first().json; // retrieved doc sections\n\nconst prompt = `You are a marine engineer assistant. Based on the following manual sections, ${query}\n\nContext:\n${JSON.stringify(context, null, 2)}\n\nProvide a detailed diagnosis with:\n1. Likely root cause\n2. Recommended actions\n3. Required parts (if any)\n4. Safety considerations`;\n\n// In production: call Claude/GPT-4 API\n// For now, return mock response\nconst mockDiagnosis = {\n  root_cause: 'Hydraulic pump seal failure due to wear',\n  recommended_actions: ['Shut down system', 'Replace seal', 'Check for contamination'],\n  required_parts: ['Hydraulic seal kit - Part #HS-2234'],\n  safety_notes: 'Depressurize system before maintenance'\n};\n\nreturn {\n  json: {\n    diagnosis: mockDiagnosis,\n    confidence: 0.85,\n    sources: context\n  }\n};"},
+      "id": "llm-inference",
+      "name": "LLM Inference (Claude/GPT-4)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1450, 100]
+    },
+    {
+      "parameters": {"functionCode": "// Build response with AI-generated card\nconst data = $input.first().json;\nconst action = data.action_name;\n\nlet cardType = 'fault';\nlet microActions = [\n  { action_name: 'create_work_order_from_fault', label: 'Create Work Order' },\n  { action_name: 'order_part', label: 'Order Parts' },\n  { action_name: 'add_fault_note', label: 'Add Note' }\n];\n\nif (action === 'suggest_parts') {\n  cardType = 'part_list';\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'view_part_stock', label: 'Check Stock' }\n  ];\n}\n\nreturn {\n  json: {\n    success: true,\n    message: 'AI analysis complete',\n    card_type: cardType,\n    card: data,\n    micro_actions: microActions,\n    streaming_chunks: [\n      'Analyzing equipment manual...',\n      'Searching fault history...',\n      'Generating diagnosis...',\n      'Complete!'\n    ]\n  }\n};"},
+      "id": "build-response-rag",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 200]
+    },
+    {
+      "parameters": {"functionCode": "const error = $input.first().json;\nreturn { json: { success: false, error: error.error || 'Unauthorized', statusCode: error.statusCode || 401 } };"},
+      "id": "build-error-rag",
+      "name": "Build Error Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{$json}}", "options": {"responseCode": "={{$json.statusCode || 200}}", "responseHeaders": {"entries": [{"name": "Content-Type", "value": "application/json"}]}}},
+      "id": "webhook-response-rag",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - RAG": {"main": [[{"node": "Validate JWT", "type": "main", "index": 0}]]},
+    "Validate JWT": {"main": [[{"node": "Check Auth", "type": "main", "index": 0}]]},
+    "Check Auth": {"main": [[{"node": "Switch on action_name", "type": "main", "index": 0}], [{"node": "Build Error Response", "type": "main", "index": 0}]]},
+    "Switch on action_name": {"main": [[{"node": "Embed Query (OpenAI)", "type": "main", "index": 0}]]},
+    "Embed Query (OpenAI)": {"main": [[{"node": "Vector Search (Supabase pgvector)", "type": "main", "index": 0}]]},
+    "Vector Search (Supabase pgvector)": {"main": [[{"node": "LLM Inference (Claude/GPT-4)", "type": "main", "index": 0}]]},
+    "LLM Inference (Claude/GPT-4)": {"main": [[{"node": "Build Response", "type": "main", "index": 0}]]},
+    "Build Response": {"main": [[{"node": "Webhook Response", "type": "main", "index": 0}]]},
+    "Build Error Response": {"main": [[{"node": "Webhook Response", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "versionId": "2.0.0",
+  "triggerCount": 0,
+  "active": false
+}

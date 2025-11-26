@@ -1,0 +1,623 @@
+{
+  "name": "Master VIEW Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "view",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-view",
+      "name": "Webhook - VIEW",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "view"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract and validate JWT token\nconst authHeader = $input.item.json.headers.authorization;\n\nif (!authHeader || !authHeader.startsWith('Bearer ')) {\n  return {\n    json: {\n      success: false,\n      error: 'Unauthorized - Missing token',\n      statusCode: 401\n    }\n  };\n}\n\nconst token = authHeader.substring(7);\n\n// Validate JWT with Supabase (production)\ntry {\n  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());\n  const requestBody = $input.item.json.body;\n  \n  return {\n    json: {\n      action_name: requestBody.action_name,\n      context: requestBody.context,\n      parameters: requestBody.parameters,\n      session: requestBody.session,\n      user_id: payload.sub,\n      yacht_id: payload.yacht_id || requestBody.session.yacht_id,\n      token: token\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      success: false,\n      error: 'Invalid token',\n      statusCode: 401\n    }\n  };\n}"
+      },
+      "id": "validate-jwt-view",
+      "name": "Validate JWT",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.success}}",
+              "operation": "notEqual",
+              "value2": "false"
+            }
+          ]
+        }
+      },
+      "id": "check-auth-view",
+      "name": "Check Auth",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-action-view",
+      "name": "Switch on action_name",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  e.id,\n  e.name,\n  e.equipment_type,\n  e.manufacturer,\n  e.model,\n  e.serial_number,\n  e.installation_date,\n  e.location,\n  e.status,\n  COUNT(DISTINCT f.id) as fault_count,\n  COUNT(DISTINCT wo.id) as work_order_count,\n  MAX(wo.last_maintenance) as last_maintenance\nFROM equipment e\nLEFT JOIN faults f ON f.equipment_id = e.id AND f.status = 'open'\nLEFT JOIN work_orders wo ON wo.equipment_id = e.id\nWHERE e.id = '{{$json.context.equipment_id}}'\n  AND e.yacht_id = '{{$json.yacht_id}}'\nGROUP BY e.id;"
+      },
+      "id": "view-equipment-details",
+      "name": "view_equipment_details",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 100],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  p.id,\n  p.part_name,\n  p.part_number,\n  p.stock_quantity,\n  p.min_stock_level,\n  p.location,\n  p.unit_cost,\n  p.supplier\nFROM parts p\nWHERE p.id = '{{$json.context.part_id}}'\n  AND p.yacht_id = '{{$json.yacht_id}}';"
+      },
+      "id": "view-part-stock",
+      "name": "view_part_stock",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 200],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  f.id,\n  f.title,\n  f.description,\n  f.severity,\n  f.status,\n  f.created_at,\n  f.resolved_at,\n  e.name as equipment_name,\n  u.name as reporter_name\nFROM faults f\nLEFT JOIN equipment e ON e.id = f.equipment_id\nLEFT JOIN users u ON u.id = f.created_by\nWHERE f.equipment_id = '{{$json.context.equipment_id}}'\n  AND f.yacht_id = '{{$json.yacht_id}}'\nORDER BY f.created_at DESC\nLIMIT 20;"
+      },
+      "id": "view-fault-history",
+      "name": "view_fault_history",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  wo.id,\n  wo.title,\n  wo.description,\n  wo.priority,\n  wo.status,\n  wo.created_at,\n  wo.completed_at,\n  e.name as equipment_name,\n  u.name as assigned_to_name\nFROM work_orders wo\nLEFT JOIN equipment e ON e.id = wo.equipment_id\nLEFT JOIN users u ON u.id = wo.assigned_to\nWHERE wo.equipment_id = '{{$json.context.equipment_id}}'\n  AND wo.yacht_id = '{{$json.yacht_id}}'\nORDER BY wo.created_at DESC\nLIMIT 20;"
+      },
+      "id": "view-work-order-history",
+      "name": "view_work_order_history",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 400],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  hr.id,\n  hr.date,\n  hr.rest_hours,\n  hr.work_hours,\n  hr.is_compliant,\n  u.name as crew_member_name\nFROM hours_of_rest hr\nLEFT JOIN users u ON u.id = hr.user_id\nWHERE hr.user_id = '{{$json.context.user_id || $json.user_id}}'\n  AND hr.yacht_id = '{{$json.yacht_id}}'\n  AND hr.date >= CURRENT_DATE - INTERVAL '30 days'\nORDER BY hr.date DESC;"
+      },
+      "id": "view-hours-of-rest",
+      "name": "view_hours_of_rest",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1050, 500],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Dynamic SQL Filter Builder for LIST queries\n// Builds WHERE clauses based on filters parameter\nconst data = $input.first().json;\nconst filters = data.parameters?.filters || {};\nconst limit = data.parameters?.limit || 50;\nconst offset = data.parameters?.offset || 0;\nconst sortBy = data.parameters?.sort_by || 'created_at';\nconst sortOrder = data.parameters?.sort_order || 'desc';\n\nconst whereClauses = [];\nconst params = [];\n\n// Location filters\nif (filters.location) {\n  if (filters.location.deck) {\n    whereClauses.push(`deck = '${filters.location.deck}'`);\n  }\n  if (filters.location.room) {\n    whereClauses.push(`room = '${filters.location.room}'`);\n  }\n  if (filters.location.storage) {\n    whereClauses.push(`storage = '${filters.location.storage}'`);\n  }\n}\n\n// Status filters\nif (filters.status && filters.status.length > 0) {\n  const statusList = filters.status.map(s => `'${s}'`).join(',');\n  whereClauses.push(`status IN (${statusList})`);\n}\n\n// Time range filters\nif (filters.time_range) {\n  whereClauses.push(`created_at >= '${filters.time_range.start}'`);\n  whereClauses.push(`created_at <= '${filters.time_range.end}'`);\n}\n\n// Quantity filters\nif (filters.quantity) {\n  const op = filters.quantity.operator;\n  const val = filters.quantity.value;\n  \n  if (op === 'lt') {\n    whereClauses.push(`stock_quantity < ${val}`);\n  } else if (op === 'lte') {\n    whereClauses.push(`stock_quantity <= ${val}`);\n  } else if (op === 'gt') {\n    whereClauses.push(`stock_quantity > ${val}`);\n  } else if (op === 'gte') {\n    whereClauses.push(`stock_quantity >= ${val}`);\n  } else if (op === 'eq') {\n    whereClauses.push(`stock_quantity = ${val}`);\n  } else if (op === 'between' && Array.isArray(val)) {\n    whereClauses.push(`stock_quantity BETWEEN ${val[0]} AND ${val[1]}`);\n  }\n}\n\n// Build final WHERE clause\nconst whereClause = whereClauses.length > 0 \n  ? 'AND ' + whereClauses.join(' AND ')\n  : '';\n\nreturn {\n  json: {\n    ...data,\n    sql_where: whereClause,\n    sql_order: `ORDER BY ${sortBy} ${sortOrder.toUpperCase()}`,\n    sql_limit: `LIMIT ${limit} OFFSET ${offset}`,\n    limit: limit,\n    offset: offset\n  }\n};"
+      },
+      "id": "build-sql-filter",
+      "name": "Build SQL Filter",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals",
+              "value2": "view_parts_list"
+            },
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals",
+              "value2": "view_work_orders_list"
+            },
+            {
+              "value1": "={{$json.action_name}}",
+              "operation": "equals",
+              "value2": "view_faults_list"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-to-query",
+      "name": "Route to Query",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1050, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  p.id,\n  p.part_name,\n  p.part_number,\n  p.stock_quantity,\n  p.min_stock_level,\n  p.location,\n  p.deck,\n  p.room,\n  p.storage,\n  p.unit_cost,\n  p.supplier,\n  p.created_at,\n  p.updated_at\nFROM parts p\nWHERE p.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
+      },
+      "id": "view-parts-list",
+      "name": "view_parts_list",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 600],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  wo.id,\n  wo.title,\n  wo.description,\n  wo.priority,\n  wo.status,\n  wo.created_at,\n  wo.completed_at,\n  wo.assigned_to,\n  e.name as equipment_name,\n  u.name as assigned_to_name\nFROM work_orders wo\nLEFT JOIN equipment e ON e.id = wo.equipment_id\nLEFT JOIN users u ON u.id = wo.assigned_to\nWHERE wo.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
+      },
+      "id": "view-work-orders-list",
+      "name": "view_work_orders_list",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 700],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  f.id,\n  f.title,\n  f.description,\n  f.severity,\n  f.status,\n  f.created_at,\n  f.resolved_at,\n  f.deck,\n  f.room,\n  e.name as equipment_name,\n  u.name as reporter_name\nFROM faults f\nLEFT JOIN equipment e ON e.id = f.equipment_id\nLEFT JOIN users u ON u.id = f.created_by\nWHERE f.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}}\n{{$json.sql_order}}\n{{$json.sql_limit}};"
+      },
+      "id": "view-faults-list",
+      "name": "view_faults_list",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 800],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total\nFROM parts p\nWHERE p.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}};"
+      },
+      "id": "count-parts-list",
+      "name": "Count Parts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 600],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total\nFROM work_orders wo\nWHERE wo.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}};"
+      },
+      "id": "count-work-orders-list",
+      "name": "Count Work Orders",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 700],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as total\nFROM faults f\nWHERE f.yacht_id = '{{$json.yacht_id}}'\n  {{$json.sql_where}};"
+      },
+      "id": "count-faults-list",
+      "name": "Count Faults",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 800],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build unified response card\n// Input comes from count nodes, which have both query results and count\nconst countData = $input.first().json;\nconst action = countData.action_name;\n\n// Get the total count from this node's input\nconst totalCount = countData.total || 0;\n\n// Map action to card type\nconst cardTypeMap = {\n  view_equipment_details: 'equipment',\n  view_part_stock: 'part',\n  view_fault_history: 'fault_list',\n  view_work_order_history: 'work_order_list',\n  view_hours_of_rest: 'hor_table',\n  view_parts_list: 'parts_list',\n  view_work_orders_list: 'work_orders_list',\n  view_faults_list: 'faults_list'\n};\n\nconst cardType = cardTypeMap[action] || 'generic';\n\n// Build micro_actions based on card type\nlet microActions = [];\nif (cardType === 'equipment') {\n  microActions = [\n    { action_name: 'view_equipment_history', label: 'View History' },\n    { action_name: 'view_equipment_parts', label: 'View Parts' },\n    { action_name: 'view_linked_faults', label: 'View Faults' },\n    { action_name: 'add_equipment_note', label: 'Add Note' },\n    { action_name: 'create_work_order', label: 'Create Work Order' }\n  ];\n} else if (cardType === 'part') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'log_part_usage', label: 'Log Usage' },\n    { action_name: 'view_part_usage', label: 'View Usage History' }\n  ];\n} else if (cardType === 'parts_list') {\n  microActions = [\n    { action_name: 'order_part', label: 'Order Part' },\n    { action_name: 'export_parts_list', label: 'Export' }\n  ];\n} else if (cardType === 'work_orders_list') {\n  microActions = [\n    { action_name: 'create_work_order', label: 'Create Work Order' },\n    { action_name: 'export_work_orders', label: 'Export' }\n  ];\n} else if (cardType === 'faults_list') {\n  microActions = [\n    { action_name: 'report_fault', label: 'Report Fault' },\n    { action_name: 'export_faults_list', label: 'Export' }\n  ];\n}\n\n// For list queries, include pagination metadata\nlet paginationMeta = null;\nif (cardType.endsWith('_list')) {\n  paginationMeta = {\n    limit: countData.limit || 50,\n    offset: countData.offset || 0,\n    total: totalCount,\n    has_more: (countData.offset || 0) + (countData.limit || 50) < totalCount\n  };\n}\n\nreturn {\n  json: {\n    success: true,\n    card_type: cardType,\n    card: countData,\n    micro_actions: microActions,\n    pagination: paginationMeta,\n    streaming_chunks: []\n  }\n};"
+      },
+      "id": "build-response-view",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 700]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build error response\nconst error = $input.first().json;\n\nreturn {\n  json: {\n    success: false,\n    error: error.error || 'Unauthorized',\n    statusCode: error.statusCode || 401\n  }\n};"
+      },
+      "id": "build-error-view",
+      "name": "Build Error Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseCode": "={{$json.statusCode || 200}}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-response-view",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - VIEW": {
+      "main": [
+        [
+          {
+            "node": "Validate JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate JWT": {
+      "main": [
+        [
+          {
+            "node": "Check Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Auth": {
+      "main": [
+        [
+          {
+            "node": "Switch on action_name",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on action_name": {
+      "main": [
+        [
+          {
+            "node": "view_equipment_details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "view_part_stock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "view_fault_history",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "view_work_order_history",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "view_hours_of_rest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SQL Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SQL Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build SQL Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SQL Filter": {
+      "main": [
+        [
+          {
+            "node": "Route to Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route to Query": {
+      "main": [
+        [
+          {
+            "node": "view_parts_list",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "view_work_orders_list",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "view_faults_list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_parts_list": {
+      "main": [
+        [
+          {
+            "node": "Count Parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_work_orders_list": {
+      "main": [
+        [
+          {
+            "node": "Count Work Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_faults_list": {
+      "main": [
+        [
+          {
+            "node": "Count Faults",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Parts": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Work Orders": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Faults": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_equipment_details": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_part_stock": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_fault_history": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_work_order_history": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "view_hours_of_rest": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "versionId": "2.0.0",
+  "triggerCount": 0,
+  "active": false
+}
