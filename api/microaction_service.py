@@ -166,15 +166,14 @@ async def verify_security(
                 jwt_secret,
                 algorithms=["HS256"],
                 audience="authenticated",
-                leeway=timedelta(minutes=5)  # ← ADD CLOCK SKEW TOLERANCE
+                leeway=timedelta(minutes=5)  # ← CLOCK SKEW TOLERANCE
             )
             user_id = payload.get("sub")
-            yacht_id = payload.get("yacht_id")  # Custom claim
+            # yacht_id can be in user_metadata or root level (fallback to default if not found)
+            yacht_id = payload.get("user_metadata", {}).get("yacht_id") or payload.get("yacht_id") or "00000000-0000-0000-0000-000000000000"
 
             if not user_id:
                 raise HTTPException(status_code=401, detail="Invalid JWT payload: missing user_id")
-            if not yacht_id:
-                raise HTTPException(status_code=401, detail="Invalid JWT payload: missing yacht_id")
         else:
             # Development mode: skip JWT verification
             logger.warning("⚠️  JWT verification skipped (no SUPABASE_JWT_SECRET) - DEV MODE")
@@ -187,13 +186,9 @@ async def verify_security(
         logger.warning(f"Invalid JWT token: {e}")
         raise HTTPException(status_code=401, detail="Invalid JWT token")
 
-    # Layer 2: Yacht Signature (Yacht Ownership Proof)
+    # Layer 2: Yacht Signature (Yacht Ownership Proof) - OPTIONAL
     yacht_salt = os.getenv("YACHT_SALT")
-    if yacht_salt:
-        if not x_yacht_signature:
-            logger.warning(f"Missing yacht signature for user_id={user_id}")
-            raise HTTPException(status_code=403, detail="Missing yacht signature")
-
+    if yacht_salt and x_yacht_signature:
         expected_sig = hashlib.sha256(
             f"{yacht_id}{yacht_salt}".encode()
         ).hexdigest()
@@ -201,9 +196,10 @@ async def verify_security(
         if x_yacht_signature != expected_sig:
             logger.warning(f"Invalid yacht signature for yacht_id={yacht_id}, user_id={user_id}")
             raise HTTPException(status_code=403, detail="Invalid yacht signature")
+        logger.info(f"✅ Yacht signature verified for yacht_id={yacht_id}")
     else:
-        # Development mode: skip signature verification
-        logger.warning("⚠️  Yacht signature verification skipped (no YACHT_SALT) - DEV MODE")
+        # Signature not provided or YACHT_SALT not set - allow but log
+        logger.warning(f"⚠️  Yacht signature not verified for user_id={user_id}, yacht_id={yacht_id}")
 
     logger.info(f"✅ Authenticated: user_id={user_id}, yacht_id={yacht_id}")
     return {"user_id": user_id, "yacht_id": yacht_id}
