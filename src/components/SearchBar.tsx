@@ -2,19 +2,18 @@
 
 import { useState, FormEvent } from 'react'
 import { useSearch, SearchFilters } from '@/hooks/useSearch'
+import { useActions } from '@/hooks/useActions'
 
 /**
- * SearchBar component demonstrating token refresh before API calls.
+ * SearchBar component with integrated micro-actions.
  *
- * Uses ensureFreshToken() internally via useSearch hook to prevent
- * "JWT token expired" errors on the search endpoint.
+ * All API calls use:
+ * - Base URL: https://api.celeste7.ai/webhook/
+ * - Automatic JWT token refresh
+ * - No double slashes in URLs
  *
  * @example
  * ```tsx
- * // Basic usage
- * <SearchBar />
- *
- * // With error handling callback
  * <SearchBar onAuthError={() => router.push('/login')} />
  * ```
  */
@@ -32,11 +31,20 @@ export function SearchBar({
   const {
     search,
     clearResults,
-    isLoading,
-    error,
+    isLoading: searchLoading,
+    error: searchError,
     results,
     actions
   } = useSearch()
+
+  const {
+    executeAction,
+    isLoading: actionLoading,
+    error: actionError
+  } = useActions()
+
+  const isLoading = searchLoading || actionLoading
+  const error = searchError || actionError
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -46,7 +54,29 @@ export function SearchBar({
     try {
       await search(query, filters)
     } catch (err) {
-      // Handle authentication errors
+      if (err instanceof Error && (
+        err.message === 'Not authenticated' ||
+        err.message === 'Failed to refresh token'
+      )) {
+        onAuthError?.()
+      }
+    }
+  }
+
+  const handleAction = async (action: typeof actions[0]) => {
+    try {
+      const result = await executeAction({
+        action: action.action,
+        context: action.context || {},
+        payload: {
+          equipment_id: action.equipment_id
+        }
+      })
+
+      if (result?.status === 'success') {
+        console.log('Action executed successfully:', result)
+      }
+    } catch (err) {
       if (err instanceof Error && (
         err.message === 'Not authenticated' ||
         err.message === 'Failed to refresh token'
@@ -67,7 +97,6 @@ export function SearchBar({
           disabled={isLoading}
         />
 
-        {/* Optional filters */}
         <select
           value={filters.document_type || ''}
           onChange={(e) => setFilters(prev => ({
@@ -93,14 +122,12 @@ export function SearchBar({
         )}
       </form>
 
-      {/* Error display */}
       {error && (
         <div className="error">
           {error}
         </div>
       )}
 
-      {/* Results display */}
       {results.length > 0 && (
         <div className="results">
           {results.map((result, index) => (
@@ -115,17 +142,14 @@ export function SearchBar({
         </div>
       )}
 
-      {/* Available actions */}
       {actions.length > 0 && (
         <div className="actions">
           <h4>Quick Actions</h4>
           {actions.map((action, index) => (
             <button
               key={index}
-              onClick={() => {
-                // Execute micro-action via action router
-                console.log('Execute action:', action)
-              }}
+              onClick={() => handleAction(action)}
+              disabled={actionLoading}
             >
               {action.label}
             </button>
