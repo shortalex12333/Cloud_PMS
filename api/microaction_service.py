@@ -216,10 +216,8 @@ class ExtractionRequest(BaseModel):
     include_embedding: bool = Field(default=True, description="Include text-embedding-3-small embedding in response")
     include_metadata: bool = Field(default=False, description="Include detailed match metadata in response")
     validate_combination: bool = Field(default=True, description="Validate that detected actions make sense together")
-    # Optional context fields for n8n workflow
+    # Optional context field for n8n workflow
     session_id: Optional[str] = Field(default=None, description="Session ID for tracking")
-    conversation_id: Optional[str] = Field(default=None, description="Conversation ID for tracking")
-    search_strategy: Optional[str] = Field(default=None, description="Search strategy used")
 
     @validator('query')
     def clean_query(cls, v):
@@ -887,9 +885,7 @@ async def extract(
                 'userId': auth.get('user_id'),
                 'query': query,
                 'timestamp': timestamp,
-                'search_strategy': extraction_request.search_strategy,
                 'session_id': extraction_request.session_id,
-                'conversation_id': extraction_request.conversation_id,
                 'client_info': {
                     'user_agent': user_agent
                 }
