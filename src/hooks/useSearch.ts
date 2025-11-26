@@ -1,58 +1,10 @@
 import { useState, useCallback } from 'react'
-import { ensureFreshToken, getCurrentSession } from '@/lib/auth-helpers'
+import { search as apiSearch, SearchFilters, SearchResponse, SearchResult, SearchAction } from '@/lib/api-client'
 
-const SEARCH_API_URL = 'https://api.celeste7.ai/search'
+// Re-export types for convenience
+export type { SearchFilters, SearchResponse, SearchResult, SearchAction }
 
-/**
- * Search result card types
- */
-export type SearchResultType =
-  | 'document_chunk'
-  | 'fault'
-  | 'work_order'
-  | 'part'
-  | 'predictive'
-  | 'history_event'
-
-/**
- * Micro-action attached to search results
- */
-export interface SearchAction {
-  label: string
-  action: string
-  equipment_id?: string
-  context?: Record<string, unknown>
-}
-
-/**
- * Individual search result
- */
-export interface SearchResult {
-  type: SearchResultType
-  document_id?: string
-  work_order_id?: string
-  chunk_index?: number
-  score: number
-  text_preview?: string
-  summary?: string
-  title?: string
-  actions?: string[]
-}
-
-/**
- * Full search response from the API
- */
-export interface SearchResponse {
-  query_id: string
-  intent: string
-  entities: {
-    equipment_id?: string
-    fault_code?: string
-    part_number?: string
-  }
-  results: SearchResult[]
-  actions: SearchAction[]
-}
+export type SearchResultType = SearchResult['type']
 
 /**
  * Search state
@@ -64,45 +16,12 @@ export interface SearchState {
 }
 
 /**
- * Search filters
- */
-export interface SearchFilters {
-  equipment_id?: string | null
-  document_type?: string | null
-}
-
-/**
- * Search payload sent to the API
- */
-interface SearchPayload {
-  query: string
-  query_type: 'free-text'
-  auth: {
-    user_id: string
-    yacht_id: string | null
-    yacht_signature: null
-  }
-  context: {
-    client_ts: number
-    stream_id: string
-    session_id: string
-    source: 'web'
-    client_version: string
-    locale: string
-    timezone: string
-    platform: 'browser'
-  }
-  filters?: SearchFilters
-  stream: boolean
-}
-
-/**
  * Hook for making authenticated search requests to the CelesteOS API.
  *
- * Automatically handles:
- * - JWT token refresh before requests (prevents "token expired" errors)
+ * Uses centralized API client with:
+ * - Base URL: https://api.celeste7.ai/webhook/v1/search
+ * - Automatic JWT token refresh before requests
  * - Loading and error states
- * - Request context (timestamps, session IDs, locale, etc.)
  *
  * @example
  * ```tsx
@@ -127,47 +46,7 @@ export function useSearch() {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      // Get fresh token before making request (fixes JWT expired errors)
-      const token = await ensureFreshToken()
-      const session = await getCurrentSession()
-
-      const payload: SearchPayload = {
-        query,
-        query_type: 'free-text',
-        auth: {
-          user_id: session.userId,
-          yacht_id: session.yachtId,
-          yacht_signature: null
-        },
-        context: {
-          client_ts: Math.floor(Date.now() / 1000),
-          stream_id: crypto.randomUUID(),
-          session_id: crypto.randomUUID(),
-          source: 'web',
-          client_version: '1.0.0',
-          locale: navigator.language,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          platform: 'browser'
-        },
-        filters: filters || undefined,
-        stream: true
-      }
-
-      const response = await fetch(SEARCH_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Search failed: ${response.status} - ${errorText}`)
-      }
-
-      const data: SearchResponse = await response.json()
+      const data = await apiSearch(query, filters)
 
       setState({
         isLoading: false,
