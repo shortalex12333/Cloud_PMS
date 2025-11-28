@@ -11,17 +11,21 @@
  * - Inline microactions with overflow handling
  * - Confidence indicators
  * - Preview pane support
+ * - Real streaming API integration via useCelesteSearch hook
  */
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Search, X, Loader2, Command, ArrowUp, ArrowDown,
-  CornerDownLeft, ChevronRight, Clock, Sparkles,
+  CornerDownLeft, Clock, Sparkles,
   AlertTriangle, Wrench, Cog, Package, FileText,
-  ClipboardList, Ship, TrendingUp, DollarSign, Users
+  ClipboardList, Ship, TrendingUp, DollarSign, Users,
+  Mail, MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MicroAction, CardType, ACTION_REGISTRY } from '@/types/actions';
+import { useCelesteSearch } from '@/hooks/useCelesteSearch';
+import type { SearchResult as APISearchResult, ResultCardType, MicroAction as APIMicroAction } from '@/types/search';
 import SpotlightResultRow from './SpotlightResultRow';
 import SpotlightPreviewPane from './SpotlightPreviewPane';
 
@@ -29,7 +33,7 @@ import SpotlightPreviewPane from './SpotlightPreviewPane';
 // TYPES
 // ============================================================================
 
-export interface SearchResult {
+export interface SpotlightResult {
   id: string;
   type: CardType;
   title: string;
@@ -44,7 +48,7 @@ export interface SearchResult {
 interface ResultGroup {
   id: string;
   label: string;
-  results: SearchResult[];
+  results: SpotlightResult[];
   priority: number;
 }
 
@@ -88,62 +92,109 @@ const CARD_TYPE_LABELS: Record<CardType, string> = {
   smart_summary: 'Summary',
 };
 
-// Mock data for demonstration - in production, this comes from streaming API
-const MOCK_RESULTS: SearchResult[] = [
-  {
-    id: '1',
-    type: 'fault',
-    title: 'Generator 1 Overheating Alert',
-    subtitle: 'Engine Room · Caterpillar C32 · Reported 2 hours ago',
-    confidence: 95,
-    actions: ['diagnose_fault', 'create_work_order_from_fault', 'add_fault_note', 'view_fault_history'],
-    metadata: { faultCode: 'E-2847', severity: 'critical' },
-  },
-  {
-    id: '2',
-    type: 'equipment',
-    title: 'Main Generator #1',
-    subtitle: 'Caterpillar C32 ACERT · S/N: CAT32-78291 · Engine Room Deck 2',
-    confidence: 88,
-    actions: ['view_equipment_details', 'view_equipment_history', 'report_fault', 'view_equipment_manual'],
-    metadata: { manufacturer: 'Caterpillar', model: 'C32 ACERT' },
-  },
-  {
-    id: '3',
-    type: 'document',
-    title: 'Caterpillar C32 Service Manual',
-    subtitle: 'Section 4.2: Cooling System Troubleshooting · PDF · 245 pages',
-    confidence: 82,
-    actions: ['view_document', 'view_document_section', 'add_to_handover'],
-    metadata: { pages: 245, format: 'PDF' },
-  },
-  {
-    id: '4',
-    type: 'work_order',
-    title: 'WO-2024-0847: Generator Coolant Flush',
-    subtitle: 'Scheduled · Due in 3 days · Assigned to Chief Engineer',
-    confidence: 75,
-    actions: ['view_work_order_history', 'complete_work_order', 'add_work_order_note'],
-    metadata: { status: 'scheduled', priority: 'routine' },
-  },
-  {
-    id: '5',
-    type: 'part',
-    title: 'Coolant Temperature Sensor',
-    subtitle: 'Part #3512-B · 2 in stock · Bin A4-12 · Last used 14 days ago',
-    confidence: 68,
-    actions: ['view_part_stock', 'order_part', 'log_part_usage', 'view_linked_equipment'],
-    metadata: { quantity: 2, location: 'A4-12' },
-  },
-];
+// Extended icons for API result types not in core CardType
+const EXTENDED_ICONS: Record<string, React.ElementType> = {
+  document_chunk: FileText,
+  predictive: TrendingUp,
+  handover_item: Users,
+  email: Mail,
+  note: MessageSquare,
+};
 
-// Recent queries for empty state
-const RECENT_QUERIES = [
-  'generator fault',
-  'stabiliser maintenance',
-  'MTU manual',
-  'hydraulic pressure',
-];
+// ============================================================================
+// TYPE MAPPING UTILITIES
+// ============================================================================
+
+/**
+ * Map API ResultCardType to UI CardType
+ * Handles extended types that come from the search API
+ */
+function mapResultTypeToCardType(type: ResultCardType | string): CardType {
+  const typeMap: Record<string, CardType> = {
+    // Direct mappings
+    fault: 'fault',
+    work_order: 'work_order',
+    part: 'part',
+    equipment: 'equipment',
+
+    // Extended type mappings
+    document_chunk: 'document',
+    predictive: 'smart_summary',
+    handover_item: 'handover',
+    email: 'document',
+    note: 'document',
+  };
+
+  return typeMap[type] || 'document';
+}
+
+/**
+ * Map API MicroAction to actions.ts MicroAction
+ * Converts search API action names to the 67 canonical actions
+ */
+function mapAPIMicroAction(action: APIMicroAction | string): MicroAction {
+  const actionMap: Record<string, MicroAction> = {
+    // Search API action mappings
+    create_work_order: 'create_work_order',
+    add_to_handover: 'add_to_handover',
+    open_document: 'view_document',
+    order_part: 'order_part',
+    view_history: 'view_fault_history',
+    show_predictive: 'request_predictive_insight',
+    add_note: 'add_fault_note',
+    attach_photo: 'add_fault_photo',
+    resolve_fault: 'diagnose_fault',
+    assign_task: 'assign_work_order',
+  };
+
+  // First check if it's already a valid MicroAction in ACTION_REGISTRY
+  if (action in ACTION_REGISTRY) {
+    return action as MicroAction;
+  }
+
+  // Otherwise map it
+  return actionMap[action] || 'view_document';
+}
+
+/**
+ * Convert API SearchResult to SpotlightResult
+ */
+function mapAPIResultToSpotlight(result: APISearchResult): SpotlightResult {
+  const cardType = mapResultTypeToCardType(result.type);
+
+  // Map API actions to canonical MicroActions
+  const mappedActions: MicroAction[] = result.actions
+    .map(mapAPIMicroAction)
+    .filter((action, index, self) => self.indexOf(action) === index); // Deduplicate
+
+  return {
+    id: result.id,
+    type: cardType,
+    title: result.title,
+    subtitle: result.subtitle || result.preview || '',
+    confidence: result.score, // API uses 'score', UI uses 'confidence'
+    timestamp: result.timestamp,
+    actions: mappedActions,
+    metadata: result.metadata,
+    highlight: result.preview,
+  };
+}
+
+/**
+ * Get icon for result type (handles extended types)
+ */
+function getResultIcon(type: CardType | ResultCardType | string): React.ElementType {
+  // First check standard CardType icons
+  if (type in CARD_TYPE_ICONS) {
+    return CARD_TYPE_ICONS[type as CardType];
+  }
+  // Then check extended icons
+  if (type in EXTENDED_ICONS) {
+    return EXTENDED_ICONS[type];
+  }
+  // Default to document
+  return FileText;
+}
 
 // ============================================================================
 // COMPONENT
@@ -154,19 +205,34 @@ export default function SpotlightSearch({
   isModal = false,
   className
 }: SpotlightSearchProps) {
-  // State
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [showPreview, setShowPreview] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['top_hits', 'direct']));
+  // Use the real search hook
+  const {
+    query,
+    results: apiResults,
+    isLoading,
+    isStreaming,
+    error,
+    suggestions,
+    handleQueryChange,
+    search,
+    clear,
+    recentQueries,
+  } = useCelesteSearch();
+
+  // Local UI state
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [showPreview, setShowPreview] = React.useState(false);
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set(['top_hits', 'direct']));
 
   // Refs
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Map API results to Spotlight format
+  const results: SpotlightResult[] = useMemo(() => {
+    return apiResults.map(mapAPIResultToSpotlight);
+  }, [apiResults]);
 
   // Focus input on mount
   useEffect(() => {
@@ -186,46 +252,10 @@ export default function SpotlightSearch({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
-  // Simulate search (in production, this uses the streaming API)
-  const performSearch = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      setResults([]);
-      return;
-    }
-
-    setIsLoading(true);
-    setIsStreaming(true);
-
-    // Simulate streaming delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Filter mock results based on query
-    const filtered = MOCK_RESULTS.filter(r =>
-      r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.type.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    // Add results one by one to simulate streaming
-    setResults([]);
-    for (let i = 0; i < filtered.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setResults(prev => [...prev, filtered[i]]);
-    }
-
-    setIsLoading(false);
-    setIsStreaming(false);
-    setSelectedIndex(0);
-  }, []);
-
-  // Handle query change with debounce
+  // Reset selected index when results change
   useEffect(() => {
-    const timer = setTimeout(() => {
-      performSearch(query);
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [query, performSearch]);
+    setSelectedIndex(0);
+  }, [results.length]);
 
   // Group results by tier
   const groupedResults = useMemo((): ResultGroup[] => {
@@ -287,8 +317,7 @@ export default function SpotlightSearch({
         break;
       case 'Escape':
         if (query) {
-          setQuery('');
-          setResults([]);
+          clear();
         } else {
           onClose?.();
         }
@@ -306,7 +335,7 @@ export default function SpotlightSearch({
         }
         break;
     }
-  }, [flatResults.length, selectedResult, query, onClose]);
+  }, [flatResults.length, selectedResult, query, onClose, clear]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -331,17 +360,17 @@ export default function SpotlightSearch({
 
   // Handle recent query click
   const handleRecentClick = useCallback((recentQuery: string) => {
-    setQuery(recentQuery);
+    handleQueryChange(recentQuery);
+    search(recentQuery);
     inputRef.current?.focus();
-  }, []);
+  }, [handleQueryChange, search]);
 
-  // Clear search
+  // Clear search - use hook's clear method
   const handleClear = useCallback(() => {
-    setQuery('');
-    setResults([]);
+    clear();
     setSelectedIndex(0);
     inputRef.current?.focus();
-  }, []);
+  }, [clear]);
 
   const showResults = query.trim().length > 0;
   const showEmptyState = query.trim().length > 0 && results.length === 0 && !isLoading && !isStreaming;
@@ -394,7 +423,7 @@ export default function SpotlightSearch({
               ref={inputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleQueryChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search anything..."
               className={cn(
@@ -538,8 +567,26 @@ export default function SpotlightSearch({
                 );
               })}
 
+              {/* Error state */}
+              {error && (
+                <div className="py-6 px-4 text-center">
+                  <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <p className="text-[14px] font-medium text-zinc-600 dark:text-zinc-400">
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => search(query)}
+                    className="mt-2 text-[13px] text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+
               {/* Empty state */}
-              {showEmptyState && (
+              {showEmptyState && !error && (
                 <div className="py-12 px-4 text-center">
                   <Search className="h-10 w-10 mx-auto mb-3 text-zinc-300 dark:text-zinc-600" />
                   <p className="text-[15px] font-medium text-zinc-600 dark:text-zinc-400">
@@ -593,28 +640,32 @@ export default function SpotlightSearch({
         {/* Recent queries (empty state) */}
         {showRecentQueries && (
           <div className="mt-6 px-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-zinc-500 dark:text-zinc-400 mb-3">
-              Recent Searches
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {RECENT_QUERIES.map((recentQuery, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleRecentClick(recentQuery)}
-                  className={cn(
-                    'flex items-center gap-1.5',
-                    'px-3 py-1.5 rounded-lg',
-                    'bg-zinc-100 dark:bg-zinc-800',
-                    'hover:bg-zinc-200 dark:hover:bg-zinc-700',
-                    'text-[13px] text-zinc-600 dark:text-zinc-300',
-                    'transition-colors duration-150'
-                  )}
-                >
-                  <Clock className="h-3 w-3 text-zinc-400" />
-                  {recentQuery}
-                </button>
-              ))}
-            </div>
+            {recentQueries.length > 0 && (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-zinc-500 dark:text-zinc-400 mb-3">
+                  Recent Searches
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {recentQueries.map((recentQuery, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleRecentClick(recentQuery)}
+                      className={cn(
+                        'flex items-center gap-1.5',
+                        'px-3 py-1.5 rounded-lg',
+                        'bg-zinc-100 dark:bg-zinc-800',
+                        'hover:bg-zinc-200 dark:hover:bg-zinc-700',
+                        'text-[13px] text-zinc-600 dark:text-zinc-300',
+                        'transition-colors duration-150'
+                      )}
+                    >
+                      <Clock className="h-3 w-3 text-zinc-400" />
+                      {recentQuery}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Example queries */}
             <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-zinc-500 dark:text-zinc-400 mt-6 mb-3">

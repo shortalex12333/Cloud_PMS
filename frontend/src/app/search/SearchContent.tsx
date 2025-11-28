@@ -1,58 +1,100 @@
 'use client';
 
-import SearchBar from '@/components/SearchBar';
+/**
+ * SearchContent
+ * Main search page with Apple Spotlight-quality interface
+ */
+
 import { Suspense } from 'react';
 import { withAuth } from '@/components/withAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { Zap, Settings } from 'lucide-react';
+import { LayoutDashboard, Settings, Zap } from 'lucide-react';
+import { SpotlightSearch } from '@/components/spotlight';
+import { cn } from '@/lib/utils';
 
 function SearchContent() {
   const { user } = useAuth();
-  const showBriefing = isHOD(user);
+  const showDashboard = isHOD(user);
 
   return (
-    <div className="spotlight-container relative min-h-screen">
-      <div className="w-full max-w-4xl">
+    <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      {/* Main content area */}
+      <div className="spotlight-container pb-20">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold mb-2">CelesteOS</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            CelesteOS
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
             Search anything — manuals, faults, history, parts, or ask a question
           </p>
           {user && (
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
               {user.displayName || user.email} • {user.role}
             </p>
           )}
         </div>
 
-        {/* Search Interface */}
+        {/* Spotlight Search Interface */}
         <Suspense
           fallback={
-            <div className="w-full h-12 skeleton rounded-lg" />
+            <div className="w-full max-w-[680px] h-14 skeleton rounded-[14px]" />
           }
         >
-          <SearchBar />
+          <SpotlightSearch />
         </Suspense>
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-center gap-8">
-          {showBriefing && (
-            <Link
-              href="/briefing"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-            >
-              <Zap className="h-4 w-4" />
-              <span>Briefing</span>
-            </Link>
+      <nav className={cn(
+        'fixed bottom-0 left-0 right-0',
+        'border-t border-zinc-200/60 dark:border-zinc-800/60',
+        'bg-white/80 dark:bg-zinc-900/80',
+        'backdrop-blur-lg',
+        'z-50'
+      )}>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-center gap-2">
+          {showDashboard && (
+            <>
+              <Link
+                href="/dashboard"
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg',
+                  'text-sm font-medium',
+                  'text-zinc-600 dark:text-zinc-300',
+                  'hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                  'transition-colors duration-150'
+                )}
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                href="/briefing"
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-lg',
+                  'text-sm font-medium',
+                  'text-zinc-600 dark:text-zinc-300',
+                  'hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                  'transition-colors duration-150'
+                )}
+              >
+                <Zap className="h-4 w-4" />
+                <span>Briefing</span>
+              </Link>
+            </>
           )}
           <Link
             href="/settings"
-            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg',
+              'text-sm font-medium',
+              'text-zinc-600 dark:text-zinc-300',
+              'hover:bg-zinc-100 dark:hover:bg-zinc-800',
+              'transition-colors duration-150'
+            )}
           >
             <Settings className="h-4 w-4" />
             <span>Settings</span>
