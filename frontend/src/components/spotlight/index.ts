@@ -4,6 +4,7 @@
  */
 
 export { default as SpotlightSearch } from './SpotlightSearch';
+export type { SpotlightResult } from './SpotlightSearch';
 export { default as SpotlightResultRow } from './SpotlightResultRow';
 export { default as SpotlightPreviewPane } from './SpotlightPreviewPane';
 export { default as MicroactionButton, MicroactionGroup } from './MicroactionButton';
