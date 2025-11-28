@@ -55,3 +55,164 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ============================================================================
+   SPOTLIGHT SEARCH STYLES
+   ============================================================================ */
+
+.spotlight-container {
+  @apply flex flex-col items-center justify-start pt-[15vh];
+}
+
+/* Scrollbar styling */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-zinc-300::-webkit-scrollbar-thumb {
+  background-color: #d4d4d8;
+}
+
+.dark .scrollbar-thumb-zinc-700::-webkit-scrollbar-thumb {
+  background-color: #3f3f46;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-progress {
+  0%, 100% {
+    opacity: 0.4;
+    width: 30%;
+  }
+  50% {
+    opacity: 1;
+    width: 70%;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+  background-size: 200% 100%;
+}
+
+.animate-pulse-progress {
+  animation: pulse-progress 1.5s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.15s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+/* ============================================================================
+   SKELETON LOADING
+   ============================================================================ */
+
+.skeleton {
+  @apply bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded;
+}
+
+/* ============================================================================
+   MODULE TRANSITIONS
+   ============================================================================ */
+
+.module-expand-enter {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.module-expand-enter-active {
+  max-height: 600px;
+  opacity: 1;
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+}
+
+.module-expand-exit {
+  max-height: 600px;
+  opacity: 1;
+}
+
+.module-expand-exit-active {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+}
