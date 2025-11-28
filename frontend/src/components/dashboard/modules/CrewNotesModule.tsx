@@ -3,61 +3,70 @@
 /**
  * CrewNotesModule
  * Recent crew observations and notes
+ * Connected to real dashboard data via useDashboardData hook
  */
 
 import React from 'react';
-import { MessageSquare, User, Clock, Pin } from 'lucide-react';
+import { MessageSquare, User, Clock, Pin, AlertCircle, Lightbulb, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem } from './ModuleContainer';
 import { MicroactionButton } from '@/components/spotlight';
+import { useCrewNotesData, CrewNote } from '@/hooks/useDashboardData';
 
 // ============================================================================
-// MOCK DATA
-// ============================================================================
-
-const RECENT_NOTES = [
-  {
-    id: 'N-001',
-    author: 'Chief Engineer',
-    content: 'Generator 1 coolant temp running slightly high during morning checks. Monitoring.',
-    timeAgo: '2h ago',
-    pinned: true,
-    linkedTo: 'Main Generator #1',
-  },
-  {
-    id: 'N-002',
-    author: 'ETO',
-    content: 'Port nav light replaced. Tested OK.',
-    timeAgo: '5h ago',
-    pinned: false,
-    linkedTo: 'Navigation Lights',
-  },
-  {
-    id: 'N-003',
-    author: '2nd Engineer',
-    content: 'Bilge pump cycling more frequently in engine room. May need inspection.',
-    timeAgo: '1d ago',
-    pinned: false,
-    linkedTo: 'Bilge System',
-  },
-];
-
-// ============================================================================
-// COMPONENT
+// TYPES
 // ============================================================================
 
 interface CrewNotesModuleProps {
   isExpanded: boolean;
   onToggle: () => void;
   className?: string;
+  notes?: CrewNote[];
 }
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function getNoteIcon(type: CrewNote['type']) {
+  switch (type) {
+    case 'concern':
+      return AlertCircle;
+    case 'recommendation':
+      return Lightbulb;
+    default:
+      return Eye;
+  }
+}
+
+function getNoteIconColor(type: CrewNote['type']) {
+  switch (type) {
+    case 'concern':
+      return 'text-amber-500';
+    case 'recommendation':
+      return 'text-blue-500';
+    default:
+      return 'text-zinc-400';
+  }
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 export default function CrewNotesModule({
   isExpanded,
   onToggle,
   className,
+  notes: propNotes,
 }: CrewNotesModuleProps) {
-  const pinnedCount = RECENT_NOTES.filter(n => n.pinned).length;
+  // Use hook data unless props are provided
+  const hookData = useCrewNotesData();
+
+  const notes = propNotes ?? hookData.notes;
+  const isLoading = !propNotes && hookData.isLoading;
+
+  const newNotes = notes.filter(n => n.status === 'new');
 
   return (
     <ModuleContainer
@@ -66,81 +75,97 @@ export default function CrewNotesModule({
       isExpanded={isExpanded}
       onToggle={onToggle}
       status="neutral"
-      statusLabel={`${RECENT_NOTES.length} recent notes`}
-      badge={pinnedCount > 0 ? pinnedCount : undefined}
+      statusLabel={`${notes.length} recent notes`}
+      badge={newNotes.length > 0 ? newNotes.length : undefined}
       collapsedContent={
         <p className="text-[12px] text-zinc-500 truncate">
-          Latest: {RECENT_NOTES[0]?.content}
+          Latest: {notes[0]?.content}
         </p>
       }
       className={className}
     >
-      {/* Notes list */}
-      <div className="space-y-3">
-        {RECENT_NOTES.map((note) => (
-          <div
-            key={note.id}
-            className={cn(
-              'p-3 rounded-xl',
-              'bg-zinc-50 dark:bg-zinc-800/50',
-              note.pinned && 'ring-1 ring-amber-300 dark:ring-amber-700'
-            )}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700">
-                <User className="h-3 w-3 text-zinc-500" />
-              </div>
-              <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
-                {note.author}
-              </span>
-              {note.pinned && (
-                <Pin className="h-3 w-3 text-amber-500" />
-              )}
-              <span className="ml-auto flex items-center gap-1 text-[11px] text-zinc-400">
-                <Clock className="h-3 w-3" />
-                {note.timeAgo}
-              </span>
-            </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 text-zinc-400 animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Notes list */}
+          <div className="space-y-3">
+            {notes.map((note) => {
+              const NoteIcon = getNoteIcon(note.type);
+              const iconColor = getNoteIconColor(note.type);
 
-            {/* Content */}
-            <p className="text-[13px] text-zinc-600 dark:text-zinc-300 mb-2">
-              {note.content}
-            </p>
+              return (
+                <div
+                  key={note.id}
+                  className={cn(
+                    'p-3 rounded-xl',
+                    'bg-zinc-50 dark:bg-zinc-800/50',
+                    note.status === 'new' && 'ring-1 ring-blue-300 dark:ring-blue-700'
+                  )}
+                >
+                  {/* Header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700">
+                      <User className="h-3 w-3 text-zinc-500" />
+                    </div>
+                    <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+                      {note.author}
+                    </span>
+                    <NoteIcon className={cn('h-3 w-3', iconColor)} />
+                    <span className="ml-auto flex items-center gap-1 text-[11px] text-zinc-400">
+                      <Clock className="h-3 w-3" />
+                      {note.timestamp}
+                    </span>
+                  </div>
 
-            {/* Linked entity */}
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-zinc-400">
-                Re: {note.linkedTo}
-              </span>
-              <MicroactionButton
-                action="add_to_handover"
-                size="sm"
-                onClick={() => console.log('Add to handover:', note.id)}
-              />
-            </div>
+                  {/* Content */}
+                  <p className="text-[13px] text-zinc-600 dark:text-zinc-300 mb-2">
+                    {note.content}
+                  </p>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      'text-[10px] px-1.5 py-0.5 rounded',
+                      note.status === 'new' && 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                      note.status === 'reviewed' && 'bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400',
+                      note.status === 'actioned' && 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    )}>
+                      {note.status}
+                    </span>
+                    <MicroactionButton
+                      action="add_to_handover"
+                      size="sm"
+                      onClick={() => console.log('Add to handover:', note.id)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 mt-4">
-        <MicroactionButton
-          action="add_work_order_note"
-          size="md"
-          showLabel
-          onClick={() => console.log('Add note')}
-        />
-        <button className={cn(
-          'px-3 py-1.5 rounded-lg',
-          'text-[12px] font-medium',
-          'text-blue-500 hover:text-blue-600',
-          'hover:bg-blue-50 dark:hover:bg-blue-900/20',
-          'transition-colors'
-        )}>
-          View all notes →
-        </button>
-      </div>
+          {/* Actions */}
+          <div className="flex items-center gap-2 mt-4">
+            <MicroactionButton
+              action="add_work_order_note"
+              size="md"
+              showLabel
+              onClick={() => console.log('Add note')}
+            />
+            <button className={cn(
+              'px-3 py-1.5 rounded-lg',
+              'text-[12px] font-medium',
+              'text-blue-500 hover:text-blue-600',
+              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'transition-colors'
+            )}>
+              View all notes →
+            </button>
+          </div>
+        </>
+      )}
     </ModuleContainer>
   );
 }

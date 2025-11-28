@@ -3,68 +3,48 @@
 /**
  * DocumentExpiryModule
  * Expiring certificates and documents
+ * Connected to real dashboard data via useDashboardData hook
  */
 
 import React from 'react';
-import { FileText, AlertTriangle, Calendar, CheckCircle } from 'lucide-react';
+import { FileText, AlertTriangle, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem } from './ModuleContainer';
 import { MicroactionButton } from '@/components/spotlight';
+import { useDocumentExpiryData, ExpiringDocument, DocumentStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
-// MOCK DATA
-// ============================================================================
-
-const EXPIRING_DOCS = [
-  {
-    id: 'DOC-001',
-    name: 'Safety Equipment Certificate',
-    expiryDate: '2025-02-15',
-    daysUntil: 18,
-    type: 'certificate',
-    status: 'expiring' as const,
-  },
-  {
-    id: 'DOC-002',
-    name: 'Class Survey - Hull',
-    expiryDate: '2025-03-01',
-    daysUntil: 32,
-    type: 'survey',
-    status: 'upcoming' as const,
-  },
-  {
-    id: 'DOC-003',
-    name: 'Radio License',
-    expiryDate: '2025-01-30',
-    daysUntil: 2,
-    type: 'license',
-    status: 'critical' as const,
-  },
-];
-
-const STATS = {
-  total: 45,
-  valid: 42,
-  expiringSoon: 3,
-};
-
-// ============================================================================
-// COMPONENT
+// TYPES
 // ============================================================================
 
 interface DocumentExpiryModuleProps {
   isExpanded: boolean;
   onToggle: () => void;
   className?: string;
+  documents?: ExpiringDocument[];
+  stats?: DocumentStats;
 }
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 export default function DocumentExpiryModule({
   isExpanded,
   onToggle,
   className,
+  documents: propDocuments,
+  stats: propStats,
 }: DocumentExpiryModuleProps) {
-  const hasCritical = EXPIRING_DOCS.some(d => d.status === 'critical');
-  const overallStatus = hasCritical ? 'critical' : STATS.expiringSoon > 0 ? 'warning' : 'healthy';
+  // Use hook data unless props are provided
+  const hookData = useDocumentExpiryData();
+
+  const documents = propDocuments ?? hookData.documents;
+  const stats = propStats ?? hookData.stats;
+  const isLoading = !propDocuments && hookData.isLoading;
+
+  const hasCritical = documents.some(d => d.status === 'critical');
+  const overallStatus = hasCritical ? 'critical' : stats.expiringSoon > 0 ? 'warning' : 'healthy';
 
   return (
     <ModuleContainer
@@ -73,8 +53,8 @@ export default function DocumentExpiryModule({
       isExpanded={isExpanded}
       onToggle={onToggle}
       status={overallStatus}
-      statusLabel={hasCritical ? 'Action required' : `${STATS.expiringSoon} expiring soon`}
-      badge={STATS.expiringSoon}
+      statusLabel={hasCritical ? 'Action required' : `${stats.expiringSoon} expiring soon`}
+      badge={stats.expiringSoon}
       collapsedContent={
         <div className="flex items-center gap-2">
           <span className={cn(
@@ -82,77 +62,85 @@ export default function DocumentExpiryModule({
             hasCritical ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                          'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
           )}>
-            {STATS.expiringSoon} need attention
+            {stats.expiringSoon} need attention
           </span>
         </div>
       }
       className={className}
     >
-      {/* Document list */}
-      <div className="space-y-1">
-        {EXPIRING_DOCS.map((doc) => {
-          const itemStatus = doc.status === 'critical' ? 'critical' :
-                            doc.status === 'expiring' ? 'warning' : 'neutral';
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 text-zinc-400 animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Document list */}
+          <div className="space-y-1">
+            {documents.map((doc) => {
+              const itemStatus = doc.status === 'critical' || doc.status === 'expired' ? 'critical' :
+                                doc.status === 'expiring' ? 'warning' : 'neutral';
 
-          return (
-            <ModuleItem
-              key={doc.id}
-              icon={
-                doc.status === 'critical' ? (
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                ) : doc.status === 'expiring' ? (
-                  <Calendar className="h-4 w-4 text-amber-500" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 text-zinc-400" />
-                )
-              }
-              title={doc.name}
-              subtitle={`Expires: ${doc.expiryDate}`}
-              status={itemStatus}
-              value={doc.daysUntil <= 7 ? `${doc.daysUntil}d` : `${doc.daysUntil} days`}
-              onClick={() => console.log('View doc:', doc.id)}
-              actions={
-                <MicroactionButton
-                  action="view_document"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('View:', doc.id);
-                  }}
+              return (
+                <ModuleItem
+                  key={doc.id}
+                  icon={
+                    doc.status === 'critical' || doc.status === 'expired' ? (
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                    ) : doc.status === 'expiring' ? (
+                      <Calendar className="h-4 w-4 text-amber-500" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 text-zinc-400" />
+                    )
+                  }
+                  title={doc.name}
+                  subtitle={`Expires: ${doc.expiryDate}`}
+                  status={itemStatus}
+                  value={doc.daysUntil <= 7 ? `${doc.daysUntil}d` : `${doc.daysUntil} days`}
+                  onClick={() => console.log('View doc:', doc.id)}
+                  actions={
+                    <MicroactionButton
+                      action="view_document"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('View:', doc.id);
+                      }}
+                    />
+                  }
                 />
-              }
+              );
+            })}
+          </div>
+
+          {/* Summary */}
+          <div className={cn(
+            'mt-3 px-3 py-2 rounded-lg',
+            'bg-zinc-100 dark:bg-zinc-800',
+            'text-[12px] text-zinc-600 dark:text-zinc-400'
+          )}>
+            {stats.valid} of {stats.total} documents valid
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 mt-4">
+            <MicroactionButton
+              action="view_document"
+              size="md"
+              showLabel
+              onClick={() => console.log('View documents')}
             />
-          );
-        })}
-      </div>
-
-      {/* Summary */}
-      <div className={cn(
-        'mt-3 px-3 py-2 rounded-lg',
-        'bg-zinc-100 dark:bg-zinc-800',
-        'text-[12px] text-zinc-600 dark:text-zinc-400'
-      )}>
-        {STATS.valid} of {STATS.total} documents valid
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 mt-4">
-        <MicroactionButton
-          action="view_document"
-          size="md"
-          showLabel
-          onClick={() => console.log('View documents')}
-        />
-        <button className={cn(
-          'px-3 py-1.5 rounded-lg',
-          'text-[12px] font-medium',
-          'text-blue-500 hover:text-blue-600',
-          'hover:bg-blue-50 dark:hover:bg-blue-900/20',
-          'transition-colors'
-        )}>
-          View all →
-        </button>
-      </div>
+            <button className={cn(
+              'px-3 py-1.5 rounded-lg',
+              'text-[12px] font-medium',
+              'text-blue-500 hover:text-blue-600',
+              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'transition-colors'
+            )}>
+              View all →
+            </button>
+          </div>
+        </>
+      )}
     </ModuleContainer>
   );
 }
