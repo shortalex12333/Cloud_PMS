@@ -3,51 +3,15 @@
 /**
  * WorkOrderModule
  * Work order health overview for Control Center
+ * Connected to real dashboard data via useDashboardData hook
  */
 
 import React from 'react';
-import { Wrench, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Wrench, Clock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem, StatCard, ProgressBar } from './ModuleContainer';
 import { MicroactionButton } from '@/components/spotlight';
-
-// ============================================================================
-// MOCK DATA
-// ============================================================================
-
-const MOCK_WORK_ORDERS = [
-  {
-    id: 'WO-2024-0847',
-    title: 'Generator Coolant Flush',
-    equipment: 'Main Generator #1',
-    dueDate: '3 days',
-    priority: 'routine' as const,
-    status: 'scheduled' as const,
-  },
-  {
-    id: 'WO-2024-0852',
-    title: 'Stabiliser Hydraulic Check',
-    equipment: 'Port Stabiliser',
-    dueDate: 'Today',
-    priority: 'important' as const,
-    status: 'in_progress' as const,
-  },
-  {
-    id: 'WO-2024-0849',
-    title: 'AC Filter Replacement',
-    equipment: 'HVAC System',
-    dueDate: 'Overdue 2d',
-    priority: 'critical' as const,
-    status: 'overdue' as const,
-  },
-];
-
-const STATS = {
-  total: 24,
-  completed: 18,
-  inProgress: 4,
-  overdue: 2,
-};
+import { useWorkOrderData, WorkOrderSummary, WorkOrderStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
 // TYPES
@@ -57,6 +21,9 @@ interface WorkOrderModuleProps {
   isExpanded: boolean;
   onToggle: () => void;
   className?: string;
+  // Optional: allow passing data directly for testing
+  workOrders?: WorkOrderSummary[];
+  stats?: WorkOrderStats;
 }
 
 // ============================================================================
@@ -67,9 +34,18 @@ export default function WorkOrderModule({
   isExpanded,
   onToggle,
   className,
+  workOrders: propWorkOrders,
+  stats: propStats,
 }: WorkOrderModuleProps) {
-  const overallStatus = STATS.overdue > 0 ? 'critical' : STATS.inProgress > 0 ? 'warning' : 'healthy';
-  const completionRate = Math.round((STATS.completed / STATS.total) * 100);
+  // Use hook data unless props are provided
+  const hookData = useWorkOrderData();
+
+  const workOrders = propWorkOrders ?? hookData.workOrders;
+  const stats = propStats ?? hookData.stats;
+  const isLoading = !propWorkOrders && hookData.isLoading;
+
+  const overallStatus = stats.overdue > 0 ? 'critical' : stats.inProgress > 0 ? 'warning' : 'healthy';
+  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
   return (
     <ModuleContainer
@@ -78,8 +54,8 @@ export default function WorkOrderModule({
       isExpanded={isExpanded}
       onToggle={onToggle}
       status={overallStatus}
-      statusLabel={STATS.overdue > 0 ? `${STATS.overdue} overdue` : `${STATS.inProgress} in progress`}
-      badge={STATS.total}
+      statusLabel={stats.overdue > 0 ? `${stats.overdue} overdue` : `${stats.inProgress} in progress`}
+      badge={stats.total}
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={completionRate} status="healthy" />
@@ -88,69 +64,77 @@ export default function WorkOrderModule({
       }
       className={className}
     >
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <StatCard label="Completed" value={STATS.completed} status="healthy" />
-        <StatCard label="In Progress" value={STATS.inProgress} status="warning" />
-        <StatCard label="Overdue" value={STATS.overdue} status={STATS.overdue > 0 ? 'critical' : 'neutral'} />
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 text-zinc-400 animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <StatCard label="Completed" value={stats.completed} status="healthy" />
+            <StatCard label="In Progress" value={stats.inProgress} status="warning" />
+            <StatCard label="Overdue" value={stats.overdue} status={stats.overdue > 0 ? 'critical' : 'neutral'} />
+          </div>
 
-      {/* Work order list */}
-      <div className="space-y-1">
-        {MOCK_WORK_ORDERS.map((wo) => {
-          const statusIcon = wo.status === 'overdue' ? AlertCircle :
-                            wo.status === 'in_progress' ? Clock : CheckCircle;
-          const StatusIcon = statusIcon;
-          const itemStatus = wo.status === 'overdue' ? 'critical' :
-                            wo.status === 'in_progress' ? 'warning' : 'neutral';
+          {/* Work order list */}
+          <div className="space-y-1">
+            {workOrders.map((wo) => {
+              const statusIcon = wo.status === 'overdue' ? AlertCircle :
+                                wo.status === 'in_progress' ? Clock : CheckCircle;
+              const StatusIcon = statusIcon;
+              const itemStatus = wo.status === 'overdue' ? 'critical' :
+                                wo.status === 'in_progress' ? 'warning' : 'neutral';
 
-          return (
-            <ModuleItem
-              key={wo.id}
-              icon={<StatusIcon className={cn(
-                'h-4 w-4',
-                wo.status === 'overdue' && 'text-red-500',
-                wo.status === 'in_progress' && 'text-amber-500',
-                wo.status === 'scheduled' && 'text-zinc-400'
-              )} />}
-              title={wo.title}
-              subtitle={`${wo.id} · ${wo.equipment}`}
-              status={itemStatus}
-              value={wo.dueDate}
-              onClick={() => console.log('Open WO:', wo.id)}
-              actions={
-                <MicroactionButton
-                  action="complete_work_order"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('Complete:', wo.id);
-                  }}
+              return (
+                <ModuleItem
+                  key={wo.id}
+                  icon={<StatusIcon className={cn(
+                    'h-4 w-4',
+                    wo.status === 'overdue' && 'text-red-500',
+                    wo.status === 'in_progress' && 'text-amber-500',
+                    wo.status === 'scheduled' && 'text-zinc-400'
+                  )} />}
+                  title={wo.title}
+                  subtitle={`${wo.id} · ${wo.equipment}`}
+                  status={itemStatus}
+                  value={wo.dueDate}
+                  onClick={() => console.log('Open WO:', wo.id)}
+                  actions={
+                    <MicroactionButton
+                      action="complete_work_order"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Complete:', wo.id);
+                      }}
+                    />
+                  }
                 />
-              }
-            />
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
 
-      {/* Module actions */}
-      <div className="flex items-center gap-2 mt-4">
-        <MicroactionButton
-          action="create_work_order"
-          size="md"
-          showLabel
-          onClick={() => console.log('Create work order')}
-        />
-        <button className={cn(
-          'px-3 py-1.5 rounded-lg',
-          'text-[12px] font-medium',
-          'text-blue-500 hover:text-blue-600',
-          'hover:bg-blue-50 dark:hover:bg-blue-900/20',
-          'transition-colors'
-        )}>
-          View all →
-        </button>
-      </div>
+          {/* Module actions */}
+          <div className="flex items-center gap-2 mt-4">
+            <MicroactionButton
+              action="create_work_order"
+              size="md"
+              showLabel
+              onClick={() => console.log('Create work order')}
+            />
+            <button className={cn(
+              'px-3 py-1.5 rounded-lg',
+              'text-[12px] font-medium',
+              'text-blue-500 hover:text-blue-600',
+              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'transition-colors'
+            )}>
+              View all →
+            </button>
+          </div>
+        </>
+      )}
     </ModuleContainer>
   );
 }
