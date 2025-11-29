@@ -41,6 +41,13 @@ export { AddPhotoModal } from './AddPhotoModal';
 export { AssignWorkOrderModal } from './AssignWorkOrderModal';
 export { EditHandoverSectionModal } from './EditHandoverSectionModal';
 
+// Phase 5 - Compliance & Purchasing Modals
+export { UpdateHoursOfRestModal } from './UpdateHoursOfRestModal';
+export { LogDeliveryReceivedModal } from './LogDeliveryReceivedModal';
+
+// Phase 5 - Shipyard Worklist Modal
+export { AddWorklistTaskModal } from './AddWorklistTaskModal';
+
 /**
  * Modal Coverage Summary:
  *
@@ -78,8 +85,15 @@ export { EditHandoverSectionModal } from './EditHandoverSectionModal';
  * PURCHASING (7 actions):
  * - create_purchase_request: CreatePurchaseRequestModal
  * - edit_invoice_amount: EditInvoiceAmountModal
+ * - log_delivery_received: LogDeliveryReceivedModal
  *
  * CHECKLIST (4 actions):
  * - add_checklist_note: AddNoteModal (entity_type='checklist')
  * - add_checklist_photo: AddPhotoModal (entity_type='checklist')
+ *
+ * COMPLIANCE (MLC/ISM):
+ * - update_hours_of_rest: UpdateHoursOfRestModal
+ *
+ * SHIPYARD/WORKLIST:
+ * - add_worklist_task: AddWorklistTaskModal
  */
