@@ -33,15 +33,53 @@ export { DiagnoseFaultModal } from './DiagnoseFaultModal';
 // Phase 4 - Special Utility Modal
 export { CompleteWorkOrderModal } from './CompleteWorkOrderModal';
 
+// Phase 5 - Generic Note/Photo Modals
+export { AddNoteModal } from './AddNoteModal';
+export { AddPhotoModal } from './AddPhotoModal';
+
+// Phase 5 - Assignment & Handover Modals
+export { AssignWorkOrderModal } from './AssignWorkOrderModal';
+export { EditHandoverSectionModal } from './EditHandoverSectionModal';
+
 /**
- * Usage example:
+ * Modal Coverage Summary:
  *
- * import { ReportFaultModal, OrderPartModal } from '@/components/modals';
+ * FAULT & DIAGNOSIS (9 actions):
+ * - diagnose_fault: DiagnoseFaultModal
+ * - report_fault: ReportFaultModal
+ * - add_fault_note: AddNoteModal (entity_type='fault')
+ * - add_fault_photo: AddPhotoModal (entity_type='fault')
+ * - link_equipment_to_fault: LinkEquipmentToFaultModal
+ * - edit_fault_details: EditFaultDetailsModal
  *
- * <ReportFaultModal
- *   open={isOpen}
- *   onOpenChange={setIsOpen}
- *   context={{ equipment_id: '123', equipment_name: 'Engine' }}
- *   onSuccess={(fault_id) => console.log('Fault reported:', fault_id)}
- * />
+ * WORK ORDER (11 actions):
+ * - create_work_order: CreateWorkOrderModal
+ * - complete_work_order: CompleteWorkOrderModal
+ * - add_work_order_note: AddNoteModal (entity_type='work_order')
+ * - add_work_order_photo: AddPhotoModal (entity_type='work_order')
+ * - link_parts_to_work_order: LinkPartsToWorkOrderModal
+ * - assign_work_order: AssignWorkOrderModal
+ * - edit_work_order_details: EditWorkOrderDetailsModal
+ *
+ * EQUIPMENT (6 actions):
+ * - add_equipment_note: AddNoteModal (entity_type='equipment')
+ * - edit_equipment_details: EditEquipmentDetailsModal
+ *
+ * INVENTORY (9 actions):
+ * - add_part: AddPartModal
+ * - order_part: OrderPartModal
+ * - log_part_usage: LogPartUsageModal
+ * - edit_part_quantity: EditPartQuantityModal
+ *
+ * HANDOVER (6 actions):
+ * - add_to_handover: AddToHandoverModal
+ * - edit_handover_section: EditHandoverSectionModal
+ *
+ * PURCHASING (7 actions):
+ * - create_purchase_request: CreatePurchaseRequestModal
+ * - edit_invoice_amount: EditInvoiceAmountModal
+ *
+ * CHECKLIST (4 actions):
+ * - add_checklist_note: AddNoteModal (entity_type='checklist')
+ * - add_checklist_photo: AddPhotoModal (entity_type='checklist')
  */
