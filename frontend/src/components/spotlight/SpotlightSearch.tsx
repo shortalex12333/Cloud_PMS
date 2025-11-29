@@ -380,7 +380,7 @@ export default function SpotlightSearch({
     <div
       ref={containerRef}
       className={cn(
-        'spotlight-container w-full max-w-[680px]',
+        'w-full max-w-[680px] mx-auto',
         isModal && 'fixed inset-0 z-[800] flex items-start justify-center pt-[15vh]',
         className
       )}

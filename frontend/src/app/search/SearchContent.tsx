@@ -19,32 +19,34 @@ function SearchContent() {
   const showDashboard = isHOD(user);
 
   return (
-    <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      {/* Main content area */}
-      <div className="spotlight-container pb-20">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            CelesteOS
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
-            Search anything — manuals, faults, history, parts, or ask a question
-          </p>
-          {user && (
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-              {user.displayName || user.email} • {user.role}
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      {/* Main content area - centered */}
+      <div className="spotlight-container pb-24">
+        <div className="w-full max-w-[680px]">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+              CelesteOS
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+              Search anything — manuals, faults, history, parts, or ask a question
             </p>
-          )}
-        </div>
+            {user && (
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
+                {user.displayName || user.email} • {user.role}
+              </p>
+            )}
+          </div>
 
-        {/* Spotlight Search Interface */}
-        <Suspense
-          fallback={
-            <div className="w-full max-w-[680px] h-14 skeleton rounded-[14px]" />
-          }
-        >
-          <SpotlightSearch />
-        </Suspense>
+          {/* Spotlight Search Interface */}
+          <Suspense
+            fallback={
+              <div className="w-full h-14 skeleton rounded-[14px]" />
+            }
+          >
+            <SpotlightSearch />
+          </Suspense>
+        </div>
       </div>
 
       {/* Bottom Navigation */}

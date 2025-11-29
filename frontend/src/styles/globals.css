@@ -61,7 +61,18 @@
 
 /* Spotlight-inspired centered container */
 .spotlight-container {
-  @apply min-h-screen flex items-start justify-center pt-[20vh] px-4;
+  @apply flex flex-col items-center justify-start pt-[15vh] px-4;
+  min-height: calc(100vh - 80px); /* Account for bottom nav */
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background)),
+    hsl(var(--muted) / 0.3)
+  );
+}
+
+/* Full screen centered layout (login, etc) */
+.centered-screen {
+  @apply min-h-screen flex flex-col items-center justify-center px-4;
   background: linear-gradient(
     to bottom,
     hsl(var(--background)),

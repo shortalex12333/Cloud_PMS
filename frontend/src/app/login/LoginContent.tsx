@@ -40,8 +40,8 @@ export default function LoginContent() {
   };
 
   return (
-    <div className="spotlight-container">
-      <div className="w-full max-w-md space-y-8">
+    <div className="centered-screen">
+      <div className="w-full max-w-md space-y-8 -mt-16">
         {/* Header */}
         <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight">CelesteOS</h1>
