@@ -58,6 +58,9 @@ from graphrag_query import get_query_service, GraphRAGQueryService
 # Import Situation Engine
 from situation_engine import SituationEngine, get_situation_engine, Severity
 
+# Import Module B: Maritime Entity Extractor (regex-based, no LLM cost)
+from module_b_entity_extractor import get_extractor as get_entity_extractor, MaritimeEntityExtractor
+
 # ========================================================================
 # LOGGING CONFIGURATION
 # ========================================================================
@@ -785,10 +788,18 @@ async def extract(
             'metadata': {'latency_ms': latency_ms, 'model': None}
         }
 
-    # ========== NO_LLM / RULES_ONLY: Skip GPT ==========
+    # ========== NO_LLM / RULES_ONLY: Regex Entity Extraction (No GPT Cost) ==========
     if lane in ['NO_LLM', 'RULES_ONLY']:
+        # Run regex-based maritime entity extraction (Module B)
+        # This gives us entities WITHOUT calling GPT - zero cost, ~5ms latency
+        regex_extractor = get_entity_extractor()
+        regex_entities = regex_extractor.extract_entities(query)
+
+        # Convert EntityDetection objects to dicts for JSON response
+        entities_dict = [e.to_dict() for e in regex_entities]
+
         latency_ms = int((time.time() - start) * 1000)
-        logger.info(f"{lane}: query='{query}', reason={routing['lane_reason']}")
+        logger.info(f"{lane}: query='{query}', reason={routing['lane_reason']}, entities={len(entities_dict)}")
         return {
             'lane': lane,
             'lane_reason': routing['lane_reason'],
@@ -796,9 +807,9 @@ async def extract(
             'intent_confidence': routing['intent_confidence'],
             'command_action': routing.get('command_action'),
             'command_target': routing.get('command_target'),
-            'entities': [],
+            'entities': entities_dict,
             'embedding': None,
-            'metadata': {'latency_ms': latency_ms, 'model': 'regex_only'}
+            'metadata': {'latency_ms': latency_ms, 'model': 'regex_only', 'entity_count': len(entities_dict)}
         }
 
     # ========== GPT LANE: Full extraction ==========
