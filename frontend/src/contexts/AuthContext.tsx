@@ -37,7 +37,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const fetchingRef = React.useRef(false);
 
-  // Fetch user profile from users table (production schema)
+  // Possible table names for user profiles (try in order)
+  const PROFILE_TABLES = ['user_profiles', 'auth_users', 'users'] as const;
+
+  // Fetch user profile - tries multiple table names for compatibility
   const fetchUserProfile = useCallback(async (authUser: User) => {
     // Prevent concurrent fetches
     if (fetchingRef.current) {
@@ -48,83 +51,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchingRef.current = true;
     console.log('[AuthContext] ▶ fetchUserProfile START for:', authUser.email);
 
+    // Fallback profile using auth.users metadata
+    const authMetadata = authUser.user_metadata || {};
+    const fallbackProfile: CelesteUser = {
+      id: authUser.id,
+      email: authUser.email || null,
+      role: (authMetadata.role as CelesteUser['role']) || 'crew',
+      yachtId: authMetadata.yacht_id || null,
+      displayName: authMetadata.name || authUser.email || null,
+    };
+
     try {
-      console.log('[AuthContext] Fetching user profile...');
+      console.log('[AuthContext] Fetching user profile, trying tables:', PROFILE_TABLES);
 
-      // Fast timeout - if RLS blocks, fail fast and use fallback (2 seconds max)
-      const timeoutMs = 2000;
-      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
-        setTimeout(() => resolve({
-          data: null,
-          error: { message: 'Query timeout - using fallback profile' }
-        }), timeoutMs)
-      );
+      // Try each possible table name
+      for (const tableName of PROFILE_TABLES) {
+        console.log(`[AuthContext] Trying table: ${tableName}`);
 
-      const queryPromise = supabase
-        .from('auth_users')
-        .select('id, auth_user_id, email, yacht_id, name, metadata')
-        .eq('email', authUser.email)
-        .maybeSingle();
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from(tableName)
+            .select('*')
+            .eq('email', authUser.email)
+            .maybeSingle();
 
-      const { data: userData, error: userError } = await Promise.race([
-        queryPromise,
-        timeoutPromise
-      ]);
+          if (userError) {
+            // 404 = table doesn't exist or no API access
+            // PGRST116 = relation doesn't exist
+            const is404 = userError.message?.includes('404') ||
+                          (userError as any).code === 'PGRST116' ||
+                          userError.message?.includes('relation') ||
+                          (userError as any).code === '42P01';
 
-      // Fallback profile using auth.users data when public.users query fails
-      const fallbackProfile: CelesteUser = {
-        id: authUser.id,
-        email: authUser.email || null,
-        role: 'crew', // Default role
-        yachtId: null,
-        displayName: authUser.email || null,
-      };
+            if (is404) {
+              console.log(`[AuthContext] Table ${tableName} not accessible (404/not found), trying next...`);
+              continue;
+            }
 
-      if (userError) {
-        console.error('[AuthContext] ❌ Query returned error:', {
-          message: userError.message,
-          details: (userError as any).details,
-          hint: (userError as any).hint,
-          code: (userError as any).code,
-        });
-        console.warn('[AuthContext] ⚠️ Using fallback profile from auth.users');
-        return fallbackProfile;
+            console.error(`[AuthContext] Error querying ${tableName}:`, userError.message);
+            continue;
+          }
+
+          if (userData) {
+            console.log(`[AuthContext] ✅ Found user in ${tableName}:`, userData);
+
+            // Handle different column structures
+            const role = userData.role ||
+                        (userData.metadata as any)?.role ||
+                        authMetadata.role ||
+                        'crew';
+
+            const celesteUser: CelesteUser = {
+              id: userData.auth_user_id || userData.id || authUser.id,
+              email: userData.email || authUser.email,
+              role: role as CelesteUser['role'],
+              yachtId: userData.yacht_id || null,
+              displayName: userData.name || userData.display_name || authUser.email,
+            };
+
+            console.log('[AuthContext] ✅ User profile loaded from', tableName);
+            return celesteUser;
+          }
+        } catch (tableErr) {
+          console.log(`[AuthContext] Exception querying ${tableName}:`, tableErr);
+          continue;
+        }
       }
 
-      if (!userData) {
-        console.warn('[AuthContext] ⚠️ No user profile found for:', authUser.email);
-        console.warn('[AuthContext] Using fallback profile - user can still access system');
-        return fallbackProfile;
-      }
+      // No table worked - use fallback from auth.users metadata
+      console.warn('[AuthContext] ⚠️ No profile table accessible, using auth.users metadata');
+      console.log('[AuthContext] 💡 TIP: Run database/diagnostics/check_tables_and_permissions.sql in Supabase SQL Editor');
+      return fallbackProfile;
 
-      console.log('[AuthContext] ✅ User data received:', userData);
-
-      // Role may be in metadata.role or default to 'crew'
-      const metadata = userData.metadata as { role?: string } | null;
-      const userRole = metadata?.role || 'crew';
-
-      const celesteUser: CelesteUser = {
-        id: userData.auth_user_id || userData.id,
-        email: userData.email,
-        role: userRole as CelesteUser['role'],
-        yachtId: userData.yacht_id,
-        displayName: userData.name,
-      };
-
-      console.log('[AuthContext] ✅ User profile loaded:', celesteUser.email);
-
-      return celesteUser;
     } catch (err) {
       console.error('[AuthContext] ❌ Exception in fetchUserProfile:', err);
-      // Return fallback profile so user can still access the system
       console.warn('[AuthContext] ⚠️ Using fallback profile due to exception');
-      return {
-        id: authUser.id,
-        email: authUser.email || null,
-        role: 'crew' as const,
-        yachtId: null,
-        displayName: authUser.email || null,
-      };
+      return fallbackProfile;
     } finally {
       fetchingRef.current = false;
       console.log('[AuthContext] ◀ fetchUserProfile END');
@@ -135,13 +137,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] Initializing auth state...');
 
-    // Fast timeout - don't wait if Supabase is slow/unreachable
-    const sessionTimeout = 2000;
+    // Increased timeout - 8 seconds to handle slow network
+    const sessionTimeout = 8000;
     let didTimeout = false;
 
     const timeoutId = setTimeout(() => {
       didTimeout = true;
-      console.warn('[AuthContext] ⚠️ getSession timeout - Supabase may be unreachable');
+      console.warn('[AuthContext] ⚠️ getSession timeout after 8s - Supabase may be slow');
       setLoading(false); // Allow UI to render regardless
     }, sessionTimeout);
 
