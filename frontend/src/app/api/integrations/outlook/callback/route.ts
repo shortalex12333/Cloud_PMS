@@ -131,9 +131,9 @@ export async function GET(request: NextRequest) {
     // Store tokens in Supabase
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's yacht_id from users table
+    // Get user's yacht_id from auth_users table
     const { data: userRecord, error: userError } = await supabase
-      .from('users')
+      .from('auth_users')
       .select('yacht_id')
       .eq('auth_user_id', userId)
       .single();

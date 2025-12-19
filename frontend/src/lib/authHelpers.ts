@@ -211,7 +211,7 @@ export async function getYachtId(): Promise<string | null> {
     );
 
     const queryPromise = supabase
-      .from('users')
+      .from('auth_users')
       .select('yacht_id')
       .eq('email', session.user.email)
       .maybeSingle();
