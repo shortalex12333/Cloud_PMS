@@ -69,11 +69,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   if (error || !user) return null;
 
-  // Fetch additional user data from users table
+  // Fetch additional user data from auth_users table
   const { data: userData, error: userError } = await supabase
-    .from('users')
+    .from('auth_users')
     .select('yacht_id, name, role')
-    .eq('id', user.id)
+    .eq('auth_user_id', user.id)
     .single();
 
   if (userError || !userData) return null;

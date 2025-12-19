@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       const queryPromise = supabase
-        .from('users')
+        .from('auth_users')
         .select('id, auth_user_id, email, yacht_id, name, metadata')
         .eq('email', authUser.email)
         .maybeSingle();
