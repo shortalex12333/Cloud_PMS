@@ -403,16 +403,9 @@ export default function SpotlightSearch({
           <div
             className={cn(
               'relative flex items-center',
-              'bg-white/95 dark:bg-zinc-900/95',
-              'backdrop-blur-[20px]',
-              'border border-zinc-200/60 dark:border-zinc-700/60',
-              'rounded-[14px]',
-              'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]',
-              'dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.2)]',
-              'transition-shadow duration-200',
-              'hover:shadow-[0_12px_40px_rgba(0,0,0,0.16),0_4px_12px_rgba(0,0,0,0.10)]',
-              'focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.16),0_4px_12px_rgba(0,0,0,0.10)]',
-              'focus-within:ring-2 focus-within:ring-blue-500/30'
+              'liquid-glass-panel',
+              'transition-all duration-200',
+              'focus-within:ring-2 focus-within:ring-[--system-blue]/25'
             )}
           >
             {/* Search icon */}
@@ -498,12 +491,7 @@ export default function SpotlightSearch({
               ref={resultsRef}
               className={cn(
                 'flex-1',
-                'bg-white/98 dark:bg-zinc-900/98',
-                'backdrop-blur-[20px]',
-                'border border-zinc-200/60 dark:border-zinc-700/60',
-                'rounded-[14px]',
-                'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]',
-                'dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.2)]',
+                'liquid-glass-panel',
                 'overflow-hidden',
                 'max-h-[480px] overflow-y-auto',
                 'scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700'
