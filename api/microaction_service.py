@@ -44,22 +44,27 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-# Import extraction modules
-from microaction_extractor import MicroActionExtractor, get_extractor
-from microaction_config import get_config, ExtractionConfig, ValidationRules
-
-# Import unified extraction pipeline
-from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
-
-# Import GraphRAG services
-from graphrag_population import get_population_service, GraphRAGPopulationService
-from graphrag_query import get_query_service, GraphRAGQueryService
-
-# Import Situation Engine
-from situation_engine import SituationEngine, get_situation_engine, Severity
+# Import extraction modules (handle both api.X and X imports for Render compatibility)
+try:
+    from api.microaction_extractor import MicroActionExtractor, get_extractor
+    from api.microaction_config import get_config, ExtractionConfig, ValidationRules
+    from api.unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
+    from api.graphrag_population import get_population_service, GraphRAGPopulationService
+    from api.graphrag_query import get_query_service, GraphRAGQueryService
+    from api.situation_engine import SituationEngine, get_situation_engine, Severity
+except ImportError:
+    from microaction_extractor import MicroActionExtractor, get_extractor
+    from microaction_config import get_config, ExtractionConfig, ValidationRules
+    from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
+    from graphrag_population import get_population_service, GraphRAGPopulationService
+    from graphrag_query import get_query_service, GraphRAGQueryService
+    from situation_engine import SituationEngine, get_situation_engine, Severity
 
 # Import Module B: Maritime Entity Extractor (regex-based, no LLM cost)
-from module_b_entity_extractor import get_extractor as get_entity_extractor, MaritimeEntityExtractor
+try:
+    from api.module_b_entity_extractor import get_extractor as get_entity_extractor, MaritimeEntityExtractor
+except ImportError:
+    from module_b_entity_extractor import get_extractor as get_entity_extractor, MaritimeEntityExtractor
 
 # ========================================================================
 # LOGGING CONFIGURATION
