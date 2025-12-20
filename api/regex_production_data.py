@@ -14675,6 +14675,45 @@ def lookup_term(term: str) -> Optional[str]:
     return TERM_TO_CANONICAL.get(term.lower())
 
 # ============================================================================
+# COMPATIBILITY FUNCTIONS (for regex_extractor.py)
+# ============================================================================
+
+_ALL_MANUFACTURERS: Optional[set] = None
+_ALL_EQUIPMENT_TERMS: Optional[set] = None
+
+def get_all_manufacturers() -> set:
+    """Get set of all unique manufacturers/brands (lowercase)."""
+    global _ALL_MANUFACTURERS
+    if _ALL_MANUFACTURERS is None:
+        _ALL_MANUFACTURERS = set()
+        for pattern_data in EQUIPMENT_PATTERNS.values():
+            for term in pattern_data.get('terms', []):
+                _ALL_MANUFACTURERS.add(term.lower())
+    return _ALL_MANUFACTURERS
+
+def get_equipment_terms() -> set:
+    """Get all equipment terms (domains and subdomains)."""
+    global _ALL_EQUIPMENT_TERMS
+    if _ALL_EQUIPMENT_TERMS is None:
+        _ALL_EQUIPMENT_TERMS = set()
+        for pattern_data in EQUIPMENT_PATTERNS.values():
+            domain = pattern_data.get('domain', '')
+            subdomain = pattern_data.get('subdomain', '')
+            if domain:
+                _ALL_EQUIPMENT_TERMS.add(domain.lower())
+            if subdomain:
+                _ALL_EQUIPMENT_TERMS.add(subdomain.lower())
+    return _ALL_EQUIPMENT_TERMS
+
+def load_manufacturers() -> set:
+    """DEPRECATED: Use get_all_manufacturers() instead."""
+    return get_all_manufacturers()
+
+def load_equipment_terms() -> set:
+    """DEPRECATED: Use get_equipment_terms() instead."""
+    return get_equipment_terms()
+
+# ============================================================================
 # STATISTICS
 # ============================================================================
 
