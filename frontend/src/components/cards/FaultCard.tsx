@@ -1,14 +1,17 @@
 /**
  * FaultCard Component
  *
- * Displays a fault with relevant actions
- * Example integration with CreateWorkOrderModal
+ * Apple-inspired design with:
+ * - Status dot indicator (not pill badge)
+ * - 12px card radius
+ * - Subtle shadows
+ * - Precise typography
  */
 
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Wrench } from 'lucide-react';
+import { AlertTriangle, Wrench, ChevronRight } from 'lucide-react';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { ActionButton } from '@/components/actions/ActionButton';
 import { cn } from '@/lib/utils';
@@ -31,74 +34,94 @@ interface FaultCardProps {
 export function FaultCard({ fault, actions = [] }: FaultCardProps) {
   const [showCreateWO, setShowCreateWO] = useState(false);
 
-  // Get severity color
-  const getSeverityColor = (severity: string) => {
+  // Get severity styling (Apple-style: subtle background, muted colors)
+  const getSeverityStyles = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return {
+          dot: 'celeste-dot-critical',
+          badge: 'celeste-badge-critical',
+          label: 'Critical',
+        };
       case 'high':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
+        return {
+          dot: 'celeste-dot-high',
+          badge: 'celeste-badge-high',
+          label: 'High',
+        };
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        return {
+          dot: 'celeste-dot-medium',
+          badge: 'celeste-badge-medium',
+          label: 'Medium',
+        };
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return {
+          dot: 'celeste-dot-low',
+          badge: 'celeste-badge-low',
+          label: 'Low',
+        };
     }
   };
 
+  const severity = getSeverityStyles(fault.severity);
+
   return (
     <>
-      <div className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+      <div className="celeste-card p-4 hover:shadow-[var(--shadow-md)] transition-shadow duration-200">
         <div className="flex items-start gap-3">
-          {/* Fault Icon */}
-          <div className="mt-1 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
+          {/* Severity Indicator - Minimal dot + icon */}
+          <div className="flex flex-col items-center gap-2 pt-0.5">
+            <span className={cn('celeste-dot', severity.dot)} />
+            <AlertTriangle className="h-4 w-4 text-zinc-400" />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Title & Severity */}
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-medium text-foreground">{fault.title}</h3>
-              <span
-                className={cn(
-                  'text-xs px-2 py-0.5 rounded-full border font-medium uppercase',
-                  getSeverityColor(fault.severity)
-                )}
-              >
-                {fault.severity}
+            {/* Title Row */}
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h3 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                {fault.title}
+              </h3>
+              <span className={cn('celeste-badge flex-shrink-0', severity.badge)}>
+                {severity.label}
               </span>
             </div>
 
-            {/* Equipment */}
-            <p className="text-sm text-muted-foreground mb-1">
-              <span className="font-medium">Equipment:</span> {fault.equipment_name}
+            {/* Equipment - Subtle secondary text */}
+            <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mb-2">
+              {fault.equipment_name}
             </p>
 
-            {/* Description */}
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+            {/* Description - Truncated */}
+            <p className="text-[14px] text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
               {fault.description}
             </p>
 
-            {/* Reporter & Date */}
-            <p className="text-xs text-muted-foreground mb-3">
-              Reported by <span className="font-medium">{fault.reporter}</span> on{' '}
-              {new Date(fault.reported_at).toLocaleDateString()}
+            {/* Metadata Row */}
+            <p className="text-[12px] text-zinc-400 dark:text-zinc-500 mb-4">
+              {fault.reporter} · {new Date(fault.reported_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })}
             </p>
 
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2">
-              {/* PRIMARY ACTION: Create Work Order (custom button with modal) */}
+            {/* Actions - Apple-style buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Primary Action */}
               <button
                 onClick={() => setShowCreateWO(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="celeste-button celeste-button-primary h-8 px-3 text-[13px]"
               >
                 <Wrench className="h-3.5 w-3.5" />
                 Create Work Order
               </button>
 
-              {/* OTHER ACTIONS: Use ActionButton component */}
+              {/* Secondary Actions */}
               {actions
-                .filter((action) => action !== 'create_work_order') // Already shown above
+                .filter((action) => action !== 'create_work_order')
+                .slice(0, 2)
                 .map((action) => (
                   <ActionButton
                     key={action}
@@ -112,6 +135,13 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
                     showIcon={true}
                   />
                 ))}
+
+              {/* More indicator */}
+              {actions.filter(a => a !== 'create_work_order').length > 2 && (
+                <button className="h-8 px-2 text-[13px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -130,7 +160,6 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
         }}
         onSuccess={(workOrderId) => {
           console.log('Work order created:', workOrderId);
-          // Optionally: refresh data, navigate to WO, etc.
         }}
       />
     </>
