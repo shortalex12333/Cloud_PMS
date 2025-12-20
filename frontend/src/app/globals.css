@@ -2,57 +2,248 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   CELESTE OS DESIGN SYSTEM
+   Apple-inspired, precision UX
+   ============================================================================ */
+
 :root {
+  /* ========== COLORS ========== */
   --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --foreground: 0 0% 9%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 0 0% 9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
+  --popover-foreground: 0 0% 9%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 46%;
+  --accent: 240 5% 96%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 4 90% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 211 100% 50%;
+
+  /* ========== APPLE-INSPIRED SYSTEM COLORS ========== */
+  --system-blue: #007AFF;
+  --system-blue-light: #E8F4FF;
+  --system-green: #34C759;
+  --system-green-light: #E8FAF0;
+  --system-orange: #FF9500;
+  --system-orange-light: #FFF4E5;
+  --system-red: #FF3B30;
+  --system-red-light: #FFF0EF;
+  --system-yellow: #FFCC00;
+  --system-yellow-light: #FFFBE5;
+  --system-gray: #8E8E93;
+
+  /* ========== RADIUS - Precise, consistent ========== */
+  --radius: 8px;
+  --radius-container: 12px;
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius-badge: 6px;
+  --radius-small: 4px;
+
+  /* ========== SHADOWS - Subtle, multi-layer ========== */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  --background: 0 0% 7%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 240 4% 16%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 4 90% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 211 100% 50%;
+
+  /* Dark mode system colors */
+  --system-blue: #0A84FF;
+  --system-blue-light: rgba(10, 132, 255, 0.15);
+  --system-green: #30D158;
+  --system-green-light: rgba(48, 209, 88, 0.15);
+  --system-orange: #FF9F0A;
+  --system-orange-light: rgba(255, 159, 10, 0.15);
+  --system-red: #FF453A;
+  --system-red-light: rgba(255, 69, 58, 0.15);
+  --system-yellow: #FFD60A;
+  --system-yellow-light: rgba(255, 214, 10, 0.15);
+  --system-gray: #98989D;
+
+  /* Dark shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography base - Apple-like sizing */
+  h1 {
+    @apply text-[28px] font-semibold tracking-[-0.015em] leading-[34px];
+  }
+
+  h2 {
+    @apply text-[22px] font-semibold tracking-[-0.01em] leading-[28px];
+  }
+
+  h3 {
+    @apply text-[20px] font-semibold tracking-[-0.01em] leading-[24px];
+  }
+
+  h4 {
+    @apply text-[17px] font-semibold tracking-[-0.005em] leading-[22px];
+  }
+
+  p {
+    @apply text-[15px] leading-[20px] tracking-[0];
+  }
+}
+
+/* ============================================================================
+   COMPONENT STYLES - Apple-inspired
+   ============================================================================ */
+
+@layer components {
+  /* Premium Card */
+  .celeste-card {
+    @apply bg-white dark:bg-zinc-900;
+    @apply border border-zinc-200/60 dark:border-zinc-700/40;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+  }
+
+  .celeste-card:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Premium Button */
+  .celeste-button {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply font-medium text-[15px];
+    border-radius: var(--radius-button);
+    transition: all 150ms ease-out;
+  }
+
+  .celeste-button-primary {
+    @apply bg-[--system-blue] text-white;
+    box-shadow: var(--shadow-xs);
+  }
+
+  .celeste-button-primary:hover {
+    @apply bg-[#0066CC];
+    box-shadow: var(--shadow-sm);
+  }
+
+  .celeste-button-secondary {
+    @apply bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200;
+  }
+
+  .celeste-button-secondary:hover {
+    @apply bg-zinc-200 dark:bg-zinc-700;
+  }
+
+  /* Premium Input */
+  .celeste-input {
+    @apply w-full bg-white dark:bg-zinc-900;
+    @apply border border-zinc-200 dark:border-zinc-700;
+    @apply text-[15px] text-zinc-900 dark:text-zinc-100;
+    @apply placeholder:text-zinc-400 dark:placeholder:text-zinc-500;
+    border-radius: var(--radius-input);
+    padding: 10px 12px;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  }
+
+  .celeste-input:focus {
+    @apply outline-none border-[--system-blue];
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+  }
+
+  /* Status Badge - NOT pill shaped */
+  .celeste-badge {
+    @apply inline-flex items-center gap-1;
+    @apply text-[12px] font-medium;
+    border-radius: var(--radius-badge);
+    padding: 3px 8px;
+  }
+
+  .celeste-badge-critical {
+    @apply bg-[--system-red-light] text-[--system-red];
+  }
+
+  .celeste-badge-high {
+    @apply bg-[--system-orange-light] text-[--system-orange];
+  }
+
+  .celeste-badge-medium {
+    @apply bg-[--system-yellow-light] text-amber-700 dark:text-amber-500;
+  }
+
+  .celeste-badge-low {
+    @apply bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400;
+  }
+
+  .celeste-badge-success {
+    @apply bg-[--system-green-light] text-[--system-green];
+  }
+
+  .celeste-badge-info {
+    @apply bg-[--system-blue-light] text-[--system-blue];
+  }
+
+  /* Status Dot - Minimal indicator */
+  .celeste-dot {
+    @apply w-2 h-2 rounded-full flex-shrink-0;
+  }
+
+  .celeste-dot-critical { @apply bg-[--system-red]; }
+  .celeste-dot-high { @apply bg-[--system-orange]; }
+  .celeste-dot-medium { @apply bg-[--system-yellow]; }
+  .celeste-dot-low { @apply bg-zinc-400; }
+  .celeste-dot-success { @apply bg-[--system-green]; }
+  .celeste-dot-info { @apply bg-[--system-blue]; }
+
+  /* Section Header */
+  .celeste-section-header {
+    @apply text-[11px] font-semibold uppercase tracking-[0.06em];
+    @apply text-zinc-500 dark:text-zinc-400;
+    @apply mb-3;
   }
 }
 
@@ -64,7 +255,10 @@
   @apply flex flex-col items-center justify-start pt-[15vh];
 }
 
-/* Scrollbar styling */
+/* ============================================================================
+   SCROLLBAR STYLING
+   ============================================================================ */
+
 .scrollbar-thin {
   scrollbar-width: thin;
 }
@@ -91,33 +285,23 @@
 }
 
 /* ============================================================================
-   ANIMATIONS
+   ANIMATIONS - Smooth, purposeful
    ============================================================================ */
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-@keyframes pulse-progress {
-  0%, 100% {
-    opacity: 0.4;
-    width: 30%;
-  }
-  50% {
-    opacity: 1;
-    width: 70%;
-  }
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -128,7 +312,7 @@
 @keyframes slide-down {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
@@ -139,7 +323,7 @@
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
@@ -148,12 +332,8 @@
 }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-shimmer {
@@ -161,24 +341,24 @@
   background-size: 200% 100%;
 }
 
-.animate-pulse-progress {
-  animation: pulse-progress 1.5s ease-in-out infinite;
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
 }
 
 .animate-slide-up {
-  animation: slide-up 0.2s ease-out;
+  animation: slide-up 200ms ease-out;
 }
 
 .animate-slide-down {
-  animation: slide-down 0.2s ease-out;
+  animation: slide-down 200ms ease-out;
 }
 
 .animate-scale-in {
-  animation: scale-in 0.15s ease-out;
+  animation: scale-in 150ms ease-out;
 }
 
 .animate-fade-in {
-  animation: fade-in 0.15s ease-out;
+  animation: fade-in 150ms ease-out;
 }
 
 /* ============================================================================
@@ -186,7 +366,8 @@
    ============================================================================ */
 
 .skeleton {
-  @apply bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded;
+  @apply bg-zinc-100 dark:bg-zinc-800 animate-pulse;
+  border-radius: var(--radius-small);
 }
 
 /* ============================================================================
@@ -202,7 +383,7 @@
 .module-expand-enter-active {
   max-height: 600px;
   opacity: 1;
-  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+  transition: max-height 300ms ease-out, opacity 200ms ease-out;
 }
 
 .module-expand-exit {
@@ -214,5 +395,25 @@
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+  transition: max-height 300ms ease-out, opacity 200ms ease-out;
+}
+
+/* ============================================================================
+   UTILITY OVERRIDES - Apple-like refinements
+   ============================================================================ */
+
+/* More subtle focus rings */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+}
+
+/* Smoother transitions globally */
+button, a, input, select, textarea {
+  transition-timing-function: ease-out;
+}
+
+/* Prevent text selection on UI elements */
+button, [role="button"] {
+  user-select: none;
 }
