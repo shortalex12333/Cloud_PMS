@@ -1,102 +1,94 @@
 """
-Module B: Maritime Entity Extractor
-====================================
+Module B: Maritime Entity Extractor (Enhanced with REGEX_PRODUCTION)
+====================================================================
 
-Extracts maritime-specific entities from queries:
-- Equipment (engines, pumps, generators, etc.)
-- Systems (cooling, fuel, electrical, etc.)
-- Parts (filters, valves, sensors, etc.)
-- Fault codes (E047, SPN/FMI, OBD-II, etc.)
+Extracts maritime-specific entities from queries using 1,955 bundled patterns:
+- Equipment (engines, pumps, generators, etc.) - Groups 1-10
+- Systems (cooling, fuel, electrical, etc.) - Groups 1-10
+- Parts (filters, valves, sensors, etc.) - Groups 1-10
+- Symptoms (overheating, vibration, leaks, etc.) - Group 11
+- Fault codes (E047, SPN/FMI, OBD-II, etc.) - Group 14
+- Sensor readings (temperature, pressure, voltage) - Groups 12, 16
+- Actions (replace, inspect, calibrate) - Group 15
 - Measurements (24V, 85°C, 3 bar, etc.)
-- Maritime terms (coolant leak, pressure drop, etc.)
 
 STRICT RULES:
 - NO interaction with micro-action logic
 - Must not affect action detection
 - Returns canonical mappings
 - Provides confidence scores for each entity
+
+Enhanced from original 60 patterns to 1,955 patterns (32x increase in coverage).
 """
 
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Set
 from dataclasses import dataclass
+
+# Import bundled pattern data
+try:
+    from api.entity_extraction_loader import (
+        get_equipment_gazetteer,
+        get_diagnostic_patterns,
+        calculate_weight,
+        extract_entities_from_text,
+        PATTERNS_AVAILABLE
+    )
+except ImportError:
+    try:
+        from entity_extraction_loader import (
+            get_equipment_gazetteer,
+            get_diagnostic_patterns,
+            calculate_weight,
+            extract_entities_from_text,
+            PATTERNS_AVAILABLE
+        )
+    except ImportError:
+        PATTERNS_AVAILABLE = False
+        print("⚠️  Warning: entity_extraction_loader not found. Using fallback patterns.")
 
 
 @dataclass
 class EntityDetection:
     """Detected entity with metadata"""
-    type: str  # equipment, system, part, fault_code, measurement, maritime_term
+    type: str  # equipment, system, part, fault_code, measurement, maritime_term, symptom, action
     value: str  # Original text
     canonical: str  # Normalized/canonical form
     confidence: float
     span: Tuple[int, int]  # Start, end positions
+    metadata: Optional[Dict] = None  # Additional metadata (domain, subdomain, group)
 
     def to_dict(self) -> Dict:
-        return {
+        result = {
             "type": self.type,
             "value": self.value,
             "canonical": self.canonical,
             "confidence": self.confidence,
             "span": list(self.span)
         }
+        if self.metadata:
+            result["metadata"] = self.metadata
+        return result
 
 
 class MaritimeEntityExtractor:
     """
     Maritime entity extractor with comprehensive pattern library.
 
+    Uses REGEX_PRODUCTION bundled patterns (1,955 patterns, 62,987 terms)
+    for maritime-specific entity extraction.
+
     Focuses ONLY on identifying WHAT the user is talking about,
     not WHAT they want to do.
     """
 
     def __init__(self):
-        # Equipment patterns
-        self.equipment_patterns = {
-            # Main equipment
-            "main engine": ["main\\s+engine", "me1?", "m\\.?e\\.?\\s*1?"],
-            "auxiliary engine": ["aux\\s+engine", "ae\\d?", "auxiliary\\s+gen"],
-            "generator": ["generator", "gen\\s*\\d?", "genset"],
-            "bilge pump": ["bilge\\s+pump", "bilge"],
-            "sea water pump": ["sea\\s*water\\s+pump", "swp", "s\\.?w\\.?p\\.?"],
-            "fresh water pump": ["fresh\\s*water\\s+pump", "fwp"],
-            "fuel pump": ["fuel\\s+pump"],
-            "oil pump": ["oil\\s+pump"],
-            "cooling pump": ["cooling\\s+pump"],
-            "compressor": ["compressor", "air\\s+compressor"],
-            "heat exchanger": ["heat\\s+exchanger", "hx"],
-            "turbocharger": ["turbo\\s*charger", "turbo"],
-            "alternator": ["alternator"],
-            "starter motor": ["starter\\s+motor", "starter"],
-        }
+        # Load bundled patterns if available
+        self._gazetteer = None
+        self._diagnostic_patterns = None
+        self._patterns_loaded = False
 
-        # Systems
-        self.system_patterns = {
-            "cooling system": ["cooling\\s+system", "coolant\\s+system"],
-            "fuel system": ["fuel\\s+system"],
-            "electrical system": ["electrical\\s+system", "power\\s+system"],
-            "hydraulic system": ["hydraulic\\s+system"],
-            "lubrication system": ["lube\\s+system", "oil\\s+system", "lubrication"],
-            "exhaust system": ["exhaust\\s+system"],
-            "air system": ["air\\s+system", "pneumatic"],
-        }
-
-        # Parts
-        self.part_patterns = {
-            "oil filter": ["oil\\s+filter"],
-            "fuel filter": ["fuel\\s+filter"],
-            "air filter": ["air\\s+filter"],
-            "coolant filter": ["coolant\\s+filter"],
-            "impeller": ["impeller"],
-            "seal": ["seal", "o-ring"],
-            "gasket": ["gasket"],
-            "bearing": ["bearing"],
-            "valve": ["valve"],
-            "sensor": ["sensor", "transducer"],
-            "belt": ["belt", "v-belt"],
-            "hose": ["hose", "pipe"],
-        }
-
-        # Fault codes
+        # Fault codes - keep original patterns (these are good)
         self.fault_code_patterns = [
             # J1939 SPN/FMI
             (r"SPN\s*(\d+)(?:\s*FMI\s*(\d+))?", "fault_code", 0.98),
@@ -106,78 +98,71 @@ class MaritimeEntityExtractor:
             (r"[PCBU]\d{4}", "fault_code", 0.95),
             # MTU codes
             (r"MTU\s*\d{3,4}", "fault_code", 0.93),
+            # CAT/Caterpillar codes
+            (r"(?:CAT|Caterpillar)\s*\d{3,4}", "fault_code", 0.92),
+            # Volvo codes
+            (r"MID\s*\d+\s*PID\s*\d+", "fault_code", 0.90),
         ]
 
-        # Measurements
+        # Measurements - keep original patterns (these are good)
         self.measurement_patterns = [
             # Voltage
-            (r"\d+\s*[Vv](?:olts?)?(?:\s*(?:AC|DC))?", "voltage", 0.90),
+            (r"\d+(?:\.\d+)?\s*[Vv](?:olts?)?(?:\s*(?:AC|DC))?", "voltage", 0.90),
             # Temperature
-            (r"\d+\s*[°º]?\s*[CcFf]", "temperature", 0.92),
+            (r"\d+(?:\.\d+)?\s*[°º]?\s*[CcFf](?:elsius|ahrenheit)?", "temperature", 0.92),
             # Pressure
-            (r"\d+\s*(?:bar|psi|kpa|mbar)", "pressure", 0.92),
+            (r"\d+(?:\.\d+)?\s*(?:bar|psi|kpa|mbar|Pa)", "pressure", 0.92),
             # RPM
             (r"\d+\s*rpm", "rpm", 0.90),
             # Flow
-            (r"\d+\s*(?:l/min|gpm|m³/h)", "flow", 0.88),
+            (r"\d+(?:\.\d+)?\s*(?:l/min|gpm|m³/h|lpm)", "flow", 0.88),
+            # Current
+            (r"\d+(?:\.\d+)?\s*[Aa](?:mps?)?", "current", 0.88),
+            # Frequency
+            (r"\d+(?:\.\d+)?\s*[Hh]z", "frequency", 0.88),
+            # Hours
+            (r"\d+(?:,\d{3})*\s*(?:hours?|hrs?|running\s*hours?)", "hours", 0.85),
         ]
 
-        # Maritime terms (symptoms, conditions, etc.)
-        self.maritime_terms = {
-            "coolant leak": ["coolant\\s+leak", "coolant\\s+leaking"],
-            "oil leak": ["oil\\s+leak", "oil\\s+leaking"],
-            "pressure drop": ["pressure\\s+drop", "low\\s+pressure"],
-            "pressure high": ["high\\s+pressure", "pressure\\s+high"],
-            "temperature high": ["high\\s+temp", "overheating", "temp\\s+high", "is\\s+overheating"],
-            "temperature low": ["low\\s+temp", "temp\\s+low"],
-            "vibration": ["vibration", "vibrating"],
-            "noise": ["noise", "knocking", "grinding"],
-            "alarm": ["alarm", "alert", "warning"],
-            "shutdown": ["shutdown", "shut\\s+down", "tripped"],
-            "failure": ["failure", "failed", "fault"],
-        }
-
-        # Person/Role patterns
+        # Person/Role patterns - keep original
         self.person_patterns = {
-            "captain": ["captain", "master"],
-            "chief_engineer": ["chief\\s+engineer", "ce", "c\\.?e\\.?"],
-            "2nd_engineer": ["2nd\\s+engineer", "second\\s+engineer", "2e"],
-            "3rd_engineer": ["3rd\\s+engineer", "third\\s+engineer", "3e"],
-            "electrician": ["electrician", "eto"],
-            "bosun": ["bosun", "bo'?sun"],
-            "1st_officer": ["1st\\s+officer", "first\\s+officer", "chief\\s+officer"],
+            "captain": [r"\bcaptain\b", r"\bmaster\b"],
+            "chief_engineer": [r"\bchief\s+engineer\b", r"\bce\b", r"\bc\.?e\.?\b"],
+            "2nd_engineer": [r"\b2nd\s+engineer\b", r"\bsecond\s+engineer\b", r"\b2e\b"],
+            "3rd_engineer": [r"\b3rd\s+engineer\b", r"\bthird\s+engineer\b", r"\b3e\b"],
+            "electrician": [r"\belectrician\b", r"\beto\b"],
+            "bosun": [r"\bbosun\b", r"\bbo'?sun\b"],
+            "1st_officer": [r"\b1st\s+officer\b", r"\bfirst\s+officer\b", r"\bchief\s+officer\b"],
         }
 
         # Compile patterns
         self._compile_patterns()
 
+        # Lazy-load bundled patterns
+        self._load_bundled_patterns()
+
+    def _load_bundled_patterns(self):
+        """Lazy-load bundled REGEX_PRODUCTION patterns."""
+        if self._patterns_loaded:
+            return
+
+        if not PATTERNS_AVAILABLE:
+            print("⚠️  Bundled patterns not available. Using fallback mode.")
+            self._patterns_loaded = True
+            return
+
+        try:
+            self._gazetteer = get_equipment_gazetteer()
+            self._diagnostic_patterns = get_diagnostic_patterns()
+            self._patterns_loaded = True
+            print(f"✅ Loaded bundled patterns: {len(self._gazetteer.get('equipment_brand', set()))} brands, "
+                  f"{sum(len(v) for v in self._diagnostic_patterns.values())} diagnostic patterns")
+        except Exception as e:
+            print(f"⚠️  Error loading bundled patterns: {e}")
+            self._patterns_loaded = True
+
     def _compile_patterns(self):
-        """Compile all regex patterns for performance"""
-        self.compiled_equipment = {
-            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
-            for canonical, patterns in self.equipment_patterns.items()
-        }
-
-        self.compiled_systems = {
-            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
-            for canonical, patterns in self.system_patterns.items()
-        }
-
-        self.compiled_parts = {
-            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
-            for canonical, patterns in self.part_patterns.items()
-        }
-
-        self.compiled_maritime_terms = {
-            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
-            for canonical, patterns in self.maritime_terms.items()
-        }
-
-        self.compiled_persons = {
-            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
-            for canonical, patterns in self.person_patterns.items()
-        }
-
+        """Compile regex patterns for performance."""
         self.compiled_fault_codes = [
             (re.compile(pattern, re.IGNORECASE), entity_type, confidence)
             for pattern, entity_type, confidence in self.fault_code_patterns
@@ -187,6 +172,11 @@ class MaritimeEntityExtractor:
             (re.compile(pattern, re.IGNORECASE), entity_type, confidence)
             for pattern, entity_type, confidence in self.measurement_patterns
         ]
+
+        self.compiled_persons = {
+            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
+            for canonical, patterns in self.person_patterns.items()
+        }
 
     def extract_entities(self, query: str) -> List[EntityDetection]:
         """
@@ -198,44 +188,94 @@ class MaritimeEntityExtractor:
             return []
 
         entities = []
+        query_lower = query.lower()
 
-        # Extract equipment
-        for canonical, patterns in self.compiled_equipment.items():
-            for pattern in patterns:
-                for match in pattern.finditer(query):
+        # Ensure patterns are loaded
+        self._load_bundled_patterns()
+
+        # =====================================================================
+        # 1. DIAGNOSTIC PATTERNS (Groups 11-16) - Symptoms, faults, actions
+        # =====================================================================
+        if self._diagnostic_patterns:
+            for entity_type, pattern_list in self._diagnostic_patterns.items():
+                for pattern, domain, subdomain, canonical in pattern_list:
+                    for match in pattern.finditer(query):
+                        # Map diagnostic type to output type
+                        output_type = self._map_diagnostic_type(entity_type)
+                        entities.append(EntityDetection(
+                            type=output_type,
+                            value=match.group(0),
+                            canonical=canonical.upper().replace(" ", "_") if canonical else subdomain.upper().replace(" ", "_"),
+                            confidence=0.90,
+                            span=(match.start(), match.end()),
+                            metadata={
+                                "source": "diagnostic_pattern",
+                                "domain": domain,
+                                "subdomain": subdomain,
+                                "group": entity_type
+                            }
+                        ))
+
+        # =====================================================================
+        # 2. EQUIPMENT GAZETTEER (Groups 1-10) - Brands, equipment types
+        # =====================================================================
+        if self._gazetteer:
+            # Check for equipment brands
+            for brand in self._gazetteer.get('equipment_brand', set()):
+                # Use word boundary matching for longer terms
+                if len(brand) > 3:
+                    pattern = re.compile(r'\b' + re.escape(brand) + r'\b', re.IGNORECASE)
+                    for match in pattern.finditer(query):
+                        entities.append(EntityDetection(
+                            type="equipment",
+                            value=match.group(0),
+                            canonical=brand.upper().replace(" ", "_"),
+                            confidence=0.85,
+                            span=(match.start(), match.end()),
+                            metadata={"source": "gazetteer", "type": "brand"}
+                        ))
+                # Short terms need exact matching
+                elif brand in query_lower.split():
+                    idx = query_lower.find(brand)
+                    if idx >= 0:
+                        entities.append(EntityDetection(
+                            type="equipment",
+                            value=query[idx:idx+len(brand)],
+                            canonical=brand.upper(),
+                            confidence=0.75,
+                            span=(idx, idx + len(brand)),
+                            metadata={"source": "gazetteer", "type": "brand"}
+                        ))
+
+            # Check for equipment types
+            for equip_type in self._gazetteer.get('equipment_type', set()):
+                if len(equip_type) > 4 and equip_type in query_lower:
+                    idx = query_lower.find(equip_type)
                     entities.append(EntityDetection(
                         type="equipment",
-                        value=match.group(0),
-                        canonical=canonical.upper().replace(" ", "_"),
-                        confidence=0.92,
-                        span=(match.start(), match.end())
+                        value=query[idx:idx+len(equip_type)],
+                        canonical=equip_type.upper().replace(" ", "_"),
+                        confidence=0.80,
+                        span=(idx, idx + len(equip_type)),
+                        metadata={"source": "gazetteer", "type": "equipment_type"}
                     ))
 
-        # Extract systems
-        for canonical, patterns in self.compiled_systems.items():
-            for pattern in patterns:
-                for match in pattern.finditer(query):
+            # Check for system types
+            for sys_type in self._gazetteer.get('system_type', set()):
+                if len(sys_type) > 5 and sys_type in query_lower:
+                    idx = query_lower.find(sys_type)
                     entities.append(EntityDetection(
                         type="system",
-                        value=match.group(0),
-                        canonical=canonical.upper().replace(" ", "_"),
-                        confidence=0.88,
-                        span=(match.start(), match.end())
+                        value=query[idx:idx+len(sys_type)],
+                        canonical=sys_type.upper().replace(" ", "_"),
+                        confidence=0.78,
+                        span=(idx, idx + len(sys_type)),
+                        metadata={"source": "gazetteer", "type": "system_type"}
                     ))
 
-        # Extract parts
-        for canonical, patterns in self.compiled_parts.items():
-            for pattern in patterns:
-                for match in pattern.finditer(query):
-                    entities.append(EntityDetection(
-                        type="part",
-                        value=match.group(0),
-                        canonical=canonical.upper().replace(" ", "_"),
-                        confidence=0.85,
-                        span=(match.start(), match.end())
-                    ))
-
-        # Extract fault codes
+        # =====================================================================
+        # 3. FAULT CODES - Specialized patterns
+        # =====================================================================
         for pattern, entity_type, confidence in self.compiled_fault_codes:
             for match in pattern.finditer(query):
                 entities.append(EntityDetection(
@@ -243,10 +283,13 @@ class MaritimeEntityExtractor:
                     value=match.group(0),
                     canonical=match.group(0).upper().replace(" ", ""),
                     confidence=confidence,
-                    span=(match.start(), match.end())
+                    span=(match.start(), match.end()),
+                    metadata={"source": "fault_code_pattern"}
                 ))
 
-        # Extract measurements
+        # =====================================================================
+        # 4. MEASUREMENTS - Specialized patterns
+        # =====================================================================
         for pattern, entity_type, confidence in self.compiled_measurements:
             for match in pattern.finditer(query):
                 entities.append(EntityDetection(
@@ -254,22 +297,13 @@ class MaritimeEntityExtractor:
                     value=match.group(0),
                     canonical=match.group(0).upper().replace(" ", ""),
                     confidence=confidence,
-                    span=(match.start(), match.end())
+                    span=(match.start(), match.end()),
+                    metadata={"source": "measurement_pattern", "measurement_type": entity_type}
                 ))
 
-        # Extract maritime terms
-        for canonical, patterns in self.compiled_maritime_terms.items():
-            for pattern in patterns:
-                for match in pattern.finditer(query):
-                    entities.append(EntityDetection(
-                        type="maritime_term",
-                        value=match.group(0),
-                        canonical=canonical.upper().replace(" ", "_"),
-                        confidence=0.80,
-                        span=(match.start(), match.end())
-                    ))
-
-        # Extract persons/roles
+        # =====================================================================
+        # 5. PERSONS/ROLES - Crew positions
+        # =====================================================================
         for canonical, patterns in self.compiled_persons.items():
             for pattern in patterns:
                 for match in pattern.finditer(query):
@@ -278,7 +312,8 @@ class MaritimeEntityExtractor:
                         value=match.group(0),
                         canonical=canonical.upper(),
                         confidence=0.85,
-                        span=(match.start(), match.end())
+                        span=(match.start(), match.end()),
+                        metadata={"source": "person_pattern"}
                     ))
 
         # Remove overlapping entities (keep higher confidence)
@@ -286,15 +321,31 @@ class MaritimeEntityExtractor:
 
         return entities
 
+    def _map_diagnostic_type(self, entity_type: str) -> str:
+        """Map diagnostic pattern types to output entity types."""
+        mapping = {
+            'symptom': 'symptom',
+            'sensor_language': 'diagnostic',
+            'human_report': 'observation',
+            'fault_classification': 'fault',
+            'action': 'action',
+            'sensor_reading': 'measurement_term'
+        }
+        return mapping.get(entity_type, 'maritime_term')
+
     def _deduplicate_entities(self, entities: List[EntityDetection]) -> List[EntityDetection]:
         """
         Remove overlapping entities, keeping those with higher confidence.
+        Also removes very short matches that are likely false positives.
         """
         if not entities:
             return []
 
-        # Sort by confidence descending
-        entities = sorted(entities, key=lambda e: e.confidence, reverse=True)
+        # Filter out very short matches that are likely false positives
+        entities = [e for e in entities if len(e.value) >= 2 or e.confidence >= 0.9]
+
+        # Sort by confidence descending, then by span length descending
+        entities = sorted(entities, key=lambda e: (e.confidence, e.span[1] - e.span[0]), reverse=True)
 
         filtered = []
         occupied_spans = []
@@ -317,6 +368,7 @@ class MaritimeEntityExtractor:
 # Singleton instance
 _extractor_instance = None
 
+
 def get_extractor() -> MaritimeEntityExtractor:
     """Get or create singleton extractor instance"""
     global _extractor_instance
@@ -330,19 +382,29 @@ if __name__ == "__main__":
     extractor = MaritimeEntityExtractor()
 
     test_cases = [
-        "create work order for bilge pump",  # Should extract bilge pump
-        "bilge manifold",  # Should extract bilge
-        "E047 coolant leak ME1",  # Should extract all three
-        "sea water pump pressure low",  # Should extract equipment + maritime term
-        "24V generator failure",  # Should extract measurement + equipment + term
+        "MTU 16V4000 engine overheating with high exhaust temperature",
+        "watermaker membrane needs replacement, low output flow",
+        "Furuno radar display showing error code E-15",
+        "fire damper stuck open in engine room",
+        "create work order for bilge pump",
+        "E047 coolant leak ME1",
+        "sea water pump pressure low 2 bar",
+        "24V generator failure alarm",
+        "captain reported vibration from main engine at 1800 rpm",
     ]
 
-    print("Module B: Maritime Entity Extractor - Quick Tests")
-    print("=" * 60)
+    print("=" * 80)
+    print("Module B: Maritime Entity Extractor - Enhanced Tests")
+    print("Using REGEX_PRODUCTION bundled patterns (1,955 patterns, 62,987 terms)")
+    print("=" * 80)
 
     for query in test_cases:
         entities = extractor.extract_entities(query)
         print(f"\nQuery: '{query}'")
         print(f"Entities found: {len(entities)}")
         for entity in entities:
-            print(f"  - {entity.type}: {entity.value} → {entity.canonical} (conf: {entity.confidence:.2f})")
+            meta_info = ""
+            if entity.metadata:
+                source = entity.metadata.get('source', '')
+                meta_info = f" [{source}]"
+            print(f"  - {entity.type}: '{entity.value}' → {entity.canonical} (conf: {entity.confidence:.2f}){meta_info}")

@@ -1,0 +1,3262 @@
+table_schema,table_name,column_name,data_type,is_nullable,column_default
+auth,audit_log_entries,instance_id,uuid,YES,null
+auth,audit_log_entries,id,uuid,NO,null
+auth,audit_log_entries,payload,json,YES,null
+auth,audit_log_entries,created_at,timestamp with time zone,YES,null
+auth,audit_log_entries,ip_address,character varying,NO,''::character varying
+auth,flow_state,id,uuid,NO,null
+auth,flow_state,user_id,uuid,YES,null
+auth,flow_state,auth_code,text,NO,null
+auth,flow_state,code_challenge_method,USER-DEFINED,NO,null
+auth,flow_state,code_challenge,text,NO,null
+auth,flow_state,provider_type,text,NO,null
+auth,flow_state,provider_access_token,text,YES,null
+auth,flow_state,provider_refresh_token,text,YES,null
+auth,flow_state,created_at,timestamp with time zone,YES,null
+auth,flow_state,updated_at,timestamp with time zone,YES,null
+auth,flow_state,authentication_method,text,NO,null
+auth,flow_state,auth_code_issued_at,timestamp with time zone,YES,null
+auth,identities,provider_id,text,NO,null
+auth,identities,user_id,uuid,NO,null
+auth,identities,identity_data,jsonb,NO,null
+auth,identities,provider,text,NO,null
+auth,identities,last_sign_in_at,timestamp with time zone,YES,null
+auth,identities,created_at,timestamp with time zone,YES,null
+auth,identities,updated_at,timestamp with time zone,YES,null
+auth,identities,email,text,YES,null
+auth,identities,id,uuid,NO,gen_random_uuid()
+auth,instances,id,uuid,NO,null
+auth,instances,uuid,uuid,YES,null
+auth,instances,raw_base_config,text,YES,null
+auth,instances,created_at,timestamp with time zone,YES,null
+auth,instances,updated_at,timestamp with time zone,YES,null
+auth,mfa_amr_claims,session_id,uuid,NO,null
+auth,mfa_amr_claims,created_at,timestamp with time zone,NO,null
+auth,mfa_amr_claims,updated_at,timestamp with time zone,NO,null
+auth,mfa_amr_claims,authentication_method,text,NO,null
+auth,mfa_amr_claims,id,uuid,NO,null
+auth,mfa_challenges,id,uuid,NO,null
+auth,mfa_challenges,factor_id,uuid,NO,null
+auth,mfa_challenges,created_at,timestamp with time zone,NO,null
+auth,mfa_challenges,verified_at,timestamp with time zone,YES,null
+auth,mfa_challenges,ip_address,inet,NO,null
+auth,mfa_challenges,otp_code,text,YES,null
+auth,mfa_challenges,web_authn_session_data,jsonb,YES,null
+auth,mfa_factors,id,uuid,NO,null
+auth,mfa_factors,user_id,uuid,NO,null
+auth,mfa_factors,friendly_name,text,YES,null
+auth,mfa_factors,factor_type,USER-DEFINED,NO,null
+auth,mfa_factors,status,USER-DEFINED,NO,null
+auth,mfa_factors,created_at,timestamp with time zone,NO,null
+auth,mfa_factors,updated_at,timestamp with time zone,NO,null
+auth,mfa_factors,secret,text,YES,null
+auth,mfa_factors,phone,text,YES,null
+auth,mfa_factors,last_challenged_at,timestamp with time zone,YES,null
+auth,mfa_factors,web_authn_credential,jsonb,YES,null
+auth,mfa_factors,web_authn_aaguid,uuid,YES,null
+auth,mfa_factors,last_webauthn_challenge_data,jsonb,YES,null
+auth,oauth_authorizations,id,uuid,NO,null
+auth,oauth_authorizations,authorization_id,text,NO,null
+auth,oauth_authorizations,client_id,uuid,NO,null
+auth,oauth_authorizations,user_id,uuid,YES,null
+auth,oauth_authorizations,redirect_uri,text,NO,null
+auth,oauth_authorizations,scope,text,NO,null
+auth,oauth_authorizations,state,text,YES,null
+auth,oauth_authorizations,resource,text,YES,null
+auth,oauth_authorizations,code_challenge,text,YES,null
+auth,oauth_authorizations,code_challenge_method,USER-DEFINED,YES,null
+auth,oauth_authorizations,response_type,USER-DEFINED,NO,'code'::auth.oauth_response_type
+auth,oauth_authorizations,status,USER-DEFINED,NO,'pending'::auth.oauth_authorization_status
+auth,oauth_authorizations,authorization_code,text,YES,null
+auth,oauth_authorizations,created_at,timestamp with time zone,NO,now()
+auth,oauth_authorizations,expires_at,timestamp with time zone,NO,(now() + '00:03:00'::interval)
+auth,oauth_authorizations,approved_at,timestamp with time zone,YES,null
+auth,oauth_clients,id,uuid,NO,null
+auth,oauth_clients,client_secret_hash,text,YES,null
+auth,oauth_clients,registration_type,USER-DEFINED,NO,null
+auth,oauth_clients,redirect_uris,text,NO,null
+auth,oauth_clients,grant_types,text,NO,null
+auth,oauth_clients,client_name,text,YES,null
+auth,oauth_clients,client_uri,text,YES,null
+auth,oauth_clients,logo_uri,text,YES,null
+auth,oauth_clients,created_at,timestamp with time zone,NO,now()
+auth,oauth_clients,updated_at,timestamp with time zone,NO,now()
+auth,oauth_clients,deleted_at,timestamp with time zone,YES,null
+auth,oauth_clients,client_type,USER-DEFINED,NO,'confidential'::auth.oauth_client_type
+auth,oauth_consents,id,uuid,NO,null
+auth,oauth_consents,user_id,uuid,NO,null
+auth,oauth_consents,client_id,uuid,NO,null
+auth,oauth_consents,scopes,text,NO,null
+auth,oauth_consents,granted_at,timestamp with time zone,NO,now()
+auth,oauth_consents,revoked_at,timestamp with time zone,YES,null
+auth,one_time_tokens,id,uuid,NO,null
+auth,one_time_tokens,user_id,uuid,NO,null
+auth,one_time_tokens,token_type,USER-DEFINED,NO,null
+auth,one_time_tokens,token_hash,text,NO,null
+auth,one_time_tokens,relates_to,text,NO,null
+auth,one_time_tokens,created_at,timestamp without time zone,NO,now()
+auth,one_time_tokens,updated_at,timestamp without time zone,NO,now()
+auth,refresh_tokens,instance_id,uuid,YES,null
+auth,refresh_tokens,id,bigint,NO,nextval('auth.refresh_tokens_id_seq'::regclass)
+auth,refresh_tokens,token,character varying,YES,null
+auth,refresh_tokens,user_id,character varying,YES,null
+auth,refresh_tokens,revoked,boolean,YES,null
+auth,refresh_tokens,created_at,timestamp with time zone,YES,null
+auth,refresh_tokens,updated_at,timestamp with time zone,YES,null
+auth,refresh_tokens,parent,character varying,YES,null
+auth,refresh_tokens,session_id,uuid,YES,null
+auth,saml_providers,id,uuid,NO,null
+auth,saml_providers,sso_provider_id,uuid,NO,null
+auth,saml_providers,entity_id,text,NO,null
+auth,saml_providers,metadata_xml,text,NO,null
+auth,saml_providers,metadata_url,text,YES,null
+auth,saml_providers,attribute_mapping,jsonb,YES,null
+auth,saml_providers,created_at,timestamp with time zone,YES,null
+auth,saml_providers,updated_at,timestamp with time zone,YES,null
+auth,saml_providers,name_id_format,text,YES,null
+auth,saml_relay_states,id,uuid,NO,null
+auth,saml_relay_states,sso_provider_id,uuid,NO,null
+auth,saml_relay_states,request_id,text,NO,null
+auth,saml_relay_states,for_email,text,YES,null
+auth,saml_relay_states,redirect_to,text,YES,null
+auth,saml_relay_states,created_at,timestamp with time zone,YES,null
+auth,saml_relay_states,updated_at,timestamp with time zone,YES,null
+auth,saml_relay_states,flow_state_id,uuid,YES,null
+auth,schema_migrations,version,character varying,NO,null
+auth,sessions,id,uuid,NO,null
+auth,sessions,user_id,uuid,NO,null
+auth,sessions,created_at,timestamp with time zone,YES,null
+auth,sessions,updated_at,timestamp with time zone,YES,null
+auth,sessions,factor_id,uuid,YES,null
+auth,sessions,aal,USER-DEFINED,YES,null
+auth,sessions,not_after,timestamp with time zone,YES,null
+auth,sessions,refreshed_at,timestamp without time zone,YES,null
+auth,sessions,user_agent,text,YES,null
+auth,sessions,ip,inet,YES,null
+auth,sessions,tag,text,YES,null
+auth,sessions,oauth_client_id,uuid,YES,null
+auth,sessions,refresh_token_hmac_key,text,YES,null
+auth,sessions,refresh_token_counter,bigint,YES,null
+auth,sso_domains,id,uuid,NO,null
+auth,sso_domains,sso_provider_id,uuid,NO,null
+auth,sso_domains,domain,text,NO,null
+auth,sso_domains,created_at,timestamp with time zone,YES,null
+auth,sso_domains,updated_at,timestamp with time zone,YES,null
+auth,sso_providers,id,uuid,NO,null
+auth,sso_providers,resource_id,text,YES,null
+auth,sso_providers,created_at,timestamp with time zone,YES,null
+auth,sso_providers,updated_at,timestamp with time zone,YES,null
+auth,sso_providers,disabled,boolean,YES,null
+auth,users,instance_id,uuid,YES,null
+auth,users,id,uuid,NO,null
+auth,users,aud,character varying,YES,null
+auth,users,role,character varying,YES,null
+auth,users,email,character varying,YES,null
+auth,users,encrypted_password,character varying,YES,null
+auth,users,email_confirmed_at,timestamp with time zone,YES,null
+auth,users,invited_at,timestamp with time zone,YES,null
+auth,users,confirmation_token,character varying,YES,null
+auth,users,confirmation_sent_at,timestamp with time zone,YES,null
+auth,users,recovery_token,character varying,YES,null
+auth,users,recovery_sent_at,timestamp with time zone,YES,null
+auth,users,email_change_token_new,character varying,YES,null
+auth,users,email_change,character varying,YES,null
+auth,users,email_change_sent_at,timestamp with time zone,YES,null
+auth,users,last_sign_in_at,timestamp with time zone,YES,null
+auth,users,raw_app_meta_data,jsonb,YES,null
+auth,users,raw_user_meta_data,jsonb,YES,null
+auth,users,is_super_admin,boolean,YES,null
+auth,users,created_at,timestamp with time zone,YES,null
+auth,users,updated_at,timestamp with time zone,YES,null
+auth,users,phone,text,YES,NULL::character varying
+auth,users,phone_confirmed_at,timestamp with time zone,YES,null
+auth,users,phone_change,text,YES,''::character varying
+auth,users,phone_change_token,character varying,YES,''::character varying
+auth,users,phone_change_sent_at,timestamp with time zone,YES,null
+auth,users,confirmed_at,timestamp with time zone,YES,null
+auth,users,email_change_token_current,character varying,YES,''::character varying
+auth,users,email_change_confirm_status,smallint,YES,0
+auth,users,banned_until,timestamp with time zone,YES,null
+auth,users,reauthentication_token,character varying,YES,''::character varying
+auth,users,reauthentication_sent_at,timestamp with time zone,YES,null
+auth,users,is_sso_user,boolean,NO,false
+auth,users,deleted_at,timestamp with time zone,YES,null
+auth,users,is_anonymous,boolean,NO,false
+extensions,pg_stat_statements,userid,oid,YES,null
+extensions,pg_stat_statements,dbid,oid,YES,null
+extensions,pg_stat_statements,toplevel,boolean,YES,null
+extensions,pg_stat_statements,queryid,bigint,YES,null
+extensions,pg_stat_statements,query,text,YES,null
+extensions,pg_stat_statements,plans,bigint,YES,null
+extensions,pg_stat_statements,total_plan_time,double precision,YES,null
+extensions,pg_stat_statements,min_plan_time,double precision,YES,null
+extensions,pg_stat_statements,max_plan_time,double precision,YES,null
+extensions,pg_stat_statements,mean_plan_time,double precision,YES,null
+extensions,pg_stat_statements,stddev_plan_time,double precision,YES,null
+extensions,pg_stat_statements,calls,bigint,YES,null
+extensions,pg_stat_statements,total_exec_time,double precision,YES,null
+extensions,pg_stat_statements,min_exec_time,double precision,YES,null
+extensions,pg_stat_statements,max_exec_time,double precision,YES,null
+extensions,pg_stat_statements,mean_exec_time,double precision,YES,null
+extensions,pg_stat_statements,stddev_exec_time,double precision,YES,null
+extensions,pg_stat_statements,rows,bigint,YES,null
+extensions,pg_stat_statements,shared_blks_hit,bigint,YES,null
+extensions,pg_stat_statements,shared_blks_read,bigint,YES,null
+extensions,pg_stat_statements,shared_blks_dirtied,bigint,YES,null
+extensions,pg_stat_statements,shared_blks_written,bigint,YES,null
+extensions,pg_stat_statements,local_blks_hit,bigint,YES,null
+extensions,pg_stat_statements,local_blks_read,bigint,YES,null
+extensions,pg_stat_statements,local_blks_dirtied,bigint,YES,null
+extensions,pg_stat_statements,local_blks_written,bigint,YES,null
+extensions,pg_stat_statements,temp_blks_read,bigint,YES,null
+extensions,pg_stat_statements,temp_blks_written,bigint,YES,null
+extensions,pg_stat_statements,shared_blk_read_time,double precision,YES,null
+extensions,pg_stat_statements,shared_blk_write_time,double precision,YES,null
+extensions,pg_stat_statements,local_blk_read_time,double precision,YES,null
+extensions,pg_stat_statements,local_blk_write_time,double precision,YES,null
+extensions,pg_stat_statements,temp_blk_read_time,double precision,YES,null
+extensions,pg_stat_statements,temp_blk_write_time,double precision,YES,null
+extensions,pg_stat_statements,wal_records,bigint,YES,null
+extensions,pg_stat_statements,wal_fpi,bigint,YES,null
+extensions,pg_stat_statements,wal_bytes,numeric,YES,null
+extensions,pg_stat_statements,jit_functions,bigint,YES,null
+extensions,pg_stat_statements,jit_generation_time,double precision,YES,null
+extensions,pg_stat_statements,jit_inlining_count,bigint,YES,null
+extensions,pg_stat_statements,jit_inlining_time,double precision,YES,null
+extensions,pg_stat_statements,jit_optimization_count,bigint,YES,null
+extensions,pg_stat_statements,jit_optimization_time,double precision,YES,null
+extensions,pg_stat_statements,jit_emission_count,bigint,YES,null
+extensions,pg_stat_statements,jit_emission_time,double precision,YES,null
+extensions,pg_stat_statements,jit_deform_count,bigint,YES,null
+extensions,pg_stat_statements,jit_deform_time,double precision,YES,null
+extensions,pg_stat_statements,stats_since,timestamp with time zone,YES,null
+extensions,pg_stat_statements,minmax_stats_since,timestamp with time zone,YES,null
+extensions,pg_stat_statements_info,dealloc,bigint,YES,null
+extensions,pg_stat_statements_info,stats_reset,timestamp with time zone,YES,null
+information_schema,_pg_foreign_data_wrappers,oid,oid,YES,null
+information_schema,_pg_foreign_data_wrappers,fdwowner,oid,YES,null
+information_schema,_pg_foreign_data_wrappers,fdwoptions,ARRAY,YES,null
+information_schema,_pg_foreign_data_wrappers,foreign_data_wrapper_catalog,name,YES,null
+information_schema,_pg_foreign_data_wrappers,foreign_data_wrapper_name,name,YES,null
+information_schema,_pg_foreign_data_wrappers,authorization_identifier,name,YES,null
+information_schema,_pg_foreign_data_wrappers,foreign_data_wrapper_language,character varying,YES,null
+information_schema,_pg_foreign_servers,oid,oid,YES,null
+information_schema,_pg_foreign_servers,srvoptions,ARRAY,YES,null
+information_schema,_pg_foreign_servers,foreign_server_catalog,name,YES,null
+information_schema,_pg_foreign_servers,foreign_server_name,name,YES,null
+information_schema,_pg_foreign_servers,foreign_data_wrapper_catalog,name,YES,null
+information_schema,_pg_foreign_servers,foreign_data_wrapper_name,name,YES,null
+information_schema,_pg_foreign_servers,foreign_server_type,character varying,YES,null
+information_schema,_pg_foreign_servers,foreign_server_version,character varying,YES,null
+information_schema,_pg_foreign_servers,authorization_identifier,name,YES,null
+information_schema,_pg_foreign_table_columns,nspname,name,YES,null
+information_schema,_pg_foreign_table_columns,relname,name,YES,null
+information_schema,_pg_foreign_table_columns,attname,name,YES,null
+information_schema,_pg_foreign_table_columns,attfdwoptions,ARRAY,YES,null
+information_schema,_pg_foreign_tables,foreign_table_catalog,name,YES,null
+information_schema,_pg_foreign_tables,foreign_table_schema,name,YES,null
+information_schema,_pg_foreign_tables,foreign_table_name,name,YES,null
+information_schema,_pg_foreign_tables,ftoptions,ARRAY,YES,null
+information_schema,_pg_foreign_tables,foreign_server_catalog,name,YES,null
+information_schema,_pg_foreign_tables,foreign_server_name,name,YES,null
+information_schema,_pg_foreign_tables,authorization_identifier,name,YES,null
+information_schema,_pg_user_mappings,oid,oid,YES,null
+information_schema,_pg_user_mappings,umoptions,ARRAY,YES,null
+information_schema,_pg_user_mappings,umuser,oid,YES,null
+information_schema,_pg_user_mappings,authorization_identifier,name,YES,null
+information_schema,_pg_user_mappings,foreign_server_catalog,name,YES,null
+information_schema,_pg_user_mappings,foreign_server_name,name,YES,null
+information_schema,_pg_user_mappings,srvowner,name,YES,null
+information_schema,administrable_role_authorizations,grantee,name,YES,null
+information_schema,administrable_role_authorizations,role_name,name,YES,null
+information_schema,administrable_role_authorizations,is_grantable,character varying,YES,null
+information_schema,applicable_roles,grantee,name,YES,null
+information_schema,applicable_roles,role_name,name,YES,null
+information_schema,applicable_roles,is_grantable,character varying,YES,null
+information_schema,attributes,udt_catalog,name,YES,null
+information_schema,attributes,udt_schema,name,YES,null
+information_schema,attributes,udt_name,name,YES,null
+information_schema,attributes,attribute_name,name,YES,null
+information_schema,attributes,ordinal_position,integer,YES,null
+information_schema,attributes,attribute_default,character varying,YES,null
+information_schema,attributes,is_nullable,character varying,YES,null
+information_schema,attributes,data_type,character varying,YES,null
+information_schema,attributes,character_maximum_length,integer,YES,null
+information_schema,attributes,character_octet_length,integer,YES,null
+information_schema,attributes,character_set_catalog,name,YES,null
+information_schema,attributes,character_set_schema,name,YES,null
+information_schema,attributes,character_set_name,name,YES,null
+information_schema,attributes,collation_catalog,name,YES,null
+information_schema,attributes,collation_schema,name,YES,null
+information_schema,attributes,collation_name,name,YES,null
+information_schema,attributes,numeric_precision,integer,YES,null
+information_schema,attributes,numeric_precision_radix,integer,YES,null
+information_schema,attributes,numeric_scale,integer,YES,null
+information_schema,attributes,datetime_precision,integer,YES,null
+information_schema,attributes,interval_type,character varying,YES,null
+information_schema,attributes,interval_precision,integer,YES,null
+information_schema,attributes,attribute_udt_catalog,name,YES,null
+information_schema,attributes,attribute_udt_schema,name,YES,null
+information_schema,attributes,attribute_udt_name,name,YES,null
+information_schema,attributes,scope_catalog,name,YES,null
+information_schema,attributes,scope_schema,name,YES,null
+information_schema,attributes,scope_name,name,YES,null
+information_schema,attributes,maximum_cardinality,integer,YES,null
+information_schema,attributes,dtd_identifier,name,YES,null
+information_schema,attributes,is_derived_reference_attribute,character varying,YES,null
+information_schema,character_sets,character_set_catalog,name,YES,null
+information_schema,character_sets,character_set_schema,name,YES,null
+information_schema,character_sets,character_set_name,name,YES,null
+information_schema,character_sets,character_repertoire,name,YES,null
+information_schema,character_sets,form_of_use,name,YES,null
+information_schema,character_sets,default_collate_catalog,name,YES,null
+information_schema,character_sets,default_collate_schema,name,YES,null
+information_schema,character_sets,default_collate_name,name,YES,null
+information_schema,check_constraint_routine_usage,constraint_catalog,name,YES,null
+information_schema,check_constraint_routine_usage,constraint_schema,name,YES,null
+information_schema,check_constraint_routine_usage,constraint_name,name,YES,null
+information_schema,check_constraint_routine_usage,specific_catalog,name,YES,null
+information_schema,check_constraint_routine_usage,specific_schema,name,YES,null
+information_schema,check_constraint_routine_usage,specific_name,name,YES,null
+information_schema,check_constraints,constraint_catalog,name,YES,null
+information_schema,check_constraints,constraint_schema,name,YES,null
+information_schema,check_constraints,constraint_name,name,YES,null
+information_schema,check_constraints,check_clause,character varying,YES,null
+information_schema,collation_character_set_applicability,collation_catalog,name,YES,null
+information_schema,collation_character_set_applicability,collation_schema,name,YES,null
+information_schema,collation_character_set_applicability,collation_name,name,YES,null
+information_schema,collation_character_set_applicability,character_set_catalog,name,YES,null
+information_schema,collation_character_set_applicability,character_set_schema,name,YES,null
+information_schema,collation_character_set_applicability,character_set_name,name,YES,null
+information_schema,collations,collation_catalog,name,YES,null
+information_schema,collations,collation_schema,name,YES,null
+information_schema,collations,collation_name,name,YES,null
+information_schema,collations,pad_attribute,character varying,YES,null
+information_schema,column_column_usage,table_catalog,name,YES,null
+information_schema,column_column_usage,table_schema,name,YES,null
+information_schema,column_column_usage,table_name,name,YES,null
+information_schema,column_column_usage,column_name,name,YES,null
+information_schema,column_column_usage,dependent_column,name,YES,null
+information_schema,column_domain_usage,domain_catalog,name,YES,null
+information_schema,column_domain_usage,domain_schema,name,YES,null
+information_schema,column_domain_usage,domain_name,name,YES,null
+information_schema,column_domain_usage,table_catalog,name,YES,null
+information_schema,column_domain_usage,table_schema,name,YES,null
+information_schema,column_domain_usage,table_name,name,YES,null
+information_schema,column_domain_usage,column_name,name,YES,null
+information_schema,column_options,table_catalog,name,YES,null
+information_schema,column_options,table_schema,name,YES,null
+information_schema,column_options,table_name,name,YES,null
+information_schema,column_options,column_name,name,YES,null
+information_schema,column_options,option_name,name,YES,null
+information_schema,column_options,option_value,character varying,YES,null
+information_schema,column_privileges,grantor,name,YES,null
+information_schema,column_privileges,grantee,name,YES,null
+information_schema,column_privileges,table_catalog,name,YES,null
+information_schema,column_privileges,table_schema,name,YES,null
+information_schema,column_privileges,table_name,name,YES,null
+information_schema,column_privileges,column_name,name,YES,null
+information_schema,column_privileges,privilege_type,character varying,YES,null
+information_schema,column_privileges,is_grantable,character varying,YES,null
+information_schema,column_udt_usage,udt_catalog,name,YES,null
+information_schema,column_udt_usage,udt_schema,name,YES,null
+information_schema,column_udt_usage,udt_name,name,YES,null
+information_schema,column_udt_usage,table_catalog,name,YES,null
+information_schema,column_udt_usage,table_schema,name,YES,null
+information_schema,column_udt_usage,table_name,name,YES,null
+information_schema,column_udt_usage,column_name,name,YES,null
+information_schema,columns,table_catalog,name,YES,null
+information_schema,columns,table_schema,name,YES,null
+information_schema,columns,table_name,name,YES,null
+information_schema,columns,column_name,name,YES,null
+information_schema,columns,ordinal_position,integer,YES,null
+information_schema,columns,column_default,character varying,YES,null
+information_schema,columns,is_nullable,character varying,YES,null
+information_schema,columns,data_type,character varying,YES,null
+information_schema,columns,character_maximum_length,integer,YES,null
+information_schema,columns,character_octet_length,integer,YES,null
+information_schema,columns,numeric_precision,integer,YES,null
+information_schema,columns,numeric_precision_radix,integer,YES,null
+information_schema,columns,numeric_scale,integer,YES,null
+information_schema,columns,datetime_precision,integer,YES,null
+information_schema,columns,interval_type,character varying,YES,null
+information_schema,columns,interval_precision,integer,YES,null
+information_schema,columns,character_set_catalog,name,YES,null
+information_schema,columns,character_set_schema,name,YES,null
+information_schema,columns,character_set_name,name,YES,null
+information_schema,columns,collation_catalog,name,YES,null
+information_schema,columns,collation_schema,name,YES,null
+information_schema,columns,collation_name,name,YES,null
+information_schema,columns,domain_catalog,name,YES,null
+information_schema,columns,domain_schema,name,YES,null
+information_schema,columns,domain_name,name,YES,null
+information_schema,columns,udt_catalog,name,YES,null
+information_schema,columns,udt_schema,name,YES,null
+information_schema,columns,udt_name,name,YES,null
+information_schema,columns,scope_catalog,name,YES,null
+information_schema,columns,scope_schema,name,YES,null
+information_schema,columns,scope_name,name,YES,null
+information_schema,columns,maximum_cardinality,integer,YES,null
+information_schema,columns,dtd_identifier,name,YES,null
+information_schema,columns,is_self_referencing,character varying,YES,null
+information_schema,columns,is_identity,character varying,YES,null
+information_schema,columns,identity_generation,character varying,YES,null
+information_schema,columns,identity_start,character varying,YES,null
+information_schema,columns,identity_increment,character varying,YES,null
+information_schema,columns,identity_maximum,character varying,YES,null
+information_schema,columns,identity_minimum,character varying,YES,null
+information_schema,columns,identity_cycle,character varying,YES,null
+information_schema,columns,is_generated,character varying,YES,null
+information_schema,columns,generation_expression,character varying,YES,null
+information_schema,columns,is_updatable,character varying,YES,null
+information_schema,constraint_column_usage,table_catalog,name,YES,null
+information_schema,constraint_column_usage,table_schema,name,YES,null
+information_schema,constraint_column_usage,table_name,name,YES,null
+information_schema,constraint_column_usage,column_name,name,YES,null
+information_schema,constraint_column_usage,constraint_catalog,name,YES,null
+information_schema,constraint_column_usage,constraint_schema,name,YES,null
+information_schema,constraint_column_usage,constraint_name,name,YES,null
+information_schema,constraint_table_usage,table_catalog,name,YES,null
+information_schema,constraint_table_usage,table_schema,name,YES,null
+information_schema,constraint_table_usage,table_name,name,YES,null
+information_schema,constraint_table_usage,constraint_catalog,name,YES,null
+information_schema,constraint_table_usage,constraint_schema,name,YES,null
+information_schema,constraint_table_usage,constraint_name,name,YES,null
+information_schema,data_type_privileges,object_catalog,name,YES,null
+information_schema,data_type_privileges,object_schema,name,YES,null
+information_schema,data_type_privileges,object_name,name,YES,null
+information_schema,data_type_privileges,object_type,character varying,YES,null
+information_schema,data_type_privileges,dtd_identifier,name,YES,null
+information_schema,domain_constraints,constraint_catalog,name,YES,null
+information_schema,domain_constraints,constraint_schema,name,YES,null
+information_schema,domain_constraints,constraint_name,name,YES,null
+information_schema,domain_constraints,domain_catalog,name,YES,null
+information_schema,domain_constraints,domain_schema,name,YES,null
+information_schema,domain_constraints,domain_name,name,YES,null
+information_schema,domain_constraints,is_deferrable,character varying,YES,null
+information_schema,domain_constraints,initially_deferred,character varying,YES,null
+information_schema,domain_udt_usage,udt_catalog,name,YES,null
+information_schema,domain_udt_usage,udt_schema,name,YES,null
+information_schema,domain_udt_usage,udt_name,name,YES,null
+information_schema,domain_udt_usage,domain_catalog,name,YES,null
+information_schema,domain_udt_usage,domain_schema,name,YES,null
+information_schema,domain_udt_usage,domain_name,name,YES,null
+information_schema,domains,domain_catalog,name,YES,null
+information_schema,domains,domain_schema,name,YES,null
+information_schema,domains,domain_name,name,YES,null
+information_schema,domains,data_type,character varying,YES,null
+information_schema,domains,character_maximum_length,integer,YES,null
+information_schema,domains,character_octet_length,integer,YES,null
+information_schema,domains,character_set_catalog,name,YES,null
+information_schema,domains,character_set_schema,name,YES,null
+information_schema,domains,character_set_name,name,YES,null
+information_schema,domains,collation_catalog,name,YES,null
+information_schema,domains,collation_schema,name,YES,null
+information_schema,domains,collation_name,name,YES,null
+information_schema,domains,numeric_precision,integer,YES,null
+information_schema,domains,numeric_precision_radix,integer,YES,null
+information_schema,domains,numeric_scale,integer,YES,null
+information_schema,domains,datetime_precision,integer,YES,null
+information_schema,domains,interval_type,character varying,YES,null
+information_schema,domains,interval_precision,integer,YES,null
+information_schema,domains,domain_default,character varying,YES,null
+information_schema,domains,udt_catalog,name,YES,null
+information_schema,domains,udt_schema,name,YES,null
+information_schema,domains,udt_name,name,YES,null
+information_schema,domains,scope_catalog,name,YES,null
+information_schema,domains,scope_schema,name,YES,null
+information_schema,domains,scope_name,name,YES,null
+information_schema,domains,maximum_cardinality,integer,YES,null
+information_schema,domains,dtd_identifier,name,YES,null
+information_schema,element_types,object_catalog,name,YES,null
+information_schema,element_types,object_schema,name,YES,null
+information_schema,element_types,object_name,name,YES,null
+information_schema,element_types,object_type,character varying,YES,null
+information_schema,element_types,collection_type_identifier,name,YES,null
+information_schema,element_types,data_type,character varying,YES,null
+information_schema,element_types,character_maximum_length,integer,YES,null
+information_schema,element_types,character_octet_length,integer,YES,null
+information_schema,element_types,character_set_catalog,name,YES,null
+information_schema,element_types,character_set_schema,name,YES,null
+information_schema,element_types,character_set_name,name,YES,null
+information_schema,element_types,collation_catalog,name,YES,null
+information_schema,element_types,collation_schema,name,YES,null
+information_schema,element_types,collation_name,name,YES,null
+information_schema,element_types,numeric_precision,integer,YES,null
+information_schema,element_types,numeric_precision_radix,integer,YES,null
+information_schema,element_types,numeric_scale,integer,YES,null
+information_schema,element_types,datetime_precision,integer,YES,null
+information_schema,element_types,interval_type,character varying,YES,null
+information_schema,element_types,interval_precision,integer,YES,null
+information_schema,element_types,udt_catalog,name,YES,null
+information_schema,element_types,udt_schema,name,YES,null
+information_schema,element_types,udt_name,name,YES,null
+information_schema,element_types,scope_catalog,name,YES,null
+information_schema,element_types,scope_schema,name,YES,null
+information_schema,element_types,scope_name,name,YES,null
+information_schema,element_types,maximum_cardinality,integer,YES,null
+information_schema,element_types,dtd_identifier,name,YES,null
+information_schema,enabled_roles,role_name,name,YES,null
+information_schema,foreign_data_wrapper_options,foreign_data_wrapper_catalog,name,YES,null
+information_schema,foreign_data_wrapper_options,foreign_data_wrapper_name,name,YES,null
+information_schema,foreign_data_wrapper_options,option_name,name,YES,null
+information_schema,foreign_data_wrapper_options,option_value,character varying,YES,null
+information_schema,foreign_data_wrappers,foreign_data_wrapper_catalog,name,YES,null
+information_schema,foreign_data_wrappers,foreign_data_wrapper_name,name,YES,null
+information_schema,foreign_data_wrappers,authorization_identifier,name,YES,null
+information_schema,foreign_data_wrappers,library_name,character varying,YES,null
+information_schema,foreign_data_wrappers,foreign_data_wrapper_language,character varying,YES,null
+information_schema,foreign_server_options,foreign_server_catalog,name,YES,null
+information_schema,foreign_server_options,foreign_server_name,name,YES,null
+information_schema,foreign_server_options,option_name,name,YES,null
+information_schema,foreign_server_options,option_value,character varying,YES,null
+information_schema,foreign_servers,foreign_server_catalog,name,YES,null
+information_schema,foreign_servers,foreign_server_name,name,YES,null
+information_schema,foreign_servers,foreign_data_wrapper_catalog,name,YES,null
+information_schema,foreign_servers,foreign_data_wrapper_name,name,YES,null
+information_schema,foreign_servers,foreign_server_type,character varying,YES,null
+information_schema,foreign_servers,foreign_server_version,character varying,YES,null
+information_schema,foreign_servers,authorization_identifier,name,YES,null
+information_schema,foreign_table_options,foreign_table_catalog,name,YES,null
+information_schema,foreign_table_options,foreign_table_schema,name,YES,null
+information_schema,foreign_table_options,foreign_table_name,name,YES,null
+information_schema,foreign_table_options,option_name,name,YES,null
+information_schema,foreign_table_options,option_value,character varying,YES,null
+information_schema,foreign_tables,foreign_table_catalog,name,YES,null
+information_schema,foreign_tables,foreign_table_schema,name,YES,null
+information_schema,foreign_tables,foreign_table_name,name,YES,null
+information_schema,foreign_tables,foreign_server_catalog,name,YES,null
+information_schema,foreign_tables,foreign_server_name,name,YES,null
+information_schema,information_schema_catalog_name,catalog_name,name,YES,null
+information_schema,key_column_usage,constraint_catalog,name,YES,null
+information_schema,key_column_usage,constraint_schema,name,YES,null
+information_schema,key_column_usage,constraint_name,name,YES,null
+information_schema,key_column_usage,table_catalog,name,YES,null
+information_schema,key_column_usage,table_schema,name,YES,null
+information_schema,key_column_usage,table_name,name,YES,null
+information_schema,key_column_usage,column_name,name,YES,null
+information_schema,key_column_usage,ordinal_position,integer,YES,null
+information_schema,key_column_usage,position_in_unique_constraint,integer,YES,null
+information_schema,parameters,specific_catalog,name,YES,null
+information_schema,parameters,specific_schema,name,YES,null
+information_schema,parameters,specific_name,name,YES,null
+information_schema,parameters,ordinal_position,integer,YES,null
+information_schema,parameters,parameter_mode,character varying,YES,null
+information_schema,parameters,is_result,character varying,YES,null
+information_schema,parameters,as_locator,character varying,YES,null
+information_schema,parameters,parameter_name,name,YES,null
+information_schema,parameters,data_type,character varying,YES,null
+information_schema,parameters,character_maximum_length,integer,YES,null
+information_schema,parameters,character_octet_length,integer,YES,null
+information_schema,parameters,character_set_catalog,name,YES,null
+information_schema,parameters,character_set_schema,name,YES,null
+information_schema,parameters,character_set_name,name,YES,null
+information_schema,parameters,collation_catalog,name,YES,null
+information_schema,parameters,collation_schema,name,YES,null
+information_schema,parameters,collation_name,name,YES,null
+information_schema,parameters,numeric_precision,integer,YES,null
+information_schema,parameters,numeric_precision_radix,integer,YES,null
+information_schema,parameters,numeric_scale,integer,YES,null
+information_schema,parameters,datetime_precision,integer,YES,null
+information_schema,parameters,interval_type,character varying,YES,null
+information_schema,parameters,interval_precision,integer,YES,null
+information_schema,parameters,udt_catalog,name,YES,null
+information_schema,parameters,udt_schema,name,YES,null
+information_schema,parameters,udt_name,name,YES,null
+information_schema,parameters,scope_catalog,name,YES,null
+information_schema,parameters,scope_schema,name,YES,null
+information_schema,parameters,scope_name,name,YES,null
+information_schema,parameters,maximum_cardinality,integer,YES,null
+information_schema,parameters,dtd_identifier,name,YES,null
+information_schema,parameters,parameter_default,character varying,YES,null
+information_schema,referential_constraints,constraint_catalog,name,YES,null
+information_schema,referential_constraints,constraint_schema,name,YES,null
+information_schema,referential_constraints,constraint_name,name,YES,null
+information_schema,referential_constraints,unique_constraint_catalog,name,YES,null
+information_schema,referential_constraints,unique_constraint_schema,name,YES,null
+information_schema,referential_constraints,unique_constraint_name,name,YES,null
+information_schema,referential_constraints,match_option,character varying,YES,null
+information_schema,referential_constraints,update_rule,character varying,YES,null
+information_schema,referential_constraints,delete_rule,character varying,YES,null
+information_schema,role_column_grants,grantor,name,YES,null
+information_schema,role_column_grants,grantee,name,YES,null
+information_schema,role_column_grants,table_catalog,name,YES,null
+information_schema,role_column_grants,table_schema,name,YES,null
+information_schema,role_column_grants,table_name,name,YES,null
+information_schema,role_column_grants,column_name,name,YES,null
+information_schema,role_column_grants,privilege_type,character varying,YES,null
+information_schema,role_column_grants,is_grantable,character varying,YES,null
+information_schema,role_routine_grants,grantor,name,YES,null
+information_schema,role_routine_grants,grantee,name,YES,null
+information_schema,role_routine_grants,specific_catalog,name,YES,null
+information_schema,role_routine_grants,specific_schema,name,YES,null
+information_schema,role_routine_grants,specific_name,name,YES,null
+information_schema,role_routine_grants,routine_catalog,name,YES,null
+information_schema,role_routine_grants,routine_schema,name,YES,null
+information_schema,role_routine_grants,routine_name,name,YES,null
+information_schema,role_routine_grants,privilege_type,character varying,YES,null
+information_schema,role_routine_grants,is_grantable,character varying,YES,null
+information_schema,role_table_grants,grantor,name,YES,null
+information_schema,role_table_grants,grantee,name,YES,null
+information_schema,role_table_grants,table_catalog,name,YES,null
+information_schema,role_table_grants,table_schema,name,YES,null
+information_schema,role_table_grants,table_name,name,YES,null
+information_schema,role_table_grants,privilege_type,character varying,YES,null
+information_schema,role_table_grants,is_grantable,character varying,YES,null
+information_schema,role_table_grants,with_hierarchy,character varying,YES,null
+information_schema,role_udt_grants,grantor,name,YES,null
+information_schema,role_udt_grants,grantee,name,YES,null
+information_schema,role_udt_grants,udt_catalog,name,YES,null
+information_schema,role_udt_grants,udt_schema,name,YES,null
+information_schema,role_udt_grants,udt_name,name,YES,null
+information_schema,role_udt_grants,privilege_type,character varying,YES,null
+information_schema,role_udt_grants,is_grantable,character varying,YES,null
+information_schema,role_usage_grants,grantor,name,YES,null
+information_schema,role_usage_grants,grantee,name,YES,null
+information_schema,role_usage_grants,object_catalog,name,YES,null
+information_schema,role_usage_grants,object_schema,name,YES,null
+information_schema,role_usage_grants,object_name,name,YES,null
+information_schema,role_usage_grants,object_type,character varying,YES,null
+information_schema,role_usage_grants,privilege_type,character varying,YES,null
+information_schema,role_usage_grants,is_grantable,character varying,YES,null
+information_schema,routine_column_usage,specific_catalog,name,YES,null
+information_schema,routine_column_usage,specific_schema,name,YES,null
+information_schema,routine_column_usage,specific_name,name,YES,null
+information_schema,routine_column_usage,routine_catalog,name,YES,null
+information_schema,routine_column_usage,routine_schema,name,YES,null
+information_schema,routine_column_usage,routine_name,name,YES,null
+information_schema,routine_column_usage,table_catalog,name,YES,null
+information_schema,routine_column_usage,table_schema,name,YES,null
+information_schema,routine_column_usage,table_name,name,YES,null
+information_schema,routine_column_usage,column_name,name,YES,null
+information_schema,routine_privileges,grantor,name,YES,null
+information_schema,routine_privileges,grantee,name,YES,null
+information_schema,routine_privileges,specific_catalog,name,YES,null
+information_schema,routine_privileges,specific_schema,name,YES,null
+information_schema,routine_privileges,specific_name,name,YES,null
+information_schema,routine_privileges,routine_catalog,name,YES,null
+information_schema,routine_privileges,routine_schema,name,YES,null
+information_schema,routine_privileges,routine_name,name,YES,null
+information_schema,routine_privileges,privilege_type,character varying,YES,null
+information_schema,routine_privileges,is_grantable,character varying,YES,null
+information_schema,routine_routine_usage,specific_catalog,name,YES,null
+information_schema,routine_routine_usage,specific_schema,name,YES,null
+information_schema,routine_routine_usage,specific_name,name,YES,null
+information_schema,routine_routine_usage,routine_catalog,name,YES,null
+information_schema,routine_routine_usage,routine_schema,name,YES,null
+information_schema,routine_routine_usage,routine_name,name,YES,null
+information_schema,routine_sequence_usage,specific_catalog,name,YES,null
+information_schema,routine_sequence_usage,specific_schema,name,YES,null
+information_schema,routine_sequence_usage,specific_name,name,YES,null
+information_schema,routine_sequence_usage,routine_catalog,name,YES,null
+information_schema,routine_sequence_usage,routine_schema,name,YES,null
+information_schema,routine_sequence_usage,routine_name,name,YES,null
+information_schema,routine_sequence_usage,sequence_catalog,name,YES,null
+information_schema,routine_sequence_usage,sequence_schema,name,YES,null
+information_schema,routine_sequence_usage,sequence_name,name,YES,null
+information_schema,routine_table_usage,specific_catalog,name,YES,null
+information_schema,routine_table_usage,specific_schema,name,YES,null
+information_schema,routine_table_usage,specific_name,name,YES,null
+information_schema,routine_table_usage,routine_catalog,name,YES,null
+information_schema,routine_table_usage,routine_schema,name,YES,null
+information_schema,routine_table_usage,routine_name,name,YES,null
+information_schema,routine_table_usage,table_catalog,name,YES,null
+information_schema,routine_table_usage,table_schema,name,YES,null
+information_schema,routine_table_usage,table_name,name,YES,null
+information_schema,routines,specific_catalog,name,YES,null
+information_schema,routines,specific_schema,name,YES,null
+information_schema,routines,specific_name,name,YES,null
+information_schema,routines,routine_catalog,name,YES,null
+information_schema,routines,routine_schema,name,YES,null
+information_schema,routines,routine_name,name,YES,null
+information_schema,routines,routine_type,character varying,YES,null
+information_schema,routines,module_catalog,name,YES,null
+information_schema,routines,module_schema,name,YES,null
+information_schema,routines,module_name,name,YES,null
+information_schema,routines,udt_catalog,name,YES,null
+information_schema,routines,udt_schema,name,YES,null
+information_schema,routines,udt_name,name,YES,null
+information_schema,routines,data_type,character varying,YES,null
+information_schema,routines,character_maximum_length,integer,YES,null
+information_schema,routines,character_octet_length,integer,YES,null
+information_schema,routines,character_set_catalog,name,YES,null
+information_schema,routines,character_set_schema,name,YES,null
+information_schema,routines,character_set_name,name,YES,null
+information_schema,routines,collation_catalog,name,YES,null
+information_schema,routines,collation_schema,name,YES,null
+information_schema,routines,collation_name,name,YES,null
+information_schema,routines,numeric_precision,integer,YES,null
+information_schema,routines,numeric_precision_radix,integer,YES,null
+information_schema,routines,numeric_scale,integer,YES,null
+information_schema,routines,datetime_precision,integer,YES,null
+information_schema,routines,interval_type,character varying,YES,null
+information_schema,routines,interval_precision,integer,YES,null
+information_schema,routines,type_udt_catalog,name,YES,null
+information_schema,routines,type_udt_schema,name,YES,null
+information_schema,routines,type_udt_name,name,YES,null
+information_schema,routines,scope_catalog,name,YES,null
+information_schema,routines,scope_schema,name,YES,null
+information_schema,routines,scope_name,name,YES,null
+information_schema,routines,maximum_cardinality,integer,YES,null
+information_schema,routines,dtd_identifier,name,YES,null
+information_schema,routines,routine_body,character varying,YES,null
+information_schema,routines,routine_definition,character varying,YES,null
+information_schema,routines,external_name,character varying,YES,null
+information_schema,routines,external_language,character varying,YES,null
+information_schema,routines,parameter_style,character varying,YES,null
+information_schema,routines,is_deterministic,character varying,YES,null
+information_schema,routines,sql_data_access,character varying,YES,null
+information_schema,routines,is_null_call,character varying,YES,null
+information_schema,routines,sql_path,character varying,YES,null
+information_schema,routines,schema_level_routine,character varying,YES,null
+information_schema,routines,max_dynamic_result_sets,integer,YES,null
+information_schema,routines,is_user_defined_cast,character varying,YES,null
+information_schema,routines,is_implicitly_invocable,character varying,YES,null
+information_schema,routines,security_type,character varying,YES,null
+information_schema,routines,to_sql_specific_catalog,name,YES,null
+information_schema,routines,to_sql_specific_schema,name,YES,null
+information_schema,routines,to_sql_specific_name,name,YES,null
+information_schema,routines,as_locator,character varying,YES,null
+information_schema,routines,created,timestamp with time zone,YES,null
+information_schema,routines,last_altered,timestamp with time zone,YES,null
+information_schema,routines,new_savepoint_level,character varying,YES,null
+information_schema,routines,is_udt_dependent,character varying,YES,null
+information_schema,routines,result_cast_from_data_type,character varying,YES,null
+information_schema,routines,result_cast_as_locator,character varying,YES,null
+information_schema,routines,result_cast_char_max_length,integer,YES,null
+information_schema,routines,result_cast_char_octet_length,integer,YES,null
+information_schema,routines,result_cast_char_set_catalog,name,YES,null
+information_schema,routines,result_cast_char_set_schema,name,YES,null
+information_schema,routines,result_cast_char_set_name,name,YES,null
+information_schema,routines,result_cast_collation_catalog,name,YES,null
+information_schema,routines,result_cast_collation_schema,name,YES,null
+information_schema,routines,result_cast_collation_name,name,YES,null
+information_schema,routines,result_cast_numeric_precision,integer,YES,null
+information_schema,routines,result_cast_numeric_precision_radix,integer,YES,null
+information_schema,routines,result_cast_numeric_scale,integer,YES,null
+information_schema,routines,result_cast_datetime_precision,integer,YES,null
+information_schema,routines,result_cast_interval_type,character varying,YES,null
+information_schema,routines,result_cast_interval_precision,integer,YES,null
+information_schema,routines,result_cast_type_udt_catalog,name,YES,null
+information_schema,routines,result_cast_type_udt_schema,name,YES,null
+information_schema,routines,result_cast_type_udt_name,name,YES,null
+information_schema,routines,result_cast_scope_catalog,name,YES,null
+information_schema,routines,result_cast_scope_schema,name,YES,null
+information_schema,routines,result_cast_scope_name,name,YES,null
+information_schema,routines,result_cast_maximum_cardinality,integer,YES,null
+information_schema,routines,result_cast_dtd_identifier,name,YES,null
+information_schema,schemata,catalog_name,name,YES,null
+information_schema,schemata,schema_name,name,YES,null
+information_schema,schemata,schema_owner,name,YES,null
+information_schema,schemata,default_character_set_catalog,name,YES,null
+information_schema,schemata,default_character_set_schema,name,YES,null
+information_schema,schemata,default_character_set_name,name,YES,null
+information_schema,schemata,sql_path,character varying,YES,null
+information_schema,sequences,sequence_catalog,name,YES,null
+information_schema,sequences,sequence_schema,name,YES,null
+information_schema,sequences,sequence_name,name,YES,null
+information_schema,sequences,data_type,character varying,YES,null
+information_schema,sequences,numeric_precision,integer,YES,null
+information_schema,sequences,numeric_precision_radix,integer,YES,null
+information_schema,sequences,numeric_scale,integer,YES,null
+information_schema,sequences,start_value,character varying,YES,null
+information_schema,sequences,minimum_value,character varying,YES,null
+information_schema,sequences,maximum_value,character varying,YES,null
+information_schema,sequences,increment,character varying,YES,null
+information_schema,sequences,cycle_option,character varying,YES,null
+information_schema,sql_features,feature_id,character varying,YES,null
+information_schema,sql_features,feature_name,character varying,YES,null
+information_schema,sql_features,sub_feature_id,character varying,YES,null
+information_schema,sql_features,sub_feature_name,character varying,YES,null
+information_schema,sql_features,is_supported,character varying,YES,null
+information_schema,sql_features,is_verified_by,character varying,YES,null
+information_schema,sql_features,comments,character varying,YES,null
+information_schema,sql_implementation_info,implementation_info_id,character varying,YES,null
+information_schema,sql_implementation_info,implementation_info_name,character varying,YES,null
+information_schema,sql_implementation_info,integer_value,integer,YES,null
+information_schema,sql_implementation_info,character_value,character varying,YES,null
+information_schema,sql_implementation_info,comments,character varying,YES,null
+information_schema,sql_parts,feature_id,character varying,YES,null
+information_schema,sql_parts,feature_name,character varying,YES,null
+information_schema,sql_parts,is_supported,character varying,YES,null
+information_schema,sql_parts,is_verified_by,character varying,YES,null
+information_schema,sql_parts,comments,character varying,YES,null
+information_schema,sql_sizing,sizing_id,integer,YES,null
+information_schema,sql_sizing,sizing_name,character varying,YES,null
+information_schema,sql_sizing,supported_value,integer,YES,null
+information_schema,sql_sizing,comments,character varying,YES,null
+information_schema,table_constraints,constraint_catalog,name,YES,null
+information_schema,table_constraints,constraint_schema,name,YES,null
+information_schema,table_constraints,constraint_name,name,YES,null
+information_schema,table_constraints,table_catalog,name,YES,null
+information_schema,table_constraints,table_schema,name,YES,null
+information_schema,table_constraints,table_name,name,YES,null
+information_schema,table_constraints,constraint_type,character varying,YES,null
+information_schema,table_constraints,is_deferrable,character varying,YES,null
+information_schema,table_constraints,initially_deferred,character varying,YES,null
+information_schema,table_constraints,enforced,character varying,YES,null
+information_schema,table_constraints,nulls_distinct,character varying,YES,null
+information_schema,table_privileges,grantor,name,YES,null
+information_schema,table_privileges,grantee,name,YES,null
+information_schema,table_privileges,table_catalog,name,YES,null
+information_schema,table_privileges,table_schema,name,YES,null
+information_schema,table_privileges,table_name,name,YES,null
+information_schema,table_privileges,privilege_type,character varying,YES,null
+information_schema,table_privileges,is_grantable,character varying,YES,null
+information_schema,table_privileges,with_hierarchy,character varying,YES,null
+information_schema,tables,table_catalog,name,YES,null
+information_schema,tables,table_schema,name,YES,null
+information_schema,tables,table_name,name,YES,null
+information_schema,tables,table_type,character varying,YES,null
+information_schema,tables,self_referencing_column_name,name,YES,null
+information_schema,tables,reference_generation,character varying,YES,null
+information_schema,tables,user_defined_type_catalog,name,YES,null
+information_schema,tables,user_defined_type_schema,name,YES,null
+information_schema,tables,user_defined_type_name,name,YES,null
+information_schema,tables,is_insertable_into,character varying,YES,null
+information_schema,tables,is_typed,character varying,YES,null
+information_schema,tables,commit_action,character varying,YES,null
+information_schema,transforms,udt_catalog,name,YES,null
+information_schema,transforms,udt_schema,name,YES,null
+information_schema,transforms,udt_name,name,YES,null
+information_schema,transforms,specific_catalog,name,YES,null
+information_schema,transforms,specific_schema,name,YES,null
+information_schema,transforms,specific_name,name,YES,null
+information_schema,transforms,group_name,name,YES,null
+information_schema,transforms,transform_type,character varying,YES,null
+information_schema,triggered_update_columns,trigger_catalog,name,YES,null
+information_schema,triggered_update_columns,trigger_schema,name,YES,null
+information_schema,triggered_update_columns,trigger_name,name,YES,null
+information_schema,triggered_update_columns,event_object_catalog,name,YES,null
+information_schema,triggered_update_columns,event_object_schema,name,YES,null
+information_schema,triggered_update_columns,event_object_table,name,YES,null
+information_schema,triggered_update_columns,event_object_column,name,YES,null
+information_schema,triggers,trigger_catalog,name,YES,null
+information_schema,triggers,trigger_schema,name,YES,null
+information_schema,triggers,trigger_name,name,YES,null
+information_schema,triggers,event_manipulation,character varying,YES,null
+information_schema,triggers,event_object_catalog,name,YES,null
+information_schema,triggers,event_object_schema,name,YES,null
+information_schema,triggers,event_object_table,name,YES,null
+information_schema,triggers,action_order,integer,YES,null
+information_schema,triggers,action_condition,character varying,YES,null
+information_schema,triggers,action_statement,character varying,YES,null
+information_schema,triggers,action_orientation,character varying,YES,null
+information_schema,triggers,action_timing,character varying,YES,null
+information_schema,triggers,action_reference_old_table,name,YES,null
+information_schema,triggers,action_reference_new_table,name,YES,null
+information_schema,triggers,action_reference_old_row,name,YES,null
+information_schema,triggers,action_reference_new_row,name,YES,null
+information_schema,triggers,created,timestamp with time zone,YES,null
+information_schema,udt_privileges,grantor,name,YES,null
+information_schema,udt_privileges,grantee,name,YES,null
+information_schema,udt_privileges,udt_catalog,name,YES,null
+information_schema,udt_privileges,udt_schema,name,YES,null
+information_schema,udt_privileges,udt_name,name,YES,null
+information_schema,udt_privileges,privilege_type,character varying,YES,null
+information_schema,udt_privileges,is_grantable,character varying,YES,null
+information_schema,usage_privileges,grantor,name,YES,null
+information_schema,usage_privileges,grantee,name,YES,null
+information_schema,usage_privileges,object_catalog,name,YES,null
+information_schema,usage_privileges,object_schema,name,YES,null
+information_schema,usage_privileges,object_name,name,YES,null
+information_schema,usage_privileges,object_type,character varying,YES,null
+information_schema,usage_privileges,privilege_type,character varying,YES,null
+information_schema,usage_privileges,is_grantable,character varying,YES,null
+information_schema,user_defined_types,user_defined_type_catalog,name,YES,null
+information_schema,user_defined_types,user_defined_type_schema,name,YES,null
+information_schema,user_defined_types,user_defined_type_name,name,YES,null
+information_schema,user_defined_types,user_defined_type_category,character varying,YES,null
+information_schema,user_defined_types,is_instantiable,character varying,YES,null
+information_schema,user_defined_types,is_final,character varying,YES,null
+information_schema,user_defined_types,ordering_form,character varying,YES,null
+information_schema,user_defined_types,ordering_category,character varying,YES,null
+information_schema,user_defined_types,ordering_routine_catalog,name,YES,null
+information_schema,user_defined_types,ordering_routine_schema,name,YES,null
+information_schema,user_defined_types,ordering_routine_name,name,YES,null
+information_schema,user_defined_types,reference_type,character varying,YES,null
+information_schema,user_defined_types,data_type,character varying,YES,null
+information_schema,user_defined_types,character_maximum_length,integer,YES,null
+information_schema,user_defined_types,character_octet_length,integer,YES,null
+information_schema,user_defined_types,character_set_catalog,name,YES,null
+information_schema,user_defined_types,character_set_schema,name,YES,null
+information_schema,user_defined_types,character_set_name,name,YES,null
+information_schema,user_defined_types,collation_catalog,name,YES,null
+information_schema,user_defined_types,collation_schema,name,YES,null
+information_schema,user_defined_types,collation_name,name,YES,null
+information_schema,user_defined_types,numeric_precision,integer,YES,null
+information_schema,user_defined_types,numeric_precision_radix,integer,YES,null
+information_schema,user_defined_types,numeric_scale,integer,YES,null
+information_schema,user_defined_types,datetime_precision,integer,YES,null
+information_schema,user_defined_types,interval_type,character varying,YES,null
+information_schema,user_defined_types,interval_precision,integer,YES,null
+information_schema,user_defined_types,source_dtd_identifier,name,YES,null
+information_schema,user_defined_types,ref_dtd_identifier,name,YES,null
+information_schema,user_mapping_options,authorization_identifier,name,YES,null
+information_schema,user_mapping_options,foreign_server_catalog,name,YES,null
+information_schema,user_mapping_options,foreign_server_name,name,YES,null
+information_schema,user_mapping_options,option_name,name,YES,null
+information_schema,user_mapping_options,option_value,character varying,YES,null
+information_schema,user_mappings,authorization_identifier,name,YES,null
+information_schema,user_mappings,foreign_server_catalog,name,YES,null
+information_schema,user_mappings,foreign_server_name,name,YES,null
+information_schema,view_column_usage,view_catalog,name,YES,null
+information_schema,view_column_usage,view_schema,name,YES,null
+information_schema,view_column_usage,view_name,name,YES,null
+information_schema,view_column_usage,table_catalog,name,YES,null
+information_schema,view_column_usage,table_schema,name,YES,null
+information_schema,view_column_usage,table_name,name,YES,null
+information_schema,view_column_usage,column_name,name,YES,null
+information_schema,view_routine_usage,table_catalog,name,YES,null
+information_schema,view_routine_usage,table_schema,name,YES,null
+information_schema,view_routine_usage,table_name,name,YES,null
+information_schema,view_routine_usage,specific_catalog,name,YES,null
+information_schema,view_routine_usage,specific_schema,name,YES,null
+information_schema,view_routine_usage,specific_name,name,YES,null
+information_schema,view_table_usage,view_catalog,name,YES,null
+information_schema,view_table_usage,view_schema,name,YES,null
+information_schema,view_table_usage,view_name,name,YES,null
+information_schema,view_table_usage,table_catalog,name,YES,null
+information_schema,view_table_usage,table_schema,name,YES,null
+information_schema,view_table_usage,table_name,name,YES,null
+information_schema,views,table_catalog,name,YES,null
+information_schema,views,table_schema,name,YES,null
+information_schema,views,table_name,name,YES,null
+information_schema,views,view_definition,character varying,YES,null
+information_schema,views,check_option,character varying,YES,null
+information_schema,views,is_updatable,character varying,YES,null
+information_schema,views,is_insertable_into,character varying,YES,null
+information_schema,views,is_trigger_updatable,character varying,YES,null
+information_schema,views,is_trigger_deletable,character varying,YES,null
+information_schema,views,is_trigger_insertable_into,character varying,YES,null
+pg_catalog,pg_aggregate,aggfnoid,regproc,NO,null
+pg_catalog,pg_aggregate,aggkind,"""char""",NO,null
+pg_catalog,pg_aggregate,aggnumdirectargs,smallint,NO,null
+pg_catalog,pg_aggregate,aggtransfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggfinalfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggcombinefn,regproc,NO,null
+pg_catalog,pg_aggregate,aggserialfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggdeserialfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggmtransfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggminvtransfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggmfinalfn,regproc,NO,null
+pg_catalog,pg_aggregate,aggfinalextra,boolean,NO,null
+pg_catalog,pg_aggregate,aggmfinalextra,boolean,NO,null
+pg_catalog,pg_aggregate,aggfinalmodify,"""char""",NO,null
+pg_catalog,pg_aggregate,aggmfinalmodify,"""char""",NO,null
+pg_catalog,pg_aggregate,aggsortop,oid,NO,null
+pg_catalog,pg_aggregate,aggtranstype,oid,NO,null
+pg_catalog,pg_aggregate,aggtransspace,integer,NO,null
+pg_catalog,pg_aggregate,aggmtranstype,oid,NO,null
+pg_catalog,pg_aggregate,aggmtransspace,integer,NO,null
+pg_catalog,pg_aggregate,agginitval,text,YES,null
+pg_catalog,pg_aggregate,aggminitval,text,YES,null
+pg_catalog,pg_am,oid,oid,NO,null
+pg_catalog,pg_am,amname,name,NO,null
+pg_catalog,pg_am,amhandler,regproc,NO,null
+pg_catalog,pg_am,amtype,"""char""",NO,null
+pg_catalog,pg_amop,oid,oid,NO,null
+pg_catalog,pg_amop,amopfamily,oid,NO,null
+pg_catalog,pg_amop,amoplefttype,oid,NO,null
+pg_catalog,pg_amop,amoprighttype,oid,NO,null
+pg_catalog,pg_amop,amopstrategy,smallint,NO,null
+pg_catalog,pg_amop,amoppurpose,"""char""",NO,null
+pg_catalog,pg_amop,amopopr,oid,NO,null
+pg_catalog,pg_amop,amopmethod,oid,NO,null
+pg_catalog,pg_amop,amopsortfamily,oid,NO,null
+pg_catalog,pg_amproc,oid,oid,NO,null
+pg_catalog,pg_amproc,amprocfamily,oid,NO,null
+pg_catalog,pg_amproc,amproclefttype,oid,NO,null
+pg_catalog,pg_amproc,amprocrighttype,oid,NO,null
+pg_catalog,pg_amproc,amprocnum,smallint,NO,null
+pg_catalog,pg_amproc,amproc,regproc,NO,null
+pg_catalog,pg_attrdef,oid,oid,NO,null
+pg_catalog,pg_attrdef,adrelid,oid,NO,null
+pg_catalog,pg_attrdef,adnum,smallint,NO,null
+pg_catalog,pg_attrdef,adbin,pg_node_tree,NO,null
+pg_catalog,pg_attribute,attrelid,oid,NO,null
+pg_catalog,pg_attribute,attname,name,NO,null
+pg_catalog,pg_attribute,atttypid,oid,NO,null
+pg_catalog,pg_attribute,attlen,smallint,NO,null
+pg_catalog,pg_attribute,attnum,smallint,NO,null
+pg_catalog,pg_attribute,attcacheoff,integer,NO,null
+pg_catalog,pg_attribute,atttypmod,integer,NO,null
+pg_catalog,pg_attribute,attndims,smallint,NO,null
+pg_catalog,pg_attribute,attbyval,boolean,NO,null
+pg_catalog,pg_attribute,attalign,"""char""",NO,null
+pg_catalog,pg_attribute,attstorage,"""char""",NO,null
+pg_catalog,pg_attribute,attcompression,"""char""",NO,null
+pg_catalog,pg_attribute,attnotnull,boolean,NO,null
+pg_catalog,pg_attribute,atthasdef,boolean,NO,null
+pg_catalog,pg_attribute,atthasmissing,boolean,NO,null
+pg_catalog,pg_attribute,attidentity,"""char""",NO,null
+pg_catalog,pg_attribute,attgenerated,"""char""",NO,null
+pg_catalog,pg_attribute,attisdropped,boolean,NO,null
+pg_catalog,pg_attribute,attislocal,boolean,NO,null
+pg_catalog,pg_attribute,attinhcount,smallint,NO,null
+pg_catalog,pg_attribute,attcollation,oid,NO,null
+pg_catalog,pg_attribute,attstattarget,smallint,YES,null
+pg_catalog,pg_attribute,attacl,ARRAY,YES,null
+pg_catalog,pg_attribute,attoptions,ARRAY,YES,null
+pg_catalog,pg_attribute,attfdwoptions,ARRAY,YES,null
+pg_catalog,pg_attribute,attmissingval,anyarray,YES,null
+pg_catalog,pg_auth_members,oid,oid,NO,null
+pg_catalog,pg_auth_members,roleid,oid,NO,null
+pg_catalog,pg_auth_members,member,oid,NO,null
+pg_catalog,pg_auth_members,grantor,oid,NO,null
+pg_catalog,pg_auth_members,admin_option,boolean,NO,null
+pg_catalog,pg_auth_members,inherit_option,boolean,NO,null
+pg_catalog,pg_auth_members,set_option,boolean,NO,null
+pg_catalog,pg_authid,oid,oid,NO,null
+pg_catalog,pg_authid,rolname,name,NO,null
+pg_catalog,pg_authid,rolsuper,boolean,NO,null
+pg_catalog,pg_authid,rolinherit,boolean,NO,null
+pg_catalog,pg_authid,rolcreaterole,boolean,NO,null
+pg_catalog,pg_authid,rolcreatedb,boolean,NO,null
+pg_catalog,pg_authid,rolcanlogin,boolean,NO,null
+pg_catalog,pg_authid,rolreplication,boolean,NO,null
+pg_catalog,pg_authid,rolbypassrls,boolean,NO,null
+pg_catalog,pg_authid,rolconnlimit,integer,NO,null
+pg_catalog,pg_authid,rolpassword,text,YES,null
+pg_catalog,pg_authid,rolvaliduntil,timestamp with time zone,YES,null
+pg_catalog,pg_available_extension_versions,name,name,YES,null
+pg_catalog,pg_available_extension_versions,version,text,YES,null
+pg_catalog,pg_available_extension_versions,installed,boolean,YES,null
+pg_catalog,pg_available_extension_versions,superuser,boolean,YES,null
+pg_catalog,pg_available_extension_versions,trusted,boolean,YES,null
+pg_catalog,pg_available_extension_versions,relocatable,boolean,YES,null
+pg_catalog,pg_available_extension_versions,schema,name,YES,null
+pg_catalog,pg_available_extension_versions,requires,ARRAY,YES,null
+pg_catalog,pg_available_extension_versions,comment,text,YES,null
+pg_catalog,pg_available_extensions,name,name,YES,null
+pg_catalog,pg_available_extensions,default_version,text,YES,null
+pg_catalog,pg_available_extensions,installed_version,text,YES,null
+pg_catalog,pg_available_extensions,comment,text,YES,null
+pg_catalog,pg_backend_memory_contexts,name,text,YES,null
+pg_catalog,pg_backend_memory_contexts,ident,text,YES,null
+pg_catalog,pg_backend_memory_contexts,parent,text,YES,null
+pg_catalog,pg_backend_memory_contexts,level,integer,YES,null
+pg_catalog,pg_backend_memory_contexts,total_bytes,bigint,YES,null
+pg_catalog,pg_backend_memory_contexts,total_nblocks,bigint,YES,null
+pg_catalog,pg_backend_memory_contexts,free_bytes,bigint,YES,null
+pg_catalog,pg_backend_memory_contexts,free_chunks,bigint,YES,null
+pg_catalog,pg_backend_memory_contexts,used_bytes,bigint,YES,null
+pg_catalog,pg_cast,oid,oid,NO,null
+pg_catalog,pg_cast,castsource,oid,NO,null
+pg_catalog,pg_cast,casttarget,oid,NO,null
+pg_catalog,pg_cast,castfunc,oid,NO,null
+pg_catalog,pg_cast,castcontext,"""char""",NO,null
+pg_catalog,pg_cast,castmethod,"""char""",NO,null
+pg_catalog,pg_class,oid,oid,NO,null
+pg_catalog,pg_class,relname,name,NO,null
+pg_catalog,pg_class,relnamespace,oid,NO,null
+pg_catalog,pg_class,reltype,oid,NO,null
+pg_catalog,pg_class,reloftype,oid,NO,null
+pg_catalog,pg_class,relowner,oid,NO,null
+pg_catalog,pg_class,relam,oid,NO,null
+pg_catalog,pg_class,relfilenode,oid,NO,null
+pg_catalog,pg_class,reltablespace,oid,NO,null
+pg_catalog,pg_class,relpages,integer,NO,null
+pg_catalog,pg_class,reltuples,real,NO,null
+pg_catalog,pg_class,relallvisible,integer,NO,null
+pg_catalog,pg_class,reltoastrelid,oid,NO,null
+pg_catalog,pg_class,relhasindex,boolean,NO,null
+pg_catalog,pg_class,relisshared,boolean,NO,null
+pg_catalog,pg_class,relpersistence,"""char""",NO,null
+pg_catalog,pg_class,relkind,"""char""",NO,null
+pg_catalog,pg_class,relnatts,smallint,NO,null
+pg_catalog,pg_class,relchecks,smallint,NO,null
+pg_catalog,pg_class,relhasrules,boolean,NO,null
+pg_catalog,pg_class,relhastriggers,boolean,NO,null
+pg_catalog,pg_class,relhassubclass,boolean,NO,null
+pg_catalog,pg_class,relrowsecurity,boolean,NO,null
+pg_catalog,pg_class,relforcerowsecurity,boolean,NO,null
+pg_catalog,pg_class,relispopulated,boolean,NO,null
+pg_catalog,pg_class,relreplident,"""char""",NO,null
+pg_catalog,pg_class,relispartition,boolean,NO,null
+pg_catalog,pg_class,relrewrite,oid,NO,null
+pg_catalog,pg_class,relfrozenxid,xid,NO,null
+pg_catalog,pg_class,relminmxid,xid,NO,null
+pg_catalog,pg_class,relacl,ARRAY,YES,null
+pg_catalog,pg_class,reloptions,ARRAY,YES,null
+pg_catalog,pg_class,relpartbound,pg_node_tree,YES,null
+pg_catalog,pg_collation,oid,oid,NO,null
+pg_catalog,pg_collation,collname,name,NO,null
+pg_catalog,pg_collation,collnamespace,oid,NO,null
+pg_catalog,pg_collation,collowner,oid,NO,null
+pg_catalog,pg_collation,collprovider,"""char""",NO,null
+pg_catalog,pg_collation,collisdeterministic,boolean,NO,null
+pg_catalog,pg_collation,collencoding,integer,NO,null
+pg_catalog,pg_collation,collcollate,text,YES,null
+pg_catalog,pg_collation,collctype,text,YES,null
+pg_catalog,pg_collation,colllocale,text,YES,null
+pg_catalog,pg_collation,collicurules,text,YES,null
+pg_catalog,pg_collation,collversion,text,YES,null
+pg_catalog,pg_config,name,text,YES,null
+pg_catalog,pg_config,setting,text,YES,null
+pg_catalog,pg_constraint,oid,oid,NO,null
+pg_catalog,pg_constraint,conname,name,NO,null
+pg_catalog,pg_constraint,connamespace,oid,NO,null
+pg_catalog,pg_constraint,contype,"""char""",NO,null
+pg_catalog,pg_constraint,condeferrable,boolean,NO,null
+pg_catalog,pg_constraint,condeferred,boolean,NO,null
+pg_catalog,pg_constraint,convalidated,boolean,NO,null
+pg_catalog,pg_constraint,conrelid,oid,NO,null
+pg_catalog,pg_constraint,contypid,oid,NO,null
+pg_catalog,pg_constraint,conindid,oid,NO,null
+pg_catalog,pg_constraint,conparentid,oid,NO,null
+pg_catalog,pg_constraint,confrelid,oid,NO,null
+pg_catalog,pg_constraint,confupdtype,"""char""",NO,null
+pg_catalog,pg_constraint,confdeltype,"""char""",NO,null
+pg_catalog,pg_constraint,confmatchtype,"""char""",NO,null
+pg_catalog,pg_constraint,conislocal,boolean,NO,null
+pg_catalog,pg_constraint,coninhcount,smallint,NO,null
+pg_catalog,pg_constraint,connoinherit,boolean,NO,null
+pg_catalog,pg_constraint,conkey,ARRAY,YES,null
+pg_catalog,pg_constraint,confkey,ARRAY,YES,null
+pg_catalog,pg_constraint,conpfeqop,ARRAY,YES,null
+pg_catalog,pg_constraint,conppeqop,ARRAY,YES,null
+pg_catalog,pg_constraint,conffeqop,ARRAY,YES,null
+pg_catalog,pg_constraint,confdelsetcols,ARRAY,YES,null
+pg_catalog,pg_constraint,conexclop,ARRAY,YES,null
+pg_catalog,pg_constraint,conbin,pg_node_tree,YES,null
+pg_catalog,pg_conversion,oid,oid,NO,null
+pg_catalog,pg_conversion,conname,name,NO,null
+pg_catalog,pg_conversion,connamespace,oid,NO,null
+pg_catalog,pg_conversion,conowner,oid,NO,null
+pg_catalog,pg_conversion,conforencoding,integer,NO,null
+pg_catalog,pg_conversion,contoencoding,integer,NO,null
+pg_catalog,pg_conversion,conproc,regproc,NO,null
+pg_catalog,pg_conversion,condefault,boolean,NO,null
+pg_catalog,pg_cursors,name,text,YES,null
+pg_catalog,pg_cursors,statement,text,YES,null
+pg_catalog,pg_cursors,is_holdable,boolean,YES,null
+pg_catalog,pg_cursors,is_binary,boolean,YES,null
+pg_catalog,pg_cursors,is_scrollable,boolean,YES,null
+pg_catalog,pg_cursors,creation_time,timestamp with time zone,YES,null
+pg_catalog,pg_database,oid,oid,NO,null
+pg_catalog,pg_database,datname,name,NO,null
+pg_catalog,pg_database,datdba,oid,NO,null
+pg_catalog,pg_database,encoding,integer,NO,null
+pg_catalog,pg_database,datlocprovider,"""char""",NO,null
+pg_catalog,pg_database,datistemplate,boolean,NO,null
+pg_catalog,pg_database,datallowconn,boolean,NO,null
+pg_catalog,pg_database,dathasloginevt,boolean,NO,null
+pg_catalog,pg_database,datconnlimit,integer,NO,null
+pg_catalog,pg_database,datfrozenxid,xid,NO,null
+pg_catalog,pg_database,datminmxid,xid,NO,null
+pg_catalog,pg_database,dattablespace,oid,NO,null
+pg_catalog,pg_database,datcollate,text,NO,null
+pg_catalog,pg_database,datctype,text,NO,null
+pg_catalog,pg_database,datlocale,text,YES,null
+pg_catalog,pg_database,daticurules,text,YES,null
+pg_catalog,pg_database,datcollversion,text,YES,null
+pg_catalog,pg_database,datacl,ARRAY,YES,null
+pg_catalog,pg_db_role_setting,setdatabase,oid,NO,null
+pg_catalog,pg_db_role_setting,setrole,oid,NO,null
+pg_catalog,pg_db_role_setting,setconfig,ARRAY,YES,null
+pg_catalog,pg_default_acl,oid,oid,NO,null
+pg_catalog,pg_default_acl,defaclrole,oid,NO,null
+pg_catalog,pg_default_acl,defaclnamespace,oid,NO,null
+pg_catalog,pg_default_acl,defaclobjtype,"""char""",NO,null
+pg_catalog,pg_default_acl,defaclacl,ARRAY,NO,null
+pg_catalog,pg_depend,classid,oid,NO,null
+pg_catalog,pg_depend,objid,oid,NO,null
+pg_catalog,pg_depend,objsubid,integer,NO,null
+pg_catalog,pg_depend,refclassid,oid,NO,null
+pg_catalog,pg_depend,refobjid,oid,NO,null
+pg_catalog,pg_depend,refobjsubid,integer,NO,null
+pg_catalog,pg_depend,deptype,"""char""",NO,null
+pg_catalog,pg_description,objoid,oid,NO,null
+pg_catalog,pg_description,classoid,oid,NO,null
+pg_catalog,pg_description,objsubid,integer,NO,null
+pg_catalog,pg_description,description,text,NO,null
+pg_catalog,pg_enum,oid,oid,NO,null
+pg_catalog,pg_enum,enumtypid,oid,NO,null
+pg_catalog,pg_enum,enumsortorder,real,NO,null
+pg_catalog,pg_enum,enumlabel,name,NO,null
+pg_catalog,pg_event_trigger,oid,oid,NO,null
+pg_catalog,pg_event_trigger,evtname,name,NO,null
+pg_catalog,pg_event_trigger,evtevent,name,NO,null
+pg_catalog,pg_event_trigger,evtowner,oid,NO,null
+pg_catalog,pg_event_trigger,evtfoid,oid,NO,null
+pg_catalog,pg_event_trigger,evtenabled,"""char""",NO,null
+pg_catalog,pg_event_trigger,evttags,ARRAY,YES,null
+pg_catalog,pg_extension,oid,oid,NO,null
+pg_catalog,pg_extension,extname,name,NO,null
+pg_catalog,pg_extension,extowner,oid,NO,null
+pg_catalog,pg_extension,extnamespace,oid,NO,null
+pg_catalog,pg_extension,extrelocatable,boolean,NO,null
+pg_catalog,pg_extension,extversion,text,NO,null
+pg_catalog,pg_extension,extconfig,ARRAY,YES,null
+pg_catalog,pg_extension,extcondition,ARRAY,YES,null
+pg_catalog,pg_file_settings,sourcefile,text,YES,null
+pg_catalog,pg_file_settings,sourceline,integer,YES,null
+pg_catalog,pg_file_settings,seqno,integer,YES,null
+pg_catalog,pg_file_settings,name,text,YES,null
+pg_catalog,pg_file_settings,setting,text,YES,null
+pg_catalog,pg_file_settings,applied,boolean,YES,null
+pg_catalog,pg_file_settings,error,text,YES,null
+pg_catalog,pg_foreign_data_wrapper,oid,oid,NO,null
+pg_catalog,pg_foreign_data_wrapper,fdwname,name,NO,null
+pg_catalog,pg_foreign_data_wrapper,fdwowner,oid,NO,null
+pg_catalog,pg_foreign_data_wrapper,fdwhandler,oid,NO,null
+pg_catalog,pg_foreign_data_wrapper,fdwvalidator,oid,NO,null
+pg_catalog,pg_foreign_data_wrapper,fdwacl,ARRAY,YES,null
+pg_catalog,pg_foreign_data_wrapper,fdwoptions,ARRAY,YES,null
+pg_catalog,pg_foreign_server,oid,oid,NO,null
+pg_catalog,pg_foreign_server,srvname,name,NO,null
+pg_catalog,pg_foreign_server,srvowner,oid,NO,null
+pg_catalog,pg_foreign_server,srvfdw,oid,NO,null
+pg_catalog,pg_foreign_server,srvtype,text,YES,null
+pg_catalog,pg_foreign_server,srvversion,text,YES,null
+pg_catalog,pg_foreign_server,srvacl,ARRAY,YES,null
+pg_catalog,pg_foreign_server,srvoptions,ARRAY,YES,null
+pg_catalog,pg_foreign_table,ftrelid,oid,NO,null
+pg_catalog,pg_foreign_table,ftserver,oid,NO,null
+pg_catalog,pg_foreign_table,ftoptions,ARRAY,YES,null
+pg_catalog,pg_group,groname,name,YES,null
+pg_catalog,pg_group,grosysid,oid,YES,null
+pg_catalog,pg_group,grolist,ARRAY,YES,null
+pg_catalog,pg_hba_file_rules,rule_number,integer,YES,null
+pg_catalog,pg_hba_file_rules,file_name,text,YES,null
+pg_catalog,pg_hba_file_rules,line_number,integer,YES,null
+pg_catalog,pg_hba_file_rules,type,text,YES,null
+pg_catalog,pg_hba_file_rules,database,ARRAY,YES,null
+pg_catalog,pg_hba_file_rules,user_name,ARRAY,YES,null
+pg_catalog,pg_hba_file_rules,address,text,YES,null
+pg_catalog,pg_hba_file_rules,netmask,text,YES,null
+pg_catalog,pg_hba_file_rules,auth_method,text,YES,null
+pg_catalog,pg_hba_file_rules,options,ARRAY,YES,null
+pg_catalog,pg_hba_file_rules,error,text,YES,null
+pg_catalog,pg_ident_file_mappings,map_number,integer,YES,null
+pg_catalog,pg_ident_file_mappings,file_name,text,YES,null
+pg_catalog,pg_ident_file_mappings,line_number,integer,YES,null
+pg_catalog,pg_ident_file_mappings,map_name,text,YES,null
+pg_catalog,pg_ident_file_mappings,sys_name,text,YES,null
+pg_catalog,pg_ident_file_mappings,pg_username,text,YES,null
+pg_catalog,pg_ident_file_mappings,error,text,YES,null
+pg_catalog,pg_index,indexrelid,oid,NO,null
+pg_catalog,pg_index,indrelid,oid,NO,null
+pg_catalog,pg_index,indnatts,smallint,NO,null
+pg_catalog,pg_index,indnkeyatts,smallint,NO,null
+pg_catalog,pg_index,indisunique,boolean,NO,null
+pg_catalog,pg_index,indnullsnotdistinct,boolean,NO,null
+pg_catalog,pg_index,indisprimary,boolean,NO,null
+pg_catalog,pg_index,indisexclusion,boolean,NO,null
+pg_catalog,pg_index,indimmediate,boolean,NO,null
+pg_catalog,pg_index,indisclustered,boolean,NO,null
+pg_catalog,pg_index,indisvalid,boolean,NO,null
+pg_catalog,pg_index,indcheckxmin,boolean,NO,null
+pg_catalog,pg_index,indisready,boolean,NO,null
+pg_catalog,pg_index,indislive,boolean,NO,null
+pg_catalog,pg_index,indisreplident,boolean,NO,null
+pg_catalog,pg_index,indkey,ARRAY,NO,null
+pg_catalog,pg_index,indcollation,ARRAY,NO,null
+pg_catalog,pg_index,indclass,ARRAY,NO,null
+pg_catalog,pg_index,indoption,ARRAY,NO,null
+pg_catalog,pg_index,indexprs,pg_node_tree,YES,null
+pg_catalog,pg_index,indpred,pg_node_tree,YES,null
+pg_catalog,pg_indexes,schemaname,name,YES,null
+pg_catalog,pg_indexes,tablename,name,YES,null
+pg_catalog,pg_indexes,indexname,name,YES,null
+pg_catalog,pg_indexes,tablespace,name,YES,null
+pg_catalog,pg_indexes,indexdef,text,YES,null
+pg_catalog,pg_inherits,inhrelid,oid,NO,null
+pg_catalog,pg_inherits,inhparent,oid,NO,null
+pg_catalog,pg_inherits,inhseqno,integer,NO,null
+pg_catalog,pg_inherits,inhdetachpending,boolean,NO,null
+pg_catalog,pg_init_privs,objoid,oid,NO,null
+pg_catalog,pg_init_privs,classoid,oid,NO,null
+pg_catalog,pg_init_privs,objsubid,integer,NO,null
+pg_catalog,pg_init_privs,privtype,"""char""",NO,null
+pg_catalog,pg_init_privs,initprivs,ARRAY,NO,null
+pg_catalog,pg_language,oid,oid,NO,null
+pg_catalog,pg_language,lanname,name,NO,null
+pg_catalog,pg_language,lanowner,oid,NO,null
+pg_catalog,pg_language,lanispl,boolean,NO,null
+pg_catalog,pg_language,lanpltrusted,boolean,NO,null
+pg_catalog,pg_language,lanplcallfoid,oid,NO,null
+pg_catalog,pg_language,laninline,oid,NO,null
+pg_catalog,pg_language,lanvalidator,oid,NO,null
+pg_catalog,pg_language,lanacl,ARRAY,YES,null
+pg_catalog,pg_largeobject,loid,oid,NO,null
+pg_catalog,pg_largeobject,pageno,integer,NO,null
+pg_catalog,pg_largeobject,data,bytea,NO,null
+pg_catalog,pg_largeobject_metadata,oid,oid,NO,null
+pg_catalog,pg_largeobject_metadata,lomowner,oid,NO,null
+pg_catalog,pg_largeobject_metadata,lomacl,ARRAY,YES,null
+pg_catalog,pg_locks,locktype,text,YES,null
+pg_catalog,pg_locks,database,oid,YES,null
+pg_catalog,pg_locks,relation,oid,YES,null
+pg_catalog,pg_locks,page,integer,YES,null
+pg_catalog,pg_locks,tuple,smallint,YES,null
+pg_catalog,pg_locks,virtualxid,text,YES,null
+pg_catalog,pg_locks,transactionid,xid,YES,null
+pg_catalog,pg_locks,classid,oid,YES,null
+pg_catalog,pg_locks,objid,oid,YES,null
+pg_catalog,pg_locks,objsubid,smallint,YES,null
+pg_catalog,pg_locks,virtualtransaction,text,YES,null
+pg_catalog,pg_locks,pid,integer,YES,null
+pg_catalog,pg_locks,mode,text,YES,null
+pg_catalog,pg_locks,granted,boolean,YES,null
+pg_catalog,pg_locks,fastpath,boolean,YES,null
+pg_catalog,pg_locks,waitstart,timestamp with time zone,YES,null
+pg_catalog,pg_matviews,schemaname,name,YES,null
+pg_catalog,pg_matviews,matviewname,name,YES,null
+pg_catalog,pg_matviews,matviewowner,name,YES,null
+pg_catalog,pg_matviews,tablespace,name,YES,null
+pg_catalog,pg_matviews,hasindexes,boolean,YES,null
+pg_catalog,pg_matviews,ispopulated,boolean,YES,null
+pg_catalog,pg_matviews,definition,text,YES,null
+pg_catalog,pg_namespace,oid,oid,NO,null
+pg_catalog,pg_namespace,nspname,name,NO,null
+pg_catalog,pg_namespace,nspowner,oid,NO,null
+pg_catalog,pg_namespace,nspacl,ARRAY,YES,null
+pg_catalog,pg_opclass,oid,oid,NO,null
+pg_catalog,pg_opclass,opcmethod,oid,NO,null
+pg_catalog,pg_opclass,opcname,name,NO,null
+pg_catalog,pg_opclass,opcnamespace,oid,NO,null
+pg_catalog,pg_opclass,opcowner,oid,NO,null
+pg_catalog,pg_opclass,opcfamily,oid,NO,null
+pg_catalog,pg_opclass,opcintype,oid,NO,null
+pg_catalog,pg_opclass,opcdefault,boolean,NO,null
+pg_catalog,pg_opclass,opckeytype,oid,NO,null
+pg_catalog,pg_operator,oid,oid,NO,null
+pg_catalog,pg_operator,oprname,name,NO,null
+pg_catalog,pg_operator,oprnamespace,oid,NO,null
+pg_catalog,pg_operator,oprowner,oid,NO,null
+pg_catalog,pg_operator,oprkind,"""char""",NO,null
+pg_catalog,pg_operator,oprcanmerge,boolean,NO,null
+pg_catalog,pg_operator,oprcanhash,boolean,NO,null
+pg_catalog,pg_operator,oprleft,oid,NO,null
+pg_catalog,pg_operator,oprright,oid,NO,null
+pg_catalog,pg_operator,oprresult,oid,NO,null
+pg_catalog,pg_operator,oprcom,oid,NO,null
+pg_catalog,pg_operator,oprnegate,oid,NO,null
+pg_catalog,pg_operator,oprcode,regproc,NO,null
+pg_catalog,pg_operator,oprrest,regproc,NO,null
+pg_catalog,pg_operator,oprjoin,regproc,NO,null
+pg_catalog,pg_opfamily,oid,oid,NO,null
+pg_catalog,pg_opfamily,opfmethod,oid,NO,null
+pg_catalog,pg_opfamily,opfname,name,NO,null
+pg_catalog,pg_opfamily,opfnamespace,oid,NO,null
+pg_catalog,pg_opfamily,opfowner,oid,NO,null
+pg_catalog,pg_parameter_acl,oid,oid,NO,null
+pg_catalog,pg_parameter_acl,parname,text,NO,null
+pg_catalog,pg_parameter_acl,paracl,ARRAY,YES,null
+pg_catalog,pg_partitioned_table,partrelid,oid,NO,null
+pg_catalog,pg_partitioned_table,partstrat,"""char""",NO,null
+pg_catalog,pg_partitioned_table,partnatts,smallint,NO,null
+pg_catalog,pg_partitioned_table,partdefid,oid,NO,null
+pg_catalog,pg_partitioned_table,partattrs,ARRAY,NO,null
+pg_catalog,pg_partitioned_table,partclass,ARRAY,NO,null
+pg_catalog,pg_partitioned_table,partcollation,ARRAY,NO,null
+pg_catalog,pg_partitioned_table,partexprs,pg_node_tree,YES,null
+pg_catalog,pg_policies,schemaname,name,YES,null
+pg_catalog,pg_policies,tablename,name,YES,null
+pg_catalog,pg_policies,policyname,name,YES,null
+pg_catalog,pg_policies,permissive,text,YES,null
+pg_catalog,pg_policies,roles,ARRAY,YES,null
+pg_catalog,pg_policies,cmd,text,YES,null
+pg_catalog,pg_policies,qual,text,YES,null
+pg_catalog,pg_policies,with_check,text,YES,null
+pg_catalog,pg_policy,oid,oid,NO,null
+pg_catalog,pg_policy,polname,name,NO,null
+pg_catalog,pg_policy,polrelid,oid,NO,null
+pg_catalog,pg_policy,polcmd,"""char""",NO,null
+pg_catalog,pg_policy,polpermissive,boolean,NO,null
+pg_catalog,pg_policy,polroles,ARRAY,NO,null
+pg_catalog,pg_policy,polqual,pg_node_tree,YES,null
+pg_catalog,pg_policy,polwithcheck,pg_node_tree,YES,null
+pg_catalog,pg_prepared_statements,name,text,YES,null
+pg_catalog,pg_prepared_statements,statement,text,YES,null
+pg_catalog,pg_prepared_statements,prepare_time,timestamp with time zone,YES,null
+pg_catalog,pg_prepared_statements,parameter_types,ARRAY,YES,null
+pg_catalog,pg_prepared_statements,result_types,ARRAY,YES,null
+pg_catalog,pg_prepared_statements,from_sql,boolean,YES,null
+pg_catalog,pg_prepared_statements,generic_plans,bigint,YES,null
+pg_catalog,pg_prepared_statements,custom_plans,bigint,YES,null
+pg_catalog,pg_prepared_xacts,transaction,xid,YES,null
+pg_catalog,pg_prepared_xacts,gid,text,YES,null
+pg_catalog,pg_prepared_xacts,prepared,timestamp with time zone,YES,null
+pg_catalog,pg_prepared_xacts,owner,name,YES,null
+pg_catalog,pg_prepared_xacts,database,name,YES,null
+pg_catalog,pg_proc,oid,oid,NO,null
+pg_catalog,pg_proc,proname,name,NO,null
+pg_catalog,pg_proc,pronamespace,oid,NO,null
+pg_catalog,pg_proc,proowner,oid,NO,null
+pg_catalog,pg_proc,prolang,oid,NO,null
+pg_catalog,pg_proc,procost,real,NO,null
+pg_catalog,pg_proc,prorows,real,NO,null
+pg_catalog,pg_proc,provariadic,oid,NO,null
+pg_catalog,pg_proc,prosupport,regproc,NO,null
+pg_catalog,pg_proc,prokind,"""char""",NO,null
+pg_catalog,pg_proc,prosecdef,boolean,NO,null
+pg_catalog,pg_proc,proleakproof,boolean,NO,null
+pg_catalog,pg_proc,proisstrict,boolean,NO,null
+pg_catalog,pg_proc,proretset,boolean,NO,null
+pg_catalog,pg_proc,provolatile,"""char""",NO,null
+pg_catalog,pg_proc,proparallel,"""char""",NO,null
+pg_catalog,pg_proc,pronargs,smallint,NO,null
+pg_catalog,pg_proc,pronargdefaults,smallint,NO,null
+pg_catalog,pg_proc,prorettype,oid,NO,null
+pg_catalog,pg_proc,proargtypes,ARRAY,NO,null
+pg_catalog,pg_proc,proallargtypes,ARRAY,YES,null
+pg_catalog,pg_proc,proargmodes,ARRAY,YES,null
+pg_catalog,pg_proc,proargnames,ARRAY,YES,null
+pg_catalog,pg_proc,proargdefaults,pg_node_tree,YES,null
+pg_catalog,pg_proc,protrftypes,ARRAY,YES,null
+pg_catalog,pg_proc,prosrc,text,NO,null
+pg_catalog,pg_proc,probin,text,YES,null
+pg_catalog,pg_proc,prosqlbody,pg_node_tree,YES,null
+pg_catalog,pg_proc,proconfig,ARRAY,YES,null
+pg_catalog,pg_proc,proacl,ARRAY,YES,null
+pg_catalog,pg_publication,oid,oid,NO,null
+pg_catalog,pg_publication,pubname,name,NO,null
+pg_catalog,pg_publication,pubowner,oid,NO,null
+pg_catalog,pg_publication,puballtables,boolean,NO,null
+pg_catalog,pg_publication,pubinsert,boolean,NO,null
+pg_catalog,pg_publication,pubupdate,boolean,NO,null
+pg_catalog,pg_publication,pubdelete,boolean,NO,null
+pg_catalog,pg_publication,pubtruncate,boolean,NO,null
+pg_catalog,pg_publication,pubviaroot,boolean,NO,null
+pg_catalog,pg_publication_namespace,oid,oid,NO,null
+pg_catalog,pg_publication_namespace,pnpubid,oid,NO,null
+pg_catalog,pg_publication_namespace,pnnspid,oid,NO,null
+pg_catalog,pg_publication_rel,oid,oid,NO,null
+pg_catalog,pg_publication_rel,prpubid,oid,NO,null
+pg_catalog,pg_publication_rel,prrelid,oid,NO,null
+pg_catalog,pg_publication_rel,prqual,pg_node_tree,YES,null
+pg_catalog,pg_publication_rel,prattrs,ARRAY,YES,null
+pg_catalog,pg_publication_tables,pubname,name,YES,null
+pg_catalog,pg_publication_tables,schemaname,name,YES,null
+pg_catalog,pg_publication_tables,tablename,name,YES,null
+pg_catalog,pg_publication_tables,attnames,ARRAY,YES,null
+pg_catalog,pg_publication_tables,rowfilter,text,YES,null
+pg_catalog,pg_range,rngtypid,oid,NO,null
+pg_catalog,pg_range,rngsubtype,oid,NO,null
+pg_catalog,pg_range,rngmultitypid,oid,NO,null
+pg_catalog,pg_range,rngcollation,oid,NO,null
+pg_catalog,pg_range,rngsubopc,oid,NO,null
+pg_catalog,pg_range,rngcanonical,regproc,NO,null
+pg_catalog,pg_range,rngsubdiff,regproc,NO,null
+pg_catalog,pg_replication_origin,roident,oid,NO,null
+pg_catalog,pg_replication_origin,roname,text,NO,null
+pg_catalog,pg_replication_origin_status,local_id,oid,YES,null
+pg_catalog,pg_replication_origin_status,external_id,text,YES,null
+pg_catalog,pg_replication_origin_status,remote_lsn,pg_lsn,YES,null
+pg_catalog,pg_replication_origin_status,local_lsn,pg_lsn,YES,null
+pg_catalog,pg_replication_slots,slot_name,name,YES,null
+pg_catalog,pg_replication_slots,plugin,name,YES,null
+pg_catalog,pg_replication_slots,slot_type,text,YES,null
+pg_catalog,pg_replication_slots,datoid,oid,YES,null
+pg_catalog,pg_replication_slots,database,name,YES,null
+pg_catalog,pg_replication_slots,temporary,boolean,YES,null
+pg_catalog,pg_replication_slots,active,boolean,YES,null
+pg_catalog,pg_replication_slots,active_pid,integer,YES,null
+pg_catalog,pg_replication_slots,xmin,xid,YES,null
+pg_catalog,pg_replication_slots,catalog_xmin,xid,YES,null
+pg_catalog,pg_replication_slots,restart_lsn,pg_lsn,YES,null
+pg_catalog,pg_replication_slots,confirmed_flush_lsn,pg_lsn,YES,null
+pg_catalog,pg_replication_slots,wal_status,text,YES,null
+pg_catalog,pg_replication_slots,safe_wal_size,bigint,YES,null
+pg_catalog,pg_replication_slots,two_phase,boolean,YES,null
+pg_catalog,pg_replication_slots,inactive_since,timestamp with time zone,YES,null
+pg_catalog,pg_replication_slots,conflicting,boolean,YES,null
+pg_catalog,pg_replication_slots,invalidation_reason,text,YES,null
+pg_catalog,pg_replication_slots,failover,boolean,YES,null
+pg_catalog,pg_replication_slots,synced,boolean,YES,null
+pg_catalog,pg_rewrite,oid,oid,NO,null
+pg_catalog,pg_rewrite,rulename,name,NO,null
+pg_catalog,pg_rewrite,ev_class,oid,NO,null
+pg_catalog,pg_rewrite,ev_type,"""char""",NO,null
+pg_catalog,pg_rewrite,ev_enabled,"""char""",NO,null
+pg_catalog,pg_rewrite,is_instead,boolean,NO,null
+pg_catalog,pg_rewrite,ev_qual,pg_node_tree,NO,null
+pg_catalog,pg_rewrite,ev_action,pg_node_tree,NO,null
+pg_catalog,pg_roles,rolname,name,YES,null
+pg_catalog,pg_roles,rolsuper,boolean,YES,null
+pg_catalog,pg_roles,rolinherit,boolean,YES,null
+pg_catalog,pg_roles,rolcreaterole,boolean,YES,null
+pg_catalog,pg_roles,rolcreatedb,boolean,YES,null
+pg_catalog,pg_roles,rolcanlogin,boolean,YES,null
+pg_catalog,pg_roles,rolreplication,boolean,YES,null
+pg_catalog,pg_roles,rolconnlimit,integer,YES,null
+pg_catalog,pg_roles,rolpassword,text,YES,null
+pg_catalog,pg_roles,rolvaliduntil,timestamp with time zone,YES,null
+pg_catalog,pg_roles,rolbypassrls,boolean,YES,null
+pg_catalog,pg_roles,rolconfig,ARRAY,YES,null
+pg_catalog,pg_roles,oid,oid,YES,null
+pg_catalog,pg_rules,schemaname,name,YES,null
+pg_catalog,pg_rules,tablename,name,YES,null
+pg_catalog,pg_rules,rulename,name,YES,null
+pg_catalog,pg_rules,definition,text,YES,null
+pg_catalog,pg_seclabel,objoid,oid,NO,null
+pg_catalog,pg_seclabel,classoid,oid,NO,null
+pg_catalog,pg_seclabel,objsubid,integer,NO,null
+pg_catalog,pg_seclabel,provider,text,NO,null
+pg_catalog,pg_seclabel,label,text,NO,null
+pg_catalog,pg_seclabels,objoid,oid,YES,null
+pg_catalog,pg_seclabels,classoid,oid,YES,null
+pg_catalog,pg_seclabels,objsubid,integer,YES,null
+pg_catalog,pg_seclabels,objtype,text,YES,null
+pg_catalog,pg_seclabels,objnamespace,oid,YES,null
+pg_catalog,pg_seclabels,objname,text,YES,null
+pg_catalog,pg_seclabels,provider,text,YES,null
+pg_catalog,pg_seclabels,label,text,YES,null
+pg_catalog,pg_sequence,seqrelid,oid,NO,null
+pg_catalog,pg_sequence,seqtypid,oid,NO,null
+pg_catalog,pg_sequence,seqstart,bigint,NO,null
+pg_catalog,pg_sequence,seqincrement,bigint,NO,null
+pg_catalog,pg_sequence,seqmax,bigint,NO,null
+pg_catalog,pg_sequence,seqmin,bigint,NO,null
+pg_catalog,pg_sequence,seqcache,bigint,NO,null
+pg_catalog,pg_sequence,seqcycle,boolean,NO,null
+pg_catalog,pg_sequences,schemaname,name,YES,null
+pg_catalog,pg_sequences,sequencename,name,YES,null
+pg_catalog,pg_sequences,sequenceowner,name,YES,null
+pg_catalog,pg_sequences,data_type,regtype,YES,null
+pg_catalog,pg_sequences,start_value,bigint,YES,null
+pg_catalog,pg_sequences,min_value,bigint,YES,null
+pg_catalog,pg_sequences,max_value,bigint,YES,null
+pg_catalog,pg_sequences,increment_by,bigint,YES,null
+pg_catalog,pg_sequences,cycle,boolean,YES,null
+pg_catalog,pg_sequences,cache_size,bigint,YES,null
+pg_catalog,pg_sequences,last_value,bigint,YES,null
+pg_catalog,pg_settings,name,text,YES,null
+pg_catalog,pg_settings,setting,text,YES,null
+pg_catalog,pg_settings,unit,text,YES,null
+pg_catalog,pg_settings,category,text,YES,null
+pg_catalog,pg_settings,short_desc,text,YES,null
+pg_catalog,pg_settings,extra_desc,text,YES,null
+pg_catalog,pg_settings,context,text,YES,null
+pg_catalog,pg_settings,vartype,text,YES,null
+pg_catalog,pg_settings,source,text,YES,null
+pg_catalog,pg_settings,min_val,text,YES,null
+pg_catalog,pg_settings,max_val,text,YES,null
+pg_catalog,pg_settings,enumvals,ARRAY,YES,null
+pg_catalog,pg_settings,boot_val,text,YES,null
+pg_catalog,pg_settings,reset_val,text,YES,null
+pg_catalog,pg_settings,sourcefile,text,YES,null
+pg_catalog,pg_settings,sourceline,integer,YES,null
+pg_catalog,pg_settings,pending_restart,boolean,YES,null
+pg_catalog,pg_shadow,usename,name,YES,null
+pg_catalog,pg_shadow,usesysid,oid,YES,null
+pg_catalog,pg_shadow,usecreatedb,boolean,YES,null
+pg_catalog,pg_shadow,usesuper,boolean,YES,null
+pg_catalog,pg_shadow,userepl,boolean,YES,null
+pg_catalog,pg_shadow,usebypassrls,boolean,YES,null
+pg_catalog,pg_shadow,passwd,text,YES,null
+pg_catalog,pg_shadow,valuntil,timestamp with time zone,YES,null
+pg_catalog,pg_shadow,useconfig,ARRAY,YES,null
+pg_catalog,pg_shdepend,dbid,oid,NO,null
+pg_catalog,pg_shdepend,classid,oid,NO,null
+pg_catalog,pg_shdepend,objid,oid,NO,null
+pg_catalog,pg_shdepend,objsubid,integer,NO,null
+pg_catalog,pg_shdepend,refclassid,oid,NO,null
+pg_catalog,pg_shdepend,refobjid,oid,NO,null
+pg_catalog,pg_shdepend,deptype,"""char""",NO,null
+pg_catalog,pg_shdescription,objoid,oid,NO,null
+pg_catalog,pg_shdescription,classoid,oid,NO,null
+pg_catalog,pg_shdescription,description,text,NO,null
+pg_catalog,pg_shmem_allocations,name,text,YES,null
+pg_catalog,pg_shmem_allocations,off,bigint,YES,null
+pg_catalog,pg_shmem_allocations,size,bigint,YES,null
+pg_catalog,pg_shmem_allocations,allocated_size,bigint,YES,null
+pg_catalog,pg_shseclabel,objoid,oid,NO,null
+pg_catalog,pg_shseclabel,classoid,oid,NO,null
+pg_catalog,pg_shseclabel,provider,text,NO,null
+pg_catalog,pg_shseclabel,label,text,NO,null
+pg_catalog,pg_stat_activity,datid,oid,YES,null
+pg_catalog,pg_stat_activity,datname,name,YES,null
+pg_catalog,pg_stat_activity,pid,integer,YES,null
+pg_catalog,pg_stat_activity,leader_pid,integer,YES,null
+pg_catalog,pg_stat_activity,usesysid,oid,YES,null
+pg_catalog,pg_stat_activity,usename,name,YES,null
+pg_catalog,pg_stat_activity,application_name,text,YES,null
+pg_catalog,pg_stat_activity,client_addr,inet,YES,null
+pg_catalog,pg_stat_activity,client_hostname,text,YES,null
+pg_catalog,pg_stat_activity,client_port,integer,YES,null
+pg_catalog,pg_stat_activity,backend_start,timestamp with time zone,YES,null
+pg_catalog,pg_stat_activity,xact_start,timestamp with time zone,YES,null
+pg_catalog,pg_stat_activity,query_start,timestamp with time zone,YES,null
+pg_catalog,pg_stat_activity,state_change,timestamp with time zone,YES,null
+pg_catalog,pg_stat_activity,wait_event_type,text,YES,null
+pg_catalog,pg_stat_activity,wait_event,text,YES,null
+pg_catalog,pg_stat_activity,state,text,YES,null
+pg_catalog,pg_stat_activity,backend_xid,xid,YES,null
+pg_catalog,pg_stat_activity,backend_xmin,xid,YES,null
+pg_catalog,pg_stat_activity,query_id,bigint,YES,null
+pg_catalog,pg_stat_activity,query,text,YES,null
+pg_catalog,pg_stat_activity,backend_type,text,YES,null
+pg_catalog,pg_stat_all_indexes,relid,oid,YES,null
+pg_catalog,pg_stat_all_indexes,indexrelid,oid,YES,null
+pg_catalog,pg_stat_all_indexes,schemaname,name,YES,null
+pg_catalog,pg_stat_all_indexes,relname,name,YES,null
+pg_catalog,pg_stat_all_indexes,indexrelname,name,YES,null
+pg_catalog,pg_stat_all_indexes,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_all_indexes,last_idx_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_indexes,idx_tup_read,bigint,YES,null
+pg_catalog,pg_stat_all_indexes,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_all_tables,relid,oid,YES,null
+pg_catalog,pg_stat_all_tables,schemaname,name,YES,null
+pg_catalog,pg_stat_all_tables,relname,name,YES,null
+pg_catalog,pg_stat_all_tables,seq_scan,bigint,YES,null
+pg_catalog,pg_stat_all_tables,last_seq_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_tables,seq_tup_read,bigint,YES,null
+pg_catalog,pg_stat_all_tables,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_all_tables,last_idx_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_tables,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_tup_ins,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_tup_upd,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_tup_del,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_tup_hot_upd,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_tup_newpage_upd,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_live_tup,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_dead_tup,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_mod_since_analyze,bigint,YES,null
+pg_catalog,pg_stat_all_tables,n_ins_since_vacuum,bigint,YES,null
+pg_catalog,pg_stat_all_tables,last_vacuum,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_tables,last_autovacuum,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_tables,last_analyze,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_tables,last_autoanalyze,timestamp with time zone,YES,null
+pg_catalog,pg_stat_all_tables,vacuum_count,bigint,YES,null
+pg_catalog,pg_stat_all_tables,autovacuum_count,bigint,YES,null
+pg_catalog,pg_stat_all_tables,analyze_count,bigint,YES,null
+pg_catalog,pg_stat_all_tables,autoanalyze_count,bigint,YES,null
+pg_catalog,pg_stat_archiver,archived_count,bigint,YES,null
+pg_catalog,pg_stat_archiver,last_archived_wal,text,YES,null
+pg_catalog,pg_stat_archiver,last_archived_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_archiver,failed_count,bigint,YES,null
+pg_catalog,pg_stat_archiver,last_failed_wal,text,YES,null
+pg_catalog,pg_stat_archiver,last_failed_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_archiver,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_bgwriter,buffers_clean,bigint,YES,null
+pg_catalog,pg_stat_bgwriter,maxwritten_clean,bigint,YES,null
+pg_catalog,pg_stat_bgwriter,buffers_alloc,bigint,YES,null
+pg_catalog,pg_stat_bgwriter,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_checkpointer,num_timed,bigint,YES,null
+pg_catalog,pg_stat_checkpointer,num_requested,bigint,YES,null
+pg_catalog,pg_stat_checkpointer,restartpoints_timed,bigint,YES,null
+pg_catalog,pg_stat_checkpointer,restartpoints_req,bigint,YES,null
+pg_catalog,pg_stat_checkpointer,restartpoints_done,bigint,YES,null
+pg_catalog,pg_stat_checkpointer,write_time,double precision,YES,null
+pg_catalog,pg_stat_checkpointer,sync_time,double precision,YES,null
+pg_catalog,pg_stat_checkpointer,buffers_written,bigint,YES,null
+pg_catalog,pg_stat_checkpointer,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_database,datid,oid,YES,null
+pg_catalog,pg_stat_database,datname,name,YES,null
+pg_catalog,pg_stat_database,numbackends,integer,YES,null
+pg_catalog,pg_stat_database,xact_commit,bigint,YES,null
+pg_catalog,pg_stat_database,xact_rollback,bigint,YES,null
+pg_catalog,pg_stat_database,blks_read,bigint,YES,null
+pg_catalog,pg_stat_database,blks_hit,bigint,YES,null
+pg_catalog,pg_stat_database,tup_returned,bigint,YES,null
+pg_catalog,pg_stat_database,tup_fetched,bigint,YES,null
+pg_catalog,pg_stat_database,tup_inserted,bigint,YES,null
+pg_catalog,pg_stat_database,tup_updated,bigint,YES,null
+pg_catalog,pg_stat_database,tup_deleted,bigint,YES,null
+pg_catalog,pg_stat_database,conflicts,bigint,YES,null
+pg_catalog,pg_stat_database,temp_files,bigint,YES,null
+pg_catalog,pg_stat_database,temp_bytes,bigint,YES,null
+pg_catalog,pg_stat_database,deadlocks,bigint,YES,null
+pg_catalog,pg_stat_database,checksum_failures,bigint,YES,null
+pg_catalog,pg_stat_database,checksum_last_failure,timestamp with time zone,YES,null
+pg_catalog,pg_stat_database,blk_read_time,double precision,YES,null
+pg_catalog,pg_stat_database,blk_write_time,double precision,YES,null
+pg_catalog,pg_stat_database,session_time,double precision,YES,null
+pg_catalog,pg_stat_database,active_time,double precision,YES,null
+pg_catalog,pg_stat_database,idle_in_transaction_time,double precision,YES,null
+pg_catalog,pg_stat_database,sessions,bigint,YES,null
+pg_catalog,pg_stat_database,sessions_abandoned,bigint,YES,null
+pg_catalog,pg_stat_database,sessions_fatal,bigint,YES,null
+pg_catalog,pg_stat_database,sessions_killed,bigint,YES,null
+pg_catalog,pg_stat_database,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_database_conflicts,datid,oid,YES,null
+pg_catalog,pg_stat_database_conflicts,datname,name,YES,null
+pg_catalog,pg_stat_database_conflicts,confl_tablespace,bigint,YES,null
+pg_catalog,pg_stat_database_conflicts,confl_lock,bigint,YES,null
+pg_catalog,pg_stat_database_conflicts,confl_snapshot,bigint,YES,null
+pg_catalog,pg_stat_database_conflicts,confl_bufferpin,bigint,YES,null
+pg_catalog,pg_stat_database_conflicts,confl_deadlock,bigint,YES,null
+pg_catalog,pg_stat_database_conflicts,confl_active_logicalslot,bigint,YES,null
+pg_catalog,pg_stat_gssapi,pid,integer,YES,null
+pg_catalog,pg_stat_gssapi,gss_authenticated,boolean,YES,null
+pg_catalog,pg_stat_gssapi,principal,text,YES,null
+pg_catalog,pg_stat_gssapi,encrypted,boolean,YES,null
+pg_catalog,pg_stat_gssapi,credentials_delegated,boolean,YES,null
+pg_catalog,pg_stat_io,backend_type,text,YES,null
+pg_catalog,pg_stat_io,object,text,YES,null
+pg_catalog,pg_stat_io,context,text,YES,null
+pg_catalog,pg_stat_io,reads,bigint,YES,null
+pg_catalog,pg_stat_io,read_time,double precision,YES,null
+pg_catalog,pg_stat_io,writes,bigint,YES,null
+pg_catalog,pg_stat_io,write_time,double precision,YES,null
+pg_catalog,pg_stat_io,writebacks,bigint,YES,null
+pg_catalog,pg_stat_io,writeback_time,double precision,YES,null
+pg_catalog,pg_stat_io,extends,bigint,YES,null
+pg_catalog,pg_stat_io,extend_time,double precision,YES,null
+pg_catalog,pg_stat_io,op_bytes,bigint,YES,null
+pg_catalog,pg_stat_io,hits,bigint,YES,null
+pg_catalog,pg_stat_io,evictions,bigint,YES,null
+pg_catalog,pg_stat_io,reuses,bigint,YES,null
+pg_catalog,pg_stat_io,fsyncs,bigint,YES,null
+pg_catalog,pg_stat_io,fsync_time,double precision,YES,null
+pg_catalog,pg_stat_io,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_progress_analyze,pid,integer,YES,null
+pg_catalog,pg_stat_progress_analyze,datid,oid,YES,null
+pg_catalog,pg_stat_progress_analyze,datname,name,YES,null
+pg_catalog,pg_stat_progress_analyze,relid,oid,YES,null
+pg_catalog,pg_stat_progress_analyze,phase,text,YES,null
+pg_catalog,pg_stat_progress_analyze,sample_blks_total,bigint,YES,null
+pg_catalog,pg_stat_progress_analyze,sample_blks_scanned,bigint,YES,null
+pg_catalog,pg_stat_progress_analyze,ext_stats_total,bigint,YES,null
+pg_catalog,pg_stat_progress_analyze,ext_stats_computed,bigint,YES,null
+pg_catalog,pg_stat_progress_analyze,child_tables_total,bigint,YES,null
+pg_catalog,pg_stat_progress_analyze,child_tables_done,bigint,YES,null
+pg_catalog,pg_stat_progress_analyze,current_child_table_relid,oid,YES,null
+pg_catalog,pg_stat_progress_basebackup,pid,integer,YES,null
+pg_catalog,pg_stat_progress_basebackup,phase,text,YES,null
+pg_catalog,pg_stat_progress_basebackup,backup_total,bigint,YES,null
+pg_catalog,pg_stat_progress_basebackup,backup_streamed,bigint,YES,null
+pg_catalog,pg_stat_progress_basebackup,tablespaces_total,bigint,YES,null
+pg_catalog,pg_stat_progress_basebackup,tablespaces_streamed,bigint,YES,null
+pg_catalog,pg_stat_progress_cluster,pid,integer,YES,null
+pg_catalog,pg_stat_progress_cluster,datid,oid,YES,null
+pg_catalog,pg_stat_progress_cluster,datname,name,YES,null
+pg_catalog,pg_stat_progress_cluster,relid,oid,YES,null
+pg_catalog,pg_stat_progress_cluster,command,text,YES,null
+pg_catalog,pg_stat_progress_cluster,phase,text,YES,null
+pg_catalog,pg_stat_progress_cluster,cluster_index_relid,oid,YES,null
+pg_catalog,pg_stat_progress_cluster,heap_tuples_scanned,bigint,YES,null
+pg_catalog,pg_stat_progress_cluster,heap_tuples_written,bigint,YES,null
+pg_catalog,pg_stat_progress_cluster,heap_blks_total,bigint,YES,null
+pg_catalog,pg_stat_progress_cluster,heap_blks_scanned,bigint,YES,null
+pg_catalog,pg_stat_progress_cluster,index_rebuild_count,bigint,YES,null
+pg_catalog,pg_stat_progress_copy,pid,integer,YES,null
+pg_catalog,pg_stat_progress_copy,datid,oid,YES,null
+pg_catalog,pg_stat_progress_copy,datname,name,YES,null
+pg_catalog,pg_stat_progress_copy,relid,oid,YES,null
+pg_catalog,pg_stat_progress_copy,command,text,YES,null
+pg_catalog,pg_stat_progress_copy,type,text,YES,null
+pg_catalog,pg_stat_progress_copy,bytes_processed,bigint,YES,null
+pg_catalog,pg_stat_progress_copy,bytes_total,bigint,YES,null
+pg_catalog,pg_stat_progress_copy,tuples_processed,bigint,YES,null
+pg_catalog,pg_stat_progress_copy,tuples_excluded,bigint,YES,null
+pg_catalog,pg_stat_progress_copy,tuples_skipped,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,pid,integer,YES,null
+pg_catalog,pg_stat_progress_create_index,datid,oid,YES,null
+pg_catalog,pg_stat_progress_create_index,datname,name,YES,null
+pg_catalog,pg_stat_progress_create_index,relid,oid,YES,null
+pg_catalog,pg_stat_progress_create_index,index_relid,oid,YES,null
+pg_catalog,pg_stat_progress_create_index,command,text,YES,null
+pg_catalog,pg_stat_progress_create_index,phase,text,YES,null
+pg_catalog,pg_stat_progress_create_index,lockers_total,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,lockers_done,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,current_locker_pid,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,blocks_total,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,blocks_done,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,tuples_total,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,tuples_done,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,partitions_total,bigint,YES,null
+pg_catalog,pg_stat_progress_create_index,partitions_done,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,pid,integer,YES,null
+pg_catalog,pg_stat_progress_vacuum,datid,oid,YES,null
+pg_catalog,pg_stat_progress_vacuum,datname,name,YES,null
+pg_catalog,pg_stat_progress_vacuum,relid,oid,YES,null
+pg_catalog,pg_stat_progress_vacuum,phase,text,YES,null
+pg_catalog,pg_stat_progress_vacuum,heap_blks_total,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,heap_blks_scanned,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,heap_blks_vacuumed,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,index_vacuum_count,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,max_dead_tuple_bytes,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,dead_tuple_bytes,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,num_dead_item_ids,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,indexes_total,bigint,YES,null
+pg_catalog,pg_stat_progress_vacuum,indexes_processed,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_recovery_prefetch,prefetch,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,hit,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,skip_init,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,skip_new,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,skip_fpw,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,skip_rep,bigint,YES,null
+pg_catalog,pg_stat_recovery_prefetch,wal_distance,integer,YES,null
+pg_catalog,pg_stat_recovery_prefetch,block_distance,integer,YES,null
+pg_catalog,pg_stat_recovery_prefetch,io_depth,integer,YES,null
+pg_catalog,pg_stat_replication,pid,integer,YES,null
+pg_catalog,pg_stat_replication,usesysid,oid,YES,null
+pg_catalog,pg_stat_replication,usename,name,YES,null
+pg_catalog,pg_stat_replication,application_name,text,YES,null
+pg_catalog,pg_stat_replication,client_addr,inet,YES,null
+pg_catalog,pg_stat_replication,client_hostname,text,YES,null
+pg_catalog,pg_stat_replication,client_port,integer,YES,null
+pg_catalog,pg_stat_replication,backend_start,timestamp with time zone,YES,null
+pg_catalog,pg_stat_replication,backend_xmin,xid,YES,null
+pg_catalog,pg_stat_replication,state,text,YES,null
+pg_catalog,pg_stat_replication,sent_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_replication,write_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_replication,flush_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_replication,replay_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_replication,write_lag,interval,YES,null
+pg_catalog,pg_stat_replication,flush_lag,interval,YES,null
+pg_catalog,pg_stat_replication,replay_lag,interval,YES,null
+pg_catalog,pg_stat_replication,sync_priority,integer,YES,null
+pg_catalog,pg_stat_replication,sync_state,text,YES,null
+pg_catalog,pg_stat_replication,reply_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_replication_slots,slot_name,text,YES,null
+pg_catalog,pg_stat_replication_slots,spill_txns,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,spill_count,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,spill_bytes,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,stream_txns,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,stream_count,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,stream_bytes,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,total_txns,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,total_bytes,bigint,YES,null
+pg_catalog,pg_stat_replication_slots,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_slru,name,text,YES,null
+pg_catalog,pg_stat_slru,blks_zeroed,bigint,YES,null
+pg_catalog,pg_stat_slru,blks_hit,bigint,YES,null
+pg_catalog,pg_stat_slru,blks_read,bigint,YES,null
+pg_catalog,pg_stat_slru,blks_written,bigint,YES,null
+pg_catalog,pg_stat_slru,blks_exists,bigint,YES,null
+pg_catalog,pg_stat_slru,flushes,bigint,YES,null
+pg_catalog,pg_stat_slru,truncates,bigint,YES,null
+pg_catalog,pg_stat_slru,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_ssl,pid,integer,YES,null
+pg_catalog,pg_stat_ssl,ssl,boolean,YES,null
+pg_catalog,pg_stat_ssl,version,text,YES,null
+pg_catalog,pg_stat_ssl,cipher,text,YES,null
+pg_catalog,pg_stat_ssl,bits,integer,YES,null
+pg_catalog,pg_stat_ssl,client_dn,text,YES,null
+pg_catalog,pg_stat_ssl,client_serial,numeric,YES,null
+pg_catalog,pg_stat_ssl,issuer_dn,text,YES,null
+pg_catalog,pg_stat_subscription,subid,oid,YES,null
+pg_catalog,pg_stat_subscription,subname,name,YES,null
+pg_catalog,pg_stat_subscription,worker_type,text,YES,null
+pg_catalog,pg_stat_subscription,pid,integer,YES,null
+pg_catalog,pg_stat_subscription,leader_pid,integer,YES,null
+pg_catalog,pg_stat_subscription,relid,oid,YES,null
+pg_catalog,pg_stat_subscription,received_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_subscription,last_msg_send_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_subscription,last_msg_receipt_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_subscription,latest_end_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_subscription,latest_end_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_subscription_stats,subid,oid,YES,null
+pg_catalog,pg_stat_subscription_stats,subname,name,YES,null
+pg_catalog,pg_stat_subscription_stats,apply_error_count,bigint,YES,null
+pg_catalog,pg_stat_subscription_stats,sync_error_count,bigint,YES,null
+pg_catalog,pg_stat_subscription_stats,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_indexes,relid,oid,YES,null
+pg_catalog,pg_stat_sys_indexes,indexrelid,oid,YES,null
+pg_catalog,pg_stat_sys_indexes,schemaname,name,YES,null
+pg_catalog,pg_stat_sys_indexes,relname,name,YES,null
+pg_catalog,pg_stat_sys_indexes,indexrelname,name,YES,null
+pg_catalog,pg_stat_sys_indexes,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_sys_indexes,last_idx_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_indexes,idx_tup_read,bigint,YES,null
+pg_catalog,pg_stat_sys_indexes,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,relid,oid,YES,null
+pg_catalog,pg_stat_sys_tables,schemaname,name,YES,null
+pg_catalog,pg_stat_sys_tables,relname,name,YES,null
+pg_catalog,pg_stat_sys_tables,seq_scan,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,last_seq_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_tables,seq_tup_read,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,last_idx_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_tables,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_tup_ins,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_tup_upd,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_tup_del,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_tup_hot_upd,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_tup_newpage_upd,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_live_tup,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_dead_tup,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_mod_since_analyze,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,n_ins_since_vacuum,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,last_vacuum,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_tables,last_autovacuum,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_tables,last_analyze,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_tables,last_autoanalyze,timestamp with time zone,YES,null
+pg_catalog,pg_stat_sys_tables,vacuum_count,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,autovacuum_count,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,analyze_count,bigint,YES,null
+pg_catalog,pg_stat_sys_tables,autoanalyze_count,bigint,YES,null
+pg_catalog,pg_stat_user_functions,funcid,oid,YES,null
+pg_catalog,pg_stat_user_functions,schemaname,name,YES,null
+pg_catalog,pg_stat_user_functions,funcname,name,YES,null
+pg_catalog,pg_stat_user_functions,calls,bigint,YES,null
+pg_catalog,pg_stat_user_functions,total_time,double precision,YES,null
+pg_catalog,pg_stat_user_functions,self_time,double precision,YES,null
+pg_catalog,pg_stat_user_indexes,relid,oid,YES,null
+pg_catalog,pg_stat_user_indexes,indexrelid,oid,YES,null
+pg_catalog,pg_stat_user_indexes,schemaname,name,YES,null
+pg_catalog,pg_stat_user_indexes,relname,name,YES,null
+pg_catalog,pg_stat_user_indexes,indexrelname,name,YES,null
+pg_catalog,pg_stat_user_indexes,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_user_indexes,last_idx_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_indexes,idx_tup_read,bigint,YES,null
+pg_catalog,pg_stat_user_indexes,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_user_tables,relid,oid,YES,null
+pg_catalog,pg_stat_user_tables,schemaname,name,YES,null
+pg_catalog,pg_stat_user_tables,relname,name,YES,null
+pg_catalog,pg_stat_user_tables,seq_scan,bigint,YES,null
+pg_catalog,pg_stat_user_tables,last_seq_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_tables,seq_tup_read,bigint,YES,null
+pg_catalog,pg_stat_user_tables,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_user_tables,last_idx_scan,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_tables,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_tup_ins,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_tup_upd,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_tup_del,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_tup_hot_upd,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_tup_newpage_upd,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_live_tup,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_dead_tup,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_mod_since_analyze,bigint,YES,null
+pg_catalog,pg_stat_user_tables,n_ins_since_vacuum,bigint,YES,null
+pg_catalog,pg_stat_user_tables,last_vacuum,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_tables,last_autovacuum,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_tables,last_analyze,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_tables,last_autoanalyze,timestamp with time zone,YES,null
+pg_catalog,pg_stat_user_tables,vacuum_count,bigint,YES,null
+pg_catalog,pg_stat_user_tables,autovacuum_count,bigint,YES,null
+pg_catalog,pg_stat_user_tables,analyze_count,bigint,YES,null
+pg_catalog,pg_stat_user_tables,autoanalyze_count,bigint,YES,null
+pg_catalog,pg_stat_wal,wal_records,bigint,YES,null
+pg_catalog,pg_stat_wal,wal_fpi,bigint,YES,null
+pg_catalog,pg_stat_wal,wal_bytes,numeric,YES,null
+pg_catalog,pg_stat_wal,wal_buffers_full,bigint,YES,null
+pg_catalog,pg_stat_wal,wal_write,bigint,YES,null
+pg_catalog,pg_stat_wal,wal_sync,bigint,YES,null
+pg_catalog,pg_stat_wal,wal_write_time,double precision,YES,null
+pg_catalog,pg_stat_wal,wal_sync_time,double precision,YES,null
+pg_catalog,pg_stat_wal,stats_reset,timestamp with time zone,YES,null
+pg_catalog,pg_stat_wal_receiver,pid,integer,YES,null
+pg_catalog,pg_stat_wal_receiver,status,text,YES,null
+pg_catalog,pg_stat_wal_receiver,receive_start_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_wal_receiver,receive_start_tli,integer,YES,null
+pg_catalog,pg_stat_wal_receiver,written_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_wal_receiver,flushed_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_wal_receiver,received_tli,integer,YES,null
+pg_catalog,pg_stat_wal_receiver,last_msg_send_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_wal_receiver,last_msg_receipt_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_wal_receiver,latest_end_lsn,pg_lsn,YES,null
+pg_catalog,pg_stat_wal_receiver,latest_end_time,timestamp with time zone,YES,null
+pg_catalog,pg_stat_wal_receiver,slot_name,text,YES,null
+pg_catalog,pg_stat_wal_receiver,sender_host,text,YES,null
+pg_catalog,pg_stat_wal_receiver,sender_port,integer,YES,null
+pg_catalog,pg_stat_wal_receiver,conninfo,text,YES,null
+pg_catalog,pg_stat_xact_all_tables,relid,oid,YES,null
+pg_catalog,pg_stat_xact_all_tables,schemaname,name,YES,null
+pg_catalog,pg_stat_xact_all_tables,relname,name,YES,null
+pg_catalog,pg_stat_xact_all_tables,seq_scan,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,seq_tup_read,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,n_tup_ins,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,n_tup_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,n_tup_del,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,n_tup_hot_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_all_tables,n_tup_newpage_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,relid,oid,YES,null
+pg_catalog,pg_stat_xact_sys_tables,schemaname,name,YES,null
+pg_catalog,pg_stat_xact_sys_tables,relname,name,YES,null
+pg_catalog,pg_stat_xact_sys_tables,seq_scan,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,seq_tup_read,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,n_tup_ins,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,n_tup_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,n_tup_del,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,n_tup_hot_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_sys_tables,n_tup_newpage_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_user_functions,funcid,oid,YES,null
+pg_catalog,pg_stat_xact_user_functions,schemaname,name,YES,null
+pg_catalog,pg_stat_xact_user_functions,funcname,name,YES,null
+pg_catalog,pg_stat_xact_user_functions,calls,bigint,YES,null
+pg_catalog,pg_stat_xact_user_functions,total_time,double precision,YES,null
+pg_catalog,pg_stat_xact_user_functions,self_time,double precision,YES,null
+pg_catalog,pg_stat_xact_user_tables,relid,oid,YES,null
+pg_catalog,pg_stat_xact_user_tables,schemaname,name,YES,null
+pg_catalog,pg_stat_xact_user_tables,relname,name,YES,null
+pg_catalog,pg_stat_xact_user_tables,seq_scan,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,seq_tup_read,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,idx_scan,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,idx_tup_fetch,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,n_tup_ins,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,n_tup_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,n_tup_del,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,n_tup_hot_upd,bigint,YES,null
+pg_catalog,pg_stat_xact_user_tables,n_tup_newpage_upd,bigint,YES,null
+pg_catalog,pg_statio_all_indexes,relid,oid,YES,null
+pg_catalog,pg_statio_all_indexes,indexrelid,oid,YES,null
+pg_catalog,pg_statio_all_indexes,schemaname,name,YES,null
+pg_catalog,pg_statio_all_indexes,relname,name,YES,null
+pg_catalog,pg_statio_all_indexes,indexrelname,name,YES,null
+pg_catalog,pg_statio_all_indexes,idx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_all_indexes,idx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_all_sequences,relid,oid,YES,null
+pg_catalog,pg_statio_all_sequences,schemaname,name,YES,null
+pg_catalog,pg_statio_all_sequences,relname,name,YES,null
+pg_catalog,pg_statio_all_sequences,blks_read,bigint,YES,null
+pg_catalog,pg_statio_all_sequences,blks_hit,bigint,YES,null
+pg_catalog,pg_statio_all_tables,relid,oid,YES,null
+pg_catalog,pg_statio_all_tables,schemaname,name,YES,null
+pg_catalog,pg_statio_all_tables,relname,name,YES,null
+pg_catalog,pg_statio_all_tables,heap_blks_read,bigint,YES,null
+pg_catalog,pg_statio_all_tables,heap_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_all_tables,idx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_all_tables,idx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_all_tables,toast_blks_read,bigint,YES,null
+pg_catalog,pg_statio_all_tables,toast_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_all_tables,tidx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_all_tables,tidx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_sys_indexes,relid,oid,YES,null
+pg_catalog,pg_statio_sys_indexes,indexrelid,oid,YES,null
+pg_catalog,pg_statio_sys_indexes,schemaname,name,YES,null
+pg_catalog,pg_statio_sys_indexes,relname,name,YES,null
+pg_catalog,pg_statio_sys_indexes,indexrelname,name,YES,null
+pg_catalog,pg_statio_sys_indexes,idx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_sys_indexes,idx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_sys_sequences,relid,oid,YES,null
+pg_catalog,pg_statio_sys_sequences,schemaname,name,YES,null
+pg_catalog,pg_statio_sys_sequences,relname,name,YES,null
+pg_catalog,pg_statio_sys_sequences,blks_read,bigint,YES,null
+pg_catalog,pg_statio_sys_sequences,blks_hit,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,relid,oid,YES,null
+pg_catalog,pg_statio_sys_tables,schemaname,name,YES,null
+pg_catalog,pg_statio_sys_tables,relname,name,YES,null
+pg_catalog,pg_statio_sys_tables,heap_blks_read,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,heap_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,idx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,idx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,toast_blks_read,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,toast_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,tidx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_sys_tables,tidx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_user_indexes,relid,oid,YES,null
+pg_catalog,pg_statio_user_indexes,indexrelid,oid,YES,null
+pg_catalog,pg_statio_user_indexes,schemaname,name,YES,null
+pg_catalog,pg_statio_user_indexes,relname,name,YES,null
+pg_catalog,pg_statio_user_indexes,indexrelname,name,YES,null
+pg_catalog,pg_statio_user_indexes,idx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_user_indexes,idx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_user_sequences,relid,oid,YES,null
+pg_catalog,pg_statio_user_sequences,schemaname,name,YES,null
+pg_catalog,pg_statio_user_sequences,relname,name,YES,null
+pg_catalog,pg_statio_user_sequences,blks_read,bigint,YES,null
+pg_catalog,pg_statio_user_sequences,blks_hit,bigint,YES,null
+pg_catalog,pg_statio_user_tables,relid,oid,YES,null
+pg_catalog,pg_statio_user_tables,schemaname,name,YES,null
+pg_catalog,pg_statio_user_tables,relname,name,YES,null
+pg_catalog,pg_statio_user_tables,heap_blks_read,bigint,YES,null
+pg_catalog,pg_statio_user_tables,heap_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_user_tables,idx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_user_tables,idx_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_user_tables,toast_blks_read,bigint,YES,null
+pg_catalog,pg_statio_user_tables,toast_blks_hit,bigint,YES,null
+pg_catalog,pg_statio_user_tables,tidx_blks_read,bigint,YES,null
+pg_catalog,pg_statio_user_tables,tidx_blks_hit,bigint,YES,null
+pg_catalog,pg_statistic,starelid,oid,NO,null
+pg_catalog,pg_statistic,staattnum,smallint,NO,null
+pg_catalog,pg_statistic,stainherit,boolean,NO,null
+pg_catalog,pg_statistic,stanullfrac,real,NO,null
+pg_catalog,pg_statistic,stawidth,integer,NO,null
+pg_catalog,pg_statistic,stadistinct,real,NO,null
+pg_catalog,pg_statistic,stakind1,smallint,NO,null
+pg_catalog,pg_statistic,stakind2,smallint,NO,null
+pg_catalog,pg_statistic,stakind3,smallint,NO,null
+pg_catalog,pg_statistic,stakind4,smallint,NO,null
+pg_catalog,pg_statistic,stakind5,smallint,NO,null
+pg_catalog,pg_statistic,staop1,oid,NO,null
+pg_catalog,pg_statistic,staop2,oid,NO,null
+pg_catalog,pg_statistic,staop3,oid,NO,null
+pg_catalog,pg_statistic,staop4,oid,NO,null
+pg_catalog,pg_statistic,staop5,oid,NO,null
+pg_catalog,pg_statistic,stacoll1,oid,NO,null
+pg_catalog,pg_statistic,stacoll2,oid,NO,null
+pg_catalog,pg_statistic,stacoll3,oid,NO,null
+pg_catalog,pg_statistic,stacoll4,oid,NO,null
+pg_catalog,pg_statistic,stacoll5,oid,NO,null
+pg_catalog,pg_statistic,stanumbers1,ARRAY,YES,null
+pg_catalog,pg_statistic,stanumbers2,ARRAY,YES,null
+pg_catalog,pg_statistic,stanumbers3,ARRAY,YES,null
+pg_catalog,pg_statistic,stanumbers4,ARRAY,YES,null
+pg_catalog,pg_statistic,stanumbers5,ARRAY,YES,null
+pg_catalog,pg_statistic,stavalues1,anyarray,YES,null
+pg_catalog,pg_statistic,stavalues2,anyarray,YES,null
+pg_catalog,pg_statistic,stavalues3,anyarray,YES,null
+pg_catalog,pg_statistic,stavalues4,anyarray,YES,null
+pg_catalog,pg_statistic,stavalues5,anyarray,YES,null
+pg_catalog,pg_statistic_ext,oid,oid,NO,null
+pg_catalog,pg_statistic_ext,stxrelid,oid,NO,null
+pg_catalog,pg_statistic_ext,stxname,name,NO,null
+pg_catalog,pg_statistic_ext,stxnamespace,oid,NO,null
+pg_catalog,pg_statistic_ext,stxowner,oid,NO,null
+pg_catalog,pg_statistic_ext,stxkeys,ARRAY,NO,null
+pg_catalog,pg_statistic_ext,stxstattarget,smallint,YES,null
+pg_catalog,pg_statistic_ext,stxkind,ARRAY,NO,null
+pg_catalog,pg_statistic_ext,stxexprs,pg_node_tree,YES,null
+pg_catalog,pg_statistic_ext_data,stxoid,oid,NO,null
+pg_catalog,pg_statistic_ext_data,stxdinherit,boolean,NO,null
+pg_catalog,pg_statistic_ext_data,stxdndistinct,pg_ndistinct,YES,null
+pg_catalog,pg_statistic_ext_data,stxddependencies,pg_dependencies,YES,null
+pg_catalog,pg_statistic_ext_data,stxdmcv,pg_mcv_list,YES,null
+pg_catalog,pg_statistic_ext_data,stxdexpr,ARRAY,YES,null
+pg_catalog,pg_stats,schemaname,name,YES,null
+pg_catalog,pg_stats,tablename,name,YES,null
+pg_catalog,pg_stats,attname,name,YES,null
+pg_catalog,pg_stats,inherited,boolean,YES,null
+pg_catalog,pg_stats,null_frac,real,YES,null
+pg_catalog,pg_stats,avg_width,integer,YES,null
+pg_catalog,pg_stats,n_distinct,real,YES,null
+pg_catalog,pg_stats,most_common_vals,anyarray,YES,null
+pg_catalog,pg_stats,most_common_freqs,ARRAY,YES,null
+pg_catalog,pg_stats,histogram_bounds,anyarray,YES,null
+pg_catalog,pg_stats,correlation,real,YES,null
+pg_catalog,pg_stats,most_common_elems,anyarray,YES,null
+pg_catalog,pg_stats,most_common_elem_freqs,ARRAY,YES,null
+pg_catalog,pg_stats,elem_count_histogram,ARRAY,YES,null
+pg_catalog,pg_stats,range_length_histogram,anyarray,YES,null
+pg_catalog,pg_stats,range_empty_frac,real,YES,null
+pg_catalog,pg_stats,range_bounds_histogram,anyarray,YES,null
+pg_catalog,pg_stats_ext,schemaname,name,YES,null
+pg_catalog,pg_stats_ext,tablename,name,YES,null
+pg_catalog,pg_stats_ext,statistics_schemaname,name,YES,null
+pg_catalog,pg_stats_ext,statistics_name,name,YES,null
+pg_catalog,pg_stats_ext,statistics_owner,name,YES,null
+pg_catalog,pg_stats_ext,attnames,ARRAY,YES,null
+pg_catalog,pg_stats_ext,exprs,ARRAY,YES,null
+pg_catalog,pg_stats_ext,kinds,ARRAY,YES,null
+pg_catalog,pg_stats_ext,inherited,boolean,YES,null
+pg_catalog,pg_stats_ext,n_distinct,pg_ndistinct,YES,null
+pg_catalog,pg_stats_ext,dependencies,pg_dependencies,YES,null
+pg_catalog,pg_stats_ext,most_common_vals,ARRAY,YES,null
+pg_catalog,pg_stats_ext,most_common_val_nulls,ARRAY,YES,null
+pg_catalog,pg_stats_ext,most_common_freqs,ARRAY,YES,null
+pg_catalog,pg_stats_ext,most_common_base_freqs,ARRAY,YES,null
+pg_catalog,pg_stats_ext_exprs,schemaname,name,YES,null
+pg_catalog,pg_stats_ext_exprs,tablename,name,YES,null
+pg_catalog,pg_stats_ext_exprs,statistics_schemaname,name,YES,null
+pg_catalog,pg_stats_ext_exprs,statistics_name,name,YES,null
+pg_catalog,pg_stats_ext_exprs,statistics_owner,name,YES,null
+pg_catalog,pg_stats_ext_exprs,expr,text,YES,null
+pg_catalog,pg_stats_ext_exprs,inherited,boolean,YES,null
+pg_catalog,pg_stats_ext_exprs,null_frac,real,YES,null
+pg_catalog,pg_stats_ext_exprs,avg_width,integer,YES,null
+pg_catalog,pg_stats_ext_exprs,n_distinct,real,YES,null
+pg_catalog,pg_stats_ext_exprs,most_common_vals,anyarray,YES,null
+pg_catalog,pg_stats_ext_exprs,most_common_freqs,ARRAY,YES,null
+pg_catalog,pg_stats_ext_exprs,histogram_bounds,anyarray,YES,null
+pg_catalog,pg_stats_ext_exprs,correlation,real,YES,null
+pg_catalog,pg_stats_ext_exprs,most_common_elems,anyarray,YES,null
+pg_catalog,pg_stats_ext_exprs,most_common_elem_freqs,ARRAY,YES,null
+pg_catalog,pg_stats_ext_exprs,elem_count_histogram,ARRAY,YES,null
+pg_catalog,pg_subscription,oid,oid,NO,null
+pg_catalog,pg_subscription,subdbid,oid,NO,null
+pg_catalog,pg_subscription,subskiplsn,pg_lsn,NO,null
+pg_catalog,pg_subscription,subname,name,NO,null
+pg_catalog,pg_subscription,subowner,oid,NO,null
+pg_catalog,pg_subscription,subenabled,boolean,NO,null
+pg_catalog,pg_subscription,subbinary,boolean,NO,null
+pg_catalog,pg_subscription,substream,"""char""",NO,null
+pg_catalog,pg_subscription,subtwophasestate,"""char""",NO,null
+pg_catalog,pg_subscription,subdisableonerr,boolean,NO,null
+pg_catalog,pg_subscription,subpasswordrequired,boolean,NO,null
+pg_catalog,pg_subscription,subrunasowner,boolean,NO,null
+pg_catalog,pg_subscription,subfailover,boolean,NO,null
+pg_catalog,pg_subscription,subconninfo,text,NO,null
+pg_catalog,pg_subscription,subslotname,name,YES,null
+pg_catalog,pg_subscription,subsynccommit,text,NO,null
+pg_catalog,pg_subscription,subpublications,ARRAY,NO,null
+pg_catalog,pg_subscription,suborigin,text,YES,null
+pg_catalog,pg_subscription_rel,srsubid,oid,NO,null
+pg_catalog,pg_subscription_rel,srrelid,oid,NO,null
+pg_catalog,pg_subscription_rel,srsubstate,"""char""",NO,null
+pg_catalog,pg_subscription_rel,srsublsn,pg_lsn,YES,null
+pg_catalog,pg_tables,schemaname,name,YES,null
+pg_catalog,pg_tables,tablename,name,YES,null
+pg_catalog,pg_tables,tableowner,name,YES,null
+pg_catalog,pg_tables,tablespace,name,YES,null
+pg_catalog,pg_tables,hasindexes,boolean,YES,null
+pg_catalog,pg_tables,hasrules,boolean,YES,null
+pg_catalog,pg_tables,hastriggers,boolean,YES,null
+pg_catalog,pg_tables,rowsecurity,boolean,YES,null
+pg_catalog,pg_tablespace,oid,oid,NO,null
+pg_catalog,pg_tablespace,spcname,name,NO,null
+pg_catalog,pg_tablespace,spcowner,oid,NO,null
+pg_catalog,pg_tablespace,spcacl,ARRAY,YES,null
+pg_catalog,pg_tablespace,spcoptions,ARRAY,YES,null
+pg_catalog,pg_timezone_abbrevs,abbrev,text,YES,null
+pg_catalog,pg_timezone_abbrevs,utc_offset,interval,YES,null
+pg_catalog,pg_timezone_abbrevs,is_dst,boolean,YES,null
+pg_catalog,pg_timezone_names,name,text,YES,null
+pg_catalog,pg_timezone_names,abbrev,text,YES,null
+pg_catalog,pg_timezone_names,utc_offset,interval,YES,null
+pg_catalog,pg_timezone_names,is_dst,boolean,YES,null
+pg_catalog,pg_transform,oid,oid,NO,null
+pg_catalog,pg_transform,trftype,oid,NO,null
+pg_catalog,pg_transform,trflang,oid,NO,null
+pg_catalog,pg_transform,trffromsql,regproc,NO,null
+pg_catalog,pg_transform,trftosql,regproc,NO,null
+pg_catalog,pg_trigger,oid,oid,NO,null
+pg_catalog,pg_trigger,tgrelid,oid,NO,null
+pg_catalog,pg_trigger,tgparentid,oid,NO,null
+pg_catalog,pg_trigger,tgname,name,NO,null
+pg_catalog,pg_trigger,tgfoid,oid,NO,null
+pg_catalog,pg_trigger,tgtype,smallint,NO,null
+pg_catalog,pg_trigger,tgenabled,"""char""",NO,null
+pg_catalog,pg_trigger,tgisinternal,boolean,NO,null
+pg_catalog,pg_trigger,tgconstrrelid,oid,NO,null
+pg_catalog,pg_trigger,tgconstrindid,oid,NO,null
+pg_catalog,pg_trigger,tgconstraint,oid,NO,null
+pg_catalog,pg_trigger,tgdeferrable,boolean,NO,null
+pg_catalog,pg_trigger,tginitdeferred,boolean,NO,null
+pg_catalog,pg_trigger,tgnargs,smallint,NO,null
+pg_catalog,pg_trigger,tgattr,ARRAY,NO,null
+pg_catalog,pg_trigger,tgargs,bytea,NO,null
+pg_catalog,pg_trigger,tgqual,pg_node_tree,YES,null
+pg_catalog,pg_trigger,tgoldtable,name,YES,null
+pg_catalog,pg_trigger,tgnewtable,name,YES,null
+pg_catalog,pg_ts_config,oid,oid,NO,null
+pg_catalog,pg_ts_config,cfgname,name,NO,null
+pg_catalog,pg_ts_config,cfgnamespace,oid,NO,null
+pg_catalog,pg_ts_config,cfgowner,oid,NO,null
+pg_catalog,pg_ts_config,cfgparser,oid,NO,null
+pg_catalog,pg_ts_config_map,mapcfg,oid,NO,null
+pg_catalog,pg_ts_config_map,maptokentype,integer,NO,null
+pg_catalog,pg_ts_config_map,mapseqno,integer,NO,null
+pg_catalog,pg_ts_config_map,mapdict,oid,NO,null
+pg_catalog,pg_ts_dict,oid,oid,NO,null
+pg_catalog,pg_ts_dict,dictname,name,NO,null
+pg_catalog,pg_ts_dict,dictnamespace,oid,NO,null
+pg_catalog,pg_ts_dict,dictowner,oid,NO,null
+pg_catalog,pg_ts_dict,dicttemplate,oid,NO,null
+pg_catalog,pg_ts_dict,dictinitoption,text,YES,null
+pg_catalog,pg_ts_parser,oid,oid,NO,null
+pg_catalog,pg_ts_parser,prsname,name,NO,null
+pg_catalog,pg_ts_parser,prsnamespace,oid,NO,null
+pg_catalog,pg_ts_parser,prsstart,regproc,NO,null
+pg_catalog,pg_ts_parser,prstoken,regproc,NO,null
+pg_catalog,pg_ts_parser,prsend,regproc,NO,null
+pg_catalog,pg_ts_parser,prsheadline,regproc,NO,null
+pg_catalog,pg_ts_parser,prslextype,regproc,NO,null
+pg_catalog,pg_ts_template,oid,oid,NO,null
+pg_catalog,pg_ts_template,tmplname,name,NO,null
+pg_catalog,pg_ts_template,tmplnamespace,oid,NO,null
+pg_catalog,pg_ts_template,tmplinit,regproc,NO,null
+pg_catalog,pg_ts_template,tmpllexize,regproc,NO,null
+pg_catalog,pg_type,oid,oid,NO,null
+pg_catalog,pg_type,typname,name,NO,null
+pg_catalog,pg_type,typnamespace,oid,NO,null
+pg_catalog,pg_type,typowner,oid,NO,null
+pg_catalog,pg_type,typlen,smallint,NO,null
+pg_catalog,pg_type,typbyval,boolean,NO,null
+pg_catalog,pg_type,typtype,"""char""",NO,null
+pg_catalog,pg_type,typcategory,"""char""",NO,null
+pg_catalog,pg_type,typispreferred,boolean,NO,null
+pg_catalog,pg_type,typisdefined,boolean,NO,null
+pg_catalog,pg_type,typdelim,"""char""",NO,null
+pg_catalog,pg_type,typrelid,oid,NO,null
+pg_catalog,pg_type,typsubscript,regproc,NO,null
+pg_catalog,pg_type,typelem,oid,NO,null
+pg_catalog,pg_type,typarray,oid,NO,null
+pg_catalog,pg_type,typinput,regproc,NO,null
+pg_catalog,pg_type,typoutput,regproc,NO,null
+pg_catalog,pg_type,typreceive,regproc,NO,null
+pg_catalog,pg_type,typsend,regproc,NO,null
+pg_catalog,pg_type,typmodin,regproc,NO,null
+pg_catalog,pg_type,typmodout,regproc,NO,null
+pg_catalog,pg_type,typanalyze,regproc,NO,null
+pg_catalog,pg_type,typalign,"""char""",NO,null
+pg_catalog,pg_type,typstorage,"""char""",NO,null
+pg_catalog,pg_type,typnotnull,boolean,NO,null
+pg_catalog,pg_type,typbasetype,oid,NO,null
+pg_catalog,pg_type,typtypmod,integer,NO,null
+pg_catalog,pg_type,typndims,integer,NO,null
+pg_catalog,pg_type,typcollation,oid,NO,null
+pg_catalog,pg_type,typdefaultbin,pg_node_tree,YES,null
+pg_catalog,pg_type,typdefault,text,YES,null
+pg_catalog,pg_type,typacl,ARRAY,YES,null
+pg_catalog,pg_user,usename,name,YES,null
+pg_catalog,pg_user,usesysid,oid,YES,null
+pg_catalog,pg_user,usecreatedb,boolean,YES,null
+pg_catalog,pg_user,usesuper,boolean,YES,null
+pg_catalog,pg_user,userepl,boolean,YES,null
+pg_catalog,pg_user,usebypassrls,boolean,YES,null
+pg_catalog,pg_user,passwd,text,YES,null
+pg_catalog,pg_user,valuntil,timestamp with time zone,YES,null
+pg_catalog,pg_user,useconfig,ARRAY,YES,null
+pg_catalog,pg_user_mapping,oid,oid,NO,null
+pg_catalog,pg_user_mapping,umuser,oid,NO,null
+pg_catalog,pg_user_mapping,umserver,oid,NO,null
+pg_catalog,pg_user_mapping,umoptions,ARRAY,YES,null
+pg_catalog,pg_user_mappings,umid,oid,YES,null
+pg_catalog,pg_user_mappings,srvid,oid,YES,null
+pg_catalog,pg_user_mappings,srvname,name,YES,null
+pg_catalog,pg_user_mappings,umuser,oid,YES,null
+pg_catalog,pg_user_mappings,usename,name,YES,null
+pg_catalog,pg_user_mappings,umoptions,ARRAY,YES,null
+pg_catalog,pg_views,schemaname,name,YES,null
+pg_catalog,pg_views,viewname,name,YES,null
+pg_catalog,pg_views,viewowner,name,YES,null
+pg_catalog,pg_views,definition,text,YES,null
+pg_catalog,pg_wait_events,type,text,YES,null
+pg_catalog,pg_wait_events,name,text,YES,null
+pg_catalog,pg_wait_events,description,text,YES,null
+public,agents,id,uuid,NO,gen_random_uuid()
+public,agents,yacht_id,uuid,NO,null
+public,agents,name,text,NO,null
+public,agents,agent_secret_hash,text,NO,null
+public,agents,device_info,jsonb,YES,'{}'::jsonb
+public,agents,last_seen_at,timestamp with time zone,YES,null
+public,agents,is_active,boolean,YES,true
+public,agents,metadata,jsonb,YES,'{}'::jsonb
+public,agents,created_at,timestamp with time zone,NO,now()
+public,agents,updated_at,timestamp with time zone,NO,now()
+public,api_keys,id,uuid,NO,gen_random_uuid()
+public,api_keys,yacht_id,uuid,NO,null
+public,api_keys,key_prefix,text,NO,null
+public,api_keys,hashed_key,text,NO,null
+public,api_keys,name,text,NO,null
+public,api_keys,scopes,ARRAY,YES,'{}'::text[]
+public,api_keys,created_by,uuid,YES,null
+public,api_keys,expires_at,timestamp with time zone,YES,null
+public,api_keys,last_used_at,timestamp with time zone,YES,null
+public,api_keys,is_active,boolean,YES,true
+public,api_keys,metadata,jsonb,YES,'{}'::jsonb
+public,api_keys,created_at,timestamp with time zone,NO,now()
+public,chat_messages,id,uuid,NO,gen_random_uuid()
+public,chat_messages,session_id,uuid,YES,null
+public,chat_messages,role,text,NO,null
+public,chat_messages,content,text,NO,null
+public,chat_messages,timestamp,timestamp with time zone,YES,now()
+public,chat_messages,message_index,integer,NO,null
+public,chat_messages,sources,jsonb,YES,'[]'::jsonb
+public,chat_messages,metadata,jsonb,YES,'{}'::jsonb
+public,chat_messages,tokens_used,integer,YES,null
+public,chat_messages,confidence_score,double precision,YES,null
+public,chat_messages,yacht_id,text,YES,null
+public,chat_session_summaries,id,uuid,YES,null
+public,chat_session_summaries,user_id,uuid,YES,null
+public,chat_session_summaries,title,text,YES,null
+public,chat_session_summaries,created_at,timestamp with time zone,YES,null
+public,chat_session_summaries,updated_at,timestamp with time zone,YES,null
+public,chat_session_summaries,folder,text,YES,null
+public,chat_session_summaries,yacht_id,text,YES,null
+public,chat_session_summaries,search_type,text,YES,null
+public,chat_session_summaries,message_count,integer,YES,null
+public,chat_session_summaries,is_archived,boolean,YES,null
+public,chat_session_summaries,deleted,boolean,YES,null
+public,chat_session_summaries,first_message_preview,text,YES,null
+public,chat_session_summaries,last_message_at,timestamp with time zone,YES,null
+public,chat_sessions,id,uuid,NO,gen_random_uuid()
+public,chat_sessions,user_id,uuid,YES,null
+public,chat_sessions,title,text,NO,'New Chat'::text
+public,chat_sessions,created_at,timestamp with time zone,YES,now()
+public,chat_sessions,updated_at,timestamp with time zone,YES,now()
+public,chat_sessions,folder,text,YES,null
+public,chat_sessions,yacht_id,text,YES,null
+public,chat_sessions,search_type,text,YES,'yacht'::text
+public,chat_sessions,session_metadata,jsonb,YES,'{}'::jsonb
+public,chat_sessions,is_archived,boolean,YES,false
+public,chat_sessions,message_count,integer,YES,0
+public,chat_sessions,deleted,boolean,YES,false
+public,crew_aliases,id,uuid,NO,gen_random_uuid()
+public,crew_aliases,yacht_id,uuid,NO,null
+public,crew_aliases,crew_id,uuid,YES,null
+public,crew_aliases,alias,text,NO,null
+public,crew_aliases,alias_type,text,YES,'manual'::text
+public,crew_aliases,confidence,double precision,YES,1.0
+public,crew_aliases,created_at,timestamp with time zone,YES,now()
+public,crew_certificates,id,uuid,NO,gen_random_uuid()
+public,crew_certificates,yacht_id,uuid,NO,null
+public,crew_certificates,person_node_id,uuid,YES,null
+public,crew_certificates,person_name,text,NO,null
+public,crew_certificates,certificate_type,text,NO,null
+public,crew_certificates,certificate_number,text,YES,null
+public,crew_certificates,issuing_authority,text,YES,null
+public,crew_certificates,issue_date,date,YES,null
+public,crew_certificates,expiry_date,date,YES,null
+public,crew_certificates,document_id,uuid,YES,null
+public,crew_certificates,properties,jsonb,YES,'{}'::jsonb
+public,crew_certificates,created_at,timestamp with time zone,NO,now()
+public,document_aliases,id,uuid,NO,gen_random_uuid()
+public,document_aliases,yacht_id,uuid,NO,null
+public,document_aliases,document_id,uuid,YES,null
+public,document_aliases,alias,text,NO,null
+public,document_aliases,alias_type,text,YES,'manual'::text
+public,document_aliases,confidence,double precision,YES,1.0
+public,document_aliases,created_at,timestamp with time zone,YES,now()
+public,document_chunks,id,uuid,NO,gen_random_uuid()
+public,document_chunks,yacht_id,uuid,YES,null
+public,document_chunks,document_id,uuid,YES,null
+public,document_chunks,chunk_index,integer,YES,null
+public,document_chunks,text,text,YES,null
+public,document_chunks,page_number,integer,YES,null
+public,document_chunks,embedding,USER-DEFINED,YES,null
+public,document_chunks,equipment_ids,ARRAY,YES,'{}'::uuid[]
+public,document_chunks,fault_codes,ARRAY,YES,'{}'::text[]
+public,document_chunks,tags,ARRAY,YES,'{}'::text[]
+public,document_chunks,metadata,jsonb,YES,'{}'::jsonb
+public,document_chunks,created_at,timestamp with time zone,NO,now()
+public,document_chunks,content,text,YES,null
+public,document_chunks,graph_extracted,boolean,YES,false
+public,document_chunks,graph_extracted_at,timestamp with time zone,YES,null
+public,document_chunks,section_title,text,YES,null
+public,document_chunks,doc_type,text,YES,null
+public,document_chunks,system_tag,text,YES,null
+public,document_chunks,graph_extract_status,text,NO,'pending'::text
+public,document_chunks,graph_extract_error,text,YES,null
+public,document_chunks,section_path,ARRAY,YES,null
+public,document_chunks,section_type,text,YES,null
+public,document_chunks,is_section_entry,boolean,NO,false
+public,document_chunks,symptom_codes,ARRAY,YES,null
+public,document_chunks,graph_extract_ts,timestamp with time zone,YES,null
+public,document_counts_by_department,yacht_id,uuid,YES,null
+public,document_counts_by_department,department,text,YES,null
+public,document_counts_by_department,document_count,bigint,YES,null
+public,document_counts_by_department,total_size_bytes,numeric,YES,null
+public,document_counts_by_department,indexed_count,bigint,YES,null
+public,document_counts_by_department,pending_count,bigint,YES,null
+public,document_directory_tree,yacht_id,uuid,YES,null
+public,document_directory_tree,level_1,text,YES,null
+public,document_directory_tree,level_2,text,YES,null
+public,document_directory_tree,level_3,text,YES,null
+public,document_directory_tree,document_count,bigint,YES,null
+public,document_yacht,id,uuid,NO,gen_random_uuid()
+public,document_yacht,document_name,text,NO,null
+public,document_yacht,document_path,text,NO,null
+public,document_yacht,document_type,text,YES,null
+public,document_yacht,times_accessed,integer,YES,0
+public,document_yacht,times_helpful,integer,YES,0
+public,document_yacht,times_not_helpful,integer,YES,0
+public,document_yacht,equipment_covered,jsonb,YES,'[]'::jsonb
+public,document_yacht,created_at,timestamp with time zone,YES,now()
+public,document_yacht,updated_at,timestamp with time zone,YES,now()
+public,document_yacht,last_used,timestamp with time zone,YES,null
+public,document_yacht,yacht_id,text,YES,null
+public,document_yacht,total_uses,integer,YES,0
+public,document_yacht,successful_uses,integer,YES,0
+public,document_yacht,effectiveness_score,numeric,YES,null
+public,document_yacht,department,character varying,YES,null
+public,document_yacht,fault_code_matches,jsonb,YES,'{}'::jsonb
+public,document_yacht,user_id,uuid,YES,null
+public,document_yacht,helpful_count,integer,YES,null
+public,document_yacht,chunk_id,text,YES,null
+public,document_yacht,chunk_text,text,YES,null
+public,document_yacht,chunk_index,integer,YES,null
+public,document_yacht,page_num,integer,YES,null
+public,document_yacht,entities_found,jsonb,YES,null
+public,document_yacht,entity_weights,jsonb,YES,null
+public,document_yacht,query,text,YES,null
+public,document_yacht,session_id,uuid,YES,null
+public,document_yacht,score,numeric,YES,null
+public,document_yacht,chunk_metadata,jsonb,YES,null
+public,document_yacht,is_chunk,boolean,YES,null
+public,document_yacht,conversion_rate,numeric,YES,null
+public,documents,id,uuid,NO,gen_random_uuid()
+public,documents,yacht_id,uuid,NO,null
+public,documents,source,text,NO,null
+public,documents,original_path,text,YES,null
+public,documents,filename,text,NO,null
+public,documents,content_type,text,YES,null
+public,documents,size_bytes,bigint,YES,null
+public,documents,sha256,text,YES,null
+public,documents,storage_path,text,NO,null
+public,documents,equipment_ids,ARRAY,YES,'{}'::uuid[]
+public,documents,tags,ARRAY,YES,'{}'::text[]
+public,documents,indexed,boolean,YES,false
+public,documents,indexed_at,timestamp with time zone,YES,null
+public,documents,metadata,jsonb,YES,'{}'::jsonb
+public,documents,created_at,timestamp with time zone,NO,now()
+public,documents,updated_at,timestamp with time zone,NO,now()
+public,documents,system_path,text,YES,null
+public,documents,doc_type,text,YES,null
+public,documents,oem,text,YES,null
+public,documents,model,text,YES,null
+public,documents,system_type,text,YES,null
+public,drill_records,id,uuid,NO,gen_random_uuid()
+public,drill_records,yacht_id,uuid,NO,null
+public,drill_records,drill_type,text,NO,null
+public,drill_records,drill_date,timestamp with time zone,NO,null
+public,drill_records,conducted_by,text,YES,null
+public,drill_records,participants,jsonb,YES,'[]'::jsonb
+public,drill_records,duration_minutes,integer,YES,null
+public,drill_records,outcome,text,YES,null
+public,drill_records,notes,text,YES,null
+public,drill_records,document_id,uuid,YES,null
+public,drill_records,created_at,timestamp with time zone,NO,now()
+public,emails_yacht,contact_id,uuid,NO,gen_random_uuid()
+public,emails_yacht,yacht_id,text,NO,null
+public,emails_yacht,vendor,character varying,YES,null
+public,emails_yacht,contact_name,character varying,YES,null
+public,emails_yacht,email,character varying,NO,null
+public,emails_yacht,specialization,character varying,YES,null
+public,emails_yacht,notes,text,YES,null
+public,emails_yacht,created_at,timestamp with time zone,YES,now()
+public,emails_yacht,updated_at,timestamp with time zone,YES,now()
+public,emails_yacht,user_id,uuid,YES,null
+public,emails_yacht,reliability_score,numeric,YES,null
+public,emails_yacht,last_contacted,timestamp with time zone,YES,null
+public,embedding_jobs,id,uuid,NO,gen_random_uuid()
+public,embedding_jobs,yacht_id,uuid,NO,null
+public,embedding_jobs,document_id,uuid,YES,null
+public,embedding_jobs,status,text,NO,'pending'::text
+public,embedding_jobs,error_message,text,YES,null
+public,embedding_jobs,started_at,timestamp with time zone,YES,null
+public,embedding_jobs,completed_at,timestamp with time zone,YES,null
+public,embedding_jobs,metadata,jsonb,YES,'{}'::jsonb
+public,embedding_jobs,created_at,timestamp with time zone,NO,now()
+public,equipment,id,uuid,NO,gen_random_uuid()
+public,equipment,yacht_id,uuid,NO,null
+public,equipment,parent_id,uuid,YES,null
+public,equipment,name,text,NO,null
+public,equipment,code,text,YES,null
+public,equipment,description,text,YES,null
+public,equipment,location,text,YES,null
+public,equipment,manufacturer,text,YES,null
+public,equipment,model,text,YES,null
+public,equipment,serial_number,text,YES,null
+public,equipment,installed_date,date,YES,null
+public,equipment,criticality,USER-DEFINED,YES,'medium'::equipment_criticality
+public,equipment,system_type,text,YES,null
+public,equipment,metadata,jsonb,YES,'{}'::jsonb
+public,equipment,created_at,timestamp with time zone,NO,now()
+public,equipment,updated_at,timestamp with time zone,NO,now()
+public,equipment_aliases,id,uuid,NO,gen_random_uuid()
+public,equipment_aliases,yacht_id,uuid,NO,null
+public,equipment_aliases,equipment_id,uuid,NO,null
+public,equipment_aliases,alias,text,NO,null
+public,equipment_aliases,is_primary,boolean,NO,false
+public,equipment_aliases,created_at,timestamp with time zone,NO,now()
+public,equipment_aliases,confidence,double precision,YES,1.0
+public,equipment_aliases,source,text,YES,'manual'::text
+public,equipment_aliases,candidate_id,uuid,YES,null
+public,equipment_aliases,master_candidate_id,uuid,YES,null
+public,equipment_aliases,deployed_at,timestamp with time zone,YES,null
+public,equipment_parts,id,uuid,NO,gen_random_uuid()
+public,equipment_parts,yacht_id,uuid,NO,null
+public,equipment_parts,equipment_id,uuid,NO,null
+public,equipment_parts,part_id,uuid,NO,null
+public,equipment_parts,quantity_required,integer,YES,1
+public,equipment_parts,notes,text,YES,null
+public,equipment_parts,created_at,timestamp with time zone,NO,now()
+public,event_log,id,uuid,NO,gen_random_uuid()
+public,event_log,yacht_id,uuid,NO,null
+public,event_log,user_id,uuid,YES,null
+public,event_log,event_type,text,NO,null
+public,event_log,entity_type,text,YES,null
+public,event_log,entity_id,uuid,YES,null
+public,event_log,metadata,jsonb,YES,'{}'::jsonb
+public,event_log,session_id,text,YES,null
+public,event_log,created_at,timestamp with time zone,NO,now()
+public,event_logs,id,uuid,NO,gen_random_uuid()
+public,event_logs,yacht_id,uuid,NO,null
+public,event_logs,user_id,uuid,YES,null
+public,event_logs,event_type,text,NO,null
+public,event_logs,entity_type,text,YES,null
+public,event_logs,entity_id,uuid,YES,null
+public,event_logs,metadata,jsonb,YES,'{}'::jsonb
+public,event_logs,created_at,timestamp with time zone,NO,now()
+public,fault_aliases,id,uuid,NO,gen_random_uuid()
+public,fault_aliases,yacht_id,uuid,NO,null
+public,fault_aliases,fault_id,uuid,YES,null
+public,fault_aliases,alias,text,NO,null
+public,fault_aliases,alias_type,text,YES,'manual'::text
+public,fault_aliases,confidence,double precision,YES,1.0
+public,fault_aliases,created_at,timestamp with time zone,YES,now()
+public,fault_aliases,source,text,YES,'manual'::text
+public,fault_aliases,master_candidate_id,uuid,YES,null
+public,fault_aliases,deployed_at,timestamp with time zone,YES,null
+public,fault_code_catalog,id,uuid,NO,gen_random_uuid()
+public,fault_code_catalog,yacht_id,uuid,NO,null
+public,fault_code_catalog,equipment_type,text,NO,null
+public,fault_code_catalog,manufacturer,text,YES,null
+public,fault_code_catalog,code,text,NO,null
+public,fault_code_catalog,name,text,YES,null
+public,fault_code_catalog,description,text,YES,null
+public,fault_code_catalog,severity,text,YES,'warning'::text
+public,fault_code_catalog,symptoms,ARRAY,YES,null
+public,fault_code_catalog,causes,ARRAY,YES,null
+public,fault_code_catalog,diagnostic_steps,ARRAY,YES,null
+public,fault_code_catalog,resolution_steps,ARRAY,YES,null
+public,fault_code_catalog,related_parts,ARRAY,YES,null
+public,fault_code_catalog,source_document_id,uuid,YES,null
+public,fault_code_catalog,source_chunk_id,uuid,YES,null
+public,fault_code_catalog,created_at,timestamp with time zone,NO,now()
+public,fault_code_catalog,updated_at,timestamp with time zone,NO,now()
+public,fault_yacht,fault_id,uuid,NO,gen_random_uuid()
+public,fault_yacht,yacht_id,text,NO,null
+public,fault_yacht,equipment_type,character varying,YES,null
+public,fault_yacht,equipment_brand,character varying,YES,null
+public,fault_yacht,equipment_model,character varying,YES,null
+public,fault_yacht,fault_code,character varying,YES,null
+public,fault_yacht,fault_description,text,YES,null
+public,fault_yacht,symptoms,ARRAY,YES,null
+public,fault_yacht,severity_level,character varying,YES,null
+public,fault_yacht,detected_date,timestamp with time zone,YES,now()
+public,fault_yacht,resolved_date,timestamp with time zone,YES,null
+public,fault_yacht,resolution_status,character varying,YES,'open'::character varying
+public,fault_yacht,resolution_id,uuid,YES,null
+public,fault_yacht,technician_notes,text,YES,null
+public,fault_yacht,root_cause,text,YES,null
+public,fault_yacht,preventive_measures,text,YES,null
+public,fault_yacht,downtime_hours,numeric,YES,null
+public,fault_yacht,repair_cost_usd,numeric,YES,null
+public,fault_yacht,parts_replaced,jsonb,YES,'[]'::jsonb
+public,fault_yacht,created_at,timestamp with time zone,YES,now()
+public,fault_yacht,updated_at,timestamp with time zone,YES,now()
+public,fault_yacht,user_id,uuid,YES,null
+public,faults,id,uuid,NO,gen_random_uuid()
+public,faults,yacht_id,uuid,NO,null
+public,faults,equipment_id,uuid,NO,null
+public,faults,fault_code,text,YES,null
+public,faults,title,text,NO,null
+public,faults,description,text,YES,null
+public,faults,severity,USER-DEFINED,NO,'medium'::fault_severity
+public,faults,detected_at,timestamp with time zone,NO,now()
+public,faults,resolved_at,timestamp with time zone,YES,null
+public,faults,resolved_by,uuid,YES,null
+public,faults,work_order_id,uuid,YES,null
+public,faults,metadata,jsonb,YES,'{}'::jsonb
+public,faults,created_at,timestamp with time zone,NO,now()
+public,graph_edges,id,uuid,NO,gen_random_uuid()
+public,graph_edges,yacht_id,uuid,NO,null
+public,graph_edges,from_node_id,uuid,NO,null
+public,graph_edges,to_node_id,uuid,NO,null
+public,graph_edges,edge_type,USER-DEFINED,NO,null
+public,graph_edges,source_chunk_id,uuid,YES,null
+public,graph_edges,source_document_id,uuid,YES,null
+public,graph_edges,properties,jsonb,YES,'{}'::jsonb
+public,graph_edges,confidence,real,NO,1.0
+public,graph_edges,created_at,timestamp with time zone,NO,now()
+public,graph_edges,description,text,YES,null
+public,graph_edges,embedding,USER-DEFINED,YES,null
+public,graph_nodes,id,uuid,NO,gen_random_uuid()
+public,graph_nodes,yacht_id,uuid,NO,null
+public,graph_nodes,node_type,USER-DEFINED,NO,null
+public,graph_nodes,label,text,NO,null
+public,graph_nodes,normalized_label,text,NO,null
+public,graph_nodes,source_chunk_id,uuid,YES,null
+public,graph_nodes,source_document_id,uuid,YES,null
+public,graph_nodes,properties,jsonb,YES,'{}'::jsonb
+public,graph_nodes,confidence,real,NO,1.0
+public,graph_nodes,extraction_source,text,YES,null
+public,graph_nodes,created_at,timestamp with time zone,NO,now()
+public,graph_nodes,updated_at,timestamp with time zone,NO,now()
+public,graph_nodes,embedding,USER-DEFINED,YES,null
+public,graph_nodes_backup,id,uuid,YES,null
+public,graph_nodes_backup,yacht_id,uuid,YES,null
+public,graph_nodes_backup,ref_table,text,YES,null
+public,graph_nodes_backup,ref_id,uuid,YES,null
+public,graph_nodes_backup,label,text,YES,null
+public,graph_nodes_backup,properties,jsonb,YES,null
+public,graph_nodes_backup,created_at,timestamp with time zone,YES,null
+public,graph_nodes_backup,normalized_label,text,YES,null
+public,graph_nodes_backup,source_chunk_id,uuid,YES,null
+public,graph_nodes_backup,confidence,real,YES,null
+public,graph_nodes_backup,updated_at,timestamp with time zone,YES,null
+public,guest_preferences,id,uuid,NO,gen_random_uuid()
+public,guest_preferences,yacht_id,uuid,NO,null
+public,guest_preferences,guest_name,text,NO,null
+public,guest_preferences,guest_node_id,uuid,YES,null
+public,guest_preferences,preference_category,text,NO,null
+public,guest_preferences,preference_key,text,NO,null
+public,guest_preferences,preference_value,text,NO,null
+public,guest_preferences,notes,text,YES,null
+public,guest_preferences,source_trip_id,uuid,YES,null
+public,guest_preferences,created_at,timestamp with time zone,NO,now()
+public,handover_items,id,uuid,NO,gen_random_uuid()
+public,handover_items,yacht_id,uuid,NO,null
+public,handover_items,handover_id,uuid,NO,null
+public,handover_items,source_type,USER-DEFINED,NO,null
+public,handover_items,source_id,uuid,NO,null
+public,handover_items,summary,text,YES,null
+public,handover_items,detail,text,YES,null
+public,handover_items,importance,text,YES,'normal'::text
+public,handover_items,metadata,jsonb,YES,'{}'::jsonb
+public,handover_items,created_at,timestamp with time zone,NO,now()
+public,handover_items,updated_at,timestamp with time zone,NO,now()
+public,handover_yacht,handover_id,uuid,NO,gen_random_uuid()
+public,handover_yacht,user_id,uuid,NO,null
+public,handover_yacht,yacht_id,text,NO,null
+public,handover_yacht,solution_id,uuid,YES,null
+public,handover_yacht,document_name,text,YES,null
+public,handover_yacht,document_path,text,YES,null
+public,handover_yacht,document_page,numeric,YES,null
+public,handover_yacht,system_affected,text,YES,null
+public,handover_yacht,fault_code,text,YES,null
+public,handover_yacht,symptoms,jsonb,YES,null
+public,handover_yacht,actions_taken,jsonb,YES,null
+public,handover_yacht,duration_minutes,integer,YES,null
+public,handover_yacht,notes,text,YES,null
+public,handover_yacht,status,text,YES,'draft'::text
+public,handover_yacht,created_at,timestamp with time zone,YES,now()
+public,handover_yacht,updated_at,timestamp with time zone,YES,now()
+public,handover_yacht,completed_at,timestamp with time zone,YES,null
+public,handover_yacht,document_source,text,YES,'manual'::text
+public,handover_yacht,entity_0,jsonb,YES,null
+public,handover_yacht,entity_1,jsonb,YES,null
+public,handover_yacht,entity_2,jsonb,YES,null
+public,handover_yacht,entity_3,jsonb,YES,null
+public,handover_yacht,entity_4,jsonb,YES,null
+public,handover_yacht,entity_5,jsonb,YES,null
+public,handovers,id,uuid,NO,gen_random_uuid()
+public,handovers,yacht_id,uuid,NO,null
+public,handovers,period_start,date,YES,null
+public,handovers,period_end,date,YES,null
+public,handovers,title,text,NO,null
+public,handovers,description,text,YES,null
+public,handovers,created_by,uuid,NO,null
+public,handovers,status,text,YES,'draft'::text
+public,handovers,metadata,jsonb,YES,'{}'::jsonb
+public,handovers,created_at,timestamp with time zone,NO,now()
+public,handovers,updated_at,timestamp with time zone,NO,now()
+public,hours_of_rest,id,uuid,NO,gen_random_uuid()
+public,hours_of_rest,yacht_id,uuid,NO,null
+public,hours_of_rest,user_id,uuid,NO,null
+public,hours_of_rest,date,date,NO,null
+public,hours_of_rest,hours_worked,numeric,NO,null
+public,hours_of_rest,hours_of_rest,numeric,NO,null
+public,hours_of_rest,violations,boolean,YES,false
+public,hours_of_rest,notes,text,YES,null
+public,hours_of_rest,metadata,jsonb,YES,'{}'::jsonb
+public,hours_of_rest,created_at,timestamp with time zone,NO,now()
+public,hours_of_rest,updated_at,timestamp with time zone,NO,now()
+public,inventory_stock,id,uuid,NO,gen_random_uuid()
+public,inventory_stock,yacht_id,uuid,NO,null
+public,inventory_stock,part_id,uuid,NO,null
+public,inventory_stock,location,text,YES,null
+public,inventory_stock,quantity,integer,NO,0
+public,inventory_stock,min_quantity,integer,YES,null
+public,inventory_stock,max_quantity,integer,YES,null
+public,inventory_stock,reorder_quantity,integer,YES,null
+public,inventory_stock,last_counted_at,timestamp with time zone,YES,null
+public,inventory_stock,metadata,jsonb,YES,'{}'::jsonb
+public,inventory_stock,created_at,timestamp with time zone,NO,now()
+public,inventory_stock,updated_at,timestamp with time zone,NO,now()
+public,maintenance_facts,id,uuid,NO,gen_random_uuid()
+public,maintenance_facts,yacht_id,uuid,NO,null
+public,maintenance_facts,equipment_node_id,uuid,YES,null
+public,maintenance_facts,part_node_id,uuid,YES,null
+public,maintenance_facts,system_node_id,uuid,YES,null
+public,maintenance_facts,action,USER-DEFINED,NO,null
+public,maintenance_facts,interval_hours,integer,YES,null
+public,maintenance_facts,interval_days,integer,YES,null
+public,maintenance_facts,interval_description,text,YES,null
+public,maintenance_facts,source_chunk_id,uuid,YES,null
+public,maintenance_facts,source_document_id,uuid,YES,null
+public,maintenance_facts,confidence,real,NO,1.0
+public,maintenance_facts,properties,jsonb,YES,'{}'::jsonb
+public,maintenance_facts,created_at,timestamp with time zone,NO,now()
+public,manual_embeddings,id,uuid,NO,gen_random_uuid()
+public,manual_embeddings,user_id,uuid,YES,null
+public,manual_embeddings,yacht_id,text,NO,null
+public,manual_embeddings,equipment,text,YES,null
+public,manual_embeddings,file_name,text,NO,null
+public,manual_embeddings,file_size,integer,YES,null
+public,manual_embeddings,chunk_text,text,NO,null
+public,manual_embeddings,chunk_index,integer,NO,null
+public,manual_embeddings,embedding,USER-DEFINED,YES,null
+public,manual_embeddings,created_at,timestamp with time zone,YES,now()
+public,manual_embeddings,metadata,jsonb,YES,'{}'::jsonb
+public,notes,id,uuid,NO,gen_random_uuid()
+public,notes,yacht_id,uuid,NO,null
+public,notes,equipment_id,uuid,YES,null
+public,notes,work_order_id,uuid,YES,null
+public,notes,fault_id,uuid,YES,null
+public,notes,text,text,NO,null
+public,notes,note_type,USER-DEFINED,NO,'general'::note_type
+public,notes,created_by,uuid,NO,null
+public,notes,attachments,jsonb,YES,'[]'::jsonb
+public,notes,metadata,jsonb,YES,'{}'::jsonb
+public,notes,created_at,timestamp with time zone,NO,now()
+public,notes,updated_at,timestamp with time zone,NO,now()
+public,ocred_pages,id,uuid,NO,gen_random_uuid()
+public,ocred_pages,yacht_id,uuid,NO,null
+public,ocred_pages,document_id,uuid,NO,null
+public,ocred_pages,page_number,integer,NO,null
+public,ocred_pages,raw_text,text,YES,null
+public,ocred_pages,confidence,numeric,YES,null
+public,ocred_pages,metadata,jsonb,YES,'{}'::jsonb
+public,ocred_pages,created_at,timestamp with time zone,NO,now()
+public,part_aliases,id,uuid,NO,gen_random_uuid()
+public,part_aliases,yacht_id,uuid,NO,null
+public,part_aliases,part_id,uuid,NO,null
+public,part_aliases,alias,text,NO,null
+public,part_aliases,alias_type,text,YES,'manual'::text
+public,part_aliases,confidence,numeric,YES,1.0
+public,part_aliases,created_at,timestamp with time zone,YES,now()
+public,part_aliases,source,text,YES,'manual'::text
+public,part_aliases,candidate_id,uuid,YES,null
+public,part_aliases,master_candidate_id,uuid,YES,null
+public,part_aliases,deployed_at,timestamp with time zone,YES,null
+public,parts,id,uuid,NO,gen_random_uuid()
+public,parts,yacht_id,uuid,NO,null
+public,parts,name,text,NO,null
+public,parts,part_number,text,YES,null
+public,parts,manufacturer,text,YES,null
+public,parts,description,text,YES,null
+public,parts,category,text,YES,null
+public,parts,model_compatibility,jsonb,YES,'[]'::jsonb
+public,parts,metadata,jsonb,YES,'{}'::jsonb
+public,parts,created_at,timestamp with time zone,NO,now()
+public,parts,updated_at,timestamp with time zone,NO,now()
+public,predictive_insights,id,uuid,NO,gen_random_uuid()
+public,predictive_insights,yacht_id,uuid,NO,null
+public,predictive_insights,equipment_id,uuid,NO,null
+public,predictive_insights,insight_type,text,NO,null
+public,predictive_insights,title,text,NO,null
+public,predictive_insights,description,text,YES,null
+public,predictive_insights,recommendation,text,YES,null
+public,predictive_insights,severity,text,YES,null
+public,predictive_insights,acknowledged,boolean,YES,false
+public,predictive_insights,acknowledged_by,uuid,YES,null
+public,predictive_insights,acknowledged_at,timestamp with time zone,YES,null
+public,predictive_insights,metadata,jsonb,YES,'{}'::jsonb
+public,predictive_insights,created_at,timestamp with time zone,NO,now()
+public,predictive_state,id,uuid,NO,gen_random_uuid()
+public,predictive_state,yacht_id,uuid,NO,null
+public,predictive_state,equipment_id,uuid,NO,null
+public,predictive_state,risk_score,numeric,NO,null
+public,predictive_state,confidence,numeric,YES,null
+public,predictive_state,contributing_factors,jsonb,YES,'{}'::jsonb
+public,predictive_state,last_calculated_at,timestamp with time zone,NO,now()
+public,predictive_state,metadata,jsonb,YES,'{}'::jsonb
+public,predictive_state,created_at,timestamp with time zone,NO,now()
+public,predictive_state,updated_at,timestamp with time zone,NO,now()
+public,purchase_order_items,id,uuid,NO,gen_random_uuid()
+public,purchase_order_items,yacht_id,uuid,NO,null
+public,purchase_order_items,purchase_order_id,uuid,NO,null
+public,purchase_order_items,part_id,uuid,YES,null
+public,purchase_order_items,description,text,NO,null
+public,purchase_order_items,quantity_ordered,integer,NO,null
+public,purchase_order_items,quantity_received,integer,YES,0
+public,purchase_order_items,unit_price,numeric,YES,null
+public,purchase_order_items,metadata,jsonb,YES,'{}'::jsonb
+public,purchase_order_items,created_at,timestamp with time zone,NO,now()
+public,purchase_order_items,updated_at,timestamp with time zone,NO,now()
+public,purchase_orders,id,uuid,NO,gen_random_uuid()
+public,purchase_orders,yacht_id,uuid,NO,null
+public,purchase_orders,supplier_id,uuid,YES,null
+public,purchase_orders,po_number,text,YES,null
+public,purchase_orders,status,text,YES,'draft'::text
+public,purchase_orders,ordered_at,timestamp with time zone,YES,null
+public,purchase_orders,received_at,timestamp with time zone,YES,null
+public,purchase_orders,currency,text,YES,'USD'::text
+public,purchase_orders,metadata,jsonb,YES,'{}'::jsonb
+public,purchase_orders,created_at,timestamp with time zone,NO,now()
+public,purchase_orders,updated_at,timestamp with time zone,NO,now()
+public,resolution_yacht,resolution_id,uuid,NO,gen_random_uuid()
+public,resolution_yacht,yacht_id,text,NO,null
+public,resolution_yacht,resolution_title,character varying,YES,null
+public,resolution_yacht,resolution_description,text,YES,null
+public,resolution_yacht,resolution_steps,jsonb,YES,'[]'::jsonb
+public,resolution_yacht,equipment_type,character varying,YES,null
+public,resolution_yacht,applicable_models,ARRAY,YES,null
+public,resolution_yacht,success_count,integer,YES,0
+public,resolution_yacht,failure_count,integer,YES,0
+public,resolution_yacht,average_time_minutes,integer,YES,null
+public,resolution_yacht,difficulty_level,character varying,YES,null
+public,resolution_yacht,required_expertise,ARRAY,YES,null
+public,resolution_yacht,safety_warnings,ARRAY,YES,null
+public,resolution_yacht,tools_required,ARRAY,YES,null
+public,resolution_yacht,parts_required,jsonb,YES,'[]'::jsonb
+public,resolution_yacht,estimated_cost_range,character varying,YES,null
+public,resolution_yacht,created_by,character varying,YES,null
+public,resolution_yacht,approved_by,character varying,YES,null
+public,resolution_yacht,approval_date,timestamp with time zone,YES,null
+public,resolution_yacht,is_verified,boolean,YES,false
+public,resolution_yacht,created_at,timestamp with time zone,YES,now()
+public,resolution_yacht,updated_at,timestamp with time zone,YES,now()
+public,role_aliases,id,uuid,NO,gen_random_uuid()
+public,role_aliases,canonical_role,text,NO,null
+public,role_aliases,alias,text,NO,null
+public,role_aliases,created_at,timestamp with time zone,NO,now()
+public,role_definitions,id,uuid,NO,gen_random_uuid()
+public,role_definitions,name,text,NO,null
+public,role_definitions,description,text,YES,null
+public,role_definitions,permissions,jsonb,YES,'{}'::jsonb
+public,role_definitions,created_at,timestamp with time zone,NO,now()
+public,search_queries,id,uuid,NO,gen_random_uuid()
+public,search_queries,yacht_id,uuid,NO,null
+public,search_queries,user_id,uuid,YES,null
+public,search_queries,query_text,text,NO,null
+public,search_queries,interpreted_intent,text,YES,null
+public,search_queries,entities,jsonb,YES,'{}'::jsonb
+public,search_queries,latency_ms,integer,YES,null
+public,search_queries,success,boolean,YES,null
+public,search_queries,created_at,timestamp with time zone,NO,now()
+public,sop_documents,id,uuid,NO,gen_random_uuid()
+public,sop_documents,user_id,uuid,YES,null
+public,sop_documents,yacht_id,text,NO,null
+public,sop_documents,equipment,text,YES,null
+public,sop_documents,title,text,NO,null
+public,sop_documents,query,text,NO,null
+public,sop_documents,content_markdown,text,NO,null
+public,sop_documents,source_chunks,ARRAY,YES,'{}'::integer[]
+public,sop_documents,version,integer,YES,1
+public,sop_documents,created_at,timestamp with time zone,YES,now()
+public,sop_documents,updated_at,timestamp with time zone,YES,now()
+public,sop_documents,metadata,jsonb,YES,'{}'::jsonb
+public,sop_edits,id,uuid,NO,gen_random_uuid()
+public,sop_edits,sop_id,uuid,YES,null
+public,sop_edits,user_id,uuid,YES,null
+public,sop_edits,original_content,text,NO,null
+public,sop_edits,edited_content,text,NO,null
+public,sop_edits,edit_count,integer,YES,0
+public,sop_edits,created_at,timestamp with time zone,YES,now()
+public,suggestion_log,id,uuid,NO,gen_random_uuid()
+public,suggestion_log,yacht_id,uuid,NO,null
+public,suggestion_log,user_id,uuid,YES,null
+public,suggestion_log,query_text,text,NO,null
+public,suggestion_log,intent,text,YES,null
+public,suggestion_log,search_query_id,uuid,YES,null
+public,suggestion_log,situation_detected,boolean,NO,false
+public,suggestion_log,situation_type,text,YES,null
+public,suggestion_log,situation_severity,text,YES,null
+public,suggestion_log,situation_context,text,YES,null
+public,suggestion_log,suggested_actions,jsonb,NO,'[]'::jsonb
+public,suggestion_log,evidence_provided,jsonb,YES,'[]'::jsonb
+public,suggestion_log,user_action_taken,text,YES,null
+public,suggestion_log,user_action_at,timestamp with time zone,YES,null
+public,suggestion_log,created_at,timestamp with time zone,NO,now()
+public,suppliers,id,uuid,NO,gen_random_uuid()
+public,suppliers,yacht_id,uuid,NO,null
+public,suppliers,name,text,NO,null
+public,suppliers,contact_name,text,YES,null
+public,suppliers,email,text,YES,null
+public,suppliers,phone,text,YES,null
+public,suppliers,address,jsonb,YES,'{}'::jsonb
+public,suppliers,preferred,boolean,YES,false
+public,suppliers,metadata,jsonb,YES,'{}'::jsonb
+public,suppliers,created_at,timestamp with time zone,NO,now()
+public,suppliers,updated_at,timestamp with time zone,NO,now()
+public,symptom_aliases,id,uuid,NO,gen_random_uuid()
+public,symptom_aliases,yacht_id,uuid,NO,null
+public,symptom_aliases,symptom_id,uuid,YES,null
+public,symptom_aliases,alias,text,NO,null
+public,symptom_aliases,alias_type,text,YES,'manual'::text
+public,symptom_aliases,confidence,double precision,YES,1.0
+public,symptom_aliases,created_at,timestamp with time zone,YES,now()
+public,symptom_aliases,source,text,YES,'manual'::text
+public,symptom_aliases,candidate_id,uuid,YES,null
+public,symptom_aliases,master_candidate_id,uuid,YES,null
+public,symptom_aliases,deployed_at,timestamp with time zone,YES,null
+public,symptom_catalog,code,text,NO,null
+public,symptom_catalog,label,text,NO,null
+public,symptom_catalog,description,text,YES,null
+public,symptom_catalog,system_type,text,YES,null
+public,symptom_catalog,severity,integer,YES,null
+public,symptom_catalog,created_at,timestamp with time zone,NO,now()
+public,symptom_reports,id,uuid,NO,gen_random_uuid()
+public,symptom_reports,yacht_id,uuid,NO,null
+public,symptom_reports,equipment_node_id,uuid,YES,null
+public,symptom_reports,equipment_label,text,NO,null
+public,symptom_reports,symptom_code,text,NO,null
+public,symptom_reports,symptom_label,text,NO,null
+public,symptom_reports,source_type,text,NO,'search'::text
+public,symptom_reports,source_id,uuid,YES,null
+public,symptom_reports,resolution_status,text,NO,'open'::text
+public,symptom_reports,resolved_at,timestamp with time zone,YES,null
+public,symptom_reports,resolution_notes,text,YES,null
+public,symptom_reports,reported_by,uuid,YES,null
+public,symptom_reports,created_at,timestamp with time zone,NO,now()
+public,system_aliases,id,uuid,NO,gen_random_uuid()
+public,system_aliases,yacht_id,uuid,NO,null
+public,system_aliases,system_type,text,NO,null
+public,system_aliases,alias,text,NO,null
+public,system_aliases,alias_type,text,YES,'manual'::text
+public,system_aliases,confidence,double precision,YES,1.0
+public,system_aliases,created_at,timestamp with time zone,YES,now()
+public,system_aliases,source,text,YES,'manual'::text
+public,system_aliases,master_candidate_id,uuid,YES,null
+public,system_aliases,deployed_at,timestamp with time zone,YES,null
+public,task_aliases,id,uuid,NO,gen_random_uuid()
+public,task_aliases,yacht_id,uuid,NO,null
+public,task_aliases,task_id,uuid,YES,null
+public,task_aliases,alias,text,NO,null
+public,task_aliases,alias_type,text,YES,'manual'::text
+public,task_aliases,confidence,double precision,YES,1.0
+public,task_aliases,created_at,timestamp with time zone,YES,now()
+public,user_microsoft_tokens,id,uuid,NO,gen_random_uuid()
+public,user_microsoft_tokens,user_id,text,NO,null
+public,user_microsoft_tokens,microsoft_user_id,text,YES,null
+public,user_microsoft_tokens,original_email,text,YES,null
+public,user_microsoft_tokens,microsoft_email,text,YES,null
+public,user_microsoft_tokens,display_name,text,YES,null
+public,user_microsoft_tokens,microsoft_access_token,text,NO,null
+public,user_microsoft_tokens,microsoft_refresh_token,text,YES,null
+public,user_microsoft_tokens,token_expires_at,timestamp with time zone,NO,null
+public,user_microsoft_tokens,token_type,text,YES,'Bearer'::text
+public,user_microsoft_tokens,scopes,ARRAY,YES,"ARRAY['Mail.Read'::text, 'User.Read'::text]"
+public,user_microsoft_tokens,created_at,timestamp with time zone,YES,now()
+public,user_microsoft_tokens,updated_at,timestamp with time zone,YES,now()
+public,user_microsoft_tokens,client_id,text,YES,null
+public,user_microsoft_tokens,client_secret,text,YES,null
+public,user_microsoft_tokens,yacht_id,text,YES,null
+public,user_role_assignments,id,uuid,NO,gen_random_uuid()
+public,user_role_assignments,user_id,uuid,NO,null
+public,user_role_assignments,yacht_id,uuid,NO,null
+public,user_role_assignments,role,text,NO,null
+public,user_role_assignments,scopes,ARRAY,YES,null
+public,user_role_assignments,is_active,boolean,YES,true
+public,user_role_assignments,valid_from,timestamp with time zone,YES,null
+public,user_role_assignments,valid_until,timestamp with time zone,YES,null
+public,user_role_assignments,assigned_by,uuid,YES,null
+public,user_role_assignments,assigned_at,timestamp with time zone,YES,now()
+public,users,id,uuid,NO,gen_random_uuid()
+public,users,auth_user_id,uuid,NO,null
+public,users,yacht_id,uuid,NO,null
+public,users,email,text,NO,null
+public,users,name,text,NO,null
+public,users,is_active,boolean,YES,true
+public,users,metadata,jsonb,YES,'{}'::jsonb
+public,users,created_at,timestamp with time zone,NO,now()
+public,users,updated_at,timestamp with time zone,NO,now()
+public,users_with_roles,id,uuid,YES,null
+public,users_with_roles,auth_user_id,uuid,YES,null
+public,users_with_roles,yacht_id,uuid,YES,null
+public,users_with_roles,email,text,YES,null
+public,users_with_roles,name,text,YES,null
+public,users_with_roles,is_active,boolean,YES,null
+public,users_with_roles,metadata,jsonb,YES,null
+public,users_with_roles,created_at,timestamp with time zone,YES,null
+public,users_with_roles,updated_at,timestamp with time zone,YES,null
+public,users_with_roles,role,text,YES,null
+public,users_with_roles,scopes,ARRAY,YES,null
+public,users_with_roles,valid_from,timestamp with time zone,YES,null
+public,users_with_roles,valid_until,timestamp with time zone,YES,null
+public,users_yacht,user_id,uuid,NO,null
+public,users_yacht,yacht_id,text,NO,null
+public,users_yacht,role,character varying,YES,null
+public,users_yacht,permissions,jsonb,YES,'{}'::jsonb
+public,users_yacht,notification_settings,jsonb,YES,'{}'::jsonb
+public,users_yacht,total_queries,integer,YES,0
+public,users_yacht,created_at,timestamp with time zone,YES,now()
+public,users_yacht,updated_at,timestamp with time zone,YES,now()
+public,users_yacht,email,text,YES,null
+public,v_symptom_recurrence,yacht_id,uuid,YES,null
+public,v_symptom_recurrence,equipment_label,text,YES,null
+public,v_symptom_recurrence,symptom_code,text,YES,null
+public,v_symptom_recurrence,symptom_label,text,YES,null
+public,v_symptom_recurrence,occurrence_count,bigint,YES,null
+public,v_symptom_recurrence,first_occurrence,timestamp with time zone,YES,null
+public,v_symptom_recurrence,latest_occurrence,timestamp with time zone,YES,null
+public,v_symptom_recurrence,span_days,numeric,YES,null
+public,v_symptom_recurrence,open_count,bigint,YES,null
+public,v_symptom_recurrence,resolved_count,bigint,YES,null
+public,v_vessel_status,yacht_id,uuid,YES,null
+public,v_vessel_status,current_status,text,YES,null
+public,v_vessel_status,next_event_type,text,YES,null
+public,v_vessel_status,next_event_at,timestamp with time zone,YES,null
+public,v_vessel_status,next_event_name,text,YES,null
+public,v_vessel_status,hot_work_permitted,boolean,YES,null
+public,v_vessel_status,guests_on_board,boolean,YES,null
+public,v_vessel_status,updated_at,timestamp with time zone,YES,null
+public,v_vessel_status,hours_until_event,numeric,YES,null
+public,v_vessel_status,time_pressure,text,YES,null
+public,v_vessel_status,is_pre_charter_critical,boolean,YES,null
+public,vessel_certificates,id,uuid,NO,gen_random_uuid()
+public,vessel_certificates,yacht_id,uuid,NO,null
+public,vessel_certificates,certificate_type,text,NO,null
+public,vessel_certificates,certificate_name,text,NO,null
+public,vessel_certificates,certificate_number,text,YES,null
+public,vessel_certificates,issuing_authority,text,NO,null
+public,vessel_certificates,issue_date,date,YES,null
+public,vessel_certificates,expiry_date,date,YES,null
+public,vessel_certificates,last_survey_date,date,YES,null
+public,vessel_certificates,next_survey_due,date,YES,null
+public,vessel_certificates,status,text,NO,'valid'::text
+public,vessel_certificates,document_id,uuid,YES,null
+public,vessel_certificates,properties,jsonb,YES,'{}'::jsonb
+public,vessel_certificates,created_at,timestamp with time zone,NO,now()
+public,vessel_context,yacht_id,uuid,NO,null
+public,vessel_context,current_status,text,NO,'in_port'::text
+public,vessel_context,next_event_type,text,YES,null
+public,vessel_context,next_event_at,timestamp with time zone,YES,null
+public,vessel_context,next_event_name,text,YES,null
+public,vessel_context,hot_work_permitted,boolean,YES,true
+public,vessel_context,guests_on_board,boolean,YES,false
+public,vessel_context,updated_at,timestamp with time zone,NO,now()
+public,vessel_context,updated_by,uuid,YES,null
+public,voyage_log,id,uuid,NO,gen_random_uuid()
+public,voyage_log,yacht_id,uuid,NO,null
+public,voyage_log,voyage_name,text,YES,null
+public,voyage_log,voyage_type,text,YES,null
+public,voyage_log,departure_port,text,YES,null
+public,voyage_log,departure_port_node_id,uuid,YES,null
+public,voyage_log,arrival_port,text,YES,null
+public,voyage_log,arrival_port_node_id,uuid,YES,null
+public,voyage_log,departure_time,timestamp with time zone,YES,null
+public,voyage_log,arrival_time,timestamp with time zone,YES,null
+public,voyage_log,distance_nm,numeric,YES,null
+public,voyage_log,fuel_consumed_liters,numeric,YES,null
+public,voyage_log,properties,jsonb,YES,'{}'::jsonb
+public,voyage_log,created_at,timestamp with time zone,NO,now()
+public,work_order_aliases,id,uuid,NO,gen_random_uuid()
+public,work_order_aliases,yacht_id,uuid,NO,null
+public,work_order_aliases,work_order_id,uuid,YES,null
+public,work_order_aliases,alias,text,NO,null
+public,work_order_aliases,alias_type,text,YES,'manual'::text
+public,work_order_aliases,confidence,double precision,YES,1.0
+public,work_order_aliases,created_at,timestamp with time zone,YES,now()
+public,work_order_history,id,uuid,NO,gen_random_uuid()
+public,work_order_history,yacht_id,uuid,NO,null
+public,work_order_history,work_order_id,uuid,NO,null
+public,work_order_history,equipment_id,uuid,YES,null
+public,work_order_history,completed_by,uuid,YES,null
+public,work_order_history,completed_at,timestamp with time zone,YES,null
+public,work_order_history,notes,text,YES,null
+public,work_order_history,hours_logged,integer,YES,null
+public,work_order_history,status_on_completion,text,YES,null
+public,work_order_history,parts_used,jsonb,YES,'[]'::jsonb
+public,work_order_history,documents_used,jsonb,YES,'[]'::jsonb
+public,work_order_history,faults_related,jsonb,YES,'[]'::jsonb
+public,work_order_history,metadata,jsonb,YES,'{}'::jsonb
+public,work_order_history,created_at,timestamp with time zone,NO,now()
+public,work_orders,id,uuid,NO,gen_random_uuid()
+public,work_orders,yacht_id,uuid,NO,null
+public,work_orders,equipment_id,uuid,YES,null
+public,work_orders,title,text,NO,null
+public,work_orders,description,text,YES,null
+public,work_orders,type,USER-DEFINED,NO,'scheduled'::work_order_type
+public,work_orders,priority,USER-DEFINED,NO,'routine'::work_order_priority
+public,work_orders,status,USER-DEFINED,NO,'planned'::work_order_status
+public,work_orders,due_date,date,YES,null
+public,work_orders,due_hours,integer,YES,null
+public,work_orders,last_completed_date,date,YES,null
+public,work_orders,last_completed_hours,integer,YES,null
+public,work_orders,frequency,jsonb,YES,null
+public,work_orders,created_by,uuid,NO,null
+public,work_orders,updated_by,uuid,YES,null
+public,work_orders,metadata,jsonb,YES,'{}'::jsonb
+public,work_orders,created_at,timestamp with time zone,NO,now()
+public,work_orders,updated_at,timestamp with time zone,NO,now()
+public,yachts,id,uuid,NO,gen_random_uuid()
+public,yachts,name,text,NO,null
+public,yachts,imo,text,YES,null
+public,yachts,mmsi,text,YES,null
+public,yachts,flag_state,text,YES,null
+public,yachts,length_m,numeric,YES,null
+public,yachts,owner_ref,text,YES,null
+public,yachts,yacht_secret_hash,text,NO,null
+public,yachts,nas_root_path,text,YES,null
+public,yachts,status,text,YES,'active'::text
+public,yachts,metadata,jsonb,YES,'{}'::jsonb
+public,yachts,created_at,timestamp with time zone,NO,now()
+public,yachts,updated_at,timestamp with time zone,NO,now()
+realtime,messages,topic,text,NO,null
+realtime,messages,extension,text,NO,null
+realtime,messages,payload,jsonb,YES,null
+realtime,messages,event,text,YES,null
+realtime,messages,private,boolean,YES,false
+realtime,messages,updated_at,timestamp without time zone,NO,now()
+realtime,messages,inserted_at,timestamp without time zone,NO,now()
+realtime,messages,id,uuid,NO,gen_random_uuid()
+realtime,schema_migrations,version,bigint,NO,null
+realtime,schema_migrations,inserted_at,timestamp without time zone,YES,null
+realtime,subscription,id,bigint,NO,null
+realtime,subscription,subscription_id,uuid,NO,null
+realtime,subscription,entity,regclass,NO,null
+realtime,subscription,filters,ARRAY,NO,'{}'::realtime.user_defined_filter[]
+realtime,subscription,claims,jsonb,NO,null
+realtime,subscription,claims_role,regrole,NO,null
+realtime,subscription,created_at,timestamp without time zone,NO,"timezone('utc'::text, now())"
+storage,buckets,id,text,NO,null
+storage,buckets,name,text,NO,null
+storage,buckets,owner,uuid,YES,null
+storage,buckets,created_at,timestamp with time zone,YES,now()
+storage,buckets,updated_at,timestamp with time zone,YES,now()
+storage,buckets,public,boolean,YES,false
+storage,buckets,avif_autodetection,boolean,YES,false
+storage,buckets,file_size_limit,bigint,YES,null
+storage,buckets,allowed_mime_types,ARRAY,YES,null
+storage,buckets,owner_id,text,YES,null
+storage,buckets,type,USER-DEFINED,NO,'STANDARD'::storage.buckettype
+storage,buckets_analytics,name,text,NO,null
+storage,buckets_analytics,type,USER-DEFINED,NO,'ANALYTICS'::storage.buckettype
+storage,buckets_analytics,format,text,NO,'ICEBERG'::text
+storage,buckets_analytics,created_at,timestamp with time zone,NO,now()
+storage,buckets_analytics,updated_at,timestamp with time zone,NO,now()
+storage,buckets_analytics,id,uuid,NO,gen_random_uuid()
+storage,buckets_analytics,deleted_at,timestamp with time zone,YES,null
+storage,buckets_vectors,id,text,NO,null
+storage,buckets_vectors,type,USER-DEFINED,NO,'VECTOR'::storage.buckettype
+storage,buckets_vectors,created_at,timestamp with time zone,NO,now()
+storage,buckets_vectors,updated_at,timestamp with time zone,NO,now()
+storage,migrations,id,integer,NO,null
+storage,migrations,name,character varying,NO,null
+storage,migrations,hash,character varying,NO,null
+storage,migrations,executed_at,timestamp without time zone,YES,CURRENT_TIMESTAMP
+storage,objects,id,uuid,NO,gen_random_uuid()
+storage,objects,bucket_id,text,YES,null
+storage,objects,name,text,YES,null
+storage,objects,owner,uuid,YES,null
+storage,objects,created_at,timestamp with time zone,YES,now()
+storage,objects,updated_at,timestamp with time zone,YES,now()
+storage,objects,last_accessed_at,timestamp with time zone,YES,now()
+storage,objects,metadata,jsonb,YES,null
+storage,objects,path_tokens,ARRAY,YES,null
+storage,objects,version,text,YES,null
+storage,objects,owner_id,text,YES,null
+storage,objects,user_metadata,jsonb,YES,null
+storage,objects,level,integer,YES,null
+storage,prefixes,bucket_id,text,NO,null
+storage,prefixes,name,text,NO,null
+storage,prefixes,level,integer,NO,null
+storage,prefixes,created_at,timestamp with time zone,YES,now()
+storage,prefixes,updated_at,timestamp with time zone,YES,now()
+storage,s3_multipart_uploads,id,text,NO,null
+storage,s3_multipart_uploads,in_progress_size,bigint,NO,0
+storage,s3_multipart_uploads,upload_signature,text,NO,null
+storage,s3_multipart_uploads,bucket_id,text,NO,null
+storage,s3_multipart_uploads,key,text,NO,null
+storage,s3_multipart_uploads,version,text,NO,null
+storage,s3_multipart_uploads,owner_id,text,YES,null
+storage,s3_multipart_uploads,created_at,timestamp with time zone,NO,now()
+storage,s3_multipart_uploads,user_metadata,jsonb,YES,null
+storage,s3_multipart_uploads_parts,id,uuid,NO,gen_random_uuid()
+storage,s3_multipart_uploads_parts,upload_id,text,NO,null
+storage,s3_multipart_uploads_parts,size,bigint,NO,0
+storage,s3_multipart_uploads_parts,part_number,integer,NO,null
+storage,s3_multipart_uploads_parts,bucket_id,text,NO,null
+storage,s3_multipart_uploads_parts,key,text,NO,null
+storage,s3_multipart_uploads_parts,etag,text,NO,null
+storage,s3_multipart_uploads_parts,owner_id,text,YES,null
+storage,s3_multipart_uploads_parts,version,text,NO,null
+storage,s3_multipart_uploads_parts,created_at,timestamp with time zone,NO,now()
+storage,vector_indexes,id,text,NO,gen_random_uuid()
+storage,vector_indexes,name,text,NO,null
+storage,vector_indexes,bucket_id,text,NO,null
+storage,vector_indexes,data_type,text,NO,null
+storage,vector_indexes,dimension,integer,NO,null
+storage,vector_indexes,distance_metric,text,NO,null
+storage,vector_indexes,metadata_configuration,jsonb,YES,null
+storage,vector_indexes,created_at,timestamp with time zone,NO,now()
+storage,vector_indexes,updated_at,timestamp with time zone,NO,now()
+supabase_migrations,schema_migrations,version,text,NO,null
+supabase_migrations,schema_migrations,statements,ARRAY,YES,null
+supabase_migrations,schema_migrations,name,text,YES,null
+supabase_migrations,seed_files,path,text,NO,null
+supabase_migrations,seed_files,hash,text,NO,null
+vault,decrypted_secrets,id,uuid,YES,null
+vault,decrypted_secrets,name,text,YES,null
+vault,decrypted_secrets,description,text,YES,null
+vault,decrypted_secrets,secret,text,YES,null
+vault,decrypted_secrets,decrypted_secret,text,YES,null
+vault,decrypted_secrets,key_id,uuid,YES,null
+vault,decrypted_secrets,nonce,bytea,YES,null
+vault,decrypted_secrets,created_at,timestamp with time zone,YES,null
+vault,decrypted_secrets,updated_at,timestamp with time zone,YES,null
+vault,secrets,id,uuid,NO,gen_random_uuid()
+vault,secrets,name,text,YES,null
+vault,secrets,description,text,NO,''::text
+vault,secrets,secret,text,NO,null
+vault,secrets,key_id,uuid,YES,null
+vault,secrets,nonce,bytea,YES,vault._crypto_aead_det_noncegen()
+vault,secrets,created_at,timestamp with time zone,NO,CURRENT_TIMESTAMP
+vault,secrets,updated_at,timestamp with time zone,NO,CURRENT_TIMESTAMP
