@@ -24,6 +24,10 @@ openai>=1.3.0
 # Pin to specific version to avoid dependency conflicts
 supabase==2.10.0
 
+# spaCy NLP - Named Entity Recognition
+# en_core_web_sm is installed via: python -m spacy download en_core_web_sm
+spacy>=3.7.0
+
 # Testing (optional, for local development)
 pytest==7.4.3
 pytest-asyncio==0.21.1
