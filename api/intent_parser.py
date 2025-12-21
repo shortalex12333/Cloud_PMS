@@ -417,34 +417,53 @@ class IntentParser:
             intent_category = "control_inventory"
 
         # Mutation keywords (work orders, ordering parts)
-        # Note: "order" alone is ambiguous - "work order" is a noun, "order parts" is a verb
-        # Check for clear mutation patterns first
-        # Also exclude past tense "completed" in compliance context (already handled above)
+        # Note: Many words are ambiguous - "order" can be noun or verb, "update" can be info or action
+        # Only trigger mutation for clear command patterns
         elif not any(kw in query_lower for kw in ["hor", "hours of rest", "compliance"]):
+            # "order" as command (not "work order", "in order", "what order")
             is_order_mutation = (
                 query_lower.startswith("order ") or  # "order 2 filters"
-                re.search(r'order \d+', query_lower) or  # "order 5 parts"
-                re.search(r'order (a|some|more|new)', query_lower)  # "order a new filter"
-            )
+                re.search(r'\border \d+', query_lower) or  # "order 5 parts"
+                re.search(r'\border (a|some|more|new)\b', query_lower)  # "order a new filter"
+            ) and not re.search(r'(what|which|in) order', query_lower)  # Exclude "what order", "in order"
+
+            # "update" as command (not "update from", "received update")
+            is_update_mutation = (
+                query_lower.startswith("update ") or
+                re.search(r'^(please |can you |i want to )update', query_lower)
+            ) and "update from" not in query_lower and "received update" not in query_lower
+
+            # "create/add" as command (typically at start or after please/can you)
+            is_create_mutation = re.search(r'^(please |can you |i want to )?(create|add)\b', query_lower)
+
+            # "mark" as command
+            is_mark_mutation = re.search(r'^(please |can you )?mark\b', query_lower)
+
             # "complete" as command (not "completed" in past tense)
             has_complete_command = re.search(r'\bcomplete\b', query_lower) and not re.search(r'\bcompleted\b', query_lower)
-            is_mutation = any(kw in query_lower for kw in ["create", "add", "update", "mark"]) or has_complete_command or is_order_mutation
+
+            is_mutation = is_order_mutation or is_update_mutation or is_create_mutation or is_mark_mutation or has_complete_command
 
             if is_mutation:
                 query_type = "mutation"
                 requires_mutation = True
-                if "work order" in query_lower and any(kw in query_lower for kw in ["create", "open", "new"]):
+                if "work order" in query_lower and is_create_mutation:
                     intent = "create_work_order"
                     intent_category = "do_maintenance"
                 elif is_order_mutation:
-                    # "order X filters/pumps/parts" - ordering parts
                     intent = "order_part"
                     intent_category = "control_inventory"
-                elif has_complete_command or "mark" in query_lower:
+                elif has_complete_command or is_mark_mutation:
                     intent = "mark_work_order_complete"
                     intent_category = "do_maintenance"
-                elif "add" in query_lower:
+                elif is_update_mutation:
+                    intent = "update_hours_of_rest"  # Default update action
+                    intent_category = "comply_audit"
+                elif is_create_mutation and "add" in query_lower:
                     intent = "add_work_order_note"
+                    intent_category = "do_maintenance"
+                elif is_create_mutation:
+                    intent = "create_work_order"
                     intent_category = "do_maintenance"
 
         return ParsedIntent(
