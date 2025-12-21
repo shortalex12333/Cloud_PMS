@@ -366,6 +366,13 @@ def load_diagnostic_patterns() -> Dict[str, List[Tuple[re.Pattern, str, str, str
         if not regex_str:
             continue
 
+        # CRITICAL FIX: Add word boundaries to prevent substring false positives
+        # e.g., "vent" matching inside "inVENTory"
+        if not regex_str.startswith(r'\b') and not regex_str.startswith('\\b'):
+            regex_str = r'\b' + regex_str
+        if not regex_str.endswith(r'\b') and not regex_str.endswith('\\b'):
+            regex_str = regex_str + r'\b'
+
         try:
             compiled = re.compile(regex_str, re.IGNORECASE)
             patterns[entity_type].append((compiled, domain, subdomain, canonical))
