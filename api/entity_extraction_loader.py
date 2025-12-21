@@ -1206,6 +1206,322 @@ CORE_BRANDS = {
     'mr steam',         # Steam generators
     'thermasol',        # Steam
     'kohler spa',       # Spa products
+
+    # ============= INTERIOR FABRICS/MATERIALS =============
+    'sunbrella',        # Outdoor fabrics
+    'phifertex',        # Mesh fabrics
+    'batyline',         # Sling fabric
+    'silvertex',        # Vinyl
+    'ultraleather',     # Synthetic leather
+    'alcantara',        # Suede-like
+    'majilite',         # Marine vinyl
+    'marine vinyl',     # Generic
+    'stamoid',          # Coated fabric
+    'weblon',           # PVC fabric
+    'serge ferrari',    # Technical textiles
+    'dickson',          # Awning fabrics
+    'marine grade',     # Generic qualifier
+    'stainmaster',      # Carpet
+    'karastan',         # Rugs
+    'stark carpet',     # Luxury carpet
+    'tai ping',         # Luxury carpet
+    'jacaranda',        # Natural carpets
+
+    # ============= WINDOW TREATMENTS =============
+    'sunbrella shade',  # Shade fabric
+    'phifer',           # Screen fabrics
+    'marine shade',     # Generic
+    'strataglass',      # Clear vinyl
+    'eisenglass',       # Clear vinyl
+    'o'sea',            # Clear enclosures
+    'oseaglass',        # Clear vinyl
+    'crystal clear',    # Vinyl type
+    'press polished',   # Vinyl finish
+
+    # ============= MATTRESS/BEDDING =============
+    'tempur',           # Memory foam
+    'tempurpedic',      # Mattress
+    'sealy',            # Mattress
+    'simmons',          # Mattress
+    'serta',            # Mattress
+    'sleep number',     # Adjustable
+    'frette',           # Luxury linens
+    'sferra',           # Luxury linens
+    'matouk',           # Linens
+    'pratesi',          # Italian linens
+    'yves delorme',     # French linens
+    'peacock alley',    # Linens
+    'brooklinen',       # Bedding
+
+    # ============= MEDICAL/FIRST AID =============
+    'ocean medical',    # Marine first aid
+    'marines', # First aid
+    'thomas fetterman', # Medical kits
+    'medical sea pak',  # Marine medical
+    'adventure medical',# First aid kits
+    'first aid only',   # First aid
+    'st john ambulance',# First aid training
+    'stryker',          # Medical equipment
+    'philips aed',      # Defibrillators
+    'defibtech',        # AEDs
+    'med pak',          # Medical kits
+    'emergency oxygen', # O2 equipment
+    'dan',              # Divers Alert Network
+    'remote medical',   # Telemedicine
+    'medaire',          # Yacht medical
+    'msos',             # Maritime medical
+    'yacht aid',        # Yacht first aid
+
+    # ============= CREW UNIFORMS/WEAR =============
+    'crew clothing',    # Generic
+    'henri lloyd',      # Sailing wear
+    'musto',            # Marine clothing
+    'gill',             # Sailing gear
+    'helly hansen',     # Marine clothing
+    'zhik',             # Sailing apparel
+    'slam',             # Italian sailing
+    'north sails',      # Sailing brand
+    'dubarry',          # Deck shoes
+    'sperry',           # Deck shoes
+    'sebago',           # Deck shoes
+    'xtratuf',          # Deck boots
+    'grundens',         # Foul weather
+    'guy cotten',       # French oilskins
+    'stormline',        # Foul weather
+    'douglas gill',     # Foul weather
+    'ocean safety suit',# Survival suits
+
+    # ============= TOOLS/WORKSHOP =============
+    'snap-on',          # Professional tools
+    'snap on',          # Snap-On (alt)
+    'mac tools',        # Professional tools
+    'matco',            # Professional tools
+    'stanley',          # Hand tools
+    'dewalt',           # Power tools
+    'milwaukee',        # Power tools
+    'makita',           # Power tools
+    'festool',          # Premium power tools
+    'bosch tools',      # Power tools
+    'hilti',            # Professional tools
+    'dremel',           # Rotary tools
+    'fluke',            # Test equipment
+    'megger',           # Insulation testers
+    'multimeter',       # Generic
+    'oscilloscope',     # Test equipment
+    'clamp meter',      # Electrical test
+    'infrared thermometer', # Temperature
+    'flir',             # Thermal imaging
+    'testo',            # Test instruments
+    'amprobe',          # Meters
+    'klein tools',      # Electrical tools
+    'knipex',           # German pliers
+    'wiha',             # German tools
+    'wera',             # German tools
+    'hazet',            # German tools
+    'stahlwille',       # German tools
+    'gedore',           # German tools
+    'bahco',            # Swedish tools
+    'facom',            # French tools
+
+    # ============= CLEANING PRODUCTS =============
+    'starbrite',        # Marine cleaning
+    'star brite',       # Star Brite (alt)
+    'meguiars',         # Marine polish
+    'collinite',        # Marine wax
+    'shurhold',         # Cleaning tools
+    'swobbit',          # Cleaning tools
+    'imar',             # Vinyl cleaner
+    'aurora',           # Teak cleaner
+    'te-ka',            # Teak treatment
+    'semco',            # Teak sealer
+    'deks olje',        # Teak oil
+    'cetol marine',     # Wood finish
+    'boat wash',        # Generic
+    'hull cleaner',     # Generic
+    'on & off',         # Hull cleaner
+    'mary kate',        # Marine chemicals
+    'orpine',           # Cleaning
+    'sudbury yacht',    # Marine chemicals
+    'bio-kleen',        # Eco cleaning
+    'simple green',     # Cleaning
+    '303 protectant',   # UV protection
+    '303 aerospace',    # Protectant
+
+    # ============= LUBRICANTS/FLUIDS =============
+    'shell marine',     # Marine lubricants
+    'mobil delvac',     # Heavy duty oil
+    'chevron delo',     # Diesel oil
+    'castrol',          # Lubricants
+    'total lubmarine',  # Marine oils
+    'gulf',             # Marine oils
+    'pennzoil',         # Oil
+    'valvoline',        # Oil
+    'quicksilver',      # Mercury oil
+    'yamalube',         # Yamaha oil
+    'evinrude xd',      # Outboard oil
+    'lucas oil',        # Additives
+    'seafoam',          # Fuel treatment
+    'stabil',           # Fuel stabilizer
+    'startron',         # Fuel treatment
+    'biobor',           # Diesel biocide
+    'power service',    # Diesel treatment
+    'pri-g',            # Fuel treatment
+    'wd-40',            # Lubricant
+    'lanox',            # Anti-corrosion
+    'corrosion x',      # Corrosion inhibitor
+    'boeshield',        # Corrosion protection
+    'crc',              # Lubricants
+    'lps',              # Lubricants
+    'lubriplate',       # Grease
+    'super lube',       # Lubricant
+    'marine grease',    # Generic
+
+    # ============= ANODES/CORROSION =============
+    'zinc anode',       # Corrosion protection
+    'aluminum anode',   # Corrosion protection
+    'magnesium anode',  # Freshwater anode
+    'zincs',            # Generic
+    'martyr',           # Anode brand
+    'camp',             # Anode brand
+    'performance metals',# Anodes
+    'sea shield',       # Anodes
+    'tecnoseal',        # Anodes
+    'mercruiser anode', # OEM anodes
+    'volvo anode',      # OEM anodes
+    'iccp',             # Impressed current
+    'mgps',             # Anti-fouling
+
+    # ============= DOCUMENTATION/SOFTWARE =============
+    'autocad',          # CAD software
+    'rhinoceros',       # 3D modeling
+    'solidworks',       # CAD
+    'napa',             # Ship design
+    'maxsurf',          # Hull design
+    'shipconstructor',  # Ship design
+    'aveva',            # Marine software
+    'cadmatic',         # Ship design
+    'ssi',              # Shipbuilding software
+    'tribon',           # Ship design
+
+    # ============= SHIPPING/LOGISTICS =============
+    'dhl',              # Courier
+    'fedex',            # Courier
+    'ups',              # Courier
+    'loomis',           # Secure shipping
+    'peters shipbrokers',# Ship parts
+    'ism parts',        # Marine parts
+    'ship spares',      # Parts supplier
+    'impa',             # Marine purchasing
+    'issa',             # Ship suppliers assoc
+    'shipserv',         # Marine marketplace
+
+    # ============= CHARTER/BROKERAGE =============
+    'charter guest',    # Charter terminology
+    'apa',              # Advance Provisioning Allowance
+    'cipa',             # Charter Insurance
+    'myba',             # Med Yacht Brokers Assn
+    'cyba',             # Charter Yacht Brokers Assn
+    'ecpy',             # Charter standards
+    'igy',              # Island Global Yachting (marinas)
+    'camper & nicholsons', # Charter/brokerage
+    'berthon',          # Yacht sales
+    'ancasta',          # Yacht sales
+    'williams marine',  # Yacht sales
+
+    # ============= CREW TRAINING/CERTIFICATION =============
+    'stcw',             # Maritime training
+    'uscg license',     # US license
+    'mca certificate',  # UK certification
+    'rya',              # Royal Yachting Association
+    'yachtmaster',      # RYA qualification
+    'eng1',             # UK medical
+    'flag state',       # Registration
+    'pya',              # Professional Yachts Assn
+    'acrew',            # Crew training
+    'uksa',             # UK Sailing Academy
+    'warsash',          # Maritime training
+    'mpi training',     # Training provider
+
+    # ============= REFIT YARDS/SHIPYARDS =============
+    'mb92',             # Barcelona refit
+    'compositeworks',   # La Ciotat
+    'la ciotat',        # Refit yard location
+    'monaco marine',    # Refit yard
+    'stp',              # Palma shipyard
+    'pinmar',           # Palma paint
+    'rolling stock',    # Refit services
+    'pure superyacht',  # Refit services
+    'huisfit',          # Refit yard
+    'balk shipyard',    # Dutch refit
+    'pendennis',        # UK refit
+    'devonport',        # UK yard
+    'lloyd werft',      # German yard
+    'german dry dock',  # German refit
+    'gulf craft',       # UAE builder
+    'oceania marine',   # NZ yard
+    'auckland marine',  # NZ yard
+    'rivergate',        # Brisbane yard
+    'lauderdale marine',# Florida yard
+    'derecktor',        # US yard
+    'rybovich',         # US yard
+    'safe harbor',      # Marina group
+
+    # ============= INSURANCE =============
+    'pantaenius',       # Yacht insurance
+    'gowrie',           # Marine insurance
+    'lloyd open form',  # Salvage
+    'lof',              # Lloyd's Open Form
+    'general average',  # Maritime law
+    'p&i',              # Protection & Indemnity
+    'h&m',              # Hull & Machinery
+    'loss of hire',     # Insurance type
+    'mou',              # Memorandum of Understanding
+
+    # ============= COMMON LOCATIONS/PORTS =============
+    'port hercules',    # Monaco
+    'monaco',           # Destination
+    'antibes',          # French Riviera
+    'port vauban',      # Antibes marina
+    'fontvieille',      # Monaco marina
+    'port canto',       # Cannes
+    'palma',            # Mallorca
+    'ibiza',            # Balearics
+    'marina di stabia', # Italy
+    'porto cervo',      # Sardinia
+    'genoa',            # Italy
+    'la spezia',        # Italy
+    'naples',           # Italy
+    'capri',            # Italy
+    'aeolian',          # Islands
+    'sicily',           # Italy
+    'malta',            # Mediterranean
+    'croatia',          # Cruising ground
+    'montenegro',       # Cruising ground
+    'greece',           # Cruising ground
+    'turkey',           # Cruising ground
+    'caribbean',        # Cruising ground
+    'bahamas',          # Destination
+    'virgin islands',   # Destination
+    'st barths',        # St Barthélemy
+    'st martin',        # Destination
+    'antigua',          # Destination
+    'newport',          # Rhode Island
+    'fort lauderdale',  # Florida
+    'palm beach',       # Florida
+    'miami',            # Florida
+    'key west',         # Florida
+    'caribbean',        # Region
+    'maldives',         # Destination
+    'seychelles',       # Destination
+    'thailand',         # Destination
+    'phuket',           # Thailand
+    'bali',             # Indonesia
+    'fiji',             # South Pacific
+    'tahiti',           # French Polynesia
+    'new zealand',      # Cruising ground
+    'australia',        # Cruising ground
+    'sydney',           # Australia
+    'auckland',         # New Zealand
 }
 
 # CORE EQUIPMENT - Essential equipment types
