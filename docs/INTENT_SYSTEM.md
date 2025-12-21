@@ -180,28 +180,50 @@ assign_work_order, edit_work_order_details
 
 ---
 
+## Entity Weights
+
+Weights for search boosting (1.0-5.0 scale):
+
+| Type | Weight | Use |
+|------|--------|-----|
+| `fault_code` | 4.5 | Highly specific diagnostic code |
+| `symptom` | 4.0 | Key diagnostic signal |
+| `model` | 4.0 | Specific identifier |
+| `measurement` | 3.8 | Concrete value |
+| `brand` | 3.5 | Known manufacturer |
+| `part` | 3.0 | Specific component |
+| `equipment` | 2.8 | Equipment type |
+| `action` | 2.5 | Verb/intent |
+| `system` | 2.3 | Broad category |
+
+**Canonical weight** = 0.8x of value weight (for fallback search on canonical form)
+
+---
+
 ## Output Structure
 
 ```json
 {
-  "query": "create work order for stabilizer fault",
+  "query": "MTU 16V4000 engine overheating",
   "intent": {
-    "action": "create_work_order",
-    "category": "do_maintenance",
-    "query_type": "mutation",
+    "action": "find_document",
+    "category": "search_documents",
+    "query_type": "search",
     "confidence": 0.5,
-    "requires_mutation": true
+    "requires_mutation": false
   },
   "entities": [
-    {"type": "equipment", "value": "stabilizer", "canonical": "STABILIZER"}
+    {"type": "brand", "value": "MTU", "canonical": "MTU", "weight": 3.5, "canonical_weight": 2.8},
+    {"type": "model", "value": "16V4000", "canonical": "16V4000", "weight": 4.0, "canonical_weight": 3.2},
+    {"type": "symptom", "value": "engine overheating", "canonical": "ENGINE_OVERHEATING", "weight": 4.5, "canonical_weight": 3.6}
   ],
-  "unknowns": ["create", "work", "order"],
+  "unknowns": [],
   "routing": {
-    "handler": "n8n",
-    "webhook": "/webhook/create_work_order",
+    "handler": "render",
+    "endpoint": "/api/search",
     "method": "POST"
   },
-  "processing_time_ms": 19.15
+  "processing_time_ms": 2.5
 }
 ```
 
