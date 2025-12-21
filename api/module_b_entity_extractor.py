@@ -171,22 +171,24 @@ class MaritimeEntityExtractor:
         self._diagnostic_patterns = None
         self._patterns_loaded = False
 
-        # Fault codes - keep original patterns (these are good)
+        # Fault codes - with word boundaries to prevent false positives
+        # e.g., "E-15" should match, but "temperature 85" should NOT match as "e 85"
         self.fault_code_patterns = [
             # J1939 SPN/FMI
-            (r"SPN\s*(\d+)(?:\s*FMI\s*(\d+))?", "fault_code", 0.98),
+            (r"\bSPN\s*(\d+)(?:\s*FMI\s*(\d+))?\b", "fault_code", 0.98),
             # Generic E-codes (with optional hyphen: E-15, E047, E-047)
-            (r"E[-\s]?\d{2,4}", "fault_code", 0.95),
+            # MUST have word boundary to avoid matching "e 85" in "temperature 85"
+            (r"\bE[-]?\d{2,4}\b", "fault_code", 0.95),
             # OBD-II codes
-            (r"[PCBU]\d{4}", "fault_code", 0.95),
+            (r"\b[PCBU]\d{4}\b", "fault_code", 0.95),
             # MTU codes
-            (r"MTU\s*\d{3,4}", "fault_code", 0.93),
+            (r"\bMTU\s*\d{3,4}\b", "fault_code", 0.93),
             # CAT/Caterpillar codes
-            (r"(?:CAT|Caterpillar)\s*\d{3,4}", "fault_code", 0.92),
+            (r"\b(?:CAT|Caterpillar)\s*\d{3,4}\b", "fault_code", 0.92),
             # Volvo codes
-            (r"MID\s*\d+\s*PID\s*\d+", "fault_code", 0.90),
+            (r"\bMID\s*\d+\s*PID\s*\d+\b", "fault_code", 0.90),
             # Alarm codes
-            (r"(?:alarm|error|fault)\s*(?:code)?\s*[A-Z]?\d{2,5}", "fault_code", 0.88),
+            (r"\b(?:alarm|error|fault)\s*(?:code)?\s*[A-Z]?\d{2,5}\b", "fault_code", 0.88),
         ]
 
         # Model number patterns
@@ -341,6 +343,10 @@ class MaritimeEntityExtractor:
 
             # Time-related - not diagnostic
             'now', 'then', 'soon', 'late', 'last', 'next', 'ago', 'yet',
+
+            # Parts that have conflicting diagnostic patterns
+            # These should be matched as parts, not diagnostic readings
+            'bearing', 'shaft', 'seal', 'gasket', 'ring', 'liner', 'piston',
         }
 
         if self._diagnostic_patterns:
