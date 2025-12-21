@@ -1,10 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables - to be set in Vercel
+// Environment variables - must be set in Vercel
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Create Supabase client (placeholder - not connected yet)
+// Validate env vars on load (client-side only)
+if (typeof window !== 'undefined') {
+  if (!supabaseUrl) {
+    console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_URL is not set!');
+  }
+  if (!supabaseAnonKey) {
+    console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is not set!');
+  }
+  if (supabaseUrl && supabaseAnonKey) {
+    console.log('[Supabase] ✅ Client initialized:', supabaseUrl.substring(0, 30) + '...');
+  }
+}
+
+// Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
