@@ -79,14 +79,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log(`[AuthContext] Trying table: ${tableName}`);
 
         try {
-          // 3 second timeout per table query
+          // 1.5 second timeout per table query (fast fail)
           const queryPromise = supabase
             .from(tableName)
             .select('*')
             .eq('email', authUser.email)
             .maybeSingle();
 
-          const { data: userData, error: userError } = await withTimeout(queryPromise, 3000, tableName);
+          const { data: userData, error: userError } = await withTimeout(queryPromise, 1500, tableName);
 
           if (userError) {
             // 404 = table doesn't exist or no API access
@@ -151,13 +151,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] Initializing auth state...');
 
-    // Increased timeout - 8 seconds to handle slow network
-    const sessionTimeout = 8000;
+    // 5 second timeout - profile lookup is now faster with 1.5s per table
+    const sessionTimeout = 5000;
     let didTimeout = false;
 
     const timeoutId = setTimeout(() => {
       didTimeout = true;
-      console.warn('[AuthContext] ⚠️ getSession timeout after 8s - Supabase may be slow');
+      console.warn('[AuthContext] ⚠️ getSession timeout after 5s - proceeding with fallback');
       setLoading(false); // Allow UI to render regardless
     }, sessionTimeout);
 
