@@ -195,10 +195,11 @@ async function* streamSearch(
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  console.log('[useCelesteSearch] 📤 Sending request to:', `${API_URL}/search`);
+  // n8n webhook expects POST directly to the webhook URL (no /search suffix)
+  console.log('[useCelesteSearch] 📤 Sending request to:', API_URL);
   console.log('[useCelesteSearch] 📤 Payload:', payload);
 
-  const response = await fetch(`${API_URL}/search`, {
+  const response = await fetch(API_URL, {
     method: 'POST',
     headers,
     body: JSON.stringify({ ...payload, stream: true }),
@@ -286,7 +287,7 @@ async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchRe
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  const response = await fetch(`${API_URL}/search`, {
+  const response = await fetch(API_URL, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
