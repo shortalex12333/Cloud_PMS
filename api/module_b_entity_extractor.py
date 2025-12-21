@@ -122,6 +122,7 @@ class EntityDetection:
             'model': 4.0,
             'measurement': 3.8,
             'brand': 3.5,
+            'document_type': 3.2,  # Manual, schematic, parts list, etc.
             'part': 3.0,
             'equipment': 2.8,
             'action': 2.5,
@@ -296,10 +297,50 @@ class MaritimeEntityExtractor:
         # =====================================================================
         # 1. DIAGNOSTIC PATTERNS (Groups 11-16) - Symptoms, faults, actions
         # =====================================================================
-        # Blacklist short patterns that cause false positives
+        # =================================================================
+        # DIAGNOSTIC_BLACKLIST: Terms that cause false positives
+        # =================================================================
+        # These are blocked from diagnostic pattern matching because they:
+        # 1. Are too short (≤4 chars) and match common words
+        # 2. Are context-dependent (e.g., "manual" = document vs fault mode)
+        # 3. Are common English words with non-maritime meanings
+        # =================================================================
         DIAGNOSTIC_BLACKLIST = {
-            'co', 'run', 'ran', 'set', 'get', 'put', 'add', 'end', 'use',
-            'low', 'off', 'out', 'hot', 'old', 'new', 'bad', 'oil', 'air',
+            # Very short terms (≤3 chars) - almost always false positives
+            'co', 'hz', 'kw', 'pf', 'pm', 'up', 'if', 'is', 'at', 'in', 'on',
+            'to', 'as', 'am', 'an', 'by', 'do', 'go', 'hi', 'id', 'it', 'me',
+            'my', 'no', 'of', 'oh', 'ok', 'or', 'so', 'we', 'be',
+
+            # Short sensor/measurement terms (≤4 chars) - need explicit units
+            'amp', 'aqi', 'cog', 'egt', 'log', 'mho', 'nox', 'odd', 'ohm',
+            'rpm', 'sog', 'thd', 'vac', 'vdc', 'yaw', 'amps', 'flow',
+
+            # Common verbs - block as diagnostic, may still match as actions
+            'run', 'ran', 'set', 'get', 'put', 'add', 'end', 'use', 'try',
+            'see', 'saw', 'let', 'ask', 'say', 'got', 'has', 'had', 'was',
+
+            # Common adjectives - too generic without context
+            'low', 'off', 'out', 'hot', 'old', 'new', 'bad', 'big', 'red',
+            'wet', 'dry', 'raw', 'dim', 'dull',
+
+            # Common nouns that cause false positives
+            'oil', 'air', 'gas', 'sea', 'sun', 'ice', 'fog', 'mud', 'tar',
+            'box', 'can', 'cap', 'cup', 'lid', 'pan', 'pin', 'rod', 'nut',
+            'bar', 'bit', 'bug', 'gap', 'hub', 'jam', 'jig', 'key', 'kit',
+
+            # Context-sensitive terms - need special handling
+            # "manual" = documentation (when after brand/model) vs MANUAL_MODE fault
+            # "filter" = equipment (oil filter) vs action (filter results)
+            # "check" = action vs checklist
+            'manual', 'filter', 'check', 'test', 'start', 'stop', 'open',
+            'close', 'normal', 'mode', 'auto', 'reset', 'clear', 'load',
+
+            # Directional/positional - usually not diagnostic
+            'left', 'right', 'back', 'front', 'top', 'bottom', 'side',
+            'up', 'down', 'in', 'out', 'over', 'under',
+
+            # Time-related - not diagnostic
+            'now', 'then', 'soon', 'late', 'last', 'next', 'ago', 'yet',
         }
 
         if self._diagnostic_patterns:
@@ -405,6 +446,80 @@ class MaritimeEntityExtractor:
                         span=(idx, idx + len(sys_type)),
                         metadata={"source": "gazetteer", "type": "system_type"}
                     ))
+
+        # =====================================================================
+        # 2.5. CONTEXT-AWARE EXTRACTION (blacklisted terms with valid contexts)
+        # =====================================================================
+        # These terms were blacklisted from diagnostic patterns but are valid
+        # when they appear in specific contexts:
+        #
+        # "manual" → document_type:MANUAL when it follows a brand/model
+        #            Example: "MTU 16V4000 manual" → brand, model, document_type
+        #
+        # "filter" → equipment when preceded by oil/fuel/air/water
+        #            Example: "oil filter" → equipment:OIL_FILTER
+        #
+        # "check" → action when not part of "checklist"
+        # =====================================================================
+
+        # 2.5a. "manual" as document_type (not MANUAL_MODE fault)
+        manual_pattern = re.compile(r'\bmanual\b', re.IGNORECASE)
+        for match in manual_pattern.finditer(query):
+            # Check if preceded by brand, model, or equipment reference
+            prefix = query_lower[:match.start()].strip()
+            # If there's a word before "manual", treat it as document request
+            if prefix and not prefix.endswith(('in', 'on', 'the', 'a', 'to')):
+                entities.append(EntityDetection(
+                    type="document_type",
+                    value=match.group(0),
+                    canonical="MANUAL",
+                    confidence=0.88,
+                    span=(match.start(), match.end()),
+                    metadata={"source": "context_aware", "context": "document_request"}
+                ))
+
+        # 2.5b. "filter" as equipment when with qualifier
+        filter_contexts = [
+            (r'\b(oil\s+filter)\b', 'OIL_FILTER'),
+            (r'\b(fuel\s+filter)\b', 'FUEL_FILTER'),
+            (r'\b(air\s+filter)\b', 'AIR_FILTER'),
+            (r'\b(water\s+filter)\b', 'WATER_FILTER'),
+            (r'\b(hydraulic\s+filter)\b', 'HYDRAULIC_FILTER'),
+            (r'\b(lube\s+(?:oil\s+)?filter)\b', 'LUBE_FILTER'),
+            (r'\b(strainer|sea\s*strainer)\b', 'STRAINER'),
+        ]
+        for pattern_str, canonical in filter_contexts:
+            pattern = re.compile(pattern_str, re.IGNORECASE)
+            for match in pattern.finditer(query):
+                entities.append(EntityDetection(
+                    type="equipment",
+                    value=match.group(0),
+                    canonical=canonical,
+                    confidence=0.92,
+                    span=(match.start(), match.end()),
+                    metadata={"source": "context_aware", "context": "filter_type"}
+                ))
+
+        # 2.5c. Location patterns for inventory (e.g., "box 3d", "locker A2")
+        location_patterns = [
+            (r'\bbox\s+[a-z0-9]+\b', 'BOX'),
+            (r'\blocker\s+[a-z0-9]+\b', 'LOCKER'),
+            (r'\bstorage\s+[a-z0-9]+\b', 'STORAGE'),
+            (r'\bbin\s+[a-z0-9]+\b', 'BIN'),
+            (r'\bdrawer\s+[a-z0-9]+\b', 'DRAWER'),
+            (r'\bshelf\s+[a-z0-9]+\b', 'SHELF'),
+        ]
+        for pattern_str, loc_type in location_patterns:
+            pattern = re.compile(pattern_str, re.IGNORECASE)
+            for match in pattern.finditer(query):
+                entities.append(EntityDetection(
+                    type="location",
+                    value=match.group(0),
+                    canonical=match.group(0).upper().replace(" ", "_"),
+                    confidence=0.90,
+                    span=(match.start(), match.end()),
+                    metadata={"source": "context_aware", "location_type": loc_type}
+                ))
 
         # =====================================================================
         # 3. FAULT CODES - Specialized patterns
