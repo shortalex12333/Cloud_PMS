@@ -605,6 +605,261 @@ CORE_BRANDS = {
     'comap',            # Czech genset controllers
     'deep sea',         # DSE controllers
     'woodward',         # Engine controls
+
+    # =============================================================================
+    # MODERN YACHT SYSTEMS - IT/AV/SMART (NOT JUST ENGINE ROOM!)
+    # =============================================================================
+
+    # ============= IT/NETWORK INFRASTRUCTURE =============
+    'cisco',            # Enterprise networking
+    'meraki',           # Cisco cloud-managed
+    'ubiquiti',         # UniFi networking
+    'unifi',            # Ubiquiti brand
+    'netgear',          # Networking
+    'draytek',          # Multi-WAN routers
+    'peplink',          # Cellular bonding/SD-WAN
+    'pepwave',          # Peplink marine
+    'mikrotik',         # Advanced routers
+    'ruckus',           # Enterprise WiFi
+    'aruba',            # HPE WiFi
+    'fortinet',         # Firewalls
+    'sonicwall',        # Firewalls
+    'synology',         # NAS storage
+    'qnap',             # NAS storage
+    'dell',             # Servers/computers
+    'hp',               # Servers/computers
+    'hpe',              # HP Enterprise
+    'lenovo',           # Servers
+    'apple',            # Macs/iPads
+    'microsoft',        # Windows/Surface
+
+    # ============= AV CONTROL SYSTEMS =============
+    'savant',           # Smart yacht
+    'control4',         # Home automation
+    'rti',              # Remote Technologies
+    'urc',              # Universal Remote
+    'elan',             # Home automation
+    'russound',         # Multiroom audio
+    'autonomic',        # Music streaming
+    'snap one',         # AV distribution
+    'just add power',   # AV over IP
+    'atlona',           # AV connectivity
+    'extron',           # Pro AV
+    'kramer',           # AV switching
+    'qsc',              # Pro audio
+    'biamp',            # Audio DSP
+
+    # ============= SPEAKERS/AUDIO =============
+    'bowers wilkins',   # B&W speakers
+    'kef',              # British speakers
+    'sonance',          # Marine speakers
+    'origin acoustics', # Architectural speakers
+    'definitive',       # Speakers
+    'paradigm',         # Speakers
+    'focal',            # French speakers
+    'dynaudio',         # Danish speakers
+    'jbl',              # Pro audio
+    'harman kardon',    # Audio
+    'denon',            # Receivers
+    'marantz',          # Hi-fi
+    'mcintosh',         # High-end audio
+    'naim',             # British hi-fi
+    'devialet',         # French audio
+
+    # ============= VIDEO/DISPLAYS =============
+    'panasonic',        # Displays
+    'barco',            # Projectors
+    'christie',         # Projectors
+    'epson',            # Projectors
+    'screen innovations', # Screens
+    'stewart',          # Screens
+    'kaleidescape',     # Media servers
+    'roku',             # Streaming
+    'apple tv',         # Streaming
+
+    # ============= LIGHTING CONTROL =============
+    'philips hue',      # Smart lighting
+    'loxone',           # Building automation
+    'knx',              # Building automation
+    'dynalite',         # Lighting control
+    'helvar',           # Lighting control
+    'eldoled',          # LED drivers
+    'mean well',        # LED power
+    'osram',            # Lighting
+    'legrand',          # Electrical
+
+    # ============= SHADES/BLINDS =============
+    'hunter douglas',   # Blinds
+    'somfy',            # Shade motors
+    'silent gliss',     # Curtain tracks
+    'mechoshade',       # Shades
+    'qmotion',          # Motorized shades
+    'draper',           # Screens/shades
+
+    # ============= CONNECTIVITY/SATCOM =============
+    'starlink',         # SpaceX internet - CRITICAL!
+    'oneweb',           # LEO satellite
+    'ses',              # Satellite
+    'eutelsat',         # Satellite
+    'marlink',          # Maritime connectivity
+    'speedcast',        # Maritime VSAT
+    'kymeta',           # Flat panel antenna
+    'e3 systems',       # Maritime IT
+    'gtmaritime',       # Maritime IT
+    'navarino',         # Maritime IT
+
+    # ============= BRIDGE/NAVIGATION MODERN =============
+    'sperry marine',    # Navigation
+    'raytheon',         # Navigation
+    'anschutz',         # German navigation
+    'kongsberg',        # Norwegian systems
+    'transas',          # Now Wärtsilä Voyage
+    'kelvin hughes',    # Radar
+    'sam electronics',  # German nav
+    'danelec',          # VDR/ECDIS
+    'consilium',        # Safety systems
+    'böning',           # German monitoring
+    'boning',           # Böning without umlaut
+    'hatteland',        # Maritime displays
+    'zenitel',          # Intercom/PA
+
+    # ============= YACHT MANAGEMENT SYSTEMS =============
+    'palladium',        # Palladium Technologies
+    'idea',             # IDEA yacht systems
+    'besenzoni',        # Italian equipment
+    'opacmare',         # Italian equipment
+    'nautilus',         # Yacht monitoring
+    'cathelco',         # ICCP/MGPS
+
+    # ============= SECURITY/CCTV =============
+    'hikvision',        # CCTV
+    'dahua',            # CCTV
+    'axis',             # Network cameras
+    'hanwha',           # Cameras
+    'milestone',        # VMS software
+    'genetec',          # VMS software
+    'avigilon',         # Security
+    'mobotix',          # German cameras
+    'verkada',          # Cloud cameras
+
+    # ============= ACCESS CONTROL =============
+    'assa abloy',       # Door locks
+    'salto',            # Access control
+    'dormakaba',        # Door systems
+    'schlage',          # Locks
+    'yale',             # Locks
+    'hid',              # Access cards
+    'paxton',           # Access control
+
+    # ============= GALLEY EQUIPMENT =============
+    'miele',            # Premium appliances
+    'gaggenau',         # Luxury appliances
+    'sub-zero',         # Refrigeration
+    'wolf',             # Cooking
+    'la cornue',        # French ranges
+    'thermador',        # Appliances
+    'viking range',     # Cooking (not life rafts)
+    'smeg',             # Italian appliances
+    'aga',              # British ranges
+    'rational',         # Combi ovens
+    'true',             # Commercial refrigeration
+    'hoshizaki',        # Ice machines
+    'scotsman',         # Ice machines
+    'franke',           # Sinks/coffee
+    'miele marine',     # Marine appliances
+
+    # ============= LAUNDRY =============
+    'electrolux marine', # Marine laundry
+    'primus',           # Commercial laundry
+    'speed queen',      # Commercial laundry
+    'ipso',             # Commercial laundry
+
+    # ============= SMART GLASS =============
+    'gauzy',            # Smart glass
+    'halio',            # Electrochromic glass
+    'view glass',       # Smart windows
+    'sage glass',       # Dynamic glass
+    'pilkington',       # Marine glass
+
+    # ============= WATER TOYS/RECREATION =============
+    'seabob',           # Underwater scooter
+    'cayago',           # Seabob maker
+    'sublue',           # Underwater scooter
+    'jetsurf',          # Motorized surfboard
+    'lift foil',        # eFoil
+    'fliteboard',       # eFoil
+    'awake',            # Electric surfboard
+    'radinn',           # Electric surfboard
+    'flyboard',         # Zapata
+    'zapata',           # Flyboard
+    'jobe',             # Watersports
+    'ronix',            # Wakeboards
+    'mastercraft',      # Wakeboard boats
+    'nautique',         # Ski boats
+    'funair',           # Yacht inflatables
+    'aquaglide',        # Inflatables
+    'nautibuoy',        # Floating platforms
+
+    # ============= DIVING =============
+    'bauer',            # Dive compressors
+    'coltri',           # Dive compressors
+    'nuvair',           # Dive compressors
+    'brownie',          # Hookah diving
+    'u-boat worx',      # Submersibles
+    'triton',           # Submersibles
+
+    # ============= MEDICAL =============
+    'zoll',             # Defibrillators
+    'laerdal',          # Medical training
+    'cardiac science',  # AEDs
+    'physio-control',   # Defibrillators
+    'masimo',           # Pulse oximetry
+
+    # ============= CREW COMMUNICATION =============
+    'motorola',         # Radios
+    'hytera',           # Radios
+    'kenwood',          # Radios
+    'david clark',      # Headsets
+    'peltor',           # Hearing protection
+    'eartec',           # Wireless headsets
+
+    # ============= COATINGS =============
+    'akzonobel',        # Parent company
+    'alexseal',         # Yacht paint
+    'ppg',              # Coatings
+    'sikkens',          # Yacht coatings
+
+    # ============= YACHT BUILDERS =============
+    'lurssen',          # German megayachts
+    'feadship',         # Dutch superyachts
+    'benetti',          # Italian yachts
+    'amels',            # Dutch superyachts
+    'oceanco',          # Dutch megayachts
+    'heesen',           # Dutch yachts
+    'sanlorenzo',       # Italian yachts
+    'ferretti',         # Italian group
+    'riva',             # Italian sport
+    'princess',         # British yachts
+    'sunseeker',        # British yachts
+    'azimut',           # Italian yachts
+    'baglietto',        # Italian yachts
+    'crn',              # Ferretti megayachts
+    'westport',         # US yachts
+    'christensen',      # US megayachts
+    'nordhavn',         # US explorer
+    'damen',            # Dutch shipyard
+    'abeking',          # German shipyard
+    'nobiskrug',        # German megayachts
+    'perini navi',      # Italian sailing
+    'royal huisman',    # Dutch sailing
+    'vitters',          # Dutch sailing
+    'swan',             # Nautor's Swan
+    'oyster',           # British sailing
+    'beneteau',         # French yachts
+    'jeanneau',         # French sailing
+    'lagoon',           # Catamarans
+    'fountaine pajot',  # Catamarans
+    'sunreef',          # Polish catamarans
 }
 
 # CORE EQUIPMENT - Essential equipment types
