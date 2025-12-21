@@ -860,6 +860,352 @@ CORE_BRANDS = {
     'lagoon',           # Catamarans
     'fountaine pajot',  # Catamarans
     'sunreef',          # Polish catamarans
+
+    # ============= CLASS SOCIETIES/CERTIFICATION =============
+    'lloyds',           # Lloyd's Register
+    'lloyd register',   # Lloyd's (alt spelling)
+    'dnv',              # DNV GL
+    'dnv gl',           # DNV GL (full)
+    'bureau veritas',   # French class
+    'abs',              # American Bureau of Shipping
+    'rina',             # Italian register
+    'class nk',         # Japanese class
+    'ccs',              # China Classification
+    'korean register',  # Korean class
+    'russian maritime', # Russian class
+    'mca',              # Maritime Coastguard Agency (UK)
+    'uscg',             # US Coast Guard
+    'solas',            # Safety of Life at Sea
+    'marpol',           # Marine pollution regulations
+    'ism',              # International Safety Management
+    'isps',             # International Ship/Port Security
+    'psc',              # Port State Control
+
+    # ============= YACHT MANAGEMENT COMPANIES =============
+    'burgess',          # Yacht management
+    'hill robinson',    # Yacht management
+    'iyc',              # International Yacht Company
+    'fraser',           # Yacht services
+    'camper nicholsons',# Yacht management
+    'edmiston',         # Yacht services
+    'ocean independence',# Yacht management
+    'northrop johnson', # Yacht services
+    'denison',          # Yacht services
+    'worth avenue',     # Yacht services
+    'y.co',             # Yacht management
+    'yacht cloud',      # Management software
+    'harbour pilot',    # Management software
+    'spectec',          # AMOS maintenance software
+    'amos',             # Maintenance software
+
+    # ============= MARINE SURVEYORS/INSPECTIONS =============
+    'nace',             # Corrosion certification
+    'cci',              # Certified coating inspector
+    'ultrasonic',       # UT thickness gauging
+    'mpi',              # Magnetic particle inspection
+    'ndt',              # Non-destructive testing
+    'dye penetrant',    # PT inspection
+
+    # ============= ADDITIONAL NAVIGATION/AUTOPILOT =============
+    'mhu',              # Navico (Simrad) MHU
+    'b&g zeus',         # B&G chartplotter
+    'b&g triton',       # B&G instruments
+    'maretron',         # NMEA 2000 displays
+    'actisense',        # NMEA converters
+    'yacht devices',    # NMEA interfaces
+    'digital yacht',    # Marine electronics
+    'vesper',           # AIS/VHF
+    'em-trak',          # AIS transponders
+    'si-tex',           # Marine electronics
+    'standard horizon', # VHF radios
+    'ship mate',        # Navigation apps
+    'navionics',        # Charts (already listed)
+    'nobeltec',         # Navigation software
+    'maxsea',           # Navigation software
+    'rose point',       # Coastal Explorer
+    'opencpn',          # Navigation software
+    'expedition',       # Weather routing
+
+    # ============= WEATHER/ROUTING =============
+    'predict wind',     # Weather/routing
+    'predictwind',      # PredictWind (alt)
+    'weather routing',  # Generic
+    'squid sailing',    # Weather
+    'theyr',            # Weather
+    'windguru',         # Weather
+    'windy',            # Weather app
+    'passageweather',   # Weather
+    'ugrib',            # Grib files
+
+    # ============= ADDITIONAL DECK HARDWARE =============
+    'seldén',           # Rig/mast
+    'z spars',          # Mast/rig
+    'sparcraft',        # Spars
+    'ubi maior',        # Furling systems
+    'facnor',           # Furling systems
+    'profurl',          # Furling
+    'reckmann',         # Hydraulic furling
+    'bamar',            # Hydraulic systems
+    'barbarossa',       # Deck cranes
+    'opacmare',         # Deck equipment (already listed)
+    'mar co',           # Davits
+    'd-i davit',        # Davit International
+    'exit engineering', # Cranes/davits
+    'palfinger',        # Deck cranes
+    'heila',            # Deck cranes
+    'effer',            # Cranes
+    'fassi',            # Cranes
+    'hiab',             # Cranes
+    'macgregor',        # Deck equipment
+
+    # ============= ADDITIONAL TENDER/OUTBOARD BRANDS =============
+    'asis',             # Military RIBs
+    'safehavenyachts',  # Tenders
+    'technohull',       # Greek RIBs
+    'sacs',             # Italian RIBs
+    'revenger',         # Italian RIBs
+    'capelli',          # Italian RIBs
+    'lomac',            # Italian RIBs
+    'joker boat',       # Italian RIBs
+    'nuova jolly',      # Italian RIBs
+    'pirelli',          # Pirelli boats
+    'zar formenti',     # Italian RIBs
+    'scanner',          # Italian RIBs
+    'mar-co',           # Italian RIBs
+    'marlin',           # RIBs
+    'osprey',           # UK RIBs
+    'humber',           # UK RIBs
+    'ring powercraft',  # Swedish RIBs
+    'grand',            # Turkish RIBs
+    'nimbus',           # Swedish boats
+    'axopar',           # Finnish boats
+    'iguana yachts',    # Amphibious tenders
+    'sealegs',          # Amphibious boats
+
+    # ============= OUTBOARD ENGINE BRANDS =============
+    'torqeedo',         # Electric outboards
+    'elco',             # Electric motors
+    'epropulsion',      # Electric outboards
+    'minn kota',        # Electric trolling
+    'motorguide',       # Electric trolling
+    'mariner',          # Outboards (Mercury)
+    'parsun',           # Chinese outboards
+    'selva',            # Italian outboards
+    'hidea',            # Chinese outboards
+    'hangkai',          # Chinese outboards
+
+    # ============= ADDITIONAL HYDRAULIC BRANDS =============
+    'bucher hydraulics',# Swiss hydraulics
+    'casappa',          # Italian pumps
+    'salami',           # Italian hydraulics
+    'berarma',          # Italian vane pumps
+    'atos',             # Italian hydraulics
+    'moog',             # Servo valves
+    'sun hydraulics',   # Cartridge valves
+    'hawe',             # German hydraulics
+    'linde',            # Hydraulic motors
+    'poclain',          # Hydraulic motors
+    'staffa',           # Hydraulic motors
+    'hagglunds',        # Hydraulic motors
+    'sauer danfoss',    # Hydraulics
+    'nachi',            # Japanese hydraulics
+    'daikin',           # Japanese hydraulics
+    'yuken',            # Japanese hydraulics
+    'prince',           # US hydraulics
+    'cross',            # US hydraulics
+
+    # ============= COATING/PAINT SPECIALIZED =============
+    'epifanes',         # Dutch varnish
+    'sikkens cetol',    # Wood finish
+    'awlfair',          # Fairing compound
+    'awlprep',          # Surface prep
+    'perfection',       # Interlux topcoat
+    'brightside',       # Interlux paint
+    'micron',           # Interlux antifouling
+    'interprotect',     # Barrier coat
+    'gelshield',        # Barrier coat
+    'primocon',         # Primer
+    'watertite',        # Fairing
+    'total boat',       # Marine coatings
+    'west system',      # Epoxy
+    'system three',     # Epoxy
+    'mas epoxies',      # Epoxy
+    'pro-set',          # Epoxy
+
+    # ============= ELECTRONICS/SENSORS =============
+    'seika',            # German sensors
+    'marel',            # Marine sensors
+    'gems sensors',     # Level sensors
+    'wika',             # Pressure gauges
+    'dwyer',            # Instruments
+    'kobold',           # Flow sensors
+    'pt100',            # Temp sensor type
+    'thermocouple',     # Temp sensor type
+    'strain gauge',     # Load cells
+    'loadcell',         # Load measurement
+    'lvdt',             # Position sensors
+    'encoder',          # Rotary encoder
+    'potentiometer',    # Position
+    'pressure transmitter', # Pressure sensor
+    'flowmeter',        # Flow measurement
+
+    # ============= MARINE SEALANTS/ADHESIVES =============
+    'sikaflex',         # Sika sealant
+    'sika',             # Sika brand
+    '3m marine',        # 3M marine products
+    '5200',             # 3M 5200 sealant
+    '4200',             # 3M 4200 sealant
+    'lifecaulk',        # BoatLife sealant
+    'life caulk',       # BoatLife (alt)
+    'dolfinite',        # Bedding compound
+    'boatlife',         # Marine sealants
+    'sudbury',          # Marine products
+    'tef-gel',          # Anti-seize
+    'lanocote',         # Corrosion inhibitor
+    'lanolin',          # Preservation
+    'loctite',          # Thread locker
+    'permatex',         # Sealants
+
+    # ============= INSULATION/SOUNDPROOFING =============
+    'rockwool',         # Mineral wool
+    'mineral wool',     # Insulation type
+    'acoustic foam',    # Sound deadening
+    'mass loaded vinyl',# Sound barrier
+    'dynamat',          # Sound deadening
+    'soundown',         # Marine acoustic
+    'halyard',          # Marine insulation
+    'k-flex',           # Insulation
+    'aeroflex',         # Insulation
+    'superlon',         # Insulation
+
+    # ============= ANCHOR CHAIN/RODE =============
+    'acco',             # Chain
+    'titan',            # Anchor chain
+    'lewmar chain',     # Chain
+    'short link',       # Chain type
+    'bbb chain',        # Grade
+    'ht chain',         # High test
+    'g4 chain',         # Grade 4
+    'stainless chain',  # SS chain
+    'anchor rode',      # Generic
+    'snubber',          # Chain snubber
+    'bridle',           # Anchor bridle
+    'swivel',           # Anchor swivel
+
+    # ============= FENDERS/DOCKING =============
+    'polyform',         # Fenders
+    'taylor made',      # Fenders
+    'aere',             # Fenders
+    'yokohama',         # Commercial fenders
+    'supafend',         # Inflatable fenders
+    'fendequip',        # Fender systems
+    'dock edge',        # Dock products
+    'mooring arm',      # Yacht mooring
+    'seijsener',        # Mooring systems
+
+    # ============= LINES/ROPE =============
+    'marlow',           # UK rope
+    'liros',            # German rope
+    'gleistein',        # German rope
+    'samson',           # US rope
+    'new england ropes',# US rope
+    'yale cordage',     # US rope
+    'english braids',   # UK rope
+    'robline',          # Rope
+    'dyneema',          # UHMWPE fiber
+    'spectra',          # HMPE fiber (already listed as watermaker)
+    'kevlar',           # Aramid fiber
+    'technora',         # Aramid fiber
+    'vectran',          # LCP fiber
+
+    # ============= RIGGING HARDWARE =============
+    'sta-lok',          # Swage terminals
+    'norseman',         # Swage terminals
+    'blue wave',        # Rigging hardware
+    'petersen',         # Stainless fittings
+    'hayn',             # Rigging hardware
+    'c-sherman johnson',# Rigging
+    'hi-mod',           # Carbon rigging
+    'future fibres',    # Carbon rigging
+    'carbo',            # Carbon products
+    'southern spars',   # Mast/rigging
+    'hall spars',       # Mast/rigging
+
+    # ============= ADDITIONAL GALLEY/BAR =============
+    'breville',         # Small appliances
+    'kitchenaid',       # Appliances
+    'vitamix',          # Blenders
+    'nespresso',        # Coffee
+    'la marzocco',      # Coffee machines
+    'rocket espresso',  # Espresso
+    'u-line',           # Undercounter refrigeration
+    'perlick',          # Bar equipment
+    'marvel',           # Wine coolers
+    'wine cooler',      # Generic
+    'ice maker',        # Generic
+    'wine captain',     # Wine storage
+    'eurocave',         # Wine cabinets
+
+    # ============= LAUNDRY/HOUSEKEEPING =============
+    'dyson',            # Vacuum
+    'miele vacuum',     # Vacuum
+    'nilfisk',          # Commercial vacuum
+    'karcher',          # Cleaning equipment
+    'numatic',          # Henry vacuum
+    'henry',            # Vacuum brand
+    'hetty',            # Vacuum brand
+    'steamer',          # Garment steamer
+    'jiffy steamer',    # Steamers
+    'rowenta',          # Irons/steamers
+
+    # ============= ADDITIONAL WATER TOYS =============
+    'pedalos',          # Paddle boats
+    'hobie cat',        # Small cats
+    'laser',            # Sailing dinghy
+    'optimist',         # Youth sailing
+    'rs sailing',       # Sailing dinghies
+    'topper',           # Sailing dinghy
+    'waszp',            # Foiling dinghy
+    'moth',             # Foiling moth
+    'nacra',            # Beach cats
+    'dart catamaran',   # Beach cats
+    'prindle',          # Beach cats
+    'sup',              # Stand up paddle
+    'standup paddle',   # SUP full name
+    'inflatable kayak', # Kayak type
+    'sea eagle',        # Inflatables
+    'advanced elements',# Inflatables
+    'red paddle',       # SUP brand
+    'starboard',        # SUP/windsurf
+    'fanatic',          # SUP/windsurf
+    'naish',            # Kiteboarding
+    'cabrinha',         # Kiteboarding
+    'ozone',            # Kites
+    'duotone',          # Kites
+    'core kiteboarding',# Kites
+
+    # ============= GYM/FITNESS =============
+    'technogym',        # Gym equipment
+    'life fitness',     # Gym equipment
+    'peloton',          # Exercise bikes
+    'concept2',         # Rowing machines
+    'precor',           # Gym equipment
+    'matrix fitness',   # Gym equipment
+    'hydrow',           # Rowing
+
+    # ============= SPA/WELLNESS =============
+    'jacuzzi',          # Hot tubs
+    'hot spring',       # Hot tubs
+    'coast spas',       # Hot tubs
+    'endless pools',    # Swim spa
+    'swimex',           # Swim spa
+    'infrared sauna',   # Sauna type
+    'harvia',           # Finnish sauna
+    'helo',             # Sauna
+    'steam shower',     # Steam
+    'mr steam',         # Steam generators
+    'thermasol',        # Steam
+    'kohler spa',       # Spa products
 }
 
 # CORE EQUIPMENT - Essential equipment types
