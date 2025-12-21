@@ -698,8 +698,23 @@ def route_to_lane(query: str, mode: str = None) -> dict:
 
     # ========== GUARD 1: TOO VAGUE ==========
     # Check if intent is very generic (find_document is default fallback from intent parser)
+    # BUT: Allow if query contains known brands/equipment (don't block "Seakeeper manual")
     generic_intents = {'general_search', 'find_document'}
-    if word_count <= 2 and intent in generic_intents and not has_problem_words:
+
+    # Quick check for known entities BEFORE blocking
+    KNOWN_BRANDS = {'mtu', 'cat', 'caterpillar', 'cummins', 'volvo', 'yanmar', 'seakeeper', 'naiad',
+                    'furuno', 'garmin', 'simrad', 'victron', 'mastervolt', 'kohler', 'onan', 'westerbeke',
+                    'jabsco', 'rule', 'groco', 'racor', 'dometic', 'cruisair', 'webasto', 'lewmar',
+                    'maxwell', 'muir', 'spectra', 'northern lights', 'perkins', 'detroit', 'man',
+                    'zf', 'twin disc', 'quantum', 'vetus', 'whisperpower', 'fischer panda'}
+    KNOWN_EQUIPMENT = {'engine', 'generator', 'pump', 'filter', 'manual', 'radar', 'watermaker',
+                       'stabilizer', 'autopilot', 'thruster', 'compressor', 'inverter', 'charger',
+                       'windlass', 'winch', 'anchor', 'bilge', 'gearbox', 'transmission'}
+
+    has_known_entity = any(brand in query_lower for brand in KNOWN_BRANDS) or \
+                       any(equip in query_lower for equip in KNOWN_EQUIPMENT)
+
+    if word_count <= 2 and intent in generic_intents and not has_problem_words and not has_known_entity:
         return {
             **base_result,
             'lane': 'BLOCKED',
