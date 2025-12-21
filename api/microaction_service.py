@@ -66,6 +66,15 @@ try:
 except ImportError:
     from module_b_entity_extractor import get_extractor as get_entity_extractor, MaritimeEntityExtractor
 
+# Import Intent Parser for semantic query understanding
+try:
+    from api.intent_parser import IntentParser, route_query as intent_route_query
+except ImportError:
+    from intent_parser import IntentParser, route_query as intent_route_query
+
+# Global intent parser (initialized at startup)
+intent_parser: Optional[IntentParser] = None
+
 # ========================================================================
 # LOGGING CONFIGURATION
 # ========================================================================
@@ -432,7 +441,7 @@ startup_time = time.time()
 @app.on_event("startup")
 async def startup_event():
     """Load extractor and patterns at startup (runs once)"""
-    global extractor, pipeline, config, graphrag_population, graphrag_query, situation_engine
+    global extractor, pipeline, config, graphrag_population, graphrag_query, situation_engine, intent_parser
     logger.info("🚀 Starting Micro-Action Extraction Service...")
 
     try:
@@ -448,6 +457,10 @@ async def startup_event():
         # Initialize unified pipeline (Modules A, B, C)
         pipeline = get_pipeline()
         logger.info("✓ Unified extraction pipeline initialized (Modules A + B + C)")
+
+        # Initialize Intent Parser (67 intents with GPT fallback)
+        intent_parser = IntentParser()
+        logger.info("✓ Intent Parser initialized (67 intents, GPT-enabled)")
 
         # Initialize GraphRAG services (now uses GPT extraction + vector search)
         graphrag_population = get_population_service()
@@ -593,8 +606,25 @@ def log_unknown_entities(
 # LANE ROUTING LOGIC (all guards + intent classification)
 # ========================================================================
 
-def classify_intent(query: str) -> tuple:
-    """Classify query intent using regex rules. Returns (intent, confidence)."""
+def classify_intent(query: str) -> dict:
+    """
+    Classify query intent using IntentParser (67 intents with GPT fallback).
+    Returns dict with intent, confidence, query_type, requires_mutation, category.
+    """
+    global intent_parser
+
+    # Use intent parser if available
+    if intent_parser:
+        parsed = intent_parser.parse(query)
+        return {
+            'intent': parsed.intent,
+            'intent_category': parsed.intent_category,
+            'confidence': parsed.confidence,
+            'query_type': parsed.query_type,
+            'requires_mutation': parsed.requires_mutation,
+        }
+
+    # Fallback to regex rules if intent parser not initialized
     query_lower = query.lower()
 
     INTENT_RULES = [
@@ -610,23 +640,40 @@ def classify_intent(query: str) -> tuple:
 
     for pattern, intent, confidence in INTENT_RULES:
         if re.search(pattern, query_lower):
-            return intent, confidence
+            return {
+                'intent': intent,
+                'intent_category': 'search_documents',
+                'confidence': confidence,
+                'query_type': 'search',
+                'requires_mutation': False,
+            }
 
-    return 'general_search', 0.5
+    return {
+        'intent': 'general_search',
+        'intent_category': 'search_documents',
+        'confidence': 0.5,
+        'query_type': 'search',
+        'requires_mutation': False,
+    }
 
 
 def route_to_lane(query: str, mode: str = None) -> dict:
     """
     Determine which processing lane to use.
-    Returns: {lane, lane_reason, intent, intent_confidence, skip_gpt, ...}
+    Returns: {lane, lane_reason, intent, intent_confidence, query_type, requires_mutation, skip_gpt, ...}
     """
     query_lower = query.lower().strip()
     words = query.split()
     word_count = len(words)
     char_count = len(query)
 
-    # Classify intent first
-    intent, intent_confidence = classify_intent(query)
+    # Classify intent first (returns dict with intent, confidence, query_type, requires_mutation)
+    intent_result = classify_intent(query)
+    intent = intent_result['intent']
+    intent_confidence = intent_result['confidence']
+    query_type = intent_result['query_type']
+    requires_mutation = intent_result['requires_mutation']
+    intent_category = intent_result['intent_category']
 
     # Problem/temporal detection
     PROBLEM_WORDS = re.compile(r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|not working|broken|failed|failing|issue|problem|keeps|again|recurring|repeat|since|before charter|this morning|last time|still')
@@ -637,7 +684,10 @@ def route_to_lane(query: str, mode: str = None) -> dict:
 
     base_result = {
         'intent': intent,
+        'intent_category': intent_category,
         'intent_confidence': intent_confidence,
+        'query_type': query_type,
+        'requires_mutation': requires_mutation,
         'word_count': word_count,
         'has_problem_words': has_problem_words,
         'has_temporal_context': has_temporal_context,
@@ -654,7 +704,9 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         }
 
     # ========== GUARD 1: TOO VAGUE ==========
-    if word_count <= 2 and intent == 'general_search' and not has_problem_words:
+    # Check if intent is very generic (find_document is default fallback from intent parser)
+    generic_intents = {'general_search', 'find_document'}
+    if word_count <= 2 and intent in generic_intents and not has_problem_words:
         return {
             **base_result,
             'lane': 'BLOCKED',
@@ -693,7 +745,13 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'^kohler\s+',
     ]
     is_direct_lookup = any(re.match(p, query_lower) for p in DIRECT_LOOKUP)
-    is_simple_lookup = word_count <= 4 and intent in ['find_document', 'find_work_order', 'find_part'] and not has_problem_words and not has_temporal_context
+    # Lookup-type intents from intent parser
+    lookup_intents = {
+        'find_document', 'find_work_order', 'find_part',
+        'view_part_location', 'view_part_stock', 'view_equipment_details',
+        'show_manual_section', 'view_document',
+    }
+    is_simple_lookup = word_count <= 4 and (intent in lookup_intents or query_type == 'lookup') and not has_problem_words and not has_temporal_context
     is_forced_lookup = mode in ['document_search', 'work_order_search']
 
     if is_direct_lookup or is_simple_lookup or is_forced_lookup:
@@ -726,11 +784,35 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             }
 
     # ========== LANE C: GPT (full agent mode) ==========
-    if has_problem_words or has_temporal_context or intent == 'diagnose_issue' or (intent == 'general_search' and word_count >= 5):
+    # Trigger GPT for:
+    # - Problem words (diagnosis scenarios)
+    # - Temporal context (time-sensitive queries)
+    # - Diagnosis intents
+    # - Aggregation queries ("what is failing most", "how many")
+    # - Compliance queries ("who hasn't completed HOR")
+    # - Complex general queries
+    diagnosis_intents = {'diagnose_issue', 'diagnose_fault', 'report_fault'}
+    needs_gpt = (
+        has_problem_words or
+        has_temporal_context or
+        intent in diagnosis_intents or
+        query_type in ('aggregation', 'compliance') or
+        (intent in generic_intents and word_count >= 5)
+    )
+
+    if needs_gpt:
+        reason = (
+            'problem_words' if has_problem_words else
+            'temporal_context' if has_temporal_context else
+            'diagnosis_intent' if intent in diagnosis_intents else
+            'aggregation_query' if query_type == 'aggregation' else
+            'compliance_query' if query_type == 'compliance' else
+            'complex_query'
+        )
         return {
             **base_result,
             'lane': 'GPT',
-            'lane_reason': 'problem_words' if has_problem_words else 'temporal_context' if has_temporal_context else 'diagnosis_intent' if intent == 'diagnose_issue' else 'complex_query',
+            'lane_reason': reason,
             'skip_gpt': False,
         }
 
