@@ -189,8 +189,8 @@ export async function isAuthenticated(): Promise<boolean> {
 /**
  * Get yacht ID from current session
  *
- * Helper to extract yacht_id from user profile.
- * Uses fast timeout to avoid RLS hangs.
+ * Extracts yacht_id from auth.users user_metadata.
+ * No database query needed - uses session data directly.
  *
  * @returns yacht_id or null
  */
@@ -200,25 +200,13 @@ export async function getYachtId(): Promise<string | null> {
       data: { session },
     } = await supabase.auth.getSession();
 
-    if (!session) {
+    if (!session?.user) {
       return null;
     }
 
-    // Fast timeout - don't let RLS block requests
-    const timeoutMs = 2000;
-    const timeoutPromise = new Promise<{ data: null }>((resolve) =>
-      setTimeout(() => resolve({ data: null }), timeoutMs)
-    );
-
-    const queryPromise = supabase
-      .from('auth_users')
-      .select('yacht_id')
-      .eq('email', session.user.email)
-      .maybeSingle();
-
-    const { data: userData } = await Promise.race([queryPromise, timeoutPromise]);
-
-    return userData?.yacht_id || null;
+    // Get yacht_id from user metadata (no DB query needed)
+    const meta = session.user.user_metadata || {};
+    return meta.yacht_id || meta.yachtId || null;
   } catch (err) {
     console.warn('[authHelpers] Failed to get yacht_id:', err);
     return null;
