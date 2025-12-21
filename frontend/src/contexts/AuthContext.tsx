@@ -55,10 +55,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state
   useEffect(() => {
     console.log('[AuthContext] Initializing...');
+    let resolved = false;
+
+    // Timeout to prevent hanging forever
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        console.warn('[AuthContext] getSession timeout after 3s');
+        resolved = true;
+        setLoading(false);
+      }
+    }, 3000);
 
     // Check current session
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
+        if (resolved) return; // Already timed out
+        resolved = true;
+        clearTimeout(timeout);
+
         if (error) {
           console.error('[AuthContext] getSession error:', error.message);
           setLoading(false);
@@ -75,6 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       })
       .catch((err) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
         console.error('[AuthContext] getSession exception:', err);
         setLoading(false);
       });
@@ -100,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
