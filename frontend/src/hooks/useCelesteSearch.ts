@@ -175,6 +175,8 @@ async function* streamSearch(
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.celeste7.ai';
   const streamId = crypto.randomUUID();
 
+  console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL });
+
   // Get fresh token (auto-refreshes if expiring soon)
   const jwt = await ensureFreshToken();
   const yachtId = await getYachtId();
@@ -193,12 +195,17 @@ async function* streamSearch(
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
+  console.log('[useCelesteSearch] 📤 Sending request to:', `${API_URL}/search`);
+  console.log('[useCelesteSearch] 📤 Payload:', payload);
+
   const response = await fetch(`${API_URL}/search`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ ...payload, stream: true }),
     signal,
   });
+
+  console.log('[useCelesteSearch] 📥 Response status:', response.status);
 
   if (!response.ok) {
     throw new Error(`Search failed: ${response.status}`);
@@ -384,6 +391,8 @@ export function useCelesteSearch() {
    * Execute search
    */
   const executeSearch = useCallback(async (query: string) => {
+    console.log('[useCelesteSearch] ⚡ executeSearch called:', query);
+
     if (!query.trim()) {
       setState(prev => ({
         ...prev,
