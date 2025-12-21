@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
-  }, [loading]);
+  }, []); // Empty deps - run once on mount
 
   // Login function
   const login = useCallback(async (email: string, password: string) => {
