@@ -40,6 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Possible table names for user profiles (try in order)
   const PROFILE_TABLES = ['user_profiles', 'auth_users', 'users'] as const;
 
+  // Timeout wrapper for Supabase queries
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, tableName: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Query to ${tableName} timed out after ${ms}ms`)), ms)
+      ),
+    ]);
+  };
+
   // Fetch user profile - tries multiple table names for compatibility
   const fetchUserProfile = useCallback(async (authUser: User) => {
     // Prevent concurrent fetches
@@ -69,11 +79,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log(`[AuthContext] Trying table: ${tableName}`);
 
         try {
-          const { data: userData, error: userError } = await supabase
+          // 3 second timeout per table query
+          const queryPromise = supabase
             .from(tableName)
             .select('*')
             .eq('email', authUser.email)
             .maybeSingle();
+
+          const { data: userData, error: userError } = await withTimeout(queryPromise, 3000, tableName);
 
           if (userError) {
             // 404 = table doesn't exist or no API access
@@ -112,8 +125,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('[AuthContext] ✅ User profile loaded from', tableName);
             return celesteUser;
           }
-        } catch (tableErr) {
-          console.log(`[AuthContext] Exception querying ${tableName}:`, tableErr);
+        } catch (tableErr: any) {
+          const isTimeout = tableErr?.message?.includes('timed out');
+          console.log(`[AuthContext] ${isTimeout ? '⏱️ Timeout' : 'Exception'} querying ${tableName}:`, tableErr?.message || tableErr);
           continue;
         }
       }
