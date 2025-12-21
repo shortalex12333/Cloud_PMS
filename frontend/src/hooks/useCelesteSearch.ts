@@ -504,6 +504,7 @@ export function useCelesteSearch() {
    * Handle input change with debouncing
    */
   const handleQueryChange = useCallback((newQuery: string) => {
+    console.log('[useCelesteSearch] 🔤 handleQueryChange:', newQuery);
     const now = Date.now();
     pendingQueryRef.current = newQuery;
 
@@ -542,7 +543,9 @@ export function useCelesteSearch() {
     const effectiveDebounce = Math.max(debounceTime, MIN_QUERY_INTERVAL - timeSinceLastQuery);
 
     // Set debounce timer
+    console.log('[useCelesteSearch] ⏲️ Debouncing for', effectiveDebounce, 'ms');
     debounceTimerRef.current = setTimeout(() => {
+      console.log('[useCelesteSearch] ⏲️ Debounce complete, executing search');
       lastQueryTimeRef.current = Date.now();
       executeSearch(newQuery);
     }, effectiveDebounce);
