@@ -83,6 +83,7 @@ class EntityDetection:
     confidence: float
     span: Tuple[int, int]  # Start, end positions
     metadata: Optional[Dict] = None  # Additional metadata (domain, subdomain, group)
+    weight: float = 2.0  # Search weight (1.0-5.0)
 
     @property
     def is_hard(self) -> bool:
@@ -100,11 +101,55 @@ class EntityDetection:
         return 'hard' if self.is_hard else 'soft'
 
     def to_dict(self) -> Dict:
-        """Simplified output for search pipeline."""
+        """Output for search pipeline with weights.
+
+        Weight ranges (for search boosting):
+        - fault_code: 4.5 (highly specific diagnostic)
+        - symptom: 4.0 (key diagnostic signal)
+        - model: 4.0 (specific identifier)
+        - measurement: 3.8 (concrete value)
+        - brand: 3.5 (known manufacturer)
+        - part: 3.0 (specific component)
+        - equipment: 2.8 (equipment type)
+        - action: 2.5 (verb/intent)
+        - system: 2.3 (broad category)
+        - canonical fallback: 0.8x of value weight
+        """
+        # Type-based weights
+        type_weights = {
+            'fault_code': 4.5,
+            'symptom': 4.0,
+            'model': 4.0,
+            'measurement': 3.8,
+            'brand': 3.5,
+            'part': 3.0,
+            'equipment': 2.8,
+            'action': 2.5,
+            'system': 2.3,
+            'location': 2.0,
+            'person': 2.0,
+            'maritime_term': 2.0,
+        }
+
+        # Calculate weight
+        base_weight = type_weights.get(self.type, 2.0)
+
+        # Boost for longer/more specific values
+        if len(self.value) > 12:
+            base_weight += 0.5
+
+        # Cap at 5.0
+        weight = min(base_weight, 5.0)
+
+        # Canonical weight is 80% of value weight (fallback search)
+        canonical_weight = round(weight * 0.8, 1)
+
         return {
             "type": self.type,
             "value": self.value,
             "canonical": self.canonical,
+            "weight": weight,
+            "canonical_weight": canonical_weight,
         }
 
 
