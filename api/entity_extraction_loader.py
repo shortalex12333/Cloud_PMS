@@ -138,7 +138,7 @@ EQUIPMENT_INDICATORS = {
 DOCUMENT_INDICATORS = {
     'requirements', 'standards', 'regulations', 'procedures', 'manual',
     'document', 'guide', 'specification', 'code', 'report', 'schedule',
-    'program', 'management', 'safety', 'quality', 'compliance',
+    'program', 'management', 'safety', 'compliance',
     'international', 'maritime', 'protocol', 'checklist', 'certificate',
     'marine', 'naval', 'commercial', 'industrial', 'technical'
 }
@@ -252,6 +252,35 @@ CORE_BRANDS = {
     'outback',          # Power systems
     'blue sea',         # Electrical components
     'bep',              # Electrical panels
+    'schneider',
+    'compassnet',
+    '',
+    '',
+
+   # =========== AVIT ===========
+   'lutron',
+   'Starlink',
+   'star link',
+   'crestron',
+   'dell',
+   'apple',
+   'modbus',
+   'allen bradley',
+   'salicru',
+   'gest',
+   'sirius',
+   'direct tv',
+   'omron',
+   'kongsberg',
+   'plexus',
+   'omniaccess',
+   'safeline',
+   'langer & laumann',
+   'netgear',
+   'netscape',
+   'sperry marine',
+   'aurora',
+   
 
     # ============= WATERMAKERS =============
     'spectra',          # US watermaker manufacturer
