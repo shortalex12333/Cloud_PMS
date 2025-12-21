@@ -59,3 +59,6 @@ Thumbs.db
 
 # Render specific
 .render/
+
+# Archived junk files
+_archive/
