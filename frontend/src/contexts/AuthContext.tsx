@@ -42,12 +42,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Timeout wrapper for Supabase queries
   const withTimeout = <T,>(promise: Promise<T>, ms: number, tableName: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`Query to ${tableName} timed out after ${ms}ms`)), ms)
-      ),
-    ]);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Query to ${tableName} timed out after ${ms}ms`)), ms)
+    );
+    return Promise.race([promise, timeoutPromise]);
   };
 
   // Fetch user profile - tries multiple table names for compatibility
@@ -80,11 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           // 1.5 second timeout per table query (fast fail)
-          const queryPromise = supabase
-            .from(tableName)
-            .select('*')
-            .eq('email', authUser.email)
-            .maybeSingle();
+          const queryPromise = Promise.resolve(
+            supabase
+              .from(tableName)
+              .select('*')
+              .eq('email', authUser.email)
+              .maybeSingle()
+          );
 
           const { data: userData, error: userError } = await withTimeout(queryPromise, 1500, tableName);
 
