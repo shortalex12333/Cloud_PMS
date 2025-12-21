@@ -1,0 +1,75 @@
+[
+  {
+    "lane": "NO_LLM",
+    "lane_reason": "default_fallback",
+    "intent": "general_search",
+    "intent_confidence": 0.5,
+    "command_action": null,
+    "command_target": null,
+    "entities": [],
+    "embedding": null,
+    "metadata": {
+      "latency_ms": 2,
+      "model": "regex_only",
+      "email_verified": true
+    },
+    "headers": {
+      "connection": "close",
+      "host": "api.celeste7.ai",
+      "x-real-ip": "162.206.183.220",
+      "x-forwarded-for": "162.206.183.220",
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "api.celeste7.ai",
+      "content-length": "460",
+      "sec-ch-ua-platform": "\"macOS\"",
+      "authorization": "Bearer eyJhbGciOiJIUzI1NiIsImtpZCI6IitHVDltR3Z6cnp6OW1JYmwiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3Z6c29oYXZ0dW90b2NncmZrZnlkLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJhMzVjYWQwYi0wMmZmLTQyODctYjZlNC0xN2M5NmZhNmE0MjQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzY2MDkyNjQwLCJpYXQiOjE3NjYwODkwNDAsImVtYWlsIjoieEBhbGV4LXNob3J0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzY2MDE4NDUxfV0sInNlc3Npb25faWQiOiIxZTUzZTJhOC00NjExLTRhMDUtODgxYy01ZmZkODU2ZjM4NzIiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.kNZ_0zZA3R2FQUIPpJGh3AESQeT23LmOeqI9Uya5iPQ",
+      "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "sec-ch-ua": "\"Chromium\";v=\"142\", \"Google Chrome\";v=\"142\", \"Not_A Brand\";v=\"99\"",
+      "content-type": "application/json",
+      "sec-ch-ua-mobile": "?0",
+      "accept": "*/*",
+      "origin": "https://cloud-pms-git-claude-teleport-sess-941d7a-c7s-projects-4a165667.vercel.app",
+      "sec-fetch-site": "cross-site",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      "referer": "https://cloud-pms-git-claude-teleport-sess-941d7a-c7s-projects-4a165667.vercel.app/",
+      "accept-encoding": "gzip, deflate, br, zstd",
+      "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+      "priority": "u=1, i"
+    },
+    "params": {},
+    "query": {},
+    "body": {
+      "query": "show me the inventory",
+      "query_type": "free-text",
+      "auth": {
+        "user_id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+        "yacht_id": null,
+        "role": "Engineer",
+        "email": "x@alex-short.com",
+        "yacht_signature": null
+      },
+      "context": {
+        "client_ts": 1766090297,
+        "stream_id": "58296ee8-4b87-495b-a415-fdb9e25df3ae",
+        "session_id": "2ea821d7-6fc1-41f4-ae5f-15599cd7808a",
+        "source": "web",
+        "client_version": "1.0.0",
+        "locale": "en-GB",
+        "timezone": "America/New_York",
+        "platform": "browser"
+      },
+      "stream": true
+    },
+    "webhookUrl": "https://api.celeste7.ai/webhook/search",
+    "executionMode": "production",
+    "id": "570b6c2b-0e47-4c95-9840-a41ca7318b2e",
+    "auth_user_id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+    "yacht_id": "00000000-0000-0000-0000-000000000000",
+    "email": "x@alex-short.com",
+    "name": "x@alex-short.com",
+    "is_active": true,
+    "created_at": "2025-11-21T12:56:56.610658+00:00",
+    "updated_at": "2025-11-21T12:56:56.610658+00:00"
+  }
+]
