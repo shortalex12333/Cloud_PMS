@@ -97,26 +97,170 @@ ALL_FILTERS = EQUIPMENT_INDICATORS | DOCUMENT_INDICATORS | PRODUCT_DESCRIPTORS
 
 
 # =============================================================================
+# CORE TERMS (Always included regardless of filters)
+# =============================================================================
+# These are fundamental maritime brand names that MUST be detected
+
+CORE_BRANDS = {
+    # Engine Manufacturers
+    'mtu', 'caterpillar', 'cat', 'cummins', 'volvo', 'volvo penta', 'yanmar',
+    'john deere', 'man', 'perkins', 'detroit diesel', 'scania', 'deutz',
+    'mitsubishi', 'isuzu', 'hino', 'baudouin', 'weichai', 'doosan',
+
+    # Navigation/Electronics
+    'furuno', 'raymarine', 'garmin', 'simrad', 'navico', 'b&g', 'lowrance',
+    'humminbird', 'navionics', 'c-map', 'jrc', 'koden', 'si-tex', 'icom',
+    'sailor', 'cobham', 'intellian', 'kvh', 'epirb', 'mcmurdo',
+
+    # Electrical/Power
+    'victron', 'mastervolt', 'fischer panda', 'northern lights', 'onan',
+    'kohler', 'westerbeke', 'whisperpower', 'panda', 'mase', 'paguro',
+    'newmar', 'xantrex', 'magnum', 'outback', 'blue sea', 'bep',
+
+    # Watermakers
+    'spectra', 'sea recovery', 'village marine', 'katadyn', 'horizon',
+    'aqua whisper', 'echo', 'parker', 'dometic', 'schenker',
+
+    # HVAC
+    'marine air', 'cruisair', 'webasto', 'dometic', 'climma', 'frigomar',
+    'vitrifrigo', 'isotherm', 'frigoboat', 'engel', 'waeco',
+
+    # Deck Equipment
+    'lewmar', 'maxwell', 'muir', 'lofrans', 'quick', 'vetus', 'sleipner',
+    'side-power', 'imtra', 'sideshift', 'max power', 'yacht controller',
+
+    # Stabilizers
+    'seakeeper', 'naiad', 'wesmar', 'quantum', 'gyro marine', 'veem',
+
+    # Pumps/Plumbing
+    'jabsco', 'johnson pump', 'rule', 'whale', 'shurflo', 'marco', 'flojet',
+    'groco', 'racor', 'vetus', 'aqualarm', 'johnson', 'attwood', 'seaflo',
+
+    # Safety
+    'viking', 'zodiac', 'avon', 'achilles', 'ab inflatables', 'brig',
+    'fireboy', 'kidde', 'sea-fire', 'fm-200', 'halon',
+
+    # Paints/Coatings
+    'awlgrip', 'interlux', 'international', 'jotun', 'hempel', 'pettit',
+
+    # Hydraulics
+    'vickers', 'rexroth', 'parker', 'eaton', 'danfoss', 'hydac', 'bosch',
+}
+
+CORE_EQUIPMENT = {
+    # Propulsion
+    'engine', 'main engine', 'generator', 'genset', 'thruster', 'bow thruster',
+    'stern thruster', 'propeller', 'shaft', 'gearbox', 'transmission',
+    'turbocharger', 'turbo', 'intercooler', 'aftercooler',
+
+    # Navigation
+    'radar', 'chartplotter', 'autopilot', 'gps', 'vhf', 'ais', 'compass',
+    'gyro', 'gyrocompass', 'echo sounder', 'sonar', 'wind instrument',
+    'anemometer', 'speed log', 'depth sounder', 'transducer',
+
+    # Electrical
+    'battery', 'batteries', 'inverter', 'charger', 'battery charger',
+    'shore power', 'alternator', 'starter', 'motor', 'transformer',
+
+    # Water Systems
+    'watermaker', 'desalinator', 'reverse osmosis', 'freshwater pump',
+    'pressure pump', 'bilge pump', 'fire pump', 'transfer pump',
+    'raw water pump', 'sea water pump', 'cooling pump', 'circulation pump',
+
+    # HVAC
+    'air conditioner', 'ac unit', 'chiller', 'compressor', 'condenser',
+    'evaporator', 'blower', 'fan', 'heater', 'boiler',
+
+    # Deck
+    'windlass', 'winch', 'capstan', 'anchor', 'davit', 'crane', 'passerelle',
+    'gangway', 'tender', 'jet ski', 'dinghy', 'rib',
+
+    # Stabilizers
+    'stabilizer', 'gyro stabilizer', 'fin stabilizer', 'zero speed stabilizer',
+
+    # Safety
+    'fire damper', 'fire extinguisher', 'life raft', 'lifeboat', 'epirb',
+    'smoke detector', 'fire alarm', 'co2 system', 'sprinkler',
+
+    # Tanks/Storage
+    'fuel tank', 'water tank', 'holding tank', 'black water', 'grey water',
+    'day tank', 'header tank', 'expansion tank',
+
+    # Filters/Treatment
+    'fuel filter', 'oil filter', 'air filter', 'strainer', 'separator',
+    'polisher', 'purifier', 'centrifuge',
+
+    # Valves/Fittings
+    'sea cock', 'seacock', 'valve', 'solenoid', 'actuator', 'manifold',
+}
+
+CORE_PARTS = {
+    'membrane', 'impeller', 'seal', 'gasket', 'bearing', 'belt', 'hose',
+    'filter', 'element', 'cartridge', 'sensor', 'relay', 'fuse', 'breaker',
+    'thermostat', 'injector', 'nozzle', 'piston', 'ring', 'liner', 'head',
+    'rotor', 'stator', 'armature', 'brush', 'diode', 'capacitor', 'resistor',
+    'switch', 'contactor', 'solenoid', 'actuator', 'cylinder', 'rod', 'packing',
+    'o-ring', 'oring', 'coupling', 'flange', 'clamp', 'bracket', 'mount',
+    'display', 'screen', 'keypad', 'control panel', 'pcb', 'board', 'module',
+    # Electrical/Hydraulic components
+    'avr', 'ptu', 'hpu', 'vfd', 'plc', 'ecu', 'ecm',
+}
+
+CORE_SYMPTOMS = {
+    'overheating', 'overheat', 'vibration', 'noise', 'leak', 'leaking',
+    'failure', 'failed', 'alarm', 'warning', 'error', 'fault', 'malfunction',
+    'stuck', 'jammed', 'blocked', 'clogged', 'corroded', 'worn', 'damaged',
+    'cracked', 'broken', 'seized', 'burned', 'burnt', 'smoking', 'sparking',
+    'tripping', 'cutting out', 'not starting', 'wont start', 'hard starting',
+    'stalling', 'surging', 'hunting', 'misfiring', 'knocking', 'rattling',
+    'grinding', 'squealing', 'whining', 'humming', 'cavitation', 'aeration',
+    'low pressure', 'high pressure', 'low voltage', 'high temperature',
+    'no output', 'reduced output', 'intermittent', 'erratic', 'fluctuating',
+}
+
+
+# =============================================================================
 # EQUIPMENT GAZETTEER (Groups 1-10)
 # =============================================================================
 
 def load_equipment_gazetteer() -> Dict[str, Set[str]]:
     """
-    Build equipment/brand gazetteer from bundled EQUIPMENT_PATTERNS.
+    Build equipment/brand gazetteer from bundled EQUIPMENT_PATTERNS + CORE terms.
 
     Returns:
         Dictionary mapping entity_type -> set of terms
-        - equipment_brand: Brand names (Caterpillar, Furuno, etc.)
-        - equipment_type: Equipment types (generator, radar, pump)
+        - brand: Brand names (Caterpillar, Furuno, etc.)
+        - equipment: Equipment types (generator, radar, pump)
+        - part: Part names (membrane, impeller, etc.)
+        - symptom: Symptom terms (overheating, vibration, etc.)
         - system_type: System types (propulsion, hydraulic, navigation)
     """
     gazetteer = {
-        'equipment_brand': set(),
+        'brand': set(),
+        'equipment': set(),
+        'part': set(),
+        'symptom': set(),
+        'equipment_brand': set(),  # Keep for backward compatibility
         'equipment_type': set(),
         'system_type': set()
     }
 
-    total_terms = 0
+    # =========================================================================
+    # 1. Add CORE terms first (these are guaranteed to be detected)
+    # =========================================================================
+    gazetteer['brand'].update(CORE_BRANDS)
+    gazetteer['equipment_brand'].update(CORE_BRANDS)  # Backward compat
+
+    gazetteer['equipment'].update(CORE_EQUIPMENT)
+    gazetteer['equipment_type'].update(CORE_EQUIPMENT)  # Backward compat
+
+    gazetteer['part'].update(CORE_PARTS)
+    gazetteer['symptom'].update(CORE_SYMPTOMS)
+
+    # =========================================================================
+    # 2. Add compound terms from EQUIPMENT_PATTERNS
+    # =========================================================================
+    total_terms = len(CORE_BRANDS) + len(CORE_EQUIPMENT) + len(CORE_PARTS) + len(CORE_SYMPTOMS)
 
     for canonical, pattern_data in EQUIPMENT_PATTERNS.items():
         terms = pattern_data.get('terms', [])
@@ -136,9 +280,10 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
             if term_words & ALL_FILTERS:
                 continue
 
-            # Skip single short generic words
+            # Skip single short generic words (unless it's a core term)
             if len(term_words) == 1 and len(term_lower) < 4:
-                continue
+                if term_lower not in CORE_BRANDS and term_lower not in CORE_EQUIPMENT:
+                    continue
 
             gazetteer['equipment_brand'].add(term_lower)
             total_terms += 1
@@ -153,8 +298,11 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
             gazetteer['system_type'].add(clean_domain.lower())
 
     print(f"✅ Loaded {total_terms:,} terms from {len(EQUIPMENT_PATTERNS)} equipment patterns")
-    print(f"   - {len(gazetteer['equipment_brand']):,} unique brands")
-    print(f"   - {len(gazetteer['equipment_type']):,} unique equipment types")
+    print(f"   - {len(gazetteer['brand']):,} core brands")
+    print(f"   - {len(gazetteer['equipment']):,} core equipment types")
+    print(f"   - {len(gazetteer['part']):,} core parts")
+    print(f"   - {len(gazetteer['symptom']):,} core symptoms")
+    print(f"   - {len(gazetteer['equipment_brand']):,} total brand terms (incl. compound)")
     print(f"   - {len(gazetteer['system_type']):,} unique system types")
 
     return gazetteer
