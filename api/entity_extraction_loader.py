@@ -372,6 +372,239 @@ CORE_BRANDS = {
     'danfoss',          # Danish hydraulics
     'hydac',            # German hydraulics
     'bosch',            # Bosch Rexroth
+
+    # ============= PROPELLERS/TRANSMISSION =============
+    'zf',               # ZF Marine transmissions
+    'zf marine',        # ZF Marine (full name)
+    'twin disc',        # US marine transmissions
+    'reintjes',         # German marine gearboxes
+    'masson',           # Masson Marine gearboxes
+    'bruntons',         # UK propellers
+    'teignbridge',      # UK propellers
+    'michigan wheel',   # US propellers
+    'hamilton jet',     # NZ jet drives
+    'rolls-royce',      # Marine propulsion (Kamewa, etc.)
+    'kamewa',           # Rolls-Royce waterjets
+    'wartsila',         # Finnish engines/propulsion
+    'wärtsilä',         # Wärtsilä (with umlaut)
+    'mak',              # German marine engines (Caterpillar)
+    'abc',              # Anglo Belgian Corporation engines
+    'bergen',           # Norwegian marine engines (Rolls-Royce)
+
+    # ============= STEERING/CONTROLS =============
+    'jastram',          # German steering systems
+    'kobelt',           # Canadian controls
+    'hynautic',         # Hydraulic steering
+    'seastar',          # Hydraulic steering (Dometic)
+    'teleflex',         # Marine controls
+    'ultraflex',        # Italian steering/controls
+    'uflex',            # Ultraflex abbreviation
+    'capilano',         # Canadian steering
+    'hydrostar',        # Hydraulic steering
+    'glendinning',      # Electronic controls
+    'mathers',          # Marine controls
+    'livorsi',          # Gauges and controls
+    'vdo',              # Marine gauges (Continental)
+    'faria',            # Marine gauges
+
+    # ============= ANCHORING/MOORING =============
+    'sarca',            # Australian anchors
+    'cqr',              # Plow anchors
+    'delta',            # Delta anchors
+    'fortress',         # Aluminum anchors
+    'mantus',           # Modern anchors
+    'rocna',            # NZ anchors
+    'spade',            # French anchors
+    'ultra',            # Ultra Marine anchors
+    'bruce',            # Bruce anchors
+    'danforth',         # Danforth anchors
+    'simpson lawrence', # Deck hardware
+    'plastimo',         # French marine equipment
+    'wichard',          # French deck hardware
+    'selden',           # Swedish mast/rigging
+    'harken',           # US sailing hardware
+    'ronstan',          # Australian hardware
+    'spinlock',         # UK deck hardware
+    'antal',            # Italian deck hardware
+
+    # ============= COMMUNICATION/SATCOM =============
+    'thrane',           # Thrane & Thrane (Cobham)
+    'inmarsat',         # Satellite communication
+    'iridium',          # Satellite phones/data
+    'globalstar',       # Satellite communication
+    'vsat',             # VSAT systems (generic)
+    'seatel',           # Satellite TV (Cobham)
+    'tracphone',        # KVH satellite
+    'fleetbroadband',   # Inmarsat service
+
+    # ============= ENTERTAINMENT/AV =============
+    'bose',             # Audio systems
+    'fusion',           # Marine audio
+    'jl audio',         # Marine speakers/subs
+    'rockford fosgate', # Marine audio
+    'kicker',           # Marine audio
+    'clarion',          # Marine audio
+    'alpine',           # Audio (some marine)
+    'crestron',         # AV control systems
+    'lutron',           # Lighting control
+    'amx',              # AV control
+    'bang olufsen',     # B&O audio
+    'b&o',              # Bang & Olufsen abbrev
+    'sonos',            # Wireless audio
+    'samsung',          # TVs/displays
+    'lg',               # TVs/displays
+    'sony',             # TVs/AV equipment
+
+    # ============= LIGHTING =============
+    'hella marine',     # German marine lights
+    'aqua signal',      # Navigation lights
+    'perko',            # US marine lights
+    'lumitec',          # LED marine lights
+    'shadow-caster',    # Underwater lights
+    'oceanled',         # Underwater LED
+    'lumishore',        # Underwater lights
+    'aqualuma',         # Underwater lights
+
+    # ============= TOILETS/SANITATION =============
+    'tecma',            # Italian marine toilets
+    'raritan',          # US marine sanitation
+    'sealand',          # Dometic toilets
+    'headhunter',       # Marine sanitation
+    'lee sanitation',   # Treatment systems
+    'hamworthy',        # Sewage treatment
+    'hamann',           # German sewage treatment
+    'jets',             # Norwegian vacuum toilets
+    'evac',             # Finnish vacuum systems
+
+    # ============= TENDERS/INFLATABLES =============
+    'williams',         # UK jet tenders
+    'novurania',        # Italian RIBs
+    'highfield',        # Aluminum RIBs
+    'walker bay',       # Tenders
+    'ribeye',           # UK RIBs
+    'rupert',           # Superyacht tenders
+    'castoldi',         # Italian jet tenders
+    'pascoe',           # UK tenders
+    'argos nautic',     # Superyacht tenders
+    'sea doo',          # Personal watercraft
+    'yamaha',           # PWC and outboards
+    'mercury',          # Outboard engines
+    'honda marine',     # Outboard engines
+    'suzuki marine',    # Outboard engines
+    'tohatsu',          # Outboard engines
+    'evinrude',         # Outboard engines (discontinued)
+
+    # ============= SAFETY EQUIPMENT =============
+    'mustang',          # Lifejackets/survival
+    'crewsaver',        # UK lifejackets
+    'secumar',          # German lifejackets
+    'ocean safety',     # Safety equipment
+    'baltic',           # Swedish lifejackets
+    'survitec',         # Survival equipment
+    'revere',           # Life rafts
+    'winslow',          # Life rafts
+    'givens',           # Life rafts
+    'switlik',          # Life rafts
+    'plastimo',         # Safety equipment
+
+    # ============= WINDOWS/GLASS =============
+    'bofor',            # Swedish marine glass
+    'manship',          # Marine windows
+    'freeman',          # Marine glazing
+    'taylor',           # Taylor Made windows
+    'beckson',          # Ports/hatches
+    'goiot',            # French hatches
+    'lewmar',           # Hatches/portlights (already listed for deck)
+    'bomar',            # Hatches
+
+    # ============= INSULATION/INTERIOR =============
+    'armacell',         # Insulation
+    'armaflex',         # Foam insulation
+    'ultralon',         # Decking
+    'teak isle',        # Synthetic teak
+    'flexiteek',        # Synthetic teak
+    'permateek',        # Synthetic teak
+    'marinedeck',       # Synthetic decking
+    'amtico',           # Marine flooring
+
+    # ============= BATTERIES =============
+    'trojan',           # Deep cycle batteries
+    'lifeline',         # AGM batteries
+    'optima',           # Spiral cell batteries
+    'odyssey',          # High performance batteries
+    'northstar',        # AGM batteries
+    'sonnenschein',     # German batteries
+    'deka',             # Marine batteries
+    'exide',            # Batteries
+    'interstate',       # Batteries
+    'firefly',          # Carbon foam batteries
+    'relion',           # Lithium batteries
+    'battleborn',       # Lithium batteries
+    'super b',          # Lithium batteries
+
+    # ============= CABLES/WIRING =============
+    'ancor',            # Marine wire
+    'pacer',            # Marine wire
+    'sea wire',         # Marine wire
+    'alpha wire',       # Industrial wire
+    'lapp',             # German cables
+    'belden',           # Signal cables
+
+    # ============= SEALS/BEARINGS =============
+    'cutless',          # Shaft bearings
+    'duramax',          # Shaft bearings
+    'johnson duramax',  # Cutlass bearings
+    'thordon',          # Polymer bearings
+    'skf',              # Swedish bearings
+    'nsk',              # Japanese bearings
+    'fag',              # German bearings (Schaeffler)
+    'timken',           # US bearings
+    'tides marine',     # Shaft seals
+    'pss',              # Packless shaft seals
+
+    # ============= FUEL SYSTEMS =============
+    'alfa laval',       # Separators/purifiers
+    'westfalia',        # Separators (GEA)
+    'facet',            # Fuel pumps
+    'walbro',           # Fuel pumps
+    'carter',           # Fuel pumps
+    'fuelguard',        # Fuel systems
+    'hy-pro',           # Fuel filtration
+    'separ',            # Fuel/water separators
+    'vetus',            # Fuel tanks/systems (already listed)
+    'moeller',          # Fuel tanks
+
+    # ============= OILY WATER/ENVIRONMENTAL =============
+    'victor marine',    # Oily water separators
+    'rwo',              # Marine environmental
+    'puretech',         # Water treatment
+    'marinefloc',       # Treatment systems
+    'dvz',              # German separators
+    'detegasa',         # Spanish environmental equipment
+
+    # ============= FIRE SUPPRESSION =============
+    'novec',            # 3M clean agent
+    'inergen',          # Inert gas system
+    'argonite',         # Fire suppression
+    'sapphire',         # Clean agent system
+    'ansul',            # Fire suppression
+    'kidde',            # Fire systems (already listed)
+    'viking',           # Fire/safety (already listed)
+
+    # ============= PLC/AUTOMATION =============
+    'siemens',          # German automation
+    'allen bradley',    # Rockwell automation
+    'schneider',        # French automation
+    'omron',            # Japanese automation
+    'mitsubishi electric', # Automation (different from engines)
+    'abb',              # Swiss automation
+    'honeywell',        # Controls
+    'danaher',          # Industrial controls
+    'esa',              # Italian automation
+    'deif',             # Danish genset controllers
+    'comap',            # Czech genset controllers
+    'deep sea',         # DSE controllers
+    'woodward',         # Engine controls
 }
 
 # CORE EQUIPMENT - Essential equipment types
@@ -598,6 +831,206 @@ CORE_SYMPTOMS = {
 
     # Performance issues
     'no output', 'reduced output', 'intermittent', 'erratic', 'fluctuating',
+}
+
+
+# =============================================================================
+# DATE/TIME PATTERNS - For temporal entity extraction
+# =============================================================================
+# These patterns extract dates, times, and temporal references from queries.
+# Critical for: scheduling, log analysis, historical searches, compliance.
+#
+# OUTPUT: Canonical forms for searchability
+# - Months → MONTH_JAN, MONTH_FEB, etc.
+# - Days → DAY_MON, DAY_TUE, etc.
+# - Relative → TIME_YESTERDAY, TIME_LAST_WEEK, etc.
+
+# Month names (full and abbreviated)
+MONTH_PATTERNS = {
+    # Full month names → canonical form
+    'january': 'MONTH_01_JAN',
+    'february': 'MONTH_02_FEB',
+    'march': 'MONTH_03_MAR',
+    'april': 'MONTH_04_APR',
+    'may': 'MONTH_05_MAY',
+    'june': 'MONTH_06_JUN',
+    'july': 'MONTH_07_JUL',
+    'august': 'MONTH_08_AUG',
+    'september': 'MONTH_09_SEP',
+    'october': 'MONTH_10_OCT',
+    'november': 'MONTH_11_NOV',
+    'december': 'MONTH_12_DEC',
+    # Abbreviated month names
+    'jan': 'MONTH_01_JAN',
+    'feb': 'MONTH_02_FEB',
+    'mar': 'MONTH_03_MAR',
+    'apr': 'MONTH_04_APR',
+    'jun': 'MONTH_06_JUN',
+    'jul': 'MONTH_07_JUL',
+    'aug': 'MONTH_08_AUG',
+    'sep': 'MONTH_09_SEP',
+    'sept': 'MONTH_09_SEP',
+    'oct': 'MONTH_10_OCT',
+    'nov': 'MONTH_11_NOV',
+    'dec': 'MONTH_12_DEC',
+}
+
+# Day names (full and abbreviated)
+DAY_PATTERNS = {
+    # Full day names
+    'monday': 'DAY_1_MON',
+    'tuesday': 'DAY_2_TUE',
+    'wednesday': 'DAY_3_WED',
+    'thursday': 'DAY_4_THU',
+    'friday': 'DAY_5_FRI',
+    'saturday': 'DAY_6_SAT',
+    'sunday': 'DAY_7_SUN',
+    # Abbreviated day names
+    'mon': 'DAY_1_MON',
+    'tue': 'DAY_2_TUE',
+    'tues': 'DAY_2_TUE',
+    'wed': 'DAY_3_WED',
+    'thu': 'DAY_4_THU',
+    'thur': 'DAY_4_THU',
+    'thurs': 'DAY_4_THU',
+    'fri': 'DAY_5_FRI',
+    'sat': 'DAY_6_SAT',
+    'sun': 'DAY_7_SUN',
+}
+
+# Time unit patterns (with abbreviations)
+TIME_UNIT_PATTERNS = {
+    # Hours
+    'hour': 'UNIT_HOUR',
+    'hours': 'UNIT_HOUR',
+    'hr': 'UNIT_HOUR',
+    'hrs': 'UNIT_HOUR',
+    # Minutes
+    'minute': 'UNIT_MINUTE',
+    'minutes': 'UNIT_MINUTE',
+    'min': 'UNIT_MINUTE',
+    'mins': 'UNIT_MINUTE',
+    # Seconds
+    'second': 'UNIT_SECOND',
+    'seconds': 'UNIT_SECOND',
+    'sec': 'UNIT_SECOND',
+    'secs': 'UNIT_SECOND',
+    # Days
+    'day': 'UNIT_DAY',
+    'days': 'UNIT_DAY',
+    # Weeks
+    'week': 'UNIT_WEEK',
+    'weeks': 'UNIT_WEEK',
+    'wk': 'UNIT_WEEK',
+    'wks': 'UNIT_WEEK',
+    # Months
+    'month': 'UNIT_MONTH',
+    'months': 'UNIT_MONTH',
+    'mo': 'UNIT_MONTH',
+    'mos': 'UNIT_MONTH',
+    # Years
+    'year': 'UNIT_YEAR',
+    'years': 'UNIT_YEAR',
+    'yr': 'UNIT_YEAR',
+    'yrs': 'UNIT_YEAR',
+}
+
+# Relative time references
+RELATIVE_TIME_PATTERNS = {
+    # Recent past
+    'today': 'REL_TODAY',
+    'yesterday': 'REL_YESTERDAY',
+    'last night': 'REL_LAST_NIGHT',
+    'this morning': 'REL_THIS_MORNING',
+    'this afternoon': 'REL_THIS_AFTERNOON',
+    'this evening': 'REL_THIS_EVENING',
+    # Week references
+    'this week': 'REL_THIS_WEEK',
+    'last week': 'REL_LAST_WEEK',
+    'next week': 'REL_NEXT_WEEK',
+    'past week': 'REL_LAST_WEEK',
+    # Month references
+    'this month': 'REL_THIS_MONTH',
+    'last month': 'REL_LAST_MONTH',
+    'next month': 'REL_NEXT_MONTH',
+    'past month': 'REL_LAST_MONTH',
+    # Year references
+    'this year': 'REL_THIS_YEAR',
+    'last year': 'REL_LAST_YEAR',
+    'next year': 'REL_NEXT_YEAR',
+    # Quarter references
+    'this quarter': 'REL_THIS_QUARTER',
+    'last quarter': 'REL_LAST_QUARTER',
+    'q1': 'REL_Q1',
+    'q2': 'REL_Q2',
+    'q3': 'REL_Q3',
+    'q4': 'REL_Q4',
+    # General past
+    'recently': 'REL_RECENT',
+    'lately': 'REL_RECENT',
+    'previously': 'REL_PREVIOUS',
+    'earlier': 'REL_EARLIER',
+    'before': 'REL_BEFORE',
+    'ago': 'REL_AGO',
+}
+
+# Time of day patterns
+TIME_OF_DAY_PATTERNS = {
+    'am': 'TOD_AM',
+    'a.m.': 'TOD_AM',
+    'pm': 'TOD_PM',
+    'p.m.': 'TOD_PM',
+    'morning': 'TOD_MORNING',
+    'afternoon': 'TOD_AFTERNOON',
+    'evening': 'TOD_EVENING',
+    'night': 'TOD_NIGHT',
+    'midnight': 'TOD_MIDNIGHT',
+    'noon': 'TOD_NOON',
+    'midday': 'TOD_NOON',
+}
+
+# Maritime-specific time references
+MARITIME_TIME_PATTERNS = {
+    # Watch times (4-hour watches)
+    'first watch': 'WATCH_FIRST',      # 2000-0000
+    'middle watch': 'WATCH_MIDDLE',    # 0000-0400
+    'morning watch': 'WATCH_MORNING',  # 0400-0800
+    'forenoon watch': 'WATCH_FORENOON', # 0800-1200
+    'afternoon watch': 'WATCH_AFTERNOON', # 1200-1600
+    'dog watch': 'WATCH_DOG',          # 1600-2000
+    'first dog': 'WATCH_FIRST_DOG',    # 1600-1800
+    'second dog': 'WATCH_SECOND_DOG',  # 1800-2000
+    # Voyage references
+    'departure': 'VOYAGE_DEPARTURE',
+    'arrival': 'VOYAGE_ARRIVAL',
+    'underway': 'VOYAGE_UNDERWAY',
+    'at anchor': 'VOYAGE_ANCHOR',
+    'in port': 'VOYAGE_PORT',
+    'at sea': 'VOYAGE_SEA',
+    'sea trial': 'VOYAGE_SEA_TRIAL',
+    'dry dock': 'VOYAGE_DRY_DOCK',
+    'drydock': 'VOYAGE_DRY_DOCK',
+    # Maintenance intervals
+    'annual': 'INTERVAL_ANNUAL',
+    'bi-annual': 'INTERVAL_BIANNUAL',
+    'biannual': 'INTERVAL_BIANNUAL',
+    'quarterly': 'INTERVAL_QUARTERLY',
+    'monthly': 'INTERVAL_MONTHLY',
+    'weekly': 'INTERVAL_WEEKLY',
+    'daily': 'INTERVAL_DAILY',
+    'running hours': 'INTERVAL_RUNNING_HOURS',
+    'engine hours': 'INTERVAL_ENGINE_HOURS',
+    'service interval': 'INTERVAL_SERVICE',
+}
+
+# Combine all time patterns for easy access
+ALL_TIME_PATTERNS = {
+    **MONTH_PATTERNS,
+    **DAY_PATTERNS,
+    **TIME_UNIT_PATTERNS,
+    **RELATIVE_TIME_PATTERNS,
+    **TIME_OF_DAY_PATTERNS,
+    **MARITIME_TIME_PATTERNS,
 }
 
 
