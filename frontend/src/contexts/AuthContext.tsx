@@ -1,13 +1,12 @@
 'use client';
 
-import React, { createContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
 // CelesteOS user type - GDPR-minimized
-// Role mapping: chief_engineer, captain, manager = HOD (Head of Department)
 export type CelesteUser = {
-  id: string; // user_id
+  id: string;
   email: string | null;
   role: 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior';
   yachtId: string | null;
@@ -22,23 +21,18 @@ export type AuthContextValue = {
 };
 
 // Helper function to check if user is HOD (Head of Department)
-// HOD roles: chief_engineer, eto, captain, manager
 export function isHOD(user: CelesteUser | null): boolean {
   if (!user) return false;
   return ['chief_engineer', 'eto', 'captain', 'manager'].includes(user.role);
 }
 
-export const AuthContext = createContext<AuthContextValue | undefined>(
-  undefined
-);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /**
  * Build CelesteUser from Supabase auth user
- * Uses user_metadata from auth.users - no separate profile table needed
  */
 function buildUserFromAuth(authUser: User): CelesteUser {
   const meta = authUser.user_metadata || {};
-
   return {
     id: authUser.id,
     email: authUser.email || null,
@@ -51,76 +45,47 @@ function buildUserFromAuth(authUser: User): CelesteUser {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CelesteUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
 
-  // Initialize auth state
+  // Initialize auth using onAuthStateChange (more reliable than getSession)
   useEffect(() => {
-    console.log('[AuthContext] Initializing...');
-    let resolved = false;
+    if (initialized.current) return;
+    initialized.current = true;
 
-    // Timeout to prevent hanging forever
-    const timeout = setTimeout(() => {
-      if (!resolved) {
-        console.warn('[AuthContext] getSession timeout after 3s');
-        resolved = true;
+    console.log('[AuthContext] Setting up auth listener...');
+
+    // Fallback timeout - if no auth event received in 2s, end loading
+    const fallbackTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[AuthContext] No auth event received in 2s, ending loading state');
         setLoading(false);
       }
-    }, 3000);
+    }, 2000);
 
-    // Check current session
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        if (resolved) return; // Already timed out
-        resolved = true;
-        clearTimeout(timeout);
-
-        if (error) {
-          console.error('[AuthContext] getSession error:', error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (session?.user) {
-          const celesteUser = buildUserFromAuth(session.user);
-          console.log('[AuthContext] Session found:', celesteUser.email);
-          setUser(celesteUser);
-        } else {
-          console.log('[AuthContext] No session');
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(timeout);
-        console.error('[AuthContext] getSession exception:', err);
-        setLoading(false);
-      });
-
-    // Subscribe to auth state changes
+    // Subscribe to auth state changes - this fires immediately with INITIAL_SESSION
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthContext] Auth state:', event);
+      console.log('[AuthContext] Auth event:', event, session?.user?.email || 'no user');
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      clearTimeout(fallbackTimeout);
+
+      if (session?.user) {
         const celesteUser = buildUserFromAuth(session.user);
         setUser(celesteUser);
-        setLoading(false);
-      } else if (event === 'SIGNED_OUT') {
+      } else {
         setUser(null);
-        setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        // Refresh user data on token refresh (metadata may have changed)
-        const celesteUser = buildUserFromAuth(session.user);
-        setUser(celesteUser);
       }
+
+      // End loading on any auth event
+      setLoading(false);
     });
 
     return () => {
-      clearTimeout(timeout);
+      clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [loading]);
 
   // Login function
   const login = useCallback(async (email: string, password: string) => {
@@ -140,9 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('No user returned from login');
     }
 
-    const celesteUser = buildUserFromAuth(data.user);
-    setUser(celesteUser);
-    console.log('[AuthContext] Login success:', celesteUser.id);
+    // User will be set by onAuthStateChange listener
+    console.log('[AuthContext] Login success:', data.user.id);
   }, []);
 
   // Logout function
@@ -154,8 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('[AuthContext] Logout error:', error);
       throw error;
     }
-
-    setUser(null);
+    // User will be cleared by onAuthStateChange listener
   }, []);
 
   const value: AuthContextValue = {
