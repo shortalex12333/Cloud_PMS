@@ -709,17 +709,21 @@ class MaritimeEntityExtractor:
             # 2e. SYSTEM TYPES (cooling system, fuel system, etc.)
             # -----------------------------------------------------------------
             # Lower priority - these are broad categories
+            # FIX: Use word boundaries instead of substring match
+            # OLD: if sys_type in query_lower - would match "cooling" in "precooling"
+            # NEW: Use \b word boundaries for proper matching
             for sys_type in self._gazetteer.get('system_type', set()):
-                if len(sys_type) > 5 and sys_type in query_lower:
-                    idx = query_lower.find(sys_type)
-                    entities.append(EntityDetection(
-                        type="system",
-                        value=query[idx:idx+len(sys_type)],
-                        canonical=sys_type.upper().replace(" ", "_"),
-                        confidence=0.78,
-                        span=(idx, idx + len(sys_type)),
-                        metadata={"source": "gazetteer", "type": "system_type"}
-                    ))
+                if len(sys_type) > 5:
+                    pattern = re.compile(r'\b' + re.escape(sys_type) + r'\b', re.IGNORECASE)
+                    for match in pattern.finditer(query):
+                        entities.append(EntityDetection(
+                            type="system",
+                            value=match.group(0),
+                            canonical=sys_type.upper().replace(" ", "_"),
+                            confidence=0.78,
+                            span=(match.start(), match.end()),
+                            metadata={"source": "gazetteer", "type": "system_type"}
+                        ))
 
         # =====================================================================
         # STEP 2.5: CONTEXT-AWARE EXTRACTION
