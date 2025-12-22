@@ -2544,9 +2544,31 @@ def extract_entities_from_text(text: str) -> Dict[str, Any]:
     # =========================================================================
     bundled_results = extract_all_entities(text)
     for eq in bundled_results.get('equipment', []):
+        # FIX: extract_equipment_entities returns 'matches' list, not 'value'
+        # Extract first match as the value, or skip if no matches
+        matches = eq.get('matches', [])
+        if not matches:
+            continue  # Skip empty matches
+
+        value = matches[0] if matches else eq.get('value', '')
+        if not value:
+            continue  # Skip if no value found
+
+        # Filter out noisy short matches from bundled extractor
+        # The bundled extractor uses substring matching which catches noise
+        # like "ge" in "generator", "at" in "caterpillar", etc.
+        if len(value) < 3:
+            continue  # Skip very short matches (likely noise)
+
+        # Also skip known false positives from substring matching
+        value_lower = value.lower()
+        if value_lower in {'ge', 'at', 'br', 'ion', 'sea', 'iss', 'nos', 'dia', 'keeper'}:
+            continue  # Skip common substring noise
+
         entity = {
             'type': eq.get('type', 'equipment'),
-            'value': eq.get('value', ''),
+            'value': value,
+            'canonical': eq.get('canonical', ''),  # Include canonical form
             'confidence': eq.get('confidence', 0.8),
             'weight': eq.get('weight', 3.0),
             'source': 'bundled',
