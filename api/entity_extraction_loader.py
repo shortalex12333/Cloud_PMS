@@ -1527,6 +1527,21 @@ CORE_BRANDS = {
 # CORE EQUIPMENT - Essential equipment types
 # These must always be recognized regardless of context
 CORE_EQUIPMENT = {
+    # ============= EQUIPMENT ABBREVIATIONS =============
+    # Common yacht equipment naming conventions (critical for search)
+    'me1', 'me2', 'me3',        # Main Engine 1/2/3
+    'main engine 1', 'main engine 2',
+    'dg1', 'dg2', 'dg3',        # Diesel Generator 1/2/3
+    'gen1', 'gen2', 'gen3',     # Generator 1/2/3
+    'generator 1', 'generator 2',
+    'aux1', 'aux2',             # Auxiliary 1/2
+    'bt', 'st',                 # Bow/Stern Thruster
+    'bt1', 'bt2', 'st1', 'st2', # Numbered thrusters
+    'ac1', 'ac2', 'ac3',        # AC Unit 1/2/3
+    'stbd', 'port',             # Starboard/Port sides
+    'port main', 'stbd main',   # Port/Starboard main engine
+    'port generator', 'stbd generator',
+
     # ============= PROPULSION =============
     'engine',           # Generic engine reference
     'main engine',      # Primary propulsion engine
@@ -1705,16 +1720,26 @@ CORE_PARTS = {
 # CORE SYMPTOMS - Common fault symptoms
 CORE_SYMPTOMS = {
     # Temperature issues
-    'overheating', 'overheat',
+    'overheating', 'overheat', 'running hot', 'high temp', 'high temperature',
+    'engine overheating', 'exhaust temp', 'coolant temp',
+
+    # Pressure issues
+    'low oil pressure', 'low pressure', 'high pressure', 'pressure drop',
+    'oil pressure', 'fuel pressure', 'boost pressure',
 
     # Mechanical issues
-    'vibration', 'noise',
+    'vibration', 'vibrating', 'noise', 'noisy', 'grinding', 'knocking',
+    'running rough', 'rough idle', 'misfiring', 'stalling', 'tripping',
 
     # Fluid issues
-    'leak', 'leaking',
+    'leak', 'leaking', 'coolant leak', 'oil leak', 'fuel leak', 'water leak',
+
+    # Electrical issues
+    'voltage drop', 'no power', 'won\'t start', 'starting issue',
 
     # General failures
     'failure', 'failed', 'alarm', 'warning', 'error', 'fault', 'malfunction',
+    'not working', 'broken', 'stuck', 'seized', 'jammed',
 
     # Blockages
     'stuck', 'jammed', 'blocked', 'clogged',

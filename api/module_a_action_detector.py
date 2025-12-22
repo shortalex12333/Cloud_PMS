@@ -29,13 +29,14 @@ Without these rules, we'd have false positives:
 - GOOD: "diagnose E047" → correctly detected as action (starts with "diagnose" verb)
 
 === SUPPORTED ACTIONS ===
-This module detects 18 specific actions in 6 categories:
-1. Work Orders: create, list, update, close
-2. History: view_history
+This module detects 21 specific actions in 7 categories:
+1. Work Orders: create, list, update, close, add_note
+2. History: view_history, show_equipment_history
 3. Handover: add_to, export, view
 4. Faults: report, diagnose, acknowledge
 5. Inventory: check_stock, order_parts
-6. Documents: upload, search
+6. Documents: upload, search, show_manual_section
+7. Hours of Rest: log
 
 STRICT RULES:
 - Only verb-based action patterns
@@ -462,6 +463,78 @@ class StrictMicroActionDetector:
                 # "enter hours of rest"
                 (r"^enter\s+hours\s+of\s+rest", 0.90, "enter"),
             ],
+
+            # =============================================================
+            # MANUAL/DOCUMENTATION LOOKUP - View Sections
+            # =============================================================
+            # Users want to look up specific sections in manuals.
+
+            "show_manual_section": [
+                # "show me the manual for X" or "show manual for X"
+                (r"^show\s+(me\s+)?(the\s+)?manual\s+(for|on|about)", 0.93, "show"),
+
+                # "open manual for X"
+                (r"^open\s+(the\s+)?manual\s+(for|on|about)", 0.92, "open"),
+
+                # "find in manual" or "find manual section"
+                (r"^find\s+(in\s+)?(the\s+)?manual", 0.90, "find"),
+
+                # "lookup manual" or "look up manual"
+                (r"^look\s*up\s+(the\s+)?manual", 0.90, "lookup"),
+
+                # "what does the manual say about X"
+                (r"^what\s+does\s+(the\s+)?manual\s+say", 0.88, "what"),
+
+                # "show service manual" or "show parts manual"
+                (r"^show\s+(the\s+)?(service|parts|operator|technical)\s+manual", 0.92, "show"),
+            ],
+
+            # =============================================================
+            # EQUIPMENT HISTORY - View Equipment-Specific History
+            # =============================================================
+            # Users want history for a SPECIFIC piece of equipment.
+
+            "show_equipment_history": [
+                # "show history for ME1" or "show history for generator"
+                (r"^show\s+(the\s+)?history\s+(for|of|on)", 0.93, "show"),
+
+                # "view history for X"
+                (r"^view\s+(the\s+)?history\s+(for|of|on)", 0.92, "view"),
+
+                # "get history for X"
+                (r"^get\s+(the\s+)?history\s+(for|of|on)", 0.90, "get"),
+
+                # "what is the history for X" or "what's the history of X"
+                (r"^what('s|\s+is)\s+the\s+history\s+(for|of|on)", 0.88, "what"),
+
+                # "show maintenance history for X"
+                (r"^show\s+(the\s+)?maintenance\s+history\s+(for|of|on)", 0.93, "show"),
+
+                # "show work order history for X"
+                (r"^show\s+(the\s+)?work\s*order\s+history\s+(for|of|on)", 0.93, "show"),
+            ],
+
+            # =============================================================
+            # WORK ORDER NOTES - Add Notes to Existing Work Orders
+            # =============================================================
+            # Users want to add notes/comments to existing work orders.
+
+            "add_note_to_work_order": [
+                # "add note to work order" or "add a note to the work order"
+                (r"^add\s+(a\s+)?note\s+to\s+(the\s+)?work\s*order", 0.95, "add"),
+
+                # "add comment to work order"
+                (r"^add\s+(a\s+)?comment\s+to\s+(the\s+)?work\s*order", 0.93, "add"),
+
+                # "note on work order" - shorthand
+                (r"^note\s+on\s+(the\s+)?work\s*order", 0.90, "note"),
+
+                # "update work order with note"
+                (r"^update\s+(the\s+)?work\s*order\s+with\s+(a\s+)?note", 0.90, "update"),
+
+                # "log note on work order"
+                (r"^log\s+(a\s+)?note\s+on\s+(the\s+)?work\s*order", 0.92, "log"),
+            ],
         }
 
         # =================================================================
@@ -665,6 +738,7 @@ class StrictMicroActionDetector:
                 "update_work_order",
                 "add_to_handover",     # Adding to existing handover
                 "log_hours_of_rest",   # Recording/updating hours
+                "add_note_to_work_order",  # Adding notes to work orders
             ],
 
             # "view" intent = reading/displaying information
@@ -674,6 +748,8 @@ class StrictMicroActionDetector:
                 "view_history",
                 "check_stock",
                 "export_handover",     # Viewing/exporting handover
+                "show_manual_section", # Looking up manual sections
+                "show_equipment_history",  # Viewing equipment history
             ],
 
             # "action" intent = performing operations (not CRUD)
