@@ -267,10 +267,12 @@ class StrictMicroActionDetector:
                 # (me\\s+)? = optional "me "
                 # historic|history|historical = any of these words
                 # (data|records?)? = optional "data" or "record(s)"
-                (r"^show\s+(me\s+)?(the\s+)?(historic|history|historical)\s+(data|records?)?", 0.93, "show"),
+                (r"^show\s+(me\s+)?(the\s+)?(historic|history|historical)(\s+(data|records?))?", 0.93, "show"),
 
-                # "show history" - without "me" or "the" at start (mid-sentence pattern)
-                (r"show\s+(historic|history|historical)\s+(data|records?)", 0.90, "show"),
+                # FIX #2: REMOVED mid-sentence pattern
+                # OLD: (r"show\s+(historic|history)...", 0.90, "show")
+                # This violated strict verb-first rule since it lacked ^ anchor
+                # Now using match() instead of search(), all patterns must start at index 0
 
                 # "view history"
                 (r"^view\s+(the\s+)?(historic|history|historical)", 0.92, "view"),
@@ -484,30 +486,39 @@ class StrictMicroActionDetector:
         """
         Detect all micro-actions in query using STRICT verb-based patterns.
 
-        === HOW THIS WORKS ===
-        1. Check query against ALL patterns for ALL actions
-        2. For each match, calculate confidence score
-        3. Return ALL matches (caller decides which to use)
+        === STRICT MATCHING (FIX #1) ===
+        Uses .match() instead of .search() to ensure patterns ONLY match
+        at the START of the query. This enforces "verb-first" rule.
 
-        === CONFIDENCE ADJUSTMENTS ===
-        - Matches at start of query get 5% boost
-        - Longer matches (20+ chars) get 3% boost
-        - Confidence capped at 1.0 (100%)
+        Example:
+        - "create work order" → MATCHES (starts with verb)
+        - "I want to create work order" → DOES NOT MATCH (verb not at start)
+
+        === ORIGINAL CASE PRESERVED (FIX #4) ===
+        matched_text uses original query casing for UI/logging.
+
+        === TIE-BREAKING (FIX #5) ===
+        When sorting multiple matches, we consider:
+        1. Start position (prefer index 0)
+        2. Match length (prefer longer/more specific)
+        3. Confidence (prefer higher)
 
         Args:
             query: The user's input text
 
         Returns:
-            List of ActionDetection objects (may be empty)
+            List of ActionDetection objects (may be empty), sorted by priority
         """
 
         # Handle empty/whitespace-only queries
         if not query or not query.strip():
             return []
 
-        # Normalize: trim whitespace, convert to lowercase
-        # Lowercase makes matching case-insensitive (combined with re.IGNORECASE)
-        query = query.strip().lower()
+        # FIX #4: Keep original query for matched_text
+        query_original = query.strip()
+
+        # Normalize for matching only (case-insensitive)
+        query_norm = query_original.lower()
 
         # List to store all detected actions
         detections = []
@@ -518,41 +529,48 @@ class StrictMicroActionDetector:
             # Check each pattern for this action
             for pattern, base_confidence, verb in patterns:
 
-                # Try to find this pattern in the query
-                # .search() finds pattern anywhere in string
-                # .match() would require it at start only
-                match = pattern.search(query)
+                # FIX #1: Use .match() for STRICT start-of-string matching
+                # .match() only matches at position 0
+                # .search() would match anywhere (violates strict verb-first)
+                match = pattern.match(query_norm)
 
-                # If pattern matched
+                # If pattern matched at start
                 if match:
                     # Start with the base confidence for this pattern
                     confidence = base_confidence
 
-                    # === CONFIDENCE BOOST: Match at Start ===
-                    # If match is at the very beginning of query, boost confidence
-                    # This is because "create work order" is stronger than
-                    # "I want to create work order"
-                    if match.start() == 0:
-                        # Multiply by 1.05 (5% boost)
-                        # min() ensures we don't exceed 1.0
-                        confidence = min(confidence * 1.05, 1.0)
+                    # Get match details
+                    start_pos = match.start()  # Always 0 for match()
+                    end_pos = match.end()
+                    match_length = end_pos - start_pos
 
                     # === CONFIDENCE BOOST: Longer Match ===
                     # Longer matches are more specific, so more confident
-                    match_length = len(match.group(0))
                     if match_length > 20:
                         # Multiply by 1.03 (3% boost)
                         confidence = min(confidence * 1.03, 1.0)
 
-                    # Create and store the detection
+                    # FIX #4: Extract matched text from ORIGINAL query (preserves case)
+                    matched_text = query_original[start_pos:end_pos]
+
+                    # Create detection with sort keys for tie-breaking
                     detections.append(ActionDetection(
                         action=action_name,           # e.g., "create_work_order"
                         confidence=confidence,        # e.g., 0.95
-                        matched_text=match.group(0),  # e.g., "create work order"
+                        matched_text=matched_text,    # e.g., "Create Work Order" (original case)
                         verb=verb                     # e.g., "create"
                     ))
 
-        # Return all detections (may be empty if nothing matched)
+        # FIX #5: Sort with proper tie-breaking
+        # Priority: (1) higher confidence, (2) longer match, (3) alphabetical action name
+        detections.sort(
+            key=lambda x: (
+                -x.confidence,           # Higher confidence first (negative for descending)
+                -len(x.matched_text),    # Longer match first
+                x.action                 # Alphabetical as final tiebreaker
+            )
+        )
+
         return detections
 
     def get_best_action(self, query: str, min_confidence: float = 0.4) -> Optional[ActionDetection]:
@@ -628,21 +646,49 @@ class StrictMicroActionDetector:
 
         # Map specific actions to high-level intents
         # This groups related actions together
+        #
+        # FIX #3: Aligned mappings to ACTUAL action names
+        # - Removed "edit_work_order" (doesn't exist, action is "update_work_order")
+        # - Removed "find_manual" (doesn't exist, action is "search_documents")
+        # - Added missing actions to appropriate intents
         intent_map = {
             # "create" intent = making something new
-            "create": ["create_work_order", "create_purchase_request"],
+            "create": [
+                "create_work_order",
+                "create_purchase_request",
+                "report_fault",        # Creating a new fault report
+                "upload_document",     # Creating/uploading new document
+            ],
 
             # "update" intent = modifying existing data
-            "update": ["update_work_order", "edit_work_order"],
+            "update": [
+                "update_work_order",
+                "add_to_handover",     # Adding to existing handover
+                "log_hours_of_rest",   # Recording/updating hours
+            ],
 
             # "view" intent = reading/displaying information
-            "view": ["list_work_orders", "view_handover", "check_stock"],
+            "view": [
+                "list_work_orders",
+                "view_handover",
+                "view_history",
+                "check_stock",
+                "export_handover",     # Viewing/exporting handover
+            ],
 
             # "action" intent = performing operations (not CRUD)
-            "action": ["close_work_order", "approve_purchase_order", "diagnose_fault"],
+            "action": [
+                "close_work_order",
+                "approve_purchase_order",
+                "diagnose_fault",
+                "acknowledge_fault",
+                "order_parts",         # Triggering an order
+            ],
 
             # "search" intent = finding things
-            "search": ["search_documents", "find_manual"],
+            "search": [
+                "search_documents",
+            ],
         }
 
         # Find which intent this action belongs to
