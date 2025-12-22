@@ -1233,7 +1233,7 @@ CORE_BRANDS = {
     'marine shade',     # Generic
     'strataglass',      # Clear vinyl
     'eisenglass',       # Clear vinyl
-    'o'sea',            # Clear enclosures
+    "o'sea",            # Clear enclosures
     'oseaglass',        # Clear vinyl
     'crystal clear',    # Vinyl type
     'press polished',   # Vinyl finish
