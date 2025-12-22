@@ -640,7 +640,10 @@ class MaritimeEntityExtractor:
             # 2a. BRANDS (MTU, Caterpillar, Furuno, etc.)
             # -----------------------------------------------------------------
             # Highest confidence because these are verified brand names
+            # FIX: Skip empty/short brands - \b\b matches every word boundary!
             for brand in self._gazetteer.get('brand', set()):
+                if not brand or len(brand) < 2:
+                    continue  # Skip empty or single-char brands
                 # Create word-boundary pattern: \b = word boundary
                 # This ensures "cat" matches "CAT" but not "catalog"
                 pattern = re.compile(r'\b' + re.escape(brand) + r'\b', re.IGNORECASE)
