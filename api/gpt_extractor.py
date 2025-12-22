@@ -111,46 +111,61 @@ logger = logging.getLogger(__name__)
 #
 # CRITICAL: This prompt defines the AI's behavior and output format.
 # If you change this prompt, the AI's responses will change.
+#
+# IMPORTANT DESIGN DECISION:
+# - LLM extracts RAW values only (no canonical IDs)
+# - Canonicalization happens in a separate module (module_c_canonicalizer.py)
+# - This prevents "fake certainty" where LLM invents IDs that don't exist in our system
+# - evidence + char spans enable: hallucination detection, deduplication, training data
 
-EXTRACTION_PROMPT = """You are a maritime entity extractor for yacht planned maintenance systems (PMS).
+EXTRACTION_PROMPT = """You are a maritime entity extractor for a yacht PMS.
 
-Extract entities from the user query and return structured JSON.
+Task:
+Extract ONLY entities explicitly present in the user query and return JSON.
 
-ENTITY TYPES:
-1. equipment: Main Engine, Generator, Bilge Pump, Sea Water Pump, Heat Exchanger, Turbocharger, etc.
-2. part: Oil Filter, Fuel Filter, Impeller, Gasket, Seal, Bearing, Valve, Sensor, Belt, etc.
-3. symptom: overheating, vibration, leak, noise, pressure drop, shutdown, failure, alarm, etc.
-4. fault_code: E047, SPN 123 FMI 4, P0420, MTU codes, etc.
-5. person: Captain, Chief Engineer, 2nd Engineer, 3rd Engineer, Electrician, Bosun, etc.
-6. measurement: 24V, 85°C, 3 bar, 1500 RPM, etc.
-7. system: Cooling System, Fuel System, Electrical System, Hydraulic System, etc.
+Entity types:
+- equipment: Main Engine, Generator, Bilge Pump, Sea Water Pump, Turbocharger, etc.
+- part: Oil Filter, Fuel Filter, Impeller, Gasket, Seal, Bearing, Valve, etc.
+- symptom: overheating, vibration, leak, noise, pressure drop, alarm, etc.
+- fault_code: E047, SPN 123 FMI 4, P0420, MTU codes, etc.
+- person: Captain, Chief Engineer, 2nd Engineer, Electrician, Bosun, etc.
+- measurement: 24V, 85°C, 3 bar, 1500 RPM, etc.
+- system: Cooling System, Fuel System, Electrical System, Hydraulic System, etc.
+- doc_type: manual, procedure, checklist, schematic, etc.
 
-ACTIONS (detect user intent):
-- create_work_order: "create work order", "raise wo", "new task"
-- view_history: "show history", "historic data", "past records"
-- diagnose_fault: "diagnose", "troubleshoot", "what does error mean"
-- find_document: "find manual", "open document", "show procedure"
-- add_to_handover: "add to handover", "include in handover"
-- check_stock: "check stock", "inventory level"
-- order_parts: "order parts", "request spares"
+Actions:
+- create_work_order, view_history, diagnose_fault, find_document
+- add_to_handover, check_stock, order_parts
+- If unclear: general_search
 
-RESPONSE FORMAT (JSON only):
+Output JSON ONLY with this schema:
 {
-    "entities": [
-        {"type": "equipment", "value": "Main Engine", "canonical": "MAIN_ENGINE", "confidence": 0.95},
-        {"type": "symptom", "value": "overheating", "canonical": "OVERHEAT", "confidence": 0.90}
-    ],
-    "action": "view_history",
-    "action_confidence": 0.92,
-    "person_filter": "2ND_ENGINEER" or null
+  "entities": [
+    {
+      "type": "equipment|part|symptom|fault_code|person|measurement|system|doc_type",
+      "value": "exact text from query",
+      "confidence": 0.0-1.0,
+      "evidence": "exact substring from query",
+      "start_char": integer,
+      "end_char": integer
+    }
+  ],
+  "action": "string",
+  "action_confidence": 0.0-1.0,
+  "person_filter": "string or null",
+  "new_terms": [
+    { "term": "string", "reason": "unknown_abbrev|unknown_model|unclassified", "evidence": "string" }
+  ]
 }
 
 RULES:
-- canonical should be UPPERCASE_WITH_UNDERSCORES
-- confidence is 0.0-1.0 based on how clear the entity is
-- If no clear action, use "general_search"
-- Extract ALL entities mentioned, not just the first
-- person_filter only if query mentions filtering by a specific person/role"""
+- Do NOT invent canonical IDs (we handle that separately)
+- evidence MUST appear verbatim in the query
+- start_char and end_char are 0-indexed character positions
+- Prefer specific phrases over generic words
+- If unsure about an entity, put it in new_terms instead
+- new_terms is for: unknown abbreviations, unfamiliar model numbers, ambiguous terms
+- Extract ALL entities mentioned, not just the first"""
 
 
 # =============================================================================
@@ -170,14 +185,25 @@ class ExtractedEntity:
 
     === WHAT THIS STORES ===
     When GPT finds something like "Main Engine is overheating", it creates:
-    - type="equipment", value="Main Engine", canonical="MAIN_ENGINE", confidence=0.95
-    - type="symptom", value="overheating", canonical="OVERHEAT", confidence=0.90
+    - type="equipment", value="Main Engine", confidence=0.95, evidence="Main Engine", start_char=0, end_char=11
+    - type="symptom", value="overheating", confidence=0.90, evidence="overheating", start_char=15, end_char=26
+
+    === DESIGN DECISION ===
+    NO canonical field here! Canonicalization happens AFTER extraction in module_c_canonicalizer.py.
+    This prevents "fake certainty" where LLM invents IDs that don't exist in our system.
 
     === FIELDS EXPLAINED ===
     - type: Category of entity (equipment, part, symptom, fault_code, person, measurement, system)
     - value: The exact text found in the query ("Main Engine")
-    - canonical: Standardized uppercase version for database matching ("MAIN_ENGINE")
     - confidence: How sure GPT is about this extraction (0.0 = guess, 1.0 = certain)
+    - evidence: The exact substring from the query that supports this entity
+    - start_char: Starting character position in query (0-indexed)
+    - end_char: Ending character position in query (0-indexed)
+
+    === WHY EVIDENCE + CHAR SPANS? ===
+    1. Hallucination detection: If evidence doesn't appear in query, reject it
+    2. Deduplication: Overlapping spans indicate duplicate entities
+    3. Training data: Build labeled dataset for future fine-tuning
     """
 
     # The category/type of this entity
@@ -188,16 +214,24 @@ class ExtractedEntity:
     # Examples: "Main Engine", "oil filter", "overheating"
     value: str
 
-    # Standardized version for database matching
-    # Always UPPERCASE_WITH_UNDERSCORES
-    # Examples: "MAIN_ENGINE", "OIL_FILTER", "OVERHEAT"
-    canonical: str
-
     # How confident GPT is about this extraction (0.0 to 1.0)
     # 0.9 is the default - fairly confident
     # Lower confidence (0.6-0.7) means GPT is guessing
     # Higher confidence (0.95+) means GPT is very sure
     confidence: float = 0.9  # Default value of 0.9 (90% confident)
+
+    # The exact substring from the query that supports this entity
+    # MUST appear verbatim in the original query
+    # Used to verify LLM didn't hallucinate
+    evidence: str = ""
+
+    # Starting character position in the query (0-indexed)
+    # Used for span-based deduplication and overlap detection
+    start_char: int = -1
+
+    # Ending character position in the query (0-indexed)
+    # Used for span-based deduplication and overlap detection
+    end_char: int = -1
 
     def to_dict(self) -> Dict:
         """
@@ -208,13 +242,75 @@ class ExtractedEntity:
         Python objects can't be directly converted to JSON, but dictionaries can.
 
         Returns:
-            Dictionary with type, value, canonical, and confidence
+            Dictionary with type, value, confidence, evidence, and char positions
         """
         return {
             "type": self.type,           # Entity category
             "value": self.value,         # Original text
-            "canonical": self.canonical, # Standardized version
-            "confidence": self.confidence # Confidence score
+            "confidence": self.confidence, # Confidence score
+            "evidence": self.evidence,   # Verbatim substring from query
+            "start_char": self.start_char, # Start position
+            "end_char": self.end_char      # End position
+        }
+
+    def validate_evidence(self, query: str) -> bool:
+        """
+        Verify that evidence actually appears in the query.
+
+        === HALLUCINATION DETECTION ===
+        If the LLM invents an entity that doesn't appear in the query,
+        this check will catch it.
+
+        Args:
+            query: The original user query
+
+        Returns:
+            True if evidence is found in query, False if hallucinated
+        """
+        if not self.evidence:
+            return False
+        return self.evidence.lower() in query.lower()
+
+
+# =============================================================================
+# DATA CLASSES - NewTerm (for uncertain/unknown entities)
+# =============================================================================
+
+@dataclass
+class NewTerm:
+    """
+    Represents an uncertain or unknown term that the LLM couldn't confidently classify.
+
+    === WHAT THIS STORES ===
+    When GPT encounters something it can't classify with confidence, it goes here:
+    - Unknown abbreviations: "MPSV" (what does this mean?)
+    - Unfamiliar model numbers: "XJ-4500" (is this equipment or part?)
+    - Ambiguous terms: "unit" (too vague to classify)
+
+    === WHY THIS MATTERS ===
+    Instead of forcing low-confidence guesses into entities (which poisons data),
+    we capture uncertain items separately. This allows:
+    1. Human review of edge cases
+    2. Building a learning dataset
+    3. Preventing bad data from entering the system
+    """
+
+    # The term that couldn't be classified
+    term: str
+
+    # Why it couldn't be classified
+    # Options: "unknown_abbrev", "unknown_model", "unclassified"
+    reason: str
+
+    # The evidence/context from the query
+    evidence: str = ""
+
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "term": self.term,
+            "reason": self.reason,
+            "evidence": self.evidence
         }
 
 
@@ -232,7 +328,11 @@ class ExtractionResult:
     - entities: [Engine (equipment), overheating (symptom)]
     - action: "view_history" (because "show historic data")
     - action_confidence: 0.92
-    - person_filter: "2ND_ENGINEER" (because query mentions filtering by person)
+    - person_filter: "2nd engineer" (raw value, NOT canonical)
+    - new_terms: [] (empty if everything was classified)
+
+    === DESIGN DECISION ===
+    person_filter is now RAW value, not canonical. Canonicalization happens separately.
 
     === WHEN IS THIS USED ===
     1. GPT analyzes the user's query
@@ -253,13 +353,22 @@ class ExtractionResult:
     action_confidence: float
 
     # Optional: If the user wants to filter by a person/role
-    # Example: "show work from the 2nd engineer" → "2ND_ENGINEER"
+    # Example: "show work from the 2nd engineer" → "2nd engineer" (raw, not canonical)
     # None if no person filter mentioned
     person_filter: Optional[str] = None
+
+    # List of uncertain terms that couldn't be confidently classified
+    # These go into a separate lane for human review or learning
+    new_terms: List[NewTerm] = None
 
     # The raw JSON response from GPT (for debugging)
     # Stored so we can inspect what GPT actually returned
     raw_response: Optional[Dict] = None
+
+    def __post_init__(self):
+        """Initialize new_terms to empty list if None."""
+        if self.new_terms is None:
+            self.new_terms = []
 
     def to_dict(self) -> Dict:
         """
@@ -270,16 +379,32 @@ class ExtractionResult:
         we need everything in dictionary format that can be JSON-serialized.
 
         Returns:
-            Dictionary with entities array, action, confidence, and person filter
+            Dictionary with entities array, action, confidence, person filter, and new_terms
         """
         return {
             # Convert each entity to a dictionary
             "entities": [e.to_dict() for e in self.entities],
             "action": self.action,
             "action_confidence": self.action_confidence,
-            "person_filter": self.person_filter
+            "person_filter": self.person_filter,
+            "new_terms": [t.to_dict() for t in self.new_terms]
             # Note: raw_response is intentionally excluded (debugging only)
         }
+
+    def get_validated_entities(self, query: str) -> List[ExtractedEntity]:
+        """
+        Return only entities whose evidence appears in the query.
+
+        === HALLUCINATION FILTERING ===
+        Removes any entities that the LLM may have hallucinated.
+
+        Args:
+            query: The original user query
+
+        Returns:
+            List of entities that passed validation
+        """
+        return [e for e in self.entities if e.validate_evidence(query)]
 
 
 # =============================================================================
@@ -436,6 +561,12 @@ class GPTExtractor:
             # json.loads() converts JSON text to Python dictionary
             raw = json.loads(response.choices[0].message.content)
 
+            # === VALIDATE JSON STRUCTURE ===
+            # Basic validation to catch malformed responses
+            if not isinstance(raw, dict):
+                logger.error("GPT response is not a dictionary")
+                return self._fallback_extraction(query)
+
             # === PARSE ENTITIES FROM GPT RESPONSE ===
 
             # Create empty list to store entities
@@ -444,21 +575,48 @@ class GPTExtractor:
             # Loop through each entity in GPT's response
             # raw.get("entities", []) returns the entities array, or empty array if missing
             for e in raw.get("entities", []):
+                # Skip if not a dictionary
+                if not isinstance(e, dict):
+                    continue
+
+                # Extract evidence and char positions
+                evidence = e.get("evidence", e.get("value", ""))
+                start_char = e.get("start_char", -1)
+                end_char = e.get("end_char", -1)
+
+                # Validate evidence appears in query (hallucination check)
+                if evidence and evidence.lower() not in query.lower():
+                    logger.warning(f"Skipping hallucinated entity: {evidence}")
+                    continue
+
                 # Create an ExtractedEntity object for each entity GPT found
-                entities.append(ExtractedEntity(
+                entity = ExtractedEntity(
                     # Entity type (equipment, part, symptom, etc.)
                     type=e.get("type", "unknown"),
 
                     # Original text from query
                     value=e.get("value", ""),
 
-                    # Standardized canonical form
-                    # If GPT didn't provide canonical, create it from value
-                    # .upper() = uppercase, .replace(" ", "_") = spaces to underscores
-                    canonical=e.get("canonical", e.get("value", "").upper().replace(" ", "_")),
-
                     # Confidence score (default 0.9 if not provided)
-                    confidence=e.get("confidence", 0.9)
+                    confidence=e.get("confidence", 0.9),
+
+                    # Evidence and char spans for validation
+                    evidence=evidence,
+                    start_char=start_char if isinstance(start_char, int) else -1,
+                    end_char=end_char if isinstance(end_char, int) else -1
+                )
+
+                entities.append(entity)
+
+            # === PARSE NEW_TERMS (uncertain entities) ===
+            new_terms = []
+            for t in raw.get("new_terms", []):
+                if not isinstance(t, dict):
+                    continue
+                new_terms.append(NewTerm(
+                    term=t.get("term", ""),
+                    reason=t.get("reason", "unclassified"),
+                    evidence=t.get("evidence", "")
                 ))
 
             # Create and return the full ExtractionResult
@@ -466,7 +624,8 @@ class GPTExtractor:
                 entities=entities,                              # List of entities
                 action=raw.get("action", "general_search"),     # Detected action
                 action_confidence=raw.get("action_confidence", 0.8),  # Action confidence
-                person_filter=raw.get("person_filter"),         # Person filter (or None)
+                person_filter=raw.get("person_filter"),         # Person filter (raw, not canonical)
+                new_terms=new_terms,                            # Uncertain terms
                 raw_response=raw                                # Store raw response for debugging
             )
 
@@ -628,40 +787,36 @@ class GPTExtractor:
         query_lower = query.lower()
 
         # === SIMPLE EQUIPMENT DETECTION ===
-        # Dictionary mapping keywords to canonical names
-        equipment_keywords = {
-            "engine": "MAIN_ENGINE",
-            "generator": "GENERATOR",
-            "pump": "PUMP",
-            "compressor": "COMPRESSOR",
-            "heat exchanger": "HEAT_EXCHANGER"
-        }
+        # Dictionary of keywords to look for
+        equipment_keywords = ["engine", "generator", "pump", "compressor", "heat exchanger"]
 
         # Check each keyword
-        for keyword, canonical in equipment_keywords.items():
-            if keyword in query_lower:  # Simple substring match
+        for keyword in equipment_keywords:
+            # Find position in query
+            pos = query_lower.find(keyword)
+            if pos != -1:  # Found
                 entities.append(ExtractedEntity(
                     type="equipment",
                     value=keyword,
-                    canonical=canonical,
-                    confidence=0.6  # Lower confidence than GPT
+                    confidence=0.6,  # Lower confidence than GPT
+                    evidence=keyword,
+                    start_char=pos,
+                    end_char=pos + len(keyword)
                 ))
 
         # === SIMPLE SYMPTOM DETECTION ===
-        symptom_keywords = {
-            "overheating": "OVERHEAT",
-            "leak": "LEAK",
-            "vibration": "VIBRATION",
-            "noise": "NOISE"
-        }
+        symptom_keywords = ["overheating", "leak", "vibration", "noise"]
 
-        for keyword, canonical in symptom_keywords.items():
-            if keyword in query_lower:
+        for keyword in symptom_keywords:
+            pos = query_lower.find(keyword)
+            if pos != -1:
                 entities.append(ExtractedEntity(
                     type="symptom",
                     value=keyword,
-                    canonical=canonical,
-                    confidence=0.6
+                    confidence=0.6,
+                    evidence=keyword,
+                    start_char=pos,
+                    end_char=pos + len(keyword)
                 ))
 
         # === SIMPLE ACTION DETECTION ===
@@ -681,7 +836,8 @@ class GPTExtractor:
         return ExtractionResult(
             entities=entities,
             action=action,
-            action_confidence=0.5  # Low confidence - this is a fallback
+            action_confidence=0.5,  # Low confidence - this is a fallback
+            new_terms=[]  # No new terms in fallback mode
         )
 
 
@@ -761,7 +917,8 @@ if __name__ == "__main__":
             "Engine is overheating, show historic data from the 2nd engineer",
             "What does error code E047 mean?",
             "Create work order for bilge pump inspection",
-            "Find oil filter for generator 1"
+            "Find oil filter for generator 1",
+            "The XYZABC unit is making noise"  # Test new_terms with unknown term
         ]
 
         # Process each test query
@@ -776,11 +933,18 @@ if __name__ == "__main__":
             print(f"Person filter: {result.person_filter}")
             print(f"Entities:")
             for e in result.entities:
-                print(f"  - {e.type}: {e.value} → {e.canonical} ({e.confidence:.2f})")
+                print(f"  - {e.type}: '{e.value}' @ chars {e.start_char}-{e.end_char}")
+                print(f"    evidence: '{e.evidence}' (conf: {e.confidence:.2f})")
+
+            # Print new_terms if any
+            if result.new_terms:
+                print(f"New Terms (uncertain):")
+                for t in result.new_terms:
+                    print(f"  - '{t.term}' ({t.reason})")
 
             # Test embedding
             embedding = extractor.embed(query)
-            print(f"Embedding: {len(embedding)} dimensions, first 5: {embedding[:5]}")
+            print(f"Embedding: {len(embedding)} dimensions")
 
     except Exception as e:
         # If anything fails, print error and hint
