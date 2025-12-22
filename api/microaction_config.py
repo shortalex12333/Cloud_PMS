@@ -183,74 +183,56 @@ class ExtractionConfig:
     min_output_confidence: float = 0.65  # Must be 65%+ confident to return
 
     # ========================================================================
-    # CATEGORY WEIGHTS & PRIORITIES
+    # CATEGORY WEIGHTS (GOLDEN TERMS)
     # ========================================================================
     #
-    # Some action categories are more common/important than others.
-    # Weights boost confidence for frequent categories.
+    # These weights mark category keywords as "GOLDEN" - important terms
+    # that should stand out from filler words like "the", "and", "from".
     #
-    # Scale: 0.0 (not actionable) to 5.0 (very important)
+    # MVP PRINCIPLE: All categories are EQUAL. We don't assume one category
+    # is more important than another. The user's query determines intent,
+    # not arbitrary weighting.
     #
-    # These are based on usage data from yacht maintenance operations:
-    # - Chief Engineers create work orders multiple times per day
-    # - Hours of rest is logged once per day
-    # - Mobile-specific features are used occasionally
+    # Scale: 0.0 (filler/unsupported) vs 4.0 (golden/actionable)
+    #
+    # Example: "Find me handover notes from last dec"
+    #          - "handover" = GOLDEN (weight 4.0) → detected as intent
+    #          - "me", "from" = filler (weight 0) → ignored
 
     category_weights: Dict[str, float] = field(default_factory=lambda: {
 
-        # Work Orders: Most common action category
-        # Create, list, update, close work orders
-        # Chief Engineers live in this category
-        'work_orders': 4.5,
-
-        # Handover: Very common, shift changes happen regularly
-        # Add to handover, export handover, view handover
-        'handover': 4.2,
-
-        # Faults: Common, equipment issues need attention
-        # Report fault, diagnose fault, acknowledge fault
+        # All actionable categories are EQUAL at 4.0 (GOLDEN)
+        # No bias between categories - let the query decide
+        'work_orders': 4.0,
+        'handover': 4.0,
         'faults': 4.0,
+        'inventory': 4.0,
+        'documents': 4.0,
+        'purchasing': 4.0,
+        'hours_of_rest': 4.0,
+        'mobile': 4.0,
 
-        # Inventory: Moderately common
-        # Check stock, order parts
-        'inventory': 3.5,
-
-        # Documents: Moderately common
-        # Upload document, find manual
-        'documents': 3.0,
-
-        # Purchasing: Less common
-        # Create purchase request, approve PO
-        'purchasing': 2.8,
-
-        # Hours of Rest: Less common (once per day per crew member)
-        # Log hours, check compliance
-        'hours_of_rest': 2.5,
-
-        # Mobile: Least common (specific to mobile app features)
-        # Crew list, weather, etc.
-        'mobile': 2.0,
-
-        # Unsupported: Not actionable
+        # Unsupported: Not actionable (filler)
         # Queries we can't handle
         'unsupported': 0.0
     })
 
     # Priority order for category disambiguation
-    # When multiple categories match with similar confidence,
-    # prefer categories earlier in this list.
+    # MVP: This list is kept for reference but NOT used for weighting.
+    # With category_priority weight at 0.0 in overlap_resolution_weights,
+    # this list has no effect on scoring.
     #
-    # Example: If "create document" matches both 'work_orders' and 'documents'
-    # at similar confidence, prefer 'work_orders' (higher priority)
+    # If needed in future, this could be used as a tiebreaker when
+    # confidence and span_length are exactly equal (rare).
     category_priority: List[str] = field(default_factory=lambda: [
-        'work_orders',      # Highest priority (most common, core functionality)
+        'work_orders',
         'handover',
         'faults',
         'inventory',
         'purchasing',
         'documents',
         'hours_of_rest',
-        'mobile'            # Lowest priority
+        'mobile'
     ])
 
     # ========================================================================
@@ -264,23 +246,24 @@ class ExtractionConfig:
     # These overlap! Which one should we keep?
     #
     # We score each match and keep the higher-scoring one.
+    # MVP: Only use confidence and span_length (no category bias).
 
     # Weights for overlap scoring
     # Total should be 1.0 (100%)
     overlap_resolution_weights: Dict[str, float] = field(default_factory=lambda: {
 
         # Confidence: Higher confidence = better match
-        # 50% of the score comes from confidence
-        'confidence': 0.5,
+        # 60% of the score comes from confidence
+        'confidence': 0.6,
 
         # Span length: Longer matches are more specific
         # "create work order" is more specific than just "order"
-        # 30% of the score comes from length
-        'span_length': 0.3,
+        # 40% of the score comes from length
+        'span_length': 0.4,
 
-        # Category priority: Some categories are more important
-        # 20% of the score comes from category priority
-        'category_priority': 0.2
+        # Category priority: DISABLED for MVP (no category bias)
+        # All categories are equal, so this should not influence decision
+        'category_priority': 0.0
     })
 
     # Maximum allowed overlap (as fraction of shorter match)
@@ -293,21 +276,29 @@ class ExtractionConfig:
     max_overlap_ratio: float = 0.3  # 30% overlap triggers resolution
 
     # ========================================================================
-    # MULTI-ACTION DETECTION
+    # MULTI-ACTION DETECTION (MVP: DISABLED)
     # ========================================================================
     #
-    # Users can request multiple actions in one query.
-    # Example: "create work order and add to handover"
+    # MVP APPROACH: One action per query. Follow-up actions are presented
+    # as UI buttons AFTER the first action completes.
     #
-    # These settings control how we detect and handle multiple actions.
+    # Example flow:
+    #   User: "create work order for generator"
+    #   System: Creates WO, then shows buttons:
+    #           [Add to Handover?] [Add Photo?] [Link Parts?]
+    #
+    # This is cleaner than parsing "create WO and add to handover" because:
+    # - No ambiguity in parsing
+    # - Clear user intent at each step
+    # - Simpler extraction logic
+    # - Better UX (guided workflow)
 
     # Minimum distance (characters) between matches to consider them separate
-    # If matches are too close together, they might be part of the same action
+    # (Kept for future multi-action support)
     min_action_distance: int = 3  # At least 3 characters apart
 
     # Conjunction words that indicate multiple actions
-    # When we see these words, expect another action to follow
-    # Example: "create work order AND add to handover"
+    # (Kept for future multi-action support, but not used in MVP)
     conjunction_indicators: List[str] = field(default_factory=lambda: [
         'and',          # "create wo AND add to handover"
         'then',         # "create wo THEN export handover"
@@ -322,9 +313,8 @@ class ExtractionConfig:
     ])
 
     # Maximum number of actions to extract from single query
-    # Prevents runaway extraction on very long text
-    # If user requests more than this, we only return the first N
-    max_actions_per_query: int = 5  # Max 5 actions per query
+    # MVP: Set to 1 (single action only, follow-ups via UI buttons)
+    max_actions_per_query: int = 1  # MVP: One action per query
 
     # ========================================================================
     # PERFORMANCE TUNING
@@ -461,17 +451,20 @@ class ExtractionConfig:
         Returns a number between 0 and 1 representing how important
         this category is relative to others.
 
-        === EXAMPLE ===
-        - work_orders has weight 4.5 (highest)
-        - get_category_boost('work_orders') returns 1.0 (4.5/4.5)
-        - mobile has weight 2.0
-        - get_category_boost('mobile') returns 0.44 (2.0/4.5)
+        === MVP BEHAVIOR ===
+        With all category_weights equal at 4.0, this returns 1.0 for
+        ALL actionable categories (no bias between categories).
+
+        - get_category_boost('work_orders') returns 1.0 (4.0/4.0)
+        - get_category_boost('handover') returns 1.0 (4.0/4.0)
+        - get_category_boost('hours_of_rest') returns 1.0 (4.0/4.0)
+        - get_category_boost('unsupported') returns 0.0 (0.0/4.0)
 
         Args:
             category: Category name (e.g., 'work_orders', 'handover')
 
         Returns:
-            Boost multiplier normalized to 0-1 scale
+            Boost multiplier normalized to 0-1 scale (1.0 for all actionable)
         """
         # Get weight for this category (default 1.0 if not found)
         weight = self.category_weights.get(category, 1.0)
@@ -830,9 +823,9 @@ if __name__ == '__main__':
     print(f"  - AI Fallback Threshold: {perf_config.ai_fallback_threshold}")
     print(f"  - AI Timeout: {perf_config.ai_extraction_timeout_ms}ms")
 
-    # === TEST 3: Category Boost ===
-    print(f"\n✓ Category Boosts:")
-    for category in ['work_orders', 'handover', 'mobile']:
+    # === TEST 3: Category Boost (MVP: All equal at 1.0) ===
+    print(f"\n✓ Category Boosts (MVP: All equal):")
+    for category in ['work_orders', 'handover', 'hours_of_rest', 'unsupported']:
         boost = prod_config.get_category_boost(category)
         print(f"  - {category}: {boost:.2f}")
 
