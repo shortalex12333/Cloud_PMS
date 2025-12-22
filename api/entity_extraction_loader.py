@@ -2029,17 +2029,42 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
         # Add each term to equipment_brand (if it passes filters)
         for term in terms:
             term_lower = term.lower()
-
-            # FILTER 1: Skip if term exactly matches a filter word
-            # Example: "pump" alone is filtered out
-            if term_lower in ALL_FILTERS:
-                continue
-
-            # FILTER 2: Skip if any word in the term is a filter word
-            # Example: "bilge pump" contains "pump" which is filtered
             term_words = set(term_lower.split())
-            if term_words & ALL_FILTERS:  # & is set intersection
+
+            # FILTER 1: Skip if term is a SINGLE word that exactly matches a filter
+            # Example: "pump" alone is filtered out
+            # FIX: Only block single generic words, NOT compounds
+            if len(term_words) == 1 and term_lower in ALL_FILTERS:
                 continue
+
+            # FILTER 2 (FIXED): For compound terms, only skip if ALL words are generic
+            # OLD (wrong): Skip if ANY word is a filter word → dropped "jabsco pump"
+            # NEW (correct): Skip if ALL words are generic AND no brand/model context
+            #
+            # Examples:
+            # - "jabsco pump" → KEEP (has brand "jabsco")
+            # - "mtu generator" → KEEP (has brand "mtu")
+            # - "fuel oil pump" → KEEP (has specificity "fuel oil")
+            # - "pump motor" → SKIP (both are generic)
+            if len(term_words) > 1:
+                # Check if any word is a brand or model (not generic)
+                has_specific_word = False
+                for word in term_words:
+                    # Word is specific if:
+                    # - It's a core brand (mtu, jabsco, furuno, etc.)
+                    # - It's NOT in the generic filter list
+                    # - It contains numbers (likely a model: 3512, 16V4000)
+                    is_brand = word in CORE_BRANDS
+                    is_not_generic = word not in ALL_FILTERS
+                    has_numbers = any(c.isdigit() for c in word)
+
+                    if is_brand or has_numbers or (is_not_generic and len(word) > 3):
+                        has_specific_word = True
+                        break
+
+                # Skip only if ALL words are generic (no specific context)
+                if not has_specific_word:
+                    continue
 
             # FILTER 3: Skip single short generic words
             # Exception: Core brands/equipment are kept even if short
@@ -2339,26 +2364,83 @@ def get_diagnostic_patterns() -> Dict[str, List[Tuple[re.Pattern, str, str, str]
 # QUICK EXTRACTION WRAPPERS
 # =============================================================================
 
+# Cache for compiled gazetteer patterns (with word boundaries)
+_gazetteer_patterns_cache = None
+
+def _compile_gazetteer_patterns() -> Dict[str, List[Tuple[re.Pattern, str]]]:
+    """
+    Compile gazetteer terms into regex patterns with word boundaries.
+
+    FIX #1: Naive substring matching (if term in text) causes false positives.
+    Example: "cat" matches inside "caterpillar" or "category"
+    Solution: Use word boundaries \\b for exact word matching.
+
+    Returns:
+        Dict mapping entity_type to list of (compiled_pattern, term) tuples
+    """
+    global _gazetteer_patterns_cache
+
+    if _gazetteer_patterns_cache is not None:
+        return _gazetteer_patterns_cache
+
+    gazetteer = get_equipment_gazetteer()
+    patterns = {}
+
+    for entity_type, terms in gazetteer.items():
+        patterns[entity_type] = []
+        for term in terms:
+            if not term or len(term) < 2:
+                continue
+            # Escape special regex characters and add word boundaries
+            escaped = re.escape(term)
+            # For multi-word terms, match the whole phrase
+            # For single words, use word boundaries
+            pattern = re.compile(r'\b' + escaped + r'\b', re.IGNORECASE)
+            patterns[entity_type].append((pattern, term))
+
+    _gazetteer_patterns_cache = patterns
+    return patterns
+
+
 def extract_entities_from_text(text: str) -> Dict[str, Any]:
     """
     Extract all entities from text using bundled patterns.
 
-    This is a convenience function that combines multiple extraction methods.
-    For production use, module_b_entity_extractor.py is preferred.
+    RETURNS UNIFIED SCHEMA:
+    All entities (diagnostic + equipment + gazetteer) are normalized to:
+    [{
+        type: str,           # equipment_brand, symptom, fault_code, etc.
+        value: str,          # The matched text from query
+        confidence: float,   # 0.0-1.0
+        weight: float,       # 1.0-5.0 for ranking
+        source: str,         # "regex", "gazetteer", or "bundled"
+        domain: str,         # Optional domain (for diagnostics)
+        subdomain: str,      # Optional subdomain
+        start_char: int,     # Starting position in text
+        end_char: int        # Ending position in text
+    }]
+
+    This unified format makes downstream processing consistent.
 
     Args:
         text: The query text to extract entities from
 
     Returns:
         Dict with:
-        - diagnostic: List of symptom/fault/action entities
-        - equipment: List of brand/equipment entities
-        - gazetteer_matches: Direct term matches from gazetteer
+        - entities: Unified list of ALL extracted entities
+        - diagnostic: (deprecated) kept for backwards compatibility
+        - equipment: (deprecated) kept for backwards compatibility
+        - gazetteer_matches: (deprecated) kept for backwards compatibility
     """
+    # Unified result list
+    entities = []
+
+    # Legacy result dicts (kept for backwards compatibility)
     result = {
-        'diagnostic': [],       # Symptoms, faults, actions
-        'equipment': [],        # Brands, equipment types
-        'gazetteer_matches': [] # Direct term matches
+        'entities': entities,           # NEW: Unified list
+        'diagnostic': [],               # DEPRECATED: Use entities instead
+        'equipment': [],                # DEPRECATED: Use entities instead
+        'gazetteer_matches': []         # DEPRECATED: Use entities instead
     }
 
     # Check if patterns are available
@@ -2368,46 +2450,155 @@ def extract_entities_from_text(text: str) -> Dict[str, Any]:
     text_lower = text.lower()
 
     # =========================================================================
-    # 1. Get diagnostic matches using regex patterns
+    # 1. DIAGNOSTIC PATTERNS (regex with word boundaries)
     # =========================================================================
+    # FIX #3: Carry actual group from pattern_data, not hardcoded 11
+    # FIX #4: Use finditer() instead of findall() to get proper spans
+
     diag_patterns = get_diagnostic_patterns()
     for entity_type, pattern_list in diag_patterns.items():
-        for pattern, domain, subdomain, canonical in pattern_list:
-            # Find all matches of this pattern
-            matches = pattern.findall(text_lower)
-            if matches:
-                result['diagnostic'].append({
+        for pattern_data in pattern_list:
+            # Unpack with proper group handling
+            if len(pattern_data) == 4:
+                pattern, domain, subdomain, canonical = pattern_data
+                group = 11  # Default for legacy patterns
+            elif len(pattern_data) == 5:
+                pattern, domain, subdomain, canonical, group = pattern_data
+            else:
+                continue
+
+            # FIX #4: Use finditer() for proper span information
+            for match in pattern.finditer(text_lower):
+                matched_text = match.group(0)  # Full match, not capture groups
+
+                entity = {
                     'type': entity_type,
+                    'value': matched_text,
                     'canonical': canonical,
                     'domain': domain,
                     'subdomain': subdomain,
-                    'matches': list(set(matches))[:5],  # Limit to 5 unique matches
                     'confidence': 0.9,
-                    'weight': calculate_weight(entity_type, {'group': 11}, len(matches[0]))
-                })
+                    'weight': calculate_weight(entity_type, {'group': group}, len(matched_text)),
+                    'source': 'regex',
+                    'start_char': match.start(),
+                    'end_char': match.end()
+                }
+
+                entities.append(entity)
+                result['diagnostic'].append(entity)  # Legacy compatibility
 
     # =========================================================================
-    # 2. Get equipment matches using gazetteer
+    # 2. GAZETTEER MATCHING (with word boundaries)
     # =========================================================================
-    gazetteer = get_equipment_gazetteer()
-    words = set(text_lower.split())  # Split into words for quick lookup
+    # FIX #1: Use compiled patterns with word boundaries, not substring check
 
-    # Check each equipment_brand term
-    for term in gazetteer['equipment_brand']:
-        if term in text_lower:  # Simple substring check
-            result['gazetteer_matches'].append({
-                'type': 'equipment_brand',
-                'value': term,
-                'confidence': 0.85,
-                'weight': calculate_weight('equipment_brand', {}, len(term))
-            })
+    gazetteer_patterns = _compile_gazetteer_patterns()
+
+    for entity_type, pattern_list in gazetteer_patterns.items():
+        for pattern, term in pattern_list:
+            for match in pattern.finditer(text_lower):
+                matched_text = match.group(0)
+
+                entity = {
+                    'type': entity_type,
+                    'value': matched_text,
+                    'confidence': 0.85,
+                    'weight': calculate_weight(entity_type, {}, len(matched_text)),
+                    'source': 'gazetteer',
+                    'domain': None,
+                    'subdomain': None,
+                    'start_char': match.start(),
+                    'end_char': match.end()
+                }
+
+                entities.append(entity)
+                result['gazetteer_matches'].append(entity)  # Legacy compatibility
 
     # =========================================================================
-    # 3. Run bundled extractors for additional coverage
+    # 3. BUNDLED EXTRACTORS (from regex_production_data.py)
     # =========================================================================
-    # extract_all_entities() is from regex_production_data.py
     bundled_results = extract_all_entities(text)
-    result['equipment'].extend(bundled_results.get('equipment', []))
+    for eq in bundled_results.get('equipment', []):
+        entity = {
+            'type': eq.get('type', 'equipment'),
+            'value': eq.get('value', ''),
+            'confidence': eq.get('confidence', 0.8),
+            'weight': eq.get('weight', 3.0),
+            'source': 'bundled',
+            'domain': eq.get('domain'),
+            'subdomain': eq.get('subdomain'),
+            'start_char': eq.get('start_char', -1),
+            'end_char': eq.get('end_char', -1)
+        }
+        entities.append(entity)
+        result['equipment'].append(entity)  # Legacy compatibility
+
+    # =========================================================================
+    # 4. DEDUPLICATE by span (overlapping entities)
+    # =========================================================================
+    # If two entities overlap significantly, keep the higher-weight one
+    entities = _deduplicate_by_span(entities)
+    result['entities'] = entities
+
+    return result
+
+
+def _deduplicate_by_span(entities: List[Dict]) -> List[Dict]:
+    """
+    Remove duplicate entities that overlap in the text.
+
+    When two entities have overlapping character spans, keep the one with:
+    1. Higher weight (more specific)
+    2. Longer span (if weights are equal)
+
+    Args:
+        entities: List of entity dicts with start_char/end_char
+
+    Returns:
+        Deduplicated list of entities
+    """
+    if not entities:
+        return []
+
+    # Sort by start position, then by weight descending
+    sorted_ents = sorted(entities, key=lambda e: (e.get('start_char', -1), -e.get('weight', 0)))
+
+    result = []
+    for entity in sorted_ents:
+        start = entity.get('start_char', -1)
+        end = entity.get('end_char', -1)
+
+        # Skip entities without valid spans
+        if start < 0 or end < 0:
+            result.append(entity)
+            continue
+
+        # Check if this entity overlaps significantly with any kept entity
+        is_duplicate = False
+        for kept in result:
+            k_start = kept.get('start_char', -1)
+            k_end = kept.get('end_char', -1)
+
+            if k_start < 0 or k_end < 0:
+                continue
+
+            # Calculate overlap
+            overlap_start = max(start, k_start)
+            overlap_end = min(end, k_end)
+            overlap_len = max(0, overlap_end - overlap_start)
+
+            # If overlap is >50% of shorter entity, it's a duplicate
+            shorter_len = min(end - start, k_end - k_start)
+            if shorter_len > 0 and overlap_len / shorter_len > 0.5:
+                # Keep the one with higher weight
+                if entity.get('weight', 0) > kept.get('weight', 0):
+                    result.remove(kept)
+                    result.append(entity)
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            result.append(entity)
 
     return result
 
