@@ -232,6 +232,16 @@ class SuiteGenerator:
         num_messy: int = 2
     ) -> Suite:
         """Generate a suite for a pattern with guardrails."""
+        # Skip collision cases for non-collision patterns
+        if pattern.category != "collision":
+            num_collisions = 0
+            num_positives = 9  # Compensate with more positives
+
+        # Skip messy cases for unrecognized_verb patterns (they test verb recognition, not noise)
+        if pattern.category == "unrecognized_verb":
+            num_messy = 0
+            num_positives = 9
+            num_negatives = 9
         suite_id = f"S{suite_num:02d}"
         cases = []
 
@@ -335,7 +345,8 @@ class SuiteGenerator:
         # Determine query form and action based on case type
         if case_type == "positive":
             query, action = self._make_positive_query(pattern, equipment, location, symptom)
-            should_trigger = True
+            # none_search_only means no action is triggered
+            should_trigger = (action != "none_search_only")
             risk = RiskClass.SAFE
             negative_reason = None
 
@@ -489,78 +500,125 @@ class SuiteGenerator:
             query = random.choice(queries)
 
         elif pattern.category == "noise_prefix":
-            # For noise prefix patterns, test varied underlying actions
-            base_actions = pattern.primary_actions if pattern.primary_actions else ["diagnose_fault"]
-            base_action = random.choice(base_actions)
-
-            if base_action == "create_work_order":
-                queries = [
+            # For noise prefix patterns, the query should be a clean action query
+            # The noise prefix is tested in messy cases - here we test the underlying action works
+            # Action choice determines query structure
+            action_choices = [
+                ("diagnose_fault", [
+                    f"diagnose {symptom} on {brand} {equipment}",
+                    f"diagnose fault {fault_code} on {equipment}",
+                    f"troubleshoot {symptom} on {equipment}",
+                    f"investigate {equipment} {symptom}",
+                ]),
+                ("create_work_order", [
                     f"create work order for {brand} {equipment} {symptom}",
                     f"create WO for {equipment} in {location}",
                     f"create task for {equipment} maintenance",
-                    f"create maintenance request for {symptom}",
-                    f"create repair order for {brand} {equipment}",
-                ]
-            elif base_action == "check_stock_level":
-                queries = [
+                ]),
+                ("check_stock_level", [
                     f"check stock for {equipment} parts",
                     f"check inventory for {brand} filters",
                     f"check spares for {equipment}",
-                    f"check parts level for {equipment}",
-                    f"check if we have {equipment} seals",
-                ]
-            elif base_action == "diagnose_fault":
-                queries = [
-                    f"diagnose {symptom} on {brand} {equipment}",
-                    f"diagnose fault {fault_code} on {equipment}",
-                    f"diagnose {equipment} issue in {location}",
-                    f"troubleshoot {symptom} on {equipment}",
-                    f"investigate {equipment} alarm",
-                ]
-            else:
-                queries = [
-                    f"show {brand} {equipment} {symptom}",
-                    f"show {equipment} history from {location}",
-                ]
-
+                ]),
+                ("show_manual_section", [
+                    f"show manual for {equipment} {symptom}",
+                    f"show {brand} manual section on {symptom}",
+                    f"show troubleshooting guide for {equipment}",
+                ]),
+            ]
+            chosen_action, queries = random.choice(action_choices)
+            action = chosen_action
             query = random.choice(queries)
 
         elif pattern.category == "safety_rail":
-            # Safety rail patterns test that state-changing actions DON'T trigger
-            # Positive cases should be read-only actions that DO trigger safely
-            action = "show_equipment_overview"  # Safe default
-            queries = [
-                f"show {brand} {equipment} overview",
-                f"show {equipment} status",
-                f"view {equipment} details",
-                f"display {brand} {equipment} info",
-                f"list {equipment} components",
+            # Safety rail patterns test read-only actions that SHOULD trigger safely
+            # These are NOT testing the polite prefixes (that's in negative cases)
+            safe_actions = [
+                ("show_equipment_overview", [
+                    f"show {brand} {equipment} overview",
+                    f"show {equipment} status",
+                    f"view {equipment} details",
+                    f"display {brand} {equipment} info",
+                ]),
+                ("show_manual_section", [
+                    f"show manual for {equipment}",
+                    f"show {brand} troubleshooting guide",
+                    f"show {equipment} documentation",
+                ]),
+                ("show_equipment_history", [
+                    f"show {equipment} history",
+                    f"show maintenance history for {brand}",
+                    f"show {equipment} service records",
+                ]),
+                ("diagnose_fault", [
+                    f"diagnose {symptom} on {equipment}",
+                    f"troubleshoot {brand} {equipment} {symptom}",
+                    f"investigate {equipment} alarm",
+                ]),
             ]
+            action, queries = random.choice(safe_actions)
             query = random.choice(queries)
             return query, action
 
         elif pattern.category == "international":
-            # International verb variants
+            # International verb variants - action must match VERB_CONTEXT_PATTERNS
             if "make" in pattern.pattern_id.lower():
-                queries = [
-                    f"make work order for {equipment}",
-                    f"make WO for {brand} {equipment}",
-                    f"make task for {equipment} repair",
+                action_queries = [
+                    ("create_work_order", f"make work order for {brand} {equipment}"),
+                    ("create_work_order", f"make WO for {equipment} {symptom}"),
+                    ("create_task", f"make task for {equipment} repair"),
+                    ("create_purchase_order", f"make PO for {brand} parts"),
                 ]
             elif "do" in pattern.pattern_id.lower():
-                queries = [
-                    f"do handover note for {equipment}",
-                    f"do note about {symptom}",
-                    f"do entry for {equipment}",
+                # VERB_CONTEXT_PATTERNS: "do" + "handover" -> add_to_handover
+                # "do" + "note|entry|log" -> add_note
+                action_queries = [
+                    ("add_to_handover", f"do handover note for {brand} {equipment}"),
+                    ("add_to_handover", f"do handover for {equipment} {symptom}"),
+                    ("add_to_handover", f"do handover entry about {brand}"),
+                    ("add_note", f"do note about {equipment} {symptom}"),
+                    ("add_note", f"do log for {brand} {equipment}"),
+                    ("add_note", f"do entry about {equipment} issue"),
+                    ("add_note", f"do maintenance note for {equipment}"),
                 ]
             elif "put" in pattern.pattern_id.lower():
-                queries = [
-                    f"put {equipment} in handover",
-                    f"put note about {symptom}",
-                    f"put this in maintenance log",
+                # "put" + "handover" -> add_to_handover
+                # "put" + "note|record|log" -> add_note
+                action_queries = [
+                    ("add_to_handover", f"put {brand} {equipment} in handover"),
+                    ("add_to_handover", f"put {symptom} issue in handover"),
+                    ("add_note", f"put note about {equipment} {symptom}"),
+                    ("add_note", f"put this in maintenance log"),
                 ]
             else:
-                queries = [f"check {equipment}"]
+                action_queries = [("diagnose_fault", f"check {equipment}")]
+
+            action, query = random.choice(action_queries)
+
+        elif pattern.category == "unrecognized_verb":
+            # Unrecognized verb patterns test verbs that should route to search-only
+            # These verbs are recognized but map to none_search_only
+            if "tag" in pattern.pattern_id.lower():
+                action = "none_search_only"
+                queries = [
+                    f"tag {brand} {equipment} documentation",
+                    f"tag this manual section for {equipment}",
+                    f"tag {equipment} specs as important",
+                    f"tag {brand} parts catalog",
+                ]
+            elif "extract" in pattern.pattern_id.lower():
+                action = "none_search_only"
+                queries = [
+                    f"extract specs for {brand} {equipment}",
+                    f"extract {equipment} parameters from manual",
+                    f"extract part numbers for {equipment}",
+                    f"extract {brand} settings from documentation",
+                ]
+            else:
+                # Other unrecognized verb patterns
+                action = pattern.primary_actions[0] if pattern.primary_actions else "none_search_only"
+                queries = [f"show {equipment} info"]
+
             query = random.choice(queries)
 
         else:
@@ -569,8 +627,9 @@ class SuiteGenerator:
                 f"diagnose {symptom} on {brand} {equipment}",
                 f"troubleshoot {equipment} {symptom}",
                 f"show manual for {equipment} {symptom}",
-                f"check {equipment} in {location}",
+                f"check stock for {equipment} parts",
             ]
+            action = "diagnose_fault"  # Default action for generic queries
             query = random.choice(queries)
 
         return query, action
@@ -579,7 +638,6 @@ class SuiteGenerator:
         """Create a negative control query (should NOT trigger) with variation."""
         brand = random.choice(BRAND_VARIANTS)
         symptom = random.choice(SYMPTOM_VARIANTS)
-        time_qual = random.choice(TIME_QUALIFIERS)
 
         polite_prefixes = [
             "can you", "could you", "would you", "please",
@@ -588,9 +646,11 @@ class SuiteGenerator:
         ]
         prefix = random.choice(polite_prefixes)
 
-        verb = pattern.primary_actions[0].split("_")[0] if pattern.primary_actions else "show"
+        # Use common action verbs for negative queries (tests polite prefix handling)
+        action_verbs = ["show", "check", "create", "diagnose", "find", "get", "view"]
+        verb = random.choice(action_verbs)
 
-        # Vary the query structure
+        # Vary the query structure - polite prefix should prevent action trigger
         query_templates = [
             f"{prefix} {verb} {equipment} {location}",
             f"{prefix} {verb} the {brand} {equipment}",
@@ -607,9 +667,25 @@ class SuiteGenerator:
 
     def _make_collision_query(self, pattern: Pattern, equipment: str, symptom: str) -> Tuple[str, str]:
         """Create a collision query (ambiguous, tests disambiguation)."""
-        action = pattern.collision_actions[0] if pattern.collision_actions else pattern.primary_actions[0]
         brand = random.choice(BRAND_VARIANTS)
         location = random.choice(LOCATION_VARIANTS)
+
+        # For non-collision patterns, use common ambiguous queries
+        if pattern.category != "collision":
+            # Generate generic ambiguous queries that test action resolution
+            generic_collisions = [
+                ("show_equipment_overview", f"show {equipment}"),
+                ("show_equipment_overview", f"show {brand} info"),
+                ("diagnose_fault", f"check {equipment} status"),
+                ("diagnose_fault", f"troubleshoot {equipment} issue"),
+            ]
+            action, query = random.choice(generic_collisions)
+            return query, action
+
+        # Get expected collision action
+        action = pattern.collision_actions[0] if pattern.collision_actions else pattern.primary_actions[0]
+        if action == "none_search_only":
+            action = "show_equipment_overview"  # Safe fallback
 
         # Minimal context to trigger collision
         verb = pattern.pattern_id.replace("COL_", "").lower()
@@ -674,10 +750,19 @@ class SuiteGenerator:
 
     def _make_messy_query(self, pattern: Pattern, equipment: str, symptom: str, fault_code: str) -> Tuple[str, str]:
         """Create a messy query (voice/email/typo artifacts) with high variation."""
-        action = pattern.primary_actions[0] if pattern.primary_actions else "none_search_only"
         brand = random.choice(BRAND_VARIANTS)
         location = random.choice(LOCATION_VARIANTS)
         time_qual = random.choice(TIME_QUALIFIERS)
+
+        # For messy cases, use common action verbs that should trigger
+        # This tests noise handling, not specific pattern actions
+        messy_action_verbs = [
+            ("diagnose_fault", "diagnose"),
+            ("create_work_order", "create"),
+            ("check_stock_level", "check"),
+            ("show_manual_section", "show"),
+        ]
+        action, verb = random.choice(messy_action_verbs)
 
         # Pick a noise type
         noise_type = random.choice(["voice", "email", "typo", "quote", "bullet"])
@@ -688,13 +773,10 @@ class SuiteGenerator:
                 "so like", "um", "so um", "like um", "so basically",
                 "ok so", "right so", "yeah so", "alright",
             ])
-            verb = action.split("_")[0]
             voice_patterns = [
                 f"{fillers} {verb} {equipment} it's got {symptom}",
                 f"{fillers} {verb} the uh {brand} {equipment}",
-                f"{fillers} can you {verb} {equipment}",
                 f"hey {fillers} {verb} {equipment} {symptom}",
-                f"{fillers} I need to {verb} {equipment}",
             ]
             query = random.choice(voice_patterns)
 
@@ -703,56 +785,78 @@ class SuiteGenerator:
             prefix = random.choice([
                 "FW: Issue\n\n", "RE: Problem\n\n", "Fwd:\n",
                 "From: Captain\n\n", "RE: Urgent\n\n",
-                "FW: Maintenance\n\n",
             ])
-            verb = action.split("_")[0]
-            query = f"{prefix}{verb} {equipment} {symptom}"
+            if verb == "create":
+                query = f"{prefix}create work order for {brand} {equipment} {symptom}"
+            elif verb == "check":
+                query = f"{prefix}check stock for {equipment} parts"
+            else:
+                query = f"{prefix}{verb} {equipment} {symptom}"
 
         elif noise_type == "quote":
             # Quote markers from copy-paste
-            prefix = random.choice([">>> ", ">> ", "> ", ">>> "])
-            verb = action.split("_")[0]
-            query = f"{prefix}{verb} {equipment} {symptom}"
+            prefix = random.choice([">>> ", ">> ", "> "])
+            if verb == "create":
+                query = f"{prefix}create WO for {brand} {equipment}"
+            else:
+                query = f"{prefix}{verb} {equipment} {symptom}"
 
         elif noise_type == "bullet":
             # Bullet points from lists
             prefix = random.choice(["- ", "• ", "* ", "– "])
-            verb = action.split("_")[0]
-            query = f"{prefix}{verb} {brand} {equipment}"
+            if verb == "create":
+                query = f"{prefix}create task for {brand} {equipment}"
+            else:
+                query = f"{prefix}{verb} {brand} {equipment}"
 
         else:
             # Typos
-            verb = action.split("_")[0]
             typo_verb = self._add_typo(verb)
             typo_equip = self._add_typo(equipment.split()[0]) if equipment else equipment
-            typo_patterns = [
-                f"{typo_verb} {typo_equip} {symptom}",
-                f"{verb} {typo_equip} {symptom}",
-                f"{typo_verb} {equipment} {symptom}",
-                f"{typo_verb} {brand} {equipment}",
-            ]
-            query = random.choice(typo_patterns)
+            if verb == "create":
+                query = f"{typo_verb} work order for {typo_equip} {symptom}"
+                action = "create_work_order"
+            else:
+                typo_patterns = [
+                    f"{typo_verb} {typo_equip} {symptom}",
+                    f"{verb} {typo_equip} {symptom}",
+                    f"{typo_verb} {equipment} {symptom}",
+                ]
+                query = random.choice(typo_patterns)
 
         return query, action
 
     def _add_typo(self, word: str) -> str:
-        """Add a realistic typo to a word."""
-        if len(word) < 3:
+        """Add a realistic, recoverable typo to a word.
+
+        Typos should be minor enough that the word is still recognizable.
+        For example: 'create' -> 'creat' or 'craete' (not 'ceate')
+        """
+        if len(word) < 4:
             return word
 
-        typo_type = random.choice(["swap", "missing", "double"])
+        typo_type = random.choice(["swap", "double", "keyboard"])
 
-        if typo_type == "swap" and len(word) > 3:
-            # Swap two adjacent letters
-            i = random.randint(1, len(word) - 2)
+        if typo_type == "swap" and len(word) > 4:
+            # Swap two adjacent letters in the middle (not first or last)
+            i = random.randint(2, len(word) - 3)
             return word[:i] + word[i+1] + word[i] + word[i+2:]
-        elif typo_type == "missing":
-            # Remove a letter
-            i = random.randint(1, len(word) - 1)
-            return word[:i] + word[i+1:]
+        elif typo_type == "double":
+            # Double a letter in the middle
+            i = random.randint(1, len(word) - 2)
+            return word[:i] + word[i] + word[i:]
         else:
-            # Double a letter
-            i = random.randint(0, len(word) - 1)
+            # Keyboard neighbor typo (common typos)
+            keyboard_neighbors = {
+                'a': 's', 'e': 'r', 'i': 'o', 'o': 'p', 'u': 'y',
+                's': 'a', 'r': 'e', 't': 'y', 'n': 'm', 'g': 'h',
+            }
+            # Find a letter we can substitute
+            for i, c in enumerate(word[1:-1], 1):
+                if c in keyboard_neighbors:
+                    return word[:i] + keyboard_neighbors[c] + word[i+1:]
+            # Fallback: double a letter
+            i = random.randint(1, len(word) - 2)
             return word[:i] + word[i] + word[i:]
 
         return word

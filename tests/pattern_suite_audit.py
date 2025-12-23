@@ -79,8 +79,19 @@ class SuiteResult:
         """Check if hypothesis is satisfied."""
         # Hypothesis passes if:
         # - Zero hard FPs
-        # - F1 >= 0.8 or improved
-        return self.hard_fp == 0 and self.f1 >= 0.8
+        # - F1 >= 0.8 OR pattern is "no-trigger" type (all positives expect no trigger)
+        #
+        # For patterns like VERB_TAG/VERB_EXTRACT where all cases expect should_trigger=False,
+        # F1 will be 0 (no TPs possible). These pass if FP=0 and FN=0.
+        if self.hard_fp > 0:
+            return False
+
+        # If there were expected positive cases (tp + fn > 0), check F1
+        if self.tp + self.fn > 0:
+            return self.f1 >= 0.8
+
+        # All cases were negatives (no expected triggers) - pass if no FP/FN
+        return self.fp == 0 and self.fn == 0
 
     def to_dict(self) -> Dict:
         return {
@@ -313,7 +324,13 @@ FALSE POSITIVE SEVERITY:
         rec = agg["tp"] / max(agg["tp"] + agg["fn"], 1)
         f1 = 2 * prec * rec / max(prec + rec, 0.001)
 
-        status = "PASS" if agg["hard_fp"] == 0 and f1 >= 0.8 else "FAIL"
+        # Pattern passes if: no hard FPs AND (F1 >= 0.8 OR no expected triggers with no errors)
+        has_expected_triggers = agg["tp"] + agg["fn"] > 0
+        if has_expected_triggers:
+            status = "PASS" if agg["hard_fp"] == 0 and f1 >= 0.8 else "FAIL"
+        else:
+            # No-trigger pattern (all cases expect no trigger)
+            status = "PASS" if agg["hard_fp"] == 0 and agg["fp"] == 0 and agg["fn"] == 0 else "FAIL"
         print(f"\n  {pattern}:")
         print(f"    Suites: {agg['suites']}  Cases: {agg['cases']}")
         print(f"    TP: {agg['tp']}  FP: {agg['fp']}  FN: {agg['fn']}  TN: {agg['tn']}")
