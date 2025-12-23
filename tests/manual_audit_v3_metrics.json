@@ -1,0 +1,41 @@
+{
+  "total_cases": 1005,
+  "trigger_classification": {
+    "tp": 496,
+    "fp": 1,
+    "fn": 59,
+    "tn": 449,
+    "precision": 0.998,
+    "recall": 0.8937,
+    "f1": 0.943
+  },
+  "fp_severity_breakdown": {
+    "hard_fp_count": 0,
+    "soft_misroute_count": 1,
+    "hard_fp_rate": 0.0,
+    "hard_fp_cases": [],
+    "soft_misroute_cases": [
+      {
+        "id": "Q0259",
+        "query": "display olcation",
+        "predicted_action": "show_equipment_overview"
+      }
+    ]
+  },
+  "action_detection": {
+    "action_matches": 803,
+    "action_collisions": 130,
+    "action_accuracy": 1.619
+  },
+  "entity_extraction": {
+    "total_expected": 1138,
+    "total_misses": 452,
+    "hit_rate": 0.6028
+  },
+  "failure_modes": {
+    "action_collision": 130,
+    "verb_prefix_mismatch": 59,
+    "soft_misroute_read_only": 1,
+    "noun_only_should_not_trigger": 1
+  }
+}
