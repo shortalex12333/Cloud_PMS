@@ -212,13 +212,18 @@ ENTITY_PATTERNS = {
 
 def get_first_token(query: str) -> str:
     """Extract first token, handling noise."""
+    # Normalize whitespace: tabs to spaces, multiple spaces to single
+    query = re.sub(r'\t', ' ', query)
+    query = re.sub(r' +', ' ', query)
     query = query.strip()
 
     # Skip common noise prefixes (expanded for voice dictation, email, forum)
     # Order matters: process multi-word patterns before single-word
     noise_patterns = [
+        # Multi-line quote blocks (>>> line\n>>> line\n... then command)
+        r"^(>{1,3}[^\n]*\n)+",
         # Email prefixes with content and newlines (greedy match)
-        r"^(fw:|re:|fwd:|from:)[^\n]*\n+",
+        r"^(fw:|re:|fwd:|from:|subject:)[^\n]*\n+",
         # Multi-word voice fillers (must come before single-word patterns)
         r"^hey\s+(yeah\s+so|right\s+so|like\s+um|so\s+um|um|so)\s+",
         r"^(yeah|right|ok|okay)\s+so\s+",
@@ -226,7 +231,7 @@ def get_first_token(query: str) -> str:
         r"^hey\s+so\s+um\s+",  # hey so um
         # Bullet points (various styles)
         r"^[-•►→»*–—]\s*",
-        # Quote markers (>, >>, >>>)
+        # Single-line quote markers (>, >>, >>>)
         r"^>{1,3}\s*",
         # Numbered lists
         r"^\d+[.)]\s*",
@@ -261,8 +266,34 @@ def get_first_token(query: str) -> str:
     words = query.strip().split()
     if not words:
         return ""
-    # Apply typo correction to first token
+
     first_token = words[0].lower()
+
+    # Check for concatenated verb+word (e.g., "diagnoseradar" → "diagnose")
+    # But NOT conjugations like "scheduled", "showing", "created"
+    known_verbs = [
+        "diagnose", "troubleshoot", "investigate",
+        "show", "view", "display", "list",
+        "create", "update", "close", "add", "attach",
+        "check", "order", "scan", "reserve",
+        "export", "generate", "open", "upload",
+        "log", "submit", "archive", "share",
+        "assign", "schedule", "mark", "set",
+    ]
+    # English verb conjugation suffixes to reject
+    conjugation_suffixes = ["d", "ed", "s", "es", "ing", "er", "ment", "tion", "ness", "ly"]
+
+    for verb in known_verbs:
+        if first_token.startswith(verb) and len(first_token) > len(verb):
+            remainder = first_token[len(verb):]
+            # Skip if remainder is a conjugation suffix (e.g., scheduled → "d")
+            if remainder in conjugation_suffixes:
+                continue
+            # Found concatenated verb+word (e.g., diagnoseradar)
+            first_token = verb
+            break
+
+    # Apply typo correction
     return correct_verb_typo(first_token)
 
 

@@ -268,6 +268,7 @@ VERB_TYPO_CORRECTIONS = {
     # show typos
     "shpw": "show", "shhow": "show", "shwo": "show", "hsow": "show",
     "showw": "show", "shiw": "show", "shoow": "show", "sho": "show",
+    "shoo": "show", "hsow": "show",
     # check typos
     "chrck": "check", "chekc": "check", "cehck": "check", "checkk": "check",
     "cheeck": "check", "chck": "check",
@@ -286,7 +287,10 @@ VERB_TYPO_CORRECTIONS = {
     # attach typos
     "atach": "attach", "attch": "attach", "attahc": "attach",
     # open typos
-    "oepn": "open", "opne": "open", "oopen": "open",
+    "oepn": "open", "opne": "open", "oopen": "open", "oppn": "open",
+    "opn": "open", "oen": "open",
+    # archive typos
+    "arrhive": "archive", "archiv": "archive", "arcive": "archive",
     # add typos
     "ad": "add", "addd": "add", "adsd": "add",
     # troubleshoot typos
