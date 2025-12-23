@@ -3,13 +3,13 @@
     "total_suites": 30,
     "total_cases": 564,
     "trigger_classification": {
-      "tp": 328,
+      "tp": 332,
       "fp": 0,
-      "fn": 4,
+      "fn": 0,
       "tn": 232,
       "precision": 1.0,
-      "recall": 0.988,
-      "f1": 0.9939
+      "recall": 1.0,
+      "f1": 1.0
     },
     "fp_severity": {
       "hard_fp": 0,
@@ -26,40 +26,12 @@
       "tn": 14,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 24,
-      "action_collisions": 2,
+      "action_matches": 23,
+      "action_collisions": 3,
       "precision": 1.0,
       "recall": 1.0
     },
     "COL_SHOW": {
-      "suites": 2,
-      "cases": 40,
-      "tp": 25,
-      "fp": 0,
-      "fn": 1,
-      "tn": 14,
-      "hard_fp": 0,
-      "soft_misroute": 0,
-      "action_matches": 11,
-      "action_collisions": 14,
-      "precision": 1.0,
-      "recall": 0.9615
-    },
-    "NOISE_SO": {
-      "suites": 2,
-      "cases": 36,
-      "tp": 22,
-      "fp": 0,
-      "fn": 0,
-      "tn": 14,
-      "hard_fp": 0,
-      "soft_misroute": 0,
-      "action_matches": 20,
-      "action_collisions": 2,
-      "precision": 1.0,
-      "recall": 1.0
-    },
-    "COL_EXPORT": {
       "suites": 2,
       "cases": 40,
       "tp": 26,
@@ -73,19 +45,47 @@
       "precision": 1.0,
       "recall": 1.0
     },
-    "COL_GENERATE": {
+    "NOISE_SO": {
       "suites": 2,
-      "cases": 40,
-      "tp": 25,
+      "cases": 36,
+      "tp": 22,
       "fp": 0,
-      "fn": 1,
+      "fn": 0,
       "tn": 14,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 25,
-      "action_collisions": 0,
+      "action_matches": 18,
+      "action_collisions": 4,
       "precision": 1.0,
-      "recall": 0.9615
+      "recall": 1.0
+    },
+    "COL_EXPORT": {
+      "suites": 2,
+      "cases": 40,
+      "tp": 26,
+      "fp": 0,
+      "fn": 0,
+      "tn": 14,
+      "hard_fp": 0,
+      "soft_misroute": 0,
+      "action_matches": 11,
+      "action_collisions": 15,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "COL_GENERATE": {
+      "suites": 2,
+      "cases": 40,
+      "tp": 26,
+      "fp": 0,
+      "fn": 0,
+      "tn": 14,
+      "hard_fp": 0,
+      "soft_misroute": 0,
+      "action_matches": 24,
+      "action_collisions": 2,
+      "precision": 1.0,
+      "recall": 1.0
     },
     "NOISE_EMAIL_FW": {
       "suites": 1,
@@ -96,8 +96,8 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 9,
-      "action_collisions": 2,
+      "action_matches": 10,
+      "action_collisions": 1,
       "precision": 1.0,
       "recall": 1.0
     },
@@ -124,8 +124,8 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 10,
-      "action_collisions": 1,
+      "action_matches": 9,
+      "action_collisions": 2,
       "precision": 1.0,
       "recall": 1.0
     },
@@ -138,24 +138,24 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 11,
-      "action_collisions": 2,
+      "action_matches": 7,
+      "action_collisions": 6,
       "precision": 1.0,
       "recall": 1.0
     },
     "COL_UPLOAD": {
       "suites": 1,
       "cases": 20,
-      "tp": 12,
+      "tp": 13,
       "fp": 0,
-      "fn": 1,
+      "fn": 0,
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 11,
-      "action_collisions": 1,
+      "action_matches": 13,
+      "action_collisions": 0,
       "precision": 1.0,
-      "recall": 0.9231
+      "recall": 1.0
     },
     "NOISE_QUOTE": {
       "suites": 1,
@@ -180,8 +180,8 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 10,
-      "action_collisions": 1,
+      "action_matches": 9,
+      "action_collisions": 2,
       "precision": 1.0,
       "recall": 1.0
     },
@@ -208,8 +208,8 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 10,
-      "action_collisions": 1,
+      "action_matches": 11,
+      "action_collisions": 0,
       "precision": 1.0,
       "recall": 1.0
     },
@@ -222,8 +222,8 @@
       "tn": 14,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 15,
-      "action_collisions": 7,
+      "action_matches": 17,
+      "action_collisions": 5,
       "precision": 1.0,
       "recall": 1.0
     },
@@ -286,16 +286,16 @@
     "INTL_MAKE": {
       "suites": 1,
       "cases": 18,
-      "tp": 10,
+      "tp": 11,
       "fp": 0,
-      "fn": 1,
+      "fn": 0,
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 10,
+      "action_matches": 11,
       "action_collisions": 0,
       "precision": 1.0,
-      "recall": 0.9091
+      "recall": 1.0
     },
     "INTL_DO": {
       "suites": 1,
@@ -306,8 +306,8 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 10,
-      "action_collisions": 1,
+      "action_matches": 11,
+      "action_collisions": 0,
       "precision": 1.0,
       "recall": 1.0
     },
@@ -320,8 +320,8 @@
       "tn": 7,
       "hard_fp": 0,
       "soft_misroute": 0,
-      "action_matches": 10,
-      "action_collisions": 1,
+      "action_matches": 11,
+      "action_collisions": 0,
       "precision": 1.0,
       "recall": 1.0
     }
@@ -345,18 +345,32 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 12,
-        "collisions": 1
+        "matches": 11,
+        "collisions": 2
       },
       "entity_extraction": {
-        "hits": 16,
-        "misses": 10
+        "hits": 15,
+        "misses": 11
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
+          "case_id": "S01_M01",
+          "query": "> show capstan overheating",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        },
+        {
           "case_id": "S01_M02",
-          "query": "alright show the uh MAN generator",
+          "query": "shoow air handler not working",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -392,22 +406,22 @@
         "collisions": 1
       },
       "entity_extraction": {
-        "hits": 13,
-        "misses": 10
+        "hits": 17,
+        "misses": 9
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S02_M02",
-          "query": "* create task for Onan stern thruster",
+          "case_id": "S02_M01",
+          "query": "shpw gyro high temperature",
           "expected": {
             "trigger": true,
-            "action": "create_work_order",
+            "action": "show_manual_section",
             "risk_class": "fn_risk"
           },
           "predicted": {
             "trigger": true,
-            "action": "create_task"
+            "action": "show_equipment_overview"
           },
           "issue": "collision"
         }
@@ -435,14 +449,14 @@
         "collisions": 8
       },
       "entity_extraction": {
-        "hits": 10,
+        "hits": 11,
         "misses": 11
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S03_P03",
-          "query": "show hours of rest log for crew",
+          "case_id": "S03_P01",
+          "query": "show predictive insights for RO system",
           "expected": {
             "trigger": true,
             "action": "view_linked_entities",
@@ -450,13 +464,41 @@
           },
           "predicted": {
             "trigger": true,
-            "action": "show_hours_of_rest"
+            "action": "show_predictive_insight"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S03_P02",
+          "query": "show storage location for thruster parts",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_storage_location"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S03_P03",
+          "query": "show history for RO system in lazarette",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_history"
           },
           "issue": "collision"
         },
         {
           "case_id": "S03_P04",
-          "query": "show windlass status overview",
+          "query": "show fault trends for gyro",
           "expected": {
             "trigger": true,
             "action": "view_linked_entities",
@@ -464,13 +506,13 @@
           },
           "predicted": {
             "trigger": true,
-            "action": "show_recent_state"
+            "action": "show_fault_trends"
           },
           "issue": "collision"
         },
         {
           "case_id": "S03_P05",
-          "query": "show anchor windlass status overview",
+          "query": "show Seakeeper status overview",
           "expected": {
             "trigger": true,
             "action": "view_linked_entities",
@@ -484,7 +526,7 @@
         },
         {
           "case_id": "S03_P06",
-          "query": "show predictive insights for propulsion engine",
+          "query": "show hours of rest log for crew",
           "expected": {
             "trigger": true,
             "action": "view_linked_entities",
@@ -492,12 +534,111 @@
           },
           "predicted": {
             "trigger": true,
-            "action": "show_predictive_insight"
+            "action": "show_hours_of_rest"
           },
           "issue": "collision"
         },
         {
           "case_id": "S03_P07",
+          "query": "show fault trends for chiller",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_fault_trends"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S03_M01",
+          "query": "shpw desalinatoor tripping",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        }
+      ]
+    },
+    {
+      "suite_id": "S04",
+      "pattern_target": "COL_SHOW",
+      "hypothesis": "Collision rate for 'Show Verb Collision' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 13,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 5,
+        "collisions": 8
+      },
+      "entity_extraction": {
+        "hits": 13,
+        "misses": 10
+      },
+      "hypothesis_passed": true,
+      "failure_cases": [
+        {
+          "case_id": "S04_P01",
+          "query": "show tasks due on Dometic Seakeeper",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_tasks_due"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S04_P02",
+          "query": "show storage location for AC unit parts",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_storage_location"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S04_P04",
+          "query": "show tasks due on Caterpillar main engine",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_tasks_due"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S04_P05",
           "query": "show certificates expiring this month",
           "expected": {
             "trigger": true,
@@ -511,8 +652,22 @@
           "issue": "collision"
         },
         {
-          "case_id": "S03_C03",
-          "query": "show stern locker status",
+          "case_id": "S04_P06",
+          "query": "show storage location for RO system parts",
+          "expected": {
+            "trigger": true,
+            "action": "view_linked_entities",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_storage_location"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S04_C04",
+          "query": "show ER status",
           "expected": {
             "trigger": true,
             "action": "show_equipment_overview",
@@ -525,8 +680,8 @@
           "issue": "collision"
         },
         {
-          "case_id": "S03_M01",
-          "query": "hey so um show RO system tripping",
+          "case_id": "S04_M01",
+          "query": "FW: Issue\n\nshow azimuth thruster alarm",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -539,8 +694,433 @@
           "issue": "collision"
         },
         {
-          "case_id": "S03_M02",
-          "query": "- create task for Kohler main engine",
+          "case_id": "S04_M02",
+          "query": "hey so um show reverse osmosis low pressure",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        }
+      ]
+    },
+    {
+      "suite_id": "S05",
+      "pattern_target": "NOISE_SO",
+      "hypothesis": "FN rate for ''So/Like' Prefix' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 11,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 9,
+        "collisions": 2
+      },
+      "entity_extraction": {
+        "hits": 11,
+        "misses": 10
+      },
+      "hypothesis_passed": true,
+      "failure_cases": [
+        {
+          "case_id": "S05_P08",
+          "query": "create task for azimuth thruster maintenance",
+          "expected": {
+            "trigger": true,
+            "action": "create_work_order",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "create_task"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S05_M02",
+          "query": "\u2022 show Yanmar reverse osmosis",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        }
+      ]
+    },
+    {
+      "suite_id": "S06",
+      "pattern_target": "NOISE_SO",
+      "hypothesis": "FN rate for ''So/Like' Prefix' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 11,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 9,
+        "collisions": 2
+      },
+      "entity_extraction": {
+        "hits": 14,
+        "misses": 10
+      },
+      "hypothesis_passed": true,
+      "failure_cases": [
+        {
+          "case_id": "S06_P06",
+          "query": "create task for bow thruster maintenance",
+          "expected": {
+            "trigger": true,
+            "action": "create_work_order",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "create_task"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S06_M02",
+          "query": "FW: Issue\n\nshow anchor windlass no output",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_hours_of_rest"
+          },
+          "issue": "collision"
+        }
+      ]
+    },
+    {
+      "suite_id": "S07",
+      "pattern_target": "COL_EXPORT",
+      "hypothesis": "Collision rate for 'Export Verb Collision' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 13,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 6,
+        "collisions": 7
+      },
+      "entity_extraction": {
+        "hits": 9,
+        "misses": 15
+      },
+      "hypothesis_passed": true,
+      "failure_cases": [
+        {
+          "case_id": "S07_P01",
+          "query": "export hours of rest data",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S07_P02",
+          "query": "export summary of leak issues",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S07_P03",
+          "query": "export summary of won't start issues",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S07_P04",
+          "query": "export galley equipment reports",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S07_P05",
+          "query": "export compliance logs from before charter",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S07_P06",
+          "query": "export compliance logs from during sea trial",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S07_P07",
+          "query": "export work order history for Raymarine fuel pump",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        }
+      ]
+    },
+    {
+      "suite_id": "S08",
+      "pattern_target": "COL_EXPORT",
+      "hypothesis": "Collision rate for 'Export Verb Collision' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 13,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 5,
+        "collisions": 8
+      },
+      "entity_extraction": {
+        "hits": 12,
+        "misses": 9
+      },
+      "hypothesis_passed": true,
+      "failure_cases": [
+        {
+          "case_id": "S08_P01",
+          "query": "export work order history for Caterpillar reverse osmosis",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_P02",
+          "query": "export bilge pump maintenance records",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_P03",
+          "query": "export handover for air handler systems",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_P04",
+          "query": "export stabilizer maintenance records",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_P05",
+          "query": "export windlass maintenance records",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_P06",
+          "query": "export DG maintenance records",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_P07",
+          "query": "export compliance logs from today",
+          "expected": {
+            "trigger": true,
+            "action": "export_handover",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "export_summary"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S08_M02",
+          "query": "RE: Urgent\n\nshow starboard main high temperature",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        }
+      ]
+    },
+    {
+      "suite_id": "S09",
+      "pattern_target": "COL_GENERATE",
+      "hypothesis": "Collision rate for 'Generate/Summarise Collision' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 13,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 12,
+        "collisions": 1
+      },
+      "entity_extraction": {
+        "hits": 13,
+        "misses": 8
+      },
+      "hypothesis_passed": true,
+      "failure_cases": [
+        {
+          "case_id": "S09_M01",
+          "query": "- create task for Furuno windlass",
           "expected": {
             "trigger": true,
             "action": "create_work_order",
@@ -555,136 +1135,52 @@
       ]
     },
     {
-      "suite_id": "S04",
-      "pattern_target": "COL_SHOW",
-      "hypothesis": "Collision rate for 'Show Verb Collision' should decrease without increasing hard FP",
+      "suite_id": "S10",
+      "pattern_target": "COL_GENERATE",
+      "hypothesis": "Collision rate for 'Generate/Summarise Collision' should decrease without increasing hard FP",
       "metrics": {
-        "tp": 12,
+        "tp": 13,
         "fp": 0,
-        "fn": 1,
+        "fn": 0,
         "tn": 7,
         "precision": 1.0,
-        "recall": 0.9231,
-        "f1": 0.96
+        "recall": 1.0,
+        "f1": 1.0
       },
       "fp_severity": {
         "hard_fp": 0,
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 6,
-        "collisions": 6
+        "matches": 12,
+        "collisions": 1
       },
       "entity_extraction": {
-        "hits": 14,
-        "misses": 6
+        "hits": 11,
+        "misses": 9
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S04_P01",
-          "query": "show storage location for watermaker parts",
+          "case_id": "S10_M01",
+          "query": "\u2013 create task for Mastervolt bilge pump",
           "expected": {
             "trigger": true,
-            "action": "view_linked_entities",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_storage_location"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S04_P02",
-          "query": "show fault trends for watermaker",
-          "expected": {
-            "trigger": true,
-            "action": "view_linked_entities",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_fault_trends"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S04_P05",
-          "query": "show predictive insights for ME",
-          "expected": {
-            "trigger": true,
-            "action": "view_linked_entities",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_predictive_insight"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S04_P06",
-          "query": "show equipment utilization for AC unit",
-          "expected": {
-            "trigger": true,
-            "action": "view_linked_entities",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_utilization"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S04_P07",
-          "query": "show predictive insights for Seakeeper",
-          "expected": {
-            "trigger": true,
-            "action": "view_linked_entities",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_predictive_insight"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S04_C02",
-          "query": "show bridge status",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_overview",
-            "risk_class": "soft_misroute"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_recent_state"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S04_M02",
-          "query": "\u2022 check Mastervolt air handler",
-          "expected": {
-            "trigger": true,
-            "action": "check_stock_level",
+            "action": "create_work_order",
             "risk_class": "fn_risk"
           },
           "predicted": {
-            "trigger": false,
-            "action": "none_search_only"
+            "trigger": true,
+            "action": "create_task"
           },
-          "issue": "fn"
+          "issue": "collision"
         }
       ]
     },
     {
-      "suite_id": "S05",
-      "pattern_target": "NOISE_SO",
-      "hypothesis": "FN rate for ''So/Like' Prefix' should decrease without increasing hard FP",
+      "suite_id": "S11",
+      "pattern_target": "NOISE_EMAIL_FW",
+      "hypothesis": "FN rate for 'Email Forward Prefix' should decrease without increasing hard FP",
       "metrics": {
         "tp": 11,
         "fp": 0,
@@ -709,461 +1205,8 @@
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S05_P07",
-          "query": "create task for chiller maintenance",
-          "expected": {
-            "trigger": true,
-            "action": "create_work_order",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "create_task"
-          },
-          "issue": "collision"
-        }
-      ]
-    },
-    {
-      "suite_id": "S06",
-      "pattern_target": "NOISE_SO",
-      "hypothesis": "FN rate for ''So/Like' Prefix' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 11,
-        "fp": 0,
-        "fn": 0,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 10,
-        "collisions": 1
-      },
-      "entity_extraction": {
-        "hits": 13,
-        "misses": 8
-      },
-      "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S06_M01",
-          "query": "\u2022 create task for Onan air conditioning",
-          "expected": {
-            "trigger": true,
-            "action": "create_work_order",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "create_task"
-          },
-          "issue": "collision"
-        }
-      ]
-    },
-    {
-      "suite_id": "S07",
-      "pattern_target": "COL_EXPORT",
-      "hypothesis": "Collision rate for 'Export Verb Collision' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 13,
-        "fp": 0,
-        "fn": 0,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 4,
-        "collisions": 9
-      },
-      "entity_extraction": {
-        "hits": 12,
-        "misses": 10
-      },
-      "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S07_P01",
-          "query": "export work order history for Yanmar desalinator",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_P02",
-          "query": "export summary of alarm issues",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_P03",
-          "query": "export compliance logs from last week",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_P04",
-          "query": "export compliance logs from after maintenance",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_P05",
-          "query": "export summary of intermittent issues",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_P06",
-          "query": "export capstan maintenance records",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_P07",
-          "query": "export handover for capstan systems",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_M01",
-          "query": "ok so show the uh Caterpillar air handler",
-          "expected": {
-            "trigger": true,
-            "action": "show_manual_section",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_overview"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S07_M02",
-          "query": "- create task for Mastervolt capstan",
-          "expected": {
-            "trigger": true,
-            "action": "create_work_order",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "create_task"
-          },
-          "issue": "collision"
-        }
-      ]
-    },
-    {
-      "suite_id": "S08",
-      "pattern_target": "COL_EXPORT",
-      "hypothesis": "Collision rate for 'Export Verb Collision' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 13,
-        "fp": 0,
-        "fn": 0,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 6,
-        "collisions": 7
-      },
-      "entity_extraction": {
-        "hits": 11,
-        "misses": 10
-      },
-      "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S08_P01",
-          "query": "export handover for raw water pump systems",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S08_P02",
-          "query": "export work order history for Raymarine propulsion engine",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S08_P03",
-          "query": "export diesel generator maintenance records",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S08_P04",
-          "query": "export engine room equipment reports",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S08_P05",
-          "query": "export handover for thruster systems",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S08_P06",
-          "query": "export work order history for Caterpillar fin stabilizer",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S08_P07",
-          "query": "export handover for starboard main systems",
-          "expected": {
-            "trigger": true,
-            "action": "export_handover",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "export_summary"
-          },
-          "issue": "collision"
-        }
-      ]
-    },
-    {
-      "suite_id": "S09",
-      "pattern_target": "COL_GENERATE",
-      "hypothesis": "Collision rate for 'Generate/Summarise Collision' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 12,
-        "fp": 0,
-        "fn": 1,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 0.9231,
-        "f1": 0.96
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 12,
-        "collisions": 0
-      },
-      "entity_extraction": {
-        "hits": 13,
-        "misses": 10
-      },
-      "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S09_M02",
-          "query": "> check main engine smoking",
-          "expected": {
-            "trigger": true,
-            "action": "check_stock_level",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": false,
-            "action": "none_search_only"
-          },
-          "issue": "fn"
-        }
-      ]
-    },
-    {
-      "suite_id": "S10",
-      "pattern_target": "COL_GENERATE",
-      "hypothesis": "Collision rate for 'Generate/Summarise Collision' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 13,
-        "fp": 0,
-        "fn": 0,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 13,
-        "collisions": 0
-      },
-      "entity_extraction": {
-        "hits": 10,
-        "misses": 12
-      },
-      "hypothesis_passed": true,
-      "failure_cases": []
-    },
-    {
-      "suite_id": "S11",
-      "pattern_target": "NOISE_EMAIL_FW",
-      "hypothesis": "FN rate for 'Email Forward Prefix' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 11,
-        "fp": 0,
-        "fn": 0,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 9,
-        "collisions": 2
-      },
-      "entity_extraction": {
-        "hits": 17,
-        "misses": 7
-      },
-      "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S11_P05",
-          "query": "create task for anchor windlass maintenance",
-          "expected": {
-            "trigger": true,
-            "action": "create_work_order",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "create_task"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S11_M02",
-          "query": "um show aux gen it's got vibration",
+          "case_id": "S11_M01",
+          "query": "- show Lewmar air conditioning",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1199,14 +1242,14 @@
         "collisions": 8
       },
       "entity_extraction": {
-        "hits": 14,
-        "misses": 8
+        "hits": 10,
+        "misses": 11
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
           "case_id": "S12_P01",
-          "query": "open stern locker equipment card",
+          "query": "open Yanmar fuel pump specification sheet",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1220,7 +1263,7 @@
         },
         {
           "case_id": "S12_P02",
-          "query": "open Kohler fire pump specification sheet",
+          "query": "open air handler service manual",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1234,7 +1277,7 @@
         },
         {
           "case_id": "S12_P03",
-          "query": "open diesel generator service manual",
+          "query": "open engine room equipment card",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1248,7 +1291,7 @@
         },
         {
           "case_id": "S12_P04",
-          "query": "open document for bilge pump manual",
+          "query": "open document for port main manual",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1262,7 +1305,7 @@
         },
         {
           "case_id": "S12_P05",
-          "query": "open port main service manual",
+          "query": "open Webasto reverse osmosis specification sheet",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1276,7 +1319,7 @@
         },
         {
           "case_id": "S12_P06",
-          "query": "open Onan Seakeeper specification sheet",
+          "query": "open port side equipment card",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1290,7 +1333,7 @@
         },
         {
           "case_id": "S12_P07",
-          "query": "open maintenance log for air conditioning",
+          "query": "open document for fin stabilizer manual",
           "expected": {
             "trigger": true,
             "action": "open_document",
@@ -1303,8 +1346,8 @@
           "issue": "collision"
         },
         {
-          "case_id": "S12_M01",
-          "query": "so um show transfer pump it's got surging",
+          "case_id": "S12_M02",
+          "query": ">> show anchor windlass low pressure",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1312,7 +1355,7 @@
           },
           "predicted": {
             "trigger": true,
-            "action": "show_equipment_overview"
+            "action": "show_hours_of_rest"
           },
           "issue": "collision"
         }
@@ -1336,18 +1379,32 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 10,
-        "collisions": 1
+        "matches": 9,
+        "collisions": 2
       },
       "entity_extraction": {
-        "hits": 17,
+        "hits": 16,
         "misses": 7
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
+          "case_id": "S13_M01",
+          "query": "* create task for Victron main engine",
+          "expected": {
+            "trigger": true,
+            "action": "create_work_order",
+            "risk_class": "fn_risk"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "create_task"
+          },
+          "issue": "collision"
+        },
+        {
           "case_id": "S13_M02",
-          "query": "shhow air conditioning noise",
+          "query": "\u2022 show Onan HVAC",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1379,18 +1436,32 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 11,
-        "collisions": 2
+        "matches": 7,
+        "collisions": 6
       },
       "entity_extraction": {
-        "hits": 12,
-        "misses": 10
+        "hits": 13,
+        "misses": 9
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
+          "case_id": "S14_P02",
+          "query": "update certificate for generator",
+          "expected": {
+            "trigger": true,
+            "action": "update_work_order",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "update_certificate_metadata"
+          },
+          "issue": "collision"
+        },
+        {
           "case_id": "S14_P03",
-          "query": "update certificate for air conditioning",
+          "query": "update certificate for thruster",
           "expected": {
             "trigger": true,
             "action": "update_work_order",
@@ -1404,7 +1475,21 @@
         },
         {
           "case_id": "S14_P04",
-          "query": "update stock level for starboard main parts",
+          "query": "update certificate for capstan",
+          "expected": {
+            "trigger": true,
+            "action": "update_work_order",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "update_certificate_metadata"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S14_P05",
+          "query": "update stock level for generator parts",
           "expected": {
             "trigger": true,
             "action": "update_work_order",
@@ -1415,39 +1500,24 @@
             "action": "update_stock_level"
           },
           "issue": "collision"
-        }
-      ]
-    },
-    {
-      "suite_id": "S15",
-      "pattern_target": "COL_UPLOAD",
-      "hypothesis": "Collision rate for 'Upload Verb Collision' should decrease without increasing hard FP",
-      "metrics": {
-        "tp": 12,
-        "fp": 0,
-        "fn": 1,
-        "tn": 7,
-        "precision": 1.0,
-        "recall": 0.9231,
-        "f1": 0.96
-      },
-      "fp_severity": {
-        "hard_fp": 0,
-        "soft_misroute": 0
-      },
-      "action_detection": {
-        "matches": 11,
-        "collisions": 1
-      },
-      "entity_extraction": {
-        "hits": 10,
-        "misses": 11
-      },
-      "hypothesis_passed": true,
-      "failure_cases": [
+        },
         {
-          "case_id": "S15_M01",
-          "query": "\u2013 show Dometic main engine",
+          "case_id": "S14_P07",
+          "query": "update stock level for port main parts",
+          "expected": {
+            "trigger": true,
+            "action": "update_work_order",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "update_stock_level"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S14_M01",
+          "query": ">>> show DG not working",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1458,22 +1528,36 @@
             "action": "show_equipment_overview"
           },
           "issue": "collision"
-        },
-        {
-          "case_id": "S15_M02",
-          "query": "hey yeah so check AC unit low pressure",
-          "expected": {
-            "trigger": true,
-            "action": "check_stock_level",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": false,
-            "action": "none_search_only"
-          },
-          "issue": "fn"
         }
       ]
+    },
+    {
+      "suite_id": "S15",
+      "pattern_target": "COL_UPLOAD",
+      "hypothesis": "Collision rate for 'Upload Verb Collision' should decrease without increasing hard FP",
+      "metrics": {
+        "tp": 13,
+        "fp": 0,
+        "fn": 0,
+        "tn": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "fp_severity": {
+        "hard_fp": 0,
+        "soft_misroute": 0
+      },
+      "action_detection": {
+        "matches": 13,
+        "collisions": 0
+      },
+      "entity_extraction": {
+        "hits": 12,
+        "misses": 8
+      },
+      "hypothesis_passed": true,
+      "failure_cases": []
     },
     {
       "suite_id": "S16",
@@ -1498,21 +1582,21 @@
       },
       "entity_extraction": {
         "hits": 19,
-        "misses": 7
+        "misses": 6
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S16_M01",
-          "query": ">> show aux gen no output",
+          "case_id": "S16_P08",
+          "query": "create task for ME maintenance",
           "expected": {
             "trigger": true,
-            "action": "show_manual_section",
-            "risk_class": "fn_risk"
+            "action": "create_work_order",
+            "risk_class": "safe"
           },
           "predicted": {
             "trigger": true,
-            "action": "show_equipment_overview"
+            "action": "create_task"
           },
           "issue": "collision"
         }
@@ -1536,18 +1620,32 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 10,
-        "collisions": 1
+        "matches": 9,
+        "collisions": 2
       },
       "entity_extraction": {
-        "hits": 16,
-        "misses": 9
+        "hits": 17,
+        "misses": 6
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S17_M01",
-          "query": "Fwd:\nshow propulsion engine not working",
+          "case_id": "S17_P03",
+          "query": "create task for raw water pump maintenance",
+          "expected": {
+            "trigger": true,
+            "action": "create_work_order",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "create_task"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S17_M02",
+          "query": "shpw raw water pump alarm",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1583,14 +1681,14 @@
         "collisions": 1
       },
       "entity_extraction": {
-        "hits": 11,
-        "misses": 10
+        "hits": 12,
+        "misses": 9
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S18_M02",
-          "query": "\u2022 create task for Onan azimuth thruster",
+          "case_id": "S18_M01",
+          "query": "\u2022 create task for Caterpillar capstan",
           "expected": {
             "trigger": true,
             "action": "create_work_order",
@@ -1622,30 +1720,15 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 10,
-        "collisions": 1
+        "matches": 11,
+        "collisions": 0
       },
       "entity_extraction": {
-        "hits": 20,
-        "misses": 5
+        "hits": 16,
+        "misses": 9
       },
       "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S19_M01",
-          "query": "- show Yanmar Seakeeper",
-          "expected": {
-            "trigger": true,
-            "action": "show_manual_section",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_overview"
-          },
-          "issue": "collision"
-        }
-      ]
+      "failure_cases": []
     },
     {
       "suite_id": "S20",
@@ -1669,28 +1752,14 @@
         "collisions": 4
       },
       "entity_extraction": {
-        "hits": 9,
-        "misses": 11
+        "hits": 16,
+        "misses": 7
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S20_P04",
-          "query": "show genset status",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_overview",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_recent_state"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S20_P05",
-          "query": "show AC unit documentation",
+          "case_id": "S20_P03",
+          "query": "show generator documentation",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1703,8 +1772,8 @@
           "issue": "collision"
         },
         {
-          "case_id": "S20_P09",
-          "query": "show fuel pump service records",
+          "case_id": "S20_P06",
+          "query": "show reverse osmosis service records",
           "expected": {
             "trigger": true,
             "action": "show_equipment_history",
@@ -1717,8 +1786,22 @@
           "issue": "collision"
         },
         {
-          "case_id": "S20_M02",
-          "query": "\u2013 show Furuno starboard main",
+          "case_id": "S20_P09",
+          "query": "show gyro service records",
+          "expected": {
+            "trigger": true,
+            "action": "show_equipment_history",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S20_M01",
+          "query": "show waterrmaker leaking",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1750,46 +1833,18 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 8,
-        "collisions": 3
+        "matches": 10,
+        "collisions": 1
       },
       "entity_extraction": {
-        "hits": 13,
-        "misses": 8
+        "hits": 12,
+        "misses": 9
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S21_P01",
-          "query": "show anchor windlass service records",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_history",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_hours_of_rest"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S21_P05",
-          "query": "show thruster status",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_overview",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_recent_state"
-          },
-          "issue": "collision"
-        },
-        {
           "case_id": "S21_M02",
-          "query": "show bow no output",
+          "query": "alright show windlass it's got noise",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1825,28 +1880,14 @@
         "collisions": 3
       },
       "entity_extraction": {
-        "hits": 13,
-        "misses": 8
+        "hits": 12,
+        "misses": 7
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S22_P03",
-          "query": "show transfer pump service records",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_history",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_overview"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S22_P04",
-          "query": "show diesel generator documentation",
+          "case_id": "S22_P02",
+          "query": "show fuel pump documentation",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1859,12 +1900,26 @@
           "issue": "collision"
         },
         {
-          "case_id": "S22_P09",
-          "query": "show port main service records",
+          "case_id": "S22_P08",
+          "query": "show fuel pump service records",
           "expected": {
             "trigger": true,
             "action": "show_equipment_history",
             "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S22_M02",
+          "query": "\u2022 show Garmin azimuth thruster",
+          "expected": {
+            "trigger": true,
+            "action": "show_manual_section",
+            "risk_class": "fn_risk"
           },
           "predicted": {
             "trigger": true,
@@ -1897,13 +1952,13 @@
       },
       "entity_extraction": {
         "hits": 12,
-        "misses": 9
+        "misses": 7
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S23_P01",
-          "query": "show HVAC service records",
+          "case_id": "S23_P03",
+          "query": "show generator service records",
           "expected": {
             "trigger": true,
             "action": "show_equipment_history",
@@ -1916,22 +1971,8 @@
           "issue": "collision"
         },
         {
-          "case_id": "S23_P02",
-          "query": "show fin stabilizer status",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_overview",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_recent_state"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S23_P08",
-          "query": "show bow thruster service records",
+          "case_id": "S23_P05",
+          "query": "show AC unit service records",
           "expected": {
             "trigger": true,
             "action": "show_equipment_history",
@@ -1944,8 +1985,8 @@
           "issue": "collision"
         },
         {
-          "case_id": "S23_P09",
-          "query": "show propulsion engine documentation",
+          "case_id": "S23_P06",
+          "query": "show air handler documentation",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1958,8 +1999,22 @@
           "issue": "collision"
         },
         {
-          "case_id": "S23_M02",
-          "query": "> show windlass overheating",
+          "case_id": "S23_P08",
+          "query": "show gyro status",
+          "expected": {
+            "trigger": true,
+            "action": "show_equipment_overview",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_recent_state"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S23_M01",
+          "query": "FW: Issue\n\nshow stern thruster surging",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -1991,32 +2046,46 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 8,
-        "collisions": 3
+        "matches": 7,
+        "collisions": 4
       },
       "entity_extraction": {
-        "hits": 10,
+        "hits": 12,
         "misses": 9
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S24_P08",
-          "query": "show azimuth thruster status",
+          "case_id": "S24_P02",
+          "query": "show raw water pump service records",
           "expected": {
             "trigger": true,
-            "action": "show_equipment_overview",
+            "action": "show_equipment_history",
             "risk_class": "safe"
           },
           "predicted": {
             "trigger": true,
-            "action": "show_recent_state"
+            "action": "show_equipment_overview"
+          },
+          "issue": "collision"
+        },
+        {
+          "case_id": "S24_P08",
+          "query": "show azimuth thruster service records",
+          "expected": {
+            "trigger": true,
+            "action": "show_equipment_history",
+            "risk_class": "safe"
+          },
+          "predicted": {
+            "trigger": true,
+            "action": "show_equipment_overview"
           },
           "issue": "collision"
         },
         {
           "case_id": "S24_P09",
-          "query": "show capstan status",
+          "query": "show bilge pump status",
           "expected": {
             "trigger": true,
             "action": "show_equipment_overview",
@@ -2030,15 +2099,15 @@
         },
         {
           "case_id": "S24_M01",
-          "query": "shpw transffer smoking",
+          "query": "* create task for Cummins stern thruster",
           "expected": {
             "trigger": true,
-            "action": "show_manual_section",
+            "action": "create_work_order",
             "risk_class": "fn_risk"
           },
           "predicted": {
             "trigger": true,
-            "action": "show_equipment_overview"
+            "action": "create_task"
           },
           "issue": "collision"
         }
@@ -2062,32 +2131,18 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 9,
-        "collisions": 2
+        "matches": 10,
+        "collisions": 1
       },
       "entity_extraction": {
-        "hits": 18,
-        "misses": 7
+        "hits": 16,
+        "misses": 6
       },
       "hypothesis_passed": true,
       "failure_cases": [
         {
-          "case_id": "S25_P03",
-          "query": "show main engine service records",
-          "expected": {
-            "trigger": true,
-            "action": "show_equipment_history",
-            "risk_class": "safe"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_overview"
-          },
-          "issue": "collision"
-        },
-        {
-          "case_id": "S25_M01",
-          "query": "shpw generator smoking",
+          "case_id": "S25_M02",
+          "query": "* show Cummins capstan",
           "expected": {
             "trigger": true,
             "action": "show_manual_section",
@@ -2151,8 +2206,8 @@
         "collisions": 0
       },
       "entity_extraction": {
-        "hits": 6,
-        "misses": 12
+        "hits": 11,
+        "misses": 7
       },
       "hypothesis_passed": true,
       "failure_cases": []
@@ -2162,43 +2217,28 @@
       "pattern_target": "INTL_MAKE",
       "hypothesis": "Recall for international variants should improve",
       "metrics": {
-        "tp": 10,
+        "tp": 11,
         "fp": 0,
-        "fn": 1,
+        "fn": 0,
         "tn": 7,
         "precision": 1.0,
-        "recall": 0.9091,
-        "f1": 0.9524
+        "recall": 1.0,
+        "f1": 1.0
       },
       "fp_severity": {
         "hard_fp": 0,
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 10,
+        "matches": 11,
         "collisions": 0
       },
       "entity_extraction": {
         "hits": 13,
-        "misses": 6
+        "misses": 7
       },
       "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S28_M02",
-          "query": "- check Mastervolt bow thruster",
-          "expected": {
-            "trigger": true,
-            "action": "check_stock_level",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": false,
-            "action": "none_search_only"
-          },
-          "issue": "fn"
-        }
-      ]
+      "failure_cases": []
     },
     {
       "suite_id": "S29",
@@ -2218,30 +2258,15 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 10,
-        "collisions": 1
+        "matches": 11,
+        "collisions": 0
       },
       "entity_extraction": {
-        "hits": 15,
-        "misses": 7
+        "hits": 16,
+        "misses": 5
       },
       "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S29_M02",
-          "query": ">> show stern thruster won't start",
-          "expected": {
-            "trigger": true,
-            "action": "show_manual_section",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_overview"
-          },
-          "issue": "collision"
-        }
-      ]
+      "failure_cases": []
     },
     {
       "suite_id": "S30",
@@ -2261,30 +2286,15 @@
         "soft_misroute": 0
       },
       "action_detection": {
-        "matches": 10,
-        "collisions": 1
+        "matches": 11,
+        "collisions": 0
       },
       "entity_extraction": {
-        "hits": 19,
-        "misses": 7
+        "hits": 15,
+        "misses": 10
       },
       "hypothesis_passed": true,
-      "failure_cases": [
-        {
-          "case_id": "S30_M01",
-          "query": "alright show generator it's got won't start",
-          "expected": {
-            "trigger": true,
-            "action": "show_manual_section",
-            "risk_class": "fn_risk"
-          },
-          "predicted": {
-            "trigger": true,
-            "action": "show_equipment_overview"
-          },
-          "issue": "collision"
-        }
-      ]
+      "failure_cases": []
     }
   ]
 }

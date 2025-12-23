@@ -756,10 +756,10 @@ class SuiteGenerator:
 
         # For messy cases, use common action verbs that should trigger
         # This tests noise handling, not specific pattern actions
+        # Note: "check" requires inventory context (stock/parts) to trigger check_stock_level
         messy_action_verbs = [
             ("diagnose_fault", "diagnose"),
             ("create_work_order", "create"),
-            ("check_stock_level", "check"),
             ("show_manual_section", "show"),
         ]
         action, verb = random.choice(messy_action_verbs)
