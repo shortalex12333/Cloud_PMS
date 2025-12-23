@@ -17,6 +17,7 @@ from canonical_action_registry import (
     resolve_verb_action,
     has_polite_prefix,
     STRICT_TRIGGER_VERBS,
+    correct_verb_typo,
 )
 
 # =============================================================================
@@ -214,26 +215,55 @@ def get_first_token(query: str) -> str:
     query = query.strip()
 
     # Skip common noise prefixes (expanded for voice dictation, email, forum)
+    # Order matters: process multi-word patterns before single-word
     noise_patterns = [
-        r"^[-•►→»*–—]\s*",        # Bullet points (various styles)
-        r"^>{1,3}\s*",            # Quote markers (>, >>, >>>)
-        r"^\d+[.)]\s*",           # Numbered lists
-        r"^(fw:|re:|fwd:|from:)\s*.*?\n*",  # Email prefixes (may have newlines)
-        r"^(um|uh|er|ah)\s+",     # Hesitation sounds
-        r"^(ok|okay|so|right|well|yeah|yep|sure|alright)\s+",  # Filler/confirmation words
-        r"^(basically|actually|literally|honestly|like)\s+",  # Hedge words
-        r"^hey\s+",               # Casual opener
-        r"^hi\s+",                # Greeting opener
-        r"^yo\s+",                # Informal opener
-        r"^the\s+",               # Accidental article prefix
-        r"^noise_\w+\s+",         # Test noise markers (from suite generator)
+        # Email prefixes with content and newlines (greedy match)
+        r"^(fw:|re:|fwd:|from:)[^\n]*\n+",
+        # Multi-word voice fillers (must come before single-word patterns)
+        r"^hey\s+(yeah\s+so|right\s+so|like\s+um|so\s+um|um|so)\s+",
+        r"^(yeah|right|ok|okay)\s+so\s+",
+        r"^(so|like)\s+(um|like|basically)\s+",
+        r"^hey\s+so\s+um\s+",  # hey so um
+        # Bullet points (various styles)
+        r"^[-•►→»*–—]\s*",
+        # Quote markers (>, >>, >>>)
+        r"^>{1,3}\s*",
+        # Numbered lists
+        r"^\d+[.)]\s*",
+        # Hesitation sounds
+        r"^(um|uh|er|ah)\s+",
+        # Single-word filler/confirmation words
+        r"^(ok|okay|so|right|well|yeah|yep|sure|alright)\s+",
+        # Hedge words
+        r"^(basically|actually|literally|honestly|like)\s+",
+        # Casual openers
+        r"^(hey|hi|yo)\s+",
+        # Accidental article prefix
+        r"^the\s+",
+        # Test noise markers (from suite generator)
+        r"^noise_\w+\s+",
     ]
 
-    for pattern in noise_patterns:
-        query = re.sub(pattern, "", query, flags=re.IGNORECASE)
+    # Apply patterns iteratively until no more matches
+    changed = True
+    max_iterations = 5  # Prevent infinite loops
+    iterations = 0
+    while changed and iterations < max_iterations:
+        changed = False
+        iterations += 1
+        for pattern in noise_patterns:
+            new_query = re.sub(pattern, "", query, flags=re.IGNORECASE)
+            if new_query != query:
+                query = new_query.strip()
+                changed = True
+                break  # Restart from first pattern after a match
 
     words = query.strip().split()
-    return words[0].lower() if words else ""
+    if not words:
+        return ""
+    # Apply typo correction to first token
+    first_token = words[0].lower()
+    return correct_verb_typo(first_token)
 
 
 def simulate_strict_router(query: str) -> Dict:

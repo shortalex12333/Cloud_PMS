@@ -257,6 +257,50 @@ def is_canonical(action: str) -> bool:
 
 
 # =============================================================================
+# TYPO CORRECTION FOR COMMON VERBS
+# =============================================================================
+
+# Common typos mapped to correct verbs (based on observed patterns)
+VERB_TYPO_CORRECTIONS = {
+    # create typos
+    "ceeate": "create", "ceate": "create", "craete": "create", "creat": "create",
+    "cretae": "create", "creeat": "create", "crreate": "create", "creeate": "create",
+    # show typos
+    "shpw": "show", "shhow": "show", "shwo": "show", "hsow": "show",
+    "showw": "show", "shiw": "show",
+    # check typos
+    "chrck": "check", "chekc": "check", "cehck": "check", "checkk": "check",
+    "cheeck": "check", "chck": "check",
+    # diagnose typos
+    "diganose": "diagnose", "doagnose": "diagnose", "diangose": "diagnose",
+    "diagnos": "diagnose", "diagnoes": "diagnose", "dianose": "diagnose",
+    "diagnsoe": "diagnose", "diaggnose": "diagnose", "diagonse": "diagnose",
+    # update typos
+    "updaet": "update", "updat": "update", "updte": "update",
+    # export typos
+    "exoprt": "export", "exprot": "export", "expor": "export",
+    # generate typos
+    "generat": "generate", "genreate": "generate", "genearte": "generate",
+    # upload typos
+    "uplaod": "upload", "uplod": "upload", "uplooad": "upload",
+    # attach typos
+    "atach": "attach", "attch": "attach", "attahc": "attach",
+    # open typos
+    "oepn": "open", "opne": "open", "oopen": "open",
+    # add typos
+    "ad": "add", "addd": "add", "adsd": "add",
+    # troubleshoot typos
+    "troubleshoo": "troubleshoot", "troubeshoot": "troubleshoot",
+    "troubleshoo": "troubleshoot", "troublshoot": "troubleshoot",
+}
+
+
+def correct_verb_typo(verb: str) -> str:
+    """Correct common typos in verbs."""
+    return VERB_TYPO_CORRECTIONS.get(verb.lower(), verb.lower())
+
+
+# =============================================================================
 # VERB → ACTION MAPPING (for strict routing)
 # =============================================================================
 
@@ -506,6 +550,9 @@ def resolve_verb_action(verb: str, query: str) -> str:
     import re
 
     query_lower = query.lower()
+
+    # Apply typo correction first
+    verb = correct_verb_typo(verb)
 
     # Check if verb has a direct mapping
     if verb in STRICT_TRIGGER_VERBS:
