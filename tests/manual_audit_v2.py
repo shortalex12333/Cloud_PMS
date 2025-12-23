@@ -213,19 +213,20 @@ def get_first_token(query: str) -> str:
     """Extract first token, handling noise."""
     query = query.strip()
 
-    # Skip common noise prefixes (expanded for voice dictation)
+    # Skip common noise prefixes (expanded for voice dictation, email, forum)
     noise_patterns = [
-        r"^[-•►→»]\s*",           # Bullet points
-        r"^[>]+\s*",              # Quote markers (email/forum)
+        r"^[-•►→»*–—]\s*",        # Bullet points (various styles)
+        r"^>{1,3}\s*",            # Quote markers (>, >>, >>>)
         r"^\d+[.)]\s*",           # Numbered lists
-        r"^(fw:|re:|fwd:)\s*",    # Email prefixes
+        r"^(fw:|re:|fwd:|from:)\s*.*?\n*",  # Email prefixes (may have newlines)
         r"^(um|uh|er|ah)\s+",     # Hesitation sounds
-        r"^(ok|okay|so|right|well|yeah|yep|sure)\s+",  # Filler/confirmation words
-        r"^(basically|actually|literally|honestly)\s+",  # Hedge words
+        r"^(ok|okay|so|right|well|yeah|yep|sure|alright)\s+",  # Filler/confirmation words
+        r"^(basically|actually|literally|honestly|like)\s+",  # Hedge words
         r"^hey\s+",               # Casual opener
         r"^hi\s+",                # Greeting opener
         r"^yo\s+",                # Informal opener
         r"^the\s+",               # Accidental article prefix
+        r"^noise_\w+\s+",         # Test noise markers (from suite generator)
     ]
 
     for pattern in noise_patterns:

@@ -1,13 +1,13 @@
 {
   "total_cases": 1005,
   "trigger_classification": {
-    "tp": 496,
+    "tp": 505,
     "fp": 1,
-    "fn": 59,
+    "fn": 50,
     "tn": 449,
     "precision": 0.998,
-    "recall": 0.8937,
-    "f1": 0.943
+    "recall": 0.9099,
+    "f1": 0.9519
   },
   "fp_severity_breakdown": {
     "hard_fp_count": 0,
@@ -23,9 +23,9 @@
     ]
   },
   "action_detection": {
-    "action_matches": 803,
+    "action_matches": 812,
     "action_collisions": 130,
-    "action_accuracy": 1.619
+    "action_accuracy": 1.6079
   },
   "entity_extraction": {
     "total_expected": 1138,
@@ -34,7 +34,7 @@
   },
   "failure_modes": {
     "action_collision": 130,
-    "verb_prefix_mismatch": 59,
+    "verb_prefix_mismatch": 50,
     "soft_misroute_read_only": 1,
     "noun_only_should_not_trigger": 1
   }
