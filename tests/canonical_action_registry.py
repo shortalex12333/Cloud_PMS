@@ -268,6 +268,15 @@ STRICT_TRIGGER_VERBS = {
     "investigate": "diagnose_fault",
     "detect": "detect_anomaly",
 
+    # International verb variants (non-native English)
+    "make": None,  # Context-dependent: work order, task, etc.
+    "do": None,    # Context-dependent: handover, note, etc.
+    "put": None,   # Context-dependent: handover, record, etc.
+
+    # Document extraction
+    "tag": "none_search_only",     # Tag queries are search-like
+    "extract": "none_search_only", # Extract queries are search-like
+
     # Show/View (context-dependent)
     "show": None,  # Requires context resolution
     "view": None,
@@ -464,6 +473,22 @@ VERB_CONTEXT_PATTERNS = {
         (r"priority", "set_priority_on_work_order"),
         (r"reminder", "set_reminder"),
     ],
+    # International verb variants
+    "make": [
+        (r"work.*order|wo\b", "create_work_order"),
+        (r"task", "create_task"),
+        (r"purchase.*order|po\b", "create_purchase_order"),
+        (r"note", "add_note"),
+    ],
+    "do": [
+        (r"handover", "add_to_handover"),
+        (r"note", "add_note"),
+        (r"entry|log", "add_note"),
+    ],
+    "put": [
+        (r"handover", "add_to_handover"),
+        (r"note|record|log", "add_note"),
+    ],
 }
 
 
@@ -506,6 +531,10 @@ def resolve_verb_action(verb: str, query: str) -> str:
         "attach": "attach_document_to_work_order",
         "export": "export_summary",
         "check": "none_search_only",  # Requires explicit inventory/stock context
+        # International verb defaults
+        "make": "create_work_order",  # Most common use
+        "do": "add_to_handover",      # Most common use
+        "put": "add_to_handover",     # Most common use
     }
 
     return defaults.get(verb, "none_search_only")
