@@ -267,7 +267,7 @@ VERB_TYPO_CORRECTIONS = {
     "cretae": "create", "creeat": "create", "crreate": "create", "creeate": "create",
     # show typos
     "shpw": "show", "shhow": "show", "shwo": "show", "hsow": "show",
-    "showw": "show", "shiw": "show",
+    "showw": "show", "shiw": "show", "shoow": "show", "sho": "show",
     # check typos
     "chrck": "check", "chekc": "check", "cehck": "check", "checkk": "check",
     "cheeck": "check", "chck": "check",
