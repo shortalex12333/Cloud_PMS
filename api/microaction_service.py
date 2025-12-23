@@ -172,24 +172,14 @@ async def verify_security(
         jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
         if jwt_secret:
             from datetime import timedelta
-            # First try with audience (user tokens)
-            try:
-                payload = jwt.decode(
-                    token,
-                    jwt_secret,
-                    algorithms=["HS256"],
-                    audience="authenticated",
-                    leeway=timedelta(minutes=5)
-                )
-            except jwt.InvalidAudienceError:
-                # Fallback: service_role/anon tokens (no audience claim)
-                payload = jwt.decode(
-                    token,
-                    jwt_secret,
-                    algorithms=["HS256"],
-                    options={"verify_aud": False},
-                    leeway=timedelta(minutes=5)
-                )
+            # Decode JWT - skip audience verification to allow service_role/anon tokens
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+                leeway=timedelta(minutes=5)
+            )
 
             # Get user_id from sub (user tokens) or use role for service tokens
             user_id = payload.get("sub") or payload.get("role", "service")
