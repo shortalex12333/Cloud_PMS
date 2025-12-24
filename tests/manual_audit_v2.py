@@ -220,6 +220,12 @@ def get_first_token(query: str) -> str:
     # Skip common noise prefixes (expanded for voice dictation, email, forum)
     # Order matters: process multi-word patterns before single-word
     noise_patterns = [
+        # Multi-line bullet lists: strip first bullet line (context) to get to command
+        # e.g., "- tender fault\n- create work order" → "create work order"
+        r"^-\s+[^\n]*\n-\s*",
+        # URGENT/PRIORITY prefixes with context lines
+        # e.g., "URGENT:\nAC unit seized\nadd to handover" → "add to handover"
+        r"^(urgent|priority|critical|asap)[:\s]*\n[^\n]*\n",
         # Multi-line quote blocks (>>> line\n>>> line\n... then command)
         r"^(>{1,3}[^\n]*\n)+",
         # Email prefixes with content and newlines (greedy match)
