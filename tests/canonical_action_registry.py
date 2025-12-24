@@ -502,7 +502,8 @@ VERB_CONTEXT_PATTERNS = {
     ],
     "check": [
         # Only trigger check_stock_level with explicit inventory context
-        (r"stock|inventory|spare|spares|parts?\s+level|on\s+hand|in\s+stock", "check_stock_level"),
+        # Include common typos: nventory (missing i), iventory (missing n)
+        (r"stock|inventory|nventory|iventory|spare|spares|parts?\s+level|on\s+hand|in\s+stock", "check_stock_level"),
         # Certificate checks
         (r"certificat|expir", "show_certificates"),
         # Hours checks
