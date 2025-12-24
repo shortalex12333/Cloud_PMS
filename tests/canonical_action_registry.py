@@ -333,7 +333,7 @@ STRICT_TRIGGER_VERBS = {
 
     # Create
     "create": None,  # Requires context resolution
-    "open": "open_equipment_card",
+    "open": None,  # Context-dependent: document vs equipment
     "raise": "create_work_order",
     "generate": "generate_summary",
     "summarise": "generate_summary",
@@ -362,7 +362,7 @@ STRICT_TRIGGER_VERBS = {
     "enter": "log_hours_of_rest",
 
     # Export
-    "export": "export_summary",
+    "export": None,  # Context-dependent: handover vs compliance vs summary
     "download": "download_document",
 
     # Attach/Upload
@@ -384,7 +384,7 @@ STRICT_TRIGGER_VERBS = {
     "set": "set_priority_on_work_order",
 
     # Add
-    "add": "add_to_handover",
+    "add": None,  # Context-dependent: note/part/photo to work order vs handover
     "include": "add_to_handover",
 
     # Compare
@@ -456,11 +456,26 @@ VERB_CONTEXT_PATTERNS = {
         (r"certificat", "update_certificate_metadata"),
     ],
     "add": [
-        (r"handover", "add_to_handover"),
-        (r"note.*work.*order|work.*order.*note", "add_note_to_work_order"),
-        (r"note", "add_note"),
-        (r"part.*work.*order", "add_part_to_work_order"),
+        # Priority 1: Work order context (check first)
+        # Note to work order
+        (r"(work.?order|wo|job|task).*(note|comment|remark|update)", "add_note_to_work_order"),
+        (r"(note|comment|remark|update).*(work.?order|wo|job|task)", "add_note_to_work_order"),
+        # Part to work order (common parts list)
+        (r"(work.?order|wo|job|task).*(part|item|gasket|filter|injector|belt|anode|o-ring|impeller|sensor|pump|seal|bearing|relay|fuse|valve|hose|clamp|bolt|nut|washer|zinc|thermostat|contactor|capacitor|membrane)", "add_part_to_work_order"),
+        (r"(part|item|gasket|filter|injector|belt|anode|o-ring|impeller|sensor|pump|seal|bearing|relay|fuse|valve|hose|clamp|bolt|nut|washer|zinc|thermostat|contactor|capacitor|membrane).*(work.?order|wo|job|task)", "add_part_to_work_order"),
+        # Photo to work order
+        (r"(work.?order|wo|job|task).*(photo|picture|image)", "attach_photo_to_work_order"),
+        (r"(photo|picture|image).*(work.?order|wo|job|task)", "attach_photo_to_work_order"),
+        # Document to work order
+        (r"(work.?order|wo|job|task).*(document|manual|pdf|invoice|report)", "attach_document_to_work_order"),
+        (r"(document|manual|pdf|invoice|report).*(work.?order|wo|job|task)", "attach_document_to_work_order"),
+        # Priority 2: Handover context
+        (r"handover|watch|logbook", "add_to_handover"),
+        # Priority 3: Standalone note (no work order context)
+        (r"note|comment|remark", "add_note"),
+        # Priority 4: Checklist
         (r"checklist", "add_checklist_item"),
+        # Default: none_search_only (handled by defaults dict)
     ],
     "attach": [
         (r"photo", "attach_photo_to_work_order"),
@@ -468,10 +483,22 @@ VERB_CONTEXT_PATTERNS = {
         (r"document|doc", "attach_document_to_work_order"),
     ],
     "export": [
+        # Priority 1: Handover (most specific)
         (r"handover", "export_handover"),
-        (r"summary", "export_summary"),
-        (r"compliance|log", "export_compliance_logs"),
+        # Priority 2: Compliance/logs
+        (r"compliance|log|hor|hours.?of.?rest|audit", "export_compliance_logs"),
+        # Priority 3: Work order history
         (r"work.*order.*history", "export_work_order_history"),
+        # Priority 4: Summary (least specific, catch-all)
+        (r"summary", "export_summary"),
+        # Default: none_search_only (handled by defaults dict)
+    ],
+    "open": [
+        # Priority 1: Document types
+        (r"document|manual|procedure|drawing|schematic|certificate|p&id|p\&id|pdf|page|section|spec|specification|checklist|invoice|report", "open_document"),
+        # Priority 2: Equipment card (default)
+        (r"card|equipment|system", "open_equipment_card"),
+        # Default: open_equipment_card (handled by defaults dict)
     ],
     "log": [
         (r"hours.*rest|hor", "log_hours_of_rest"),
@@ -579,9 +606,10 @@ def resolve_verb_action(verb: str, query: str) -> str:
         "display": "show_equipment_overview",
         "create": "create_work_order",
         "update": "update_work_order",
-        "add": "add_note",
+        "add": "none_search_only",  # Requires explicit context (work order, handover, note)
         "attach": "attach_document_to_work_order",
-        "export": "export_summary",
+        "export": "none_search_only",  # Requires explicit context (handover, logs, summary)
+        "open": "open_equipment_card",  # Default to equipment card if no document context
         "check": "none_search_only",  # Requires explicit inventory/stock context
         # International verb defaults
         "make": "create_work_order",  # Most common use
