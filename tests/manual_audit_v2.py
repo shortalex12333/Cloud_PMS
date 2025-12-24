@@ -531,7 +531,7 @@ def run_audit(dataset_path: str, output_path: str):
 
     # Metrics
     tp = fp = fn = tn = 0
-    action_matches = 0
+    action_matches_on_tp = 0  # FIXED: Only count matches on true positives
     action_collisions = 0
     total_entity_misses = 0
     total_expected_entities = 0
@@ -543,6 +543,15 @@ def run_audit(dataset_path: str, output_path: str):
     hard_fp_cases = []
     soft_misroute_cases = []
 
+    # NEW: Collision pair tracking (expected → predicted)
+    collision_pairs = defaultdict(int)
+    collision_examples = []
+
+    # NEW: Entity extraction by type
+    entity_hits_by_type = defaultdict(int)
+    entity_misses_by_type = defaultdict(int)
+    missed_entity_examples = []
+
     print(f"Auditing {len(cases)} cases with canonical resolution + severity scoring...")
 
     with open(output_path, 'w') as out:
@@ -553,8 +562,24 @@ def run_audit(dataset_path: str, output_path: str):
             exp_trigger = case["expected"]["should_trigger_action"]
             pred_trigger = result["manual_judgement"]["router"]["should_trigger_action"]
 
+            exp_action = result["expected"]["primary_action_canonical"]
+            pred_action = result["manual_judgement"]["router"]["predicted_primary_action"]
+
             if exp_trigger and pred_trigger:
                 tp += 1
+                # FIXED: Only count action matches on true positives
+                if result["scoring_outcome"]["action_match"]:
+                    action_matches_on_tp += 1
+                else:
+                    # Track collision pairs
+                    collision_pairs[(exp_action, pred_action)] += 1
+                    if len(collision_examples) < 50:
+                        collision_examples.append({
+                            "id": result["id"],
+                            "query": result["query"][:50],
+                            "expected": exp_action,
+                            "predicted": pred_action,
+                        })
             elif not exp_trigger and not pred_trigger:
                 tn += 1
             elif not exp_trigger and pred_trigger:
@@ -562,14 +587,31 @@ def run_audit(dataset_path: str, output_path: str):
             else:
                 fn += 1
 
-            if result["scoring_outcome"]["action_match"]:
-                action_matches += 1
-
             if "action_collision" in result["scoring_outcome"]["failure_mode_tags"]:
                 action_collisions += 1
 
+            # Track entity metrics by type
+            expected_entities = case["expected"].get("expected_entities", [])
+            extracted_entities = result["manual_judgement"]["entities"]
+            extracted_values = {e["raw_value"].lower() for e in extracted_entities}
+
+            for exp_ent in expected_entities:
+                ent_type = exp_ent.get("type", "unknown")
+                value_hint = exp_ent.get("value_hint", "").lower()
+                if value_hint in extracted_values:
+                    entity_hits_by_type[ent_type] += 1
+                else:
+                    entity_misses_by_type[ent_type] += 1
+                    if len(missed_entity_examples) < 30:
+                        missed_entity_examples.append({
+                            "id": result["id"],
+                            "type": ent_type,
+                            "expected": value_hint,
+                            "query": result["query"][:40],
+                        })
+
             total_entity_misses += result["scoring_outcome"]["entity_misses"]
-            total_expected_entities += len(case["expected"].get("expected_entities", []))
+            total_expected_entities += len(expected_entities)
 
             for tag in result["scoring_outcome"]["failure_mode_tags"]:
                 failure_mode_counts[tag] += 1
@@ -600,6 +642,19 @@ def run_audit(dataset_path: str, output_path: str):
     f1 = 2 * precision * recall / max(precision + recall, 0.001)
     entity_hit_rate = 1 - (total_entity_misses / max(total_expected_entities, 1))
 
+    # FIXED: Correct action accuracy (matches on TP only)
+    action_accuracy = action_matches_on_tp / max(tp, 1)
+
+    # Sort collision pairs by frequency
+    top_collision_pairs = sorted(collision_pairs.items(), key=lambda x: -x[1])[:20]
+
+    # Group collisions by verb family
+    verb_collision_counts = defaultdict(int)
+    for (exp, pred), count in collision_pairs.items():
+        # Extract verb from action (first word before _)
+        verb = exp.split("_")[0] if exp else "unknown"
+        verb_collision_counts[verb] += count
+
     metrics = {
         "total_cases": len(cases),
         "trigger_classification": {
@@ -612,18 +667,34 @@ def run_audit(dataset_path: str, output_path: str):
             "hard_fp_count": hard_fp_count,
             "soft_misroute_count": soft_misroute_count,
             "hard_fp_rate": round(hard_fp_count / max(fp, 1), 4),
-            "hard_fp_cases": hard_fp_cases[:10],  # Top 10 for inspection
+            "hard_fp_cases": hard_fp_cases[:10],
             "soft_misroute_cases": soft_misroute_cases[:10],
         },
-        "action_detection": {
-            "action_matches": action_matches,
-            "action_collisions": action_collisions,
-            "action_accuracy": round(action_matches / max(tp, 1), 4),
+        "action_selection": {  # RENAMED & FIXED
+            "correct_action_on_tp": action_matches_on_tp,
+            "total_tp": tp,
+            "action_accuracy": round(action_accuracy, 4),
+            "collisions": action_collisions,
+            "top_collision_pairs": [
+                {"expected": exp, "predicted": pred, "count": cnt}
+                for (exp, pred), cnt in top_collision_pairs
+            ],
+            "collisions_by_verb": dict(verb_collision_counts),
+            "collision_examples": collision_examples[:20],
         },
         "entity_extraction": {
             "total_expected": total_expected_entities,
             "total_misses": total_entity_misses,
             "hit_rate": round(entity_hit_rate, 4),
+            "by_type": {
+                ent_type: {
+                    "hits": entity_hits_by_type[ent_type],
+                    "misses": entity_misses_by_type[ent_type],
+                    "hit_rate": round(entity_hits_by_type[ent_type] / max(entity_hits_by_type[ent_type] + entity_misses_by_type[ent_type], 1), 4),
+                }
+                for ent_type in set(entity_hits_by_type.keys()) | set(entity_misses_by_type.keys())
+            },
+            "missed_examples": missed_entity_examples[:20],
         },
         "failure_modes": dict(failure_mode_counts),
     }
@@ -633,34 +704,82 @@ def run_audit(dataset_path: str, output_path: str):
 
     # Print summary
     print("\n" + "=" * 70)
-    print("AUDIT V3 SUMMARY (with severity scoring)")
+    print("AUDIT REPORT")
     print("=" * 70)
+
+    # SECTION 1: Trigger Metrics
     print(f"""
-TRIGGER CLASSIFICATION:
+╔══════════════════════════════════════════════════════════════════════╗
+║  SECTION 1: TRIGGER METRICS                                          ║
+╚══════════════════════════════════════════════════════════════════════╝
+
   TP: {tp}  FP: {fp}  FN: {fn}  TN: {tn}
   Precision: {precision:.2%}
   Recall:    {recall:.2%}
   F1:        {f1:.2%}
 
-FALSE POSITIVE SEVERITY (NEW):
   Hard FP (state-changing):  {hard_fp_count}
   Soft Misroute (read-only): {soft_misroute_count}
-  Hard FP Rate: {hard_fp_count / max(fp, 1):.2%} of all FPs
-
-ACTION DETECTION (after canonicalization):
-  Matches:    {action_matches} / {tp} = {action_matches / max(tp, 1):.2%}
-  Collisions: {action_collisions}
-
-ENTITY EXTRACTION:
-  Hit Rate: {entity_hit_rate:.2%} ({total_expected_entities - total_entity_misses}/{total_expected_entities})
-
-FAILURE MODES:
 """)
-    for mode, count in sorted(failure_mode_counts.items(), key=lambda x: -x[1]):
-        print(f"  {mode}: {count}")
+
+    # SECTION 2: Action Selection Metrics
+    print(f"""╔══════════════════════════════════════════════════════════════════════╗
+║  SECTION 2: ACTION SELECTION METRICS                                  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Correct Action on TP: {action_matches_on_tp} / {tp}
+  ACTION ACCURACY:      {action_accuracy:.2%}
+  Collisions:           {action_collisions}
+""")
+
+    # Top collision pairs
+    if top_collision_pairs:
+        print("  TOP COLLISION PAIRS (expected → predicted):")
+        for (exp, pred), cnt in top_collision_pairs[:10]:
+            print(f"    {cnt:3d}x  {exp} → {pred}")
+
+    # Collisions by verb family
+    if verb_collision_counts:
+        print("\n  COLLISIONS BY VERB FAMILY:")
+        for verb, cnt in sorted(verb_collision_counts.items(), key=lambda x: -x[1])[:10]:
+            print(f"    {verb}: {cnt}")
+
+    # SECTION 3: Entity Extraction Metrics
+    print(f"""
+╔══════════════════════════════════════════════════════════════════════╗
+║  SECTION 3: ENTITY EXTRACTION METRICS                                 ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Overall Hit Rate: {entity_hit_rate:.2%} ({total_expected_entities - total_entity_misses}/{total_expected_entities})
+
+  BY ENTITY TYPE:""")
+
+    for ent_type in sorted(set(entity_hits_by_type.keys()) | set(entity_misses_by_type.keys())):
+        hits = entity_hits_by_type[ent_type]
+        misses = entity_misses_by_type[ent_type]
+        total = hits + misses
+        rate = hits / max(total, 1)
+        print(f"    {ent_type:20s}: {rate:.1%} ({hits}/{total})")
+
+    if missed_entity_examples:
+        print("\n  TOP MISSED ENTITIES:")
+        for ex in missed_entity_examples[:10]:
+            print(f"    [{ex['type']}] '{ex['expected']}' in: {ex['query']}...")
+
+    # Summary
+    print(f"""
+╔══════════════════════════════════════════════════════════════════════╗
+║  SUMMARY                                                              ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Trigger F1:        {f1:.2%}  {'✓ GOOD' if f1 > 0.95 else '✗ NEEDS WORK'}
+  Hard FP:           {hard_fp_count}       {'✓ SAFE' if hard_fp_count == 0 else '✗ CRITICAL'}
+  Action Accuracy:   {action_accuracy:.2%}  {'✓ GOOD' if action_accuracy > 0.90 else '✗ NEEDS WORK'}
+  Entity Hit Rate:   {entity_hit_rate:.2%}  {'✓ GOOD' if entity_hit_rate > 0.80 else '✗ NEEDS WORK'}
+""")
 
     if hard_fp_cases:
-        print("\nHARD FP CASES (state-changing actions triggered incorrectly):")
+        print("HARD FP CASES (CRITICAL - state-changing actions triggered incorrectly):")
         for c in hard_fp_cases[:5]:
             print(f"  {c['id']}: {c['query']}... → {c['predicted_action']}")
 
