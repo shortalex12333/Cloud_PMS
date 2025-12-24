@@ -156,7 +156,39 @@ ENTITY_PATTERNS = {
         r"\bError\s*\d+\b",
     ],
     "measurement": [
-        r"\b\d+(?:\.\d+)?\s*(?:psi|bar|rpm|kw|hp|volts?|amps?|hz|degrees?|°[cfCF]|liters?|gallons?|hours?|mins?|seconds?)\b",
+        r"\b\d+(?:\.\d+)?\s*(?:°C|°F|C|F|bar|psi|V|A|Hz|rpm|hours?|h|kW|kw|ohm|Ω)\b",
+        r"\b\d+(?:\.\d+)?\s*(?:liters?|gallons?|L|gal)\b",
+    ],
+    "doc_type": [
+        r"\b(?:manual|procedure|drawing|schematic|checklist|certificate|invoice|report|handover|spec|specification|P&ID|diagram|datasheet|parts\s*list)\b",
+    ],
+    "location": [
+        # Ship locations
+        r"\b(?:engine\s*room|ER|bridge|galley|bilge|lazarette|forepeak|bosun\s*locker|crew\s*mess)\b",
+        # Directional
+        r"\b(?:port|starboard|stbd|aft|forward|fwd|bow|stern|midship)\b",
+        # Compartments
+        r"\bcompartment\s*\d+\b",
+        r"\b(?:tank\s*room|pump\s*room|steering\s*gear)\b",
+    ],
+    "time_range": [
+        r"\b(?:yesterday|last\s*night|last\s*week|last\s*month|last\s*trip)\b",
+        r"\b(?:this\s*week|this\s*month|today|tonight)\b",
+        r"\b(?:since\s*port|before\s*departure|night\s*watch|day\s*watch)\b",
+        r"\b(?:morning|afternoon|evening)\b",
+        r"\b\d+\s*(?:days?|weeks?|months?|hours?)\s*ago\b",
+    ],
+    "part": [
+        # Common marine parts
+        r"\b(?:gasket|o-ring|seal|bearing|impeller|belt|filter|injector|nozzle)\b",
+        r"\b(?:anode|zinc|sacrificial)\b",
+        r"\b(?:relay|fuse|capacitor|contactor|solenoid|sensor|thermostat)\b",
+        r"\b(?:valve|hose|clamp|bolt|nut|washer|fitting)\b",
+        r"\b(?:membrane|element|cartridge|diaphragm)\b",
+        r"\b(?:PCB|circuit\s*board|control\s*board)\b",
+        r"\b(?:pump|motor|actuator|cylinder)\b",
+        r"\b(?:turbo|turbocharger|supercharger)\b",
+        r"\b(?:cooler|radiator|intercooler)\b",
     ],
     "brand": [
         "Caterpillar", "CAT", "MTU", "Cummins", "Volvo Penta", "MAN", "Yanmar",
@@ -174,21 +206,27 @@ ENTITY_PATTERNS = {
         "Alfa Laval", "Westfalia", "GEA", "Furuno", "Raymarine", "Garmin",
     ],
     "equipment": [
-        "main engine", "generator", "genset", "alternator", "thruster",
-        "bow thruster", "stern thruster", "stabilizer", "fin stabilizer",
-        "gyro", "watermaker", "desalinator", "chiller", "compressor",
-        "HVAC", "AC unit", "air handler", "boiler", "heater", "furnace",
-        "pump", "bilge pump", "fire pump", "transfer pump", "fuel pump",
-        "water pump", "hydraulic pump", "circulation pump", "raw water pump",
-        "valve", "manifold", "heat exchanger", "evaporator", "condenser",
-        "inverter", "charger", "battery charger", "shore power", "transformer",
+        # Multi-word equipment first (longest match)
+        "main engine", "bow thruster", "stern thruster", "fin stabilizer",
+        "raw water pump", "circulation pump", "hydraulic pump", "transfer pump",
+        "fuel pump", "bilge pump", "fire pump", "water pump",
+        "fuel filter", "oil filter", "air filter", "sea strainer",
+        "AC unit", "air handler", "battery charger", "shore power",
+        "heat exchanger", "chart plotter", "exhaust fan",
+        "fuel tank", "water tank", "holding tank",
+        "jet ski", "tender", "RIB", "dinghy",
+        # Single word equipment
+        "generator", "genset", "alternator", "thruster",
+        "stabilizer", "gyro", "watermaker", "desalinator", "chiller", "compressor",
+        "HVAC", "boiler", "heater", "furnace",
+        "pump", "valve", "manifold", "evaporator", "condenser",
+        "inverter", "charger", "transformer",
         "switchboard", "panel", "breaker", "relay", "contactor", "PLC",
         "separator", "purifier", "filter", "centrifuge", "coalescer",
-        "tank", "fuel tank", "water tank", "holding tank",
-        "anchor", "windlass", "winch", "capstan", "davit", "crane",
-        "radar", "GPS", "chart plotter", "autopilot", "compass",
+        "tank", "anchor", "windlass", "winch", "capstan", "davit", "crane",
+        "radar", "GPS", "autopilot", "compass",
         "VHF", "SSB", "satcom", "VSAT", "antenna",
-        "exhaust fan", "ventilation", "blower", "fan",
+        "ventilation", "blower", "fan",
     ],
     "symptom": [
         "overheating", "overheat", "hot", "high temperature",
@@ -415,6 +453,61 @@ def extract_entities(query: str) -> List[Dict]:
                 "evidence": match.group(),
                 "extraction_confidence": 0.80,
                 "weight": 70,
+            })
+
+    # NEW: Extract doc_type
+    for pattern in ENTITY_PATTERNS.get("doc_type", []):
+        for match in re.finditer(pattern, query, re.IGNORECASE):
+            entities.append({
+                "type": "doc_type",
+                "raw_value": match.group(),
+                "evidence": match.group(),
+                "extraction_confidence": 0.85,
+                "weight": 75,
+            })
+
+    # NEW: Extract location
+    for pattern in ENTITY_PATTERNS.get("location", []):
+        for match in re.finditer(pattern, query, re.IGNORECASE):
+            entities.append({
+                "type": "location",
+                "raw_value": match.group(),
+                "evidence": match.group(),
+                "extraction_confidence": 0.85,
+                "weight": 75,
+            })
+
+    # NEW: Extract time_range
+    for pattern in ENTITY_PATTERNS.get("time_range", []):
+        for match in re.finditer(pattern, query, re.IGNORECASE):
+            entities.append({
+                "type": "time_range",
+                "raw_value": match.group(),
+                "evidence": match.group(),
+                "extraction_confidence": 0.85,
+                "weight": 75,
+            })
+
+    # NEW: Extract measurement
+    for pattern in ENTITY_PATTERNS.get("measurement", []):
+        for match in re.finditer(pattern, query, re.IGNORECASE):
+            entities.append({
+                "type": "measurement",
+                "raw_value": match.group(),
+                "evidence": match.group(),
+                "extraction_confidence": 0.90,
+                "weight": 85,
+            })
+
+    # NEW: Extract part
+    for pattern in ENTITY_PATTERNS.get("part", []):
+        for match in re.finditer(pattern, query, re.IGNORECASE):
+            entities.append({
+                "type": "part",
+                "raw_value": match.group(),
+                "evidence": match.group(),
+                "extraction_confidence": 0.85,
+                "weight": 80,
             })
 
     # Deduplicate
