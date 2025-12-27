@@ -64,9 +64,72 @@ from module_b_entity_extractor import get_extractor as get_entity_extractor, Mar
 
 # Import Intent Parser for semantic query understanding
 from intent_parser import IntentParser, route_query as intent_route_query
+from action_gating import (
+    get_execution_class, requires_confirmation, is_destructive,
+    ExecutionClass, GATED_ACTIONS
+)
+from verb_family_router import get_verb_family_router, VerbFamilyRouter
 
 # Global intent parser (initialized at startup)
 intent_parser: Optional[IntentParser] = None
+
+# Global verb family router
+verb_router: Optional[VerbFamilyRouter] = None
+
+
+def get_action_chips(query: str, primary_action: str, confidence: float) -> Dict:
+    """
+    Get suggestion chips and execution class for an action.
+
+    Returns:
+        {
+            'primary': {'action': str, 'confidence': float, 'label': str},
+            'alternatives': [{'action': str, 'confidence': float, 'label': str}, ...],
+            'execution_class': 'auto' | 'suggest' | 'confirm',
+            'suggestion_worthy': bool
+        }
+    """
+    global verb_router
+    if verb_router is None:
+        verb_router = get_verb_family_router()
+
+    # Use verb family router for alternatives
+    router_result = verb_router.route(query)
+
+    # Get execution class
+    exec_class = get_execution_class(primary_action, confidence)
+
+    # Build alternatives list
+    alternatives = []
+    for alt_action, alt_confidence in router_result.alternatives[:3]:
+        if alt_action != primary_action:
+            alternatives.append({
+                'action': alt_action,
+                'confidence': round(alt_confidence, 2),
+                'label': alt_action.replace('_', ' ').title()
+            })
+
+    # Add router's primary if different from extraction's primary
+    if router_result.primary_action != primary_action and router_result.confidence > 0.6:
+        alternatives.insert(0, {
+            'action': router_result.primary_action,
+            'confidence': round(router_result.confidence, 2),
+            'label': router_result.primary_action.replace('_', ' ').title()
+        })
+        alternatives = alternatives[:3]  # Keep max 3
+
+    return {
+        'primary': {
+            'action': primary_action,
+            'confidence': round(confidence, 2),
+            'label': primary_action.replace('_', ' ').title()
+        },
+        'alternatives': alternatives,
+        'execution_class': exec_class.value,
+        'suggestion_worthy': router_result.suggestion_worthy or exec_class != ExecutionClass.AUTO,
+        'verb_family': router_result.verb_family.value
+    }
+
 
 # ========================================================================
 # LOGGING CONFIGURATION
@@ -690,12 +753,24 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     }
 
     # ========== GUARD 0: PASTE-DUMP ==========
-    if word_count > 50 or char_count > 300:
+    # Detect code/log pastes even if shorter
+    CODE_PATTERNS = re.compile(
+        r'(?:traceback|error:|exception:|import\s+\w+|from\s+\w+\s+import|def\s+\w+\(|class\s+\w+:|'
+        r'SELECT\s+\*?\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|'
+        r'<\?xml|<html|<div|<script|{[\s\S]*"[\w]+":[\s\S]*}|'
+        r'curl\s+-|pip\s+install|npm\s+install|const\s+\w+\s*=|'
+        r'^\$GP[A-Z]{2,3},|^NMEA:|'
+        r'#!/bin/bash|set\s+-e|docker-compose)',
+        re.IGNORECASE | re.MULTILINE
+    )
+    is_code_paste = bool(CODE_PATTERNS.search(query))
+
+    if word_count > 50 or char_count > 300 or is_code_paste:
         return {
             **base_result,
             'lane': 'BLOCKED',
             'lane_reason': 'paste_dump',
-            'block_message': 'This looks like a large paste. Try a shorter search, or upload as a document/handover.',
+            'block_message': 'This looks like a paste of code or logs. Try a shorter search, or upload as a document/handover.',
             'skip_gpt': True,
         }
 
@@ -712,10 +787,20 @@ def route_to_lane(query: str, mode: str = None) -> dict:
                     'zf', 'twin disc', 'quantum', 'vetus', 'whisperpower', 'fischer panda'}
     KNOWN_EQUIPMENT = {'engine', 'generator', 'pump', 'filter', 'manual', 'radar', 'watermaker',
                        'stabilizer', 'autopilot', 'thruster', 'compressor', 'inverter', 'charger',
-                       'windlass', 'winch', 'anchor', 'bilge', 'gearbox', 'transmission'}
+                       'windlass', 'winch', 'anchor', 'bilge', 'gearbox', 'transmission',
+                       'gyro', 'crane', 'chiller', 'separator', 'purifier', 'starlink', 'vhf', 'ais', 'epirb'}
+
+    # Fault code and equipment code patterns
+    KNOWN_CODE_PATTERN = re.compile(
+        r'spn\s*\d+|fmi\s*\d+|j1939|wo[-\s]?\d+|e\d{2,4}|'
+        r'^(?:me|dg|gen)\s*\d+$|'  # ME1, DG2, gen1
+        r'^(?:port|stbd)\s+main$',  # port main, stbd main
+        re.IGNORECASE
+    )
 
     has_known_entity = any(brand in query_lower for brand in KNOWN_BRANDS) or \
-                       any(equip in query_lower for equip in KNOWN_EQUIPMENT)
+                       any(equip in query_lower for equip in KNOWN_EQUIPMENT) or \
+                       bool(KNOWN_CODE_PATTERN.search(query_lower))
 
     if word_count <= 2 and intent in generic_intents and not has_problem_words and not has_known_entity:
         return {
@@ -732,8 +817,26 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         }
 
     # ========== GUARD 2: NON-DOMAIN QUERIES ==========
-    NON_DOMAIN = re.compile(r'^(what is|what\'s|who is|tell me about|explain)\s+(quantum|bitcoin|crypto|ai|weather|news|stock)|^(tell me a joke|hello|hi there|hey|good morning|thanks|thank you)$|^(what time|what day|what date)|^(how are you|how do you feel)', re.IGNORECASE)
-    DOMAIN_KEYWORDS = re.compile(r'engine|pump|generator|hvac|watermaker|stabiliser|nav|radar|wo|work order|manual|part|filter|impeller|seal|bearing|crew|captain|handover|fault|alarm|maintenance|service|repair|inspection|certificate', re.IGNORECASE)
+    # Patterns for off-domain queries (weather, general knowledge, greetings)
+    NON_DOMAIN = re.compile(
+        r'^(what is|what\'s|who is|tell me about|explain)\s+(?:the\s+)?(quantum|bitcoin|crypto|ai|weather|news|stock|president|capital|meaning|life)'
+        r'|^(tell me a joke|hello|hello there|hi|hi there|hey|hey there|good morning|good afternoon|good evening|thanks|thank you|thx|ty)$'
+        r'|^(what time is it|what day is it|what date|what\'s the time|what\'s the date)'
+        r'|^(how are you|how do you feel|how\'s it going|what\'s up|sup)'
+        r'|\b(weather|forecast|temperature|rain|sunny|cloudy)\b(?!.*(?:deck|seal|hatch|cover))'  # weather unless maritime context
+        r'|^(who won|what happened|latest news|breaking news)'
+        r'|^(calculate|convert|translate|define)\s'
+        r'|^(yo|hiya|howdy|greetings)$',
+        re.IGNORECASE
+    )
+    DOMAIN_KEYWORDS = re.compile(
+        r'engine|pump|generator|hvac|watermaker|stabiliser|stabilizer|nav|radar|'
+        r'wo\b|work\s*order|manual|part|filter|impeller|seal|bearing|crew|captain|'
+        r'handover|fault|alarm|maintenance|service|repair|inspection|certificate|'
+        r'yacht|vessel|boat|ship|marine|maritime|deck|hull|bilge|anchor|thruster|'
+        r'fuel|oil|coolant|exhaust|intake|discharge|valve|gauge|sensor',
+        re.IGNORECASE
+    )
 
     if NON_DOMAIN.search(query_lower) and not DOMAIN_KEYWORDS.search(query_lower):
         return {
@@ -744,16 +847,83 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             'skip_gpt': True,
         }
 
-    # ========== LANE A: NO_LLM (cheap lookup) ==========
+    # ========== LANE A: RULES_ONLY (simple commands) ==========
+    # Check command patterns FIRST - these are explicit user actions
+    # Polite prefix: allows various polite forms at the start
+    # Pattern handles: "please", "can you", "could you", "hey can you", "I'd like you to", etc.
+    POLITE_PREFIX = (
+        r'^(?:hey\s+)?'  # Optional "hey " at the very start
+        r'(?:please\s+)?'  # Optional "please "
+        r'(?:(?:can|could|would)\s+(?:you|u)\s+(?:please\s+)?)?'  # "can you ", "could you please "
+        r'(?:i(?:\'d|\s+would)\s+like\s+(?:you\s+)?to\s+)?'  # "I'd like you to ", "I would like to "
+        r'(?:i\s+(?:need|want)\s+(?:you\s+)?to\s+)?'  # "I need you to ", "I want to "
+        r'(?:pls\s+)?'  # "pls "
+        r'(?:need\s+to\s+)?'  # "need to "
+    )
+
+    COMMAND_PATTERNS = [
+        # Create work order (with typos)
+        (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(work\s*order|workorder|wo)', 'create_work_order'),
+        (POLITE_PREFIX + r'open\s+(work\s*order|wo)', 'open_work_order'),
+        (POLITE_PREFIX + r'close\s+(work\s*order|wo)', 'close_work_order'),
+        (POLITE_PREFIX + r'mark\s+(work\s*order|wo)', 'mark_work_order_complete'),
+        (POLITE_PREFIX + r'log\s+', 'log_entry'),
+        (POLITE_PREFIX + r'add\s+note', 'add_note'),
+        (POLITE_PREFIX + r'add\s+(?:to\s+)?handover', 'add_to_handover'),  # "add handover" typo
+        (POLITE_PREFIX + r'add\s+part', 'add_part_to_work_order'),
+        (POLITE_PREFIX + r'attach\s+', 'attach_document'),
+        (POLITE_PREFIX + r'(?:schedule|schdeule)\s+', 'schedule_task'),  # typo
+        (POLITE_PREFIX + r'(?:assign|assing|asign)\s+', 'assign_task'),  # typos
+        (POLITE_PREFIX + r'export\s+', 'export_data'),
+        (POLITE_PREFIX + r'upload\s+', 'upload_document'),
+        (POLITE_PREFIX + r'update\s+', 'update_record'),
+        # Show/view (with typos)
+        (POLITE_PREFIX + r'(?:show|shwo)\s+(?:equipment|equpment)', 'show_equipment_overview'),
+        (POLITE_PREFIX + r'(?:show|shwo)\s+history', 'show_equipment_history'),
+        (POLITE_PREFIX + r'view\s+handover', 'view_handover'),
+        (POLITE_PREFIX + r'(?:generate|genrate)\s+summary', 'generate_summary'),
+        (POLITE_PREFIX + r'search\s+documents?', 'search_documents'),
+    ]
+    for pattern, action in COMMAND_PATTERNS:
+        if re.match(pattern, query_lower):
+            target_match = re.search(r'(?:for|on|to|:|that|re|regarding|about|from)\s*(.+)$', query_lower)
+            return {
+                **base_result,
+                'lane': 'RULES_ONLY',
+                'lane_reason': 'command_pattern',
+                'command_action': action,
+                'command_target': target_match.group(1).strip() if target_match else None,
+                'skip_gpt': True,
+            }
+
+    # ========== LANE B: NO_LLM (cheap lookup) ==========
     DIRECT_LOOKUP = [
+        # Work orders
         r'^wo[-\s]?\d+$',
+        r'^work\s*order\s+\d+$',
         r'^doc[-\s]?\d+$',
+        # Error/fault codes
         r'^e\d{2,4}$',
-        r'^[a-z]{2,4}[-\s]?\d+$',
+        r'^(?:error|fault|alarm)\s+e?\d{2,4}$',
+        r'^spn\s*\d+(?:\s*fmi\s*\d+)?$',  # SPN 100 FMI 3, spn123 fmi1
+        r'^(?:fault\s+)?spn\s*\d+',  # fault SPN 146
+        r'^j1939[\s/]*\d+(?:[/\s]+\d+)?$',  # J1939 169/3, j1939 169 3
+        # Equipment codes
+        r'^(?:me|dg|gen)\s*\d+$',  # ME1, DG2, gen1
+        r'^(?:port|stbd)\s+main$',  # port main, stbd main
+        # Brand-model lookups
+        r'^(?:mtu|cat|caterpillar|cummins|kohler|onan|volvo|yanmar)\s+\d',
+        r'^(?:furuno|garmin|simrad|raymarine)\s+\w+',
+        r'^seakeeper\s*\d*',
+        r'^(?:naiad|abt\s*trac|zf|twin\s*disc)\s*\d*',
+        # Document lookups
         r'^\d{3,}\s*manual$',
         r'^cat\s+\d+\s*manual$',
-        r'^mtu\s+\d+',
-        r'^kohler\s+',
+        r'^[a-z]+\s+manual$',
+        # Short equipment names
+        r'^(?:watermaker|stabilizer|autopilot|radar|starlink|chartplotter|vhf|ais|epirb|gyro|windlass|crane|chiller|compressor|separator|purifier)s?$',
+        # Certificate lookups
+        r'^(?:mca|class|load\s*line|iopp|solas|ism|isps|marpol)\s+(?:certificate|cert)s?$',
     ]
     is_direct_lookup = any(re.match(p, query_lower) for p in DIRECT_LOOKUP)
     # Lookup-type intents from intent parser
@@ -772,27 +942,6 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             'lane_reason': 'direct_lookup_pattern' if is_direct_lookup else 'forced_mode' if is_forced_lookup else 'simple_lookup',
             'skip_gpt': True,
         }
-
-    # ========== LANE B: RULES_ONLY (simple commands) ==========
-    COMMAND_PATTERNS = [
-        (r'^create\s+(work\s*order|wo)', 'create_work_order'),
-        (r'^open\s+(work\s*order|wo)', 'open_work_order'),
-        (r'^close\s+(work\s*order|wo)', 'close_work_order'),
-        (r'^log\s+', 'log_entry'),
-        (r'^add\s+note', 'add_note'),
-        (r'^schedule\s+', 'schedule_task'),
-    ]
-    for pattern, action in COMMAND_PATTERNS:
-        if re.match(pattern, query_lower):
-            target_match = re.search(r'(?:for|on|to|:)\s*(.+)$', query_lower)
-            return {
-                **base_result,
-                'lane': 'RULES_ONLY',
-                'lane_reason': 'command_pattern',
-                'command_action': action,
-                'command_target': target_match.group(1).strip() if target_match else None,
-                'skip_gpt': True,
-            }
 
     # ========== LANE C: GPT (full agent mode) ==========
     # Trigger GPT for:
@@ -897,7 +1046,23 @@ async def extract(
         entities_dict = [e.to_dict() for e in regex_entities]
 
         latency_ms = int((time.time() - start) * 1000)
-        logger.info(f"{lane}: query='{query}', reason={routing['lane_reason']}, entities={len(entities_dict)}")
+
+        # Get action from routing or default
+        action = routing.get('command_action', 'none_search_only')
+        action_confidence = routing['intent_confidence']
+
+        # Build chips for suggestion UX
+        chips = get_action_chips(query, action, action_confidence)
+
+        # Production instrumentation logging
+        logger.info(
+            f"{lane}: query='{query}', "
+            f"action={action}, "
+            f"exec_class={chips['execution_class']}, "
+            f"entities={len(entities_dict)}, "
+            f"latency={latency_ms}ms"
+        )
+
         return {
             'lane': lane,
             'lane_reason': routing['lane_reason'],
@@ -906,8 +1071,19 @@ async def extract(
             'command_action': routing.get('command_action'),
             'command_target': routing.get('command_target'),
             'entities': entities_dict,
+            'action': action,
+            'action_confidence': action_confidence,
             'embedding': None,
-            'metadata': {'latency_ms': latency_ms, 'model': 'regex_only', 'entity_count': len(entities_dict)}
+            # Chips for suggestion UX
+            'chips': chips,
+            'execution_class': chips['execution_class'],
+            'suggestion_worthy': chips['suggestion_worthy'],
+            'metadata': {
+                'latency_ms': latency_ms,
+                'model': 'regex_only',
+                'entity_count': len(entities_dict),
+                'verb_family': chips['verb_family']
+            }
         }
 
     # ========== GPT LANE: Full extraction ==========
@@ -919,21 +1095,29 @@ async def extract(
         result = pipeline.extract(query)
         latency_ms = int((time.time() - start) * 1000)
 
+        action = result.get("intent", "general_search")
+        action_confidence = 0.7
+        chips = get_action_chips(query, action, action_confidence)
+
         return {
             'lane': 'GPT',
             'lane_reason': routing['lane_reason'],
             'intent': routing['intent'],
             'intent_confidence': routing['intent_confidence'],
             'entities': result.get("canonical_entities", []),
-            'action': result.get("intent", "general_search"),
-            'action_confidence': 0.7,
+            'action': action,
+            'action_confidence': action_confidence,
             'person_filter': None,
             'embedding': None,
+            'chips': chips,
+            'execution_class': chips['execution_class'],
+            'suggestion_worthy': chips['suggestion_worthy'],
             'metadata': {
                 'model': 'regex_fallback',
                 'embedding_model': None,
                 'latency_ms': latency_ms,
-                'fallback': True
+                'fallback': True,
+                'verb_family': chips['verb_family']
             }
         }
 
@@ -967,18 +1151,24 @@ async def extract(
                 lane='GPT'
             )
 
+        # Build chips for suggestion UX
+        chips = get_action_chips(query, extraction.action, extraction.action_confidence)
+
+        # Extract context information for n8n workflow
+        user_agent = request.headers.get("user-agent")
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Production instrumentation logging (per Action Execution Contract)
         logger.info(
             f"GPT: query='{query}', "
             f"action={extraction.action}, "
+            f"exec_class={chips['execution_class']}, "
+            f"verb_family={chips['verb_family']}, "
             f"entities={len(extraction.entities)}, "
             f"unknown_logged={unknown_logged}, "
             f"latency={latency_ms}ms, "
             f"yacht_id={auth.get('yacht_id')}"
         )
-
-        # Extract context information for n8n workflow
-        user_agent = request.headers.get("user-agent")
-        timestamp = datetime.now(timezone.utc).isoformat()
 
         return {
             'lane': 'GPT',
@@ -990,6 +1180,10 @@ async def extract(
             'action_confidence': extraction.action_confidence,
             'person_filter': extraction.person_filter,
             'embedding': embedding,
+            # Chips for suggestion UX (per Action Execution Contract)
+            'chips': chips,
+            'execution_class': chips['execution_class'],
+            'suggestion_worthy': chips['suggestion_worthy'],
             'context': {
                 'userId': auth.get('user_id'),
                 'query': query,
@@ -1004,6 +1198,7 @@ async def extract(
                 'embedding_model': 'text-embedding-3-small' if embedding else None,
                 'embedding_dimensions': 1536 if embedding else None,
                 'latency_ms': latency_ms,
+                'verb_family': chips['verb_family'],
                 'unknown_entities_logged': unknown_logged
             }
         }
@@ -1707,6 +1902,23 @@ async def execute_action(
                 status_code=400,
                 detail=f"Invalid action_type. Must be one of: {', '.join(VALID_ACTION_TYPES)}"
             )
+
+        # CRITICAL: Check gating requirements
+        # Gated actions require explicit confirmation token
+        if requires_confirmation(action_request.action_type):
+            confirmation_token = action_request.payload.get("confirmation_token") if action_request.payload else None
+            if not confirmation_token:
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "error": "confirmation_required",
+                        "action": action_request.action_type,
+                        "message": f"Action '{action_request.action_type}' requires user confirmation. "
+                                   "Include a valid confirmation_token in payload.",
+                        "gated": True
+                    }
+                )
+            # TODO: Validate confirmation token (signature, expiry, user match)
 
         # 1. Log execution via RPC
         exec_result = graphrag_query.client.rpc('execute_action', {
