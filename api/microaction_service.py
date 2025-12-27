@@ -64,70 +64,25 @@ from module_b_entity_extractor import get_extractor as get_entity_extractor, Mar
 
 # Import Intent Parser for semantic query understanding
 from intent_parser import IntentParser, route_query as intent_route_query
-from action_gating import (
-    get_execution_class, requires_confirmation, is_destructive,
-    ExecutionClass, GATED_ACTIONS
-)
-from verb_family_router import get_verb_family_router, VerbFamilyRouter
 
 # Global intent parser (initialized at startup)
 intent_parser: Optional[IntentParser] = None
 
-# Global verb family router
-verb_router: Optional[VerbFamilyRouter] = None
-
 
 def get_action_chips(query: str, primary_action: str, confidence: float) -> Dict:
     """
-    Get suggestion chips and execution class for an action.
-
-    Returns:
-        {
-            'primary': {'action': str, 'confidence': float, 'label': str},
-            'alternatives': [{'action': str, 'confidence': float, 'label': str}, ...],
-            'execution_class': 'auto' | 'suggest' | 'confirm',
-            'suggestion_worthy': bool
-        }
+    Get suggestion chips for an action.
+    Simplified version - returns primary action with basic metadata.
     """
-    global verb_router
-    if verb_router is None:
-        verb_router = get_verb_family_router()
-
-    # Use verb family router for alternatives
-    router_result = verb_router.route(query)
-
-    # Get execution class
-    exec_class = get_execution_class(primary_action, confidence)
-
-    # Build alternatives list
-    alternatives = []
-    for alt_action, alt_confidence in router_result.alternatives[:3]:
-        if alt_action != primary_action:
-            alternatives.append({
-                'action': alt_action,
-                'confidence': round(alt_confidence, 2),
-                'label': alt_action.replace('_', ' ').title()
-            })
-
-    # Add router's primary if different from extraction's primary
-    if router_result.primary_action != primary_action and router_result.confidence > 0.6:
-        alternatives.insert(0, {
-            'action': router_result.primary_action,
-            'confidence': round(router_result.confidence, 2),
-            'label': router_result.primary_action.replace('_', ' ').title()
-        })
-        alternatives = alternatives[:3]  # Keep max 3
-
     return {
         'primary': {
             'action': primary_action,
             'confidence': round(confidence, 2),
-            'label': primary_action.replace('_', ' ').title()
+            'label': primary_action.replace('_', ' ').title() if primary_action else ''
         },
-        'alternatives': alternatives,
-        'execution_class': exec_class.value,
-        'suggestion_worthy': router_result.suggestion_worthy or exec_class != ExecutionClass.AUTO,
-        'verb_family': router_result.verb_family.value
+        'alternatives': [],
+        'execution_class': 'auto' if confidence >= 0.8 else 'suggest',
+        'suggestion_worthy': confidence < 0.8
     }
 
 
