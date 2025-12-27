@@ -428,16 +428,19 @@ class GraphRAGQueryService:
             score = ResolutionScore()
             score.regex_score = entity.confidence  # GPT confidence = "regex" score
 
+            # Get canonical (Module B has it, GPT extractor doesn't)
+            canonical = getattr(entity, 'canonical', None) or entity.value.upper().replace(" ", "_")
+
             resolved_entity = ResolvedEntity(
                 text=entity.value,
                 type=entity.type,
-                canonical=entity.canonical,
+                canonical=canonical,
                 score=score
             )
 
             # Step 2: DB alias lookup
             if entity.type in ("equipment", "part", "fault_code", "supplier"):
-                canonical_id = self._resolve_entity_alias(yacht_id, entity.type, entity.canonical)
+                canonical_id = self._resolve_entity_alias(yacht_id, entity.type, canonical)
                 if canonical_id:
                     resolved_entity.canonical_id = canonical_id
                     score.alias_score = 0.9
@@ -457,7 +460,7 @@ class GraphRAGQueryService:
 
             # Step 3: Graph hints (if no alias match)
             if not resolved_entity.canonical_id and self.client:
-                graph_id = self._resolve_via_graph(yacht_id, entity.type, entity.value, entity.canonical)
+                graph_id = self._resolve_via_graph(yacht_id, entity.type, entity.value, canonical)
                 if graph_id:
                     resolved_entity.canonical_id = graph_id
                     score.graph_score = 0.6
