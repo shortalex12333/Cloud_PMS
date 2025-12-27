@@ -82,7 +82,8 @@ def get_action_chips(query: str, primary_action: str, confidence: float) -> Dict
         },
         'alternatives': [],
         'execution_class': 'auto' if confidence >= 0.8 else 'suggest',
-        'suggestion_worthy': confidence < 0.8
+        'suggestion_worthy': confidence < 0.8,
+        'verb_family': 'general'
     }
 
 
