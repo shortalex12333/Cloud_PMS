@@ -454,7 +454,7 @@ class UnifiedExtractionResponse(BaseModel):
 # ========================================================================
 
 startup_time = time.time()
-build_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+build_time = datetime.now(timezone.utc).isoformat()
 
 # Get git SHA for deployment verification
 def get_git_sha() -> str:
