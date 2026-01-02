@@ -589,7 +589,7 @@ class GraphRAGQueryService:
     # INTENT EXECUTION
     # ========================================================================
 
-    def _execute_query(self, yacht_id: str, intent: QueryIntent, query: str, entities: List[Dict]) -> List[Dict]:
+    def _execute_query(self, yacht_id: str, intent: QueryIntent, query: str, entities: List[Dict], similar_docs: List[Dict] = None, person_filter: str = None) -> List[Dict]:
         """Execute intent-specific query pattern"""
         if intent == QueryIntent.DIAGNOSE_FAULT:
             return self._query_fault(yacht_id, query, entities)
