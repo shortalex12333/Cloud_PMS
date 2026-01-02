@@ -1633,11 +1633,13 @@ async def situational_search(
             embedding = graphrag_query.gpt.embed(search_request.query)
 
             # Convert extraction entities to resolved format
+            # Note: ExtractedEntity has no 'canonical' field - canonicalization happens downstream
+            # Use e.value as canonical placeholder until proper resolution
             for e in extraction.entities:
                 resolved_entities.append({
                     'type': e.type,
                     'value': e.value,
-                    'canonical': e.canonical,
+                    'canonical': e.value,  # Use raw value; canonicalization is downstream
                     'confidence': e.confidence,
                     'entity_id': None  # Would need DB resolver
                 })
