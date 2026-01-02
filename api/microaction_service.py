@@ -710,7 +710,20 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     intent_category = intent_result['intent_category']
 
     # Problem/temporal detection
-    PROBLEM_WORDS = re.compile(r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|not working|not producing|not running|won\'t start|broken|failed|failing|issue|problem|keeps|again|recurring|repeat|since|before charter|this morning|last time|still|slow|sluggish|weak|stuck|jammed|grinding|squealing|intermittent')
+    # Phase 3: Expanded problem words to catch more diagnostic cases
+    PROBLEM_WORDS = re.compile(
+        r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|'
+        r'not working|not producing|not running|won\'t start|doesn\'t start|wont start|'
+        r'broken|failed|failing|issue|problem|keeps|again|recurring|repeat|'
+        r'since|before charter|this morning|last time|still|slow|sluggish|weak|'
+        r'stuck|jammed|grinding|squealing|intermittent|'
+        # Phase 3 additions: request/action words
+        r'help|assist|fix|fixing|repair|repairing|diagnos|'
+        # Phase 3 additions: analysis/status words
+        r'consumption|efficiency|critically|urgent|emergency|'
+        # Phase 3 additions: negations
+        r'won\'t|doesn\'t|isn\'t|can\'t|cannot|dead|down\b'
+    )
     TEMPORAL_WORDS = re.compile(r'before charter|after maintenance|since|this morning|last week|yesterday|upcoming|scheduled|due|next|prior to')
 
     has_problem_words = bool(PROBLEM_WORDS.search(query_lower))
@@ -1021,6 +1034,7 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             **base_result,
             'lane': 'NO_LLM',
             'lane_reason': 'direct_lookup_pattern' if is_direct_lookup else 'forced_mode' if is_forced_lookup else 'simple_lookup',
+            'lane_confidence': 'high' if is_direct_lookup else 'medium',
             'skip_gpt': True,
         }
 
@@ -1057,12 +1071,19 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             'skip_gpt': False,
         }
 
-    # Default: simple lookup
+    # Default: UNKNOWN (Phase 3: split from NO_LLM)
+    # For uncertain queries, return UNKNOWN with suggestions
     return {
         **base_result,
-        'lane': 'NO_LLM',
-        'lane_reason': 'default_fallback',
+        'lane': 'UNKNOWN',
+        'lane_reason': 'no_clear_pattern',
+        'lane_confidence': 'low',
         'skip_gpt': True,
+        'suggestions': [
+            'Describe a problem to diagnose: "engine overheating"',
+            'Request an action: "create work order for generator"',
+            'Search for equipment: "CAT 3512 manual"',
+        ],
     }
 
 
