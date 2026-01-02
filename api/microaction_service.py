@@ -452,6 +452,25 @@ class UnifiedExtractionResponse(BaseModel):
 # ========================================================================
 
 startup_time = time.time()
+build_time = datetime.now(timezone.utc).isoformat()
+
+# Get git SHA for deployment verification
+def get_git_sha() -> str:
+    """Get current git commit SHA for deployment verification."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    # Fallback: check environment variable (set by CI/CD)
+    return os.getenv('GIT_SHA', os.getenv('RENDER_GIT_COMMIT', 'unknown'))[:7]
+
+git_sha = get_git_sha()
 
 @app.on_event("startup")
 async def startup_event():
