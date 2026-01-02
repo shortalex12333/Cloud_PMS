@@ -840,9 +840,12 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'|<\|im_start\|>|<\|im_end\|>'
         r'|ignore\s+(all\s+)?instructions'
         r'|forget\s+(your|all)\s+(training|rules)'
+        r'|forget\s+everything'
         r'|pretend\s+you\s+are'
-        r'|reveal\s+(your\s+)?prompt'
-        r'|bypass\s+safety',
+        r'|reveal\s+(your\s+)?(prompt|rules|instructions)'
+        r'|bypass\s+safety'
+        r'|system\s+prompt'
+        r'|\bDAN\b',
         re.IGNORECASE
     )
     DOMAIN_KEYWORDS = re.compile(
