@@ -814,7 +814,35 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'|\bDAN\b|\bjailbreak\b'
         r'|you\s+are\s+now\s+in'
         r'|override\s+(your|all|the)\s+'
-        r'|bitcoin\s+price|crypto\s+price|stock\s+price',
+        r'|bitcoin\s+price|crypto\s+price|stock\s+price'
+        # Injection tokens (LLM prompt injection markers)
+        r'|\[INST\]|\[/INST\]|\[SYSTEM\]|\[/SYSTEM\]'
+        r'|<\s*system\s*>|<\s*/\s*system\s*>'
+        r'|<\s*instructions?\s*>|<\s*/\s*instructions?\s*>'
+        r'|<\s*prompt\s*>|<\s*/\s*prompt\s*>'
+        r'|\{\{\s*system|\{\{\s*prompt|\}\}'
+        r'|<!\[CDATA\[|\]\]>'
+        r'|###\s*(instruction|system|prompt)'
+        r'|<\|im_start\|>|<\|im_end\|>'
+        r'|<\|system\|>|<\|user\|>|<\|assistant\|>'
+        r'|Human:|Assistant:|System:'
+        r'|BEGIN\s+SYSTEM|END\s+SYSTEM',
+        re.IGNORECASE
+    )
+
+    # Injection token detector for clause-level scanning
+    INJECTION_TOKENS = re.compile(
+        r'\[INST\]|\[/INST\]|\[SYSTEM\]|\[/SYSTEM\]'
+        r'|<\s*system\s*>|<\s*/\s*system\s*>'
+        r'|<\s*instructions?\s*>|<\s*/\s*instructions?\s*>'
+        r'|\{\{.*\}\}'
+        r'|<!\[CDATA\[|\]\]>'
+        r'|<\|im_start\|>|<\|im_end\|>'
+        r'|ignore\s+(all\s+)?instructions'
+        r'|forget\s+(your|all)\s+(training|rules)'
+        r'|pretend\s+you\s+are'
+        r'|reveal\s+(your\s+)?prompt'
+        r'|bypass\s+safety',
         re.IGNORECASE
     )
     DOMAIN_KEYWORDS = re.compile(
@@ -825,6 +853,17 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'fuel|oil|coolant|exhaust|intake|discharge|valve|gauge|sensor',
         re.IGNORECASE
     )
+
+    # SECURITY: Check for injection tokens ANYWHERE in query (takes precedence)
+    # These are always blocked, even if mixed with domain content
+    if INJECTION_TOKENS.search(query_lower):
+        return {
+            **base_result,
+            'lane': 'BLOCKED',
+            'lane_reason': 'injection_detected',
+            'block_message': 'Query contains suspicious tokens. Please rephrase your request.',
+            'skip_gpt': True,
+        }
 
     if NON_DOMAIN.search(query_lower) and not DOMAIN_KEYWORDS.search(query_lower):
         return {
