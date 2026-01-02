@@ -951,6 +951,39 @@ def route_to_lane(query: str, mode: str = None) -> dict:
                 'skip_gpt': True,
             }
 
+    # PHASE 4: IMPLICIT ACTION PATTERNS (command camouflage)
+    # Phrases that imply actions without explicit command verbs
+    IMPLICIT_ACTION_PATTERNS = [
+        # Logging/handover requests
+        (r'(?:wants?|need)\s+(?:this|it)\s+logged', 'log_entry'),
+        (r'(?:needs?|should)\s+(?:to\s+)?(?:go|be)\s+on\s+(?:the\s+)?handover', 'add_to_handover'),
+        (r'write\s+(?:this|it)\s+down', 'log_entry'),
+        (r'better\s+(?:write|note)\s+this', 'log_entry'),
+        # Service/maintenance requests
+        (r'(?:we\'?re|it\'?s)\s+due\s+(?:for\s+)?(?:a\s+)?(?:service|maintenance)', 'schedule_maintenance'),
+        (r'(?:time|ready)\s+for\s+(?:a\s+)?(?:service|maintenance)', 'schedule_maintenance'),
+        # Work order requests
+        (r'(?:someone|somebody)\s+should\s+(?:look|check|inspect)', 'create_work_order'),
+        (r'needs?\s+(?:a\s+)?(?:work\s*order|wo|inspection)', 'create_work_order'),
+        (r'(?:this|it)\s+(?:wo|work\s*order)\s+needs?\s+clos', 'close_work_order'),
+        # Inventory/stock
+        (r'(?:we\'?re|running)\s+out\s+of', 'update_inventory'),
+        (r'shows?\s+(?:we\'?re\s+)?out\s+of', 'update_inventory'),
+        # Document/report
+        (r'asked\s+for\s+(?:a\s+)?report', 'export_report'),
+        (r'(?:doc|document)\s+needs?\s+attach', 'attach_document'),
+    ]
+    for pattern, action in IMPLICIT_ACTION_PATTERNS:
+        if re.search(pattern, query_lower):
+            return {
+                **base_result,
+                'lane': 'RULES_ONLY',
+                'lane_reason': 'implicit_action',
+                'action': action,
+                'execution_class': 'suggest',  # ALWAYS suggest, never auto
+                'skip_gpt': True,
+            }
+
     COMMAND_PATTERNS = [
         # Create work order (with typos)
         (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(work\s*order|workorder|wo)', 'create_work_order'),
