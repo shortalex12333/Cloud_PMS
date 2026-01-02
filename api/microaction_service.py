@@ -894,12 +894,20 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     clauses = [c.strip() for c in clauses if c and c.strip()]
 
     # Non-domain patterns for individual clauses (more aggressive)
+    # Position-independent: catch non-domain words ANYWHERE in clause
     CLAUSE_NON_DOMAIN = re.compile(
+        # Start-of-clause patterns
         r'^(what\'?s?\s+(?:the\s+)?(?:bitcoin|crypto|weather|news|stock|president|time|date))'
-        r'|^(tell\s+me\s+(?:a\s+joke|about\s+(?!the\s+(?:engine|pump|gen))))'
         r'|^(who\s+(?:won|is\s+the\s+president))'
-        r'|^(calculate|convert|translate)\b'
-        r'|\b(bitcoin|crypto|stock\s+price|weather\s+forecast)\b',
+        # Position-independent patterns (non-domain anywhere in clause)
+        r'|\b(bitcoin|crypto|stock\s+price|weather\s+forecast)\b'
+        r'|\b(translate|translation)\b'
+        r'|\b(joke|poem|story|song|recipe)\b'
+        r'|\b(weather|forecast)\b(?!\s*(?:deck|seal|strip))'  # weather but not weather deck/seal
+        r'|\b(game|score|sports?|movie|music)\b'
+        r'|write\s+(?:a\s+)?(?:poem|story|song|joke)'
+        r'|tell\s+me\s+(?:a\s+)?(?:joke|story|poem)'
+        r'|what\s+(?:is|are)\s+(?:the\s+)?(?:news|score|weather)',
         re.IGNORECASE
     )
 
