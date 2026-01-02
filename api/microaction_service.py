@@ -710,19 +710,16 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     intent_category = intent_result['intent_category']
 
     # Problem/temporal detection
-    # Phase 3: Expanded problem words to catch more diagnostic cases
+    # Phase 3: Surgical expansion - only patterns that strongly indicate problems
     PROBLEM_WORDS = re.compile(
         r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|'
         r'not working|not producing|not running|won\'t start|doesn\'t start|wont start|'
         r'broken|failed|failing|issue|problem|keeps|again|recurring|repeat|'
         r'since|before charter|this morning|last time|still|slow|sluggish|weak|'
         r'stuck|jammed|grinding|squealing|intermittent|'
-        # Phase 3 additions: request/action words
-        r'help|assist|fix|fixing|repair|repairing|diagnos|'
-        # Phase 3 additions: analysis/status words
-        r'consumption|efficiency|critically|urgent|emergency|'
-        # Phase 3 additions: negations
-        r'won\'t|doesn\'t|isn\'t|can\'t|cannot|dead|down\b'
+        # Phase 3: Only strong problem indicators
+        r'urgent|emergency|critically|diagnos|'
+        r'dead\b|wont\b|doesnt\b|cant\b|cannot\b'
     )
     TEMPORAL_WORDS = re.compile(r'before charter|after maintenance|since|this morning|last week|yesterday|upcoming|scheduled|due|next|prior to')
 
