@@ -1167,8 +1167,8 @@ async def extract(
             'metadata': {'latency_ms': latency_ms, 'model': None}
         }
 
-    # ========== NO_LLM / RULES_ONLY: Regex Entity Extraction (No GPT Cost) ==========
-    if lane in ['NO_LLM', 'RULES_ONLY']:
+    # ========== NO_LLM / RULES_ONLY / UNKNOWN: Regex Entity Extraction (No GPT Cost) ==========
+    if lane in ['NO_LLM', 'RULES_ONLY', 'UNKNOWN']:
         # Run regex-based maritime entity extraction (Module B)
         # This gives us entities WITHOUT calling GPT - zero cost, ~5ms latency
         regex_extractor = get_entity_extractor()
@@ -1198,6 +1198,7 @@ async def extract(
         return {
             'lane': lane,
             'lane_reason': routing['lane_reason'],
+            'lane_confidence': routing.get('lane_confidence'),
             'intent': routing['intent'],
             'intent_confidence': routing['intent_confidence'],
             'command_action': routing.get('command_action'),
@@ -1206,6 +1207,8 @@ async def extract(
             'action': action,
             'action_confidence': action_confidence,
             'embedding': None,
+            # UNKNOWN lane includes suggestions for clarification
+            'suggestions': routing.get('suggestions', []),
             # Chips for suggestion UX
             'chips': chips,
             'execution_class': chips['execution_class'],
