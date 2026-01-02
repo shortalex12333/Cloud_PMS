@@ -918,6 +918,29 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'(?:need\s+to\s+)?'  # "need to "
     )
 
+    # ELLIPTICAL SHORTCUTS: Abbreviated user input (suggest only, never auto)
+    ELLIPTICAL_PATTERNS = [
+        (r'^wo\s+', 'create_work_order'),           # "wo gen" → create work order for generator
+        (r'^wo$', 'create_work_order'),             # "wo" alone
+        (r'^handover$', 'add_to_handover'),         # "handover" alone
+        (r'^(?:complete|done|finished)$', 'mark_complete'),  # "done" alone
+        (r'^log$', 'log_entry'),                    # "log" alone
+        (r'^eng\s+hours?$', 'log_entry'),           # "eng hours"
+        (r'^attach$', 'attach_document'),           # "attach" alone
+        (r'^export$', 'export_data'),               # "export" alone
+        (r'^schedule$', 'schedule_task'),           # "schedule" alone
+    ]
+    for pattern, action in ELLIPTICAL_PATTERNS:
+        if re.match(pattern, query_lower):
+            return {
+                **base_result,
+                'lane': 'RULES_ONLY',
+                'lane_reason': 'elliptical_shorthand',
+                'action': action,
+                'execution_class': 'suggest',  # NEVER auto for shortcuts
+                'skip_gpt': True,
+            }
+
     COMMAND_PATTERNS = [
         # Create work order (with typos)
         (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(work\s*order|workorder|wo)', 'create_work_order'),
