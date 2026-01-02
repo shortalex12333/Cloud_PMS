@@ -868,6 +868,33 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             'skip_gpt': True,
         }
 
+    # DOMAIN DRIFT: Split query on conjunctions and check each clause
+    # If ANY clause is non-domain, block the entire query
+    # This catches "fix the engine also what's bitcoin price"
+    CLAUSE_SPLITTERS = re.compile(r'\s+(?:and|also|btw|plus|then|after that)\s+|,\s*(?!(?:\d|[A-Z]{2,3}-))|\.\s+', re.IGNORECASE)
+    clauses = CLAUSE_SPLITTERS.split(query_lower)
+    clauses = [c.strip() for c in clauses if c and c.strip()]
+
+    # Non-domain patterns for individual clauses (more aggressive)
+    CLAUSE_NON_DOMAIN = re.compile(
+        r'^(what\'?s?\s+(?:the\s+)?(?:bitcoin|crypto|weather|news|stock|president|time|date))'
+        r'|^(tell\s+me\s+(?:a\s+joke|about\s+(?!the\s+(?:engine|pump|gen))))'
+        r'|^(who\s+(?:won|is\s+the\s+president))'
+        r'|^(calculate|convert|translate)\b'
+        r'|\b(bitcoin|crypto|stock\s+price|weather\s+forecast)\b',
+        re.IGNORECASE
+    )
+
+    for clause in clauses:
+        if len(clause) > 3 and CLAUSE_NON_DOMAIN.search(clause) and not DOMAIN_KEYWORDS.search(clause):
+            return {
+                **base_result,
+                'lane': 'BLOCKED',
+                'lane_reason': 'domain_drift',
+                'block_message': f'I can only help with yacht operations. The part "{clause[:30]}..." is outside my scope.',
+                'skip_gpt': True,
+            }
+
     if NON_DOMAIN.search(query_lower) and not DOMAIN_KEYWORDS.search(query_lower):
         return {
             **base_result,
