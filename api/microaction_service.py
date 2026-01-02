@@ -782,7 +782,20 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'|\b(weather|forecast|temperature|rain|sunny|cloudy)\b(?!.*(?:deck|seal|hatch|cover))'  # weather unless maritime context
         r'|^(who won|what happened|latest news|breaking news)'
         r'|^(calculate|convert|translate|define)\s'
-        r'|^(yo|hiya|howdy|greetings)$',
+        r'|^(yo|hiya|howdy|greetings)$'
+        # Jailbreak / prompt injection patterns
+        r'|ignore\s+(all\s+)?(previous\s+)?instructions'
+        r'|forget\s+(your|all|previous)\s+(training|instructions|rules)'
+        r'|pretend\s+(you\s+are|to\s+be|you\'re)'
+        r'|act\s+as\s+if'
+        r'|what\s+are\s+your\s+(system\s+)?(instructions|prompts?|rules)'
+        r'|reveal\s+(your\s+)?(prompt|instructions|system)'
+        r'|disregard\s+(all\s+)?(previous\s+)?'
+        r'|bypass\s+(safety|security|restrictions)'
+        r'|\bDAN\b|\bjailbreak\b'
+        r'|you\s+are\s+now\s+in'
+        r'|override\s+(your|all|the)\s+'
+        r'|bitcoin\s+price|crypto\s+price|stock\s+price',
         re.IGNORECASE
     )
     DOMAIN_KEYWORDS = re.compile(
