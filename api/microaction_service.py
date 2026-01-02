@@ -710,7 +710,7 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     intent_category = intent_result['intent_category']
 
     # Problem/temporal detection
-    PROBLEM_WORDS = re.compile(r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|not working|broken|failed|failing|issue|problem|keeps|again|recurring|repeat|since|before charter|this morning|last time|still')
+    PROBLEM_WORDS = re.compile(r'overheating|overheat|leak|leaking|vibrat|noise|smoke|alarm|warning|error|fault|not working|not producing|not running|won\'t start|broken|failed|failing|issue|problem|keeps|again|recurring|repeat|since|before charter|this morning|last time|still|slow|sluggish|weak|stuck|jammed|grinding|squealing|intermittent')
     TEMPORAL_WORDS = re.compile(r'before charter|after maintenance|since|this morning|last week|yesterday|upcoming|scheduled|due|next|prior to')
 
     has_problem_words = bool(PROBLEM_WORDS.search(query_lower))
@@ -855,6 +855,7 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         (POLITE_PREFIX + r'open\s+(work\s*order|wo)', 'open_work_order'),
         (POLITE_PREFIX + r'close\s+(work\s*order|wo)', 'close_work_order'),
         (POLITE_PREFIX + r'mark\s+(work\s*order|wo)', 'mark_work_order_complete'),
+        (POLITE_PREFIX + r'mark\s+(?:as\s+)?(?:complete|done|finished)', 'mark_complete'),
         (POLITE_PREFIX + r'log\s+', 'log_entry'),
         (POLITE_PREFIX + r'add\s+note', 'add_note'),
         (POLITE_PREFIX + r'add\s+(?:to\s+)?handover', 'add_to_handover'),  # "add handover" typo
