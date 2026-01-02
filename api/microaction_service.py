@@ -848,8 +848,9 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         r'|\{\{.*\}\}'
         r'|<!\[CDATA\[|\]\]>'
         r'|<\|im_start\|>|<\|im_end\|>'
-        r'|ignore\s+(all\s+)?instructions'
-        r'|forget\s+(your|all)\s+(training|rules)'
+        # Position-independent: catch "ignore X instructions" for any X
+        r'|ignore\s+(\w+\s+)*instructions'
+        r'|forget\s+(your|all|my|the|previous)\s+(training|rules|instructions)'
         r'|forget\s+everything'
         r'|pretend\s+you\s+are'
         r'|reveal\s+(your\s+)?(prompt|rules|instructions)'
@@ -881,7 +882,14 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     # DOMAIN DRIFT: Split query on conjunctions and check each clause
     # If ANY clause is non-domain, block the entire query
     # This catches "fix the engine also what's bitcoin price"
-    CLAUSE_SPLITTERS = re.compile(r'\s+(?:and|also|btw|plus|then|after that)\s+|,\s*(?!(?:\d|[A-Z]{2,3}-))|\.\s+', re.IGNORECASE)
+    # Correction pivots: "no wait", "actually", "scratch that" indicate user changed their mind
+    # The clause BEFORE the pivot is abandoned, clause AFTER is the real intent
+    CLAUSE_SPLITTERS = re.compile(
+        r'\s+(?:and|also|btw|plus|then|after that|'
+        r'no wait|wait|actually|scratch that|forget that|ignore that)\s+'
+        r'|,\s*(?!(?:\d|[A-Z]{2,3}-))|\.\s+',
+        re.IGNORECASE
+    )
     clauses = CLAUSE_SPLITTERS.split(query_lower)
     clauses = [c.strip() for c in clauses if c and c.strip()]
 
