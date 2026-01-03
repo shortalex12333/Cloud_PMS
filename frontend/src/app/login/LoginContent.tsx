@@ -2,7 +2,7 @@
 
 /**
  * LoginContent
- * Apple-inspired login page with glassmorphic card
+ * Apple-style minimal login
  */
 
 import { useState, useEffect } from 'react';
@@ -10,11 +10,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export default function LoginContent() {
   const router = useRouter();
-  const { user, login } = useAuth();
+  const { user, login, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,9 +22,8 @@ export default function LoginContent() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      console.log('[LoginPage] User already logged in, redirecting...');
-      const redirectTo = isHOD(user) ? '/dashboard' : '/search';
-      router.push(redirectTo);
+      console.log('[LoginPage] Redirecting logged in user');
+      router.push(isHOD(user) ? '/dashboard' : '/search');
     }
   }, [user, router]);
 
@@ -36,109 +34,94 @@ export default function LoginContent() {
 
     try {
       await login(email, password);
-      console.log('[LoginPage] Login successful');
     } catch (err) {
-      console.error('[LoginPage] Login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);
     }
   };
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-[#86868b] animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
-      <div className="w-full max-w-[400px] space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-[32px] font-bold tracking-[-0.02em] text-zinc-900 dark:text-zinc-100">
-            CelesteOS
-          </h1>
-          <p className="mt-2 text-[15px] text-zinc-500 dark:text-zinc-400">
-            Engineering Intelligence for Yachts
-          </p>
+    <div
+      className="min-h-screen bg-[#000000] flex items-center justify-center p-6"
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}
+    >
+      <div className="w-full max-w-[280px]">
+        {/* Apple Logo placeholder */}
+        <div className="flex justify-center mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#3d3d3f] to-[#1c1c1e] flex items-center justify-center">
+            <span className="text-white text-xl font-semibold">C</span>
+          </div>
         </div>
 
-        {/* Login Card - Glassmorphic */}
-        <div className={cn(
-          'celeste-card p-8',
-          'bg-white/90 dark:bg-zinc-900/90',
-          'backdrop-blur-xl',
-          'shadow-[var(--shadow-lg)]'
-        )}>
-          <form onSubmit={handleLogin} className="space-y-5">
-            {/* Error Message */}
-            {error && (
-              <div className={cn(
-                'p-3 rounded-[var(--radius-button)]',
-                'bg-[--system-red-light] border border-[--system-red]/20',
-                'text-[14px] text-[--system-red]'
-              )}>
-                {error}
-              </div>
+        {/* Title */}
+        <h1 className="text-[21px] font-semibold text-white text-center mb-1 tracking-[-0.01em]">
+          Sign in
+        </h1>
+        <p className="text-[13px] text-[#86868b] text-center mb-8">
+          CelesteOS
+        </p>
+
+        {/* Form */}
+        <form onSubmit={handleLogin} className="space-y-3">
+          {/* Error */}
+          {error && (
+            <div className="px-3 py-2 rounded-lg bg-[#FF453A]/10 border border-[#FF453A]/20">
+              <p className="text-[13px] text-[#FF453A] text-center">{error}</p>
+            </div>
+          )}
+
+          {/* Email */}
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            required
+            autoComplete="email"
+            className="w-full h-[44px] px-4 rounded-xl bg-[#1c1c1e] border border-[#3d3d3f] text-[15px] text-white placeholder:text-[#636366] focus:outline-none focus:border-[#0A84FF] transition-colors"
+          />
+
+          {/* Password */}
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            required
+            autoComplete="current-password"
+            className="w-full h-[44px] px-4 rounded-xl bg-[#1c1c1e] border border-[#3d3d3f] text-[15px] text-white placeholder:text-[#636366] focus:outline-none focus:border-[#0A84FF] transition-colors"
+          />
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-[44px] rounded-xl bg-[#0A84FF] hover:bg-[#0077ED] disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium text-white transition-colors flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              'Sign In'
             )}
+          </button>
+        </form>
 
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-[13px] font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="celeste-input h-11"
-                placeholder="alex@yacht.com"
-              />
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-[13px] font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="celeste-input h-11"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={cn(
-                'celeste-button celeste-button-primary w-full h-11 text-[15px]',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </form>
-
-          {/* Footer */}
-          <p className="mt-6 text-center text-[12px] text-zinc-400 dark:text-zinc-500">
-            Secure access for authorized crew only
-          </p>
-        </div>
+        {/* Footer */}
+        <p className="mt-8 text-[11px] text-[#48484a] text-center">
+          Secure crew access only
+        </p>
       </div>
     </div>
   );

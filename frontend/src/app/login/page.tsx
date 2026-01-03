@@ -1,33 +1,17 @@
 /**
  * LoginPage
- *
- * Server Component wrapper that handles dynamic rendering
- * for the client-side LoginContent component.
+ * Apple-style minimal login
  */
 
 import { Suspense } from 'react';
 import LoginContent from './LoginContent';
 
-// Force dynamic rendering (required for Supabase auth check)
 export const dynamic = 'force-dynamic';
 
-// Loading fallback for Suspense
 function LoginLoading() {
   return (
-    <div className="centered-screen">
-      <div className="w-full max-w-md space-y-8 -mt-16">
-        <div className="text-center">
-          <div className="h-10 w-40 skeleton rounded mx-auto" />
-          <div className="h-4 w-56 skeleton rounded mx-auto mt-2" />
-        </div>
-        <div className="bg-card border border-border rounded-lg shadow-lg p-8">
-          <div className="space-y-6">
-            <div className="h-10 skeleton rounded" />
-            <div className="h-10 skeleton rounded" />
-            <div className="h-10 skeleton rounded" />
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-[#3d3d3f] border-t-[#86868b] rounded-full animate-spin" />
     </div>
   );
 }
