@@ -3,12 +3,6 @@
 /**
  * SpotlightResultRow
  * Apple Spotlight-identical result row
- *
- * Anatomy (Apple style):
- * [40px Icon] [Title + Subtitle stacked]
- *
- * NO: badges, confidence bars, chevrons, microactions
- * YES: clean, minimal, focused
  */
 
 import React from 'react';
@@ -40,27 +34,27 @@ interface SpotlightResultRowProps {
 }
 
 // ============================================================================
-// TYPE ICON MAPPING - App icon style
+// TYPE CONFIG - Apple system colors
 // ============================================================================
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; bg: string }> = {
-  fault: { icon: AlertTriangle, bg: 'bg-[#FF3B30]' },
-  work_order: { icon: Wrench, bg: 'bg-[#007AFF]' },
-  equipment: { icon: Cog, bg: 'bg-[#5856D6]' },
-  part: { icon: Package, bg: 'bg-[#34C759]' },
-  handover: { icon: Users, bg: 'bg-[#FF9500]' },
-  document: { icon: FileText, bg: 'bg-[#5AC8FA]' },
-  document_chunk: { icon: FileText, bg: 'bg-[#5AC8FA]' },
-  hor_table: { icon: Clock, bg: 'bg-[#FF2D55]' },
-  purchase: { icon: DollarSign, bg: 'bg-[#30B0C7]' },
-  checklist: { icon: ClipboardList, bg: 'bg-[#64D2FF]' },
-  worklist: { icon: ClipboardList, bg: 'bg-[#BF5AF2]' },
-  fleet_summary: { icon: Ship, bg: 'bg-[#32ADE6]' },
-  smart_summary: { icon: Sparkles, bg: 'bg-[#AF52DE]' },
-  predictive: { icon: Sparkles, bg: 'bg-[#AF52DE]' },
+  fault: { icon: AlertTriangle, bg: '#FF453A' },
+  work_order: { icon: Wrench, bg: '#0A84FF' },
+  equipment: { icon: Cog, bg: '#5E5CE6' },
+  part: { icon: Package, bg: '#30D158' },
+  handover: { icon: Users, bg: '#FF9F0A' },
+  document: { icon: FileText, bg: '#64D2FF' },
+  document_chunk: { icon: FileText, bg: '#64D2FF' },
+  hor_table: { icon: Clock, bg: '#FF375F' },
+  purchase: { icon: DollarSign, bg: '#40C8E0' },
+  checklist: { icon: ClipboardList, bg: '#64D2FF' },
+  worklist: { icon: ClipboardList, bg: '#BF5AF2' },
+  fleet_summary: { icon: Ship, bg: '#32ADE6' },
+  smart_summary: { icon: Sparkles, bg: '#BF5AF2' },
+  predictive: { icon: Sparkles, bg: '#BF5AF2' },
 };
 
-const DEFAULT_CONFIG = { icon: FileText, bg: 'bg-[#8E8E93]' };
+const DEFAULT_CONFIG = { icon: FileText, bg: '#8E8E93' };
 
 // ============================================================================
 // COMPONENT
@@ -83,55 +77,38 @@ export default function SpotlightResultRow({
       onDoubleClick={onDoubleClick}
       className={cn(
         'flex items-center gap-3',
-        'px-4 py-2 mx-1',
+        'mx-1.5 px-2.5 py-1.5',
         'cursor-default select-none',
-        'rounded-lg',
-        'transition-colors duration-75',
-        isSelected
-          ? 'bg-[#0066CC] text-white'
-          : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
+        'rounded-md',
+        'transition-colors duration-[50ms]'
       )}
+      style={{
+        backgroundColor: isSelected ? '#0A84FF' : 'transparent',
+      }}
     >
-      {/* Icon - App icon style (40px rounded square) */}
+      {/* Icon - App icon style */}
       <div
-        className={cn(
-          'flex-shrink-0 flex items-center justify-center',
-          'w-10 h-10 rounded-[10px]',
-          config.bg,
-          'shadow-sm'
-        )}
+        className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg"
+        style={{ backgroundColor: config.bg }}
       >
-        <Icon
-          className={cn(
-            'w-5 h-5',
-            'text-white'
-          )}
-          strokeWidth={1.75}
-        />
+        <Icon className="w-4 h-4 text-white" strokeWidth={1.75} />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 py-0.5">
-        {/* Title */}
+      <div className="flex-1 min-w-0">
         <p
           className={cn(
-            'text-[15px] font-medium truncate leading-tight',
-            isSelected
-              ? 'text-white'
-              : 'text-[#1d1d1f] dark:text-[#f5f5f7]'
+            'text-[13px] font-normal truncate leading-tight',
+            isSelected ? 'text-white' : 'text-[#f5f5f7]'
           )}
         >
           {result.title}
         </p>
-
-        {/* Subtitle */}
         {result.subtitle && (
           <p
             className={cn(
-              'text-[13px] truncate leading-tight mt-0.5',
-              isSelected
-                ? 'text-white/80'
-                : 'text-[#86868b] dark:text-[#98989d]'
+              'text-[11px] truncate leading-tight mt-px',
+              isSelected ? 'text-white/70' : 'text-[#98989f]'
             )}
           >
             {result.subtitle}

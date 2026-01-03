@@ -3,13 +3,6 @@
 /**
  * CelesteOS Spotlight Search
  * Apple Spotlight-identical implementation
- *
- * Design principles:
- * - Single unified container (input + results seamlessly connected)
- * - Large radius (~20px), dramatic shadow
- * - Clean rows: icon + title + subtitle only
- * - No clutter: no badges, confidence bars, chevrons, keyboard hints
- * - Smooth animations, subtle interactions
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
@@ -76,21 +69,17 @@ export default function SpotlightSearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Map results
   const results = useMemo(() => apiResults.map(mapAPIResult), [apiResults]);
 
-  // Focus input on mount
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 50);
     return () => clearTimeout(timer);
   }, []);
 
-  // Reset selection when results change
   useEffect(() => {
     setSelectedIndex(0);
   }, [results.length]);
 
-  // Scroll selected into view
   useEffect(() => {
     if (resultsRef.current && results.length > 0) {
       const el = resultsRef.current.querySelector(`[data-index="${selectedIndex}"]`);
@@ -98,7 +87,6 @@ export default function SpotlightSearch({
     }
   }, [selectedIndex, results.length]);
 
-  // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'ArrowDown':
@@ -126,7 +114,6 @@ export default function SpotlightSearch({
     }
   }, [results, selectedIndex, query, clear, onClose]);
 
-  // Clear handler
   const handleClear = useCallback(() => {
     clear();
     setSelectedIndex(0);
@@ -134,8 +121,8 @@ export default function SpotlightSearch({
   }, [clear]);
 
   const hasResults = results.length > 0;
-  const showResults = query.trim().length > 0;
-  const showNoResults = showResults && !hasResults && !isLoading && !isStreaming;
+  const hasQuery = query.trim().length > 0;
+  const showNoResults = hasQuery && !hasResults && !isLoading && !isStreaming;
 
   return (
     <div
@@ -144,6 +131,7 @@ export default function SpotlightSearch({
         isModal && 'fixed inset-0 z-[9999] flex items-start justify-center pt-[18vh]',
         className
       )}
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif' }}
     >
       {/* Backdrop */}
       {isModal && (
@@ -154,7 +142,7 @@ export default function SpotlightSearch({
         />
       )}
 
-      {/* Main Spotlight Container - SINGLE UNIFIED PANEL */}
+      {/* Main Spotlight Container */}
       <div
         className={cn(
           'spotlight-panel relative w-full',
@@ -162,28 +150,32 @@ export default function SpotlightSearch({
           isModal && 'z-10'
         )}
       >
-        {/* Search Input Area */}
-        <div className="flex items-center px-5 h-[52px] border-b border-black/[0.06] dark:border-white/[0.06]">
-          {/* Search Icon */}
+        {/* Search Input */}
+        <div
+          className={cn(
+            'flex items-center gap-3 px-4 h-[50px]',
+            (hasQuery || hasResults) && 'border-b border-[#3d3d3f]/30'
+          )}
+        >
           <Search
-            className="flex-shrink-0 w-[22px] h-[22px] text-[#86868b] dark:text-[#98989d]"
-            strokeWidth={2}
+            className="flex-shrink-0 w-5 h-5 text-[#98989f]"
+            strokeWidth={1.8}
           />
 
-          {/* Input */}
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Spotlight Search"
+            placeholder="Spotlight"
             className={cn(
-              'flex-1 h-full ml-3',
+              'flex-1 h-full',
               'bg-transparent border-none outline-none',
-              'text-[18px] text-[#1d1d1f] dark:text-[#f5f5f7]',
-              'placeholder:text-[#86868b] dark:placeholder:text-[#98989d]',
-              'font-normal'
+              'text-[17px] text-white',
+              'placeholder:text-[#98989f]',
+              'font-normal tracking-[-0.01em]',
+              'caret-white'
             )}
             autoComplete="off"
             autoCorrect="off"
@@ -191,36 +183,30 @@ export default function SpotlightSearch({
             spellCheck={false}
           />
 
-          {/* Loading / Clear */}
           <div className="flex items-center gap-2">
             {(isLoading || isStreaming) && (
-              <Loader2 className="w-4 h-4 text-[#86868b] animate-spin" />
+              <Loader2 className="w-4 h-4 text-[#98989f] animate-spin" />
             )}
             {query && (
               <button
                 onClick={handleClear}
-                className={cn(
-                  'flex items-center justify-center',
-                  'w-[18px] h-[18px] rounded-full',
-                  'bg-[#86868b]/80 hover:bg-[#86868b]',
-                  'transition-colors duration-100'
-                )}
-                aria-label="Clear search"
+                className="flex items-center justify-center w-4 h-4 rounded-full bg-[#636366] hover:bg-[#8e8e93] transition-colors"
+                aria-label="Clear"
               >
-                <X className="w-3 h-3 text-white" strokeWidth={2.5} />
+                <X className="w-2.5 h-2.5 text-[#1c1c1e]" strokeWidth={3} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Results Area - Seamlessly Connected */}
-        {showResults && (
+        {/* Results */}
+        {hasQuery && (
           <div
             ref={resultsRef}
-            className="max-h-[400px] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
+            className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
           >
             {hasResults && (
-              <div className="py-1">
+              <div className="py-1.5">
                 {results.map((result, index) => (
                   <SpotlightResultRow
                     key={result.id}
@@ -234,65 +220,23 @@ export default function SpotlightSearch({
               </div>
             )}
 
-            {/* No Results */}
             {showNoResults && (
-              <div className="px-5 py-8 text-center">
-                <p className="text-[15px] text-[#86868b] dark:text-[#98989d]">
-                  No Results
-                </p>
+              <div className="py-10 text-center">
+                <p className="text-[15px] text-[#98989f]">No Results</p>
               </div>
             )}
 
-            {/* Error */}
             {error && (
-              <div className="px-5 py-8 text-center">
-                <p className="text-[15px] text-[#86868b] dark:text-[#98989d]">
-                  {error}
-                </p>
+              <div className="py-10 text-center">
+                <p className="text-[15px] text-[#98989f]">{error}</p>
                 <button
                   onClick={() => search(query)}
-                  className="mt-2 text-[14px] text-[#0066CC] hover:underline"
+                  className="mt-2 text-[14px] text-[#0a84ff] hover:text-[#409cff]"
                 >
                   Try again
                 </button>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Idle State - Siri Suggestions Style */}
-        {!showResults && (
-          <div className="px-5 py-4">
-            <p className="text-[11px] font-medium uppercase tracking-[0.02em] text-[#86868b] dark:text-[#98989d] mb-3">
-              Siri Suggestions
-            </p>
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: 'Faults', icon: '⚠️' },
-                { label: 'Work Orders', icon: '🔧' },
-                { label: 'Parts', icon: '📦' },
-                { label: 'Documents', icon: '📄' },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => {
-                    handleQueryChange(item.label.toLowerCase());
-                    search(item.label.toLowerCase());
-                  }}
-                  className={cn(
-                    'flex flex-col items-center gap-2 p-3',
-                    'rounded-xl',
-                    'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
-                    'transition-colors duration-100'
-                  )}
-                >
-                  <span className="text-2xl">{item.icon}</span>
-                  <span className="text-[11px] text-[#1d1d1f] dark:text-[#f5f5f7]">
-                    {item.label}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
         )}
       </div>
