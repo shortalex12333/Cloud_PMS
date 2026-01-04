@@ -1685,11 +1685,13 @@ async def root():
 class SearchRequest(BaseModel):
     """Request model for unified search endpoint"""
     query: str = Field(..., min_length=1, max_length=1000, description="User natural language query")
+    yacht_id: Optional[str] = Field(None, description="Override yacht_id (for service_role only)")
 
     class Config:
         schema_extra = {
             "example": {
-                "query": "Engine is overheating, show historic data from 2nd engineer"
+                "query": "Engine is overheating, show historic data from 2nd engineer",
+                "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
             }
         }
 
@@ -1762,6 +1764,11 @@ async def search(
 
     try:
         yacht_id = auth.get("yacht_id")
+        user_id = auth.get("user_id")
+
+        # Allow yacht_id override from request body for service_role
+        if search_request.yacht_id and user_id == "service_role":
+            yacht_id = search_request.yacht_id
 
         # Call GraphRAG query service internally
         result = graphrag_query.query(yacht_id, search_request.query)
@@ -1845,6 +1852,11 @@ async def situational_search(
         yacht_id = auth.get("yacht_id")
         user_id = auth.get("user_id")
         user_role = auth.get("role", "crew")  # Get role from auth
+
+        # Allow yacht_id override from request body for service_role
+        if search_request.yacht_id and user_id == "service_role":
+            yacht_id = search_request.yacht_id
+            logger.info(f"Using request body yacht_id override: {yacht_id}")
 
         # 1. Run GPT extraction
         extraction = None
