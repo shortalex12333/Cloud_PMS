@@ -1904,9 +1904,12 @@ async def situational_search(
         user_role = auth.get("role", "crew")  # Get role from auth
 
         # Allow yacht_id override from request body for service_role
-        if search_request.yacht_id and user_id == "service_role":
-            yacht_id = search_request.yacht_id
-            logger.info(f"Using request body yacht_id override: {yacht_id}")
+        # Also upgrade service_role to admin for full access
+        if user_id == "service_role":
+            user_role = "admin"  # Service role gets admin access
+            if search_request.yacht_id:
+                yacht_id = search_request.yacht_id
+                logger.info(f"Service role: using yacht_id override {yacht_id}, role=admin")
 
         # 1. Run GPT extraction
         extraction = None
