@@ -65,8 +65,68 @@ from module_b_entity_extractor import get_extractor as get_entity_extractor, Mar
 # Import Intent Parser for semantic query understanding
 from intent_parser import IntentParser, route_query as intent_route_query
 
+# Import BBWS (Batched Biased Wave Search) for NO_LLM lane
+try:
+    from sql_foundation.bbws_search import bbws_search_for_endpoint
+    BBWS_AVAILABLE = True
+except ImportError:
+    BBWS_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("BBWS module not available - falling back to GraphRAG for all searches")
+
 # Global intent parser (initialized at startup)
 intent_parser: Optional[IntentParser] = None
+
+
+# ========================================================================
+# ENTITY TYPE ADAPTER (Extraction API → PREPARE module)
+# ========================================================================
+
+ENTITY_TYPE_MAP = {
+    # Extraction API output → PREPARE module expects
+    "equipment":    "EQUIPMENT_NAME",
+    "part":         "PART_NAME",
+    "fault_code":   "FAULT_CODE",
+    "brand":        "MANUFACTURER",
+    "model":        "MODEL",
+    "symptom":      "SYMPTOM",
+    "location":     "LOCATION",
+    "system":       "SYSTEM_NAME",
+    "work_order":   "WORK_ORDER_TITLE",
+    "supplier":     "SUPPLIER_NAME",
+    "po_number":    "PO_NUMBER",
+    "serial":       "SERIAL_NUMBER",
+}
+
+
+def map_entities_for_bbws(entities: List[Dict]) -> List[Dict]:
+    """
+    Convert extraction API entities to BBWS/PREPARE format.
+
+    Extraction API returns:
+        {"type": "equipment", "value": "main engine", "confidence": 0.9, "weight": 2.8}
+
+    BBWS expects:
+        {"type": "EQUIPMENT_NAME", "value": "main engine", "confidence": 0.9}
+    """
+    mapped = []
+    for e in entities:
+        raw_type = e.get("type", "")
+        mapped_type = ENTITY_TYPE_MAP.get(raw_type, raw_type.upper())
+
+        # Normalize confidence: extraction uses 'weight' (0-4 scale) or 'confidence' (0-1)
+        confidence = e.get("confidence")
+        if confidence is None:
+            weight = e.get("weight", 2.0)
+            confidence = min(1.0, weight / 4.0)  # Normalize weight to 0-1
+
+        mapped.append({
+            "type": mapped_type,
+            "value": e.get("value", ""),
+            "confidence": confidence,
+            "canonical": e.get("canonical", e.get("value", "").upper().replace(" ", "_"))
+        })
+    return mapped
 
 
 def get_action_chips(query: str, primary_action: str, confidence: float) -> Dict:
@@ -1895,9 +1955,48 @@ async def situational_search(
                         user_id=user_id
                     )
 
-        # 5. Run standard search
-        search_result = graphrag_query.query(yacht_id, search_request.query)
-        cards = search_result.get('cards', [])
+        # 5. Route to lane and run appropriate search
+        routing = route_to_lane(search_request.query)
+        lane = routing.get('lane', 'GPT')
+        bbws_trace = None
+
+        # Use BBWS for direct lookups (NO_LLM, RULES_ONLY, UNKNOWN lanes)
+        if BBWS_AVAILABLE and lane in ('NO_LLM', 'RULES_ONLY', 'UNKNOWN'):
+            try:
+                # Map entities for BBWS
+                bbws_entities = map_entities_for_bbws(resolved_entities)
+
+                # Run BBWS search
+                bbws_result = bbws_search_for_endpoint(
+                    query=search_request.query,
+                    entities=bbws_entities,
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    user_role=user_role
+                )
+
+                # Extract results
+                cards = bbws_result.get('bbws_rows', [])
+                bbws_trace = bbws_result.get('bbws_trace', {})
+                search_result = {
+                    'cards': cards,
+                    'intent': routing.get('intent'),
+                    'bbws_trace': bbws_trace,
+                    'search_method': 'bbws'
+                }
+                logger.info(f"BBWS search: lane={lane}, results={len(cards)}, trace={bbws_trace}")
+
+            except Exception as bbws_err:
+                # Fallback to GraphRAG on BBWS error
+                logger.warning(f"BBWS search failed, falling back to GraphRAG: {bbws_err}")
+                search_result = graphrag_query.query(yacht_id, search_request.query)
+                cards = search_result.get('cards', [])
+                search_result['search_method'] = 'graphrag_fallback'
+        else:
+            # Use GraphRAG for GPT lane or when BBWS unavailable
+            search_result = graphrag_query.query(yacht_id, search_request.query)
+            cards = search_result.get('cards', [])
+            search_result['search_method'] = 'graphrag'
 
         # 6. Log suggestion and get suggestion_id
         if situation_engine:
@@ -1961,12 +2060,19 @@ async def situational_search(
                     'skipped_situation': skip_situation,
                     'reason': 'ambiguous' if disambiguation else ('low_confidence' if skip_situation else None)
                 },
+                'search': {
+                    'lane': lane,
+                    'lane_reason': routing.get('lane_reason'),
+                    'method': search_result.get('search_method', 'unknown'),
+                    'bbws_trace': bbws_trace
+                },
                 'latency_ms': latency_ms
             }
         }
 
         logger.info(
             f"/v2/search: yacht={yacht_id}, role={user_role}, query='{search_request.query}', "
+            f"lane={lane}, method={search_result.get('search_method', 'unknown')}, "
             f"situation={'detected: ' + situation.type if situation else 'none'}, "
             f"disambiguation={'yes' if disambiguation else 'no'}, "
             f"cards={len(cards)}, latency={latency_ms}ms"
