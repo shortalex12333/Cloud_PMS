@@ -129,6 +129,55 @@ def map_entities_for_bbws(entities: List[Dict]) -> List[Dict]:
     return mapped
 
 
+# Fallback entity patterns for when extraction API returns nothing
+FALLBACK_ENTITY_PATTERNS = [
+    # Part numbers: ENG-0008-103, PMP-0018-280, HYD-0025-401
+    (r'^[A-Z]{2,4}-\d{3,5}-\d{2,4}$', 'PART_NUMBER'),
+    # Fault codes: E047, G012, WM-003
+    (r'^[A-Z]{1,2}\d{2,4}$', 'FAULT_CODE'),
+    (r'^[A-Z]{1,3}-\d{2,4}$', 'FAULT_CODE'),
+    # Equipment codes: ME-P-001, GEN-002, HVAC-001
+    (r'^(?:ME|DG|GEN|HVAC|NAV|AUX)-[A-Z0-9]{1,3}-?\d{1,3}$', 'EQUIPMENT_CODE'),
+    # PO numbers: PO-2025-001
+    (r'^PO-\d{4}-\d{1,4}$', 'PO_NUMBER'),
+    # Serial numbers (basic)
+    (r'^[A-Z]{2,4}\d{6,12}$', 'SERIAL_NUMBER'),
+]
+
+
+def detect_entities_from_query(query: str) -> List[Dict]:
+    """
+    Fallback entity detection using regex patterns.
+    Used when extraction API returns nothing but we're in NO_LLM lane.
+    """
+    query = query.strip()
+    entities = []
+
+    for pattern, entity_type in FALLBACK_ENTITY_PATTERNS:
+        if re.match(pattern, query, re.IGNORECASE):
+            entities.append({
+                'type': entity_type,
+                'value': query,
+                'confidence': 0.9,
+                'canonical': query.upper().replace(' ', '_')
+            })
+            break
+
+    # If no pattern matched but it's a short query (1-3 words), treat as general search term
+    if not entities:
+        words = query.split()
+        if 1 <= len(words) <= 3:
+            # Use as equipment/part name search
+            entities.append({
+                'type': 'PART_NAME',
+                'value': query,
+                'confidence': 0.5,
+                'canonical': query.upper().replace(' ', '_')
+            })
+
+    return entities
+
+
 def get_action_chips(query: str, primary_action: str, confidence: float) -> Dict:
     """
     Get suggestion chips for an action.
@@ -1977,6 +2026,11 @@ async def situational_search(
             try:
                 # Map entities for BBWS
                 bbws_entities = map_entities_for_bbws(resolved_entities)
+
+                # Fallback: if no entities but we're in NO_LLM lane, detect from query
+                if not bbws_entities and lane == 'NO_LLM':
+                    bbws_entities = detect_entities_from_query(search_request.query)
+                    logger.info(f"Fallback entity detection: {bbws_entities}")
 
                 # Run BBWS search
                 bbws_result = bbws_search_for_endpoint(
