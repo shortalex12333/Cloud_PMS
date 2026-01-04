@@ -1,0 +1,95 @@
+{
+  "suite_name": "pipeline_1500_chaos",
+  "run_time": "2026-01-02T21:14:14.556460",
+  "total_time_s": 0.13,
+  "total_tests": 1500,
+  "outcomes": {
+    "SAFE_CORRECT": 1018,
+    "SAFE_UNKNOWN_OK": 252,
+    "SOFT_ERROR": 230
+  },
+  "safe_rate": 0.8467,
+  "unsafe_rate": 0.0,
+  "lanes": {
+    "BLOCKED": 757,
+    "UNKNOWN": 252,
+    "GPT": 298,
+    "RULES_ONLY": 11,
+    "NO_LLM": 182
+  },
+  "latency": {
+    "p50_ms": 0.07,
+    "p95_ms": 0.14,
+    "avg_ms": 0.09,
+    "max_ms": 9.05
+  },
+  "class_breakdown": {
+    "paste_dumps": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.031243324279785156
+    },
+    "domain_drift": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.11842536926269531
+    },
+    "injection_realistic": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.049269676208496094
+    },
+    "command_camouflage": {
+      "total": 200,
+      "safe": 145,
+      "unsafe": 0,
+      "soft_err": 55,
+      "safe_rate": 0.725,
+      "avg_ms": 0.179290771484375
+    },
+    "abbreviations": {
+      "total": 200,
+      "safe": 175,
+      "unsafe": 0,
+      "soft_err": 25,
+      "safe_rate": 0.875,
+      "avg_ms": 0.058045387268066406
+    },
+    "fault_code_lookups": {
+      "total": 200,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 150,
+      "safe_rate": 0.25,
+      "avg_ms": 0.07109403610229492
+    },
+    "multi_intent_collision": {
+      "total": 150,
+      "safe": 150,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.11960188547770183
+    }
+  },
+  "unsafe_cases": [],
+  "error_signatures": {},
+  "fix_plan": [
+    {
+      "priority": "P1-HIGH",
+      "class": "fault_code_lookups",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "75%",
+      "fix": "Improve lane routing for fault_code_lookups patterns"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "total_corrections": 8,
+  "corrections": [
+    {
+      "id": "Q0659",
+      "query": "hey show me the um manual for Lewmar compressor",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0666",
+      "query": "hey show me the um manual for Parker oil filter",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0685",
+      "query": "hey show me the um manual for Seakeeper bow thruster",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0711",
+      "query": "hey show me the um manual for Village Marine bilge pump",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0713",
+      "query": "hey show me the um manual for Quick battery charger",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0726",
+      "query": "hey show me the um manual for Spectra autopilot",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0728",
+      "query": "hey show me the um manual for CAT generator",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    },
+    {
+      "id": "Q0836",
+      "query": "hey show me the um manual for JRC chartplotter",
+      "original": {
+        "should_trigger_action": false,
+        "primary_action": "none_search_only"
+      },
+      "corrected": {
+        "should_trigger_action": true,
+        "primary_action": "show_manual_section"
+      }
+    }
+  ]
+}

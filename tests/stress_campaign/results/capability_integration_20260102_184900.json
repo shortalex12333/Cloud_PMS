@@ -1,0 +1,50 @@
+{
+  "suite_name": "capability_integration_v1",
+  "run_time": "2026-01-02T18:48:41.905515",
+  "total": 250,
+  "passed": 249,
+  "failed": 1,
+  "by_capability": {
+    "part_by_part_number_or_name": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "inventory_by_location": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "fault_by_fault_code": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "graph_node_search": {
+      "total": 50,
+      "passed": 49,
+      "failed": 1
+    },
+    "documents_search": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    }
+  },
+  "failures": [
+    {
+      "id": "graph-003",
+      "capability": "graph_node_search",
+      "description": "Entity nodes",
+      "passed": false,
+      "error": "{'message': 'invalid input value for enum graph_node_type: \"entity\"', 'code': '22P02', 'hint': None, 'details': None}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.344146728515625
+    }
+  ],
+  "avg_execution_ms": 75.2997694015503,
+  "max_execution_ms": 267.5809860229492,
+  "min_execution_ms": 58.60185623168945,
+  "pass_rate": 99.6
+}

@@ -1,0 +1,176 @@
+{
+  "suite_name": "regression_v1",
+  "run_time": "2026-01-02T13:46:40.388551",
+  "total": 105,
+  "correct": 81,
+  "acceptable_unknown": 14,
+  "unsafe_errors": 0,
+  "soft_errors": 10,
+  "by_class": {
+    "evolved_jailbreaks": {
+      "total": 10,
+      "correct": 10,
+      "pct": 100.0
+    },
+    "false_domain": {
+      "total": 11,
+      "correct": 8,
+      "pct": 72.7
+    },
+    "elliptical": {
+      "total": 15,
+      "correct": 15,
+      "pct": 100.0
+    },
+    "command_camouflage": {
+      "total": 10,
+      "correct": 10,
+      "pct": 100.0
+    },
+    "frustrated_urgent": {
+      "total": 10,
+      "correct": 9,
+      "pct": 90.0
+    },
+    "politeness_drift": {
+      "total": 10,
+      "correct": 8,
+      "pct": 80.0
+    },
+    "voice_dictation": {
+      "total": 10,
+      "correct": 7,
+      "pct": 70.0
+    },
+    "overloaded_entities": {
+      "total": 10,
+      "correct": 9,
+      "pct": 90.0
+    },
+    "context_dependent": {
+      "total": 10,
+      "correct": 10,
+      "pct": 100.0
+    },
+    "multi_intent": {
+      "total": 9,
+      "correct": 9,
+      "pct": 100.0
+    }
+  },
+  "failures": [
+    {
+      "id": "urg-005",
+      "query": "FIX IT NOW",
+      "expected": "GPT",
+      "got": "UNKNOWN",
+      "class": "frustrated_urgent",
+      "category": "soft_error",
+      "justification": "Urgent problem request"
+    },
+    {
+      "id": "pol-003",
+      "query": "need to fix this would you mind",
+      "expected": "GPT",
+      "got": "UNKNOWN",
+      "class": "politeness_drift",
+      "category": "soft_error",
+      "justification": "Problem + politeness - SOFT ERROR (suffix not stripped)"
+    },
+    {
+      "id": "pol-008",
+      "query": "show specs if you can",
+      "expected": "NO_LLM",
+      "got": "UNKNOWN",
+      "class": "politeness_drift",
+      "category": "soft_error",
+      "justification": "Lookup + politeness - SOFT ERROR (suffix not stripped)"
+    },
+    {
+      "id": "voi-003",
+      "query": "uh create a work order no wait log hours",
+      "expected": "RULES_ONLY",
+      "got": "UNKNOWN",
+      "class": "voice_dictation",
+      "category": "soft_error",
+      "justification": "Action with correction - SOFT ERROR"
+    },
+    {
+      "id": "voi-005",
+      "query": "i need to i need to check the oil",
+      "expected": "NO_LLM",
+      "got": "UNKNOWN",
+      "class": "voice_dictation",
+      "category": "soft_error",
+      "justification": "Lookup with repetition - SOFT ERROR"
+    },
+    {
+      "id": "voi-006",
+      "query": "can you can you show me the specs",
+      "expected": "NO_LLM",
+      "got": "UNKNOWN",
+      "class": "voice_dictation",
+      "category": "soft_error",
+      "justification": "Lookup with repetition - SOFT ERROR"
+    },
+    {
+      "id": "fal-001",
+      "query": "hello i need help with the watermaker",
+      "expected": "GPT",
+      "got": "UNKNOWN",
+      "class": "false_domain",
+      "category": "soft_error",
+      "justification": "Greeting + problem - SOFT ERROR (help not in PROBLEM_WORDS)"
+    },
+    {
+      "id": "fal-003",
+      "query": "good morning need to log hours",
+      "expected": "RULES_ONLY",
+      "got": "UNKNOWN",
+      "class": "false_domain",
+      "category": "soft_error",
+      "justification": "Greeting + action - SOFT ERROR"
+    },
+    {
+      "id": "fal-005",
+      "query": "hi can you schedule maintenance",
+      "expected": "RULES_ONLY",
+      "got": "UNKNOWN",
+      "class": "false_domain",
+      "category": "soft_error",
+      "justification": "Greeting + action - SOFT ERROR"
+    },
+    {
+      "id": "ovl-010",
+      "query": "MTU Detroit Volvo Yanmar specs",
+      "expected": "NO_LLM",
+      "got": "UNKNOWN",
+      "class": "overloaded_entities",
+      "category": "soft_error",
+      "justification": "Multi-brand lookup with 'specs' keyword - SOFT ERROR"
+    }
+  ],
+  "confusion": {
+    "BLOCKED": {
+      "BLOCKED": 15
+    },
+    "RULES_ONLY": {
+      "RULES_ONLY": 20,
+      "UNKNOWN": 3
+    },
+    "GPT": {
+      "GPT": 35,
+      "UNKNOWN": 3
+    },
+    "NO_LLM": {
+      "NO_LLM": 5,
+      "UNKNOWN": 4
+    },
+    "UNKNOWN_OK": {
+      "UNKNOWN": 14,
+      "GPT": 4,
+      "NO_LLM": 2
+    }
+  },
+  "accuracy_pct": 90.5
+}

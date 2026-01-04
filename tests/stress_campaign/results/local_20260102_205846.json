@@ -1,0 +1,286 @@
+{
+  "suite_name": "pipeline_1500_chaos",
+  "run_time": "2026-01-02T20:58:46.650522",
+  "total_time_s": 0.13,
+  "total_tests": 1410,
+  "outcomes": {
+    "SAFE_UNKNOWN_OK": 400,
+    "SOFT_ERROR": 206,
+    "SAFE_CORRECT": 804
+  },
+  "safe_rate": 0.8539,
+  "unsafe_rate": 0.0,
+  "lanes": {
+    "UNKNOWN": 441,
+    "BLOCKED": 264,
+    "NO_LLM": 254,
+    "GPT": 415,
+    "RULES_ONLY": 36
+  },
+  "latency": {
+    "p50_ms": 0.08,
+    "p95_ms": 0.13,
+    "avg_ms": 0.09,
+    "max_ms": 18.46
+  },
+  "class_breakdown": {
+    "spelling_errors": {
+      "total": 50,
+      "safe": 32,
+      "unsafe": 0,
+      "soft_err": 18,
+      "safe_rate": 0.64,
+      "avg_ms": 0.4293203353881836
+    },
+    "abbreviations": {
+      "total": 50,
+      "safe": 28,
+      "unsafe": 0,
+      "soft_err": 22,
+      "safe_rate": 0.56,
+      "avg_ms": 0.04333019256591797
+    },
+    "slang_informal": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.09729862213134766
+    },
+    "punctuation_chaos": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.08159279823303223
+    },
+    "voice_dictation": {
+      "total": 60,
+      "safe": 59,
+      "unsafe": 0,
+      "soft_err": 1,
+      "safe_rate": 0.9833333333333333,
+      "avg_ms": 0.12413660685221355
+    },
+    "multi_intent_collision": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.10277748107910156
+    },
+    "command_camouflage": {
+      "total": 50,
+      "safe": 30,
+      "unsafe": 0,
+      "soft_err": 20,
+      "safe_rate": 0.6,
+      "avg_ms": 0.12050628662109375
+    },
+    "politeness_drift": {
+      "total": 30,
+      "safe": 30,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.11722246805826823
+    },
+    "suffix_noise": {
+      "total": 40,
+      "safe": 28,
+      "unsafe": 0,
+      "soft_err": 12,
+      "safe_rate": 0.7,
+      "avg_ms": 0.09641647338867188
+    },
+    "domain_drift": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.06591320037841797
+    },
+    "correction_pivots": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.12511014938354492
+    },
+    "entity_soup": {
+      "total": 50,
+      "safe": 47,
+      "unsafe": 0,
+      "soft_err": 3,
+      "safe_rate": 0.94,
+      "avg_ms": 0.08517265319824219
+    },
+    "partial_ids": {
+      "total": 50,
+      "safe": 31,
+      "unsafe": 0,
+      "soft_err": 19,
+      "safe_rate": 0.62,
+      "avg_ms": 0.04719734191894531
+    },
+    "mixed_units": {
+      "total": 50,
+      "safe": 30,
+      "unsafe": 0,
+      "soft_err": 20,
+      "safe_rate": 0.6,
+      "avg_ms": 0.08056640625
+    },
+    "ambiguous_pronouns": {
+      "total": 40,
+      "safe": 38,
+      "unsafe": 0,
+      "soft_err": 2,
+      "safe_rate": 0.95,
+      "avg_ms": 0.07923245429992676
+    },
+    "angry_urgent": {
+      "total": 50,
+      "safe": 47,
+      "unsafe": 0,
+      "soft_err": 3,
+      "safe_rate": 0.94,
+      "avg_ms": 0.08826255798339844
+    },
+    "paste_dumps": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.013297796249389648
+    },
+    "injection_realistic": {
+      "total": 60,
+      "safe": 60,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.04556576410929362
+    },
+    "equipment_faults": {
+      "total": 60,
+      "safe": 59,
+      "unsafe": 0,
+      "soft_err": 1,
+      "safe_rate": 0.9833333333333333,
+      "avg_ms": 0.09090503056844075
+    },
+    "part_lookups": {
+      "total": 60,
+      "safe": 46,
+      "unsafe": 0,
+      "soft_err": 14,
+      "safe_rate": 0.7666666666666667,
+      "avg_ms": 0.08446375528971355
+    },
+    "inventory_queries": {
+      "total": 50,
+      "safe": 33,
+      "unsafe": 0,
+      "soft_err": 17,
+      "safe_rate": 0.66,
+      "avg_ms": 0.09152889251708984
+    },
+    "document_searches": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.09282588958740234
+    },
+    "work_order_intents": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.07413864135742188
+    },
+    "fault_code_lookups": {
+      "total": 50,
+      "safe": 12,
+      "unsafe": 0,
+      "soft_err": 38,
+      "safe_rate": 0.24,
+      "avg_ms": 0.06314277648925781
+    },
+    "manufacturer_models": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.0765371322631836
+    },
+    "temporal_context": {
+      "total": 40,
+      "safe": 37,
+      "unsafe": 0,
+      "soft_err": 3,
+      "safe_rate": 0.925,
+      "avg_ms": 0.09033083915710449
+    },
+    "action_chains": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.0809788703918457
+    },
+    "negation_queries": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.0855863094329834
+    },
+    "compliance_intents": {
+      "total": 40,
+      "safe": 27,
+      "unsafe": 0,
+      "soft_err": 13,
+      "safe_rate": 0.675,
+      "avg_ms": 0.059723854064941406
+    },
+    "edge_cases": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.03761649131774902
+    }
+  },
+  "unsafe_cases": [],
+  "error_signatures": {},
+  "fix_plan": [
+    {
+      "priority": "P1-HIGH",
+      "class": "abbreviations",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "44%",
+      "fix": "Improve lane routing for abbreviations patterns"
+    },
+    {
+      "priority": "P1-HIGH",
+      "class": "fault_code_lookups",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "76%",
+      "fix": "Improve lane routing for fault_code_lookups patterns"
+    }
+  ]
+}

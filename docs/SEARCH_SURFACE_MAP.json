@@ -1,0 +1,3989 @@
+{
+  "generated_at": "2026-01-03T11:02:48.843954",
+  "discovery_method": "OpenAPI schema + deterministic type mapping",
+  "summary": {
+    "tables_analyzed": 17,
+    "total_columns": 248,
+    "searchable_columns": 248,
+    "text_columns": 106,
+    "vector_columns": 8,
+    "array_columns": 13
+  },
+  "columns": [
+    {
+      "table": "alias_symptoms",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "symptom_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "alias",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SYMPTOM_NAME",
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "alias_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "confidence",
+      "datatype": "number(double precision)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "source",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "candidate_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "master_candidate_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "deployed_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_symptoms",
+      "column": "symptom_code",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "system_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "alias",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SYMPTOM_NAME",
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "alias_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "confidence",
+      "datatype": "number(double precision)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "source",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "master_candidate_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "alias_systems",
+      "column": "deployed_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "chunk_index",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "text",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "page_number",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "equipment_ids",
+      "datatype": "array(uuid[])",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "fault_codes",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "tags",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "metadata",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "content",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "DOCUMENT_QUERY",
+        "PROCEDURE_SEARCH",
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "graph_extracted",
+      "datatype": "boolean(boolean)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BOOLEAN - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "graph_extracted_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "section_title",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SECTION_NAME",
+        "DOCUMENT_QUERY"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "doc_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "DOC_TYPE"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "system_tag",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "graph_extract_status",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "graph_extract_error",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "section_path",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "section_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "is_section_entry",
+      "datatype": "boolean(boolean)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BOOLEAN - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "symptom_codes",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "document_chunks",
+      "column": "graph_extract_ts",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "entity_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "entity_value",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "canonical_label",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "confidence",
+      "datatype": "number(double precision)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "source_chunk_id",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "source_document_id",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "source_storage_path",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "attributes",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "status",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "error_message",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "processed_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "graph_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "entity_staging",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "from_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "to_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "edge_type",
+      "datatype": "string(public.graph_edge_type)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "properties",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "confidence",
+      "datatype": "number(real)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_edges",
+      "column": "embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "node_type",
+      "datatype": "string(public.graph_node_type)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "NODE_TYPE"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "label",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "SYSTEM_NAME",
+        "COMPONENT_NAME",
+        "EQUIPMENT_NAME",
+        "CANONICAL_ENTITY"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "normalized_label",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "CANONICAL_ENTITY",
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "properties",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "confidence",
+      "datatype": "number(real)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "extraction_source",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "updated_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "graph_nodes",
+      "column": "embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "equipment_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "part_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "system_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "action",
+      "datatype": "string(public.maintenance_action_type)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "interval_hours",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "interval_days",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "interval_description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "confidence",
+      "datatype": "number(real)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "properties",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "maintenance_facts",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "part_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "location",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "STOCK_LOCATION",
+        "EQUIPMENT_LOCATION"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "min_quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "max_quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "reorder_quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "last_counted_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "metadata",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_inventory_stock",
+      "column": "updated_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "name",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "PART_NAME",
+        "EQUIPMENT_NAME",
+        "SYSTEM_NAME",
+        "COMPONENT_NAME",
+        "SUPPLIER_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "part_number",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "PART_NUMBER"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "manufacturer",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "MANUFACTURER - must be conjunction with name/part",
+      "entity_types_allowed": [
+        "MANUFACTURER"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "category",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "model_compatibility",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "metadata",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "updated_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "search_embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "pms_parts",
+      "column": "embedding_text",
+      "datatype": "string(text)",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "from_canonical",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "to_canonical",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "relationship_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "confidence",
+      "datatype": "number(double precision)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "evidence",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "source_chunk_id",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "status",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "error_message",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "processed_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "graph_edge_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "relationship_staging",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "chunk_index",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "text",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "page_number",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "equipment_ids",
+      "datatype": "array(uuid[])",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "fault_codes",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "tags",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "metadata",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "content",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "DOCUMENT_QUERY",
+        "PROCEDURE_SEARCH",
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "graph_extracted",
+      "datatype": "boolean(boolean)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BOOLEAN - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "graph_extracted_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "section_title",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SECTION_NAME",
+        "DOCUMENT_QUERY"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "doc_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "DOC_TYPE"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "system_tag",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "graph_extract_status",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "graph_extract_error",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "section_path",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "section_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "is_section_entry",
+      "datatype": "boolean(boolean)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BOOLEAN - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "symptom_codes",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_document_chunks",
+      "column": "graph_extract_ts",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "equipment_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "manufacturer",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "MANUFACTURER - must be conjunction with name/part",
+      "entity_types_allowed": [
+        "MANUFACTURER"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "code",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "FAULT_CODE"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "name",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "PART_NAME",
+        "EQUIPMENT_NAME",
+        "SYSTEM_NAME",
+        "COMPONENT_NAME",
+        "SUPPLIER_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "severity",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SEVERITY"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "symptoms",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SYMPTOM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "causes",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "diagnostic_steps",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "resolution_steps",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "related_parts",
+      "datatype": "array(text[])",
+      "match_modes": [
+        "CONTAINS",
+        "ILIKE_ANY"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_fault_code_catalog",
+      "column": "updated_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "from_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "to_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "edge_type",
+      "datatype": "string(public.graph_edge_type)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "properties",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "confidence",
+      "datatype": "number(real)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_edges",
+      "column": "embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "node_type",
+      "datatype": "string(public.graph_node_type)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "NODE_TYPE"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "label",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "SYSTEM_NAME",
+        "COMPONENT_NAME",
+        "EQUIPMENT_NAME",
+        "CANONICAL_ENTITY"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "normalized_label",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "CANONICAL_ENTITY",
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "properties",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "confidence",
+      "datatype": "number(real)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "extraction_source",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "updated_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_graph_nodes",
+      "column": "embedding",
+      "datatype": "string(public.vector(1536))",
+      "match_modes": [
+        "VECTOR"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "equipment_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "part_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "system_node_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "action",
+      "datatype": "string(public.maintenance_action_type)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "interval_hours",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "interval_days",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "interval_description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "source_chunk_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "source_document_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "confidence",
+      "datatype": "number(real)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "properties",
+      "datatype": "unknown(jsonb)",
+      "match_modes": [
+        "JSONB_PATH"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "METADATA - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "search_maintenance_facts",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "symptom_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "symptom_code",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "alias",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "SYMPTOM_NAME",
+        "SYSTEM_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "alias_type",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "confidence",
+      "datatype": "number(double precision)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "symptom_aliases",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "part_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "yacht_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "FILTER_ONLY - always required but never searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "name",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "PART_NAME",
+        "EQUIPMENT_NAME",
+        "SYSTEM_NAME",
+        "COMPONENT_NAME",
+        "SUPPLIER_NAME"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "part_number",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "PRIMARY_TEXT - can be searched in isolation",
+      "entity_types_allowed": [
+        "PART_NUMBER"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "manufacturer",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "MANUFACTURER - must be conjunction with name/part",
+      "entity_types_allowed": [
+        "MANUFACTURER"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "description",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BROAD_TEXT - conjunction preferred but allowed",
+      "entity_types_allowed": [
+        "FREE_TEXT"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "category",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "equipment",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "system",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "unit_cost",
+      "datatype": "number(numeric)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "stock_id",
+      "datatype": "string(uuid)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "ID column - can be exact searched",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "location",
+      "datatype": "string(text)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "STOCK_LOCATION",
+        "EQUIPMENT_LOCATION"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "min_quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "max_quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "reorder_quantity",
+      "datatype": "integer(integer)",
+      "match_modes": [
+        "EXACT",
+        "RANGE"
+      ],
+      "isolated": true,
+      "conjunction_only": false,
+      "canonical_rule": "DEFAULT",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "needs_reorder",
+      "datatype": "boolean(boolean)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BOOLEAN - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "has_embedding",
+      "datatype": "boolean(boolean)",
+      "match_modes": [
+        "EXACT"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "BOOLEAN - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "created_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    },
+    {
+      "table": "v_inventory",
+      "column": "updated_at",
+      "datatype": "string(timestamp with time zone)",
+      "match_modes": [
+        "EXACT",
+        "ILIKE",
+        "TRIGRAM"
+      ],
+      "isolated": false,
+      "conjunction_only": true,
+      "canonical_rule": "TIMESTAMP - too broad for isolated search",
+      "entity_types_allowed": [
+        "UNKNOWN"
+      ],
+      "indexes": "UNKNOWN"
+    }
+  ]
+}

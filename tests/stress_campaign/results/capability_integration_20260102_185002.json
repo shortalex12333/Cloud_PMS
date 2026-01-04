@@ -1,0 +1,39 @@
+{
+  "suite_name": "capability_integration_v1",
+  "run_time": "2026-01-02T18:49:45.266691",
+  "total": 250,
+  "passed": 250,
+  "failed": 0,
+  "by_capability": {
+    "part_by_part_number_or_name": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "inventory_by_location": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "fault_by_fault_code": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "graph_node_search": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "documents_search": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    }
+  },
+  "failures": [],
+  "avg_execution_ms": 70.60384368896484,
+  "max_execution_ms": 108.57486724853516,
+  "min_execution_ms": 57.17301368713379,
+  "pass_rate": 100.0
+}

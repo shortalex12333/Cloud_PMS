@@ -1,0 +1,161 @@
+{
+  "suite_name": "hostile_composition_v1",
+  "run_time": "2026-01-02T19:49:39.412742",
+  "total_execution_time_s": 4.99,
+  "total_tests": 160,
+  "successes": 160,
+  "failures": 0,
+  "error_rate": 0.0,
+  "latency": {
+    "p50_ms": 84.49,
+    "p95_ms": 678.52,
+    "avg_ms": 123.49,
+    "max_ms": 964.53
+  },
+  "outcomes": {
+    "success": 59,
+    "empty": 56,
+    "unknown": 30,
+    "partial": 8,
+    "blocked": 7
+  },
+  "unknown_rate": 0.1875,
+  "timeout_rate": 0.0,
+  "timeout_count": 0,
+  "timed_out_capabilities": {},
+  "partial_results_rate": 0.0,
+  "partial_results_count": 0,
+  "blocked_capabilities": {
+    "equipment_by_name_or_model": 20,
+    "work_order_by_id": 5
+  },
+  "top_10_failure_signatures": {},
+  "category_breakdown": {
+    "multi_capability_duplicates": {
+      "total": 10,
+      "success": 10,
+      "success_rate": 1.0,
+      "avg_latency_ms": 684.0338468551636
+    },
+    "conflicting_entities": {
+      "total": 10,
+      "success": 10,
+      "success_rate": 1.0,
+      "avg_latency_ms": 108.25347900390625
+    },
+    "long_queries": {
+      "total": 10,
+      "success": 10,
+      "success_rate": 1.0,
+      "avg_latency_ms": 250.56321620941162
+    },
+    "typo_slang": {
+      "total": 20,
+      "success": 20,
+      "success_rate": 1.0,
+      "avg_latency_ms": 85.51573753356934
+    },
+    "mixed_intent": {
+      "total": 15,
+      "success": 15,
+      "success_rate": 1.0,
+      "avg_latency_ms": 95.44391632080078
+    },
+    "injection_attempts": {
+      "total": 10,
+      "success": 10,
+      "success_rate": 1.0,
+      "avg_latency_ms": 27.17149257659912
+    },
+    "boundary_conditions": {
+      "total": 10,
+      "success": 10,
+      "success_rate": 1.0,
+      "avg_latency_ms": 28.73973846435547
+    },
+    "stress_parallel": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 155.3070068359375
+    },
+    "case_sensitivity": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 78.17835807800293
+    },
+    "partial_matches": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 85.51645278930664
+    },
+    "special_characters": {
+      "total": 10,
+      "success": 10,
+      "success_rate": 1.0,
+      "avg_latency_ms": 86.56044006347656
+    },
+    "numeric_entities": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 29.12917137145996
+    },
+    "abbreviations": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 75.71282386779785
+    },
+    "context_dependent": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 0.0045299530029296875
+    },
+    "negative_queries": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 48.01340103149414
+    },
+    "compound_parts": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 79.20794486999512
+    },
+    "manufacturer_models": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 118.53475570678711
+    },
+    "blocked_capabilities": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 16.416025161743164
+    },
+    "rate_limiting": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 102.95038223266602
+    },
+    "cross_capability": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 127.95648574829102
+    },
+    "timeout_prone": {
+      "total": 5,
+      "success": 5,
+      "success_rate": 1.0,
+      "avg_latency_ms": 35.77995300292969
+    }
+  }
+}

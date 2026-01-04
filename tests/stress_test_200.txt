@@ -1,0 +1,76 @@
+======================================================================
+ STRESS TEST REPORT
+ Generated: 2025-12-26T19:01:41.403846
+======================================================================
+
+## SUMMARY
+----------------------------------------
+Total Tests:         200
+Successful:          21
+Failed:              179
+Timeouts:            0
+Unexplained Failures:179
+Failure Rate:        89.50%
+
+## LANE CORRECTNESS
+----------------------------------------
+Lane Correct:        20
+Lane Incorrect:      180
+Lane Violations:     0
+
+## ACTION REGISTRY COMPLIANCE
+----------------------------------------
+Valid Actions:       200
+Invalid Actions:     0
+
+## LATENCY
+----------------------------------------
+P50:                 53920ms
+P95:                 62782ms
+P99:                 74177ms
+
+## RESULTS BY LANE
+----------------------------------------
+Lane            Total      Correct    Violations
+BLOCKED         60         1          0         
+NO_LLM          140        19         0         
+RULES_ONLY      0          0          0         
+GPT             0          0          0         
+
+## RESULTS BY CATEGORY
+----------------------------------------
+adversarial_boundary                1/41 (2.4%)
+blocked_non_domain                  0/8 (0.0%)
+blocked_paste_dump                  0/5 (0.0%)
+blocked_too_vague                   0/6 (0.0%)
+no_llm_brand_model                  4/5 (80.0%)
+no_llm_code_pattern                 0/4 (0.0%)
+no_llm_direct_lookup                1/8 (12.5%)
+spelling_noise                      14/123 (11.4%)
+
+## TOP FAILURE SIGNATURES
+----------------------------------------
+  [120] error:HTTP 502: <!DOCTYPE html>
+<htm | lane_mismatch:NO_LLM->NO_RESPONSE
+  [58] error:HTTP 502: <!DOCTYPE html>
+<htm | lane_mismatch:BLOCKED->NO_RESPONSE
+  [1] lane_mismatch:NO_LLM->GPT
+  [1] error:HTTP 403: <!DOCTYPE html>
+<htm | lane_mismatch:BLOCKED->NO_RESPONSE
+
+## READINESS ASSESSMENT
+----------------------------------------
+  [FAIL] Total calls >= 1000
+  [FAIL] Failure rate <= 1%
+  [PASS] Zero lane violations
+  [PASS] All actions valid
+  [FAIL] Lane accuracy >= 95%
+
+======================================================================
+ VERDICT: NOT READY
+======================================================================
+
+Top blocking issues:
+1. Total calls >= 1000
+2. Failure rate <= 1%
+3. Lane accuracy >= 95%

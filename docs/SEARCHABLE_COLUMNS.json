@@ -1,0 +1,384 @@
+{
+  "term_types": {
+    "PART_NUMBER": {
+      "description": "Part/item identifiers",
+      "match_modes": ["EXACT", "ILIKE"],
+      "examples": ["ENG-0008-103", "PMP-0018-280", "FLT-0033-146"]
+    },
+    "PART_NAME": {
+      "description": "Part/component names",
+      "match_modes": ["ILIKE", "TRIGRAM"],
+      "examples": ["Fuel Injector", "Oil Filter", "Turbocharger Gasket"]
+    },
+    "EQUIPMENT_NAME": {
+      "description": "Equipment/machine names",
+      "match_modes": ["ILIKE", "TRIGRAM"],
+      "examples": ["Main Engine Port", "Generator 1", "Watermaker"]
+    },
+    "EQUIPMENT_CODE": {
+      "description": "Equipment codes",
+      "match_modes": ["EXACT", "ILIKE"],
+      "examples": ["ME-P-001", "GEN-001", "WM-001"]
+    },
+    "SERIAL_NUMBER": {
+      "description": "Serial numbers",
+      "match_modes": ["EXACT"],
+      "examples": ["MTU-2018-4567-P", "KOH-2018-9901"]
+    },
+    "MANUFACTURER": {
+      "description": "OEM/brand names",
+      "match_modes": ["ILIKE"],
+      "examples": ["MTU", "Kohler", "Caterpillar", "Volvo Penta"]
+    },
+    "SUPPLIER_NAME": {
+      "description": "Vendor/supplier names",
+      "match_modes": ["ILIKE"],
+      "examples": ["Mediterranean Marine Supply", "MTU Americas"]
+    },
+    "FAULT_CODE": {
+      "description": "Fault/error codes",
+      "match_modes": ["EXACT", "ILIKE"],
+      "examples": ["E047", "G012", "WM-003", "1234"]
+    },
+    "SYMPTOM": {
+      "description": "Symptom descriptions",
+      "match_modes": ["ILIKE", "TRIGRAM"],
+      "examples": ["vibration", "overheating", "black smoke", "rough running"]
+    },
+    "SYSTEM_NAME": {
+      "description": "System categories",
+      "match_modes": ["EXACT", "ILIKE"],
+      "examples": ["propulsion", "electrical", "hvac", "water", "navigation"]
+    },
+    "LOCATION": {
+      "description": "Physical locations",
+      "match_modes": ["ILIKE"],
+      "examples": ["Engine Room", "Bridge", "Yacht", "Agent - Monaco"]
+    },
+    "STATUS": {
+      "description": "Status values",
+      "match_modes": ["EXACT"],
+      "examples": ["planned", "in_progress", "completed", "cancelled", "pending"]
+    },
+    "PRIORITY": {
+      "description": "Priority levels",
+      "match_modes": ["EXACT"],
+      "examples": ["routine", "urgent", "critical", "emergency"]
+    },
+    "SEVERITY": {
+      "description": "Severity levels",
+      "match_modes": ["EXACT"],
+      "examples": ["low", "medium", "high", "critical", "warning"]
+    },
+    "PO_NUMBER": {
+      "description": "Purchase order numbers",
+      "match_modes": ["EXACT", "ILIKE"],
+      "examples": ["PO-2025-001", "PO-2025-002"]
+    },
+    "WORK_ORDER_TITLE": {
+      "description": "Work order titles",
+      "match_modes": ["ILIKE", "TRIGRAM"],
+      "examples": ["500hr Service", "Annual Service", "Oil Change"]
+    },
+    "DESCRIPTION": {
+      "description": "Free text descriptions",
+      "match_modes": ["ILIKE", "TRIGRAM", "VECTOR"],
+      "examples": ["any descriptive text"]
+    },
+    "DATE": {
+      "description": "Date values",
+      "match_modes": ["RANGE", "EXACT"],
+      "examples": ["2025-01-15", "2024-12-01"]
+    },
+    "HOURS": {
+      "description": "Hour values",
+      "match_modes": ["RANGE", "EXACT"],
+      "examples": ["500", "4850", "5000"]
+    },
+    "QUANTITY": {
+      "description": "Numeric quantities",
+      "match_modes": ["RANGE"],
+      "examples": ["10", "low stock", "reorder"]
+    },
+    "PRICE": {
+      "description": "Currency amounts",
+      "match_modes": ["RANGE"],
+      "examples": ["485.00", "under 100"]
+    },
+    "FREE_TEXT": {
+      "description": "Any text search",
+      "match_modes": ["ILIKE", "TRIGRAM", "VECTOR"],
+      "examples": ["any user query"]
+    },
+    "CONTACT": {
+      "description": "Contact info",
+      "match_modes": ["ILIKE"],
+      "examples": ["Carlos Mendez", "orders@medmarine.example"]
+    },
+    "DOCUMENT_CONTENT": {
+      "description": "Document text",
+      "match_modes": ["ILIKE", "VECTOR"],
+      "examples": ["maintenance procedure", "oil change steps"]
+    },
+    "NODE_LABEL": {
+      "description": "Graph node labels",
+      "match_modes": ["ILIKE", "EXACT"],
+      "examples": ["fuel_system", "main_engine_1"]
+    },
+    "EDGE_TYPE": {
+      "description": "Graph relationships",
+      "match_modes": ["EXACT"],
+      "examples": ["PART_OF", "CONNECTED_TO", "CONTAINS"]
+    },
+    "JSON_FIELD": {
+      "description": "JSONB fields",
+      "match_modes": ["CONTAINS"],
+      "examples": ["metadata searches"]
+    }
+  },
+  "columns": {
+    "pms_equipment": {
+      "name": ["EQUIPMENT_NAME", "FREE_TEXT"],
+      "code": ["EQUIPMENT_CODE", "FAULT_CODE"],
+      "description": ["DESCRIPTION", "FREE_TEXT"],
+      "location": ["LOCATION", "FREE_TEXT"],
+      "manufacturer": ["MANUFACTURER", "FREE_TEXT"],
+      "model": ["PART_NAME", "FREE_TEXT"],
+      "serial_number": ["SERIAL_NUMBER"],
+      "installed_date": ["DATE"],
+      "criticality": ["PRIORITY", "STATUS"],
+      "system_type": ["SYSTEM_NAME"],
+      "attention_flag": ["STATUS"],
+      "attention_reason": ["DESCRIPTION", "SYMPTOM"],
+      "attention_updated_at": ["DATE"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_work_orders": {
+      "title": ["WORK_ORDER_TITLE", "FREE_TEXT"],
+      "description": ["DESCRIPTION", "FREE_TEXT"],
+      "type": ["STATUS"],
+      "priority": ["PRIORITY"],
+      "status": ["STATUS"],
+      "due_date": ["DATE"],
+      "due_hours": ["HOURS"],
+      "last_completed_date": ["DATE"],
+      "last_completed_hours": ["HOURS"],
+      "frequency": ["DESCRIPTION"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_faults": {
+      "fault_code": ["FAULT_CODE"],
+      "title": ["DESCRIPTION", "SYMPTOM"],
+      "description": ["DESCRIPTION", "FREE_TEXT"],
+      "severity": ["SEVERITY"],
+      "detected_at": ["DATE"],
+      "resolved_at": ["DATE"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_suppliers": {
+      "name": ["SUPPLIER_NAME", "MANUFACTURER"],
+      "contact_name": ["CONTACT", "FREE_TEXT"],
+      "email": ["CONTACT"],
+      "phone": ["CONTACT"],
+      "address": ["LOCATION", "JSON_FIELD"],
+      "preferred": ["STATUS"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_purchase_orders": {
+      "po_number": ["PO_NUMBER"],
+      "status": ["STATUS"],
+      "ordered_at": ["DATE"],
+      "received_at": ["DATE"],
+      "currency": [],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_parts": {
+      "name": ["PART_NAME", "FREE_TEXT"],
+      "part_number": ["PART_NUMBER"],
+      "manufacturer": ["MANUFACTURER"],
+      "description": ["DESCRIPTION", "FREE_TEXT"],
+      "category": ["SYSTEM_NAME", "LOCATION"],
+      "model_compatibility": ["EQUIPMENT_NAME"],
+      "embedding_text": ["FREE_TEXT"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_inventory_stock": {
+      "location": ["LOCATION"],
+      "quantity": ["QUANTITY"],
+      "min_quantity": ["QUANTITY"],
+      "max_quantity": ["QUANTITY"],
+      "reorder_quantity": ["QUANTITY"],
+      "last_counted_at": ["DATE"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "pms_equipment_parts_bom": {
+      "quantity_required": ["QUANTITY"],
+      "notes": ["DESCRIPTION", "FREE_TEXT"]
+    },
+    "pms_purchase_order_items": {
+      "description": ["DESCRIPTION", "PART_NAME"],
+      "quantity_ordered": ["QUANTITY"],
+      "quantity_received": ["QUANTITY"],
+      "unit_price": ["PRICE"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "graph_nodes": {
+      "label": ["NODE_LABEL", "EQUIPMENT_NAME", "SYSTEM_NAME"],
+      "normalized_label": ["NODE_LABEL"],
+      "node_type": ["EDGE_TYPE"],
+      "confidence": [],
+      "extraction_source": [],
+      "properties": ["JSON_FIELD", "MANUFACTURER"]
+    },
+    "graph_edges": {
+      "edge_type": ["EDGE_TYPE"],
+      "confidence": [],
+      "description": ["DESCRIPTION"],
+      "properties": ["JSON_FIELD"]
+    },
+    "search_document_chunks": {
+      "content": ["DOCUMENT_CONTENT", "FREE_TEXT"],
+      "text": ["DOCUMENT_CONTENT", "FREE_TEXT"],
+      "page_number": [],
+      "section_title": ["DESCRIPTION", "SYSTEM_NAME"],
+      "doc_type": [],
+      "system_tag": ["SYSTEM_NAME"],
+      "section_path": ["DESCRIPTION"],
+      "section_type": [],
+      "graph_extract_status": ["STATUS"],
+      "equipment_ids": ["EQUIPMENT_NAME"],
+      "fault_codes": ["FAULT_CODE"],
+      "symptom_codes": ["SYMPTOM"],
+      "tags": ["FREE_TEXT"],
+      "metadata": ["JSON_FIELD"]
+    },
+    "entity_staging": {
+      "entity_type": [],
+      "entity_value": ["FREE_TEXT", "EQUIPMENT_NAME"],
+      "canonical_label": ["NODE_LABEL"],
+      "confidence": [],
+      "status": ["STATUS"],
+      "source_storage_path": [],
+      "attributes": ["JSON_FIELD"]
+    },
+    "symptom_aliases": {
+      "alias": ["SYMPTOM", "FREE_TEXT"],
+      "symptom_code": ["SYMPTOM"],
+      "alias_type": [],
+      "confidence": []
+    },
+    "search_fault_code_catalog": {
+      "code": ["FAULT_CODE"],
+      "name": ["FAULT_CODE", "DESCRIPTION"],
+      "description": ["DESCRIPTION", "FREE_TEXT"],
+      "equipment_type": ["EQUIPMENT_NAME"],
+      "manufacturer": ["MANUFACTURER"],
+      "severity": ["SEVERITY"],
+      "symptoms": ["SYMPTOM"],
+      "causes": ["DESCRIPTION"],
+      "diagnostic_steps": ["DESCRIPTION"],
+      "resolution_steps": ["DESCRIPTION"],
+      "related_parts": ["PART_NAME"]
+    },
+    "maintenance_facts": {
+      "action": ["DESCRIPTION", "FREE_TEXT"],
+      "interval_hours": ["HOURS"],
+      "interval_days": [],
+      "interval_description": ["DESCRIPTION"],
+      "confidence": [],
+      "properties": ["JSON_FIELD"]
+    }
+  },
+  "routing_rules": [
+    {
+      "pattern": "part number|part#|p/n|pn",
+      "term_type": "PART_NUMBER",
+      "tables": ["pms_parts.part_number", "v_inventory.part_number"]
+    },
+    {
+      "pattern": "fault|error|code|alarm|e\\d+|g\\d+",
+      "term_type": "FAULT_CODE",
+      "tables": ["pms_faults.fault_code", "search_fault_code_catalog.code"]
+    },
+    {
+      "pattern": "serial|s/n|sn",
+      "term_type": "SERIAL_NUMBER",
+      "tables": ["pms_equipment.serial_number"]
+    },
+    {
+      "pattern": "engine|generator|pump|watermaker|thruster",
+      "term_type": "EQUIPMENT_NAME",
+      "tables": ["pms_equipment.name", "graph_nodes.label"]
+    },
+    {
+      "pattern": "mtu|kohler|caterpillar|volvo|cummins|yanmar",
+      "term_type": "MANUFACTURER",
+      "tables": ["pms_equipment.manufacturer", "pms_parts.manufacturer", "pms_suppliers.name"]
+    },
+    {
+      "pattern": "supplier|vendor|order from",
+      "term_type": "SUPPLIER_NAME",
+      "tables": ["pms_suppliers.name"]
+    },
+    {
+      "pattern": "po-|purchase order|po number",
+      "term_type": "PO_NUMBER",
+      "tables": ["pms_purchase_orders.po_number"]
+    },
+    {
+      "pattern": "work order|wo|service|maintenance|job",
+      "term_type": "WORK_ORDER_TITLE",
+      "tables": ["pms_work_orders.title", "pms_work_orders.description"]
+    },
+    {
+      "pattern": "engine room|bridge|galley|deck|interior",
+      "term_type": "LOCATION",
+      "tables": ["pms_equipment.location", "pms_parts.category", "pms_inventory_stock.location"]
+    },
+    {
+      "pattern": "propulsion|electrical|hvac|water|navigation|safety",
+      "term_type": "SYSTEM_NAME",
+      "tables": ["pms_equipment.system_type", "graph_nodes.label", "pms_parts.category"]
+    },
+    {
+      "pattern": "vibration|overheating|smoke|noise|leak|pressure",
+      "term_type": "SYMPTOM",
+      "tables": ["symptom_aliases.alias", "pms_faults.title", "search_fault_code_catalog.symptoms"]
+    },
+    {
+      "pattern": "planned|pending|in.?progress|completed|cancelled",
+      "term_type": "STATUS",
+      "tables": ["pms_work_orders.status", "pms_purchase_orders.status", "pms_faults.severity"]
+    },
+    {
+      "pattern": "routine|urgent|critical|emergency",
+      "term_type": "PRIORITY",
+      "tables": ["pms_work_orders.priority", "pms_equipment.criticality"]
+    },
+    {
+      "pattern": "low|medium|high|critical|warning",
+      "term_type": "SEVERITY",
+      "tables": ["pms_faults.severity", "search_fault_code_catalog.severity"]
+    },
+    {
+      "pattern": "\\d+\\s*hours?|hrs?|running hours",
+      "term_type": "HOURS",
+      "tables": ["pms_work_orders.due_hours", "maintenance_facts.interval_hours"]
+    },
+    {
+      "pattern": "stock|quantity|inventory|how many|count",
+      "term_type": "QUANTITY",
+      "tables": ["pms_inventory_stock.quantity", "pms_equipment_parts_bom.quantity_required"]
+    },
+    {
+      "pattern": "\\$|price|cost|usd|eur|budget",
+      "term_type": "PRICE",
+      "tables": ["pms_purchase_order_items.unit_price"]
+    },
+    {
+      "pattern": "manual|procedure|document|pdf|schematic",
+      "term_type": "DOCUMENT_CONTENT",
+      "tables": ["search_document_chunks.content"]
+    }
+  ]
+}

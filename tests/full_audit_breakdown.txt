@@ -1,0 +1,1029 @@
+==========================================================================================
+FULL AUDIT BREAKDOWN
+==========================================================================================
+
+
+COLLISIONS (133 cases) - Wrong action chosen
+------------------------------------------------------------------------------------------
+  1. Q0014 | trace related equipment to MID 144 PSID 25
+     EXPECTED: trace_related_equipment
+     GOT:      trace_related_faults
+
+  2. Q0054 | add note to work order air filter repair
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+  3. Q0055 | attach photo to work order
+     EXPECTED: attach_photo_to_work_order
+     GOT:      attach_document_to_work_order
+
+  4. Q0057 | add part to work order injector
+     EXPECTED: add_part_to_work_order
+     GOT:      add_to_handover
+
+  5. Q0060 | show tasks overdue
+     EXPECTED: none_search_only
+     GOT:      show_tasks_due
+
+  6. Q0061 | show overdue tasks for watermaker
+     EXPECTED: none_search_only
+     GOT:      show_tasks_due
+
+  7. Q0064 | add gasket to work order
+     EXPECTED: add_part_to_work_order
+     GOT:      add_to_handover
+
+  8. Q0066 | create maintenance task for watermaker
+     EXPECTED: create_work_order
+     GOT:      create_task
+
+  9. Q0068 | add note air handler checked ok
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+ 10. Q0094 | add note and attach photo to work order
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+ 11. Q0098 | show all linked parts capstan
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 12. Q0100 | show all linked documents bilge pump
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 13. Q0101 | show all linked work orders compressor
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 14. Q0103 | show linked parts for Rule chiller
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 15. Q0105 | show documents for bow thruster
+     EXPECTED: none_search_only
+     GOT:      search_documents
+
+ 16. Q0107 | show parts list circulation pump
+     EXPECTED: none_search_only
+     GOT:      show_equipment_overview
+
+ 17. Q0108 | show fault history circulation pump
+     EXPECTED: view_linked_entities
+     GOT:      show_equipment_history
+
+ 18. Q0110 | show work orders stabilizer
+     EXPECTED: none_search_only
+     GOT:      list_work_orders
+
+ 19. Q0131 | add part to handover belt
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 20. Q0132 | log part usage filter element
+     EXPECTED: none_search_only
+     GOT:      log_hours_of_rest
+
+ 21. Q0135 | show where anode is stored
+     EXPECTED: show_storage_location
+     GOT:      show_equipment_overview
+
+ 22. Q0137 | log usage 5 gasket
+     EXPECTED: none_search_only
+     GOT:      log_hours_of_rest
+
+ 23. Q0140 | add gasket to handover notes
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 24. Q0157 | add note HVAC checked
+     EXPECTED: add_note
+     GOT:      add_to_handover
+
+ 25. Q0158 | add predictive insight to handover oil filter
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 26. Q0159 | add document to handover parts manual
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 27. Q0161 | export handover
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 28. Q0163 | add document section to handover
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 29. Q0164 | summarise document for handover survey report
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+ 30. Q0166 | export handover PDF
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 31. Q0170 | add note engine room all normal
+     EXPECTED: add_note
+     GOT:      add_to_handover
+
+ 32. Q0186 | update hours of rest
+     EXPECTED: none_search_only
+     GOT:      update_work_order
+
+ 33. Q0189 | show expiring certificates
+     EXPECTED: none_search_only
+     GOT:      show_certificates
+
+ 34. Q0190 | export logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+ 35. Q0191 | generate audit pack
+     EXPECTED: generate_audit_pack
+     GOT:      generate_summary
+
+ 36. Q0192 | add certificate
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 37. Q0193 | upload certificate document
+     EXPECTED: upload_certificate_document
+     GOT:      upload_document
+
+ 38. Q0196 | show certificates expiring last trip
+     EXPECTED: none_search_only
+     GOT:      show_certificates
+
+ 39. Q0197 | export compliance logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+ 40. Q0198 | update HOR ETO
+     EXPECTED: none_search_only
+     GOT:      update_work_order
+
+ 41. Q0200 | generate ISM audit pack
+     EXPECTED: generate_audit_pack
+     GOT:      generate_summary
+
+ 42. Q0216 | open document ISM document gyro stabilizer
+     EXPECTED: open_document
+     GOT:      open_equipment_card
+
+ 43. Q0217 | open document page 6
+     EXPECTED: none_search_only
+     GOT:      open_equipment_card
+
+ 44. Q0219 | search document pages cutting out
+     EXPECTED: none_search_only
+     GOT:      search_documents
+
+ 45. Q0220 | summarise document section parts manual
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+ 46. Q0226 | link document to fault E122
+     EXPECTED: none_search_only
+     GOT:      link_document_to_equipment
+
+ 47. Q0227 | compare document sections
+     EXPECTED: none_search_only
+     GOT:      compare_fleet_equipment
+
+ 48. Q0229 | detect document anomalies
+     EXPECTED: none_search_only
+     GOT:      detect_anomaly
+
+ 49. Q0250 | link document to fault Alarm 122...
+     EXPECTED: none_search_only
+     GOT:      link_document_to_equipment
+
+ 50. Q0253 | add note engine room allnormal
+     EXPECTED: add_note
+     GOT:      add_to_handover
+
+ 51. Q0256 | open document P&ID gen
+     EXPECTED: open_document
+     GOT:      open_equipment_card
+
+ 52. Q0258 | show fault history radar
+     EXPECTED: view_linked_entities
+     GOT:      show_equipment_history
+
+ 53. Q0272 | upload certificate document
+     EXPECTED: upload_certificate_document
+     GOT:      upload_document
+
+ 54. Q0278 | summarise dooument for handover service manual
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+ 55. Q0282 | export handover
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 56. Q0283 | expor thandover
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 57. Q0288 | show overdue tasks for  attery charger
+     EXPECTED: none_search_only
+     GOT:      show_tasks_due
+
+ 58. Q0292 | upload certificate document
+     EXPECTED: upload_certificate_document
+     GOT:      upload_document
+
+ 59. Q0294 | show all linked documents compressor
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 60. Q0302 | add document to handoveroperator manual
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 61. Q0305 | search document pages sparking
+     EXPECTED: none_search_only
+     GOT:      search_documents
+
+ 62. Q0312 | add certificate
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 63. Q0323 | open document ISM document radar...
+     EXPECTED: open_document
+     GOT:      open_equipment_card
+
+ 64. Q0332 | export hadnover
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 65. Q0333 | link document to fault SPN 110 FMI 3
+     EXPECTED: none_search_only
+     GOT:      link_document_to_equipment
+
+ 66. Q0335 | update certifciate metadata
+     EXPECTED: update_certificate_metadata
+     GOT:      update_work_order
+
+ 67. Q0337 | add document to handover procedure
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 68. Q0343 | show fault history exhaast fan
+     EXPECTED: view_linked_entities
+     GOT:      show_equipment_history
+
+ 69. Q0346 | generate IS Maudit pack
+     EXPECTED: generate_audit_pack
+     GOT:      generate_summary
+
+ 70. Q0359 | 
+export handover PDF
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 71. Q0365 | update certificcte metadata
+     EXPECTED: update_certificate_metadata
+     GOT:      update_work_order
+
+ 72. Q0370 | show documents for centrifuge...
+     EXPECTED: none_search_only
+     GOT:      search_documents
+
+ 73. Q0373 | attach photo to work order
+     EXPECTED: attach_photo_to_work_order
+     GOT:      attach_document_to_work_order
+
+ 74. Q0375 | exportcompliance logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+ 75. Q0381 | add  noet  genset  checked
+     EXPECTED: add_note
+     GOT:      add_to_handover
+
+ 76. Q0403 | export logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+ 77. Q0411 | update HOR ETO
+     EXPECTED: none_search_only
+     GOT:      update_work_order
+
+ 78. Q0412 | show expiring certificates...
+     EXPECTED: none_search_only
+     GOT:      show_certificates
+
+ 79. Q0415 | export  logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+ 80. Q0416 | compare document sections...
+     EXPECTED: none_search_only
+     GOT:      compare_fleet_equipment
+
+ 81. Q0420 | show all linkeddocuments heater
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 82. Q0421 | show all likned faults jet ski
+     EXPECTED: view_linked_entities
+     GOT:      show_equipment_overview
+
+ 83. Q0424 | detect document anomalies
+     EXPECTED: none_search_only
+     GOT:      detect_anomaly
+
+ 84. Q0428 | generate audit pcak
+     EXPECTED: generate_audit_pack
+     GOT:      generate_summary
+
+ 85. Q0432 | add  certificate
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+ 86. Q0439 | show where seal isstored
+     EXPECTED: show_storage_location
+     GOT:      show_equipment_overview
+
+ 87. Q0458 | trace related equiiment to SPN 94 FMI 1
+     EXPECTED: trace_related_equipment
+     GOT:      trace_related_faults
+
+ 88. Q0460 | add note and attach photo to work order
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+ 89. Q0463 | export handover PDF...
+     EXPECTED: export_handover
+     GOT:      export_summary
+
+ 90. Q0471 | attach photo to work order
+     EXPECTED: attach_photo_to_work_order
+     GOT:      attach_document_to_work_order
+
+ 91. Q0472 | show linked parts for Navico chiller
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+ 92. Q0480 | add note to work order alternatorreapir
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+ 93. Q0484 | show certificctes expiring before charter
+     EXPECTED: none_search_only
+     GOT:      show_certificate_expiry
+
+ 94. Q0506 | 	open document page 2
+     EXPECTED: none_search_only
+     GOT:      open_equipment_card
+
+ 95. Q0511 | show where ocntactor is stored
+     EXPECTED: show_storage_location
+     GOT:      show_equipment_overview
+
+ 96. Q0515 | upload certificate document
+     EXPECTED: upload_certificate_document
+     GOT:      upload_document
+
+ 97. Q0521 | summarise document for handover drawing
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+ 98. Q0522 | add note to work order transformer repair
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+ 99. Q0523 | oppn document page 5
+     EXPECTED: none_search_only
+     GOT:      open_equipment_card
+
+100. Q0528 | show certificates expiring last trip
+     EXPECTED: none_search_only
+     GOT:      show_certificates
+
+101. Q0534 | 
+show parts list jet ski
+     EXPECTED: none_search_only
+     GOT:      show_equipment_overview
+
+102. Q0539 | show all linked parts bow thruster
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+103. Q0548 | generate ISM audit pack
+     EXPECTED: generate_audit_pack
+     GOT:      generate_summary
+
+104. Q0549 | upload  certificate  document
+     EXPECTED: upload_certificate_document
+     GOT:      upload_document
+
+105. Q0555 | add  part  to  work  order  membrane
+     EXPECTED: add_part_to_work_order
+     GOT:      add_to_handover
+
+106. Q0556 | add note ER all normal
+     EXPECTED: add_note
+     GOT:      add_to_handover
+
+107. Q0560 | detect odcument anomalies
+     EXPECTED: none_search_only
+     GOT:      detect_anomaly
+
+108. Q0562 | add  document  to  handover  ISM  document
+     EXPECTED: none_search_only
+     GOT:      add_to_handover
+
+109. Q0565 | show tsaks overdue
+     EXPECTED: none_search_only
+     GOT:      show_equipment_overview
+
+110. Q0577 |  - add note to work order centrifuge repair
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+111. Q0581 | detect document anomalies
+     EXPECTED: none_search_only
+     GOT:      detect_anomaly
+
+112. Q0585 | 
+show documents for transformer
+     EXPECTED: none_search_only
+     GOT:      search_documents
+
+113. Q0586 | • export compliance logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+114. Q0590 | add zinc to work order
+     EXPECTED: add_part_to_work_order
+     GOT:      add_to_handover
+
+115. Q0593 | show tasks overdue...
+     EXPECTED: none_search_only
+     GOT:      show_tasks_due
+
+116. Q0594 | show huors of rest
+     EXPECTED: show_hours_of_rest
+     GOT:      show_equipment_overview
+
+117. Q0596 | create maintenance task for generator
+     EXPECTED: create_work_order
+     GOT:      create_task
+
+118. Q0610 | add note HVAC checked
+     EXPECTED: add_note
+     GOT:      add_to_handover
+
+119. Q0615 | 	open document page 6
+     EXPECTED: none_search_only
+     GOT:      open_equipment_card
+
+120. Q0623 | export logs
+     EXPECTED: export_compliance_logs
+     GOT:      export_summary
+
+121. Q0630 | add thermostat towork order
+     EXPECTED: add_part_to_work_order
+     GOT:      add_to_handover
+
+122. Q0641 | • show all linked work orders purifier
+     EXPECTED: none_search_only
+     GOT:      view_linked_entities
+
+123. Q0642 | search  document  pages  rattling
+     EXPECTED: none_search_only
+     GOT:      search_documents
+
+124. Q0854 | add note to work order and add to handover
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+125. Q0856 | summarise document and add to handover
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+126. Q0859 | add note to work order and add to handover
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+127. Q0888 | open document parts manual and add section to hand
+     EXPECTED: open_document
+     GOT:      open_equipment_card
+
+128. Q0891 | summarise document and add to handover
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+129. Q0912 | add note to work order and add to handover
+     EXPECTED: add_note_to_work_order
+     GOT:      add_to_handover
+
+130. Q0915 | open document certificate and add section to hando
+     EXPECTED: open_document
+     GOT:      open_equipment_card
+
+131. Q0920 | summarise document and add to handover
+     EXPECTED: none_search_only
+     GOT:      generate_summary
+
+132. Q0921 | update hours of rest and export logs
+     EXPECTED: none_search_only
+     GOT:      update_work_order
+
+133. Q0943 | open document P&ID and add section to handover
+     EXPECTED: open_document
+     GOT:      open_equipment_card
+
+
+
+CORRECT PREDICTIONS (416 cases)
+------------------------------------------------------------------------------------------
+  1. diagnose fault E122 on stern thruster → diagnose_fault
+  2. diagnose smoking on purifier → diagnose_fault
+  3. diagnose fire pump cutting out → diagnose_fault
+  4. show manual section for stalling → show_manual_section
+  5. show manual for Racor separator → show_manual_section
+  6. show related documents for SPN 110 FMI 3 → show_related_documents
+  7. show equipment overview generator → show_equipment_overview
+  8. show equipment history for fin stabilizer → show_equipment_history
+  9. show recent state of boiler → show_recent_state
+ 10. show predictive insight for raw water pump → show_predictive_insight
+ 11. suggest likely parts for Fault 001 → suggest_likely_parts
+ 12. show similar past events to MID 128 SID 001 → show_similar_past_events
+ 13. trace related faults to genset → trace_related_faults
+ 14. view linked entities for generator → view_linked_entities
+ 15. show document graph for battery charger → show_document_graph
+ 16. diagnose why fire pump is intermittent → diagnose_fault
+ 17. show troubleshooting for no output → show_manual_section
+ 18. show fault history fuel filter → show_equipment_history
+ 19. diagnose E122 → diagnose_fault
+ 20. create work order for watermaker high temperature → create_work_order
+ 21. create work order centrifuge needs service → create_work_order
+ 22. create WO for cutting out on watermaker → create_work_order
+ 23. attach document to work order fire pump → attach_document_to_work_order
+ 24. mark work order complete → mark_work_order_complete
+ 25. show tasks due today → show_tasks_due
+ 26. create work order from fault P0300 → create_work_order
+ 27. mark WO complete raw water pump service → mark_work_order_complete
+ 28. show tasks due this week → show_tasks_due
+ 29. attach invoice to work order → attach_document_to_work_order
+ 30. show scheduled tasks capstan → show_tasks_due
+ 31. create WO Northern Lights raw water pump service → create_work_order
+ 32. create work order and add to handover inverter sei → create_work_order
+ 33. create WO for Warning 15 and check stock gasket → create_work_order
+ 34. mark complete and export handover → mark_work_order_complete
+ 35. create work order then show related documents → create_work_order
+ 36. open equipment card stern thruster → open_equipment_card
+ 37. open equipment card for Raymarine air filter → open_equipment_card
+ 38. show all linked faults battery charger → view_linked_entities
+ 39. link document to equipment alternator → link_document_to_equipment
+ 40. show faults linked to heater → view_linked_entities
+ 41. open card BT → open_equipment_card
+ 42. link manual to purifier → link_document_to_equipment
+ 43. check stock level belt → check_stock_level
+ 44. check stock Sea Recovery turbo → check_stock_level
+ 45. show storage location turbo → show_storage_location
+ 46. order part cooler → order_part
+ 47. order 9 PCB → order_part
+ 48. scan barcode → scan_barcode
+ 49. check inventory filter element → check_stock_level
+ 50. order spare relay for ventilation → order_part
+ 51. check stock turbo for separator → check_stock_level
+ 52. show location Rule filter element → show_storage_location
+ 53. add to handover stabilizer stalling → add_to_handover
+ 54. edit handover section watermaker → edit_handover_section
+ 55. generate summary → generate_summary
+ 56. add to handover P0171 on radar → add_to_handover
+ 57. generate handover summary → generate_summary
+ 58. add fuel filter status to handover → add_to_handover
+ 59. edit engine room section → edit_handover_section
+ 60. show hours of rest → show_hours_of_rest
+ 61. show certificates → show_certificates
+ 62. update certificate metadata → update_certificate_metadata
+ 63. show hours of rest after drydock → show_hours_of_rest
+ 64. show class certificates → show_certificates
+ 65. search documents windlass → search_documents
+ 66. upload document → upload_document
+ 67. archive document → archive_document
+ 68. search Seakeeper certificate → search_documents
+ 69.  - show all linked faults stern thruster → view_linked_entities
+ 70. generate  summary → generate_summary
+ 71. • create WO MTU capstan service → create_work_order
+ 72. open equipment card exhaust fan... → open_equipment_card
+ 73. attach document to work order stabilizer... → attach_document_to_work_order
+ 74. show manual for Johnson transformer... → show_manual_section
+ 75.  - create WO for SPN 94 FMI 1 and check stock memb → create_work_order
+ 76. check  nventory membrane → check_stock_level
+ 77. search Mastervolt class certificate → search_documents
+ 78. • order 6 gasket → order_part
+ 79. show troubleshooting for low pressure... → show_manual_section
+ 80. mark WOcomplete chartplotter service → mark_work_order_complete
+ 81. add autopplot status to handover → add_to_handover
+ 82. show hours ofrest → show_hours_of_rest
+ 83. arrhive  document → archive_document
+ 84. open equipment card for Lewmar inverter... → open_equipment_card
+ 85. generateesummary → generate_summary
+ 86. add stabiliier status to handover → add_to_handover
+ 87. 	create work order from fault E999 → create_work_order
+ 88. search MTU checklist... → search_documents
+ 89.   show class certificates → show_certificates
+ 90. add  to  handover  watermaker  surging → add_to_handover
+ 91. show tasks due today → show_tasks_due
+ 92. mark WO compllte jet ski service → mark_work_order_complete
+ 93. order spare cooler for chartplotter → order_part
+ 94. diagnose  fault  E999  on  circulation  pump → diagnose_fault
+ 95. mark  work  order  complete → mark_work_order_complete
+ 96. check stock level motor → check_stock_level
+ 97. diagnose seized on circulation pump... → diagnose_fault
+ 98. show storage location filler element → show_storage_location
+ 99. check stock level turbo → check_stock_level
+100. create WO radar  eeds service → create_work_order
+101. show location MAN cooler → show_storage_location
+102. diagnose fautl P0300 on stabilizer → diagnose_fault
+103. check stock Quantumgasket → check_stock_level
+104. create work order forb attery charger rattling → create_work_order
+105. 	create work order then show related documents → create_work_order
+106. check stock Racor sensor → check_stock_level
+107. check inventory seal → check_stock_level
+108.   diagnose SPN 100 → diagnose_fault
+109. create owrk order for alternator vibration → create_work_order
+110. show fault history HVAC → show_equipment_history
+111. diagnose SP N100 → diagnose_fault
+112. scan barcode → scan_barcode
+113. upload document → upload_document
+114. check stock turbo for radar → check_stock_level
+115. show troubleshooting for cutting out → show_manual_section
+116. diagnoseradar rattling → diagnose_fault
+117. generate usmmary → generate_summary
+118. link document to equipment ACCunit → link_document_to_equipment
+119.   show tasks due this week → show_tasks_due
+120. archive document → archive_document
+121. showhours of rest → show_hours_of_rest
+122. show related docuuents for Warning 15 → show_related_documents
+123.   show equipment history for chiller → show_equipment_history
+124. show document graph for HVAC → show_document_graph
+125. show  hours  of  rest → show_hours_of_rest
+126. check stock level alternator → check_stock_level
+127. show equipment history for purifier → show_equipment_history
+128. show storage location injector → show_storage_location
+129. show predictive insight for bow thruster → show_predictive_insight
+130. generate handover summary → generate_summary
+131. open equipment card stabiliser → open_equipment_card
+132. link dooument to equipment exhaust fan → link_document_to_equipment
+133. archive documetn → archive_document
+134. mark complete and export handover → mark_work_order_complete
+135. update certificate metadata → update_certificate_metadata
+136. show faults linked to watermaker → view_linked_entities
+137. show recent state of alternator... → show_recent_state
+138. shoo class certificates → show_certificates
+139.   diagnose MID 144 PSID 25 → diagnose_fault
+140. open  equupment  card  for  Webasto  transformer → open_equipment_card
+141. order  6  pump → order_part
+142. trace related faults to generator... → trace_related_faults
+143. generate haadover summary → generate_summary
+144. show  hours  of  rest  this  month → show_hours_of_rest
+145. mark WO complete windlass service → mark_work_order_complete
+146. attach document to WO fire pump → attach_document_to_work_order
+147. add  to  handover  E999  on  circulation  pump → add_to_handover
+148. show locationSeakeeper actuator → show_storage_location
+149. link manual to autopilot... → link_document_to_equipment
+150. show faults linked to tender → view_linked_entities
+151. show troubleshooting for overheating → show_manual_section
+152. open equipment card for Maxwlel HVAC → open_equipment_card
+153. view linked entities for arifilter → view_linked_entities
+154. update certificateemetadata → update_certificate_metadata
+155. mark  work  order  complete → mark_work_order_complete
+156. generate summary → generate_summary
+157. create work order for jet ski knocking → create_work_order
+158. 
+show equipment history for purifier → show_equipment_history
+159. show fault history boiler → show_equipment_history
+160. generate summary... → generate_summary
+161. diagnose  Alarm  122 → diagnose_fault
+162. 
+show storage location bearing → show_storage_location
+163. open  equipment  card  for  Shurflo  watermaker → open_equipment_card
+164. open  equipment  card  for  Spectra  fuel  filter → open_equipment_card
+165. mark WO complete stern thruster service → mark_work_order_complete
+166. add to handover alternatorlow output → add_to_handover
+167. link manual to air handler... → link_document_to_equipment
+168. archive document → archive_document
+169. • diagnose why bow thruster is stalling → diagnose_fault
+170. show  manual  section  for  high  temperature → show_manual_section
+171. mark  complete  and  export  handover → mark_work_order_complete
+172. create WO from fault P0420 → create_work_order
+173. show all linked faults battery charger → view_linked_entities
+174. attach invoice to work orddr → attach_document_to_work_order
+175. show  related  documents  for  MID  128  SID  001 → show_related_documents
+176. 
+suggest likely parts for SPN 100 → suggest_likely_parts
+177. show storage location ssnsor → show_storage_location
+178. generate  summary → generate_summary
+179. add alternator status to hhndover → add_to_handover
+180. check stock level turbo → check_stock_level
+181. show troubleshooting for knocking → show_manual_section
+182. opencard DG3 → open_equipment_card
+183. show tasks due this week → show_tasks_due
+184. show hours of rest last month → show_hours_of_rest
+185. trace related faults to separator → trace_related_faults
+186. search documentssgenerator → search_documents
+187.  - show recent state of HVAC → show_recent_state
+188. attach document to WO chiller → attach_document_to_work_order
+189. show fault history ffn stabilizer → show_equipment_history
+190. open  card  stbd  main → open_equipment_card
+191. search Victronprocedure → search_documents
+192. show manual section for rattling → show_manual_section
+193. show  scheduled  tasks  fire  pump → show_tasks_due
+194. trace related faults  o stern thruster → trace_related_faults
+195. trace  related  faults  to  transformer → trace_related_faults
+196. link document to equipment bilge pump → link_document_to_equipment
+197. show fault history stabilizer → show_equipment_history
+198. diagnose SPN 100 FMI 3 on transformer → diagnose_fault
+199. diagnose fault\nFault 001\nventilation → diagnose_fault
+200. diagnose MID 128 SID 001 HVAC → diagnose_fault
+201. hey show me the um manual for Lewmar compressor → show_manual_section
+202. diagnose low pressure bow locker → diagnose_fault
+203. diagnose fault\nMID 128 SID 001\nHVAC → diagnose_fault
+204. hey show me the um manual for Parker oil filter → show_manual_section
+205. show tasks due after drydock → show_tasks_due
+206. so like create work order for windlass its got rat → create_work_order
+207. create work order main engine exceeded 440V AC → create_work_order
+208. create work order ventilation engine room grinding → create_work_order
+209. diagnose MID 128 SID 001 exhaust fan → diagnose_fault
+210. create work order watermaker exceeded 92C → create_work_order
+211. create work order exhaust fan lazarette low output → create_work_order
+212. diagnose fault\nE001\nseparator → diagnose_fault
+213. diagnose exhaust fan running at 250 hours → diagnose_fault
+214. diagnose fault\nAlarm 47\njet ski → diagnose_fault
+215. show equipment history alternator today → show_equipment_history
+216. diagnose stalling bilge → diagnose_fault
+217. hey show me the um manual for Seakeeper bow thrust → show_manual_section
+218. create work order gyro stabilizer exceeded 12V DC → create_work_order
+219. show tasks due this month → show_tasks_due
+220. diagnose SPN 100 FMI 3 on watermaker → diagnose_fault
+221. create work order capstan exceeded 440V AC → create_work_order
+222. diagnose no output lower deck → diagnose_fault
+223. create work order fault SPN 110 FMI 3 fuel pump se → create_work_order
+224. so like create work order for gyro stabilizer its  → create_work_order
+225. create work order fault P0420 main engine seized a → create_work_order
+226. diagnose generator running at 250 hours → diagnose_fault
+227. create work order heater aft ER leak → create_work_order
+228. show tasks due night watch → show_tasks_due
+229. diagnose MID 128 SID 001 oil filter → diagnose_fault
+230. um diagnose the um chiller its high temperature → diagnose_fault
+231. hey show me the um manual for Village Marine bilge → show_manual_section
+232. diagnose MID 128 SID 001 chiller → diagnose_fault
+233. hey show me the um manual for Quick battery charge → show_manual_section
+234. create work order jet ski engine room low output → create_work_order
+235. diagnose fault\nSPN 110 FMI 3\ngenset → diagnose_fault
+236. show equipment history bow thruster last week → show_equipment_history
+237. create work order fault MID 128 SID 001 main engin → create_work_order
+238. show equipment history radar yesterday → show_equipment_history
+239. diagnose fault\nSPN 110 FMI 3\nstabilizer → diagnose_fault
+240. create work order purifier exceeded 4.2 bar → create_work_order
+241. hey show me the um manual for Spectra autopilot → show_manual_section
+242. create work order bow thruster lazarette smoking → create_work_order
+243. hey show me the um manual for CAT generator → show_manual_section
+244. so like create work order for watermaker its got i → create_work_order
+245. create work order fuel pump exceeded 2.4 kW → create_work_order
+246. create work order bow thruster exceeded 1800 hours → create_work_order
+247. diagnose air filter running at 12V DC → diagnose_fault
+248. um diagnose the um air handler its tripping → diagnose_fault
+249. show equipment history raw water pump last service → show_equipment_history
+250. show equipment history fuel filter last week → show_equipment_history
+251. diagnose MID 128 SID 001 circulation pump → diagnose_fault
+252. show tasks due since overhaul → show_tasks_due
+253. so like create work order for radar its got low pr → create_work_order
+254. diagnose fault\nE122\nradar → diagnose_fault
+255. diagnose SPN 100 FMI 3 on radar → diagnose_fault
+256. create work order heater exceeded 92C → create_work_order
+257. diagnose SPN 100 FMI 3 on main engine → diagnose_fault
+258. um diagnose the um windlass its cutting out → diagnose_fault
+259. diagnose MID 128 SID 001 circulation pump → diagnose_fault
+260. show equipment history battery charger last week → show_equipment_history
+261. diagnose raw water pump running at 45 amps → diagnose_fault
+262. um diagnose the um radar its stalling → diagnose_fault
+263. create work order fault E047 main engine leak at h → create_work_order
+264. diagnose fault\nP0420\nbow thruster → diagnose_fault
+265. diagnose fault\nP0171\nseparator → diagnose_fault
+266. diagnose leak bow locker → diagnose_fault
+267. create work order fuel filter exceeded high temp a → create_work_order
+268. diagnose circulation pump running at 4.2 bar → diagnose_fault
+269. diagnose fault\nE047\ncirculation pump → diagnose_fault
+270. diagnose fault\nSPN 190\nHVAC → diagnose_fault
+271. diagnose grinding compartment 3 → diagnose_fault
+272. diagnose MID 128 SID 001 inverter → diagnose_fault
+273. create work order generator exceeded high temp ala → create_work_order
+274. diagnose tender running at 0.3 ohms → diagnose_fault
+275. um diagnose the um fire pump its high temperature → diagnose_fault
+276. create work order purifier void space noise → create_work_order
+277. diagnose fault\nSPN 94 FMI 1\nAC unit → diagnose_fault
+278. diagnose low pressure machinery space → diagnose_fault
+279. show equipment history stern thruster night watch → show_equipment_history
+280. create work order main engine exceeded 45 amps → create_work_order
+281. diagnose SPN 100 FMI 3 on air handler → diagnose_fault
+282. um diagnose the um genset its erratic → diagnose_fault
+283. show tasks due since overhaul → show_tasks_due
+284. show tasks due this month → show_tasks_due
+285. diagnose SPN 100 FMI 3 on capstan → diagnose_fault
+286. diagnose MID 128 SID 001 separator → diagnose_fault
+287. show equipment history oil filter yesterday → show_equipment_history
+288. diagnose SPN 100 FMI 3 on HVAC → diagnose_fault
+289. create work order fault Alarm 122 exhaust fan spar → create_work_order
+290. diagnose bow thruster running at 3500 RPM → diagnose_fault
+291. show equipment history autopilot last service → show_equipment_history
+292. um diagnose the um stabilizer its erratic → diagnose_fault
+293. diagnose sparking stbd side → diagnose_fault
+294. hey show me the um manual for JRC chartplotter → show_manual_section
+295. create work order compressor exceeded 8.5 gph → create_work_order
+296. create work order fault SPN 190 air filter surging → create_work_order
+297. create work order raw water pump exceeded 185F → create_work_order
+298. diagnose SPN 190 then create work order and add to → diagnose_fault
+299. mark work order complete and export handover → mark_work_order_complete
+300. check inventory and add to handover if low → check_stock_level
+301. show equipment history and create work order boile → show_equipment_history
+302. search documents boiler and add to handover → search_documents
+303. diagnose compressor no output and suggest parts → diagnose_fault
+304. order thermostat and create work order for stabili → order_part
+305. show manual for cutting out then create work order → show_manual_section
+306. diagnose exhaust fan high temperature and suggest  → diagnose_fault
+307. mark work order complete and export handover → mark_work_order_complete
+308. order actuator and create work order for genset → order_part
+309. create work order for windlass stuck and add to ha → create_work_order
+310. show manual for smoking then create work order → show_manual_section
+311. open equipment card and show linked faults → open_equipment_card
+312. show equipment history and create work order heate → show_equipment_history
+313. show certificates and generate audit pack → show_certificates
+314. check stock zinc order if needed and add to work o → check_stock_level
+315. check inventory and add to handover if low → check_stock_level
+316. order anode and create work order for separator → order_part
+317. create work order for chartplotter cutting out and → create_work_order
+318. diagnose Alarm 47 and create work order if needed → diagnose_fault
+319. check stock fuse order if needed and add to work o → check_stock_level
+320. mark work order complete and export handover → mark_work_order_complete
+321. search documents heater and add to handover → search_documents
+322. show equipment history and create work order centr → show_equipment_history
+323. check stock actuator and add to work order → check_stock_level
+324. create work order for purifier low pressure and ad → create_work_order
+325. show certificates and generate audit pack → show_certificates
+326. search documents capstan and add to handover → search_documents
+327. diagnose MID 128 SID 001 and create work order if  → diagnose_fault
+328. mark work order complete and export handover → mark_work_order_complete
+329. create work order for generator cutting out and ad → create_work_order
+330. diagnose E047 and create work order if needed → diagnose_fault
+331. create work order for boiler low pressure and add  → create_work_order
+332. check stock control board and add to work order → check_stock_level
+333. check stock heat exchanger and add to work order → check_stock_level
+334. check stock solenoid order if needed and add to wo → check_stock_level
+335. show manual for erratic then create work order → show_manual_section
+336. check inventory and add to handover if low → check_stock_level
+337. diagnose stern thruster knocking and suggest parts → diagnose_fault
+338. create WO air filter then add note to handover → create_work_order
+339. create WO fuel pump then add note to handover → create_work_order
+340. check inventory and add to handover if low → check_stock_level
+341. create WO circulation pump then add note to handov → create_work_order
+342. mark work order complete and export handover → mark_work_order_complete
+343. show manual for tripping then create work order → show_manual_section
+344. order cooler and create work order for genset → order_part
+345. diagnose SPN 100 and create work order if needed → diagnose_fault
+346. order pump and create work order for raw water pum → order_part
+347. order breaker and create work order for bow thrust → order_part
+348. create WO genset then add note to handover → create_work_order
+349. show equipment history and create work order bilge → show_equipment_history
+350. diagnose MID 144 PSID 25 and create work order if  → diagnose_fault
+351. show manual for cutting out then create work order → show_manual_section
+352. mark work order complete and export handover → mark_work_order_complete
+353. check stock anode and add to work order → check_stock_level
+354. create WO battery charger then add note to handove → create_work_order
+355. order breaker and create work order for AC unit → order_part
+356. search documents compressor and add to handover → search_documents
+357. show equipment history and create work order gense → show_equipment_history
+358. show equipment history and create work order heate → show_equipment_history
+359. mark work order complete and export handover → mark_work_order_complete
+360. create work order for windlass rattling and add to → create_work_order
+361. diagnose radar smoking and suggest parts → diagnose_fault
+362. show equipment history and create work order windl → show_equipment_history
+363. check inventory and add to handover if low → check_stock_level
+364. diagnose Fault 001 and create work order if needed → diagnose_fault
+365. show certificates and generate audit pack → show_certificates
+366. show equipment history and create work order bow t → show_equipment_history
+367. show manual for cutting out then create work order → show_manual_section
+368. order o-ring and create work order for battery cha → order_part
+369. right so diagnose why HVAC is overheating → diagnose_fault
+370. basically add this to handover the jet ski issue → add_to_handover
+371. FW: Parts needed
+
+check stock cooler → check_stock_level
+372. ok so check stock on the uh seal → check_stock_level
+373. right so diagnose why autopilot is intermittent → diagnose_fault
+374. hey show me um the manual for Shurflo stabilizer → show_manual_section
+375. >>> gyro stabilizer
+>>> sparking
+diagnose this → diagnose_fault
+376. From: Engineer
+Subject: stabilizer
+
+diagnose hunti → diagnose_fault
+377. right so diagnose why windlass is high temperature → diagnose_fault
+378. FW: Parts needed
+
+check stock breaker → check_stock_level
+379. so yeah create wo for separator stalling → create_work_order
+380. so yeah create wo for air handler smoking → create_work_order
+381. so yeah create wo for raw water pump smoking → create_work_order
+382. >>> windlass
+>>> cutting out
+diagnose this → diagnose_fault
+383. - tender fault
+- create work order → create_work_order
+384. - stern thruster fault
+- create work order → create_work_order
+385. um diagnose the uh battery charger its no output → diagnose_fault
+386. well show me the history for um AC unit → show_equipment_history
+387. ok so check stock on the uh anode → check_stock_level
+388. ok so check stock on the uh turbo → check_stock_level
+389. - HVAC fault
+- create work order → create_work_order
+390. FW: Parts needed
+
+check stock zinc → check_stock_level
+391. FW: Parts needed
+
+check stock impeller → check_stock_level
+392. FW: Parts needed
+
+check stock fuse → check_stock_level
+393. so yeah create wo for chiller erratic → create_work_order
+394. so like create work order for the stabilizer → create_work_order
+395. >>> autopilot
+>>> cutting out
+diagnose this → diagnose_fault
+396. so like create work order for the raw water pump → create_work_order
+397. FW: Parts needed
+
+check stock control board → check_stock_level
+398. RE: circulation pump
+
+show manual section surging → show_manual_section
+399. >>> main engine
+>>> noise
+diagnose this → diagnose_fault
+400. so yeah create wo for fire pump erratic → create_work_order
+401. so like create work order for the alternator → create_work_order
+402. From: Engineer
+Subject: bilge pump
+
+diagnose vibra → diagnose_fault
+403. FW: Parts needed
+
+check stock solenoid → check_stock_level
+404. RE: stabilizer
+
+show manual section cutting out → show_manual_section
+405. basically add this to handover the tender issue → add_to_handover
+406. From: Engineer
+Subject: fuel pump
+
+diagnose rattli → diagnose_fault
+407. well show me the history for um gyro stabilizer → show_equipment_history
+408. so like create work order for the heater → create_work_order
+409. ok so check stock on the uh belt → check_stock_level
+410. um diagnose the uh HVAC its seized → diagnose_fault
+411. URGENT:
+AC unit seized
+add to handover → add_to_handover
+412. so yeah create wo for fin stabilizer stuck → create_work_order
+413. basically add this to handover the air handler iss → add_to_handover
+414. so like create work order for the boiler → create_work_order
+415. RE: watermaker
+
+show manual section noise → show_manual_section
+416. well show me the history for um battery charger → show_equipment_history
+
+
+FALSE NEGATIVES (6 cases) - Should trigger but didnt
+------------------------------------------------------------------------------------------
+Q0222: delete document
+   Expected: none_search_only
+Q0224: replace document version
+   Expected: none_search_only
+Q0225: tag document AC unit
+   Expected: none_search_only
+Q0228: extract procedures from document
+   Expected: none_search_only
+Q0507: 	tag document HVAC
+   Expected: none_search_only
+Q0625: extract procedures from docuemnt
+   Expected: none_search_only
+
+
+FALSE POSITIVES (1 case)
+------------------------------------------------------------------------------------------
+Q0259: display olcation
+   Got: show_equipment_overview

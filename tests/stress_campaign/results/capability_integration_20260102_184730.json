@@ -1,0 +1,130 @@
+{
+  "suite_name": "capability_integration_v1",
+  "run_time": "2026-01-02T18:47:12.395756",
+  "total": 250,
+  "passed": 241,
+  "failed": 9,
+  "by_capability": {
+    "part_by_part_number_or_name": {
+      "total": 50,
+      "passed": 46,
+      "failed": 4
+    },
+    "inventory_by_location": {
+      "total": 50,
+      "passed": 46,
+      "failed": 4
+    },
+    "fault_by_fault_code": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "graph_node_search": {
+      "total": 50,
+      "passed": 49,
+      "failed": 1
+    },
+    "documents_search": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    }
+  },
+  "failures": [
+    {
+      "id": "part-008",
+      "capability": "part_by_part_number_or_name",
+      "description": "Partial part number",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 65.63186645507812
+    },
+    {
+      "id": "part-026",
+      "capability": "part_by_part_number_or_name",
+      "description": "Filter part number prefix",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 72.0372200012207
+    },
+    {
+      "id": "part-030",
+      "capability": "part_by_part_number_or_name",
+      "description": "Part number substring",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 66.76816940307617
+    },
+    {
+      "id": "part-049",
+      "capability": "part_by_part_number_or_name",
+      "description": "End of part number",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 63.16804885864258
+    },
+    {
+      "id": "inv-002",
+      "capability": "inventory_by_location",
+      "description": "Agent location partial",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 67.15965270996094
+    },
+    {
+      "id": "inv-004",
+      "capability": "inventory_by_location",
+      "description": "Part number prefix",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 72.16691970825195
+    },
+    {
+      "id": "inv-007",
+      "capability": "inventory_by_location",
+      "description": "City in location",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 67.26312637329102
+    },
+    {
+      "id": "inv-018",
+      "capability": "inventory_by_location",
+      "description": "Filter part numbers",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 76.76410675048828
+    },
+    {
+      "id": "graph-003",
+      "capability": "graph_node_search",
+      "description": "Component nodes",
+      "passed": false,
+      "error": "{'message': 'invalid input value for enum graph_node_type: \"component\"', 'code': '22P02', 'hint': None, 'details': None}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 64.70394134521484
+    }
+  ],
+  "avg_execution_ms": 74.0463399887085,
+  "max_execution_ms": 154.0071964263916,
+  "min_execution_ms": 59.931039810180664,
+  "pass_rate": 96.39999999999999
+}

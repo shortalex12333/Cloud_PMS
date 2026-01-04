@@ -1,0 +1,102 @@
+{
+  "suite_name": "pipeline_1500_chaos",
+  "run_time": "2026-01-02T21:12:29.198427",
+  "total_time_s": 0.13,
+  "total_tests": 1500,
+  "outcomes": {
+    "SAFE_CORRECT": 984,
+    "SAFE_UNKNOWN_OK": 219,
+    "SOFT_ERROR": 297
+  },
+  "safe_rate": 0.802,
+  "unsafe_rate": 0.0,
+  "lanes": {
+    "BLOCKED": 821,
+    "UNKNOWN": 219,
+    "GPT": 301,
+    "RULES_ONLY": 11,
+    "NO_LLM": 148
+  },
+  "latency": {
+    "p50_ms": 0.07,
+    "p95_ms": 0.14,
+    "avg_ms": 0.08,
+    "max_ms": 9.22
+  },
+  "class_breakdown": {
+    "paste_dumps": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.030562400817871094
+    },
+    "domain_drift": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.11909008026123047
+    },
+    "injection_realistic": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.04873371124267578
+    },
+    "command_camouflage": {
+      "total": 200,
+      "safe": 145,
+      "unsafe": 0,
+      "soft_err": 55,
+      "safe_rate": 0.725,
+      "avg_ms": 0.17360687255859375
+    },
+    "abbreviations": {
+      "total": 200,
+      "safe": 108,
+      "unsafe": 0,
+      "soft_err": 92,
+      "safe_rate": 0.54,
+      "avg_ms": 0.043354034423828125
+    },
+    "fault_code_lookups": {
+      "total": 200,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 150,
+      "safe_rate": 0.25,
+      "avg_ms": 0.0689852237701416
+    },
+    "multi_intent_collision": {
+      "total": 150,
+      "safe": 150,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.11361122131347656
+    }
+  },
+  "unsafe_cases": [],
+  "error_signatures": {},
+  "fix_plan": [
+    {
+      "priority": "P1-HIGH",
+      "class": "abbreviations",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "46%",
+      "fix": "Improve lane routing for abbreviations patterns"
+    },
+    {
+      "priority": "P1-HIGH",
+      "class": "fault_code_lookups",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "75%",
+      "fix": "Improve lane routing for fault_code_lookups patterns"
+    }
+  ]
+}

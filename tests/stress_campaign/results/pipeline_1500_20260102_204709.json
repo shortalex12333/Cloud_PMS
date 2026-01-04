@@ -1,0 +1,61 @@
+{
+  "suite_name": "pipeline_1500_chaos",
+  "run_time": "2026-01-02T20:47:09.095045",
+  "total_execution_time_s": 69.89,
+  "total_tests": 50,
+  "outcome_distribution": {
+    "SOFT_ERROR": 33,
+    "SAFE_CORRECT": 17
+  },
+  "safe_correct_rate": 0.34,
+  "safe_unknown_ok_rate": 0.0,
+  "soft_error_rate": 0.66,
+  "unsafe_rate": 0.0,
+  "lane_distribution": {
+    "UNKNOWN": 13,
+    "NO_LLM": 17,
+    "null": 20
+  },
+  "lane_match_rate": 0.34,
+  "latency": {
+    "p50_ms": 6742.19,
+    "p95_ms": 10088.76,
+    "avg_ms": 5566.63,
+    "max_ms": 14248.51
+  },
+  "class_breakdown": {
+    "": {
+      "total": 50,
+      "safe_correct": 17,
+      "safe_unknown_ok": 0,
+      "soft_error": 33,
+      "unsafe": 0,
+      "safe_rate": 0.34,
+      "avg_latency_ms": 5566.627368927002
+    }
+  },
+  "top_10_error_signatures": {
+    "HTTP 502: <!DOCTYPE html>\n<html lang=\"en\">\n  <head": 20
+  },
+  "unsafe_cases": [],
+  "fix_plan": [
+    {
+      "priority": "P1-HIGH",
+      "class_id": "",
+      "issue_type": "HIGH_ERROR_RATE",
+      "count": 33,
+      "description": " has 66% soft error rate",
+      "root_cause": "Class  needs better handling",
+      "fix": "Review  lane routing logic"
+    },
+    {
+      "priority": "P2-MEDIUM",
+      "class_id": "",
+      "issue_type": "HIGH_LATENCY",
+      "avg_latency_ms": 5567.0,
+      "description": " average latency 5567ms exceeds 2s target",
+      "root_cause": "Query complexity or GPT routing",
+      "fix": "Optimize or route to NO_LLM where possible"
+    }
+  ]
+}

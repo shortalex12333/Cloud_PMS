@@ -1,0 +1,19 @@
+{
+  "suite_name": "capability_integration_v1",
+  "run_time": "2026-01-02T18:47:02.505072",
+  "total": 50,
+  "passed": 50,
+  "failed": 0,
+  "by_capability": {
+    "documents_search": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    }
+  },
+  "failures": [],
+  "avg_execution_ms": 102.28353023529053,
+  "max_execution_ms": 613.2428646087646,
+  "min_execution_ms": 66.71690940856934,
+  "pass_rate": 100.0
+}

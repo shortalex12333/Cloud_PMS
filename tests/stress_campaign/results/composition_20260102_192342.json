@@ -1,0 +1,324 @@
+{
+  "suite": "composition_integration_v1",
+  "run_time": "2026-01-02T19:23:42.855954",
+  "total": 20,
+  "passed": 20,
+  "failed": 0,
+  "results": [
+    {
+      "id": "comp-001",
+      "description": "Single part name entity",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 10,
+        "outcome": "success",
+        "time_ms": 443.57895851135254
+      }
+    },
+    {
+      "id": "comp-002",
+      "description": "Single location entity",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "inventory_by_location"
+        ],
+        "blocked": [],
+        "results": 10,
+        "outcome": "success",
+        "time_ms": 127.5019645690918
+      }
+    },
+    {
+      "id": "comp-003",
+      "description": "Single fault code entity",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "fault_by_fault_code"
+        ],
+        "blocked": [],
+        "results": 1,
+        "outcome": "success",
+        "time_ms": 92.82517433166504
+      }
+    },
+    {
+      "id": "comp-004",
+      "description": "Two entities, two capabilities",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "inventory_by_location",
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 20,
+        "outcome": "success",
+        "time_ms": 161.61298751831055
+      }
+    },
+    {
+      "id": "comp-005",
+      "description": "Parts and faults",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "fault_by_fault_code",
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 11,
+        "outcome": "success",
+        "time_ms": 84.40089225769043
+      }
+    },
+    {
+      "id": "comp-006",
+      "description": "Three entities, three capabilities",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "inventory_by_location",
+          "fault_by_fault_code",
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 20,
+        "outcome": "success",
+        "time_ms": 146.88515663146973
+      }
+    },
+    {
+      "id": "comp-007",
+      "description": "Two entities, same capability",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 10,
+        "outcome": "success",
+        "time_ms": 81.8789005279541
+      }
+    },
+    {
+      "id": "comp-008",
+      "description": "Blocked capability (work order)",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "work_order_by_id"
+        ],
+        "blocked": [
+          "work_order_by_id"
+        ],
+        "results": 0,
+        "outcome": "blocked",
+        "time_ms": 0.031948089599609375
+      }
+    },
+    {
+      "id": "comp-009",
+      "description": "Blocked capability (equipment)",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "equipment_by_name_or_model"
+        ],
+        "blocked": [
+          "equipment_by_name_or_model"
+        ],
+        "results": 0,
+        "outcome": "blocked",
+        "time_ms": 0.019073486328125
+      }
+    },
+    {
+      "id": "comp-010",
+      "description": "Mixed: one active, one blocked",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "work_order_by_id",
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [
+          "work_order_by_id"
+        ],
+        "results": 10,
+        "outcome": "partial",
+        "time_ms": 71.78020477294922
+      }
+    },
+    {
+      "id": "comp-011",
+      "description": "Unknown entity type",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [],
+        "blocked": [],
+        "results": 0,
+        "outcome": "unknown",
+        "time_ms": 0.011920928955078125
+      }
+    },
+    {
+      "id": "comp-012",
+      "description": "Empty entities",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [],
+        "blocked": [],
+        "results": 0,
+        "outcome": "unknown",
+        "time_ms": 0.0050067901611328125
+      }
+    },
+    {
+      "id": "comp-013",
+      "description": "Valid capability, no results",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 0,
+        "outcome": "empty",
+        "time_ms": 75.51884651184082
+      }
+    },
+    {
+      "id": "comp-014",
+      "description": "Document search",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "documents_search"
+        ],
+        "blocked": [],
+        "results": 1,
+        "outcome": "success",
+        "time_ms": 575.6409168243408
+      }
+    },
+    {
+      "id": "comp-015",
+      "description": "Graph node search",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "graph_node_search"
+        ],
+        "blocked": [],
+        "results": 4,
+        "outcome": "success",
+        "time_ms": 97.77307510375977
+      }
+    },
+    {
+      "id": "comp-016",
+      "description": "Exact part number",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [],
+        "results": 1,
+        "outcome": "success",
+        "time_ms": 69.84305381774902
+      }
+    },
+    {
+      "id": "comp-017",
+      "description": "Symptom search",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "fault_by_fault_code"
+        ],
+        "blocked": [],
+        "results": 1,
+        "outcome": "success",
+        "time_ms": 80.60312271118164
+      }
+    },
+    {
+      "id": "comp-018",
+      "description": "Equipment type in faults",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "fault_by_fault_code"
+        ],
+        "blocked": [],
+        "results": 2,
+        "outcome": "success",
+        "time_ms": 83.81104469299316
+      }
+    },
+    {
+      "id": "comp-019",
+      "description": "Three caps, one blocked",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "work_order_by_id",
+          "inventory_by_location",
+          "part_by_part_number_or_name"
+        ],
+        "blocked": [
+          "work_order_by_id"
+        ],
+        "results": 20,
+        "outcome": "partial",
+        "time_ms": 84.90586280822754
+      }
+    },
+    {
+      "id": "comp-020",
+      "description": "All capabilities blocked",
+      "passed": true,
+      "errors": [],
+      "actual": {
+        "capabilities": [
+          "work_order_by_id",
+          "equipment_by_name_or_model"
+        ],
+        "blocked": [
+          "work_order_by_id",
+          "equipment_by_name_or_model"
+        ],
+        "results": 0,
+        "outcome": "blocked",
+        "time_ms": 0.050067901611328125
+      }
+    }
+  ]
+}

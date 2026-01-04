@@ -1,0 +1,743 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-01-03T21:30:00Z",
+  "yacht_id_required": true,
+  "invariants": {
+    "yacht_id_filter": "MUST be applied as first constraint on every query",
+    "parameterization": "NO SQL string concatenation - params only",
+    "declared_columns_only": "Only columns in this registry may be queried",
+    "conjunction_enforcement": "conjunction_only columns NEVER queried in isolation",
+    "match_tier_order": ["EXACT", "ILIKE", "TRIGRAM", "VECTOR"]
+  },
+  "tables": {
+    "pms_equipment": {
+      "row_count": 15,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "name": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["EQUIPMENT_NAME", "FREE_TEXT"],
+          "canonical_rules": ["lowercase", "underscore_to_space", "trim"],
+          "index": "btree",
+          "samples": ["Main Engine Port", "Generator 1", "Watermaker"]
+        },
+        "code": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["EQUIPMENT_CODE"],
+          "canonical_rules": ["uppercase", "strip_hyphens"],
+          "index": "btree",
+          "samples": ["ME-P-001", "GEN-001", "WM-001"]
+        },
+        "description": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["MTU 16V4000 M93L main propulsion engine"]
+        },
+        "location": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["LOCATION"],
+          "canonical_rules": ["title_case"],
+          "index": "btree",
+          "samples": ["Engine Room", "Bridge"]
+        },
+        "manufacturer": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["MANUFACTURER"],
+          "canonical_rules": ["uppercase"],
+          "index": "btree",
+          "samples": ["MTU", "Kohler", "Sea Recovery"]
+        },
+        "model": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["MODEL"],
+          "canonical_rules": ["uppercase", "strip_spaces"],
+          "index": null,
+          "samples": ["16V4000 M93L", "99EFOZ"]
+        },
+        "serial_number": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SERIAL_NUMBER"],
+          "canonical_rules": ["uppercase", "strip_hyphens"],
+          "index": "btree_unique",
+          "samples": ["MTU-2018-4567-P", "KOH-2018-9901"]
+        },
+        "system_type": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SYSTEM_NAME"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["propulsion", "electrical", "water", "hvac"]
+        },
+        "criticality": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["PRIORITY"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["critical", "high", "medium", "low"]
+        },
+        "attention_flag": {
+          "datatype": "boolean",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["STATUS"],
+          "canonical_rules": [],
+          "index": "btree",
+          "samples": [true, false]
+        },
+        "attention_reason": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["SYMPTOM", "DESCRIPTION"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["High exhaust temperature detected"]
+        }
+      }
+    },
+    "pms_work_orders": {
+      "row_count": 10,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "title": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["WORK_ORDER_TITLE", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": "gin_trgm",
+          "samples": ["Main Engine Port 500hr Service", "Generator 1 Annual Service"]
+        },
+        "description": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Replace oil, fuel filters, check belt tension"]
+        },
+        "type": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["STATUS"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["scheduled", "corrective", "preventive"]
+        },
+        "priority": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["PRIORITY"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["routine", "urgent", "critical", "emergency"]
+        },
+        "status": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["STATUS"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["planned", "in_progress", "completed", "cancelled"]
+        },
+        "due_hours": {
+          "datatype": "integer",
+          "match_modes": ["EXACT", "RANGE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["HOURS"],
+          "canonical_rules": ["integer"],
+          "index": "btree",
+          "samples": [5000, 3500]
+        },
+        "frequency": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["500 hours", "annual", "monthly"]
+        }
+      }
+    },
+    "pms_faults": {
+      "row_count": 8,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "fault_code": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["FAULT_CODE"],
+          "canonical_rules": ["uppercase", "strip_hyphens", "normalize_spn_fmi"],
+          "index": "btree",
+          "samples": ["E047", "G012", "WM-003", "NAV-R01"]
+        },
+        "title": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SYMPTOM", "DESCRIPTION"],
+          "canonical_rules": ["lowercase"],
+          "index": "gin_trgm",
+          "samples": ["High Exhaust Temperature Port Engine", "Generator Low Coolant Level"]
+        },
+        "description": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Exhaust temperature on cylinder 8 reading 50C above normal"]
+        },
+        "severity": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SEVERITY"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["low", "medium", "high", "critical"]
+        }
+      }
+    },
+    "pms_suppliers": {
+      "row_count": 5,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "name": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SUPPLIER_NAME", "MANUFACTURER"],
+          "canonical_rules": ["lowercase"],
+          "index": "gin_trgm",
+          "samples": ["Mediterranean Marine Supply", "MTU Americas", "Riviera Yacht Parts"]
+        },
+        "contact_name": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["CONTACT"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Carlos Mendez", "Jean-Pierre Dubois"]
+        },
+        "email": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["CONTACT"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["orders@medmarine.example"]
+        }
+      }
+    },
+    "pms_purchase_orders": {
+      "row_count": 5,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "po_number": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["PO_NUMBER"],
+          "canonical_rules": ["uppercase", "strip_hyphens"],
+          "index": "btree_unique",
+          "samples": ["PO-2025-001", "PO-2025-002"]
+        },
+        "status": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["STATUS"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["draft", "ordered", "received", "cancelled"]
+        }
+      }
+    },
+    "pms_parts": {
+      "row_count": 250,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "part_number": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["PART_NUMBER"],
+          "canonical_rules": ["uppercase", "strip_hyphens", "strip_spaces"],
+          "index": "btree_unique",
+          "samples": ["ENG-0008-103", "PMP-0018-280", "FLT-0033-146"]
+        },
+        "name": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["PART_NAME", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": "gin_trgm",
+          "samples": ["Fuel Injector Nozzle", "Oil Filter", "Turbocharger Gasket Set"]
+        },
+        "manufacturer": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["MANUFACTURER"],
+          "canonical_rules": ["uppercase"],
+          "index": "btree",
+          "samples": ["MTU", "Volvo Penta", "Grundfos", "Caterpillar"]
+        },
+        "description": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Fuel Injector Nozzle for V16 engine"]
+        },
+        "category": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SYSTEM_NAME", "LOCATION"],
+          "canonical_rules": ["title_case"],
+          "index": "btree",
+          "samples": ["Engine Room", "Galley", "Interior", "Safety"]
+        }
+      }
+    },
+    "pms_inventory_stock": {
+      "row_count": 250,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "location": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["LOCATION"],
+          "canonical_rules": ["title_case", "normalize_location_codes"],
+          "index": "btree",
+          "samples": ["Yacht", "Agent - Monaco", "Warehouse", "Box 2D"]
+        },
+        "quantity": {
+          "datatype": "integer",
+          "match_modes": ["EXACT", "RANGE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["QUANTITY"],
+          "canonical_rules": ["integer"],
+          "index": "btree",
+          "samples": [11, 7, 18, 0]
+        },
+        "min_quantity": {
+          "datatype": "integer",
+          "match_modes": ["RANGE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["QUANTITY"],
+          "canonical_rules": ["integer"],
+          "index": null,
+          "samples": [4, 6]
+        }
+      }
+    },
+    "pms_equipment_parts_bom": {
+      "row_count": 15,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "notes": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["8 injectors for V16 engine", "Twin turbo gasket sets"]
+        },
+        "quantity_required": {
+          "datatype": "integer",
+          "match_modes": ["EXACT", "RANGE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["QUANTITY"],
+          "canonical_rules": ["integer"],
+          "index": null,
+          "samples": [8, 2, 1]
+        }
+      }
+    },
+    "pms_purchase_order_items": {
+      "row_count": 12,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "description": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION", "PART_NAME"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Fuel Injector Nozzles for main engines"]
+        },
+        "unit_price": {
+          "datatype": "numeric",
+          "match_modes": ["EXACT", "RANGE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["PRICE"],
+          "canonical_rules": ["decimal"],
+          "index": null,
+          "samples": [485.00, 320.00, 145.00]
+        }
+      }
+    },
+    "graph_nodes": {
+      "row_count": 106,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "label": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["NODE_LABEL", "EQUIPMENT_NAME", "SYSTEM_NAME"],
+          "canonical_rules": ["lowercase", "underscore_to_space"],
+          "index": "gin_trgm",
+          "samples": ["fuel_system", "main_engine_1", "fresh_water_system"]
+        },
+        "normalized_label": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["NODE_LABEL"],
+          "canonical_rules": ["lowercase", "underscore_format"],
+          "index": "btree",
+          "samples": ["fuel_system", "actisense_ngt_1"]
+        },
+        "node_type": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["NODE_TYPE"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["system", "equipment", "component", "part"]
+        }
+      }
+    },
+    "graph_edges": {
+      "row_count": 68,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "edge_type": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["EDGE_TYPE"],
+          "canonical_rules": ["uppercase"],
+          "index": "btree",
+          "samples": ["PART_OF", "CONNECTED_TO", "CONTAINS"]
+        }
+      }
+    },
+    "search_document_chunks": {
+      "row_count": 4036,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "content": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "VECTOR"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DOCUMENT_CONTENT", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": "gin_trgm",
+          "samples": ["PDF content, procedures"]
+        },
+        "section_title": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SECTION_NAME"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Engine Maintenance", "Safety Procedures"]
+        },
+        "system_tag": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SYSTEM_NAME"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["propulsion", "electrical"]
+        },
+        "doc_type": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["DOC_TYPE"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["manual", "procedure", "schematic"]
+        }
+      }
+    },
+    "entity_staging": {
+      "row_count": 904,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "entity_value": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["FREE_TEXT", "EQUIPMENT_NAME"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Covers Awnings Reference"]
+        },
+        "canonical_label": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["NODE_LABEL"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["Awnings Reference Manual"]
+        }
+      }
+    },
+    "symptom_aliases": {
+      "row_count": 37,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "alias": {
+          "datatype": "text",
+          "match_modes": ["ILIKE", "TRIGRAM"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SYMPTOM", "FREE_TEXT"],
+          "canonical_rules": ["lowercase"],
+          "index": "gin_trgm",
+          "samples": ["shaking", "shuddering", "rough running", "overheating"]
+        },
+        "symptom_code": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SYMPTOM"],
+          "canonical_rules": ["uppercase"],
+          "index": "btree",
+          "samples": ["VIBRATION", "OVERHEATING", "NOISE"]
+        }
+      }
+    },
+    "search_fault_code_catalog": {
+      "row_count": 2,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "code": {
+          "datatype": "text",
+          "match_modes": ["EXACT", "ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["FAULT_CODE"],
+          "canonical_rules": ["uppercase", "normalize_spn_fmi"],
+          "index": "btree",
+          "samples": ["1234", "1523"]
+        },
+        "name": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["FAULT_CODE", "DESCRIPTION"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["Low Fuel Pressure", "Fuel Injector Malfunction"]
+        },
+        "severity": {
+          "datatype": "text",
+          "match_modes": ["EXACT"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["SEVERITY"],
+          "canonical_rules": ["lowercase"],
+          "index": "btree",
+          "samples": ["warning", "critical", "info"]
+        },
+        "symptoms": {
+          "datatype": "array",
+          "match_modes": ["CONTAINS"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["SYMPTOM"],
+          "canonical_rules": ["lowercase_array"],
+          "index": "gin",
+          "samples": [["rough engine", "black smoke"], ["engine misfiring"]]
+        },
+        "causes": {
+          "datatype": "array",
+          "match_modes": ["CONTAINS"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["DESCRIPTION"],
+          "canonical_rules": ["lowercase_array"],
+          "index": "gin",
+          "samples": [["clogged fuel filters", "faulty fuel pump"]]
+        },
+        "related_parts": {
+          "datatype": "array",
+          "match_modes": ["CONTAINS"],
+          "isolated_ok": false,
+          "conjunction_only": true,
+          "entity_types": ["PART_NAME"],
+          "canonical_rules": ["lowercase_array"],
+          "index": "gin",
+          "samples": [["fuel filter", "fuel pump", "injector"]]
+        }
+      }
+    },
+    "maintenance_facts": {
+      "row_count": 4,
+      "yacht_id_column": "yacht_id",
+      "primary_key": "id",
+      "columns": {
+        "action": {
+          "datatype": "text",
+          "match_modes": ["ILIKE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["DESCRIPTION"],
+          "canonical_rules": ["lowercase"],
+          "index": null,
+          "samples": ["service", "replace", "inspect"]
+        },
+        "interval_hours": {
+          "datatype": "integer",
+          "match_modes": ["EXACT", "RANGE"],
+          "isolated_ok": true,
+          "conjunction_only": false,
+          "entity_types": ["HOURS"],
+          "canonical_rules": ["integer"],
+          "index": null,
+          "samples": [250, 500, 1000]
+        }
+      }
+    }
+  },
+  "canonical_normalization_rules": {
+    "lowercase": "value.lower()",
+    "uppercase": "value.upper()",
+    "strip_hyphens": "value.replace('-', '')",
+    "strip_spaces": "value.replace(' ', '')",
+    "underscore_to_space": "value.replace('_', ' ')",
+    "title_case": "value.title()",
+    "integer": "int(value)",
+    "decimal": "Decimal(value)",
+    "normalize_spn_fmi": "Parse SPN/FMI format to standard code",
+    "normalize_location_codes": "box2d -> Box 2D, bx2d -> Box 2D"
+  },
+  "conjunction_rules": {
+    "description": "conjunction_only=true columns require at least one isolated_ok column in the same query",
+    "examples": [
+      {"valid": ["name", "manufacturer"], "reason": "name is isolated_ok, manufacturer is conjunction_only - valid combination"},
+      {"invalid": ["manufacturer"], "reason": "manufacturer alone is conjunction_only - not allowed"},
+      {"invalid": ["description", "manufacturer"], "reason": "both are conjunction_only - at least one isolated_ok required"}
+    ]
+  },
+  "match_tier_scoring": {
+    "EXACT": {"base_score": 1000, "tier": 0},
+    "ILIKE": {"base_score": 500, "tier": 1},
+    "TRIGRAM": {"base_score": 300, "tier": 2},
+    "VECTOR": {"base_score": 200, "tier": 3},
+    "CONTAINS": {"base_score": 400, "tier": 1}
+  }
+}

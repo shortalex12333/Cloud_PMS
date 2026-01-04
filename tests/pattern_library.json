@@ -1,0 +1,915 @@
+{
+  "collision_clusters": {
+    "by_verb": {
+      "trace": [
+        {
+          "expected": "trace_related_equipment",
+          "predicted": "trace_related_faults",
+          "query": "trace related equipment to MID 144 PSID 25"
+        },
+        {
+          "expected": "trace_related_equipment",
+          "predicted": "trace_related_faults",
+          "query": "trace related equiiment to SPN 94 FMI 1"
+        }
+      ],
+      "add": [
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note to work order air filter repair"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note air handler checked ok"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note and attach photo to work order"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note and attach photo to work order"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note to work order alternatorreapir"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note to work order transformer repair"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": " - add note to work order centrifuge repair"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note to work order and add to handover"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note to work order and add to handover"
+        },
+        {
+          "expected": "add_note_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add note to work order and add to handover"
+        },
+        {
+          "expected": "add_part_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add part to work order injector"
+        },
+        {
+          "expected": "add_part_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add gasket to work order"
+        },
+        {
+          "expected": "add_part_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add  part  to  work  order  membrane"
+        },
+        {
+          "expected": "add_part_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add zinc to work order"
+        },
+        {
+          "expected": "add_part_to_work_order",
+          "predicted": "add_to_handover",
+          "query": "add thermostat towork order"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add part to handover belt"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add gasket to handover notes"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add predictive insight to handover oil filter"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add document to handover parts manual"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add document section to handover"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add certificate"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add document to handoveroperator manual"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add certificate"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add document to handover procedure"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add  certificate"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "add_to_handover",
+          "query": "add  document  to  handover  ISM  document"
+        },
+        {
+          "expected": "add_note",
+          "predicted": "add_to_handover",
+          "query": "add note HVAC checked"
+        },
+        {
+          "expected": "add_note",
+          "predicted": "add_to_handover",
+          "query": "add note engine room all normal"
+        },
+        {
+          "expected": "add_note",
+          "predicted": "add_to_handover",
+          "query": "add note engine room allnormal"
+        },
+        {
+          "expected": "add_note",
+          "predicted": "add_to_handover",
+          "query": "add  noet  genset  checked"
+        },
+        {
+          "expected": "add_note",
+          "predicted": "add_to_handover",
+          "query": "add note ER all normal"
+        },
+        {
+          "expected": "add_note",
+          "predicted": "add_to_handover",
+          "query": "add note HVAC checked"
+        }
+      ],
+      "attach": [
+        {
+          "expected": "attach_photo_to_work_order",
+          "predicted": "attach_document_to_work_order",
+          "query": "attach photo to work order"
+        },
+        {
+          "expected": "attach_photo_to_work_order",
+          "predicted": "attach_document_to_work_order",
+          "query": "attach photo to work order"
+        },
+        {
+          "expected": "attach_photo_to_work_order",
+          "predicted": "attach_document_to_work_order",
+          "query": "attach photo to work order"
+        }
+      ],
+      "show": [
+        {
+          "expected": "none_search_only",
+          "predicted": "show_tasks_due",
+          "query": "show tasks overdue"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_tasks_due",
+          "query": "show overdue tasks for watermaker"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_tasks_due",
+          "query": "show overdue tasks for  attery charger"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_tasks_due",
+          "query": "show tasks overdue..."
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show all linked parts capstan"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show all linked documents bilge pump"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show all linked work orders compressor"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show linked parts for Rule chiller"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show all linked documents compressor"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show all linkeddocuments heater"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show linked parts for Navico chiller"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "show all linked parts bow thruster"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "view_linked_entities",
+          "query": "\u2022 show all linked work orders purifier"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "search_documents",
+          "query": "show documents for bow thruster"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "search_documents",
+          "query": "show documents for centrifuge..."
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "search_documents",
+          "query": "\nshow documents for transformer"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_equipment_overview",
+          "query": "show parts list circulation pump"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_equipment_overview",
+          "query": "\nshow parts list jet ski"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_equipment_overview",
+          "query": "show tsaks overdue"
+        },
+        {
+          "expected": "view_linked_entities",
+          "predicted": "show_equipment_history",
+          "query": "show fault history circulation pump"
+        },
+        {
+          "expected": "view_linked_entities",
+          "predicted": "show_equipment_history",
+          "query": "show fault history radar"
+        },
+        {
+          "expected": "view_linked_entities",
+          "predicted": "show_equipment_history",
+          "query": "show fault history exhaast fan"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "list_work_orders",
+          "query": "show work orders stabilizer"
+        },
+        {
+          "expected": "show_storage_location",
+          "predicted": "show_equipment_overview",
+          "query": "show where anode is stored"
+        },
+        {
+          "expected": "show_storage_location",
+          "predicted": "show_equipment_overview",
+          "query": "show where seal isstored"
+        },
+        {
+          "expected": "show_storage_location",
+          "predicted": "show_equipment_overview",
+          "query": "show where ocntactor is stored"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_certificates",
+          "query": "show expiring certificates"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_certificates",
+          "query": "show certificates expiring last trip"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_certificates",
+          "query": "show expiring certificates..."
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_certificates",
+          "query": "show certificates expiring last trip"
+        },
+        {
+          "expected": "view_linked_entities",
+          "predicted": "show_equipment_overview",
+          "query": "show all likned faults jet ski"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "show_certificate_expiry",
+          "query": "show certificctes expiring before charter"
+        },
+        {
+          "expected": "show_hours_of_rest",
+          "predicted": "show_equipment_overview",
+          "query": "show huors of rest"
+        }
+      ],
+      "create": [
+        {
+          "expected": "create_work_order",
+          "predicted": "create_task",
+          "query": "create maintenance task for watermaker"
+        },
+        {
+          "expected": "create_work_order",
+          "predicted": "create_task",
+          "query": "create maintenance task for generator"
+        }
+      ],
+      "search": [
+        {
+          "expected": "none_search_only",
+          "predicted": "search_documents",
+          "query": "search document pages cutting out"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "search_documents",
+          "query": "search document pages sparking"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "search_documents",
+          "query": "search  document  pages  rattling"
+        }
+      ],
+      "log": [
+        {
+          "expected": "none_search_only",
+          "predicted": "log_hours_of_rest",
+          "query": "log part usage filter element"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "log_hours_of_rest",
+          "query": "log usage 5 gasket"
+        }
+      ],
+      "export": [
+        {
+          "expected": "export_handover",
+          "predicted": "export_summary",
+          "query": "export handover"
+        },
+        {
+          "expected": "export_handover",
+          "predicted": "export_summary",
+          "query": "export handover PDF"
+        },
+        {
+          "expected": "export_handover",
+          "predicted": "export_summary",
+          "query": "export handover"
+        },
+        {
+          "expected": "export_handover",
+          "predicted": "export_summary",
+          "query": "export hadnover"
+        },
+        {
+          "expected": "export_handover",
+          "predicted": "export_summary",
+          "query": "\nexport handover PDF"
+        },
+        {
+          "expected": "export_handover",
+          "predicted": "export_summary",
+          "query": "export handover PDF..."
+        },
+        {
+          "expected": "export_compliance_logs",
+          "predicted": "export_summary",
+          "query": "export logs"
+        },
+        {
+          "expected": "export_compliance_logs",
+          "predicted": "export_summary",
+          "query": "export compliance logs"
+        },
+        {
+          "expected": "export_compliance_logs",
+          "predicted": "export_summary",
+          "query": "export logs"
+        },
+        {
+          "expected": "export_compliance_logs",
+          "predicted": "export_summary",
+          "query": "export  logs"
+        },
+        {
+          "expected": "export_compliance_logs",
+          "predicted": "export_summary",
+          "query": "\u2022 export compliance logs"
+        },
+        {
+          "expected": "export_compliance_logs",
+          "predicted": "export_summary",
+          "query": "export logs"
+        }
+      ],
+      "summarise": [
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise document for handover survey report"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise document section parts manual"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise dooument for handover service manual"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise document for handover drawing"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise document and add to handover"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise document and add to handover"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "generate_summary",
+          "query": "summarise document and add to handover"
+        }
+      ],
+      "update": [
+        {
+          "expected": "none_search_only",
+          "predicted": "update_work_order",
+          "query": "update hours of rest"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "update_work_order",
+          "query": "update HOR ETO"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "update_work_order",
+          "query": "update HOR ETO"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "update_work_order",
+          "query": "update hours of rest and export logs"
+        },
+        {
+          "expected": "update_certificate_metadata",
+          "predicted": "update_work_order",
+          "query": "update certifciate metadata"
+        },
+        {
+          "expected": "update_certificate_metadata",
+          "predicted": "update_work_order",
+          "query": "update certificcte metadata"
+        }
+      ],
+      "generate": [
+        {
+          "expected": "generate_audit_pack",
+          "predicted": "generate_summary",
+          "query": "generate audit pack"
+        },
+        {
+          "expected": "generate_audit_pack",
+          "predicted": "generate_summary",
+          "query": "generate ISM audit pack"
+        },
+        {
+          "expected": "generate_audit_pack",
+          "predicted": "generate_summary",
+          "query": "generate IS Maudit pack"
+        },
+        {
+          "expected": "generate_audit_pack",
+          "predicted": "generate_summary",
+          "query": "generate audit pcak"
+        },
+        {
+          "expected": "generate_audit_pack",
+          "predicted": "generate_summary",
+          "query": "generate ISM audit pack"
+        }
+      ],
+      "upload": [
+        {
+          "expected": "upload_certificate_document",
+          "predicted": "upload_document",
+          "query": "upload certificate document"
+        },
+        {
+          "expected": "upload_certificate_document",
+          "predicted": "upload_document",
+          "query": "upload certificate document"
+        },
+        {
+          "expected": "upload_certificate_document",
+          "predicted": "upload_document",
+          "query": "upload certificate document"
+        },
+        {
+          "expected": "upload_certificate_document",
+          "predicted": "upload_document",
+          "query": "upload certificate document"
+        },
+        {
+          "expected": "upload_certificate_document",
+          "predicted": "upload_document",
+          "query": "upload  certificate  document"
+        }
+      ],
+      "open": [
+        {
+          "expected": "open_document",
+          "predicted": "open_equipment_card",
+          "query": "open document ISM document gyro stabilizer"
+        },
+        {
+          "expected": "open_document",
+          "predicted": "open_equipment_card",
+          "query": "open document P&ID gen"
+        },
+        {
+          "expected": "open_document",
+          "predicted": "open_equipment_card",
+          "query": "open document ISM document radar..."
+        },
+        {
+          "expected": "open_document",
+          "predicted": "open_equipment_card",
+          "query": "open document parts manual and add section to handover"
+        },
+        {
+          "expected": "open_document",
+          "predicted": "open_equipment_card",
+          "query": "open document certificate and add section to handover"
+        },
+        {
+          "expected": "open_document",
+          "predicted": "open_equipment_card",
+          "query": "open document P&ID and add section to handover"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "open_equipment_card",
+          "query": "open document page 6"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "open_equipment_card",
+          "query": "\topen document page 2"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "open_equipment_card",
+          "query": "\topen document page 6"
+        }
+      ],
+      "link": [
+        {
+          "expected": "none_search_only",
+          "predicted": "link_document_to_equipment",
+          "query": "link document to fault E122"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "link_document_to_equipment",
+          "query": "link document to fault Alarm 122..."
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "link_document_to_equipment",
+          "query": "link document to fault SPN 110 FMI 3"
+        }
+      ],
+      "compare": [
+        {
+          "expected": "none_search_only",
+          "predicted": "compare_fleet_equipment",
+          "query": "compare document sections"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "compare_fleet_equipment",
+          "query": "compare document sections..."
+        }
+      ],
+      "detect": [
+        {
+          "expected": "none_search_only",
+          "predicted": "detect_anomaly",
+          "query": "detect document anomalies"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "detect_anomaly",
+          "query": "detect document anomalies"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "detect_anomaly",
+          "query": "detect odcument anomalies"
+        },
+        {
+          "expected": "none_search_only",
+          "predicted": "detect_anomaly",
+          "query": "detect document anomalies"
+        }
+      ]
+    },
+    "top_pairs": [
+      [
+        [
+          "none_search_only",
+          "add_to_handover"
+        ],
+        11
+      ],
+      [
+        [
+          "add_note_to_work_order",
+          "add_to_handover"
+        ],
+        10
+      ],
+      [
+        [
+          "none_search_only",
+          "view_linked_entities"
+        ],
+        9
+      ],
+      [
+        [
+          "none_search_only",
+          "generate_summary"
+        ],
+        7
+      ],
+      [
+        [
+          "none_search_only",
+          "search_documents"
+        ],
+        6
+      ],
+      [
+        [
+          "add_note",
+          "add_to_handover"
+        ],
+        6
+      ],
+      [
+        [
+          "export_handover",
+          "export_summary"
+        ],
+        6
+      ],
+      [
+        [
+          "export_compliance_logs",
+          "export_summary"
+        ],
+        6
+      ],
+      [
+        [
+          "open_document",
+          "open_equipment_card"
+        ],
+        6
+      ],
+      [
+        [
+          "add_part_to_work_order",
+          "add_to_handover"
+        ],
+        5
+      ],
+      [
+        [
+          "generate_audit_pack",
+          "generate_summary"
+        ],
+        5
+      ],
+      [
+        [
+          "upload_certificate_document",
+          "upload_document"
+        ],
+        5
+      ],
+      [
+        [
+          "none_search_only",
+          "show_tasks_due"
+        ],
+        4
+      ],
+      [
+        [
+          "none_search_only",
+          "update_work_order"
+        ],
+        4
+      ],
+      [
+        [
+          "none_search_only",
+          "show_certificates"
+        ],
+        4
+      ]
+    ]
+  },
+  "fn_patterns": {
+    "noise_prefixes": [
+      {
+        "prefix": "so",
+        "count": 15,
+        "examples": [
+          "so like create work order for windlass its got rat",
+          "so like create work order for gyro stabilizer its ",
+          "so like create work order for watermaker its got i"
+        ]
+      },
+      {
+        "prefix": "right",
+        "count": 3,
+        "examples": [
+          "right so diagnose why HVAC is overheating",
+          "right so diagnose why autopilot is intermittent",
+          "right so diagnose why windlass is high temperature"
+        ]
+      },
+      {
+        "prefix": "fw:",
+        "count": 7,
+        "examples": [
+          "FW: Parts needed\n\ncheck stock cooler",
+          "FW: Parts needed\n\ncheck stock breaker",
+          "FW: Parts needed\n\ncheck stock zinc"
+        ]
+      },
+      {
+        "prefix": "ok",
+        "count": 4,
+        "examples": [
+          "ok so check stock on the uh seal",
+          "ok so check stock on the uh anode",
+          "ok so check stock on the uh turbo"
+        ]
+      },
+      {
+        "prefix": "re:",
+        "count": 3,
+        "examples": [
+          "RE: circulation pump\n\nshow manual section surging",
+          "RE: stabilizer\n\nshow manual section cutting out",
+          "RE: watermaker\n\nshow manual section noise"
+        ]
+      }
+    ],
+    "unrecognized_verbs": [
+      {
+        "verb": ">>>",
+        "count": 4,
+        "expected_actions": [
+          "diagnose_fault"
+        ],
+        "examples": [
+          ">>> gyro stabilizer\n>>> sparking\ndiagnose this",
+          ">>> windlass\n>>> cutting out\ndiagnose this",
+          ">>> autopilot\n>>> cutting out\ndiagnose this"
+        ]
+      },
+      {
+        "verb": "from:",
+        "count": 3,
+        "expected_actions": [
+          "diagnose_fault"
+        ],
+        "examples": [
+          "From: Engineer\nSubject: stabilizer\n\ndiagnose hunti",
+          "From: Engineer\nSubject: bilge pump\n\ndiagnose vibra",
+          "From: Engineer\nSubject: fuel pump\n\ndiagnose rattli"
+        ]
+      },
+      {
+        "verb": "-",
+        "count": 3,
+        "expected_actions": [
+          "create_work_order"
+        ],
+        "examples": [
+          "- tender fault\n- create work order",
+          "- stern thruster fault\n- create work order",
+          "- HVAC fault\n- create work order"
+        ]
+      },
+      {
+        "verb": "tag",
+        "count": 2,
+        "expected_actions": [
+          "none_search_only"
+        ],
+        "examples": [
+          "tag document AC unit",
+          "\ttag document HVAC"
+        ]
+      },
+      {
+        "verb": "extract",
+        "count": 2,
+        "expected_actions": [
+          "none_search_only"
+        ],
+        "examples": [
+          "extract procedures from document",
+          "extract procedures from docuemnt"
+        ]
+      }
+    ]
+  },
+  "entity_extraction": {
+    "counts": {},
+    "examples": {}
+  },
+  "summary": {
+    "total_collisions": 130,
+    "total_fn": 59,
+    "collision_verb_count": 16,
+    "noise_prefix_count": 5,
+    "unrecognized_verb_count": 5
+  }
+}

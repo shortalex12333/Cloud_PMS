@@ -1,0 +1,87 @@
+{
+  "suite_name": "pipeline_1500_chaos",
+  "run_time": "2026-01-02T21:18:23.112288",
+  "total_time_s": 0.13,
+  "total_tests": 1500,
+  "outcomes": {
+    "SAFE_CORRECT": 1168,
+    "SAFE_UNKNOWN_OK": 252,
+    "SOFT_ERROR": 80
+  },
+  "safe_rate": 0.9467,
+  "unsafe_rate": 0.0,
+  "lanes": {
+    "BLOCKED": 757,
+    "UNKNOWN": 252,
+    "GPT": 148,
+    "RULES_ONLY": 11,
+    "NO_LLM": 332
+  },
+  "latency": {
+    "p50_ms": 0.07,
+    "p95_ms": 0.14,
+    "avg_ms": 0.09,
+    "max_ms": 9.65
+  },
+  "class_breakdown": {
+    "paste_dumps": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.030508041381835938
+    },
+    "domain_drift": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.12066459655761719
+    },
+    "injection_realistic": {
+      "total": 250,
+      "safe": 250,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.04860210418701172
+    },
+    "command_camouflage": {
+      "total": 200,
+      "safe": 145,
+      "unsafe": 0,
+      "soft_err": 55,
+      "safe_rate": 0.725,
+      "avg_ms": 0.18569707870483398
+    },
+    "abbreviations": {
+      "total": 200,
+      "safe": 175,
+      "unsafe": 0,
+      "soft_err": 25,
+      "safe_rate": 0.875,
+      "avg_ms": 0.058400630950927734
+    },
+    "fault_code_lookups": {
+      "total": 200,
+      "safe": 200,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.06799459457397461
+    },
+    "multi_intent_collision": {
+      "total": 150,
+      "safe": 150,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.12192726135253906
+    }
+  },
+  "unsafe_cases": [],
+  "error_signatures": {},
+  "fix_plan": []
+}

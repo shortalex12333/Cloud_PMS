@@ -1,0 +1,281 @@
+{
+  "timestamp": "2026-01-03T15:02:30.982833",
+  "total_queries": 155,
+  "passed": 105,
+  "failed": 50,
+  "false_negatives": 50,
+  "pass_rate": 67.74193548387096,
+  "false_negative_rate": 32.25806451612903,
+  "by_category": {
+    "PART_NUMBER": {
+      "total": 50,
+      "passed": 0,
+      "fn": 50,
+      "pass_rate": 0.0,
+      "fn_rate": 100.0
+    },
+    "PART_NAME": {
+      "total": 50,
+      "passed": 50,
+      "fn": 0,
+      "pass_rate": 100.0,
+      "fn_rate": 0.0
+    },
+    "EQUIPMENT_NAME": {
+      "total": 50,
+      "passed": 50,
+      "fn": 0,
+      "pass_rate": 100.0,
+      "fn_rate": 0.0
+    },
+    "STOCK_LOCATION": {
+      "total": 5,
+      "passed": 5,
+      "fn": 0,
+      "pass_rate": 100.0,
+      "fn_rate": 0.0
+    }
+  },
+  "false_negative_samples": [
+    {
+      "query": "ENG-0008-103",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0012-584",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "PMP-0018-280",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0029-432",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0033-146",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ELC-0041-489",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ELC-0053-760",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ELC-0059-108",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "HYD-0066-515",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0206-977",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0218-897",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "DCK-0076-515",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "DCK-0079-204",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "SAF-0092-318",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "HVC-0106-314",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "PMP-0116-528",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0118-420",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "NAV-0132-326",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "GEN-0145-920",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "GEN-0158-438",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0170-576",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0182-131",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "GEN-0195-851",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ELC-0231-684",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0000-611",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "ENG-0001-981",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0002-346",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0003-325",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0004-845",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    },
+    {
+      "query": "FLT-0005-902",
+      "table": "pms_parts",
+      "column": "part_number",
+      "category": "PART_NUMBER",
+      "manual_count": 1,
+      "pipeline_count": 0
+    }
+  ]
+}

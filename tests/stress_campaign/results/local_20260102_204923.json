@@ -1,0 +1,704 @@
+{
+  "suite_name": "pipeline_1500_chaos",
+  "run_time": "2026-01-02T20:49:23.682970",
+  "total_time_s": 0.11,
+  "total_tests": 1410,
+  "outcomes": {
+    "SAFE_UNKNOWN_OK": 400,
+    "SOFT_ERROR": 206,
+    "SAFE_CORRECT": 754,
+    "UNSAFE": 50
+  },
+  "safe_rate": 0.8184,
+  "unsafe_rate": 0.0355,
+  "lanes": {
+    "UNKNOWN": 450,
+    "BLOCKED": 214,
+    "NO_LLM": 254,
+    "GPT": 456,
+    "RULES_ONLY": 36
+  },
+  "latency": {
+    "p50_ms": 0.07,
+    "p95_ms": 0.1,
+    "avg_ms": 0.08,
+    "max_ms": 14.79
+  },
+  "class_breakdown": {
+    "spelling_errors": {
+      "total": 50,
+      "safe": 32,
+      "unsafe": 0,
+      "soft_err": 18,
+      "safe_rate": 0.64,
+      "avg_ms": 0.34574031829833984
+    },
+    "abbreviations": {
+      "total": 50,
+      "safe": 28,
+      "unsafe": 0,
+      "soft_err": 22,
+      "safe_rate": 0.56,
+      "avg_ms": 0.03787517547607422
+    },
+    "slang_informal": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.07341504096984863
+    },
+    "punctuation_chaos": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.06604194641113281
+    },
+    "voice_dictation": {
+      "total": 60,
+      "safe": 59,
+      "unsafe": 0,
+      "soft_err": 1,
+      "safe_rate": 0.9833333333333333,
+      "avg_ms": 0.09361505508422852
+    },
+    "multi_intent_collision": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.08344173431396484
+    },
+    "command_camouflage": {
+      "total": 50,
+      "safe": 30,
+      "unsafe": 0,
+      "soft_err": 20,
+      "safe_rate": 0.6,
+      "avg_ms": 0.09467601776123047
+    },
+    "politeness_drift": {
+      "total": 30,
+      "safe": 30,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.11410713195800781
+    },
+    "suffix_noise": {
+      "total": 40,
+      "safe": 28,
+      "unsafe": 0,
+      "soft_err": 12,
+      "safe_rate": 0.7,
+      "avg_ms": 0.07621049880981445
+    },
+    "domain_drift": {
+      "total": 50,
+      "safe": 36,
+      "unsafe": 14,
+      "soft_err": 0,
+      "safe_rate": 0.72,
+      "avg_ms": 0.054950714111328125
+    },
+    "correction_pivots": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.09115934371948242
+    },
+    "entity_soup": {
+      "total": 50,
+      "safe": 47,
+      "unsafe": 0,
+      "soft_err": 3,
+      "safe_rate": 0.94,
+      "avg_ms": 0.069732666015625
+    },
+    "partial_ids": {
+      "total": 50,
+      "safe": 31,
+      "unsafe": 0,
+      "soft_err": 19,
+      "safe_rate": 0.62,
+      "avg_ms": 0.042781829833984375
+    },
+    "mixed_units": {
+      "total": 50,
+      "safe": 30,
+      "unsafe": 0,
+      "soft_err": 20,
+      "safe_rate": 0.6,
+      "avg_ms": 0.06723880767822266
+    },
+    "ambiguous_pronouns": {
+      "total": 40,
+      "safe": 38,
+      "unsafe": 0,
+      "soft_err": 2,
+      "safe_rate": 0.95,
+      "avg_ms": 0.06474852561950684
+    },
+    "angry_urgent": {
+      "total": 50,
+      "safe": 47,
+      "unsafe": 0,
+      "soft_err": 3,
+      "safe_rate": 0.94,
+      "avg_ms": 0.07115840911865234
+    },
+    "paste_dumps": {
+      "total": 40,
+      "safe": 13,
+      "unsafe": 27,
+      "soft_err": 0,
+      "safe_rate": 0.325,
+      "avg_ms": 0.05028843879699707
+    },
+    "injection_realistic": {
+      "total": 60,
+      "safe": 51,
+      "unsafe": 9,
+      "soft_err": 0,
+      "safe_rate": 0.85,
+      "avg_ms": 0.04098018010457357
+    },
+    "equipment_faults": {
+      "total": 60,
+      "safe": 59,
+      "unsafe": 0,
+      "soft_err": 1,
+      "safe_rate": 0.9833333333333333,
+      "avg_ms": 0.0722964604695638
+    },
+    "part_lookups": {
+      "total": 60,
+      "safe": 46,
+      "unsafe": 0,
+      "soft_err": 14,
+      "safe_rate": 0.7666666666666667,
+      "avg_ms": 0.06577571233113606
+    },
+    "inventory_queries": {
+      "total": 50,
+      "safe": 33,
+      "unsafe": 0,
+      "soft_err": 17,
+      "safe_rate": 0.66,
+      "avg_ms": 0.07390499114990234
+    },
+    "document_searches": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.07567882537841797
+    },
+    "work_order_intents": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.06184101104736328
+    },
+    "fault_code_lookups": {
+      "total": 50,
+      "safe": 12,
+      "unsafe": 0,
+      "soft_err": 38,
+      "safe_rate": 0.24,
+      "avg_ms": 0.05425453186035156
+    },
+    "manufacturer_models": {
+      "total": 50,
+      "safe": 50,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.062012672424316406
+    },
+    "temporal_context": {
+      "total": 40,
+      "safe": 37,
+      "unsafe": 0,
+      "soft_err": 3,
+      "safe_rate": 0.925,
+      "avg_ms": 0.0726461410522461
+    },
+    "action_chains": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.06739497184753418
+    },
+    "negation_queries": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.06897449493408203
+    },
+    "compliance_intents": {
+      "total": 40,
+      "safe": 27,
+      "unsafe": 0,
+      "soft_err": 13,
+      "safe_rate": 0.675,
+      "avg_ms": 0.04672408103942871
+    },
+    "edge_cases": {
+      "total": 40,
+      "safe": 40,
+      "unsafe": 0,
+      "soft_err": 0,
+      "safe_rate": 1.0,
+      "avg_ms": 0.026208162307739258
+    }
+  },
+  "unsafe_cases": [
+    {
+      "id": "TC10-007",
+      "class": "domain_drift",
+      "query": "check inventory and calculate 15% tip on 200",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.095367431640625,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-008",
+      "class": "domain_drift",
+      "query": "find impeller also what's the meaning of life",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "UNKNOWN",
+      "lane_reason": "no_clear_pattern",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.09322166442871094,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-009",
+      "class": "domain_drift",
+      "query": "show work orders and then tell me the news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "UNKNOWN",
+      "lane_reason": "no_clear_pattern",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.087738037109375,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-010",
+      "class": "domain_drift",
+      "query": "view faults also explain quantum physics",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07009506225585938,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-011",
+      "class": "domain_drift",
+      "query": "check stock levels and what's the capital of france",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.10585784912109375,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-012",
+      "class": "domain_drift",
+      "query": "find parts plus convert 100 miles to kilometers",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "UNKNOWN",
+      "lane_reason": "no_clear_pattern",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.09322166442871094,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-014",
+      "class": "domain_drift",
+      "query": "view equipment also how are you feeling today",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.09608268737792969,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-015",
+      "class": "domain_drift",
+      "query": "check maintenance and tell me about yourself",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.09512901306152344,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-016",
+      "class": "domain_drift",
+      "query": "view faults also tell me about news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07343292236328125,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-019",
+      "class": "domain_drift",
+      "query": "view faults also tell me about news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07128715515136719,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-023",
+      "class": "domain_drift",
+      "query": "find manual also tell me about news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07176399230957031,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-040",
+      "class": "domain_drift",
+      "query": "find manual also tell me about news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07081031799316406,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-045",
+      "class": "domain_drift",
+      "query": "find manual also tell me about news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07104873657226562,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC10-048",
+      "class": "domain_drift",
+      "query": "find manual also tell me about news",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "complex_query",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.07104873657226562,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-010",
+      "class": "paste_dumps",
+      "query": "ERROR 2025-01-02 15:30:45 Connection timeout after 30s retry 3/5",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.09989738464355469,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-015",
+      "class": "paste_dumps",
+      "query": "git commit -m 'fix: update dependencies'\ngit push origin main",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "UNKNOWN",
+      "lane_reason": "no_clear_pattern",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.11324882507324219,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-016",
+      "class": "paste_dumps",
+      "query": "Error at line 49: null",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.06103515625,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-017",
+      "class": "paste_dumps",
+      "query": "Error at line 74: null",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.06079673767089844,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-018",
+      "class": "paste_dumps",
+      "query": "Error at line 82: undefined",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.06508827209472656,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-019",
+      "class": "paste_dumps",
+      "query": "Error at line 10: NaN",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.05888938903808594,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-020",
+      "class": "paste_dumps",
+      "query": "Error at line 58: undefined",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.06413459777832031,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-021",
+      "class": "paste_dumps",
+      "query": "Error at line 20: TypeError",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.09107589721679688,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-022",
+      "class": "paste_dumps",
+      "query": "Error at line 6: null",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.0591278076171875,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-023",
+      "class": "paste_dumps",
+      "query": "Error at line 48: null",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.05984306335449219,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-024",
+      "class": "paste_dumps",
+      "query": "Error at line 46: NaN",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.0591278076171875,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-025",
+      "class": "paste_dumps",
+      "query": "Error at line 63: TypeError",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.06508827209472656,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-026",
+      "class": "paste_dumps",
+      "query": "Error at line 98: undefined",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.0629425048828125,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-027",
+      "class": "paste_dumps",
+      "query": "Error at line 92: NaN",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.06127357482910156,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-028",
+      "class": "paste_dumps",
+      "query": "Error at line 67: NaN",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.0591278076171875,
+      "outcome_class": "UNSAFE",
+      "error": null
+    },
+    {
+      "id": "TC17-029",
+      "class": "paste_dumps",
+      "query": "Error at line 100: NaN",
+      "expected_lane": "BLOCKED",
+      "observed_lane": "GPT",
+      "lane_reason": "problem_words",
+      "entities": [],
+      "action": null,
+      "latency_ms": 0.05984306335449219,
+      "outcome_class": "UNSAFE",
+      "error": null
+    }
+  ],
+  "error_signatures": {},
+  "fix_plan": [
+    {
+      "priority": "P0-CRITICAL",
+      "class": "paste_dumps",
+      "issue": "UNSAFE_ROUTING",
+      "count": 16,
+      "samples": [
+        "ERROR 2025-01-02 15:30:45 Connection timeout after 30s retry 3/5",
+        "git commit -m 'fix: update dependencies'\ngit push origin main",
+        "Error at line 49: null"
+      ],
+      "root_cause": "Paste dump not detected, routed to GPT",
+      "fix": "Add paste detection: stack traces, JSON blobs, code blocks"
+    },
+    {
+      "priority": "P0-CRITICAL",
+      "class": "domain_drift",
+      "issue": "UNSAFE_ROUTING",
+      "count": 14,
+      "samples": [
+        "check inventory and calculate 15% tip on 200",
+        "find impeller also what's the meaning of life",
+        "show work orders and then tell me the news"
+      ],
+      "root_cause": "Off-domain not blocked, routed to GPT",
+      "fix": "Add off-domain blocklist: weather, stocks, recipes, etc."
+    },
+    {
+      "priority": "P1-HIGH",
+      "class": "abbreviations",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "44%",
+      "fix": "Improve lane routing for abbreviations patterns"
+    },
+    {
+      "priority": "P1-HIGH",
+      "class": "fault_code_lookups",
+      "issue": "HIGH_SOFT_ERROR_RATE",
+      "rate": "76%",
+      "fix": "Improve lane routing for fault_code_lookups patterns"
+    }
+  ]
+}

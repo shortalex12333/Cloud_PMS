@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-03T22:55:59.286536",
+  "tables": {
+    "pms_equipment": 17,
+    "pms_parts": 92,
+    "pms_suppliers": 8,
+    "pms_work_orders": 0
+  }
+}

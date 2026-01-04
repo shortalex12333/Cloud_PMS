@@ -1,0 +1,630 @@
+{
+  "suite_name": "capability_integration_v1",
+  "run_time": "2026-01-02T18:45:56.795756",
+  "total": 250,
+  "passed": 191,
+  "failed": 59,
+  "by_capability": {
+    "part_by_part_number_or_name": {
+      "total": 50,
+      "passed": 46,
+      "failed": 4
+    },
+    "inventory_by_location": {
+      "total": 50,
+      "passed": 46,
+      "failed": 4
+    },
+    "fault_by_fault_code": {
+      "total": 50,
+      "passed": 50,
+      "failed": 0
+    },
+    "graph_node_search": {
+      "total": 50,
+      "passed": 49,
+      "failed": 1
+    },
+    "documents_search": {
+      "total": 50,
+      "passed": 0,
+      "failed": 50
+    }
+  },
+  "failures": [
+    {
+      "id": "part-008",
+      "capability": "part_by_part_number_or_name",
+      "description": "Partial part number",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 123.98600578308105
+    },
+    {
+      "id": "part-026",
+      "capability": "part_by_part_number_or_name",
+      "description": "Filter part number prefix",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 76.56407356262207
+    },
+    {
+      "id": "part-030",
+      "capability": "part_by_part_number_or_name",
+      "description": "Part number substring",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 70.7247257232666
+    },
+    {
+      "id": "part-049",
+      "capability": "part_by_part_number_or_name",
+      "description": "End of part number",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 70.22213935852051
+    },
+    {
+      "id": "inv-002",
+      "capability": "inventory_by_location",
+      "description": "Agent location partial",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 70.17183303833008
+    },
+    {
+      "id": "inv-004",
+      "capability": "inventory_by_location",
+      "description": "Part number prefix",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 67.6720142364502
+    },
+    {
+      "id": "inv-007",
+      "capability": "inventory_by_location",
+      "description": "City in location",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 67.19207763671875
+    },
+    {
+      "id": "inv-018",
+      "capability": "inventory_by_location",
+      "description": "Filter part numbers",
+      "passed": false,
+      "error": "Expected >= 1 results, got 0",
+      "actual_count": 0,
+      "expected_min": 1,
+      "execution_time_ms": 69.51022148132324
+    },
+    {
+      "id": "graph-003",
+      "capability": "graph_node_search",
+      "description": "Component nodes",
+      "passed": false,
+      "error": "{'message': 'invalid input value for enum graph_node_type: \"component\"', 'code': '22P02', 'hint': None, 'details': None}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 82.6120376586914
+    },
+    {
+      "id": "doc-001",
+      "capability": "documents_search",
+      "description": "Engine in documents",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 80.48176765441895
+    },
+    {
+      "id": "doc-002",
+      "capability": "documents_search",
+      "description": "Maintenance docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.141822814941406
+    },
+    {
+      "id": "doc-003",
+      "capability": "documents_search",
+      "description": "Procedure docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 74.65195655822754
+    },
+    {
+      "id": "doc-004",
+      "capability": "documents_search",
+      "description": "Fuel docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.69209289550781
+    },
+    {
+      "id": "doc-005",
+      "capability": "documents_search",
+      "description": "Oil docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 65.99998474121094
+    },
+    {
+      "id": "doc-006",
+      "capability": "documents_search",
+      "description": "Filter docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.72919273376465
+    },
+    {
+      "id": "doc-007",
+      "capability": "documents_search",
+      "description": "Manual docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 71.24614715576172
+    },
+    {
+      "id": "doc-008",
+      "capability": "documents_search",
+      "description": "Specification docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.888933181762695
+    },
+    {
+      "id": "doc-009",
+      "capability": "documents_search",
+      "description": "Diagram docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 62.23416328430176
+    },
+    {
+      "id": "doc-010",
+      "capability": "documents_search",
+      "description": "Schematic docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.80105018615723
+    },
+    {
+      "id": "doc-011",
+      "capability": "documents_search",
+      "description": "Propulsion tagged",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 62.308311462402344
+    },
+    {
+      "id": "doc-012",
+      "capability": "documents_search",
+      "description": "Electrical tagged",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.76590919494629
+    },
+    {
+      "id": "doc-013",
+      "capability": "documents_search",
+      "description": "Manual doc type",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 62.59489059448242
+    },
+    {
+      "id": "doc-014",
+      "capability": "documents_search",
+      "description": "Procedure doc type",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 73.80509376525879
+    },
+    {
+      "id": "doc-015",
+      "capability": "documents_search",
+      "description": "Troubleshooting docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.57405471801758
+    },
+    {
+      "id": "doc-016",
+      "capability": "documents_search",
+      "description": "Repair docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.40503692626953
+    },
+    {
+      "id": "doc-017",
+      "capability": "documents_search",
+      "description": "Installation docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 66.50185585021973
+    },
+    {
+      "id": "doc-018",
+      "capability": "documents_search",
+      "description": "Calibration docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.22183799743652
+    },
+    {
+      "id": "doc-019",
+      "capability": "documents_search",
+      "description": "Adjustment docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 66.08414649963379
+    },
+    {
+      "id": "doc-020",
+      "capability": "documents_search",
+      "description": "Alignment docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 62.184810638427734
+    },
+    {
+      "id": "doc-021",
+      "capability": "documents_search",
+      "description": "Inspection docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 79.25724983215332
+    },
+    {
+      "id": "doc-022",
+      "capability": "documents_search",
+      "description": "Testing docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 72.19576835632324
+    },
+    {
+      "id": "doc-023",
+      "capability": "documents_search",
+      "description": "Commissioning docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 66.77818298339844
+    },
+    {
+      "id": "doc-024",
+      "capability": "documents_search",
+      "description": "Decommissioning docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 68.03369522094727
+    },
+    {
+      "id": "doc-025",
+      "capability": "documents_search",
+      "description": "Winterization docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.702728271484375
+    },
+    {
+      "id": "doc-026",
+      "capability": "documents_search",
+      "description": "Service docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 61.04087829589844
+    },
+    {
+      "id": "doc-027",
+      "capability": "documents_search",
+      "description": "Parts list docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 67.32892990112305
+    },
+    {
+      "id": "doc-028",
+      "capability": "documents_search",
+      "description": "Warranty docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.75096130371094
+    },
+    {
+      "id": "doc-029",
+      "capability": "documents_search",
+      "description": "Certificate docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 59.857845306396484
+    },
+    {
+      "id": "doc-030",
+      "capability": "documents_search",
+      "description": "Compliance docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 58.51101875305176
+    },
+    {
+      "id": "doc-031",
+      "capability": "documents_search",
+      "description": "Safety docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.07719039916992
+    },
+    {
+      "id": "doc-032",
+      "capability": "documents_search",
+      "description": "Emergency docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 67.03376770019531
+    },
+    {
+      "id": "doc-033",
+      "capability": "documents_search",
+      "description": "Checklist docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 74.91612434387207
+    },
+    {
+      "id": "doc-034",
+      "capability": "documents_search",
+      "description": "Log docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 64.63098526000977
+    },
+    {
+      "id": "doc-035",
+      "capability": "documents_search",
+      "description": "Report docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.91785430908203
+    },
+    {
+      "id": "doc-036",
+      "capability": "documents_search",
+      "description": "Datasheet docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 69.19097900390625
+    },
+    {
+      "id": "doc-037",
+      "capability": "documents_search",
+      "description": "Drawing docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.749053955078125
+    },
+    {
+      "id": "doc-038",
+      "capability": "documents_search",
+      "description": "Layout docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.71712684631348
+    },
+    {
+      "id": "doc-039",
+      "capability": "documents_search",
+      "description": "Plan docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 65.82903861999512
+    },
+    {
+      "id": "doc-040",
+      "capability": "documents_search",
+      "description": "Schedule docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.51280212402344
+    },
+    {
+      "id": "doc-041",
+      "capability": "documents_search",
+      "description": "Interval docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 70.3730583190918
+    },
+    {
+      "id": "doc-042",
+      "capability": "documents_search",
+      "description": "Hours docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.65489959716797
+    },
+    {
+      "id": "doc-043",
+      "capability": "documents_search",
+      "description": "Torque docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.95099449157715
+    },
+    {
+      "id": "doc-044",
+      "capability": "documents_search",
+      "description": "Clearance docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 60.209035873413086
+    },
+    {
+      "id": "doc-045",
+      "capability": "documents_search",
+      "description": "Tolerance docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 68.45521926879883
+    },
+    {
+      "id": "doc-046",
+      "capability": "documents_search",
+      "description": "Dimension docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 65.34194946289062
+    },
+    {
+      "id": "doc-047",
+      "capability": "documents_search",
+      "description": "Weight docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 64.53800201416016
+    },
+    {
+      "id": "doc-048",
+      "capability": "documents_search",
+      "description": "Capacity docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 64.96810913085938
+    },
+    {
+      "id": "doc-049",
+      "capability": "documents_search",
+      "description": "Flow rate docs",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 64.87393379211426
+    },
+    {
+      "id": "doc-050",
+      "capability": "documents_search",
+      "description": "Empty doc search",
+      "passed": false,
+      "error": "{'message': 'Could not find the function public.unified_search_v2(p_yacht_id, result_limit, search_query) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.unified_search_v2 with parameters p_yacht_id, result_limit, search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}",
+      "actual_count": 0,
+      "expected_min": 0,
+      "execution_time_ms": 63.899993896484375
+    }
+  ],
+  "avg_execution_ms": 77.13085174560547,
+  "max_execution_ms": 938.4362697601318,
+  "min_execution_ms": 58.51101875305176,
+  "pass_rate": 76.4
+}

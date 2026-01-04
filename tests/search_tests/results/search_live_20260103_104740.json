@@ -1,0 +1,915 @@
+{
+  "summary": {
+    "timestamp": "2026-01-03T10:47:40.221117",
+    "mode": "live",
+    "total_tests": 100,
+    "passed": 100,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "total_time_s": 9.14,
+    "avg_time_ms": 91.38,
+    "failures_by_category": {}
+  },
+  "results": [
+    {
+      "test_id": "ER-1000",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 144.1,
+      "error": null
+    },
+    {
+      "test_id": "ER-1001",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 133.8,
+      "error": null
+    },
+    {
+      "test_id": "ER-1002",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 78.5,
+      "error": null
+    },
+    {
+      "test_id": "ER-1003",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 93.06,
+      "error": null
+    },
+    {
+      "test_id": "ER-1004",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 93.33,
+      "error": null
+    },
+    {
+      "test_id": "ER-1005",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.41,
+      "error": null
+    },
+    {
+      "test_id": "ER-1006",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.13,
+      "error": null
+    },
+    {
+      "test_id": "ER-1007",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 78.62,
+      "error": null
+    },
+    {
+      "test_id": "ER-1008",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.45,
+      "error": null
+    },
+    {
+      "test_id": "ER-1009",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 80.07,
+      "error": null
+    },
+    {
+      "test_id": "ER-1010",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.8,
+      "error": null
+    },
+    {
+      "test_id": "ER-1011",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.63,
+      "error": null
+    },
+    {
+      "test_id": "ER-1012",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 76.59,
+      "error": null
+    },
+    {
+      "test_id": "ER-1013",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 83.48,
+      "error": null
+    },
+    {
+      "test_id": "ER-1014",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 81.9,
+      "error": null
+    },
+    {
+      "test_id": "ER-1015",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.56,
+      "error": null
+    },
+    {
+      "test_id": "ER-1016",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 77.23,
+      "error": null
+    },
+    {
+      "test_id": "ER-1017",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.51,
+      "error": null
+    },
+    {
+      "test_id": "ER-1018",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 76.93,
+      "error": null
+    },
+    {
+      "test_id": "ER-1019",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.81,
+      "error": null
+    },
+    {
+      "test_id": "ER-1020",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.42,
+      "error": null
+    },
+    {
+      "test_id": "ER-1021",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 72.35,
+      "error": null
+    },
+    {
+      "test_id": "ER-1022",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 82.34,
+      "error": null
+    },
+    {
+      "test_id": "ER-1023",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 86.15,
+      "error": null
+    },
+    {
+      "test_id": "ER-1024",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 87.36,
+      "error": null
+    },
+    {
+      "test_id": "ER-1025",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 76.98,
+      "error": null
+    },
+    {
+      "test_id": "ER-1026",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 70.78,
+      "error": null
+    },
+    {
+      "test_id": "ER-1027",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.88,
+      "error": null
+    },
+    {
+      "test_id": "ER-1028",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 72.91,
+      "error": null
+    },
+    {
+      "test_id": "ER-1029",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 81.77,
+      "error": null
+    },
+    {
+      "test_id": "ER-1030",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 71.65,
+      "error": null
+    },
+    {
+      "test_id": "ER-1031",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.65,
+      "error": null
+    },
+    {
+      "test_id": "ER-1032",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 81.39,
+      "error": null
+    },
+    {
+      "test_id": "ER-1033",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 71.83,
+      "error": null
+    },
+    {
+      "test_id": "ER-1034",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 67.84,
+      "error": null
+    },
+    {
+      "test_id": "ER-1035",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 66.09,
+      "error": null
+    },
+    {
+      "test_id": "ER-1036",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 75.1,
+      "error": null
+    },
+    {
+      "test_id": "ER-1037",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 75.72,
+      "error": null
+    },
+    {
+      "test_id": "ER-1038",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 82.18,
+      "error": null
+    },
+    {
+      "test_id": "ER-1039",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 68.23,
+      "error": null
+    },
+    {
+      "test_id": "ER-1040",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 102.21,
+      "error": null
+    },
+    {
+      "test_id": "ER-1041",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 77.29,
+      "error": null
+    },
+    {
+      "test_id": "ER-1042",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 158.36,
+      "error": null
+    },
+    {
+      "test_id": "ER-1043",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 70.74,
+      "error": null
+    },
+    {
+      "test_id": "ER-1044",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 71.59,
+      "error": null
+    },
+    {
+      "test_id": "ER-1045",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 69.31,
+      "error": null
+    },
+    {
+      "test_id": "ER-1046",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 75.43,
+      "error": null
+    },
+    {
+      "test_id": "ER-1047",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 86.02,
+      "error": null
+    },
+    {
+      "test_id": "ER-1048",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 71.22,
+      "error": null
+    },
+    {
+      "test_id": "ER-1049",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 94.27,
+      "error": null
+    },
+    {
+      "test_id": "ER-1050",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 110.1,
+      "error": null
+    },
+    {
+      "test_id": "ER-1051",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 141.57,
+      "error": null
+    },
+    {
+      "test_id": "ER-1052",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 142.96,
+      "error": null
+    },
+    {
+      "test_id": "ER-1053",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 154.55,
+      "error": null
+    },
+    {
+      "test_id": "ER-1054",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 86.99,
+      "error": null
+    },
+    {
+      "test_id": "ER-1055",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 85.17,
+      "error": null
+    },
+    {
+      "test_id": "ER-1056",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 87.05,
+      "error": null
+    },
+    {
+      "test_id": "ER-1057",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 136.77,
+      "error": null
+    },
+    {
+      "test_id": "ER-1058",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 86.34,
+      "error": null
+    },
+    {
+      "test_id": "ER-1059",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 86.23,
+      "error": null
+    },
+    {
+      "test_id": "ER-1060",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.6,
+      "error": null
+    },
+    {
+      "test_id": "ER-1061",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 87.38,
+      "error": null
+    },
+    {
+      "test_id": "ER-1062",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 82.52,
+      "error": null
+    },
+    {
+      "test_id": "ER-1063",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 92.67,
+      "error": null
+    },
+    {
+      "test_id": "ER-1064",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 78.55,
+      "error": null
+    },
+    {
+      "test_id": "ER-1065",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 77.75,
+      "error": null
+    },
+    {
+      "test_id": "ER-1066",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 76.86,
+      "error": null
+    },
+    {
+      "test_id": "ER-1067",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 67.05,
+      "error": null
+    },
+    {
+      "test_id": "ER-1068",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 82.42,
+      "error": null
+    },
+    {
+      "test_id": "ER-1069",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 138.3,
+      "error": null
+    },
+    {
+      "test_id": "ER-1070",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 90.57,
+      "error": null
+    },
+    {
+      "test_id": "ER-1071",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 80.55,
+      "error": null
+    },
+    {
+      "test_id": "ER-1072",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 139.71,
+      "error": null
+    },
+    {
+      "test_id": "ER-1073",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 149.8,
+      "error": null
+    },
+    {
+      "test_id": "ER-1074",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 80.88,
+      "error": null
+    },
+    {
+      "test_id": "ER-1075",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 76.53,
+      "error": null
+    },
+    {
+      "test_id": "ER-1076",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 74.59,
+      "error": null
+    },
+    {
+      "test_id": "ER-1077",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 136.98,
+      "error": null
+    },
+    {
+      "test_id": "ER-1078",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 85.21,
+      "error": null
+    },
+    {
+      "test_id": "ER-1079",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 83.78,
+      "error": null
+    },
+    {
+      "test_id": "ER-1080",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 91.73,
+      "error": null
+    },
+    {
+      "test_id": "ER-1081",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 80.68,
+      "error": null
+    },
+    {
+      "test_id": "ER-1082",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 91.38,
+      "error": null
+    },
+    {
+      "test_id": "ER-1083",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 84.88,
+      "error": null
+    },
+    {
+      "test_id": "ER-1084",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 84.72,
+      "error": null
+    },
+    {
+      "test_id": "ER-1085",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 86.93,
+      "error": null
+    },
+    {
+      "test_id": "ER-1086",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 82.77,
+      "error": null
+    },
+    {
+      "test_id": "ER-1087",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 73.77,
+      "error": null
+    },
+    {
+      "test_id": "ER-1088",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 126.37,
+      "error": null
+    },
+    {
+      "test_id": "ER-1089",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 79.4,
+      "error": null
+    },
+    {
+      "test_id": "ER-1090",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 78.12,
+      "error": null
+    },
+    {
+      "test_id": "ER-1091",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 146.07,
+      "error": null
+    },
+    {
+      "test_id": "ER-1092",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 124.84,
+      "error": null
+    },
+    {
+      "test_id": "ER-1093",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 106.08,
+      "error": null
+    },
+    {
+      "test_id": "ER-1094",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 148.08,
+      "error": null
+    },
+    {
+      "test_id": "ER-1095",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 89.76,
+      "error": null
+    },
+    {
+      "test_id": "ER-1096",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 103.98,
+      "error": null
+    },
+    {
+      "test_id": "ER-1097",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 76.68,
+      "error": null
+    },
+    {
+      "test_id": "ER-1098",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 140.0,
+      "error": null
+    },
+    {
+      "test_id": "ER-1099",
+      "category": "entity_routing",
+      "passed": true,
+      "expected": "routes_correctly",
+      "actual": "routes_correctly",
+      "time_ms": 151.64,
+      "error": null
+    }
+  ]
+}

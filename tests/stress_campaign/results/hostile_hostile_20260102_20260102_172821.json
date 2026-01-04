@@ -1,0 +1,57 @@
+{
+  "suite_name": "hostile_20260102",
+  "run_time": "2026-01-02T17:26:10.615151",
+  "total": 48,
+  "correct": 32,
+  "acceptable_unknown": 16,
+  "unsafe_errors": 0,
+  "soft_errors": 0,
+  "by_class": {
+    "injection": {
+      "total": 8,
+      "correct": 8,
+      "pct": 100.0
+    },
+    "domain_drift": {
+      "total": 8,
+      "correct": 8,
+      "pct": 100.0
+    },
+    "entity_soup": {
+      "total": 8,
+      "correct": 8,
+      "pct": 100.0
+    },
+    "politeness": {
+      "total": 8,
+      "correct": 8,
+      "pct": 100.0
+    },
+    "frustration": {
+      "total": 8,
+      "correct": 8,
+      "pct": 100.0
+    },
+    "voice_dictation": {
+      "total": 8,
+      "correct": 8,
+      "pct": 100.0
+    }
+  },
+  "failures": [],
+  "confusion": {
+    "BLOCKED": {
+      "BLOCKED": 16
+    },
+    "UNKNOWN_OK": {
+      "UNKNOWN": 16,
+      "NO_LLM": 4,
+      "RULES_ONLY": 2,
+      "GPT": 2
+    },
+    "GPT": {
+      "GPT": 8
+    }
+  },
+  "accuracy_pct": 100.0
+}

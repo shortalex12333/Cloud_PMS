@@ -1,0 +1,2469 @@
+{
+  "generated_at": "2026-01-03T11:05:50.106744",
+  "test_yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "sample_size": 200,
+  "iterations_per_query": 10,
+  "query_types_tested": 20,
+  "environment": {
+    "supabase_url": "https://vzsohavtuotocgrfkfyd.supabase.co",
+    "location": "remote"
+  },
+  "overall_stats": {
+    "count": 200,
+    "min": 71.04,
+    "max": 465.28,
+    "p50": 130.7,
+    "p90": 205.13,
+    "p95": 221.71,
+    "p99": 317.96,
+    "mean": 134.02
+  },
+  "wave_stats": {
+    "WAVE_0": {
+      "count": 70,
+      "min": 73.38,
+      "max": 317.96,
+      "p50": 140.15,
+      "p90": 223.81,
+      "p95": 237.55,
+      "p99": 317.96,
+      "mean": 156.14
+    },
+    "WAVE_1": {
+      "count": 190,
+      "min": 71.04,
+      "max": 465.28,
+      "p50": 133.38,
+      "p90": 205.13,
+      "p95": 216.24,
+      "p99": 248.07,
+      "mean": 135.52
+    },
+    "WAVE_2": {
+      "count": 62,
+      "min": 163.34,
+      "max": 465.28,
+      "p50": 197.53,
+      "p90": 223.81,
+      "p95": 237.55,
+      "p99": 465.28,
+      "mean": 201.91
+    }
+  },
+  "query_type_stats": {
+    "DOCUMENT_QUERY": {
+      "count": 20,
+      "min": 185.57,
+      "max": 465.28,
+      "p50": 195.06,
+      "p90": 205.13,
+      "p95": 465.28,
+      "p99": 465.28,
+      "mean": 207.52
+    },
+    "EQUIPMENT_NAME": {
+      "count": 20,
+      "min": 71.04,
+      "max": 148.5,
+      "p50": 83.46,
+      "p90": 102.96,
+      "p95": 148.5,
+      "p99": 148.5,
+      "mean": 86.67
+    },
+    "FAULT_CODE": {
+      "count": 20,
+      "min": 118.88,
+      "max": 161.04,
+      "p50": 137.14,
+      "p90": 158.89,
+      "p95": 161.04,
+      "p99": 161.04,
+      "mean": 138.77
+    },
+    "FREE_TEXT": {
+      "count": 30,
+      "min": 75.77,
+      "max": 207.47,
+      "p50": 95.79,
+      "p90": 203.33,
+      "p95": 203.34,
+      "p99": 207.47,
+      "mean": 125.16
+    },
+    "PART_NAME": {
+      "count": 50,
+      "min": 72.84,
+      "max": 199.1,
+      "p50": 82.98,
+      "p90": 120.31,
+      "p95": 150.88,
+      "p99": 199.1,
+      "mean": 89.99
+    },
+    "PART_NUMBER": {
+      "count": 10,
+      "min": 73.38,
+      "max": 317.96,
+      "p50": 82.01,
+      "p90": 317.96,
+      "p95": 317.96,
+      "p99": 317.96,
+      "mean": 105.35
+    },
+    "STOCK_LOCATION": {
+      "count": 20,
+      "min": 124.58,
+      "max": 154.09,
+      "p50": 135.25,
+      "p90": 147.32,
+      "p95": 154.09,
+      "p99": 154.09,
+      "mean": 136.91
+    },
+    "SYSTEM_NAME": {
+      "count": 20,
+      "min": 201.25,
+      "max": 248.07,
+      "p50": 215.39,
+      "p90": 243.79,
+      "p95": 248.07,
+      "p99": 248.07,
+      "mean": 218.13
+    },
+    "UNKNOWN": {
+      "count": 10,
+      "min": 163.34,
+      "max": 191.0,
+      "p50": 171.37,
+      "p90": 191.0,
+      "p95": 191.0,
+      "p99": 191.0,
+      "mean": 173.48
+    }
+  },
+  "raw_timings": [
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 0,
+      "elapsed_ms": 317.95501708984375,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 1,
+      "elapsed_ms": 84.27810668945312,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 2,
+      "elapsed_ms": 93.91522407531738,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 3,
+      "elapsed_ms": 91.80307388305664,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 4,
+      "elapsed_ms": 73.38309288024902,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 5,
+      "elapsed_ms": 75.80208778381348,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 6,
+      "elapsed_ms": 77.20398902893066,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 7,
+      "elapsed_ms": 75.62994956970215,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 8,
+      "elapsed_ms": 82.01289176940918,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NUMBER",
+      "query_value": "ENG-0008-103",
+      "iteration": 9,
+      "elapsed_ms": 81.5427303314209,
+      "waves_executed": [
+        "WAVE_0"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 0,
+      "elapsed_ms": 146.26193046569824,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 1,
+      "elapsed_ms": 138.6280059814453,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 2,
+      "elapsed_ms": 161.04412078857422,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 3,
+      "elapsed_ms": 137.1440887451172,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 4,
+      "elapsed_ms": 158.8881015777588,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 5,
+      "elapsed_ms": 125.63395500183105,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 6,
+      "elapsed_ms": 134.0019702911377,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 7,
+      "elapsed_ms": 143.5530185699463,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 8,
+      "elapsed_ms": 135.9109878540039,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "1234",
+      "iteration": 9,
+      "elapsed_ms": 154.59513664245605,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 0,
+      "elapsed_ms": 146.64292335510254,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 1,
+      "elapsed_ms": 127.45380401611328,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 2,
+      "elapsed_ms": 118.88003349304199,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 3,
+      "elapsed_ms": 130.69796562194824,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 4,
+      "elapsed_ms": 144.57225799560547,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 5,
+      "elapsed_ms": 135.12134552001953,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 6,
+      "elapsed_ms": 136.8699073791504,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 7,
+      "elapsed_ms": 140.85817337036133,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 8,
+      "elapsed_ms": 128.33404541015625,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FAULT_CODE",
+      "query_value": "E047",
+      "iteration": 9,
+      "elapsed_ms": 130.32817840576172,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 0,
+      "elapsed_ms": 161.301851272583,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 1,
+      "elapsed_ms": 136.53016090393066,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 2,
+      "elapsed_ms": 89.87975120544434,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 3,
+      "elapsed_ms": 83.46700668334961,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 4,
+      "elapsed_ms": 120.30625343322754,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 5,
+      "elapsed_ms": 77.94404029846191,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 6,
+      "elapsed_ms": 89.69807624816895,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 7,
+      "elapsed_ms": 89.11705017089844,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 8,
+      "elapsed_ms": 75.41108131408691,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "fuel",
+      "iteration": 9,
+      "elapsed_ms": 78.10211181640625,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 0,
+      "elapsed_ms": 78.64904403686523,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 1,
+      "elapsed_ms": 81.60710334777832,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 2,
+      "elapsed_ms": 75.35791397094727,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 3,
+      "elapsed_ms": 81.64310455322266,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 4,
+      "elapsed_ms": 97.01180458068848,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 5,
+      "elapsed_ms": 80.25121688842773,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 6,
+      "elapsed_ms": 82.75294303894043,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 7,
+      "elapsed_ms": 81.30598068237305,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 8,
+      "elapsed_ms": 72.83592224121094,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "filter",
+      "iteration": 9,
+      "elapsed_ms": 83.68492126464844,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 0,
+      "elapsed_ms": 82.9169750213623,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 1,
+      "elapsed_ms": 75.04010200500488,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 2,
+      "elapsed_ms": 74.94997978210449,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 3,
+      "elapsed_ms": 74.51891899108887,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 4,
+      "elapsed_ms": 81.13408088684082,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 5,
+      "elapsed_ms": 88.66715431213379,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 6,
+      "elapsed_ms": 199.10192489624023,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 10,
+      "early_exit": false
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 7,
+      "elapsed_ms": 150.87890625,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 8,
+      "elapsed_ms": 86.75813674926758,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "oil",
+      "iteration": 9,
+      "elapsed_ms": 80.56116104125977,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 0,
+      "elapsed_ms": 95.23391723632812,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 1,
+      "elapsed_ms": 74.27477836608887,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 2,
+      "elapsed_ms": 87.6307487487793,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 3,
+      "elapsed_ms": 83.9991569519043,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 4,
+      "elapsed_ms": 91.80378913879395,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 5,
+      "elapsed_ms": 88.89985084533691,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 6,
+      "elapsed_ms": 80.46698570251465,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 7,
+      "elapsed_ms": 88.61708641052246,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 8,
+      "elapsed_ms": 90.09885787963867,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "pump",
+      "iteration": 9,
+      "elapsed_ms": 87.74280548095703,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 0,
+      "elapsed_ms": 80.91402053833008,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 1,
+      "elapsed_ms": 85.07800102233887,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 2,
+      "elapsed_ms": 75.01482963562012,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 3,
+      "elapsed_ms": 79.50997352600098,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 4,
+      "elapsed_ms": 75.11591911315918,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 5,
+      "elapsed_ms": 78.11093330383301,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 6,
+      "elapsed_ms": 90.80910682678223,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 7,
+      "elapsed_ms": 89.52498435974121,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 8,
+      "elapsed_ms": 82.52191543579102,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "PART_NAME",
+      "query_value": "belt",
+      "iteration": 9,
+      "elapsed_ms": 82.9780101776123,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 0,
+      "elapsed_ms": 88.5629653930664,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 1,
+      "elapsed_ms": 78.28903198242188,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 2,
+      "elapsed_ms": 77.79359817504883,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 3,
+      "elapsed_ms": 82.59701728820801,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 4,
+      "elapsed_ms": 75.89578628540039,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 5,
+      "elapsed_ms": 72.57270812988281,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 6,
+      "elapsed_ms": 81.06493949890137,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 7,
+      "elapsed_ms": 84.05494689941406,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 8,
+      "elapsed_ms": 80.16490936279297,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "engine",
+      "iteration": 9,
+      "elapsed_ms": 148.50401878356934,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 3,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 0,
+      "elapsed_ms": 83.45699310302734,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 1,
+      "elapsed_ms": 102.96392440795898,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 2,
+      "elapsed_ms": 81.63881301879883,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 3,
+      "elapsed_ms": 84.29884910583496,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 4,
+      "elapsed_ms": 89.34593200683594,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 5,
+      "elapsed_ms": 86.3041877746582,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 6,
+      "elapsed_ms": 71.04277610778809,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 7,
+      "elapsed_ms": 82.29398727416992,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 8,
+      "elapsed_ms": 86.9441032409668,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "EQUIPMENT_NAME",
+      "query_value": "generator",
+      "iteration": 9,
+      "elapsed_ms": 95.70932388305664,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 4,
+      "early_exit": true
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 0,
+      "elapsed_ms": 237.5509738922119,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 1,
+      "elapsed_ms": 213.38915824890137,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 2,
+      "elapsed_ms": 201.9329071044922,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 3,
+      "elapsed_ms": 211.78817749023438,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 4,
+      "elapsed_ms": 215.01898765563965,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 5,
+      "elapsed_ms": 243.79420280456543,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 6,
+      "elapsed_ms": 215.38615226745605,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 7,
+      "elapsed_ms": 216.23587608337402,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 8,
+      "elapsed_ms": 213.7773036956787,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "fuel system",
+      "iteration": 9,
+      "elapsed_ms": 223.07395935058594,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 0,
+      "elapsed_ms": 221.7121124267578,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 1,
+      "elapsed_ms": 201.25102996826172,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 2,
+      "elapsed_ms": 224.8861789703369,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 3,
+      "elapsed_ms": 209.78999137878418,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 4,
+      "elapsed_ms": 203.1550407409668,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 5,
+      "elapsed_ms": 202.43120193481445,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 6,
+      "elapsed_ms": 223.80995750427246,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 7,
+      "elapsed_ms": 223.8762378692627,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 8,
+      "elapsed_ms": 248.06594848632812,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "SYSTEM_NAME",
+      "query_value": "propulsion",
+      "iteration": 9,
+      "elapsed_ms": 211.72285079956055,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 4,
+      "early_exit": false
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 0,
+      "elapsed_ms": 140.153169631958,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 1,
+      "elapsed_ms": 147.31597900390625,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 2,
+      "elapsed_ms": 134.8268985748291,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 3,
+      "elapsed_ms": 131.317138671875,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 4,
+      "elapsed_ms": 137.98880577087402,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 5,
+      "elapsed_ms": 154.09421920776367,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 6,
+      "elapsed_ms": 132.19094276428223,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 7,
+      "elapsed_ms": 135.79797744750977,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 8,
+      "elapsed_ms": 146.15821838378906,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Yacht",
+      "iteration": 9,
+      "elapsed_ms": 131.7281723022461,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 20,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 0,
+      "elapsed_ms": 133.38303565979004,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 1,
+      "elapsed_ms": 136.49415969848633,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 2,
+      "elapsed_ms": 128.27801704406738,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 3,
+      "elapsed_ms": 134.43613052368164,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 4,
+      "elapsed_ms": 134.13500785827637,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 5,
+      "elapsed_ms": 141.6769027709961,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 6,
+      "elapsed_ms": 135.24794578552246,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 7,
+      "elapsed_ms": 124.57776069641113,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 8,
+      "elapsed_ms": 144.42181587219238,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "STOCK_LOCATION",
+      "query_value": "Antibes",
+      "iteration": 9,
+      "elapsed_ms": 133.98480415344238,
+      "waves_executed": [
+        "WAVE_0",
+        "WAVE_1"
+      ],
+      "total_rows": 10,
+      "early_exit": true
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 0,
+      "elapsed_ms": 465.27981758117676,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 1,
+      "elapsed_ms": 189.68510627746582,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 2,
+      "elapsed_ms": 195.06096839904785,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 3,
+      "elapsed_ms": 199.15485382080078,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 4,
+      "elapsed_ms": 204.83922958374023,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 5,
+      "elapsed_ms": 197.53098487854004,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 6,
+      "elapsed_ms": 185.56904792785645,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 7,
+      "elapsed_ms": 190.65594673156738,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 8,
+      "elapsed_ms": 187.87622451782227,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "maintenance",
+      "iteration": 9,
+      "elapsed_ms": 200.04510879516602,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 0,
+      "elapsed_ms": 205.13200759887695,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 1,
+      "elapsed_ms": 187.67690658569336,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 2,
+      "elapsed_ms": 186.27095222473145,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 3,
+      "elapsed_ms": 194.97132301330566,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 4,
+      "elapsed_ms": 200.38604736328125,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 5,
+      "elapsed_ms": 197.28326797485352,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 6,
+      "elapsed_ms": 189.3758773803711,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 7,
+      "elapsed_ms": 188.26889991760254,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 8,
+      "elapsed_ms": 197.25298881530762,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "DOCUMENT_QUERY",
+      "query_value": "procedure",
+      "iteration": 9,
+      "elapsed_ms": 188.02690505981445,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 0,
+      "elapsed_ms": 90.95287322998047,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 1,
+      "elapsed_ms": 90.19899368286133,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 2,
+      "elapsed_ms": 165.89117050170898,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 2,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 3,
+      "elapsed_ms": 112.80608177185059,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 4,
+      "elapsed_ms": 105.89313507080078,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 5,
+      "elapsed_ms": 77.56185531616211,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 6,
+      "elapsed_ms": 83.85586738586426,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 7,
+      "elapsed_ms": 87.07714080810547,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 8,
+      "elapsed_ms": 81.63094520568848,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "engine",
+      "iteration": 9,
+      "elapsed_ms": 82.37385749816895,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 7,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 0,
+      "elapsed_ms": 79.92672920227051,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 1,
+      "elapsed_ms": 86.03310585021973,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 2,
+      "elapsed_ms": 88.71984481811523,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 3,
+      "elapsed_ms": 95.79014778137207,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 4,
+      "elapsed_ms": 96.25601768493652,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 5,
+      "elapsed_ms": 85.04295349121094,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 6,
+      "elapsed_ms": 81.9859504699707,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 7,
+      "elapsed_ms": 75.76513290405273,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 8,
+      "elapsed_ms": 91.1400318145752,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "fuel",
+      "iteration": 9,
+      "elapsed_ms": 90.17324447631836,
+      "waves_executed": [
+        "WAVE_1"
+      ],
+      "total_rows": 9,
+      "early_exit": true
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 0,
+      "elapsed_ms": 207.46779441833496,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 1,
+      "elapsed_ms": 177.95300483703613,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 2,
+      "elapsed_ms": 203.3379077911377,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 3,
+      "elapsed_ms": 178.93099784851074,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 4,
+      "elapsed_ms": 190.8102035522461,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 5,
+      "elapsed_ms": 194.2429542541504,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 6,
+      "elapsed_ms": 203.33218574523926,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 7,
+      "elapsed_ms": 185.52803993225098,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 8,
+      "elapsed_ms": 184.46111679077148,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "FREE_TEXT",
+      "query_value": "check",
+      "iteration": 9,
+      "elapsed_ms": 179.80003356933594,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 0,
+      "elapsed_ms": 169.61383819580078,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 1,
+      "elapsed_ms": 171.37479782104492,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 2,
+      "elapsed_ms": 183.20989608764648,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 3,
+      "elapsed_ms": 170.32694816589355,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 4,
+      "elapsed_ms": 168.4877872467041,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 5,
+      "elapsed_ms": 191.00189208984375,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 6,
+      "elapsed_ms": 163.33889961242676,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 7,
+      "elapsed_ms": 174.26729202270508,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 8,
+      "elapsed_ms": 171.86927795410156,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    },
+    {
+      "query_type": "UNKNOWN",
+      "query_value": "MTU",
+      "iteration": 9,
+      "elapsed_ms": 171.27227783203125,
+      "waves_executed": [
+        "WAVE_1",
+        "WAVE_2"
+      ],
+      "total_rows": 0,
+      "early_exit": false
+    }
+  ]
+}

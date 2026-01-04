@@ -1,0 +1,748 @@
+{
+  "order": [
+    "pms_parts",
+    "auth_users",
+    "dash_legacy_view",
+    "alias_systems",
+    "yacht_resolution_records",
+    "document_directory_tree",
+    "graph_nodes",
+    "alias_faults",
+    "document_counts_by_department",
+    "search_fault_code_catalog",
+    "search_graph_nodes",
+    "pms_voyage_log",
+    "pms_equipment",
+    "doc_metadata",
+    "dash_handover_items",
+    "log_system_events",
+    "auth_api_keys",
+    "pms_suppliers",
+    "alias_tasks",
+    "graph_edges",
+    "maintenance_facts",
+    "search_symptom_catalog",
+    "alias_crew",
+    "relationship_staging",
+    "v_vessel_status",
+    "dash_intelligence_snapshot",
+    "yacht_registry",
+    "symptom_catalog",
+    "search_graph_edges",
+    "auth_role_definitions",
+    "auth_guest_preferences",
+    "v_equipment_risk",
+    "documents",
+    "search_symptom_reports",
+    "equipment",
+    "alias_roles",
+    "search_maintenance_facts",
+    "users_with_roles",
+    "chat_agent_configs",
+    "v_symptom_recurrence",
+    "yacht_operational_context",
+    "pms_inventory_stock",
+    "v_inventory",
+    "alias_parts",
+    "dash_action_logs",
+    "doc_sop_edit_history",
+    "yacht_email_configs",
+    "yacht_fault_records",
+    "search_query_logs",
+    "dash_handover_records",
+    "search_suggestion_analytics",
+    "auth_role_assignments",
+    "auth_microsoft_tokens",
+    "chat_session_summaries",
+    "doc_sop_procedures",
+    "chat_sessions",
+    "search_manual_embeddings",
+    "auth_users_yacht",
+    "dash_crew_hours_compliance",
+    "entity_staging",
+    "dash_predictive_insights",
+    "equipment_aliases",
+    "pms_equipment_parts_bom",
+    "pms_work_orders",
+    "v_active_insights",
+    "dash_notifications",
+    "alias_equipment",
+    "search_suggestions",
+    "dash_predictive_equipment_risk",
+    "pms_purchase_orders",
+    "alias_symptoms",
+    "symptom_aliases",
+    "pms_crew_certificates",
+    "log_pipeline_execution",
+    "search_embedding_queue",
+    "pms_vessel_certificates",
+    "dash_safety_drills",
+    "document_chunks",
+    "search_document_chunks",
+    "search_ocred_pages",
+    "alias_documents",
+    "chat_messages",
+    "log_events",
+    "pms_work_order_history",
+    "pms_notes",
+    "alias_work_orders",
+    "pms_faults",
+    "pms_purchase_order_items",
+    "doc_yacht_library"
+  ],
+  "dependencies": {
+    "dash_predictive_insights": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "pms_crew_certificates": [
+      {
+        "column": "person_node_id",
+        "references": "person_node"
+      },
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "auth_users": [
+      {
+        "column": "auth_user_id",
+        "references": "auth_user"
+      }
+    ],
+    "dash_action_logs": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "doc_sop_edit_history": [
+      {
+        "column": "sop_id",
+        "references": "sop"
+      },
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "log_pipeline_execution": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "equipment_aliases": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "alias_systems": [
+      {
+        "column": "master_candidate_id",
+        "references": "master_candidate"
+      }
+    ],
+    "yacht_resolution_records": [
+      {
+        "column": "resolution_id",
+        "references": "resolution"
+      }
+    ],
+    "yacht_email_configs": [
+      {
+        "column": "contact_id",
+        "references": "contact"
+      },
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "yacht_fault_records": [
+      {
+        "column": "fault_id",
+        "references": "fault"
+      },
+      {
+        "column": "resolution_id",
+        "references": "resolution"
+      },
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "chat_messages": [
+      {
+        "column": "session_id",
+        "references": "chat_sessions"
+      }
+    ],
+    "pms_work_order_history": [
+      {
+        "column": "work_order_id",
+        "references": "pms_work_orders"
+      },
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "search_query_logs": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "graph_nodes": [
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      }
+    ],
+    "search_embedding_queue": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "alias_faults": [
+      {
+        "column": "fault_id",
+        "references": "fault"
+      },
+      {
+        "column": "master_candidate_id",
+        "references": "master_candidate"
+      }
+    ],
+    "search_fault_code_catalog": [
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      },
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      }
+    ],
+    "search_graph_nodes": [
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      }
+    ],
+    "pms_vessel_certificates": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "pms_voyage_log": [
+      {
+        "column": "departure_port_node_id",
+        "references": "departure_port_node"
+      },
+      {
+        "column": "arrival_port_node_id",
+        "references": "arrival_port_node"
+      }
+    ],
+    "dash_handover_records": [
+      {
+        "column": "handover_id",
+        "references": "handover"
+      },
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      },
+      {
+        "column": "solution_id",
+        "references": "solution"
+      }
+    ],
+    "pms_equipment": [
+      {
+        "column": "parent_id",
+        "references": "parent"
+      }
+    ],
+    "pms_purchase_order_items": [
+      {
+        "column": "purchase_order_id",
+        "references": "pms_purchase_orders"
+      },
+      {
+        "column": "part_id",
+        "references": "pms_parts"
+      }
+    ],
+    "dash_handover_items": [
+      {
+        "column": "handover_id",
+        "references": "handover"
+      },
+      {
+        "column": "source_id",
+        "references": "source"
+      }
+    ],
+    "pms_inventory_stock": [
+      {
+        "column": "part_id",
+        "references": "pms_parts"
+      }
+    ],
+    "search_suggestion_analytics": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      },
+      {
+        "column": "search_query_id",
+        "references": "search_query"
+      }
+    ],
+    "log_events": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      },
+      {
+        "column": "entity_id",
+        "references": "entity"
+      },
+      {
+        "column": "session_id",
+        "references": "chat_sessions"
+      }
+    ],
+    "pms_notes": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      },
+      {
+        "column": "work_order_id",
+        "references": "pms_work_orders"
+      },
+      {
+        "column": "fault_id",
+        "references": "fault"
+      }
+    ],
+    "alias_symptoms": [
+      {
+        "column": "symptom_id",
+        "references": "symptom_catalog"
+      },
+      {
+        "column": "candidate_id",
+        "references": "candidate"
+      },
+      {
+        "column": "master_candidate_id",
+        "references": "master_candidate"
+      }
+    ],
+    "alias_tasks": [
+      {
+        "column": "task_id",
+        "references": "task"
+      }
+    ],
+    "graph_edges": [
+      {
+        "column": "from_node_id",
+        "references": "from_node"
+      },
+      {
+        "column": "to_node_id",
+        "references": "to_node"
+      },
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      }
+    ],
+    "maintenance_facts": [
+      {
+        "column": "equipment_node_id",
+        "references": "equipment_node"
+      },
+      {
+        "column": "part_node_id",
+        "references": "part_node"
+      },
+      {
+        "column": "system_node_id",
+        "references": "system_node"
+      },
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      }
+    ],
+    "alias_crew": [
+      {
+        "column": "crew_id",
+        "references": "crew"
+      }
+    ],
+    "pms_equipment_parts_bom": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      },
+      {
+        "column": "part_id",
+        "references": "pms_parts"
+      }
+    ],
+    "relationship_staging": [
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "graph_edge_id",
+        "references": "graph_edge"
+      }
+    ],
+    "entity_staging": [
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      },
+      {
+        "column": "graph_node_id",
+        "references": "graph_nodes"
+      }
+    ],
+    "symptom_aliases": [
+      {
+        "column": "symptom_id",
+        "references": "symptom_catalog"
+      }
+    ],
+    "pms_work_orders": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "auth_role_assignments": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "v_inventory": [
+      {
+        "column": "part_id",
+        "references": "pms_parts"
+      },
+      {
+        "column": "stock_id",
+        "references": "stock"
+      }
+    ],
+    "v_active_insights": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "dash_notifications": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      },
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "auth_microsoft_tokens": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      },
+      {
+        "column": "microsoft_user_id",
+        "references": "microsoft_user"
+      },
+      {
+        "column": "client_id",
+        "references": "client"
+      }
+    ],
+    "alias_equipment": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      },
+      {
+        "column": "candidate_id",
+        "references": "candidate"
+      },
+      {
+        "column": "master_candidate_id",
+        "references": "master_candidate"
+      }
+    ],
+    "chat_session_summaries": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "search_suggestions": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "search_graph_edges": [
+      {
+        "column": "from_node_id",
+        "references": "from_node"
+      },
+      {
+        "column": "to_node_id",
+        "references": "to_node"
+      },
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      }
+    ],
+    "auth_guest_preferences": [
+      {
+        "column": "guest_node_id",
+        "references": "guest_node"
+      },
+      {
+        "column": "source_trip_id",
+        "references": "source_trip"
+      }
+    ],
+    "v_equipment_risk": [
+      {
+        "column": "parent_id",
+        "references": "parent"
+      }
+    ],
+    "doc_sop_procedures": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "dash_safety_drills": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "doc_yacht_library": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      },
+      {
+        "column": "chunk_id",
+        "references": "document_chunks"
+      },
+      {
+        "column": "session_id",
+        "references": "chat_sessions"
+      }
+    ],
+    "document_chunks": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "chat_sessions": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "search_symptom_reports": [
+      {
+        "column": "equipment_node_id",
+        "references": "equipment_node"
+      },
+      {
+        "column": "source_id",
+        "references": "source"
+      }
+    ],
+    "search_manual_embeddings": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "auth_users_yacht": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "dash_predictive_equipment_risk": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      }
+    ],
+    "equipment": [
+      {
+        "column": "parent_id",
+        "references": "parent"
+      }
+    ],
+    "alias_work_orders": [
+      {
+        "column": "work_order_id",
+        "references": "pms_work_orders"
+      }
+    ],
+    "search_document_chunks": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "search_maintenance_facts": [
+      {
+        "column": "equipment_node_id",
+        "references": "equipment_node"
+      },
+      {
+        "column": "part_node_id",
+        "references": "part_node"
+      },
+      {
+        "column": "system_node_id",
+        "references": "system_node"
+      },
+      {
+        "column": "source_chunk_id",
+        "references": "source_chunk"
+      },
+      {
+        "column": "source_document_id",
+        "references": "source_document"
+      }
+    ],
+    "dash_crew_hours_compliance": [
+      {
+        "column": "user_id",
+        "references": "auth_users"
+      }
+    ],
+    "users_with_roles": [
+      {
+        "column": "auth_user_id",
+        "references": "auth_user"
+      }
+    ],
+    "search_ocred_pages": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "alias_documents": [
+      {
+        "column": "document_id",
+        "references": "documents"
+      }
+    ],
+    "pms_faults": [
+      {
+        "column": "equipment_id",
+        "references": "pms_equipment"
+      },
+      {
+        "column": "work_order_id",
+        "references": "pms_work_orders"
+      }
+    ],
+    "alias_parts": [
+      {
+        "column": "part_id",
+        "references": "pms_parts"
+      },
+      {
+        "column": "candidate_id",
+        "references": "candidate"
+      },
+      {
+        "column": "master_candidate_id",
+        "references": "master_candidate"
+      }
+    ],
+    "pms_purchase_orders": [
+      {
+        "column": "supplier_id",
+        "references": "pms_suppliers"
+      }
+    ]
+  },
+  "core_parents": [
+    "pms_parts",
+    "dash_legacy_view",
+    "document_directory_tree",
+    "document_counts_by_department",
+    "doc_metadata",
+    "log_system_events",
+    "auth_api_keys",
+    "pms_suppliers",
+    "search_symptom_catalog",
+    "v_vessel_status",
+    "dash_intelligence_snapshot",
+    "yacht_registry",
+    "symptom_catalog",
+    "auth_role_definitions",
+    "documents",
+    "alias_roles",
+    "chat_agent_configs",
+    "v_symptom_recurrence",
+    "yacht_operational_context"
+  ]
+}

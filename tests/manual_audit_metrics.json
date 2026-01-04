@@ -1,0 +1,255 @@
+{
+  "tp": 389,
+  "fp": 1,
+  "fn": 158,
+  "tn": 457,
+  "action_confusion": {
+    "diagnose_fault": {
+      "diagnose_fault": 64,
+      "none_search_only": 26
+    },
+    "show_manual_section": {
+      "show_manual_section": 16,
+      "none_search_only": 4
+    },
+    "show_related_documents": {
+      "show_related_documents": 2,
+      "show_equipment_overview": 1
+    },
+    "show_equipment_overview": {
+      "show_equipment_overview": 1
+    },
+    "show_equipment_history": {
+      "show_equipment_history": 26,
+      "none_search_only": 3
+    },
+    "show_recent_state": {
+      "show_recent_state": 2,
+      "none_search_only": 1
+    },
+    "show_predictive_insight": {
+      "show_predictive_insight": 2
+    },
+    "suggest_likely_parts": {
+      "suggest_likely_parts": 2
+    },
+    "show_similar_past_events": {
+      "show_similar_past_events": 1
+    },
+    "trace_related_faults": {
+      "trace_related_faults": 5
+    },
+    "trace_related_equipment": {
+      "trace_related_equipment": 1,
+      "none_search_only": 1
+    },
+    "view_linked_entities": {
+      "view_linked_entities": 2
+    },
+    "show_document_graph": {
+      "show_document_graph": 2
+    },
+    "none_search_only": {
+      "none_search_only": 438,
+      "show_equipment_overview": 1
+    },
+    "create_work_order": {
+      "create_work_order": 40,
+      "create_task": 2,
+      "none_search_only": 23
+    },
+    "add_note_to_work_order": {
+      "add_note_to_work_order": 5,
+      "add_note": 1,
+      "none_search_only": 1,
+      "add_to_handover": 3
+    },
+    "attach_photo_to_work_order": {
+      "attach_photo_to_work_order": 3
+    },
+    "attach_document_to_work_order": {
+      "attach_document": 4,
+      "none_search_only": 2
+    },
+    "add_part_to_work_order": {
+      "add_part_to_work_order": 1,
+      "none_search_only": 4
+    },
+    "mark_work_order_complete": {
+      "mark_task_done": 17,
+      "none_search_only": 1
+    },
+    "show_tasks_due": {
+      "show_tasks_due": 13
+    },
+    "show_tasks_overdue": {
+      "show_tasks_due": 4,
+      "show_equipment_overview": 1
+    },
+    "create_work_order_from_fault": {
+      "create_work_order": 10,
+      "none_search_only": 1
+    },
+    "open_equipment_card": {
+      "none_search_only": 13
+    },
+    "show_all_linked_parts": {
+      "view_linked_entities": 4,
+      "show_equipment_overview": 2
+    },
+    "show_all_linked_faults": {
+      "view_linked_entities": 5,
+      "show_equipment_history": 3,
+      "none_search_only": 1,
+      "show_equipment_overview": 1
+    },
+    "show_all_linked_documents": {
+      "view_linked_entities": 3,
+      "search_documents": 3
+    },
+    "show_all_linked_work_orders": {
+      "view_linked_entities": 1,
+      "list_work_orders": 1,
+      "none_search_only": 1
+    },
+    "link_document_to_equipment": {
+      "link_supplier": 7
+    },
+    "check_stock_level": {
+      "check_stock": 24,
+      "none_search_only": 23
+    },
+    "show_storage_location": {
+      "show_storage_location": 8,
+      "show_equipment_overview": 3
+    },
+    "order_part": {
+      "order_parts": 13,
+      "none_search_only": 1
+    },
+    "add_part_to_handover": {
+      "add_to_handover": 2
+    },
+    "log_part_usage": {
+      "none_search_only": 2
+    },
+    "scan_barcode": {
+      "scan_barcode": 2
+    },
+    "add_to_handover": {
+      "add_to_handover": 8,
+      "none_search_only": 5
+    },
+    "add_note": {
+      "add_note": 5,
+      "none_search_only": 1
+    },
+    "add_predictive_insight_to_handover": {
+      "add_to_handover": 1
+    },
+    "add_document_to_handover": {
+      "add_to_handover": 4
+    },
+    "edit_handover_section": {
+      "edit_handover_section": 1,
+      "none_search_only": 1
+    },
+    "export_handover": {
+      "export_handover": 5,
+      "none_search_only": 2
+    },
+    "generate_summary": {
+      "none_search_only": 8,
+      "export_handover": 2
+    },
+    "add_document_section_to_handover": {
+      "add_to_handover": 1
+    },
+    "summarise_document_for_handover": {
+      "none_search_only": 3
+    },
+    "update_hours_of_rest": {
+      "none_search_only": 4
+    },
+    "show_hours_of_rest": {
+      "view_hours_of_rest": 6,
+      "none_search_only": 1,
+      "show_equipment_overview": 1
+    },
+    "show_certificates": {
+      "show_certificate": 6,
+      "none_search_only": 1
+    },
+    "show_expiring_certificates": {
+      "show_certificate_expiry": 4,
+      "show_equipment_overview": 1
+    },
+    "export_logs": {
+      "export_compliance_logs": 5,
+      "none_search_only": 2
+    },
+    "generate_audit_pack": {
+      "none_search_only": 5
+    },
+    "add_certificate": {
+      "none_search_only": 3
+    },
+    "upload_certificate_document": {
+      "upload_document": 5
+    },
+    "update_certificate_metadata": {
+      "none_search_only": 5
+    },
+    "open_document": {
+      "none_search_only": 3,
+      "export_handover": 3
+    },
+    "open_document_page": {
+      "none_search_only": 4
+    },
+    "search_documents": {
+      "search_documents": 10
+    },
+    "search_document_pages": {
+      "search_documents": 3
+    },
+    "summarise_document_section": {
+      "none_search_only": 4
+    },
+    "upload_document": {
+      "upload_document": 2
+    },
+    "delete_document": {
+      "none_search_only": 1
+    },
+    "archive_document": {
+      "none_search_only": 5
+    },
+    "replace_document_version": {
+      "none_search_only": 1
+    },
+    "tag_document": {
+      "none_search_only": 2
+    },
+    "link_document_to_fault": {
+      "link_supplier": 3
+    },
+    "compare_document_sections": {
+      "none_search_only": 2
+    },
+    "extract_procedures_from_document": {
+      "none_search_only": 2
+    },
+    "detect_document_anomalies": {
+      "none_search_only": 4
+    }
+  },
+  "failure_mode_counts": {
+    "action_collision": 160,
+    "verb_prefix_mismatch": 158,
+    "noun_only_should_not_trigger": 1
+  },
+  "total_entity_misses": 393,
+  "total_expected_entities": 1138,
+  "total_cases": 1005
+}

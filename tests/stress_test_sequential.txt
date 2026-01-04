@@ -1,0 +1,71 @@
+======================================================================
+ STRESS TEST REPORT
+ Generated: 2025-12-26T19:03:08.051413
+======================================================================
+
+## SUMMARY
+----------------------------------------
+Total Tests:         100
+Successful:          22
+Failed:              78
+Timeouts:            78
+Unexplained Failures:0
+Failure Rate:        0.00%
+
+## LANE CORRECTNESS
+----------------------------------------
+Lane Correct:        20
+Lane Incorrect:      80
+Lane Violations:     0
+
+## ACTION REGISTRY COMPLIANCE
+----------------------------------------
+Valid Actions:       100
+Invalid Actions:     0
+
+## LATENCY
+----------------------------------------
+P50:                 60872ms
+P95:                 60874ms
+P99:                 60875ms
+
+## RESULTS BY LANE
+----------------------------------------
+Lane            Total      Correct    Violations
+BLOCKED         60         0          0         
+NO_LLM          40         20         0         
+RULES_ONLY      0          0          0         
+GPT             0          0          0         
+
+## RESULTS BY CATEGORY
+----------------------------------------
+adversarial_boundary                0/41 (0.0%)
+blocked_non_domain                  0/8 (0.0%)
+blocked_paste_dump                  0/5 (0.0%)
+blocked_too_vague                   0/6 (0.0%)
+no_llm_brand_model                  5/5 (100.0%)
+no_llm_code_pattern                 3/4 (75.0%)
+no_llm_direct_lookup                0/8 (0.0%)
+spelling_noise                      12/23 (52.2%)
+
+## TOP FAILURE SIGNATURES
+----------------------------------------
+  [60] error:timeout | lane_mismatch:BLOCKED->NO_RESPONSE
+  [18] error:timeout | lane_mismatch:NO_LLM->NO_RESPONSE
+  [2] lane_mismatch:NO_LLM->GPT
+
+## READINESS ASSESSMENT
+----------------------------------------
+  [FAIL] Total calls >= 1000
+  [PASS] Failure rate <= 1%
+  [PASS] Zero lane violations
+  [PASS] All actions valid
+  [FAIL] Lane accuracy >= 95%
+
+======================================================================
+ VERDICT: NOT READY
+======================================================================
+
+Top blocking issues:
+1. Total calls >= 1000
+2. Lane accuracy >= 95%

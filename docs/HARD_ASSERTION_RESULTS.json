@@ -1,0 +1,179 @@
+{
+  "timestamp": "2026-01-03T11:15:02.279146",
+  "tests": [
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "pms_parts",
+      "column": "part_number",
+      "sample_value": "ENG-0198-824",
+      "manual_sql_count": 1,
+      "pipeline_count": 0,
+      "passed": false,
+      "failure_reason": "FALSE NEGATIVE: Manual found 1, pipeline found 0"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "pms_parts",
+      "column": "description",
+      "sample_value": "Glow Plug",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "pms_parts",
+      "column": "category",
+      "sample_value": "Engine Room",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "v_inventory",
+      "column": "part_number",
+      "sample_value": "ENG-0198-824",
+      "manual_sql_count": 1,
+      "pipeline_count": 0,
+      "passed": false,
+      "failure_reason": "FALSE NEGATIVE: Manual found 1, pipeline found 0"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "v_inventory",
+      "column": "description",
+      "sample_value": "Glow Plug",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "v_inventory",
+      "column": "category",
+      "sample_value": "Engine Room",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "v_inventory",
+      "column": "equipment",
+      "sample_value": "Generator 1",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "v_inventory",
+      "column": "system",
+      "sample_value": "Electrical System",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "v_inventory",
+      "column": "manufacturer",
+      "sample_value": "Cummins",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "search_fault_code_catalog",
+      "column": "severity",
+      "sample_value": "warning",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "entity_staging",
+      "column": "entity_type",
+      "sample_value": "document_section",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "entity_staging",
+      "column": "status",
+      "sample_value": "completed",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "graph_nodes",
+      "column": "extraction_source",
+      "sample_value": "qwen_14b_local",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "document_chunks",
+      "column": "graph_extract_status",
+      "sample_value": "pending",
+      "manual_sql_count": 0,
+      "pipeline_count": 0,
+      "passed": true,
+      "failure_reason": "No data in table (not a bug test)"
+    },
+    {
+      "test_type": "CATEGORY_E_BUG",
+      "table": "symptom_aliases",
+      "column": "alias",
+      "sample_value": "shaking",
+      "manual_sql_count": 1,
+      "pipeline_count": 0,
+      "passed": false,
+      "failure_reason": "FALSE NEGATIVE: Manual found 1, pipeline found 0"
+    },
+    {
+      "test_type": "ENTITY_SOURCE_MAP_COVERAGE",
+      "total_searchable_columns": 0,
+      "covered_columns": 25,
+      "coverage_percent": 0,
+      "uncovered_columns": [],
+      "passed": false,
+      "failure_reason": "Coverage 0.0% < 80% required"
+    },
+    {
+      "test_type": "FALSE_NEGATIVE_RATE",
+      "total_tested": 3,
+      "true_positives": 0,
+      "false_negatives": 3,
+      "false_negative_rate": 100.0,
+      "passed": false,
+      "failure_reason": "FN rate 100.0% > 10% allowed"
+    }
+  ],
+  "summary": {
+    "total": 17,
+    "passed": 12,
+    "failed": 5,
+    "false_negative_rate": 100.0
+  }
+}
