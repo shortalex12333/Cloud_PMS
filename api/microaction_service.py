@@ -130,16 +130,17 @@ def map_entities_for_bbws(entities: List[Dict]) -> List[Dict]:
 
 
 # Fallback entity patterns for when extraction API returns nothing
+# ORDER MATTERS: More specific patterns first!
 FALLBACK_ENTITY_PATTERNS = [
-    # Part numbers: ENG-0008-103, PMP-0018-280, HYD-0025-401
-    (r'^[A-Z]{2,4}-\d{3,5}-\d{2,4}$', 'PART_NUMBER'),
+    # PO numbers: PO-2025-001 (must be before generic part patterns)
+    (r'^PO-\d{4}-\d{1,4}$', 'PO_NUMBER'),
+    # Equipment codes: ME-P-001, GEN-002, HVAC-001
+    (r'^(?:ME|DG|GEN|HVAC|NAV|AUX)-[A-Z0-9]{1,3}-?\d{1,3}$', 'EQUIPMENT_CODE'),
     # Fault codes: E047, G012, WM-003
     (r'^[A-Z]{1,2}\d{2,4}$', 'FAULT_CODE'),
     (r'^[A-Z]{1,3}-\d{2,4}$', 'FAULT_CODE'),
-    # Equipment codes: ME-P-001, GEN-002, HVAC-001
-    (r'^(?:ME|DG|GEN|HVAC|NAV|AUX)-[A-Z0-9]{1,3}-?\d{1,3}$', 'EQUIPMENT_CODE'),
-    # PO numbers: PO-2025-001
-    (r'^PO-\d{4}-\d{1,4}$', 'PO_NUMBER'),
+    # Part numbers: ENG-0008-103, PMP-0018-280, HYD-0025-401 (after specific prefixes)
+    (r'^[A-Z]{2,4}-\d{3,5}-\d{2,4}$', 'PART_NUMBER'),
     # Serial numbers (basic)
     (r'^[A-Z]{2,4}\d{6,12}$', 'SERIAL_NUMBER'),
 ]
