@@ -20,7 +20,7 @@ const PLACEHOLDER_SUGGESTIONS = [
   'Find fault 1234',
   'Generator maintenance history',
   'Create work order for...',
-  'What's overdue this week?',
+  "What's overdue this week?",
   'Parts low in stock',
   'Show recent handovers',
   'Equipment status summary',
