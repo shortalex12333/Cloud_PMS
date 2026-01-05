@@ -23,7 +23,7 @@ import pytesseract
 app = FastAPI(
     title="CelesteOS Extraction Service",
     description="Universal document text extraction with OCR",
-    version="3.0.0"
+    version="3.0.1"
 )
 
 app.add_middleware(
@@ -63,13 +63,13 @@ class ExtractionResponse(BaseModel):
 
 @app.get("/")
 def health():
-    return {"status": "ok", "service": "extraction", "version": "3.0.0"}
+    return {"status": "ok", "service": "extraction", "version": "3.0.1"}
 
 @app.get("/health")
 def health_check():
     return {
         "status": "healthy",
-        "version": "3.0.0",
+        "version": "3.0.1",
         "extraction_methods": ["pymupdf", "tesseract_ocr", "docx", "xlsx", "csv", "json", "text"],
         "supported_types": [
             "application/pdf",
