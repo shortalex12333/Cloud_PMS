@@ -2224,9 +2224,9 @@ async def sql_search(
         entity_extractor = get_entity_extractor()
 
         # Try regex extraction first
-        regex_result = entity_extractor.extract(search_request.query)
-        if regex_result.entities:
-            for e in regex_result.entities:
+        regex_entities = entity_extractor.extract_entities(search_request.query)
+        if regex_entities:
+            for e in regex_entities:
                 entity_type = ENTITY_TYPE_MAP.get(e.type, e.type.upper())
                 entities.append({
                     'type': entity_type,
@@ -2249,7 +2249,7 @@ async def sql_search(
         planner = SQLPlanner()
 
         # Determine lane based on entity source
-        lane = SQLLane.NO_LLM if regex_result.entities else SQLLane.GPT
+        lane = SQLLane.NO_LLM if regex_entities else SQLLane.GPT
 
         # Determine intent from query
         intent = SQLIntent.SEARCH  # Default
