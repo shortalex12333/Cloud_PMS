@@ -2251,18 +2251,19 @@ async def sql_search(
         # Determine lane based on entity source
         lane = SQLLane.NO_LLM if regex_entities else SQLLane.GPT
 
-        # Determine intent from query
-        intent = SQLIntent.SEARCH  # Default
+        # Let planner infer intent from entities (FAULT_CODE → DIAGNOSE, etc.)
+        # Only override if explicit action keywords present
+        intent = None  # Let planner infer from entity types
         query_lower = search_request.query.lower()
-        if any(w in query_lower for w in ['diagnose', 'error', 'fault', 'problem', 'issue']):
-            intent = SQLIntent.DIAGNOSE
-        elif any(w in query_lower for w in ['find', 'where', 'locate', 'lookup']):
-            intent = SQLIntent.LOOKUP
+        if any(w in query_lower for w in ['create', 'add', 'log', 'schedule']):
+            intent = SQLIntent.ACTION
+        elif any(w in query_lower for w in ['list', 'show all', 'enumerate']):
+            intent = SQLIntent.LIST
 
         plan = planner.plan(
             lane=lane,
             entities=entities,
-            intent=intent,
+            intent=intent,  # None → planner infers from entity types
             yacht_id=yacht_id
         )
 
