@@ -1,12 +1,6 @@
 services:
   - type: web
     name: celeste-extraction
-    env: python
+    env: docker
     plan: starter
-    autoDeploy: true
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11.6"
