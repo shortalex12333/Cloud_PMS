@@ -2173,77 +2173,89 @@ def check_query_security(query: str) -> tuple[bool, str]:
     """
     Security check for query content.
     Returns (is_blocked, reason) tuple.
+
+    DESIGN PRINCIPLE: Block SQL-shaped SEQUENCES, not individual English words.
+    "manual from engine room" is fine.
+    "SELECT * FROM parts" is blocked.
     """
+    import re
     query_lower = query.lower().strip()
 
     # === EDGE CASE CHECKS ===
-    # Empty or whitespace-only
     if not query_lower:
         return True, "empty_query"
-
-    # Too short (single char or just punctuation)
     if len(query_lower) < 2:
         return True, "query_too_short"
-
-    # Pure numbers (not a valid equipment code pattern)
     if query_lower.replace(" ", "").isdigit():
         return True, "numbers_only"
-
-    # Special characters only (no alphanumeric)
-    import re
     if not re.search(r'[a-zA-Z0-9]', query):
         return True, "special_chars_only"
-
-    # === LENGTH CHECK ===
     if len(query) > 500:
         return True, "query_too_long"
 
-    # === BLOCKED PATTERNS ===
+    # === SQL-SHAPED SEQUENCE DETECTION (regex) ===
+    # These catch actual SQL injection, not normal English
+    sql_injection_patterns = [
+        # SELECT...FROM pattern (actual SQL)
+        r'\bselect\b.{0,50}\bfrom\b',
+        # UNION SELECT
+        r'\bunion\b.{0,20}\bselect\b',
+        # OR/AND boolean injection with =
+        r"\bor\b\s+[\d'\"]+\s*=\s*[\d'\"]+",
+        r"\band\b\s+[\d'\"]+\s*=\s*[\d'\"]+",
+        # WHERE with = or comparison (SQL context)
+        r'\bwhere\b.{0,30}[=<>]',
+        # HAVING with comparison
+        r'\bhaving\b.{0,30}[=<>]',
+        # ORDER BY with column (SQL context)
+        r'\border\s+by\b.{0,20}\b(asc|desc|nulls|first|last|\d+)\b',
+        # GROUP BY with column
+        r'\bgroup\s+by\b.{0,20}\b\w+\b',
+        # LIMIT/OFFSET with number
+        r'\blimit\b\s+\d+',
+        r'\boffset\b\s+\d+',
+        # Comment injection
+        r'--|/\*|\*/',
+        # Statement termination + new statement
+        r';\s*(select|drop|delete|insert|update|truncate|alter|create|grant|revoke)\b',
+    ]
+
+    for pattern in sql_injection_patterns:
+        if re.search(pattern, query_lower):
+            return True, f"sql_injection_pattern:{pattern[:30]}"
+
+    # === SIMPLE SUBSTRING BLOCKS (things that should NEVER appear) ===
     blocked_patterns = [
         # Jailbreak attempts
         "ignore all", "ignore previous", "forget instructions", "forget your training",
         "system prompt", "reveal your prompt", "bypass security", "jailbreak",
         "disregard previous", "new persona", "roleplay as",
-        "forget what i said", "actually forget",  # Polite variants
-        "system:", "assistant:", "user:",  # Role injection
+        "forget what i said", "actually forget",
+        "system:", "assistant:", "user:",
 
-        # SQL injection - DDL
-        "drop table", "delete from", "truncate table", "alter table",
-        "create table", "create index", "grant ", "revoke ",
+        # SQL DDL (these are never natural language)
+        "drop table", "truncate table", "alter table",
+        "create table", "create index",
 
-        # SQL injection - execution
+        # SQL execution functions
         "exec(", "eval(", "execute immediate", "sp_executesql",
 
-        # SQL injection - boolean
-        "or 1=1", "or '1'='1", "or \"1\"=\"1", "' or '", "\" or \"",
-        "and 1=1", "and '1'='1",
-
-        # SQL injection - UNION
-        "union select", "union all select",
-
-        # SQL injection - statement termination
-        "; select", ";select", "' --", "\" --", "'--", "\"--",
-        "; drop", "; delete", "; update", "; insert",
-
-        # SQL injection - comments
-        "/*", "*/", "@@version",
-
-        # SQL injection - metadata access
+        # SQL metadata access
         "information_schema", "pg_tables", "pg_catalog", "sys.tables",
         "syscolumns", "fleet_registry",
 
-        # SQL injection - operators in query
-        " select ", " from ", " where ", " having ", " group by ",
-        " order by ", " limit ", " offset ",
+        # SQL quote escape injection
+        "' or '", "\" or \"", "' and '", "\" and \"",
+        "'--", "\"--",
 
-        # SQL injection - LIKE pattern injection
-        "like '%", "like \"%", "like '%admin", "like '%password",
+        # LIKE pattern injection (actual SQL syntax)
+        "like '%", "like \"%",
 
-        # SQL injection - CTE injection
-        "with recursive", "with cte",
+        # CTE injection
+        "with recursive", "with cte as",
 
-        # SQL injection - sort/group by forbidden fields
-        "sorted by yacht_id", "sort by yacht_id", "order by yacht_id",
+        # Forbidden field access
+        "sorted by yacht_id", "sort by yacht_id",
         "group by yacht_id", "grouped by yacht_id",
 
         # Template injection
@@ -2262,41 +2274,36 @@ def check_query_security(query: str) -> tuple[bool, str]:
         "friend's yacht", "friends yacht", "colleague's yacht", "boss's yacht",
         "my other yacht", "different boat",
 
-        # Metadata injection
-        "table:", "column:", "category:", "schema:",
+        # Metadata injection (structured input attempt)
+        "table:", "column:", "schema:",
 
-        # Postgres-specific syntax abuse
-        "::",  # Cast operator (generator::text)
+        # Postgres-specific syntax (never natural language)
+        "::",  # Cast operator
         "->>", "->",  # JSONB operators
-        " ilike ", "similar to",  # Pattern match operators
     ]
 
     for pattern in blocked_patterns:
         if pattern in query_lower:
             return True, f"blocked_pattern:{pattern}"
 
-    # Check for null bytes
+    # === NULL BYTE CHECK ===
     if '\x00' in query or '%00' in query:
         return True, "null_byte_injection"
 
-    # Check for excessive repetition (term flooding)
-    # Ignore common articles/stopwords when counting
-    STOPWORDS = {'a', 'an', 'the', 'to', 'in', 'on', 'at', 'is', 'be', 'for', 'of', 'it', 'me', 'my', 'i'}
+    # === TERM FLOODING (ignore stopwords) ===
+    STOPWORDS = {'a', 'an', 'the', 'to', 'in', 'on', 'at', 'is', 'be', 'for', 'of', 'it', 'me', 'my', 'i', 'and', 'or'}
     words = query_lower.split()
     if words:
         word_counts = {}
         for w in words:
-            # Only count meaningful words (3+ chars, not stopwords)
             if len(w) >= 3 and w not in STOPWORDS:
                 word_counts[w] = word_counts.get(w, 0) + 1
         if word_counts:
             max_count = max(word_counts.values())
-            # Block if same meaningful word repeated 3+ times in query of 4+ words
             if max_count >= 3 and len(words) >= 4:
                 return True, "term_flooding"
 
-    # Check for unicode homoglyph attacks (cyrillic lookalikes)
-    # Common cyrillic chars that look like latin: а(a), е(e), о(o), р(p), с(c), х(x)
+    # === UNICODE HOMOGLYPH CHECK ===
     cyrillic_pattern = re.compile(r'[\u0400-\u04FF]')
     if cyrillic_pattern.search(query):
         return True, "unicode_homoglyph"
