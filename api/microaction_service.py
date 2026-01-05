@@ -2223,6 +2223,18 @@ def check_query_security(query: str) -> tuple[bool, str]:
         # Cross-tenant attempts
         "for all yachts", "all yacht", "other yacht", "different yacht",
         "yacht_id=", "yacht_id =", "yacht_id!=", "yacht_id !=",
+
+        # Social engineering
+        "friend's yacht", "friends yacht", "colleague's yacht", "boss's yacht",
+        "my other yacht", "different boat",
+
+        # Metadata injection
+        "table:", "column:", "category:", "schema:",
+
+        # Postgres-specific syntax abuse
+        "::",  # Cast operator (generator::text)
+        "->>", "->",  # JSONB operators
+        " ilike ", "similar to",  # Pattern match operators
     ]
 
     for pattern in blocked_patterns:
@@ -2237,15 +2249,17 @@ def check_query_security(query: str) -> tuple[bool, str]:
     if '\x00' in query or '%00' in query:
         return True, "null_byte_injection"
 
-    # Check for excessive repetition (term flooding)
+    # Check for excessive repetition (term flooding) - threshold: 3+ repeats of same word
     words = query_lower.split()
     if words:
         word_counts = {}
         for w in words:
-            word_counts[w] = word_counts.get(w, 0) + 1
-        max_count = max(word_counts.values())
-        if max_count >= 5 and len(words) >= 5:
-            return True, "term_flooding"
+            if len(w) >= 3:  # Only count meaningful words
+                word_counts[w] = word_counts.get(w, 0) + 1
+        if word_counts:
+            max_count = max(word_counts.values())
+            if max_count >= 3 and len(words) >= 4:
+                return True, "term_flooding"
 
     return False, ""
 
