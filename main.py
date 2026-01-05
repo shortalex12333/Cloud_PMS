@@ -10,6 +10,7 @@ Extraction Lanes:
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import fitz  # PyMuPDF
 import httpx
 import io
@@ -42,8 +43,8 @@ class ExtractRequest(BaseModel):
     yacht_id: str
     document_id: str
     service_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY"
-    doc_type: str = None
-    system_tag: str = None
+    doc_type: Optional[str] = None
+    system_tag: Optional[str] = None
 
 class ExtractionResponse(BaseModel):
     text: str
@@ -55,8 +56,8 @@ class ExtractionResponse(BaseModel):
     content_type: str = ""
     yacht_id: str = ""
     document_id: str = ""
-    doc_type: str = None
-    system_tag: str = None
+    doc_type: Optional[str] = None
+    system_tag: Optional[str] = None
 
 # --- Health ---
 
