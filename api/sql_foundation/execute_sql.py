@@ -30,6 +30,9 @@ from .column_config import (
     get_table
 )
 
+# Import canonical normalization
+from .canonical import canonical, canonical_ilike_pattern
+
 # Import canonical trace classes from contracts
 try:
     from contracts import (
@@ -290,8 +293,16 @@ class SQLExecutor:
         """
         start = time.time()
 
-        # Get search term (combine values from terms)
-        search_term = " ".join(t.get("value", "") for t in terms if t.get("value"))
+        # Get search term (combine canonical values from terms)
+        # Canonical normalization ensures "4 c" and "4c" match
+        search_parts = []
+        for t in terms:
+            value = t.get("value", "")
+            if value:
+                entity_type = t.get("type", "")
+                search_parts.append(canonical(value, entity_type))
+        search_term = " ".join(search_parts)
+
         if not search_term or len(search_term) < 2:
             return SQLResult(
                 table=table,
@@ -409,14 +420,24 @@ class SQLExecutor:
             if not value or len(value) < 2:
                 continue
 
+            # Apply canonical normalization
+            # This maps "4 c" → "4c", "ENG-0001" → "eng0001", etc.
+            canonical_value = canonical(value, entity_type)
+
             for col_name, col_cfg in table_cfg.columns.items():
                 if entity_type not in col_cfg.entity_types:
                     continue
 
                 if wave == "EXACT" and Operator.EXACT in col_cfg.operators:
-                    or_conditions.append(f"{col_name}.eq.{value}")
+                    # Try both canonical and original for exact match
+                    or_conditions.append(f"{col_name}.eq.{canonical_value}")
+                    if canonical_value != value.lower():
+                        or_conditions.append(f"{col_name}.eq.{value}")
                 elif wave == "ILIKE" and Operator.ILIKE in col_cfg.operators:
-                    or_conditions.append(f"{col_name}.ilike.*{value}*")
+                    # Use canonical ILIKE pattern for fuzzy matching
+                    # Pattern matches variants: "4c" matches "4-c", "4 c", etc.
+                    ilike_pattern = canonical_ilike_pattern(value, entity_type)
+                    or_conditions.append(f"{col_name}.ilike.{ilike_pattern}")
 
         if not or_conditions:
             # TRIGRAM requires pg_trgm similarity() which PostgREST doesn't support
