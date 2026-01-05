@@ -2169,6 +2169,87 @@ async def situational_search(
 # /v3/search - SQL FOUNDATION SEARCH (PREPARE → EXECUTE)
 # ========================================================================
 
+def check_query_security(query: str) -> tuple[bool, str]:
+    """
+    Security check for query content.
+    Returns (is_blocked, reason) tuple.
+    """
+    query_lower = query.lower().strip()
+
+    # BLOCKED patterns - comprehensive list for SQL/prompt injection
+    blocked_patterns = [
+        # Jailbreak attempts
+        "ignore all", "ignore previous", "forget instructions", "forget your training",
+        "system prompt", "reveal your prompt", "bypass security", "jailbreak",
+        "disregard previous", "new persona", "roleplay as",
+
+        # SQL injection - DDL
+        "drop table", "delete from", "truncate table", "alter table",
+        "create table", "create index", "grant ", "revoke ",
+
+        # SQL injection - execution
+        "exec(", "eval(", "execute immediate", "sp_executesql",
+
+        # SQL injection - boolean
+        "or 1=1", "or '1'='1", "or \"1\"=\"1", "' or '", "\" or \"",
+        "and 1=1", "and '1'='1",
+
+        # SQL injection - UNION
+        "union select", "union all select",
+
+        # SQL injection - statement termination
+        "; select", ";select", "' --", "\" --", "'--", "\"--",
+        "; drop", "; delete", "; update", "; insert",
+
+        # SQL injection - comments
+        "/*", "*/", "@@version",
+
+        # SQL injection - metadata access
+        "information_schema", "pg_tables", "pg_catalog", "sys.tables",
+        "syscolumns", "fleet_registry",
+
+        # SQL injection - operators in query
+        " select ", " from ", " where ", " having ", " group by ",
+        " order by ", " limit ", " offset ",
+
+        # Template injection
+        "${", "{{", "}}", "<script", "</script", "javascript:",
+        "onerror=", "onload=", "onclick=",
+
+        # Command injection
+        "; ls", "; cat", "; rm", "| cat", "| ls", "| rm",
+        "`ls`", "`cat`", "$(ls)", "$(cat)",
+
+        # Cross-tenant attempts
+        "for all yachts", "all yacht", "other yacht", "different yacht",
+        "yacht_id=", "yacht_id =", "yacht_id!=", "yacht_id !=",
+    ]
+
+    for pattern in blocked_patterns:
+        if pattern in query_lower:
+            return True, f"blocked_pattern:{pattern}"
+
+    # Check for excessive length
+    if len(query) > 2000:
+        return True, "query_too_long"
+
+    # Check for null bytes
+    if '\x00' in query or '%00' in query:
+        return True, "null_byte_injection"
+
+    # Check for excessive repetition (term flooding)
+    words = query_lower.split()
+    if words:
+        word_counts = {}
+        for w in words:
+            word_counts[w] = word_counts.get(w, 0) + 1
+        max_count = max(word_counts.values())
+        if max_count >= 5 and len(words) >= 5:
+            return True, "term_flooding"
+
+    return False, ""
+
+
 @app.post("/v3/search", tags=["Search"])
 @limiter.limit("100/minute")
 async def sql_search(
@@ -2180,10 +2261,11 @@ async def sql_search(
     **SQL FOUNDATION SEARCH - Entity → Prepare → SQL → Execute**
 
     Uses deterministic SQL planning:
-    1. Entity extraction (regex or GPT)
-    2. PREPARE: Lane assignment, table routing, wave planning
-    3. EXECUTE: Wave-based SQL (EXACT → ILIKE → TRIGRAM)
-    4. RETURN: Ranked results with full trace
+    1. Security check (block injections)
+    2. Entity extraction (regex or GPT)
+    3. PREPARE: Lane assignment, table routing, wave planning
+    4. EXECUTE: Wave-based SQL (EXACT → ILIKE → TRIGRAM)
+    5. RETURN: Ranked results with full trace
 
     **Response Structure:**
     ```json
@@ -2209,6 +2291,39 @@ async def sql_search(
     start_time = time_module.time()
 
     try:
+        # 0. SECURITY CHECK - Block dangerous queries FIRST
+        is_blocked, block_reason = check_query_security(search_request.query)
+        if is_blocked:
+            elapsed_ms = (time_module.time() - start_time) * 1000
+            logger.warning(f"BLOCKED query: reason={block_reason}, query='{search_request.query[:100]}...'")
+            return {
+                "query": search_request.query,
+                "entities": [],
+                "lane": "BLOCKED",
+                "lane_reason": block_reason,
+                "intent": "blocked",
+                "results": [],
+                "result_count": 0,
+                "trace": {
+                    "request_id": hashlib.sha256(search_request.query.encode()).hexdigest()[:8],
+                    "lane": "BLOCKED",
+                    "lane_reason": block_reason,
+                    "waves_executed": [],
+                    "wave_traces": [],
+                    "tables_hit": [],
+                    "total_latency_ms": round(elapsed_ms, 2),
+                    "result_count": 0,
+                    "early_exit": True,
+                    "stop_reason": "blocked",
+                    "security": {
+                        "yacht_id_enforced": True,
+                        "parameterized": True,
+                        "blocked": True,
+                        "block_reason": block_reason
+                    }
+                }
+            }
+
         yacht_id = auth.get("yacht_id")
         user_id = auth.get("user_id")
         user_role = auth.get("role", "crew")
