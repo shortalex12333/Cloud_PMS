@@ -335,7 +335,7 @@ TABLES["symptom_aliases"] = TableCapability(
         "symptom_code": ColumnCapability(
             name="symptom_code",
             datatype="text",
-            operators=[Operator.EXACT],
+            operators=[Operator.EXACT, Operator.ILIKE],  # Allow fuzzy on symptom codes
             entity_types=["SYMPTOM"],
             isolated_ok=True,
             conjunction_only=False

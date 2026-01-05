@@ -74,6 +74,16 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("BBWS module not available - falling back to GraphRAG for all searches")
 
+# Import NEW SQL Foundation (v3) - deterministic SQL planner
+try:
+    from sql_foundation.sql_planner import SQLPlanner, Lane as SQLLane, Intent as SQLIntent
+    from sql_foundation.execute_sql import execute_search as sql_execute_search, execute_with_plan
+    SQL_FOUNDATION_V3 = True
+except ImportError as e:
+    SQL_FOUNDATION_V3 = False
+    logger = logging.getLogger(__name__)
+    logger.warning(f"SQL Foundation v3 not available: {e}")
+
 # Global intent parser (initialized at startup)
 intent_parser: Optional[IntentParser] = None
 
@@ -2153,6 +2163,142 @@ async def situational_search(
     except Exception as e:
         logger.error(f"/v2/search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# ========================================================================
+# /v3/search - SQL FOUNDATION SEARCH (PREPARE → EXECUTE)
+# ========================================================================
+
+@app.post("/v3/search", tags=["Search"])
+@limiter.limit("100/minute")
+async def sql_search(
+    request: Request,
+    search_request: SearchRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **SQL FOUNDATION SEARCH - Entity → Prepare → SQL → Execute**
+
+    Uses deterministic SQL planning:
+    1. Entity extraction (regex or GPT)
+    2. PREPARE: Lane assignment, table routing, wave planning
+    3. EXECUTE: Wave-based SQL (EXACT → ILIKE → TRIGRAM)
+    4. RETURN: Ranked results with full trace
+
+    **Response Structure:**
+    ```json
+    {
+        "query": "original query",
+        "entities": [...],
+        "lane": "NO_LLM|GPT|BLOCKED|UNKNOWN",
+        "intent": "lookup|search|diagnose|...",
+        "results": [...],
+        "trace": {
+            "lane": "...",
+            "waves_executed": 2,
+            "tables_hit": ["pms_parts", "pms_equipment"],
+            "total_latency_ms": 45
+        }
+    }
+    ```
+    """
+    if not SQL_FOUNDATION_V3:
+        raise HTTPException(status_code=503, detail="SQL Foundation v3 not available")
+
+    import time as time_module
+    start_time = time_module.time()
+
+    try:
+        yacht_id = auth.get("yacht_id")
+        user_id = auth.get("user_id")
+        user_role = auth.get("role", "crew")
+
+        # Allow yacht_id override from request body for service_role
+        if user_id == "service_role":
+            user_role = "admin"
+            if search_request.yacht_id:
+                yacht_id = search_request.yacht_id
+
+        # 1. Extract entities (use regex first, GPT if needed)
+        entities = []
+        entity_extractor = get_entity_extractor()
+
+        # Try regex extraction first
+        regex_result = entity_extractor.extract(search_request.query)
+        if regex_result.entities:
+            for e in regex_result.entities:
+                entity_type = ENTITY_TYPE_MAP.get(e.type, e.type.upper())
+                entities.append({
+                    'type': entity_type,
+                    'value': e.value,
+                    'confidence': e.confidence
+                })
+
+        # If no regex entities, try GPT extraction
+        if not entities and graphrag_query and graphrag_query.gpt:
+            extraction = graphrag_query.gpt.extract(search_request.query)
+            for e in extraction.entities:
+                entity_type = ENTITY_TYPE_MAP.get(e.type, e.type.upper())
+                entities.append({
+                    'type': entity_type,
+                    'value': e.value,
+                    'confidence': e.confidence
+                })
+
+        # 2. PREPARE: Create SQL plan
+        planner = SQLPlanner()
+
+        # Determine lane based on entity source
+        lane = SQLLane.NO_LLM if regex_result.entities else SQLLane.GPT
+
+        # Determine intent from query
+        intent = SQLIntent.SEARCH  # Default
+        query_lower = search_request.query.lower()
+        if any(w in query_lower for w in ['diagnose', 'error', 'fault', 'problem', 'issue']):
+            intent = SQLIntent.DIAGNOSE
+        elif any(w in query_lower for w in ['find', 'where', 'locate', 'lookup']):
+            intent = SQLIntent.LOOKUP
+
+        plan = planner.plan(
+            lane=lane,
+            entities=entities,
+            intent=intent,
+            yacht_id=yacht_id
+        )
+
+        # 3. EXECUTE: Run SQL with wave-based fallback
+        result = execute_with_plan(plan)
+
+        # 4. Format response
+        elapsed_ms = (time_module.time() - start_time) * 1000
+
+        response = {
+            "query": search_request.query,
+            "entities": entities,
+            "lane": plan.lane.value if hasattr(plan.lane, 'value') else str(plan.lane),
+            "intent": plan.intent.value if hasattr(plan.intent, 'value') else str(plan.intent),
+            "results": result.get("results", []),
+            "result_count": len(result.get("results", [])),
+            "trace": {
+                **result.get("trace", {}),
+                "total_latency_ms": round(elapsed_ms, 2),
+                "entity_count": len(entities),
+                "tables_planned": plan.tables if hasattr(plan, 'tables') else [],
+                "waves_planned": plan.waves if hasattr(plan, 'waves') else []
+            }
+        }
+
+        logger.info(
+            f"/v3/search: yacht={yacht_id}, query='{search_request.query}', "
+            f"lane={response['lane']}, results={response['result_count']}, "
+            f"latency={elapsed_ms:.0f}ms"
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"/v3/search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"SQL search failed: {str(e)}")
 
 
 # ========================================================================
