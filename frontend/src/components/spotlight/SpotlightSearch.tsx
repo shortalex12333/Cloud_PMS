@@ -13,6 +13,21 @@ import type { SearchResult as APISearchResult } from '@/types/search';
 import SpotlightResultRow from './SpotlightResultRow';
 
 // ============================================================================
+// ROLLING PLACEHOLDER SUGGESTIONS
+// ============================================================================
+
+const PLACEHOLDER_SUGGESTIONS = [
+  'Find fault 1234',
+  'Generator maintenance history',
+  'Create work order for...',
+  'What's overdue this week?',
+  'Parts low in stock',
+  'Show recent handovers',
+  'Equipment status summary',
+  'Search documents...',
+];
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -66,6 +81,8 @@ export default function SpotlightSearch({
   } = useCelesteSearch();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +92,23 @@ export default function SpotlightSearch({
     const timer = setTimeout(() => inputRef.current?.focus(), 50);
     return () => clearTimeout(timer);
   }, []);
+
+  // Rolling placeholder animation - cycle every 3 seconds
+  useEffect(() => {
+    if (query) return; // Don't animate when user is typing
+
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+
+      // After animation starts, change the text
+      setTimeout(() => {
+        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_SUGGESTIONS.length);
+        setIsAnimating(false);
+      }, 200); // Half of transition duration
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [query]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -162,26 +196,45 @@ export default function SpotlightSearch({
             strokeWidth={1.8}
           />
 
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Spotlight"
-            className={cn(
-              'flex-1 h-full',
-              'bg-transparent border-none outline-none',
-              'text-[17px] text-white',
-              'placeholder:text-[#98989f]',
-              'font-normal tracking-[-0.01em]',
-              'caret-white'
+          <div className="flex-1 h-full relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className={cn(
+                'w-full h-full',
+                'bg-transparent border-none outline-none',
+                'text-[17px] text-white',
+                'font-normal tracking-[-0.01em]',
+                'caret-white',
+                'relative z-10'
+              )}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+            />
+            {/* Animated rolling placeholder */}
+            {!query && (
+              <div
+                className="absolute inset-0 flex items-center pointer-events-none overflow-hidden"
+              >
+                <span
+                  className={cn(
+                    'text-[17px] text-[#98989f] font-normal tracking-[-0.01em]',
+                    'transition-all duration-[400ms] ease-out',
+                    isAnimating
+                      ? 'opacity-0 -translate-y-3'
+                      : 'opacity-100 translate-y-0'
+                  )}
+                >
+                  {PLACEHOLDER_SUGGESTIONS[placeholderIndex]}
+                </span>
+              </div>
             )}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
+          </div>
 
           <div className="flex items-center gap-2">
             {(isLoading || isStreaming) && (
