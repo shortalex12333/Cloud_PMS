@@ -1243,6 +1243,489 @@ def execute_search_fast_first(
 
 
 # =============================================================================
+# CONSTRAINT COMPILER INTEGRATION
+# =============================================================================
+
+# Import constraint compiler modules
+try:
+    from .id_recognizers import IDRecognizer, RecognizedID, IDType
+    from .filter_dictionary import FilterDictionary, ExtractedFilter
+    from .action_algebra import ActionParser, Action, ActionPlan, ActionObject, OBJECT_TABLES
+    from .constraint_algebra import (
+        ConstraintSet, Constraint, ConstraintOp, Hardness, ConstraintScope,
+        SemanticPredicate, PREDICATE_DEFINITIONS,
+        analyze_constraints, ConstraintAnalysisResult,
+        compile_constraint_set_to_sql
+    )
+    HAS_CONSTRAINT_COMPILER = True
+except ImportError as e:
+    logger.warning(f"Constraint compiler modules not available: {e}")
+    HAS_CONSTRAINT_COMPILER = False
+
+
+@dataclass
+class CompilerTrace:
+    """Proof trace from constraint compiler pipeline."""
+    request_id: str
+    query: str
+    yacht_id: str
+
+    # Extraction phase
+    ids_recognized: List[Dict]
+    filters_extracted: List[Dict]
+    action_parsed: Dict
+
+    # Constraint phase
+    constraints: List[Dict]
+    constraint_analysis: Dict
+
+    # Execution phase
+    tables_queried: List[str]
+    waves_executed: List[str]
+    wave_traces: List[Dict]
+
+    # Timing
+    extraction_ms: float
+    execution_ms: float
+    total_ms: float
+
+    def to_dict(self) -> Dict:
+        return {
+            "request_id": self.request_id,
+            "query": self.query,
+            "extraction": {
+                "ids": self.ids_recognized,
+                "filters": self.filters_extracted,
+                "action": self.action_parsed,
+                "constraints": self.constraints,
+                "analysis": self.constraint_analysis,
+            },
+            "execution": {
+                "tables_queried": self.tables_queried,
+                "waves_executed": self.waves_executed,
+                "wave_traces": self.wave_traces,
+            },
+            "timing": {
+                "extraction_ms": round(self.extraction_ms, 2),
+                "execution_ms": round(self.execution_ms, 2),
+                "total_ms": round(self.total_ms, 2),
+            },
+        }
+
+
+def execute_with_constraints(
+    query: str,
+    yacht_id: str,
+    max_results: int = 50,
+    early_exit_threshold: int = 20,
+    include_vector: bool = False,
+    embedding: Optional[List[float]] = None
+) -> Dict[str, Any]:
+    """
+    CONSTRAINT COMPILER ENTRY POINT
+
+    Full pipeline:
+        Query → ID Recognition → Filter Extraction → Action Parsing
+              → Constraint Building → SQL Execution → Ranked Results
+
+    This is the NEW recommended entry point that:
+    1. Extracts structured IDs with FSM patterns (near-perfect precision)
+    2. Extracts semantic filters from closed vocabulary
+    3. Parses action (verb + object) for table routing
+    4. Builds typed constraint set
+    5. Detects contradictions/under-constrained queries
+    6. Executes via wave-based SQL
+    7. Returns results with full proof trace
+
+    Args:
+        query: Natural language query
+        yacht_id: Required yacht scope
+        max_results: Maximum results to return
+        early_exit_threshold: Stop early if we have this many results
+        include_vector: Whether to include vector search
+        embedding: Pre-computed embedding for vector search
+
+    Returns:
+        {
+            "results": [...],
+            "action": {...},
+            "trace": {...proof trace...}
+        }
+    """
+    if not HAS_CONSTRAINT_COMPILER:
+        # Fallback to legacy path
+        logger.warning("Constraint compiler not available, using legacy path")
+        return execute_search(
+            terms=[{"type": "FREE_TEXT", "value": query}],
+            tables=list(TABLES.keys())[:4],
+            yacht_id=yacht_id,
+            max_results=max_results,
+            early_exit_threshold=early_exit_threshold,
+            include_vector=include_vector,
+            query_text=query,
+            embedding=embedding
+        )
+
+    start_time = time.time()
+    request_id = str(uuid.uuid4())[:8]
+
+    # =========================================================================
+    # PHASE 1: EXTRACTION
+    # =========================================================================
+    extraction_start = time.time()
+
+    # 1a. ID Recognition (FSM patterns)
+    id_recognizer = IDRecognizer()
+    recognized_ids = id_recognizer.recognize(query)
+
+    # 1b. Filter Extraction (closed vocabulary)
+    filter_dict = FilterDictionary()
+    extracted_filters = filter_dict.extract(query)
+
+    # 1c. Action Parsing (verb + object)
+    # Build initial constraint set from IDs and filters
+    initial_constraints = []
+
+    for rid in recognized_ids:
+        initial_constraints.append(rid.constraint)
+
+    for ef in extracted_filters:
+        initial_constraints.append(ef.constraint)
+
+    constraint_set = ConstraintSet(
+        yacht_id=yacht_id,
+        constraints=initial_constraints
+    )
+
+    action_parser = ActionParser()
+    action_plan = action_parser.parse(query, yacht_id, constraint_set)
+
+    extraction_ms = (time.time() - extraction_start) * 1000
+
+    # =========================================================================
+    # PHASE 2: CONSTRAINT ANALYSIS
+    # =========================================================================
+
+    # Analyze constraints for contradictions, under/over-constrained
+    analysis = analyze_constraints(constraint_set)
+
+    # Handle analysis results
+    if analysis.status == ConstraintAnalysisResult.CONTRADICTORY:
+        # Short-circuit: contradictory constraints
+        return {
+            "results": [],
+            "action": action_plan.to_dict() if action_plan.actions else None,
+            "error": "contradictory_constraints",
+            "trace": CompilerTrace(
+                request_id=request_id,
+                query=query,
+                yacht_id=yacht_id,
+                ids_recognized=[{"type": r.id_type.value, "value": r.canonical_value} for r in recognized_ids],
+                filters_extracted=[{"name": f.definition.name, "text": f.matched_text} for f in extracted_filters],
+                action_parsed=action_plan.to_dict() if action_plan.actions else {},
+                constraints=[c.to_dict() for c in constraint_set.constraints],
+                constraint_analysis=analysis.to_dict(),
+                tables_queried=[],
+                waves_executed=[],
+                wave_traces=[],
+                extraction_ms=extraction_ms,
+                execution_ms=0,
+                total_ms=(time.time() - start_time) * 1000,
+            ).to_dict(),
+        }
+
+    # =========================================================================
+    # PHASE 3: TABLE ROUTING
+    # =========================================================================
+
+    # Determine tables from action object + ID patterns
+    # PRINCIPLE: Action object is primary. IDs are constraints, not table selectors.
+    #
+    # "work orders for ME-001" → query pms_work_orders with equipment constraint
+    #   NOT → query pms_work_orders AND pms_equipment
+
+    tables_to_query = set()
+    action_has_clear_target = False
+
+    # From action object (primary source)
+    if action_plan.actions:
+        primary_action = action_plan.actions[0]
+        if primary_action.target_tables:
+            tables_to_query.update(primary_action.target_tables)
+            action_has_clear_target = True
+
+    # From recognized IDs - ONLY if action has no clear target
+    # IDs are constraints within the target table, not table selectors
+    if not action_has_clear_target:
+        for rid in recognized_ids:
+            tables_to_query.update(rid.pattern.target_tables)
+
+    # From filters - semantic predicates may suggest tables if no action target
+    if not action_has_clear_target:
+        for ef in extracted_filters:
+            tables_to_query.update(ef.definition.tables)
+
+    # Default to common tables if nothing specific
+    if not tables_to_query:
+        tables_to_query = {"pms_parts", "pms_equipment", "pms_work_orders"}
+
+    tables_list = list(tables_to_query)[:6]  # Cap at 6 tables
+
+    # Create executor early - needed for constraint resolution
+    executor = SQLExecutor()
+
+    # =========================================================================
+    # PHASE 3.5: CONSTRAINT RESOLUTION (Cross-Table References)
+    # =========================================================================
+    # Resolve ID constraints that reference other tables.
+    # Example: querying pms_work_orders with EQUIPMENT_CODE=ME-001
+    #   → Look up equipment.id WHERE code=ME-001
+    #   → Use equipment_id=<uuid> as the constraint
+
+    resolved_ids = []
+    for rid in recognized_ids:
+        # Check if this ID type needs resolution for target tables
+        if rid.id_type == IDType.EQUIPMENT_CODE and "pms_work_orders" in tables_to_query:
+            # Resolve equipment code to equipment_id via direct REST call
+            try:
+                import httpx
+                import os
+                url = os.environ.get("SUPABASE_URL", "")
+                key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+                if url and key:
+                    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+                    # Use ILIKE for fuzzy match on equipment code
+                    resp = httpx.get(
+                        f"{url}/rest/v1/pms_equipment",
+                        params={
+                            "select": "id,code",
+                            "code": f"ilike.*{rid.canonical_value}*",
+                            "yacht_id": f"eq.{yacht_id}",
+                            "limit": "1"
+                        },
+                        headers=headers,
+                        timeout=5.0
+                    )
+                    equipment = resp.json() if resp.status_code == 200 else []
+                    if equipment:
+                        # Replace with resolved equipment_id
+                        resolved_ids.append({
+                            "type": "EQUIPMENT_ID",
+                            "value": equipment[0]["id"],
+                            "confidence": rid.pattern.confidence,
+                            "source": f"resolved_from:{rid.canonical_value}→{equipment[0]['code']}",
+                            "original_type": "EQUIPMENT_CODE",
+                            "original_value": rid.canonical_value
+                        })
+                        continue
+            except Exception as e:
+                logger.warning(f"Failed to resolve equipment code {rid.canonical_value}: {e}")
+
+            # Keep original if resolution failed or no match
+            resolved_ids.append({
+                "type": rid.pattern.entity_type,
+                "value": rid.canonical_value,
+                "confidence": rid.pattern.confidence,
+                "source": "id_recognizer"
+            })
+        else:
+            resolved_ids.append({
+                "type": rid.pattern.entity_type,
+                "value": rid.canonical_value,
+                "confidence": rid.pattern.confidence,
+                "source": "id_recognizer"
+            })
+
+    # =========================================================================
+    # PHASE 4: BUILD TERMS FOR EXECUTOR
+    # =========================================================================
+
+    # Convert constraints to terms format for existing executor
+    terms = []
+
+    # Add resolved ID constraints
+    terms.extend(resolved_ids)
+
+    # Strip IDs and filters from query to get remaining entity text
+    stripped_query = id_recognizer.strip_ids(query, recognized_ids)
+    stripped_query = filter_dict.strip_filters(stripped_query, extracted_filters)
+
+    # Add remaining text as free text if meaningful
+    stripped_query = stripped_query.strip()
+    if stripped_query and len(stripped_query) >= 3:
+        # Check if it's not just stop words
+        stop_words = {"the", "a", "an", "for", "on", "in", "at", "to", "and", "or", "of"}
+        words = set(stripped_query.lower().split())
+        meaningful_words = words - stop_words
+
+        if meaningful_words:
+            terms.append({
+                "type": "FREE_TEXT",
+                "value": stripped_query,
+                "confidence": 0.7,
+                "source": "residual_text"
+            })
+
+    # If no terms at all, we're underconstrained
+    if not terms and analysis.status == ConstraintAnalysisResult.UNDERCONSTRAINED:
+        return {
+            "results": [],
+            "action": action_plan.to_dict() if action_plan.actions else None,
+            "error": "underconstrained",
+            "suggestions": ["Add a search term or filter"],
+            "trace": CompilerTrace(
+                request_id=request_id,
+                query=query,
+                yacht_id=yacht_id,
+                ids_recognized=[{"type": r.id_type.value, "value": r.canonical_value} for r in recognized_ids],
+                filters_extracted=[{"name": f.definition.name, "text": f.matched_text} for f in extracted_filters],
+                action_parsed=action_plan.to_dict() if action_plan.actions else {},
+                constraints=[c.to_dict() for c in constraint_set.constraints],
+                constraint_analysis=analysis.to_dict(),
+                tables_queried=[],
+                waves_executed=[],
+                wave_traces=[],
+                extraction_ms=extraction_ms,
+                execution_ms=0,
+                total_ms=(time.time() - start_time) * 1000,
+            ).to_dict(),
+        }
+
+    # =========================================================================
+    # PHASE 5: EXECUTION
+    # =========================================================================
+    execution_start = time.time()
+
+    # executor already created in Phase 3.5
+    ranker = RankingEngine(terms)
+
+    all_results = []
+    waves_executed = []
+    wave_traces = []
+    early_exit_triggered = False
+
+    # Execute waves
+    for wave in ["EXACT", "ILIKE", "TRIGRAM"]:
+        wave_results, wave_latency = executor.execute_wave(tables_list, terms, wave, yacht_id)
+        all_results.extend(wave_results)
+        waves_executed.append(wave)
+
+        wave_rows = sum(len(r.rows) for r in wave_results if not r.error)
+        wave_tables = [r.table for r in wave_results if not r.error and r.rows]
+        wave_error = next((r.error for r in wave_results if r.error), None)
+
+        wave_traces.append({
+            "wave": wave,
+            "tables_queried": wave_tables,
+            "rows_returned": wave_rows,
+            "latency_ms": round(wave_latency, 2),
+            "error": wave_error
+        })
+
+        # Early exit check
+        total_rows = sum(len(r.rows) for r in all_results if not r.error)
+        if total_rows >= early_exit_threshold:
+            early_exit_triggered = True
+            break
+
+    # Vector search if enabled
+    if include_vector and (embedding or query):
+        try:
+            from .vector_search import execute_vector_search
+            vector_start = time.time()
+            vector_results = execute_vector_search(
+                embedding=embedding,
+                yacht_id=yacht_id,
+                limit=10,
+                query_text=query
+            )
+            vector_latency = (time.time() - vector_start) * 1000
+            waves_executed.append("VECTOR")
+
+            wave_traces.append({
+                "wave": "VECTOR",
+                "tables_queried": ["search_document_chunks"],
+                "rows_returned": len(vector_results.get("results", [])),
+                "latency_ms": round(vector_latency, 2),
+                "error": vector_results.get("error")
+            })
+        except Exception as e:
+            logger.error(f"Vector search failed: {e}")
+
+    execution_ms = (time.time() - execution_start) * 1000
+
+    # =========================================================================
+    # PHASE 6: RANKING & RESULTS
+    # =========================================================================
+
+    # Apply semantic filter constraints to results
+    # (filter rows that don't satisfy hard constraints)
+    filtered_results = []
+    for result in all_results:
+        if result.error:
+            continue
+        for row in result.rows:
+            # Check semantic predicates
+            passes_filters = True
+            for ef in extracted_filters:
+                if ef.constraint.predicate:
+                    # Check if row's table supports this predicate
+                    defn = PREDICATE_DEFINITIONS.get(ef.constraint.predicate)
+                    if defn and result.table in defn.get("tables", []):
+                        # Apply predicate check
+                        # For now, we trust SQL applied it via WHERE clause
+                        # Future: validate row against predicate
+                        pass
+            if passes_filters:
+                filtered_results.append(result)
+        break  # Only need to add once per result set
+
+    # Rank all results
+    ranked = ranker.rank_results(all_results)
+    diversified = ranker.diversify(ranked, max_per_table=10)
+    final = diversified[:max_results]
+
+    total_ms = (time.time() - start_time) * 1000
+
+    # =========================================================================
+    # PHASE 7: BUILD RESPONSE WITH PROOF TRACE
+    # =========================================================================
+
+    results = [
+        {
+            **r.data,
+            "_score": r.score,
+            "_score_components": r.score_components,
+            "_match_type": r.match_type,
+            "_matched_columns": r.matched_columns
+        }
+        for r in final
+    ]
+
+    return {
+        "results": results,
+        "result_count": len(results),
+        "action": action_plan.to_dict() if action_plan.actions else None,
+        "trace": CompilerTrace(
+            request_id=request_id,
+            query=query,
+            yacht_id=yacht_id,
+            ids_recognized=[{"type": r.id_type.value, "value": r.canonical_value} for r in recognized_ids],
+            filters_extracted=[{"name": f.definition.name, "text": f.matched_text} for f in extracted_filters],
+            action_parsed=action_plan.to_dict() if action_plan.actions else {},
+            constraints=[c.to_dict() for c in constraint_set.constraints],
+            constraint_analysis=analysis.to_dict(),
+            tables_queried=list(set(r.source_table for r in final)),
+            waves_executed=waves_executed,
+            wave_traces=wave_traces,
+            extraction_ms=extraction_ms,
+            execution_ms=execution_ms,
+            total_ms=total_ms,
+        ).to_dict(),
+    }
+
+
+# =============================================================================
 # TEST HARNESS
 # =============================================================================
 

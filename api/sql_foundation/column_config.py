@@ -430,6 +430,14 @@ TABLES["pms_work_orders"] = TableCapability(
             isolated_ok=True,
             conjunction_only=False
         ),
+        "equipment_id": ColumnCapability(
+            name="equipment_id",
+            datatype="uuid",
+            operators=[Operator.EXACT],
+            entity_types=["EQUIPMENT_ID"],  # Resolved from EQUIPMENT_CODE
+            isolated_ok=True,
+            conjunction_only=False
+        ),
     }
 )
 

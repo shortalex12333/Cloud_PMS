@@ -119,12 +119,13 @@ PO_PATTERN = IDPattern(
 )
 
 
-# Equipment Code patterns: ME-001, ME001, DG1, DG2, AUX-1
-# Format: 2-4 alpha prefix + optional separator + 1-4 digits
+# Equipment Code patterns: ME-001, ME001, DG1, DG2, AUX-1, ME-S-001, THR-B-001
+# Format: 2-4 alpha prefix + optional letter suffix + separator + 1-4 digits
+# Examples: ME-001, GEN-002, HVAC-001, ME-S-001, THR-B-001
 EQUIPMENT_CODE_PATTERN = IDPattern(
     id_type=IDType.EQUIPMENT_CODE,
     pattern=re.compile(
-        r'\b([A-Z]{2,4})[\s\-]?(\d{1,4})\b',
+        r'\b([A-Z]{2,4}(?:[\-][A-Z])?)[\s\-]?(\d{1,4})\b',
         re.IGNORECASE
     ),
     entity_type="EQUIPMENT_CODE",
@@ -135,11 +136,12 @@ EQUIPMENT_CODE_PATTERN = IDPattern(
 
 
 # Part Number patterns: ENG-0001-103, eng0001103, MTU-FILTER-001
-# Format: alphanumeric with hyphens, at least one hyphen or mixed alpha/digit
+# Format: Multi-segment alphanumeric (prefix-digits-suffix) or longer form
+# Must have either: multiple segments OR 4+ digit sequence to distinguish from equipment codes
 PART_NUMBER_PATTERN = IDPattern(
     id_type=IDType.PART_NUMBER,
     pattern=re.compile(
-        r'\b([A-Z]{2,5}[\-\s]?\d{3,5}[\-\s]?\d{0,3})\b',
+        r'\b([A-Z]{2,5}[\-\s]\d{3,5}[\-\s]\d{1,4})\b',  # Multi-segment: ENG-0001-103
         re.IGNORECASE
     ),
     entity_type="PART_NUMBER",
@@ -209,14 +211,14 @@ UUID_PATTERN = IDPattern(
 
 # All patterns in priority order (most specific first)
 ALL_PATTERNS: List[IDPattern] = [
-    UUID_PATTERN,       # Most specific
-    WO_PATTERN,
-    PO_PATTERN,
-    FAULT_CODE_PATTERN,
-    SERIAL_PATTERN,
-    PART_NUMBER_PATTERN,
-    EQUIPMENT_CODE_PATTERN,
-    LOCATION_CODE_PATTERN,  # Most ambiguous last
+    UUID_PATTERN,           # Unambiguous
+    WO_PATTERN,             # Work orders: WO-1234
+    PO_PATTERN,             # Purchase orders: PO-2024-001
+    SERIAL_PATTERN,         # Serial numbers: SN123456
+    PART_NUMBER_PATTERN,    # Part numbers: ENG-0001-103 (multi-segment)
+    EQUIPMENT_CODE_PATTERN, # Equipment codes: ME-S-001, GEN-002 (multi-segment, before fault)
+    FAULT_CODE_PATTERN,     # Fault codes: E047, F001 (single letter + digits, AFTER equipment)
+    LOCATION_CODE_PATTERN,  # Locations: 4A, BOX-2D (most ambiguous)
 ]
 
 
