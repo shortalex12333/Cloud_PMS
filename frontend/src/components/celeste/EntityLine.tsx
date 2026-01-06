@@ -11,6 +11,8 @@
  * - Neutral color
  * - No icons
  * - No interactivity (read-only)
+ *
+ * Brand tokens: semantic.textMuted (#86868B), semantic.textSecondary (#98989F)
  */
 
 import { cn } from '@/lib/utils';
@@ -44,14 +46,15 @@ export default function EntityLine({
   return (
     <div
       className={cn(
-        'px-4 py-2 text-[12px] text-[#86868b]',
+        'px-4 py-2',
+        'text-celeste-sm text-celeste-text-muted',
+        'font-body',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       {hasEntities && (
         <div>
-          <span className="text-[#98989f]">Understood:</span>
+          <span className="text-celeste-text-secondary">Understood:</span>
           <ul className="mt-1 space-y-0.5">
             {entities.map((entity, i) => (
               <li key={i}>
@@ -64,7 +67,7 @@ export default function EntityLine({
 
       {hasUncertainty && (
         <div className={hasEntities ? 'mt-2' : ''}>
-          <span className="text-[#98989f]">Possible matches:</span>
+          <span className="text-celeste-text-secondary">Possible matches:</span>
           <ul className="mt-1 space-y-0.5">
             {uncertainMatches.map((match, i) => (
               <li key={i}>

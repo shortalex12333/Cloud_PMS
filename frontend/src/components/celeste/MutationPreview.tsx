@@ -13,6 +13,8 @@
  * - No warnings
  *
  * If you cannot express the change as a diff, the action is invalid.
+ *
+ * Brand tokens: bg-primary, text colors, font-mono for diffs
  */
 
 import React from 'react';
@@ -38,23 +40,22 @@ export default function MutationPreview({
   return (
     <div
       className={cn(
-        'p-4',
-        'bg-[#1c1c1e]',
-        'rounded-lg',
+        'p-4 font-body',
+        'bg-celeste-bg-primary',
+        'rounded-celeste-md',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       <div className="space-y-3">
         {diffs.map((diff, i) => (
           <div key={i}>
-            <div className="text-[11px] text-[#86868b] mb-1">
+            <div className="text-celeste-xs text-celeste-text-muted mb-1">
               {diff.field}
             </div>
-            <div className="text-[14px] font-mono">
-              <span className="text-[#98989f]">{String(diff.before)}</span>
-              <span className="text-[#636366] mx-2">→</span>
-              <span className="text-[#f5f5f7]">{String(diff.after)}</span>
+            <div className="text-celeste-md font-mono">
+              <span className="text-celeste-text-secondary">{String(diff.before)}</span>
+              <span className="text-celeste-text-disabled mx-2">→</span>
+              <span className="text-celeste-text-primary">{String(diff.after)}</span>
             </div>
           </div>
         ))}

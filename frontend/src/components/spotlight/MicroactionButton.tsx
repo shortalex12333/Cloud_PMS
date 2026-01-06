@@ -11,12 +11,16 @@
  *
  * States:
  * - default, hover, active, disabled, loading
+ *
+ * Brand compliance:
+ * - No decorative tooltips (using native title instead)
+ * - Uses celeste brand tokens
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MicroAction, ACTION_REGISTRY, ActionMetadata } from '@/types/actions';
+import { MicroAction, ACTION_REGISTRY } from '@/types/actions';
 
 // ============================================================================
 // TYPES
@@ -42,9 +46,9 @@ interface MicroactionButtonProps {
 // ============================================================================
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-6 min-w-6 px-1.5 text-[11px] gap-1',
-  md: 'h-7 min-w-7 px-2 text-[12px] gap-1.5',
-  lg: 'h-8 min-w-8 px-2.5 text-[13px] gap-1.5',
+  sm: 'h-6 min-w-6 px-1.5 text-celeste-xs gap-1',
+  md: 'h-7 min-w-7 px-2 text-celeste-sm gap-1.5',
+  lg: 'h-8 min-w-8 px-2.5 text-celeste-base gap-1.5',
 };
 
 const iconSizes: Record<ButtonSize, number> = {
@@ -54,26 +58,26 @@ const iconSizes: Record<ButtonSize, number> = {
 };
 
 // ============================================================================
-// VARIANT CLASSES
+// VARIANT CLASSES - Using celeste brand tokens
 // ============================================================================
 
 const variantClasses = {
   default: cn(
-    'bg-zinc-100 dark:bg-zinc-800',
-    'hover:bg-zinc-200 dark:hover:bg-zinc-700',
-    'active:bg-zinc-300 dark:active:bg-zinc-600',
-    'text-zinc-600 dark:text-zinc-300',
-    'border border-zinc-200/60 dark:border-zinc-700/60'
+    'bg-celeste-bg-tertiary',
+    'hover:bg-celeste-border',
+    'active:bg-celeste-text-disabled',
+    'text-celeste-text-secondary',
+    'border border-celeste-border-subtle'
   ),
   primary: cn(
-    'bg-blue-500 hover:bg-blue-600 active:bg-blue-700',
-    'text-white',
-    'border border-blue-600'
+    'bg-celeste-blue hover:bg-celeste-blue-secondary active:bg-celeste-blue',
+    'text-celeste-white',
+    'border border-celeste-blue'
   ),
   danger: cn(
-    'bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30',
-    'text-red-600 dark:text-red-400',
-    'border border-red-500/30'
+    'bg-restricted-red/10 hover:bg-restricted-red/20 active:bg-restricted-red/30',
+    'text-restricted-red',
+    'border border-restricted-red/30'
   ),
 };
 
@@ -93,8 +97,6 @@ export default function MicroactionButton({
   onMouseLeave,
   className,
 }: MicroactionButtonProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
-
   const metadata = ACTION_REGISTRY[action];
   if (!metadata) {
     console.warn(`Unknown action: ${action}`);
@@ -106,89 +108,46 @@ export default function MicroactionButton({
   const IconComponent = (LucideIcons as any)[iconName] || LucideIcons.Circle;
   const iconSize = iconSizes[size];
 
-  // Handle tooltip
-  const handleMouseEnter = useCallback(() => {
-    setShowTooltip(true);
-    onMouseEnter?.();
-  }, [onMouseEnter]);
-
-  const handleMouseLeave = useCallback(() => {
-    setShowTooltip(false);
-    onMouseLeave?.();
-  }, [onMouseLeave]);
-
   // Determine variant based on side effect type
   const effectiveVariant = variant !== 'default' ? variant :
     metadata.side_effect_type === 'mutation_heavy' ? 'primary' : 'default';
 
   return (
-    <div className="relative">
-      <button
-        onClick={onClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        disabled={disabled || loading}
-        className={cn(
-          'inline-flex items-center justify-center',
-          'rounded-md',
-          'font-medium',
-          'transition-all duration-100',
-          'shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
-          'hover:shadow-[0_2px_6px_rgba(0,0,0,0.10)]',
-          'active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
-          sizeClasses[size],
-          variantClasses[effectiveVariant],
-          className
-        )}
-        aria-label={metadata.label}
-      >
-        {loading ? (
-          <LucideIcons.Loader2
-            className="animate-spin"
-            size={iconSize}
-          />
-        ) : (
-          <IconComponent size={iconSize} />
-        )}
-        {showLabel && (
-          <span className="truncate">{metadata.label}</span>
-        )}
-      </button>
-
-      {/* Tooltip */}
-      {showTooltip && !showLabel && (
-        <div
-          className={cn(
-            'absolute z-50',
-            'left-1/2 -translate-x-1/2',
-            'bottom-full mb-1.5',
-            'px-2 py-1 rounded-md',
-            'bg-zinc-900 dark:bg-zinc-100',
-            'text-white dark:text-zinc-900',
-            'text-[11px] font-medium',
-            'whitespace-nowrap',
-            'shadow-lg',
-            'pointer-events-none',
-            'animate-in fade-in-0 zoom-in-95 duration-100'
-          )}
-        >
-          {metadata.label}
-          {/* Arrow */}
-          <div
-            className={cn(
-              'absolute left-1/2 -translate-x-1/2',
-              'top-full',
-              'w-0 h-0',
-              'border-l-[5px] border-l-transparent',
-              'border-r-[5px] border-r-transparent',
-              'border-t-[5px] border-t-zinc-900 dark:border-t-zinc-100'
-            )}
-          />
-        </div>
+    <button
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      disabled={disabled || loading}
+      // Native title attribute for accessibility - no decorative tooltip (per brand spec)
+      title={!showLabel ? metadata.label : undefined}
+      className={cn(
+        'inline-flex items-center justify-center font-body',
+        'rounded-celeste-sm',
+        'font-medium',
+        'transition-all duration-celeste-fast',
+        'shadow-celeste-sm',
+        'hover:shadow-celeste-md',
+        'active:shadow-none',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        'focus:outline-none focus:ring-2 focus:ring-celeste-blue/40',
+        sizeClasses[size],
+        variantClasses[effectiveVariant],
+        className
       )}
-    </div>
+      aria-label={metadata.label}
+    >
+      {loading ? (
+        <LucideIcons.Loader2
+          className="animate-spin"
+          size={iconSize}
+        />
+      ) : (
+        <IconComponent size={iconSize} />
+      )}
+      {showLabel && (
+        <span className="truncate">{metadata.label}</span>
+      )}
+    </button>
   );
 }
 
@@ -237,8 +196,8 @@ export function MicroactionGroup({
             onClick={() => setShowOverflow(!showOverflow)}
             className={cn(
               'inline-flex items-center justify-center',
-              'rounded-md',
-              'transition-all duration-100',
+              'rounded-celeste-sm',
+              'transition-all duration-celeste-fast',
               sizeClasses[size],
               variantClasses.default
             )}
@@ -250,10 +209,10 @@ export function MicroactionGroup({
             <div
               className={cn(
                 'absolute right-0 top-full z-50',
-                'mt-1 p-1 rounded-lg',
-                'bg-white dark:bg-zinc-900',
-                'border border-zinc-200 dark:border-zinc-700',
-                'shadow-lg',
+                'mt-1 p-1 rounded-celeste-md',
+                'bg-celeste-bg-secondary',
+                'border border-celeste-border',
+                'shadow-celeste-lg',
                 'min-w-[140px]'
               )}
             >
@@ -270,14 +229,14 @@ export function MicroactionGroup({
                     }}
                     className={cn(
                       'w-full flex items-center gap-2',
-                      'px-2 py-1.5 rounded-md',
-                      'text-left text-[13px]',
-                      'text-zinc-700 dark:text-zinc-300',
-                      'hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                      'transition-colors duration-100'
+                      'px-2 py-1.5 rounded-celeste-sm',
+                      'text-left text-celeste-base',
+                      'text-celeste-text-primary',
+                      'hover:bg-celeste-bg-tertiary',
+                      'transition-colors duration-celeste-fast'
                     )}
                   >
-                    <Icon size={14} className="text-zinc-400" />
+                    <Icon size={14} className="text-celeste-text-muted" />
                     <span>{meta?.label || action}</span>
                   </button>
                 );

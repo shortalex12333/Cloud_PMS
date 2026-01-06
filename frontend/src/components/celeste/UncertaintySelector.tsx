@@ -11,6 +11,8 @@
  * - No "Did you mean"
  * - Once selected, the rest disappear
  * - No "you chose" messaging
+ *
+ * Brand tokens: bg-secondary, bg-tertiary, text colors
  */
 
 import React from 'react';
@@ -44,12 +46,11 @@ export default function UncertaintySelector({
   return (
     <div
       className={cn(
-        'px-4 py-3',
+        'px-4 py-3 font-body',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
-      <div className="text-[12px] text-[#86868b] mb-2">
+      <div className="text-celeste-sm text-celeste-text-muted mb-2">
         Which did you mean?
       </div>
 
@@ -61,9 +62,9 @@ export default function UncertaintySelector({
             className={cn(
               'w-full text-left',
               'px-3 py-2',
-              'text-[13px] text-[#f5f5f7]',
-              'bg-[#2c2c2e] hover:bg-[#3d3d3f]',
-              'rounded-lg',
+              'text-celeste-base text-celeste-text-primary',
+              'bg-celeste-bg-secondary hover:bg-celeste-bg-tertiary',
+              'rounded-celeste-md',
               'transition-colors'
             )}
           >

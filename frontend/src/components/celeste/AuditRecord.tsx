@@ -8,6 +8,8 @@
  * - Append-only
  * - Never editable
  * - Never hidden
+ *
+ * Brand tokens: semantic.textDisabled (#636366), fontSize.xs (11px)
  */
 
 import React from 'react';
@@ -39,10 +41,10 @@ export default function AuditRecord({
   return (
     <div
       className={cn(
-        'text-[11px] text-[#636366]',
+        'text-celeste-xs text-celeste-text-disabled',
+        'font-body',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       Updated by {userName}
       <br />

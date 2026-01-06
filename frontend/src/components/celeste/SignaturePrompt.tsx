@@ -11,6 +11,8 @@
  * - No other actions visible
  *
  * This is the moment responsibility moves to the human.
+ *
+ * Brand tokens: bg-secondary, blue for commit, text colors
  */
 
 import React from 'react';
@@ -37,11 +39,10 @@ export default function SignaturePrompt({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50',
+        'fixed inset-0 z-50 font-body',
         'flex items-center justify-center',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       {/* Dim background */}
       <div
@@ -50,17 +51,17 @@ export default function SignaturePrompt({
       />
 
       {/* Prompt */}
-      <div className="relative w-full max-w-[400px] mx-4">
+      <div className="relative w-full max-w-celeste-modal mx-4">
         {/* Preview remains visible */}
         <MutationPreview diffs={diffs} className="mb-4" />
 
         {/* Signature area - dominant */}
-        <div className="bg-[#2c2c2e] rounded-lg p-6">
+        <div className="bg-celeste-bg-secondary rounded-celeste-md p-6">
           <div className="text-center">
-            <div className="text-[15px] text-[#f5f5f7] mb-1">
+            <div className="text-celeste-lg text-celeste-text-primary mb-1">
               Sign as {userName}
             </div>
-            <div className="text-[12px] text-[#636366]">
+            <div className="text-celeste-sm text-celeste-text-disabled">
               This action will be recorded
             </div>
           </div>
@@ -72,9 +73,9 @@ export default function SignaturePrompt({
               disabled={isCommitting}
               className={cn(
                 'flex-1 py-2.5',
-                'text-[14px] text-[#86868b]',
-                'bg-[#3d3d3f] hover:bg-[#48484a]',
-                'rounded-lg',
+                'text-celeste-md text-celeste-text-muted',
+                'bg-celeste-bg-tertiary hover:bg-celeste-border',
+                'rounded-celeste-md',
                 'transition-colors',
                 isCommitting && 'opacity-50 cursor-not-allowed'
               )}
@@ -88,9 +89,9 @@ export default function SignaturePrompt({
               disabled={isCommitting}
               className={cn(
                 'flex-1 py-2.5',
-                'text-[14px] text-white font-medium',
-                'bg-[#0A84FF] hover:bg-[#409cff]',
-                'rounded-lg',
+                'text-celeste-md text-celeste-white font-medium',
+                'bg-celeste-blue hover:bg-celeste-blue-secondary',
+                'rounded-celeste-md',
                 'transition-colors',
                 isCommitting && 'opacity-50 cursor-not-allowed'
               )}
