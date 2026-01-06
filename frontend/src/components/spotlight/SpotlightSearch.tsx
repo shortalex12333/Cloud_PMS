@@ -297,10 +297,10 @@ export default function SpotlightSearch({
       </div>
 
       {/* Settings Button - bottom of interface */}
-      <div className="flex justify-center mt-4">
+      <div className="flex justify-center mt-6">
         <button
           onClick={() => setShowSettings(true)}
-          className="p-2 rounded-full text-[#636366] hover:text-[#98989f] hover:bg-white/10 transition-colors"
+          className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
           aria-label="Settings"
         >
           <Settings className="w-5 h-5" strokeWidth={1.5} />
