@@ -1,7 +1,14 @@
 'use client';
 
+/**
+ * SettingsModal
+ * System settings interface
+ * Brand tokens: CelesteOS color palette
+ */
+
 import { X, Settings } from 'lucide-react';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -14,7 +21,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center font-body">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -22,51 +29,54 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl bg-card border border-border rounded-lg shadow-xl mx-4 max-h-[80vh] overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-celeste-bg-secondary border border-celeste-border rounded-celeste-lg shadow-celeste-xl mx-4 max-h-[80vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="flex items-center justify-between p-6 border-b border-celeste-border">
           <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Settings</h2>
+            <Settings className="h-5 w-5 text-celeste-blue" />
+            <h2 className="text-celeste-lg font-semibold text-celeste-text-primary">Settings</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded-md transition-colors"
+            className="p-1 hover:bg-celeste-bg-tertiary rounded-celeste-sm transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5 text-celeste-text-secondary" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-border px-6">
-          <div className="flex gap-4 text-sm">
+        <div className="border-b border-celeste-border px-6">
+          <div className="flex gap-4 text-celeste-sm">
             <button
               onClick={() => setActiveTab('general')}
-              className={`py-3 border-b-2 transition-colors ${
+              className={cn(
+                'py-3 border-b-2 transition-colors',
                 activeTab === 'general'
-                  ? 'border-primary font-medium'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                  ? 'border-celeste-blue font-medium text-celeste-text-primary'
+                  : 'border-transparent text-celeste-text-muted hover:text-celeste-text-primary'
+              )}
             >
               General
             </button>
             <button
               onClick={() => setActiveTab('notifications')}
-              className={`py-3 border-b-2 transition-colors ${
+              className={cn(
+                'py-3 border-b-2 transition-colors',
                 activeTab === 'notifications'
-                  ? 'border-primary font-medium'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                  ? 'border-celeste-blue font-medium text-celeste-text-primary'
+                  : 'border-transparent text-celeste-text-muted hover:text-celeste-text-primary'
+              )}
             >
               Notifications
             </button>
             <button
               onClick={() => setActiveTab('users')}
-              className={`py-3 border-b-2 transition-colors ${
+              className={cn(
+                'py-3 border-b-2 transition-colors',
                 activeTab === 'users'
-                  ? 'border-primary font-medium'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                  ? 'border-celeste-blue font-medium text-celeste-text-primary'
+                  : 'border-transparent text-celeste-text-muted hover:text-celeste-text-primary'
+              )}
             >
               Users
             </button>
@@ -78,20 +88,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {activeTab === 'general' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-celeste-sm font-medium text-celeste-text-primary mb-2">
                   Yacht Name
                 </label>
                 <input
                   type="text"
                   placeholder="M/Y Example"
-                  className="w-full px-4 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full px-4 py-2 bg-celeste-bg-primary border border-celeste-border rounded-celeste-md text-celeste-text-primary placeholder:text-celeste-text-disabled focus:outline-none focus:border-celeste-blue transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-celeste-sm font-medium text-celeste-text-primary mb-2">
                   Theme
                 </label>
-                <select className="w-full px-4 py-2 bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring">
+                <select className="w-full px-4 py-2 bg-celeste-bg-primary border border-celeste-border rounded-celeste-md text-celeste-text-primary focus:outline-none focus:border-celeste-blue transition-colors">
                   <option>Light</option>
                   <option>Dark</option>
                   <option>System</option>
@@ -103,26 +113,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {activeTab === 'notifications' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Email notifications</span>
-                <input type="checkbox" defaultChecked />
+                <span className="text-celeste-sm text-celeste-text-primary">Email notifications</span>
+                <input type="checkbox" defaultChecked className="accent-celeste-blue" />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">Predictive alerts</span>
-                <input type="checkbox" defaultChecked />
+                <span className="text-celeste-sm text-celeste-text-primary">Predictive alerts</span>
+                <input type="checkbox" defaultChecked className="accent-celeste-blue" />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm">Work order reminders</span>
-                <input type="checkbox" defaultChecked />
+                <span className="text-celeste-sm text-celeste-text-primary">Work order reminders</span>
+                <input type="checkbox" defaultChecked className="accent-celeste-blue" />
               </div>
             </div>
           )}
 
           {activeTab === 'users' && (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-celeste-sm text-celeste-text-muted">
                 User management (HOD only)
               </p>
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90">
+              <button className="px-4 py-2 bg-celeste-blue text-celeste-white rounded-celeste-md hover:bg-celeste-blue-secondary transition-colors">
                 Add User
               </button>
             </div>
@@ -130,16 +140,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-6 border-t border-border">
+        <div className="flex justify-end gap-2 p-6 border-t border-celeste-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+            className="px-4 py-2 bg-celeste-bg-tertiary text-celeste-text-secondary rounded-celeste-md hover:bg-celeste-border transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            className="px-4 py-2 bg-celeste-blue text-celeste-white rounded-celeste-md hover:bg-celeste-blue-secondary transition-colors"
           >
             Save Changes
           </button>

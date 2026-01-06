@@ -164,7 +164,6 @@ export default function SpotlightSearch({
   return (
     <div
       className={cn(
-        'w-full max-w-celeste-search mx-auto font-body',
         isModal && 'fixed inset-0 z-[9999] flex items-start justify-center pt-[18vh]',
         className
       )}
@@ -178,148 +177,155 @@ export default function SpotlightSearch({
         />
       )}
 
-      {/* Main Spotlight Container */}
+      {/* Spotlight Container - constrained width */}
       <div
         className={cn(
-          'spotlight-panel relative w-full',
-          'animate-spotlight-in',
-          isModal && 'z-10'
+          'w-full max-w-[680px] mx-auto px-4',
+          isModal && 'relative z-10'
         )}
       >
-        {/* Search Input */}
+        {/* Main Spotlight Panel */}
         <div
           className={cn(
-            'flex items-center gap-3 px-4 h-[50px]',
-            (hasQuery || hasResults) && 'border-b border-celeste-border-subtle'
+            'spotlight-panel w-full font-body',
+            'animate-spotlight-in'
           )}
         >
-          <Search
-            className="flex-shrink-0 w-5 h-5 text-celeste-text-secondary"
-            strokeWidth={1.8}
+          {/* Search Input */}
+          <div
+            className={cn(
+              'flex items-center gap-3 px-4 h-[50px]',
+              (hasQuery || hasResults) && 'border-b border-[#3d3d3f]/30'
+            )}
+          >
+            <Search
+              className="flex-shrink-0 w-5 h-5 text-[#98989f]"
+              strokeWidth={1.8}
+            />
+
+            <div className="flex-1 h-full relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={cn(
+                  'w-full h-full',
+                  'bg-transparent border-none outline-none',
+                  'text-[17px] text-white',
+                  'font-normal tracking-[-0.01em]',
+                  'caret-white',
+                  'relative z-10'
+                )}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+              {/* Animated rolling placeholder */}
+              {!query && (
+                <div
+                  className="absolute inset-0 flex items-center pointer-events-none overflow-hidden"
+                >
+                  <span
+                    className={cn(
+                      'text-[17px] text-[#98989f] font-normal tracking-[-0.01em]',
+                      'transition-all duration-[400ms] ease-out',
+                      isAnimating
+                        ? 'opacity-0 -translate-y-3'
+                        : 'opacity-100 translate-y-0'
+                    )}
+                  >
+                    {PLACEHOLDER_SUGGESTIONS[placeholderIndex]}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {query && (
+                <button
+                  onClick={handleClear}
+                  className="flex items-center justify-center w-4 h-4 rounded-full bg-[#636366] hover:bg-[#8e8e93] transition-colors"
+                  aria-label="Clear"
+                >
+                  <X className="w-2.5 h-2.5 text-[#1c1c1e]" strokeWidth={3} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Status Line - system transparency */}
+          <StatusLine
+            message={isLoading ? 'Searching…' : isStreaming ? 'Loading results…' : ''}
+            visible={isLoading || isStreaming}
+            className="px-4 py-2"
           />
 
-          <div className="flex-1 h-full relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                'w-full h-full',
-                'bg-transparent border-none outline-none',
-                'text-celeste-xl text-celeste-white',
-                'font-normal tracking-tight',
-                'caret-celeste-white',
-                'relative z-10'
-              )}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
+          {/* Entity Line - what Celeste understood (placeholder for NLP extraction) */}
+          {hasQuery && hasResults && (
+            <EntityLine
+              entities={[
+                // These would come from NLP extraction in the search hook
+                // For now, extract type from first result as demonstration
+                ...(results[0]?.type ? [{ label: 'Type', value: results[0].type.replace('_', ' ') }] : []),
+              ]}
             />
-            {/* Animated rolling placeholder */}
-            {!query && (
-              <div
-                className="absolute inset-0 flex items-center pointer-events-none overflow-hidden"
-              >
-                <span
-                  className={cn(
-                    'text-celeste-xl text-celeste-text-secondary font-normal tracking-tight',
-                    'transition-all duration-celeste-deliberate ease-celeste-out',
-                    isAnimating
-                      ? 'opacity-0 -translate-y-3'
-                      : 'opacity-100 translate-y-0'
-                  )}
-                >
-                  {PLACEHOLDER_SUGGESTIONS[placeholderIndex]}
-                </span>
-              </div>
-            )}
-          </div>
+          )}
 
-          <div className="flex items-center gap-2">
-            {query && (
-              <button
-                onClick={handleClear}
-                className="flex items-center justify-center w-4 h-4 rounded-full bg-celeste-text-disabled hover:bg-celeste-text-secondary transition-colors"
-                aria-label="Clear"
-              >
-                <X className="w-2.5 h-2.5 text-celeste-bg-primary" strokeWidth={3} />
-              </button>
-            )}
-          </div>
+          {/* Results */}
+          {hasQuery && (
+            <div
+              ref={resultsRef}
+              className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
+            >
+              {hasResults && (
+                <div className="py-1.5">
+                  {results.map((result, index) => (
+                    <SpotlightResultRow
+                      key={result.id}
+                      result={result}
+                      isSelected={index === selectedIndex}
+                      index={index}
+                      onClick={() => setSelectedIndex(index)}
+                      onDoubleClick={() => console.log('Open:', result)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {showNoResults && (
+                <div className="py-10 text-center">
+                  <p className="text-[15px] text-[#98989f]">No Results</p>
+                </div>
+              )}
+
+              {error && (
+                <div className="py-10 text-center">
+                  <p className="text-[15px] text-[#98989f]">{error}</p>
+                  <button
+                    onClick={() => search(query)}
+                    className="mt-2 text-[14px] text-[#0a84ff] hover:text-[#409cff]"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Status Line - system transparency */}
-        <StatusLine
-          message={isLoading ? 'Searching…' : isStreaming ? 'Loading results…' : ''}
-          visible={isLoading || isStreaming}
-          className="px-4 py-2"
-        />
-
-        {/* Entity Line - what Celeste understood (placeholder for NLP extraction) */}
-        {hasQuery && hasResults && (
-          <EntityLine
-            entities={[
-              // These would come from NLP extraction in the search hook
-              // For now, extract type from first result as demonstration
-              ...(results[0]?.type ? [{ label: 'Type', value: results[0].type.replace('_', ' ') }] : []),
-            ]}
-          />
-        )}
-
-        {/* Results */}
-        {hasQuery && (
-          <div
-            ref={resultsRef}
-            className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
+        {/* Settings Button - below panel, centered */}
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Settings"
           >
-            {hasResults && (
-              <div className="py-1.5">
-                {results.map((result, index) => (
-                  <SpotlightResultRow
-                    key={result.id}
-                    result={result}
-                    isSelected={index === selectedIndex}
-                    index={index}
-                    onClick={() => setSelectedIndex(index)}
-                    onDoubleClick={() => console.log('Open:', result)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {showNoResults && (
-              <div className="py-10 text-center">
-                <p className="text-celeste-lg text-celeste-text-secondary">No Results</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="py-10 text-center">
-                <p className="text-celeste-lg text-celeste-text-secondary">{error}</p>
-                <button
-                  onClick={() => search(query)}
-                  className="mt-2 text-celeste-md text-celeste-blue hover:text-celeste-blue-secondary"
-                >
-                  Try again
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Settings Button - bottom of interface */}
-      <div className="flex justify-center mt-6">
-        <button
-          onClick={() => setShowSettings(true)}
-          className="p-2.5 rounded-full text-celeste-text-secondary hover:text-celeste-white hover:bg-celeste-white/10 transition-colors"
-          aria-label="Settings"
-        >
-          <Settings className="w-5 h-5" strokeWidth={1.5} />
-        </button>
+            <Settings className="w-5 h-5" strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
 
       {/* Settings Modal */}
