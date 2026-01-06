@@ -3,6 +3,7 @@
 /**
  * LoginContent
  * Apple-style minimal login
+ * Brand tokens: CelesteOS color palette
  */
 
 import { useState, useEffect } from 'react';
@@ -43,30 +44,29 @@ export default function LoginContent() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-[#86868b] animate-spin" />
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-celeste-text-muted animate-spin" />
       </div>
     );
   }
 
   return (
     <div
-      className="min-h-screen bg-[#000000] flex items-center justify-center p-6"
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' }}
+      className="min-h-screen bg-celeste-black flex items-center justify-center p-6 font-body"
     >
       <div className="w-full max-w-[280px]">
-        {/* Apple Logo placeholder */}
+        {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#3d3d3f] to-[#1c1c1e] flex items-center justify-center">
-            <span className="text-white text-xl font-semibold">C</span>
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-celeste-bg-tertiary to-celeste-bg-primary flex items-center justify-center">
+            <span className="text-celeste-white text-xl font-semibold">C</span>
           </div>
         </div>
 
         {/* Title */}
-        <h1 className="text-[21px] font-semibold text-white text-center mb-1 tracking-[-0.01em]">
+        <h1 className="text-celeste-2xl font-semibold text-celeste-white text-center mb-1 tracking-tight">
           Sign in
         </h1>
-        <p className="text-[13px] text-[#86868b] text-center mb-8">
+        <p className="text-celeste-base text-celeste-text-muted text-center mb-8">
           CelesteOS
         </p>
 
@@ -74,8 +74,8 @@ export default function LoginContent() {
         <form onSubmit={handleLogin} className="space-y-3">
           {/* Error */}
           {error && (
-            <div className="px-3 py-2 rounded-lg bg-[#FF453A]/10 border border-[#FF453A]/20">
-              <p className="text-[13px] text-[#FF453A] text-center">{error}</p>
+            <div className="px-3 py-2 rounded-celeste-md bg-restricted-red/10 border border-restricted-red/20">
+              <p className="text-celeste-base text-restricted-red text-center">{error}</p>
             </div>
           )}
 
@@ -87,7 +87,7 @@ export default function LoginContent() {
             placeholder="Email"
             required
             autoComplete="email"
-            className="w-full h-[44px] px-4 rounded-xl bg-[#1c1c1e] border border-[#3d3d3f] text-[15px] text-white placeholder:text-[#636366] focus:outline-none focus:border-[#0A84FF] transition-colors"
+            className="w-full h-[44px] px-4 rounded-celeste-lg bg-celeste-bg-primary border border-celeste-border text-celeste-lg text-celeste-white placeholder:text-celeste-text-disabled focus:outline-none focus:border-celeste-blue transition-colors"
           />
 
           {/* Password */}
@@ -98,14 +98,14 @@ export default function LoginContent() {
             placeholder="Password"
             required
             autoComplete="current-password"
-            className="w-full h-[44px] px-4 rounded-xl bg-[#1c1c1e] border border-[#3d3d3f] text-[15px] text-white placeholder:text-[#636366] focus:outline-none focus:border-[#0A84FF] transition-colors"
+            className="w-full h-[44px] px-4 rounded-celeste-lg bg-celeste-bg-primary border border-celeste-border text-celeste-lg text-celeste-white placeholder:text-celeste-text-disabled focus:outline-none focus:border-celeste-blue transition-colors"
           />
 
           {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[44px] rounded-xl bg-[#0A84FF] hover:bg-[#0077ED] disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium text-white transition-colors flex items-center justify-center gap-2"
+            className="w-full h-[44px] rounded-celeste-lg bg-celeste-blue hover:bg-celeste-blue-secondary disabled:opacity-50 disabled:cursor-not-allowed text-celeste-lg font-medium text-celeste-white transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -119,7 +119,7 @@ export default function LoginContent() {
         </form>
 
         {/* Footer */}
-        <p className="mt-8 text-[11px] text-[#48484a] text-center">
+        <p className="mt-8 text-celeste-xs text-celeste-text-disabled text-center">
           Secure crew access only
         </p>
       </div>
