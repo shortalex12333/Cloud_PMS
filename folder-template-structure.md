@@ -157,3 +157,4 @@ celeste/
   scripts/
     seed_test_data.py
     run_golden_tests.py
+
