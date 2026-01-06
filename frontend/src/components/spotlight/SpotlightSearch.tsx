@@ -6,12 +6,13 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Loader2, Settings } from 'lucide-react';
+import { Search, X, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import type { SearchResult as APISearchResult } from '@/types/search';
 import SpotlightResultRow from './SpotlightResultRow';
 import SettingsModal from '@/components/SettingsModal';
+import { EntityLine, StatusLine } from '@/components/celeste';
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -239,9 +240,6 @@ export default function SpotlightSearch({
           </div>
 
           <div className="flex items-center gap-2">
-            {(isLoading || isStreaming) && (
-              <Loader2 className="w-4 h-4 text-[#98989f] animate-spin" />
-            )}
             {query && (
               <button
                 onClick={handleClear}
@@ -253,6 +251,24 @@ export default function SpotlightSearch({
             )}
           </div>
         </div>
+
+        {/* Status Line - system transparency */}
+        <StatusLine
+          message={isLoading ? 'Searching…' : isStreaming ? 'Loading results…' : ''}
+          visible={isLoading || isStreaming}
+          className="px-4 py-2"
+        />
+
+        {/* Entity Line - what Celeste understood (placeholder for NLP extraction) */}
+        {hasQuery && hasResults && (
+          <EntityLine
+            entities={[
+              // These would come from NLP extraction in the search hook
+              // For now, extract type from first result as demonstration
+              ...(results[0]?.type ? [{ label: 'Type', value: results[0].type.replace('_', ' ') }] : []),
+            ]}
+          />
+        )}
 
         {/* Results */}
         {hasQuery && (
