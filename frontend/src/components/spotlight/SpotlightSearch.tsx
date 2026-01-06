@@ -6,11 +6,12 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, X, Loader2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import type { SearchResult as APISearchResult } from '@/types/search';
 import SpotlightResultRow from './SpotlightResultRow';
+import SettingsModal from '@/components/SettingsModal';
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -83,6 +84,7 @@ export default function SpotlightSearch({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -293,6 +295,23 @@ export default function SpotlightSearch({
           </div>
         )}
       </div>
+
+      {/* Settings Button - bottom of interface */}
+      <div className="flex justify-center mt-4">
+        <button
+          onClick={() => setShowSettings(true)}
+          className="p-2 rounded-full text-[#636366] hover:text-[#98989f] hover:bg-white/10 transition-colors"
+          aria-label="Settings"
+        >
+          <Settings className="w-5 h-5" strokeWidth={1.5} />
+        </button>
+      </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }
