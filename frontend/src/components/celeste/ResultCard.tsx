@@ -10,6 +10,8 @@
  * [Primary Action]    [▼]
  *
  * Nothing else is allowed.
+ *
+ * Brand tokens: semantic colors, fontSize scale, font-body
  */
 
 import React, { useState } from 'react';
@@ -49,27 +51,26 @@ export default function ResultCard({
   return (
     <div
       className={cn(
-        'px-4 py-3',
-        'border-b border-[#3d3d3f]/30',
-        'transition-colors duration-50',
-        isSelected && 'bg-[#0A84FF]/10',
+        'px-4 py-3 font-body',
+        'border-b border-celeste-border-subtle',
+        'transition-colors duration-celeste-fast',
+        isSelected && 'bg-celeste-blue/10',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       {/* Header — what this thing is */}
-      <div className="text-[14px] font-medium text-[#f5f5f7]">
+      <div className="text-celeste-md font-medium text-celeste-text-primary">
         {header}
       </div>
 
       {/* Body — the minimum useful truth */}
-      <div className="mt-1 text-[13px] text-[#98989f] leading-relaxed">
+      <div className="mt-1 text-celeste-base text-celeste-text-secondary leading-relaxed">
         {body}
       </div>
 
       {/* Meta — optional secondary info */}
       {meta && (
-        <div className="mt-1 text-[11px] text-[#636366]">
+        <div className="mt-1 text-celeste-xs text-celeste-text-disabled">
           {meta}
         </div>
       )}
@@ -81,7 +82,7 @@ export default function ResultCard({
           {primaryAction && (
             <button
               onClick={primaryAction.onAction}
-              className="text-[13px] text-[#86868b] hover:text-[#f5f5f7] transition-colors"
+              className="text-celeste-base text-celeste-text-muted hover:text-celeste-text-primary transition-colors"
             >
               {primaryAction.label}
             </button>
@@ -92,7 +93,7 @@ export default function ResultCard({
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="p-1 text-[#636366] hover:text-[#86868b] transition-colors"
+                className="p-1 text-celeste-text-disabled hover:text-celeste-text-muted transition-colors"
                 aria-label="More actions"
               >
                 <ChevronDown className="w-4 h-4" />

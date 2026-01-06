@@ -164,11 +164,10 @@ export default function SpotlightSearch({
   return (
     <div
       className={cn(
-        'w-full max-w-[680px] mx-auto',
+        'w-full max-w-celeste-search mx-auto font-body',
         isModal && 'fixed inset-0 z-[9999] flex items-start justify-center pt-[18vh]',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif' }}
     >
       {/* Backdrop */}
       {isModal && (
@@ -191,11 +190,11 @@ export default function SpotlightSearch({
         <div
           className={cn(
             'flex items-center gap-3 px-4 h-[50px]',
-            (hasQuery || hasResults) && 'border-b border-[#3d3d3f]/30'
+            (hasQuery || hasResults) && 'border-b border-celeste-border-subtle'
           )}
         >
           <Search
-            className="flex-shrink-0 w-5 h-5 text-[#98989f]"
+            className="flex-shrink-0 w-5 h-5 text-celeste-text-secondary"
             strokeWidth={1.8}
           />
 
@@ -209,9 +208,9 @@ export default function SpotlightSearch({
               className={cn(
                 'w-full h-full',
                 'bg-transparent border-none outline-none',
-                'text-[17px] text-white',
-                'font-normal tracking-[-0.01em]',
-                'caret-white',
+                'text-celeste-xl text-celeste-white',
+                'font-normal tracking-tight',
+                'caret-celeste-white',
                 'relative z-10'
               )}
               autoComplete="off"
@@ -226,8 +225,8 @@ export default function SpotlightSearch({
               >
                 <span
                   className={cn(
-                    'text-[17px] text-[#98989f] font-normal tracking-[-0.01em]',
-                    'transition-all duration-[400ms] ease-out',
+                    'text-celeste-xl text-celeste-text-secondary font-normal tracking-tight',
+                    'transition-all duration-celeste-deliberate ease-celeste-out',
                     isAnimating
                       ? 'opacity-0 -translate-y-3'
                       : 'opacity-100 translate-y-0'
@@ -243,10 +242,10 @@ export default function SpotlightSearch({
             {query && (
               <button
                 onClick={handleClear}
-                className="flex items-center justify-center w-4 h-4 rounded-full bg-[#636366] hover:bg-[#8e8e93] transition-colors"
+                className="flex items-center justify-center w-4 h-4 rounded-full bg-celeste-text-disabled hover:bg-celeste-text-secondary transition-colors"
                 aria-label="Clear"
               >
-                <X className="w-2.5 h-2.5 text-[#1c1c1e]" strokeWidth={3} />
+                <X className="w-2.5 h-2.5 text-celeste-bg-primary" strokeWidth={3} />
               </button>
             )}
           </div>
@@ -293,16 +292,16 @@ export default function SpotlightSearch({
 
             {showNoResults && (
               <div className="py-10 text-center">
-                <p className="text-[15px] text-[#98989f]">No Results</p>
+                <p className="text-celeste-lg text-celeste-text-secondary">No Results</p>
               </div>
             )}
 
             {error && (
               <div className="py-10 text-center">
-                <p className="text-[15px] text-[#98989f]">{error}</p>
+                <p className="text-celeste-lg text-celeste-text-secondary">{error}</p>
                 <button
                   onClick={() => search(query)}
-                  className="mt-2 text-[14px] text-[#0a84ff] hover:text-[#409cff]"
+                  className="mt-2 text-celeste-md text-celeste-blue hover:text-celeste-blue-secondary"
                 >
                   Try again
                 </button>
@@ -316,7 +315,7 @@ export default function SpotlightSearch({
       <div className="flex justify-center mt-6">
         <button
           onClick={() => setShowSettings(true)}
-          className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+          className="p-2.5 rounded-full text-celeste-text-secondary hover:text-celeste-white hover:bg-celeste-white/10 transition-colors"
           aria-label="Settings"
         >
           <Settings className="w-5 h-5" strokeWidth={1.5} />

@@ -11,6 +11,8 @@
  * - Auto-dismiss when complete
  * - No personality
  * - No reassurance language
+ *
+ * Brand tokens: semantic.textMuted (#86868B), duration.fast (150ms)
  */
 
 import { cn } from '@/lib/utils';
@@ -31,11 +33,11 @@ export default function StatusLine({
   return (
     <div
       className={cn(
-        'text-[12px] text-[#86868b]',
-        'transition-opacity duration-200',
+        'text-celeste-sm text-celeste-text-muted',
+        'font-body',
+        'transition-opacity duration-celeste-fast',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       {message}
     </div>

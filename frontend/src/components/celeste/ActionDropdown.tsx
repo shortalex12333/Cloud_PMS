@@ -16,6 +16,8 @@
  * 2. MUTATE actions (visually separated)
  *
  * The divider is semantic, not decorative.
+ *
+ * Brand tokens: bg-secondary, border, text colors
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -82,14 +84,13 @@ export default function ActionDropdown({
       ref={ref}
       className={cn(
         'absolute right-0 top-full mt-1',
-        'min-w-[160px]',
-        'bg-[#2c2c2e] border border-[#3d3d3f]',
-        'rounded-lg shadow-lg',
+        'min-w-[160px] font-body',
+        'bg-celeste-bg-secondary border border-celeste-border',
+        'rounded-celeste-md shadow-celeste-lg',
         'py-1',
         'z-50',
         className
       )}
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif' }}
     >
       {/* READ actions */}
       {readActions.map((action, i) => (
@@ -101,8 +102,8 @@ export default function ActionDropdown({
           }}
           className={cn(
             'w-full px-3 py-1.5 text-left',
-            'text-[13px] text-[#f5f5f7]',
-            'hover:bg-[#3d3d3f]',
+            'text-celeste-base text-celeste-text-primary',
+            'hover:bg-celeste-bg-tertiary',
             'transition-colors'
           )}
         >
@@ -112,7 +113,7 @@ export default function ActionDropdown({
 
       {/* Semantic divider between READ and MUTATE */}
       {hasBothTypes && (
-        <div className="my-1 border-t border-[#3d3d3f]" />
+        <div className="my-1 border-t border-celeste-border" />
       )}
 
       {/* MUTATE actions - visually separated, lower priority */}
@@ -125,8 +126,8 @@ export default function ActionDropdown({
           }}
           className={cn(
             'w-full px-3 py-1.5 text-left',
-            'text-[13px] text-[#86868b]', // Lower visual priority
-            'hover:bg-[#3d3d3f] hover:text-[#f5f5f7]',
+            'text-celeste-base text-celeste-text-muted', // Lower visual priority
+            'hover:bg-celeste-bg-tertiary hover:text-celeste-text-primary',
             'transition-colors'
           )}
         >

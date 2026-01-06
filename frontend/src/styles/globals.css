@@ -2,8 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * CelesteOS Global Styles
+ * Source: branding/Brand/colour-system.md, branding/Brand/Brand Guidelines.md
+ *
+ * "Colour is a signal of state, not personality."
+ */
+
 @layer base {
   :root {
+    /* Legacy shadcn variables (for compatibility) */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -24,9 +32,76 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+
+    /* =========================================================================
+       CELESTE BRAND TOKENS
+       Source: branding/Brand/colour-system.md
+       ========================================================================= */
+
+    /* Neutral Foundation (80-90% of interface) */
+    --celeste-white: #FFFFFF;
+    --celeste-white-soft: #FAFAFA;
+    --celeste-white-muted: #F8F8F0;
+    --celeste-white-dim: #F4F4F4;
+
+    --celeste-black: #020202;
+    --celeste-black-deep: #181818;
+    --celeste-black-base: #242424;
+
+    /* Functional Blue (selection, focus ONLY) */
+    --celeste-blue: #0070FF;
+    --celeste-blue-secondary: #00A4FF;
+    --celeste-blue-soft: #BADDE9;
+
+    /* Restricted Colors (specific contexts only) */
+    --celeste-red: #FF3B30;      /* Irreversible destructive only */
+    --celeste-orange: #FF9500;   /* Inspection warnings only */
+    --celeste-yellow: #FFCC00;   /* Time-sensitive only */
+    --celeste-green: #34C759;    /* Committed confirmation only */
+
+    /* Semantic Text */
+    --celeste-text-primary: #1D1D1F;
+    --celeste-text-secondary: #6E6E73;
+    --celeste-text-muted: #86868B;
+    --celeste-text-disabled: #AEAEB2;
+
+    /* Semantic Backgrounds */
+    --celeste-bg-primary: #FFFFFF;
+    --celeste-bg-secondary: #F5F5F7;
+    --celeste-bg-tertiary: #E8E8ED;
+
+    /* Borders */
+    --celeste-border: #D2D2D7;
+    --celeste-border-subtle: rgba(0, 0, 0, 0.08);
+
+    /* Typography */
+    --celeste-font-display: 'Eloquia Display', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --celeste-font-body: 'Eloquia Text', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    --celeste-font-mono: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+
+    /* Spacing */
+    --celeste-spacing-1: 0.25rem;
+    --celeste-spacing-2: 0.5rem;
+    --celeste-spacing-3: 0.75rem;
+    --celeste-spacing-4: 1rem;
+    --celeste-spacing-6: 1.5rem;
+    --celeste-spacing-8: 2rem;
+
+    /* Layout */
+    --celeste-max-width-search: 680px;
+    --celeste-max-width-modal: 400px;
+    --celeste-page-top-offset: 18vh;
+
+    /* Motion */
+    --celeste-duration-fast: 100ms;
+    --celeste-duration-normal: 200ms;
+    --celeste-duration-slow: 300ms;
+    --celeste-duration-deliberate: 400ms;
+    --celeste-ease-out: cubic-bezier(0, 0, 0.2, 1);
   }
 
   .dark {
+    /* Legacy shadcn dark mode */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -46,6 +121,19 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+
+    /* CELESTE DARK MODE OVERRIDES */
+    --celeste-text-primary: #F5F5F7;
+    --celeste-text-secondary: #98989F;
+    --celeste-text-muted: #86868B;
+    --celeste-text-disabled: #636366;
+
+    --celeste-bg-primary: #1C1C1E;
+    --celeste-bg-secondary: #2C2C2E;
+    --celeste-bg-tertiary: #3D3D3F;
+
+    --celeste-border: #3D3D3F;
+    --celeste-border-subtle: rgba(61, 61, 63, 0.3);
   }
 }
 
