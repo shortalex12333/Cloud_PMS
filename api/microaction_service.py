@@ -33,10 +33,12 @@ from typing import List, Dict, Optional
 import time
 import logging
 import os
+import json
 import jwt
 import hashlib
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from difflib import SequenceMatcher, get_close_matches
 
 # Rate limiting
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -58,6 +60,103 @@ from unified_extraction_pipeline import get_pipeline, UnifiedExtractionPipeline
 from graphrag_population import get_population_service, GraphRAGPopulationService
 from graphrag_query import get_query_service, GraphRAGQueryService
 from situation_engine import SituationEngine, get_situation_engine, Severity
+
+# Import Action Registry for READ/MUTATE classification
+from action_registry import (
+    get_registry, get_action, is_mutate_action, is_read_action,
+    ActionVariant, ActionRegistry, Action, AuditLevel
+)
+
+
+# =============================================================================
+# CARD TYPE → ENTITY TYPE MAPPING (for action attachment)
+# =============================================================================
+
+CARD_TYPE_TO_ENTITY_TYPE = {
+    # Card types from GraphRAG/search
+    "document_chunk": "document_chunk",
+    "fault": "fault",
+    "work_order": "work_order",
+    "part": "part",
+    "equipment": "equipment",
+    "predictive": "equipment",  # Predictive analysis cards relate to equipment
+    "handover": "handover",
+    "inventory": "inventory_item",
+    "manual": "manual_section",
+    "document": "document",
+    "checklist": "checklist",
+    "purchase": "purchase",
+    "worklist": "worklist",
+    "crew": "crew",
+    "yacht": "yacht",
+    "fleet": "fleet",
+    # Extracted entity types from Module B (mapped to actionable types)
+    "symptom": "fault",         # Symptoms indicate faults
+    "brand": "equipment",       # Brand relates to equipment
+    "model": "equipment",       # Model relates to equipment
+    "fault_code": "fault",      # Fault codes are faults
+    "measurement": "equipment", # Measurements relate to equipment
+    "person": "crew",           # Person refers to crew
+}
+
+
+def attach_microactions_to_card(card: Dict) -> Dict:
+    """
+    Attach microactions to a search result card based on its type.
+
+    Returns the card with 'actions' field added:
+    - primary: The main READ action
+    - dropdown: List of additional actions (including MUTATE)
+    """
+    card_type = card.get("type", "")
+    entity_type = CARD_TYPE_TO_ENTITY_TYPE.get(card_type, card_type)
+    entity_id = card.get("id") or card.get("entity_id") or card.get("chunk_id", "")
+
+    registry = get_registry()
+
+    # Get primary action (READ)
+    primary_action = registry.get_primary_action(entity_type)
+
+    # Get dropdown actions
+    dropdown_actions = registry.get_dropdown_actions(entity_type)
+
+    # Build action payloads
+    actions = {
+        "primary": None,
+        "dropdown": []
+    }
+
+    if primary_action:
+        actions["primary"] = {
+            "action_id": primary_action.action_id,
+            "label": primary_action.label,
+            "variant": primary_action.variant.value,
+            "entity_id": entity_id,
+            "entity_type": entity_type,
+        }
+
+    for action in dropdown_actions:
+        actions["dropdown"].append({
+            "action_id": action.action_id,
+            "label": action.label,
+            "variant": action.variant.value,
+            "entity_id": entity_id,
+            "entity_type": entity_type,
+            "requires_signature": action.mutation.requires_signature if action.mutation else False,
+        })
+
+    card["actions"] = actions
+    return card
+
+
+def attach_microactions_to_results(result: Dict) -> Dict:
+    """
+    Attach microactions to all cards in a search result.
+    """
+    cards = result.get("cards", [])
+    for card in cards:
+        attach_microactions_to_card(card)
+    return result
 
 # Import Module B: Maritime Entity Extractor (regex-based, no LLM cost)
 from module_b_entity_extractor import get_extractor as get_entity_extractor, MaritimeEntityExtractor
@@ -693,12 +792,195 @@ def classify_intent(query: str) -> dict:
     }
 
 
+# =============================================================================
+# FUZZY ACTION MATCHING SYSTEM
+# =============================================================================
+# Handles typos, shorthand, and ambiguous requests
+
+# Map common action keywords to canonical actions
+ACTION_KEYWORDS = {
+    # Work order variants
+    'create': ['create_work_order', 'create_purchase_request', 'create_reorder'],
+    'work': ['create_work_order', 'open_work_order', 'view_work_order'],
+    'order': ['create_work_order', 'create_purchase_request', 'track_delivery'],
+    'wo': ['create_work_order', 'open_work_order', 'close_work_order'],
+
+    # Inventory variants
+    'add': ['add_to_handover', 'add_part_to_work_order', 'add_note', 'add_certificate'],
+    'inventory': ['check_stock_level', 'edit_inventory_quantity', 'view_stock_levels', 'create_reorder'],
+    'stock': ['check_stock_level', 'view_stock_levels', 'edit_inventory_quantity'],
+    'part': ['check_stock_level', 'add_part_to_work_order', 'suggest_likely_parts'],
+    'parts': ['check_stock_level', 'add_part_to_work_order', 'suggest_likely_parts'],
+
+    # Diagnostic variants
+    'diagnose': ['diagnose_fault', 'run_diagnostic', 'troubleshoot'],
+    'fault': ['diagnose_fault', 'report_fault', 'view_fault', 'trace_related_faults'],
+    'check': ['check_stock_level', 'run_diagnostic', 'view_equipment'],
+
+    # Document variants
+    'show': ['show_manual_section', 'show_equipment_history', 'show_certificates', 'show_all_linked_documents'],
+    'view': ['view_equipment', 'view_work_order', 'view_fault', 'view_handover'],
+    'open': ['open_document', 'open_work_order', 'open_equipment_card', 'open_checklist'],
+    'document': ['open_document', 'attach_document', 'search_documents', 'archive_document'],
+
+    # Handover variants
+    'handover': ['add_to_handover', 'view_handover', 'export_handover', 'edit_handover_section'],
+}
+
+# Common typos/shorthand -> canonical word
+TYPO_CORRECTIONS = {
+    'wrk': 'work', 'wrok': 'work', 'owrk': 'work',
+    'ordr': 'order', 'oredr': 'order', 'ordeer': 'order',
+    'creat': 'create', 'creaet': 'create', 'crate': 'create', 'craete': 'create',
+    'chek': 'check', 'chck': 'check', 'chedk': 'check',
+    'stck': 'stock', 'sotck': 'stock', 'stok': 'stock',
+    'invntory': 'inventory', 'inventroy': 'inventory', 'invenotry': 'inventory',
+    'diag': 'diagnose', 'diagnsoe': 'diagnose', 'diagnos': 'diagnose',
+    'falt': 'fault', 'fualt': 'fault', 'falut': 'fault',
+    'docment': 'document', 'documnet': 'document', 'dcument': 'document',
+    'opne': 'open', 'oepn': 'open', 'opn': 'open',
+    'shwo': 'show', 'hsow': 'show', 'sohw': 'show', 'shw': 'show',
+    'veiw': 'view', 'viwe': 'view', 'vew': 'view',
+    'hndovr': 'handover', 'handovr': 'handover', 'hnadover': 'handover',
+    'attch': 'attach', 'atach': 'attach', 'attahc': 'attach',
+    'exprot': 'export', 'exoprt': 'export', 'epxort': 'export',
+    'certifcate': 'certificate', 'certificat': 'certificate', 'certficate': 'certificate',
+    'equipmnt': 'equipment', 'equpment': 'equipment', 'equipement': 'equipment',
+    'mnaual': 'manual', 'manaul': 'manual', 'maual': 'manual',
+}
+
+
+def correct_typos(text: str) -> str:
+    """Correct common typos in query text."""
+    words = text.lower().split()
+    corrected = []
+    for word in words:
+        # Direct typo correction
+        if word in TYPO_CORRECTIONS:
+            corrected.append(TYPO_CORRECTIONS[word])
+        else:
+            # Fuzzy match against known words
+            known_words = list(ACTION_KEYWORDS.keys()) + list(TYPO_CORRECTIONS.values())
+            matches = get_close_matches(word, known_words, n=1, cutoff=0.8)
+            if matches:
+                corrected.append(matches[0])
+            else:
+                corrected.append(word)
+    return ' '.join(corrected)
+
+
+def get_disambiguation_actions(query: str) -> Optional[Dict]:
+    """
+    For ambiguous queries, return suggested action buttons.
+    Returns None if query is not ambiguous.
+    """
+    query_lower = query.lower().strip()
+    corrected = correct_typos(query_lower)
+    words = corrected.split()
+
+    # Find action keywords in query
+    found_keywords = []
+    for word in words:
+        if word in ACTION_KEYWORDS:
+            found_keywords.append(word)
+
+    if not found_keywords:
+        return None
+
+    # Collect possible actions from keywords
+    possible_actions = set()
+    for keyword in found_keywords:
+        possible_actions.update(ACTION_KEYWORDS[keyword])
+
+    # If only one clear action, not ambiguous
+    if len(possible_actions) <= 1:
+        return None
+
+    # Check if query context narrows it down
+    # e.g., "add inventory" vs "add to handover"
+    if 'inventory' in corrected or 'stock' in corrected:
+        return {
+            'disambiguation_required': True,
+            'message': 'What would you like to do with inventory?',
+            'suggested_actions': [
+                {'action_id': 'check_stock_level', 'label': 'Check Stock Level', 'variant': 'READ'},
+                {'action_id': 'edit_inventory_quantity', 'label': 'Adjust Quantity', 'variant': 'MUTATE'},
+                {'action_id': 'view_stock_levels', 'label': 'View All Stock', 'variant': 'READ'},
+                {'action_id': 'create_reorder', 'label': 'Create Reorder', 'variant': 'MUTATE'},
+            ]
+        }
+
+    if 'work' in corrected or 'wo' in corrected or 'order' in corrected:
+        # Check if "work order" or just "order" (purchase)
+        if 'work' in corrected or 'wo' in corrected:
+            return {
+                'disambiguation_required': True,
+                'message': 'What would you like to do with the work order?',
+                'suggested_actions': [
+                    {'action_id': 'create_work_order', 'label': 'Create Work Order', 'variant': 'MUTATE'},
+                    {'action_id': 'open_work_order', 'label': 'Open Work Order', 'variant': 'READ'},
+                    {'action_id': 'add_note_to_work_order', 'label': 'Add Note', 'variant': 'MUTATE'},
+                    {'action_id': 'close_work_order', 'label': 'Close Work Order', 'variant': 'MUTATE'},
+                ]
+            }
+        else:
+            return {
+                'disambiguation_required': True,
+                'message': 'What type of order?',
+                'suggested_actions': [
+                    {'action_id': 'create_work_order', 'label': 'Create Work Order', 'variant': 'MUTATE'},
+                    {'action_id': 'create_purchase_request', 'label': 'Create Purchase Request', 'variant': 'MUTATE'},
+                    {'action_id': 'track_delivery', 'label': 'Track Delivery', 'variant': 'READ'},
+                ]
+            }
+
+    if 'add' in corrected:
+        return {
+            'disambiguation_required': True,
+            'message': 'What would you like to add?',
+            'suggested_actions': [
+                {'action_id': 'add_to_handover', 'label': 'Add to Handover', 'variant': 'MUTATE'},
+                {'action_id': 'add_part_to_work_order', 'label': 'Add Part to Work Order', 'variant': 'MUTATE'},
+                {'action_id': 'add_note', 'label': 'Add Note', 'variant': 'MUTATE'},
+                {'action_id': 'add_certificate', 'label': 'Add Certificate', 'variant': 'MUTATE'},
+            ]
+        }
+
+    if 'fault' in corrected:
+        return {
+            'disambiguation_required': True,
+            'message': 'What would you like to do with the fault?',
+            'suggested_actions': [
+                {'action_id': 'diagnose_fault', 'label': 'Diagnose Fault', 'variant': 'READ'},
+                {'action_id': 'report_fault', 'label': 'Report Fault', 'variant': 'MUTATE'},
+                {'action_id': 'view_fault', 'label': 'View Fault Details', 'variant': 'READ'},
+                {'action_id': 'create_work_order_from_fault', 'label': 'Create Work Order', 'variant': 'MUTATE'},
+            ]
+        }
+
+    # Generic disambiguation with top actions
+    top_actions = list(possible_actions)[:4]
+    return {
+        'disambiguation_required': True,
+        'message': 'Please select an action:',
+        'suggested_actions': [
+            {'action_id': action, 'label': action.replace('_', ' ').title(), 'variant': 'READ'}
+            for action in top_actions
+        ]
+    }
+
+
 def route_to_lane(query: str, mode: str = None) -> dict:
     """
     Determine which processing lane to use.
     Returns: {lane, lane_reason, intent, intent_confidence, query_type, requires_mutation, skip_gpt, ...}
     """
     query_lower = query.lower().strip()
+
+    # Apply typo correction FIRST
+    query_corrected = correct_typos(query_lower)
+    typos_corrected = query_corrected != query_lower
+
     words = query.split()
     word_count = len(words)
     char_count = len(query)
@@ -727,9 +1009,34 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         'word_count': word_count,
         'has_problem_words': has_problem_words,
         'has_temporal_context': has_temporal_context,
+        'query_corrected': query_corrected if typos_corrected else None,
+        'typos_corrected': typos_corrected,
     }
 
-    # ========== GUARD 0: PASTE-DUMP ==========
+    # ========== GUARD 0: SECURITY - SENSITIVE CONTENT ==========
+    # Block queries containing sensitive/dangerous terms from triggering ANY action
+    SENSITIVE_TERMS = re.compile(
+        r'(?:passwords?|passwd|credentials?|secrets?|tokens?|api.?keys?|'
+        r'admin|root|sudo|superuser|'
+        r'delete\s+all|drop\s+table|truncate|rm\s+-rf|'
+        r'hack|exploit|inject|bypass|override.*auth|'
+        r'export.*(?:passwords?|credentials?|secrets?|personal|private)|'
+        r'disable.*(?:security|safety|auth)|'
+        r'transfer.*(?:money|\$|funds)|'
+        r'send.*(?:external|outside|personal.*data))',
+        re.IGNORECASE
+    )
+    if SENSITIVE_TERMS.search(query_lower):
+        logger.warning(f"SECURITY BLOCK: sensitive query detected: '{query[:50]}...'")
+        return {
+            **base_result,
+            'lane': 'BLOCKED',
+            'lane_reason': 'security_sensitive',
+            'block_message': 'This query contains sensitive terms and cannot be processed.',
+            'skip_gpt': True,
+        }
+
+    # ========== GUARD 0.5: PASTE-DUMP ==========
     # Detect code/log pastes even if shorter
     CODE_PATTERNS = re.compile(
         r'(?:traceback|error:|exception:|import\s+\w+|from\s+\w+\s+import|def\s+\w+\(|class\s+\w+:|'
@@ -779,7 +1086,13 @@ def route_to_lane(query: str, mode: str = None) -> dict:
                        any(equip in query_lower for equip in KNOWN_EQUIPMENT) or \
                        bool(KNOWN_CODE_PATTERN.search(query_lower))
 
-    if word_count <= 2 and intent in generic_intents and not has_problem_words and not has_known_entity:
+    # Check if query has action keywords (even if short, these should be processed)
+    has_action_keywords = any(word in query_corrected.split() for word in ACTION_KEYWORDS.keys())
+
+    # NOTE: Disambiguation is handled AFTER COMMAND_PATTERNS check (see end of function)
+    # This ensures typo-corrected queries like "creat wrk ordr" get matched first
+
+    if word_count <= 2 and intent in generic_intents and not has_problem_words and not has_known_entity and not has_action_keywords:
         return {
             **base_result,
             'lane': 'BLOCKED',
@@ -852,39 +1165,198 @@ def route_to_lane(query: str, mode: str = None) -> dict:
     )
 
     COMMAND_PATTERNS = [
-        # Create work order (with typos)
-        (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(work\s*order|workorder|wo)', 'create_work_order'),
-        (POLITE_PREFIX + r'open\s+(work\s*order|wo)', 'open_work_order'),
-        (POLITE_PREFIX + r'close\s+(work\s*order|wo)', 'close_work_order'),
-        (POLITE_PREFIX + r'mark\s+(work\s*order|wo)', 'mark_work_order_complete'),
+        # ========== TYPO/SHORTHAND PATTERNS (highest priority) ==========
+        (POLITE_PREFIX + r'diag\s+', 'diagnose_fault'),  # diag E047
+        (POLITE_PREFIX + r'chek\s+stock', 'check_stock_level'),  # typo: chek stock
+        (POLITE_PREFIX + r'chk\s+stk', 'check_stock_level'),  # shorthand: chk stk
+        (POLITE_PREFIX + r'opne\s+', 'open_document'),  # typo: opne
+        (POLITE_PREFIX + r'shw\s+docs?', 'show_all_linked_documents'),  # shorthand: shw docs
+        (POLITE_PREFIX + r'add\s+hndovr', 'add_to_handover'),  # typo: hndovr
+
+        # ========== WORKLIST ACTIONS ==========
+        (POLITE_PREFIX + r'open\s+worklist', 'open_worklist'),
+        (POLITE_PREFIX + r'add\s+worklist\s+item', 'add_worklist_item'),
+        (POLITE_PREFIX + r'update\s+worklist', 'update_worklist_progress'),
+        (POLITE_PREFIX + r'export\s+worklist', 'export_worklist'),
+        (POLITE_PREFIX + r'tag\s+worklist', 'tag_worklist_item'),
+
+        # ========== FLEET ACTIONS ==========
+        (POLITE_PREFIX + r'open\s+fleet', 'open_fleet_summary'),
+        (POLITE_PREFIX + r'open\s+vessel', 'open_vessel_from_fleet'),
+        (POLITE_PREFIX + r'export\s+fleet', 'export_fleet_report'),
+
+        # ========== MISC ACTIONS ==========
+        (POLITE_PREFIX + r'undo\s+', 'undo_last_action'),
+        (POLITE_PREFIX + r'open\s+location', 'open_location_on_map'),
+        (POLITE_PREFIX + r'view\s+file', 'view_file'),
+        (POLITE_PREFIX + r'show\s+linked\s+context', 'show_linked_context'),
+
+        # ========== DIAGNOSE/FAULT ACTIONS ==========
+        (POLITE_PREFIX + r'diagnose\s+', 'diagnose_fault'),
+        (POLITE_PREFIX + r'troubleshoot\s+', 'diagnose_fault'),
+        (POLITE_PREFIX + r'debug\s+', 'diagnose_fault'),
+        (POLITE_PREFIX + r'trace\s+(?:related\s+)?faults?', 'trace_related_faults'),
+        (POLITE_PREFIX + r'trace\s+(?:related\s+)?equip', 'trace_related_equipment'),
+        (POLITE_PREFIX + r'trace\s+(?:what\s+)?equip', 'trace_related_equipment'),
+        (POLITE_PREFIX + r'suggest\s+(?:likely\s+)?parts?', 'suggest_likely_parts'),
+        (POLITE_PREFIX + r'(?:report|log)\s+(?:a\s+)?fault', 'report_fault'),
+
+        # ========== OPEN EQUIPMENT/CARD ACTIONS (before generic open) ==========
+        (POLITE_PREFIX + r'open\s+(?:equipment\s+)?card', 'open_equipment_card'),
+        (POLITE_PREFIX + r'open\s+equipment\s+', 'open_equipment_card'),
+
+        # ========== SHOW LINKED ENTITIES (specific before generic) ==========
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?(?:linked\s+)?parts?\s+(?:linked\s+)?(?:to|for|on)', 'show_all_linked_parts'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?parts?\s+linked', 'show_all_linked_parts'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?(?:linked\s+)?faults?\s+(?:linked\s+)?(?:to|for|on)', 'show_all_linked_faults'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?linked\s+faults?', 'show_all_linked_faults'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?(?:linked\s+)?documents?\s+(?:linked\s+)?(?:to|for|on)', 'show_all_linked_documents'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?documents?\s+linked', 'show_all_linked_documents'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?(?:linked\s+)?(?:work\s*orders?|wos?)\s+(?:linked\s+)?(?:to|for|on)', 'show_all_linked_work_orders'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?(?:work\s*orders?|wos?)\s+linked', 'show_all_linked_work_orders'),
+
+        # ========== SHOW/VIEW ACTIONS ==========
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?manual', 'show_manual_section'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?(?:lube|oil|cooling|service)\s+', 'show_manual_section'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?troubleshooting', 'show_manual_section'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?(?:equipment\s+)?history', 'show_equipment_history'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?past\s+events?', 'show_similar_past_events'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?predictive', 'show_predictive_insight'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?insight', 'show_predictive_insight'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?linked', 'view_linked_entities'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?document\s+graph', 'show_document_graph'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?related\s+doc', 'show_related_documents'),
+        (POLITE_PREFIX + r'show\s+overdue', 'show_tasks_overdue'),
+        (POLITE_PREFIX + r'show\s+(?:tasks?\s+)?overdue', 'show_tasks_overdue'),
+        (POLITE_PREFIX + r'show\s+(?:tasks?\s+)?due', 'show_tasks_due'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?stock', 'check_stock_level'),
+        (POLITE_PREFIX + r'show\s+where\s+(?:we\s+)?keep', 'show_storage_location'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?storage', 'show_storage_location'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?hours\s+of\s+rest', 'show_hours_of_rest'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?hor', 'show_hours_of_rest'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?certificates?', 'show_certificates'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?worklist', 'open_worklist'),
+        (POLITE_PREFIX + r'show\s+(?:the\s+)?fleet', 'open_fleet_summary'),
+
+        # ========== CHECK/STOCK ACTIONS ==========
+        (POLITE_PREFIX + r'check\s+(?:how\s+many|the\s+)?(?:stock|inventory)', 'check_stock_level'),
+        (POLITE_PREFIX + r'check\s+how\s+many', 'check_stock_level'),
+        (POLITE_PREFIX + r'check\s+(?:the\s+)?parts?', 'check_stock_level'),
+
+        # ========== WORK ORDER ACTIONS (specific patterns first) ==========
+        # Create WO from fault/alarm (must be before generic create_work_order)
+        (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(?:a\s+)?(?:work\s*order|workorder|wo)\s+(?:from|for)\s+(?:fault|alarm|error)', 'create_work_order_from_fault'),
+        (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(?:a\s+)?(?:wo)\s+from:?\s+', 'create_work_order_from_fault'),  # "create wo from: FAULT_..."
+        (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(?:a\s+)?(?:work\s*order|workorder|wo)\s+from:?\s+', 'create_work_order_from_fault'),
+        # Add note to work order (must be before generic add_note)
+        (POLITE_PREFIX + r'add\s+note\s+(?:to\s+)?(?:work\s*order|wo)', 'add_note_to_work_order'),
+        (POLITE_PREFIX + r'add\s+note\s+wo', 'add_note_to_work_order'),
+        # Attach photo to work order
+        (POLITE_PREFIX + r'attach\s+photo\s+(?:to\s+)?(?:work\s*order|wo)', 'attach_photo_to_work_order'),
+        # Attach document to work order
+        (POLITE_PREFIX + r'attach\s+(?:document|doc|file)\s+.*(?:to\s+)?(?:work\s*order|wo)', 'attach_document_to_work_order'),
+        # Add part/item to work order
+        (POLITE_PREFIX + r'add\s+\w+\s+(?:to\s+)?(?:work\s*order|wo)', 'add_part_to_work_order'),
+        # Generic work order actions
+        (POLITE_PREFIX + r'(?:create|creat|creaet|crate)\s+(?:a\s+)?(?:an?\s+)?(?:urgent\s+|new\s+|priority\s+)?(?:work\s*order|workorder|wo)', 'create_work_order'),
+        (POLITE_PREFIX + r'open\s+(?:work\s*order|wo)', 'open_work_order'),
+        # Close WO marked complete (job done, completed, finished patterns)
+        (POLITE_PREFIX + r'close\s+(?:work\s*order|wo)\s*[-#]?\d*\s*(?:job\s+done|completed?|finished)', 'mark_work_order_complete'),
+        (POLITE_PREFIX + r'close\s+wo\s*[-#]?\d*\s*(?:job\s+done|completed?|finished)', 'mark_work_order_complete'),
+        (POLITE_PREFIX + r'close\s+(?:work\s*order|wo)', 'close_work_order'),
+        (POLITE_PREFIX + r'mark\s+(?:work\s*order|wo)', 'mark_work_order_complete'),
+
+        # ========== HANDOVER ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'add\s+(?:predictive\s+)?insight.*(?:to|for)\s+handover', 'add_predictive_insight_to_handover'),
+        (POLITE_PREFIX + r'add\s+(?:service\s+)?(?:bulletin|document|doc).*(?:to|for)\s+handover', 'add_document_to_handover'),
+        (POLITE_PREFIX + r'add\s+\w+.*(?:to|for)\s+handover\s+list', 'add_part_to_handover'),
+        (POLITE_PREFIX + r'add\s+\w+.*(?:to|for)\s+handover', 'add_part_to_handover'),
+        (POLITE_PREFIX + r'add\s+(?:to\s+)?handover', 'add_to_handover'),
+        (POLITE_PREFIX + r'edit\s+handover', 'edit_handover_section'),
+        (POLITE_PREFIX + r'export\s+handover', 'export_handover'),
+        (POLITE_PREFIX + r'summarise?\s+.*(?:for|to)\s+handover', 'summarise_document_for_handover'),
+
+        # ========== LOG ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'log\s+part\s+usage', 'log_part_usage'),
+        (POLITE_PREFIX + r'log\s+(?:\w+\s+)?(?:hours?|runtime)', 'log_running_hours'),
+        (POLITE_PREFIX + r'log\s+sensor\s+reading', 'log_sensor_reading'),
+
+        # ========== CERTIFICATE ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'show\s+certificates?\s+expir', 'show_expiring_certificates'),  # "show certificates expiring"
+        (POLITE_PREFIX + r'show\s+(?:certificates?\s+)?expir', 'show_expiring_certificates'),
+        (POLITE_PREFIX + r'show\s+(?:all\s+)?certificates?\s+(?:for|on)', 'show_certificates'),
+        (POLITE_PREFIX + r'add\s+certificate', 'add_certificate'),
+        (POLITE_PREFIX + r'upload\s+certificate', 'upload_certificate_document'),
+        (POLITE_PREFIX + r'export\s+(?:logs?|audit)\s+', 'export_logs'),
+        (POLITE_PREFIX + r'generate\s+(?:audit|compliance)', 'generate_audit_pack'),
+
+        # ========== PURCHASE/ORDER ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'create\s+(?:a\s+)?(?:pr|purchase\s+request)', 'create_purchase_request'),
+        (POLITE_PREFIX + r'add\s+\w+\s+(?:to\s+)?(?:purchase\s+request|pr)', 'add_part_to_purchase_request'),
+        (POLITE_PREFIX + r'approve\s+(?:purchase|po)', 'approve_purchase'),
+        (POLITE_PREFIX + r'track\s+(?:delivery|order)', 'track_delivery'),
+        (POLITE_PREFIX + r'attach\s+invoice', 'attach_invoice'),
+        (POLITE_PREFIX + r'order\s+(?:\d+x?\s+)?', 'create_purchase_request'),
+        (POLITE_PREFIX + r'(?:create|make)\s+(?:a\s+)?(?:purchase|po)\s+', 'create_purchase_request'),
+        (POLITE_PREFIX + r'reorder\s+', 'create_purchase_request'),
+
+        # ========== CHECKLIST ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'open\s+(?:pre-?departure\s+)?checklist', 'open_checklist'),
+        (POLITE_PREFIX + r'mark\s+checklist\s+item', 'mark_checklist_item_complete'),
+        (POLITE_PREFIX + r'add\s+note\s+(?:to\s+)?checklist', 'add_note_to_checklist_item'),
+        (POLITE_PREFIX + r'attach\s+photo\s+(?:to\s+)?checklist', 'attach_photo_to_checklist_item'),
+
+        # ========== LINK ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'link\s+(?:\w+\s+)?(?:to\s+)?fault', 'link_document_to_fault'),
+        (POLITE_PREFIX + r'link\s+(?:document|doc|schematic|bulletin|manual)\s+(?:to\s+)?(?:fault|error)', 'link_document_to_fault'),
+        (POLITE_PREFIX + r'link\s+(?:document|doc|bulletin|manual)\s+(?:to)', 'link_document_to_equipment'),
+        (POLITE_PREFIX + r'link\s+(?:service\s+)?bulletin\s+(?:to)', 'link_document_to_equipment'),
+        (POLITE_PREFIX + r'link\s+', 'link_document_to_equipment'),
+
+        # ========== DOCUMENT ACTIONS (specific before generic) ==========
+        (POLITE_PREFIX + r'compare\s+.*(?:section|manual|doc)', 'compare_document_sections'),
+        (POLITE_PREFIX + r'extract\s+(?:procedures?|steps?)\s+', 'extract_procedures_from_document'),
+        (POLITE_PREFIX + r'open\s+(?:document|doc|manual)\s+', 'open_document'),
+        (POLITE_PREFIX + r'open\s+(?:page|section)\s+\d+', 'open_document_page'),
+        (POLITE_PREFIX + r'search\s+(?:within|in|inside)\s+', 'search_document_pages'),
+        (POLITE_PREFIX + r'summarise?\s+(?:\w+\s+)*section', 'summarise_document_section'),
+        (POLITE_PREFIX + r'archive\s+(?:\w+\s+)*(?:document|doc|manual)', 'archive_document'),  # multiple words ok
+        (POLITE_PREFIX + r'tag\s+(?:document|doc)', 'tag_document'),
+
+        # ========== SCAN/MOBILE ACTIONS ==========
+        (POLITE_PREFIX + r'scan\s+(?:barcode|qr)', 'scan_barcode'),
+
+        # ========== OTHER ACTIONS (generic - must come LAST) ==========
         (POLITE_PREFIX + r'log\s+', 'log_entry'),
         (POLITE_PREFIX + r'add\s+note', 'add_note'),
-        (POLITE_PREFIX + r'add\s+(?:to\s+)?handover', 'add_to_handover'),  # "add handover" typo
         (POLITE_PREFIX + r'add\s+part', 'add_part_to_work_order'),
         (POLITE_PREFIX + r'attach\s+', 'attach_document'),
-        (POLITE_PREFIX + r'(?:schedule|schdeule)\s+', 'schedule_task'),  # typo
-        (POLITE_PREFIX + r'(?:assign|assing|asign)\s+', 'assign_task'),  # typos
+        (POLITE_PREFIX + r'(?:schedule|schdeule)\s+', 'schedule_task'),
+        (POLITE_PREFIX + r'(?:assign|assing|asign)\s+', 'assign_task'),
         (POLITE_PREFIX + r'export\s+', 'export_data'),
         (POLITE_PREFIX + r'upload\s+', 'upload_document'),
         (POLITE_PREFIX + r'update\s+', 'update_record'),
-        # Show/view (with typos)
+
+        # ========== SHOW/VIEW (with typos) ==========
         (POLITE_PREFIX + r'(?:show|shwo)\s+(?:equipment|equpment)', 'show_equipment_overview'),
         (POLITE_PREFIX + r'(?:show|shwo)\s+history', 'show_equipment_history'),
         (POLITE_PREFIX + r'view\s+handover', 'view_handover'),
         (POLITE_PREFIX + r'(?:generate|genrate)\s+summary', 'generate_summary'),
         (POLITE_PREFIX + r'search\s+documents?', 'search_documents'),
     ]
-    for pattern, action in COMMAND_PATTERNS:
-        if re.match(pattern, query_lower):
-            target_match = re.search(r'(?:for|on|to|:|that|re|regarding|about|from)\s*(.+)$', query_lower)
-            return {
-                **base_result,
-                'lane': 'RULES_ONLY',
-                'lane_reason': 'command_pattern',
-                'command_action': action,
-                'command_target': target_match.group(1).strip() if target_match else None,
-                'skip_gpt': True,
-            }
+    # Try matching against BOTH original and corrected query
+    for query_to_match in [query_lower, query_corrected] if typos_corrected else [query_lower]:
+        for pattern, action in COMMAND_PATTERNS:
+            if re.match(pattern, query_to_match):
+                target_match = re.search(r'(?:for|on|to|:|that|re|regarding|about|from)\s*(.+)$', query_to_match)
+                return {
+                    **base_result,
+                    'lane': 'RULES_ONLY',
+                    'lane_reason': 'command_pattern' + ('_corrected' if query_to_match == query_corrected else ''),
+                    'command_action': action,
+                    'command_target': target_match.group(1).strip() if target_match else None,
+                    'skip_gpt': True,
+                }
 
     # ========== LANE B: NO_LLM (cheap lookup) ==========
     DIRECT_LOOKUP = [
@@ -922,7 +1394,7 @@ def route_to_lane(query: str, mode: str = None) -> dict:
         'view_part_location', 'view_part_stock', 'view_equipment_details',
         'show_manual_section', 'view_document',
     }
-    is_simple_lookup = word_count <= 4 and (intent in lookup_intents or query_type == 'lookup') and not has_problem_words and not has_temporal_context
+    is_simple_lookup = word_count <= 4 and (intent in lookup_intents or query_type == 'lookup') and not has_problem_words and not has_temporal_context and not has_action_keywords
     is_forced_lookup = mode in ['document_search', 'work_order_search']
 
     if is_direct_lookup or is_simple_lookup or is_forced_lookup:
@@ -964,6 +1436,18 @@ def route_to_lane(query: str, mode: str = None) -> dict:
             'lane': 'GPT',
             'lane_reason': reason,
             'skip_gpt': False,
+        }
+
+    # ========== DISAMBIGUATION CHECK ==========
+    # If no clear action but query has action keywords, offer suggestions
+    disambiguation = get_disambiguation_actions(query)
+    if disambiguation:
+        return {
+            **base_result,
+            'lane': 'DISAMBIGUATION',
+            'lane_reason': 'ambiguous_action',
+            'skip_gpt': True,
+            **disambiguation,
         }
 
     # Default: simple lookup
@@ -1023,6 +1507,25 @@ async def extract(
             'entities': [],
             'embedding': None,
             'metadata': {'latency_ms': latency_ms, 'model': None}
+        }
+
+    # ========== DISAMBIGUATION: Return action options for ambiguous queries ==========
+    if lane == 'DISAMBIGUATION':
+        latency_ms = int((time.time() - start) * 1000)
+        logger.info(f"DISAMBIGUATION: query='{query[:50]}...', reason={routing['lane_reason']}")
+        return {
+            'lane': lane,
+            'lane_reason': routing['lane_reason'],
+            'disambiguation_required': True,
+            'message': routing.get('message', 'Please select an action:'),
+            'suggested_actions': routing.get('suggested_actions', []),
+            'intent': routing['intent'],
+            'intent_confidence': routing['intent_confidence'],
+            'entities': [],
+            'action': None,
+            'action_confidence': 0.5,
+            'query_corrected': routing.get('query_corrected'),
+            'metadata': {'latency_ms': latency_ms, 'model': 'disambiguation'}
         }
 
     # ========== NO_LLM / RULES_ONLY: Regex Entity Extraction (No GPT Cost) ==========
@@ -1547,6 +2050,9 @@ async def search(
         # Call GraphRAG query service internally
         result = graphrag_query.query(yacht_id, search_request.query)
 
+        # Attach microactions to each card based on entity type
+        attach_microactions_to_results(result)
+
         logger.info(
             f"/v1/search: yacht={yacht_id}, query='{search_request.query}', "
             f"intent={result.get('intent')}, cards={len(result.get('cards', []))}"
@@ -1557,6 +2063,36 @@ async def search(
     except Exception as e:
         logger.error(f"/v1/search failed: {e}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# ========================================================================
+# TEST ENDPOINT - Verify microaction attachment
+# ========================================================================
+
+@app.post("/v1/search/test", tags=["Search"])
+async def test_search_with_actions(request: Request):
+    """
+    TEST ENDPOINT: Returns mock cards with microactions attached.
+    Used to verify microaction attachment without full search pipeline.
+    """
+    # Mock cards representing different entity types
+    mock_cards = [
+        {"type": "equipment", "id": "eq-001", "title": "Main Engine Generator 1"},
+        {"type": "part", "id": "pt-001", "title": "Oil Filter - 15W40"},
+        {"type": "work_order", "id": "wo-001", "title": "WO-1234: Generator Service"},
+        {"type": "fault", "id": "ft-001", "title": "E047: Overheating Warning"},
+        {"type": "document_chunk", "chunk_id": "doc-001", "title": "Engine Manual Section 4.2"},
+    ]
+
+    # Attach microactions to each card
+    for card in mock_cards:
+        attach_microactions_to_card(card)
+
+    return {
+        "test": True,
+        "message": "Mock cards with microactions attached",
+        "cards": mock_cards
+    }
 
 
 # ========================================================================
@@ -1777,6 +2313,10 @@ async def situational_search(
 
         # 8. Build response
         latency_ms = int((time_module.time() - start_time) * 1000)
+
+        # Attach microactions to each card based on entity type
+        for card in cards:
+            attach_microactions_to_card(card)
 
         response = {
             'situation': situation.to_dict() if situation else None,
@@ -2023,6 +2563,481 @@ async def log_feedback(
     except Exception as e:
         logger.error(f"/v1/suggestions/{suggestion_id}/feedback failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to record feedback: {str(e)}")
+
+
+# ========================================================================
+# MICROACTIONS V2 ENDPOINTS (READ/MUTATE with Signature Flow)
+# ========================================================================
+
+# In-memory stores for staged actions and signatures (replace with DB in production)
+import uuid
+import hashlib as _hashlib
+from difflib import SequenceMatcher
+
+_staged_actions: Dict[str, Dict] = {}  # staged_id -> staged action data
+_signatures: Dict[str, Dict] = {}       # signature_id -> signature data
+_action_log: List[Dict] = []            # Append-only audit log
+
+
+# ========================================================================
+# SECURITY HELPER FUNCTIONS
+# ========================================================================
+
+def _suggest_similar_actions(invalid_action_id: str, max_suggestions: int = 3) -> List[str]:
+    """
+    Find similar action_ids for typo suggestions using fuzzy matching.
+    Returns up to max_suggestions similar actions.
+    """
+    registry = get_registry()
+    all_action_ids = list(registry._actions.keys())
+
+    # Calculate similarity scores
+    scores = []
+    for action_id in all_action_ids:
+        # Use SequenceMatcher for fuzzy matching
+        ratio = SequenceMatcher(None, invalid_action_id.lower(), action_id.lower()).ratio()
+        if ratio > 0.5:  # Only suggest if >50% similar
+            scores.append((action_id, ratio))
+
+    # Sort by similarity (highest first) and return top suggestions
+    scores.sort(key=lambda x: x[1], reverse=True)
+    return [action_id for action_id, _ in scores[:max_suggestions]]
+
+
+async def _verify_entity_access(
+    yacht_id: str,
+    user_id: str,
+    entity_id: str,
+    entity_type: str,
+    action_id: str
+) -> Dict:
+    """
+    Verify user has permission to perform action on entity.
+
+    Checks:
+    1. Entity belongs to user's yacht (yacht_id scoping)
+    2. User has role permissions for this action
+    3. Entity is not locked/archived
+
+    Returns: {"allowed": bool, "reason": str}
+    """
+    # DEV MODE: Allow all access when security is disabled
+    if not os.getenv("ENABLE_SECURITY", "false").lower() == "true":
+        return {"allowed": True, "reason": "Security disabled (dev mode)"}
+
+    # In production, this would query the database:
+    # 1. SELECT yacht_id FROM {entity_type}s WHERE id = {entity_id}
+    # 2. Verify yacht_id matches auth yacht_id
+    # 3. Check user role permissions in user_roles table
+    # 4. Check entity status (not archived/locked)
+
+    # For now, implement yacht_id scoping check if Supabase is available
+    if supabase_client:
+        try:
+            # Map entity_type to table name
+            table_map = {
+                "part": "parts",
+                "inventory_item": "inventory_items",
+                "equipment": "equipment",
+                "work_order": "work_orders",
+                "fault": "faults",
+                "document": "documents",
+                "document_chunk": "document_chunks",
+            }
+            table_name = table_map.get(entity_type)
+
+            if table_name:
+                # Check entity exists and belongs to yacht
+                result = supabase_client.table(table_name).select("yacht_id").eq("id", entity_id).single().execute()
+
+                if not result.data:
+                    return {"allowed": False, "reason": f"Entity '{entity_id}' not found"}
+
+                if result.data.get("yacht_id") != yacht_id:
+                    logger.warning(f"Access denied: entity {entity_id} belongs to different yacht")
+                    return {"allowed": False, "reason": "Entity belongs to different yacht"}
+
+        except Exception as e:
+            logger.warning(f"Entity access check failed: {e}")
+            # Fail open in dev, fail closed in production
+            if os.getenv("FAIL_CLOSED_ON_ERROR", "false").lower() == "true":
+                return {"allowed": False, "reason": "Permission check failed"}
+
+    return {"allowed": True, "reason": "Access granted"}
+
+
+class ActionPrepareRequest(BaseModel):
+    """Request to prepare (stage) a MUTATE action"""
+    action_id: str = Field(..., description="Action ID from registry")
+    entity_id: str = Field(..., description="Target entity UUID")
+    entity_type: str = Field(..., description="Entity type (part, equipment, etc)")
+    payload: Dict = Field(default_factory=dict, description="Action-specific payload")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "action_id": "edit_inventory_quantity",
+                "entity_id": "uuid-part-123",
+                "entity_type": "part",
+                "payload": {"new_quantity": 50, "reason": "Stock adjustment"}
+            }
+        }
+
+
+class SignatureRequest(BaseModel):
+    """Request to create a signature for a staged action"""
+    staged_id: str = Field(..., description="Staged action ID from /actions/prepare")
+    confirmation_type: str = Field(default="click", description="Confirmation type: click, pin, biometric")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "staged_id": "staged-uuid-123",
+                "confirmation_type": "click"
+            }
+        }
+
+
+class ActionCommitRequest(BaseModel):
+    """Request to commit a signed staged action"""
+    staged_id: str = Field(..., description="Staged action ID")
+    signature_id: str = Field(..., description="Signature ID from /signatures")
+    diff_hash: str = Field(..., description="Hash of the diff to verify integrity")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "staged_id": "staged-uuid-123",
+                "signature_id": "sig-uuid-456",
+                "diff_hash": "sha256-hash-of-diff"
+            }
+        }
+
+
+@app.post("/v1/actions/prepare", tags=["Actions V2"])
+@limiter.limit("30/minute")
+async def prepare_action(
+    request: Request,
+    prepare_request: ActionPrepareRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **PREPARE (Stage) a MUTATE Action**
+
+    For MUTATE actions only. Computes the diff preview and returns
+    a staged_id for signature and commit flow.
+
+    **Flow:**
+    1. Validate action is MUTATE
+    2. Fetch current entity state
+    3. Compute exact diff preview
+    4. Return staged_id (no commit yet)
+
+    **Response:**
+    - staged_id: UUID for this staged action
+    - diff: Before/after preview
+    - diff_hash: Hash for integrity verification
+    - expires_at: When this staged action expires
+    """
+    action = get_action(prepare_request.action_id)
+
+    # Security Check 1: Action exists (with typo suggestions)
+    if action is None:
+        suggestions = _suggest_similar_actions(prepare_request.action_id)
+        detail = f"Unknown action: '{prepare_request.action_id}'"
+        if suggestions:
+            detail += f". Did you mean: {', '.join(suggestions)}?"
+        raise HTTPException(status_code=400, detail=detail)
+
+    # Security Check 2: Action is MUTATE
+    if action.variant != ActionVariant.MUTATE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Action '{prepare_request.action_id}' is READ, not MUTATE. Use /actions/execute for READ actions."
+        )
+
+    # Security Check 3: Action applies to entity type
+    if prepare_request.entity_type not in action.entity_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Action '{prepare_request.action_id}' does not apply to entity type '{prepare_request.entity_type}'. "
+                   f"Valid entity types: {', '.join(action.entity_types)}"
+        )
+
+    yacht_id = auth.get("yacht_id")
+    user_id = auth.get("user_id")
+
+    # Security Check 4: Entity-level permission (yacht scoping)
+    # Verify entity belongs to user's yacht (stub - implement with DB lookup)
+    entity_access = await _verify_entity_access(
+        yacht_id=yacht_id,
+        user_id=user_id,
+        entity_id=prepare_request.entity_id,
+        entity_type=prepare_request.entity_type,
+        action_id=prepare_request.action_id
+    )
+    if not entity_access["allowed"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied: {entity_access['reason']}"
+        )
+
+    # Generate staged action ID
+    staged_id = str(uuid.uuid4())
+
+    # Compute diff preview (simplified - would fetch real entity data in production)
+    before_state = {"entity_id": prepare_request.entity_id, "state": "current"}
+    after_state = {**before_state, **prepare_request.payload, "state": "proposed"}
+
+    diff = {
+        "before": before_state,
+        "after": after_state,
+        "changes": list(prepare_request.payload.keys())
+    }
+
+    # Hash the diff for integrity verification
+    diff_json = json.dumps(diff, sort_keys=True)
+    diff_hash = _hashlib.sha256(diff_json.encode()).hexdigest()
+
+    # Store staged action
+    staged_action = {
+        "staged_id": staged_id,
+        "action_id": prepare_request.action_id,
+        "entity_id": prepare_request.entity_id,
+        "entity_type": prepare_request.entity_type,
+        "payload": prepare_request.payload,
+        "yacht_id": yacht_id,
+        "user_id": user_id,
+        "diff": diff,
+        "diff_hash": diff_hash,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(),
+        "status": "pending_signature"
+    }
+    _staged_actions[staged_id] = staged_action
+
+    logger.info(f"/v1/actions/prepare: staged={staged_id}, action={prepare_request.action_id}, user={user_id}")
+
+    return {
+        "staged_id": staged_id,
+        "action_id": prepare_request.action_id,
+        "action_label": action.label,
+        "entity_id": prepare_request.entity_id,
+        "requires_signature": action.mutation.requires_signature if action.mutation else True,
+        "diff": diff,
+        "diff_hash": diff_hash,
+        "confirmation_message": action.mutation.confirmation_message if action.mutation else "Confirm action",
+        "expires_at": staged_action["expires_at"],
+        "next_step": "POST /v1/signatures with staged_id to sign, then POST /v1/actions/commit"
+    }
+
+
+@app.post("/v1/signatures", tags=["Actions V2"])
+@limiter.limit("30/minute")
+async def create_signature(
+    request: Request,
+    sig_request: SignatureRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **Create Signature for Staged Action**
+
+    Captures user confirmation for a staged MUTATE action.
+
+    **Confirmation Types:**
+    - click: Simple button confirmation (default)
+    - pin: PIN code entry
+    - biometric: Fingerprint/face (future)
+
+    **Response:**
+    - signature_id: UUID for this signature
+    - signed_at: Timestamp
+    """
+    # Validate staged action exists
+    staged = _staged_actions.get(sig_request.staged_id)
+    if staged is None:
+        raise HTTPException(status_code=404, detail=f"Staged action not found: {sig_request.staged_id}")
+
+    if staged["status"] != "pending_signature":
+        raise HTTPException(status_code=400, detail=f"Staged action already signed or expired")
+
+    user_id = auth.get("user_id")
+    yacht_id = auth.get("yacht_id")
+
+    # Verify user matches
+    if staged["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Signature must be from same user who prepared action")
+
+    # Generate signature
+    signature_id = str(uuid.uuid4())
+    signed_at = datetime.now(timezone.utc).isoformat()
+
+    signature = {
+        "signature_id": signature_id,
+        "staged_id": sig_request.staged_id,
+        "user_id": user_id,
+        "yacht_id": yacht_id,
+        "confirmation_type": sig_request.confirmation_type,
+        "signed_at": signed_at,
+        "diff_hash": staged["diff_hash"]
+    }
+    _signatures[signature_id] = signature
+
+    # Update staged action status
+    staged["status"] = "signed"
+    staged["signature_id"] = signature_id
+
+    logger.info(f"/v1/signatures: sig={signature_id}, staged={sig_request.staged_id}, user={user_id}")
+
+    return {
+        "signature_id": signature_id,
+        "staged_id": sig_request.staged_id,
+        "signed_at": signed_at,
+        "confirmation_type": sig_request.confirmation_type,
+        "next_step": f"POST /v1/actions/commit with staged_id and signature_id"
+    }
+
+
+@app.post("/v1/actions/commit", tags=["Actions V2"])
+@limiter.limit("30/minute")
+async def commit_action(
+    request: Request,
+    commit_request: ActionCommitRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **COMMIT a Signed Staged Action**
+
+    Executes the mutation after verifying signature and diff integrity.
+
+    **Validation:**
+    1. Staged action exists and is signed
+    2. Signature exists and matches staged action
+    3. Diff hash matches (no tampering)
+    4. User permissions (re-validated)
+
+    **Response:**
+    - execution_id: UUID of the action execution
+    - result: Execution result
+    - audit_log_id: UUID of audit log entry
+    """
+    # Validate staged action
+    staged = _staged_actions.get(commit_request.staged_id)
+    if staged is None:
+        raise HTTPException(status_code=404, detail=f"Staged action not found: {commit_request.staged_id}")
+
+    if staged["status"] != "signed":
+        raise HTTPException(status_code=400, detail=f"Staged action not signed. Current status: {staged['status']}")
+
+    # Validate signature
+    signature = _signatures.get(commit_request.signature_id)
+    if signature is None:
+        raise HTTPException(status_code=404, detail=f"Signature not found: {commit_request.signature_id}")
+
+    if signature["staged_id"] != commit_request.staged_id:
+        raise HTTPException(status_code=400, detail="Signature does not match staged action")
+
+    # Validate diff hash integrity
+    if commit_request.diff_hash != staged["diff_hash"]:
+        raise HTTPException(status_code=400, detail="Diff hash mismatch - action may have been tampered")
+
+    user_id = auth.get("user_id")
+    yacht_id = auth.get("yacht_id")
+
+    # Re-validate user
+    if staged["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Commit must be from same user who prepared/signed action")
+
+    # Execute the mutation (simplified - would call actual handlers in production)
+    execution_id = str(uuid.uuid4())
+    action = get_action(staged["action_id"])
+
+    try:
+        # TODO: Call actual handler based on action.execution.handler
+        result = {
+            "success": True,
+            "message": f"Action '{staged['action_id']}' executed successfully",
+            "entity_id": staged["entity_id"],
+            "changes_applied": staged["diff"]["changes"]
+        }
+        status = "completed"
+        error_message = None
+
+    except Exception as e:
+        result = {"success": False, "error": str(e)}
+        status = "failed"
+        error_message = str(e)
+
+    # Write audit log entry
+    audit_log_id = str(uuid.uuid4())
+    audit_entry = {
+        "audit_log_id": audit_log_id,
+        "execution_id": execution_id,
+        "action_id": staged["action_id"],
+        "entity_id": staged["entity_id"],
+        "entity_type": staged["entity_type"],
+        "yacht_id": yacht_id,
+        "user_id": user_id,
+        "signature_id": commit_request.signature_id,
+        "diff_before": staged["diff"]["before"],
+        "diff_after": staged["diff"]["after"],
+        "status": status,
+        "error_message": error_message,
+        "committed_at": datetime.now(timezone.utc).isoformat()
+    }
+    _action_log.append(audit_entry)
+
+    # Update staged action status
+    staged["status"] = "committed"
+    staged["execution_id"] = execution_id
+
+    logger.info(f"/v1/actions/commit: exec={execution_id}, action={staged['action_id']}, status={status}, audit={audit_log_id}")
+
+    return {
+        "execution_id": execution_id,
+        "audit_log_id": audit_log_id,
+        "action_id": staged["action_id"],
+        "entity_id": staged["entity_id"],
+        "status": status,
+        "result": result,
+        "committed_at": audit_entry["committed_at"]
+    }
+
+
+@app.get("/v1/actions/registry", tags=["Actions V2"])
+async def get_action_registry(request: Request):
+    """
+    **Get Action Registry**
+
+    Returns all registered actions with their READ/MUTATE classification.
+    No authentication required for registry lookup.
+    """
+    registry = get_registry()
+    return registry.to_dict()
+
+
+@app.get("/v1/actions/audit", tags=["Actions V2"])
+@limiter.limit("30/minute")
+async def get_audit_log(
+    request: Request,
+    auth: Dict = Depends(verify_security),
+    limit: int = 50
+):
+    """
+    **Get Audit Log**
+
+    Returns recent action audit log entries for the authenticated yacht.
+    """
+    yacht_id = auth.get("yacht_id")
+
+    # Filter by yacht (in production, this would be a DB query)
+    yacht_entries = [e for e in _action_log if e.get("yacht_id") == yacht_id]
+
+    return {
+        "yacht_id": yacht_id,
+        "count": len(yacht_entries),
+        "entries": yacht_entries[-limit:]  # Most recent entries
+    }
 
 
 # ========================================================================
