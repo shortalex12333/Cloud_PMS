@@ -132,6 +132,8 @@ Entity types:
 - measurement: 24V, 85°C, 3 bar, 1500 RPM, etc.
 - system: Cooling System, Fuel System, Electrical System, Hydraulic System, etc.
 - doc_type: manual, procedure, checklist, schematic, etc.
+- location: deck 1, deck 2, engine room, ER, locker, lazarette, bridge, pilothouse, etc.
+- location_code: BOX-2A, LOCKER-3B, DECK1, 4A, 2C, etc.
 
 Actions:
 - create_work_order, view_history, diagnose_fault, find_document
@@ -142,7 +144,7 @@ Output JSON ONLY with this schema:
 {
   "entities": [
     {
-      "type": "equipment|part|symptom|fault_code|person|measurement|system|doc_type",
+      "type": "equipment|part|symptom|fault_code|person|measurement|system|doc_type|location|location_code",
       "value": "exact text from query",
       "confidence": 0.0-1.0,
       "evidence": "exact substring from query",

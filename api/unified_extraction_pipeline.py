@@ -304,21 +304,30 @@ class UnifiedExtractionPipeline:
     def _convert_gpt_entities(self, gpt_entities: List) -> List[EntityDetection]:
         """
         Convert GPT extraction entities to EntityDetection format.
+
+        GPT ExtractedEntity has: type, value, confidence, evidence, start_char, end_char
+        EntityDetection needs: type, value, canonical, confidence, span, metadata, weight
         """
         converted = []
         for e in gpt_entities:
-            # GPT entities have: type, value, confidence
+            # Extract fields from GPT entity
             entity_type = getattr(e, 'type', None) or getattr(e, 'entity_type', 'unknown')
             value = getattr(e, 'value', None) or getattr(e, 'text', '')
             confidence = getattr(e, 'confidence', 0.85)
+            start_char = getattr(e, 'start_char', None)
+            end_char = getattr(e, 'end_char', None)
 
             if value:
+                # Build span tuple (required by EntityDetection)
+                span = (start_char, end_char) if start_char is not None and end_char is not None else (0, len(value))
+
                 converted.append(EntityDetection(
                     type=entity_type,
                     value=value,
+                    canonical=value,  # Module C will normalize
                     confidence=confidence,
-                    source="gpt",
-                    span=None
+                    span=span,
+                    metadata={"source": "gpt"},
                 ))
         return converted
 
