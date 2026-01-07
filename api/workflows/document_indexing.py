@@ -15,7 +15,7 @@ Endpoint: POST /webhook/index-documents
 
 import os
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 from supabase import create_client, Client
 import httpx
