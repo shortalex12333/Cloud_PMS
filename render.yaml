@@ -1,11 +1,21 @@
 services:
+  # Pipeline V1 - Unified Search Service
   - type: web
-    name: celeste-extraction
-    env: python
+    name: celeste-pipeline-v1
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: pipeline_v1
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: uvicorn api.microaction_service:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn api.pipeline_service:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.6
+        value: "3.11.6"
+      - key: SUPABASE_URL
+        value: "https://vzsohavtuotocgrfkfyd.supabase.co"
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
