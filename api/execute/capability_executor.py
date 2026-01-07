@@ -209,12 +209,18 @@ class CapabilityExecutor:
         # Execute
         response = query.execute()
 
+        # Tag results with metadata for domain grouping
+        rows = response.data or []
+        for row in rows:
+            row['_capability'] = capability.name
+            row['_source_table'] = table_spec.name
+
         return QueryResult(
             success=True,
             capability_name=capability.name,
             table_name=table_spec.name,
-            rows=response.data or [],
-            row_count=len(response.data or []),
+            rows=rows,
+            row_count=len(rows),
             query_type="sql",
             generated_query=query_description,
         )
@@ -269,6 +275,30 @@ class CapabilityExecutor:
             generated_query=query_description,
         )
 
+    def _generate_smart_pattern(self, value: str) -> str:
+        """
+        Generate flexible ILIKE pattern for better matching.
+
+        Examples:
+            "turbo gasket" → "%turbo%gasket%"
+            "MID 128" → "%MID%128%"
+            "fuel filter" → "%fuel%filter%"
+        """
+        if not isinstance(value, str):
+            return f"%{value}%"
+
+        # Remove extra spaces, normalize punctuation
+        normalized = re.sub(r'[\s\-_]+', ' ', value).strip()
+        tokens = normalized.split()
+
+        if len(tokens) > 1:
+            # Multi-token: "turbo gasket" → "%turbo%gasket%"
+            # This matches "Turbocharger Gasket Set", "Turbo Seal Gasket", etc.
+            return f"%{'%'.join(tokens)}%"
+        else:
+            # Single token: "MTU" → "%MTU%"
+            return f"%{value}%"
+
     def _apply_filter(
         self,
         query,
@@ -289,15 +319,15 @@ class CapabilityExecutor:
             return query.eq(col_name, value), f"{col_name}='{value}'"
 
         elif match_type == MatchType.ILIKE:
-            # Case-insensitive pattern match
-            pattern = f"%{value}%"
-            return query.ilike(col_name, pattern), f"{col_name} ILIKE '%{value}%'"
+            # Case-insensitive pattern match with smart tokenization
+            pattern = self._generate_smart_pattern(value)
+            return query.ilike(col_name, pattern), f"{col_name} ILIKE '{pattern}'"
 
         elif match_type == MatchType.TRIGRAM:
             # Supabase doesn't have direct trigram support via client
-            # Fall back to ilike
-            pattern = f"%{value}%"
-            return query.ilike(col_name, pattern), f"{col_name} ILIKE '%{value}%' (trigram fallback)"
+            # Fall back to ilike with smart patterns
+            pattern = self._generate_smart_pattern(value)
+            return query.ilike(col_name, pattern), f"{col_name} ILIKE '{pattern}' (trigram fallback)"
 
         elif match_type == MatchType.NUMERIC_RANGE:
             if isinstance(value, dict):
