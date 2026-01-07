@@ -87,7 +87,7 @@ export function HandoverCard({ handover, actions = [] }: HandoverCardProps) {
           {/* Summary */}
           {handover.summary && (
             <p className="text-sm text-muted-foreground mb-3 italic">
-              "{handover.summary}"
+              &quot;{handover.summary}&quot;
             </p>
           )}
 

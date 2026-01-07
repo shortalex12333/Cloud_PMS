@@ -185,7 +185,7 @@ export default function SearchBar() {
             ))
           ) : showEmptyState ? (
             <div className="text-center py-12 text-muted-foreground">
-              <p>No results found for "{query}"</p>
+              <p>No results found for &quot;{query}&quot;</p>
               <p className="text-sm mt-2">
                 Try searching for equipment, fault codes, or documents
               </p>

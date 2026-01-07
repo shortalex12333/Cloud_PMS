@@ -12,11 +12,11 @@ import {
   searchAPI,
   workOrderAPI,
 } from '../lib/api';
-import * as supabase from '../lib/supabase';
+import * as tokenRefresh from '../lib/tokenRefresh';
 
-// Mock Supabase getAccessToken
-vi.mock('../lib/supabase', () => ({
-  getAccessToken: vi.fn().mockResolvedValue('mock-jwt-token'),
+// Mock tokenRefresh ensureFreshToken
+vi.mock('../lib/tokenRefresh', () => ({
+  ensureFreshToken: vi.fn().mockResolvedValue('mock-jwt-token'),
 }));
 
 // Mock global fetch
@@ -201,7 +201,7 @@ describe('API Client', () => {
 
       await workOrderAPI.list();
 
-      expect(supabase.getAccessToken).toHaveBeenCalled();
+      expect(tokenRefresh.ensureFreshToken).toHaveBeenCalled();
       expect(global.fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
@@ -213,7 +213,7 @@ describe('API Client', () => {
     });
 
     it('should handle missing token gracefully', async () => {
-      vi.mocked(supabase.getAccessToken).mockResolvedValueOnce(null);
+      vi.mocked(tokenRefresh.ensureFreshToken).mockRejectedValueOnce(new Error('Not authenticated'));
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,

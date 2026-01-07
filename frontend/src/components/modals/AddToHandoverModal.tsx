@@ -232,7 +232,7 @@ export function AddToHandoverModal({
             Add Items to Handover
           </DialogTitle>
           <DialogDescription>
-            Add faults, work orders, equipment, parts, or documents to "{context.handover_title}"
+            Add faults, work orders, equipment, parts, or documents to &quot;{context.handover_title}&quot;
           </DialogDescription>
         </DialogHeader>
 

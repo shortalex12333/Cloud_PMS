@@ -167,7 +167,7 @@ export function EditEquipmentDetailsModal({
             )}
             {changes.name && (
               <p className="text-xs text-orange-600">
-                Changed from: "{context.current_name}"
+                Changed from: &quot;{context.current_name}&quot;
               </p>
             )}
           </div>
@@ -201,7 +201,7 @@ export function EditEquipmentDetailsModal({
             />
             {criticalChange && (
               <p className="text-xs text-red-600 font-medium">
-                ⚠️ Changed from: "{context.current_serial_number || 'empty'}" → Requires HIGH severity audit
+                ⚠️ Changed from: &quot;{context.current_serial_number || 'empty'}&quot; → Requires HIGH severity audit
               </p>
             )}
           </div>

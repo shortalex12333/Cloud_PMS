@@ -348,7 +348,7 @@ export function LinkPartsToWorkOrderModal({
               <div className="p-8 text-center text-gray-500 border border-dashed border-gray-300 rounded-lg">
                 <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">No parts selected yet</p>
-                <p className="text-xs text-gray-400 mt-1">Click "Add Part" to select parts</p>
+                <p className="text-xs text-gray-400 mt-1">Click &quot;Add Part&quot; to select parts</p>
               </div>
             ) : (
               <div className="space-y-2">

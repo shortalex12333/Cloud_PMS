@@ -211,7 +211,7 @@ export function EditFaultDetailsModal({
             )}
             {changes.title && (
               <p className="text-xs text-orange-600">
-                Changed from: "{context.current_title}"
+                Changed from: &quot;{context.current_title}&quot;
               </p>
             )}
           </div>
