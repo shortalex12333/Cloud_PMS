@@ -340,8 +340,8 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
     "work_order_by_id": Capability(
         name="work_order_by_id",
         description="Search work orders by ID, status, or equipment",
-        status=CapabilityStatus.EMPTY,
-        blocked_reason="pms_work_orders table exists but contains no data",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
         entity_triggers=["WORK_ORDER_ID", "WO_NUMBER"],
         available_actions=["view_details", "update_status", "assign_crew", "close_order"],
         tables=[
@@ -370,8 +370,8 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
     "equipment_by_name_or_model": Capability(
         name="equipment_by_name_or_model",
         description="Search equipment by name, model, or manufacturer",
-        status=CapabilityStatus.EMPTY,
-        blocked_reason="pms_equipment table exists but contains no data",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
         entity_triggers=["EQUIPMENT_NAME", "MODEL_NUMBER"],
         available_actions=["view_details", "view_maintenance", "log_hours"],
         tables=[
