@@ -6,8 +6,9 @@ Single source of truth for ALL NLP extraction logic.
 
 Combines:
 - Module A: Micro-action & intent detection
-- Module B: Maritime entity extraction
+- Module B: Maritime entity extraction (regex)
 - Module C: Canonicalization & weighting
+- GPT Fallback: When regex coverage < 85%, use GPT-4o-mini
 
 Returns unified structured output for:
 - Search Engine
@@ -29,7 +30,23 @@ ARCHITECTURE:
            ▼
 ┌─────────────────────┐
 │  Module B           │  Extract maritime entities
-│  (Entity Extractor) │  (equipment, faults, etc.)
+│  (Entity Extractor) │  (regex patterns)
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Coverage Check     │  If < 85% tokens covered
+│  (Fallback Gate)    │  → trigger GPT extraction
+└──────────┬──────────┘
+           │
+     ┌─────┴─────┐
+     │  < 85%?   │
+     └─────┬─────┘
+           │ YES
+           ▼
+┌─────────────────────┐
+│  GPT-4o-mini        │  AI fallback extraction
+│  (gpt_extractor)    │  + text-embedding-3-small
 └──────────┬──────────┘
            │
            ▼
@@ -44,14 +61,27 @@ ARCHITECTURE:
 └─────────────────────┘
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from dataclasses import asdict
 import time
+import re
+import logging
 
 # Import modules
 from module_a_action_detector import get_detector, ActionDetection
 from module_b_entity_extractor import get_extractor, EntityDetection
 from module_c_canonicalizer import get_canonicalizer
+
+# Import GPT fallback
+try:
+    from gpt_extractor import get_gpt_extractor, GPTExtractor
+    GPT_AVAILABLE = True
+except ImportError:
+    GPT_AVAILABLE = False
+    logging.warning("GPT extractor not available - running regex-only mode")
+
+# Coverage threshold for GPT fallback
+COVERAGE_THRESHOLD = 0.85  # If less than 85% of tokens covered, use GPT
 
 
 class UnifiedExtractionPipeline:
@@ -59,13 +89,34 @@ class UnifiedExtractionPipeline:
     Unified extraction pipeline combining all NLP logic.
 
     Single entry point for all extraction needs.
+    Now includes GPT fallback when regex coverage < 85%.
     """
+
+    # Stop words that don't count toward coverage
+    STOP_WORDS = {
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could",
+        "should", "may", "might", "must", "shall", "can", "need", "to", "of",
+        "in", "for", "on", "with", "at", "by", "from", "as", "into", "through",
+        "and", "or", "but", "if", "because", "until", "while", "me", "my",
+        "our", "you", "your", "it", "its", "this", "that", "these", "those",
+        "what", "which", "who", "show", "find", "get", "list", "search",
+        "display", "give", "tell", "see", "look", "check", "view", "all",
+    }
 
     def __init__(self):
         # Load all modules (singletons)
         self.action_detector = get_detector()
         self.entity_extractor = get_extractor()
         self.canonicalizer = get_canonicalizer()
+
+        # Load GPT fallback (if available)
+        self.gpt_extractor = None
+        if GPT_AVAILABLE:
+            try:
+                self.gpt_extractor = get_gpt_extractor()
+            except Exception as e:
+                logging.warning(f"Failed to initialize GPT extractor: {e}")
 
     def extract(self, query: str, min_action_confidence: float = 0.4) -> Dict:
         """
@@ -117,8 +168,24 @@ class UnifiedExtractionPipeline:
         intent = self.action_detector.detect_intent(query)
         intent_confidence = best_action.confidence if best_action else 0.0
 
-        # STAGE 2: Module B - Extract maritime entities
+        # STAGE 2: Module B - Extract maritime entities (regex)
         raw_entities = self.entity_extractor.extract_entities(query)
+
+        # STAGE 2.5: Coverage check - decide if GPT fallback needed
+        coverage = self._calculate_coverage(query, raw_entities)
+        used_gpt_fallback = False
+
+        if coverage < COVERAGE_THRESHOLD and self.gpt_extractor:
+            # GPT FALLBACK: Coverage too low, use AI extraction
+            try:
+                gpt_result = self.gpt_extractor.extract(query)
+                if gpt_result and gpt_result.entities:
+                    # Convert GPT entities to EntityDetection format and merge
+                    gpt_entities = self._convert_gpt_entities(gpt_result.entities)
+                    raw_entities = self._merge_entities(raw_entities, gpt_entities)
+                    used_gpt_fallback = True
+            except Exception as e:
+                logging.warning(f"GPT fallback failed: {e}")
 
         # STAGE 3: Module C - Canonicalize and weight entities
         canonical_entities = self.canonicalizer.canonicalize(raw_entities)
@@ -173,9 +240,12 @@ class UnifiedExtractionPipeline:
             "metadata": {
                 "query": query,
                 "latency_ms": latency_ms,
-                "modules_run": ["action_detector", "entity_extractor", "canonicalizer"],
+                "modules_run": ["action_detector", "entity_extractor", "canonicalizer"] +
+                               (["gpt_fallback"] if used_gpt_fallback else []),
                 "action_count": len(filtered_actions),
-                "entity_count": len(merged_entities)
+                "entity_count": len(merged_entities),
+                "coverage": round(coverage, 3),
+                "used_gpt_fallback": used_gpt_fallback
             }
         }
 
@@ -196,9 +266,83 @@ class UnifiedExtractionPipeline:
                 "latency_ms": latency_ms,
                 "modules_run": [],
                 "action_count": 0,
-                "entity_count": 0
+                "entity_count": 0,
+                "coverage": 0.0,
+                "used_gpt_fallback": False
             }
         }
+
+    def _calculate_coverage(self, query: str, entities: List[EntityDetection]) -> float:
+        """
+        Calculate what percentage of meaningful tokens are covered by entities.
+
+        Returns: float between 0.0 and 1.0
+        """
+        # Tokenize query
+        tokens = re.findall(r'[a-z0-9][-a-z0-9]*[a-z0-9]|[a-z0-9]', query.lower())
+
+        # Filter out stop words
+        meaningful_tokens = [t for t in tokens if t not in self.STOP_WORDS]
+
+        if not meaningful_tokens:
+            return 1.0  # Empty query is "fully covered"
+
+        # Build set of entity values (lowercase, tokenized)
+        entity_tokens: Set[str] = set()
+        for e in entities:
+            val = (e.value or "").lower()
+            # Add whole value and individual words
+            entity_tokens.add(val)
+            for word in re.findall(r'[a-z0-9]+', val):
+                entity_tokens.add(word)
+
+        # Count covered tokens
+        covered = sum(1 for t in meaningful_tokens if t in entity_tokens)
+
+        return covered / len(meaningful_tokens)
+
+    def _convert_gpt_entities(self, gpt_entities: List) -> List[EntityDetection]:
+        """
+        Convert GPT extraction entities to EntityDetection format.
+        """
+        converted = []
+        for e in gpt_entities:
+            # GPT entities have: type, value, confidence
+            entity_type = getattr(e, 'type', None) or getattr(e, 'entity_type', 'unknown')
+            value = getattr(e, 'value', None) or getattr(e, 'text', '')
+            confidence = getattr(e, 'confidence', 0.85)
+
+            if value:
+                converted.append(EntityDetection(
+                    type=entity_type,
+                    value=value,
+                    confidence=confidence,
+                    source="gpt",
+                    span=None
+                ))
+        return converted
+
+    def _merge_entities(
+        self,
+        regex_entities: List[EntityDetection],
+        gpt_entities: List[EntityDetection]
+    ) -> List[EntityDetection]:
+        """
+        Merge regex and GPT entities, preferring regex when overlapping.
+        """
+        # Start with regex entities (higher trust)
+        merged = list(regex_entities)
+
+        # Get existing values (lowercase)
+        existing_values = {e.value.lower() for e in regex_entities if e.value}
+
+        # Add GPT entities that don't overlap
+        for gpt_e in gpt_entities:
+            if gpt_e.value and gpt_e.value.lower() not in existing_values:
+                merged.append(gpt_e)
+                existing_values.add(gpt_e.value.lower())
+
+        return merged
 
     def extract_actions_only(self, query: str) -> List[Dict]:
         """

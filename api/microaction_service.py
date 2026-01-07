@@ -67,6 +67,9 @@ from action_registry import (
     ActionVariant, ActionRegistry, Action, AuditLevel
 )
 
+# Import Action Executor for SQL operations
+from action_executor import ActionExecutor, ExecutionResult, get_executor
+
 
 # =============================================================================
 # CARD TYPE → ENTITY TYPE MAPPING (for action attachment)
@@ -254,6 +257,9 @@ graphrag_query: Optional[GraphRAGQueryService] = None
 
 # Situation Engine (v1 situation-aware search)
 situation_engine: Optional[SituationEngine] = None
+
+# Action Executor (SQL execution layer for microactions)
+action_executor: Optional[ActionExecutor] = None
 
 # Configuration (default to production)
 config: ExtractionConfig = get_config('production')
@@ -576,7 +582,7 @@ git_sha = get_git_sha()
 @app.on_event("startup")
 async def startup_event():
     """Load extractor and patterns at startup (runs once)"""
-    global extractor, pipeline, config, graphrag_population, graphrag_query, situation_engine, intent_parser
+    global extractor, pipeline, config, graphrag_population, graphrag_query, situation_engine, intent_parser, action_executor
     logger.info("🚀 Starting Micro-Action Extraction Service...")
 
     try:
@@ -613,8 +619,14 @@ async def startup_event():
         if graphrag_query and graphrag_query.client:
             situation_engine = SituationEngine(graphrag_query.client)
             logger.info("✓ Situation Engine initialized (v1 situation-aware search)")
+
+            # Initialize Action Executor (SQL execution layer for microactions)
+            action_executor = get_executor(graphrag_query.client)
+            logger.info(f"✓ Action Executor initialized ({len(action_executor._read_handlers)} READ + {len(action_executor._mutate_handlers)} MUTATE handlers)")
         else:
             logger.warning("⚠ Situation Engine not initialized - no Supabase client")
+            action_executor = None
+            logger.warning("⚠ Action Executor not initialized - no Supabase client")
 
         # Load configuration
         config = get_config('production')
@@ -2782,10 +2794,55 @@ async def prepare_action(
             detail=f"Access denied: {entity_access['reason']}"
         )
 
-    # Generate staged action ID
+    # Use ActionExecutor if available, otherwise fall back to stub
+    if action_executor is not None:
+        # Use real executor for SQL-based diff computation
+        try:
+            staged_result = await action_executor.prepare_mutation(
+                action_id=prepare_request.action_id,
+                entity_id=prepare_request.entity_id,
+                entity_type=prepare_request.entity_type,
+                yacht_id=yacht_id,
+                user_id=user_id,
+                payload=prepare_request.payload,
+                action_label=action.label,
+                requires_signature=action.mutation.requires_signature if action.mutation else True,
+                confirmation_message=action.mutation.confirmation_message if action.mutation else "Confirm action"
+            )
+
+            if not staged_result.get("success"):
+                raise HTTPException(status_code=400, detail=staged_result.get("error", "Failed to prepare action"))
+
+            # Store in legacy staging store for backwards compatibility
+            _staged_actions[staged_result["staged_id"]] = {
+                "staged_id": staged_result["staged_id"],
+                "action_id": prepare_request.action_id,
+                "entity_id": prepare_request.entity_id,
+                "entity_type": prepare_request.entity_type,
+                "payload": prepare_request.payload,
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                "diff": staged_result["diff"],
+                "diff_hash": staged_result["diff_hash"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": staged_result["expires_at"],
+                "status": "pending_signature"
+            }
+
+            logger.info(f"/v1/actions/prepare: staged={staged_result['staged_id']}, action={prepare_request.action_id}, user={user_id}, executor=SQL")
+
+            return staged_result
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"ActionExecutor.prepare_mutation failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to prepare action: {str(e)}")
+
+    # Fallback: Stub mode (no database)
     staged_id = str(uuid.uuid4())
 
-    # Compute diff preview (simplified - would fetch real entity data in production)
+    # Compute diff preview (simplified - stub mode without real entity data)
     before_state = {"entity_id": prepare_request.entity_id, "state": "current"}
     after_state = {**before_state, **prepare_request.payload, "state": "proposed"}
 
@@ -2816,7 +2873,7 @@ async def prepare_action(
     }
     _staged_actions[staged_id] = staged_action
 
-    logger.info(f"/v1/actions/prepare: staged={staged_id}, action={prepare_request.action_id}, user={user_id}")
+    logger.info(f"/v1/actions/prepare: staged={staged_id}, action={prepare_request.action_id}, user={user_id}, executor=STUB")
 
     return {
         "staged_id": staged_id,
@@ -2948,28 +3005,56 @@ async def commit_action(
     if staged["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Commit must be from same user who prepared/signed action")
 
-    # Execute the mutation (simplified - would call actual handlers in production)
+    # Get signature timestamp
+    signature_timestamp = datetime.fromisoformat(signature["signed_at"].replace("Z", "+00:00")) if signature.get("signed_at") else None
+
+    # Execute the mutation using ActionExecutor if available
     execution_id = str(uuid.uuid4())
     action = get_action(staged["action_id"])
 
-    try:
-        # TODO: Call actual handler based on action.execution.handler
-        result = {
-            "success": True,
-            "message": f"Action '{staged['action_id']}' executed successfully",
-            "entity_id": staged["entity_id"],
-            "changes_applied": staged["diff"]["changes"]
-        }
-        status = "completed"
-        error_message = None
+    if action_executor is not None:
+        # Use real executor for SQL-based commit
+        try:
+            exec_result = await action_executor.commit_mutation(
+                staged_id=commit_request.staged_id,
+                signature=commit_request.signature_id,
+                signature_timestamp=signature_timestamp
+            )
 
-    except Exception as e:
-        result = {"success": False, "error": str(e)}
-        status = "failed"
-        error_message = str(e)
+            result = exec_result.to_dict()
+            status = "completed" if exec_result.success else "failed"
+            error_message = exec_result.error
+
+            logger.info(f"/v1/actions/commit: exec={execution_id}, action={staged['action_id']}, status={status}, executor=SQL")
+
+        except Exception as e:
+            logger.error(f"ActionExecutor.commit_mutation failed: {e}", exc_info=True)
+            result = {"success": False, "error": str(e)}
+            status = "failed"
+            error_message = str(e)
+
+    else:
+        # Fallback: Stub mode (no database)
+        try:
+            result = {
+                "success": True,
+                "message": f"Action '{staged['action_id']}' executed successfully (stub mode)",
+                "entity_id": staged["entity_id"],
+                "changes_applied": staged["diff"].get("changes", [])
+            }
+            status = "completed"
+            error_message = None
+
+            logger.info(f"/v1/actions/commit: exec={execution_id}, action={staged['action_id']}, status={status}, executor=STUB")
+
+        except Exception as e:
+            result = {"success": False, "error": str(e)}
+            status = "failed"
+            error_message = str(e)
 
     # Write audit log entry
     audit_log_id = str(uuid.uuid4())
+    committed_at = datetime.now(timezone.utc).isoformat()
     audit_entry = {
         "audit_log_id": audit_log_id,
         "execution_id": execution_id,
@@ -2983,15 +3068,13 @@ async def commit_action(
         "diff_after": staged["diff"]["after"],
         "status": status,
         "error_message": error_message,
-        "committed_at": datetime.now(timezone.utc).isoformat()
+        "committed_at": committed_at
     }
     _action_log.append(audit_entry)
 
     # Update staged action status
     staged["status"] = "committed"
     staged["execution_id"] = execution_id
-
-    logger.info(f"/v1/actions/commit: exec={execution_id}, action={staged['action_id']}, status={status}, audit={audit_log_id}")
 
     return {
         "execution_id": execution_id,
@@ -3000,7 +3083,7 @@ async def commit_action(
         "entity_id": staged["entity_id"],
         "status": status,
         "result": result,
-        "committed_at": audit_entry["committed_at"]
+        "committed_at": committed_at
     }
 
 
@@ -3014,6 +3097,130 @@ async def get_action_registry(request: Request):
     """
     registry = get_registry()
     return registry.to_dict()
+
+
+class ReadActionRequest(BaseModel):
+    """Request to execute a READ action immediately"""
+    action_id: str = Field(..., description="The READ action to execute (e.g., view_equipment)")
+    entity_id: str = Field(..., description="Target entity ID")
+    entity_type: str = Field(..., description="Entity type (equipment, part, work_order, etc.)")
+    params: Optional[Dict] = Field(default=None, description="Optional parameters for the action")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "action_id": "view_equipment",
+                "entity_id": "eq-12345",
+                "entity_type": "equipment",
+                "params": {}
+            }
+        }
+
+
+@app.post("/v1/actions/read", tags=["Actions V2"])
+@limiter.limit("60/minute")
+async def execute_read_action(
+    request: Request,
+    read_request: ReadActionRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    **Execute a READ Action Immediately**
+
+    For READ actions only. Executes immediately and returns data.
+    No signature required - READ actions are safe and don't modify data.
+
+    **Flow:**
+    1. Validate action is READ
+    2. Verify entity access
+    3. Execute SQL query
+    4. Return data
+
+    **Response:**
+    - success: Whether the action completed successfully
+    - data: The retrieved data
+    - action_id: The action that was executed
+    - entity_id: The target entity
+    """
+    action = get_action(read_request.action_id)
+
+    # Security Check 1: Action exists (with typo suggestions)
+    if action is None:
+        suggestions = _suggest_similar_actions(read_request.action_id)
+        detail = f"Unknown action: '{read_request.action_id}'"
+        if suggestions:
+            detail += f". Did you mean: {', '.join(suggestions)}?"
+        raise HTTPException(status_code=400, detail=detail)
+
+    # Security Check 2: Action is READ
+    if action.variant != ActionVariant.READ:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Action '{read_request.action_id}' is MUTATE, not READ. Use /actions/prepare → /actions/commit flow for MUTATE actions."
+        )
+
+    yacht_id = auth.get("yacht_id")
+    user_id = auth.get("user_id")
+
+    # Security Check 3: Entity-level permission (yacht scoping)
+    entity_access = await _verify_entity_access(
+        yacht_id=yacht_id,
+        user_id=user_id,
+        entity_id=read_request.entity_id,
+        entity_type=read_request.entity_type,
+        action_id=read_request.action_id
+    )
+    if not entity_access["allowed"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied: {entity_access['reason']}"
+        )
+
+    # Execute READ action using ActionExecutor if available
+    if action_executor is not None:
+        try:
+            exec_result = await action_executor.execute_read(
+                action_id=read_request.action_id,
+                entity_id=read_request.entity_id,
+                yacht_id=yacht_id,
+                params=read_request.params or {}
+            )
+
+            logger.info(f"/v1/actions/read: action={read_request.action_id}, entity={read_request.entity_id}, success={exec_result.success}, executor=SQL")
+
+            if not exec_result.success:
+                raise HTTPException(status_code=400, detail=exec_result.error or "Action failed")
+
+            return {
+                "success": True,
+                "action_id": read_request.action_id,
+                "entity_id": read_request.entity_id,
+                "entity_type": read_request.entity_type,
+                "data": exec_result.data,
+                "executed_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"ActionExecutor.execute_read failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Action execution failed: {str(e)}")
+
+    # Fallback: Stub mode (no database)
+    logger.info(f"/v1/actions/read: action={read_request.action_id}, entity={read_request.entity_id}, executor=STUB")
+
+    return {
+        "success": True,
+        "action_id": read_request.action_id,
+        "entity_id": read_request.entity_id,
+        "entity_type": read_request.entity_type,
+        "data": {
+            "message": f"READ action '{read_request.action_id}' would execute here (stub mode)",
+            "entity_id": read_request.entity_id,
+            "note": "ActionExecutor not initialized - no database connection"
+        },
+        "executed_at": datetime.now(timezone.utc).isoformat()
+    }
 
 
 @app.get("/v1/actions/audit", tags=["Actions V2"])

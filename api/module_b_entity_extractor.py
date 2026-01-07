@@ -85,12 +85,15 @@ except ImportError:
 # The search system uses this to decide how much to trust each entity
 
 HARD_ENTITY_TYPES = {
-    'fault_code',    # E047, SPN 100 FMI 3 - specific diagnostic codes that map to exact issues
-    'measurement',   # 24V, 85°C, 2 bar - concrete numerical values with units
-    'model',         # 16V4000, 3512, LB-2800 - specific product identifiers
-    'brand',         # MTU, Caterpillar, Furuno - known manufacturers (we have a list)
-    'part',          # membrane, impeller - specific replacement components
-    'equipment',     # generator, radar, pump - known equipment types (we have a list)
+    'fault_code',      # E047, SPN 100 FMI 3 - specific diagnostic codes that map to exact issues
+    'measurement',     # 24V, 85°C, 2 bar - concrete numerical values with units
+    'model',           # 16V4000, 3512, LB-2800 - specific product identifiers
+    'brand',           # MTU, Caterpillar, Furuno - known manufacturers (we have a list)
+    'part',            # membrane, impeller - specific replacement components
+    'equipment',       # generator, radar, pump - known equipment types (we have a list)
+    'equipment_code',  # ME-S-001, GEN-002 - specific PMS asset identifiers
+    'part_number',     # ENG-0008-103, FIL-0127-320 - specific PMS part numbers
+    'location_code',   # BOX-2A, LOCKER-B1 - specific storage locations
 }
 
 SOFT_ENTITY_TYPES = {
@@ -187,10 +190,13 @@ class EntityDetection:
         # Base weights by entity type - higher = more important for search ranking
         type_weights = {
             'fault_code': 4.5,      # Fault codes are very specific - high weight
+            'equipment_code': 4.5,  # Equipment codes (ME-S-001) are specific assets
+            'part_number': 4.3,     # Part numbers (ENG-0008-103) are specific parts
             'symptom': 4.0,         # Symptoms are key for diagnosis
             'model': 4.0,           # Model numbers are very specific
             'measurement': 3.8,     # Concrete values like "85°C"
             'brand': 3.5,           # Known brands narrow down results
+            'location_code': 3.5,   # Location codes (BOX-2A) are specific
             'document_type': 3.2,   # Manual, schematic, parts list
             'part': 3.0,            # Specific components
             'equipment': 2.8,       # Equipment types (broader than parts)
@@ -370,6 +376,73 @@ class MaritimeEntityExtractor:
         ]
 
         # =====================================================================
+        # EQUIPMENT CODE PATTERNS (PMS Asset Identifiers)
+        # =====================================================================
+        # These detect specific equipment codes from the PMS database
+        # These are critical for LOOKUP queries that reference specific assets
+        #
+        # FORMAT: PREFIX-LOCATION-NUMBER or PREFIX-NUMBER
+        # Examples:
+        #   ME-S-001  = Main Engine Starboard 001
+        #   ME-P-001  = Main Engine Port 001
+        #   GEN-001   = Generator 001
+        #   THR-B-001 = Thruster Bow 001
+        #   HVAC-001  = HVAC system 001
+        #   AUX-001   = Auxiliary system 001
+        #   DG1, DG2  = Diesel Generator 1/2
+
+        self.equipment_code_patterns = [
+            # Main Engine codes: ME-S-001, ME-P-001, ME S 001, MES001
+            # Supports various separator styles (dash, space, none)
+            (r"\bME[-\s]?[SP][-\s]?\d{3}\b", "equipment_code", 0.98),
+
+            # Generator codes: GEN-001, GEN 001, GEN001
+            (r"\bGEN[-\s]?\d{3}\b", "equipment_code", 0.98),
+
+            # Diesel Generator codes: DG1, DG2, DG-1, DG 1
+            (r"\bDG[-\s]?\d{1,2}\b", "equipment_code", 0.97),
+
+            # Thruster codes: THR-B-001, THR-S-001 (Bow/Stern)
+            (r"\bTHR[-\s]?[BS][-\s]?\d{3}\b", "equipment_code", 0.98),
+
+            # HVAC codes: HVAC-001, HVAC 001
+            (r"\bHVAC[-\s]?\d{3}\b", "equipment_code", 0.98),
+
+            # Auxiliary codes: AUX-001, AUX 001
+            (r"\bAUX[-\s]?\d{3}\b", "equipment_code", 0.97),
+
+            # Fresh Water codes: FW-P-001, FW-S-001
+            (r"\bFW[-\s]?[PS][-\s]?\d{3}\b", "equipment_code", 0.97),
+
+            # Navigation codes: NAV-001, NAV 001
+            (r"\bNAV[-\s]?\d{3}\b", "equipment_code", 0.97),
+
+            # Electrical codes: ELEC-001, EL-001
+            (r"\b(?:ELEC|EL)[-\s]?\d{3}\b", "equipment_code", 0.96),
+
+            # Generic format: 2-4 uppercase letters, optional location, 3 digits
+            # Catches patterns like: PMP-001, HYD-001, SEW-001
+            (r"\b[A-Z]{2,4}[-\s]?[A-Z]?[-\s]?\d{3}\b", "equipment_code", 0.90),
+        ]
+
+        # =====================================================================
+        # PART NUMBER PATTERNS (PMS Part Identifiers)
+        # =====================================================================
+        # Detect specific part numbers from the PMS inventory
+        # Format: PREFIX-XXXX-XXX (e.g., ENG-0008-103, FIL-0127-320)
+
+        self.part_number_patterns = [
+            # Standard part numbers: ENG-0008-103, FIL-0127-320
+            (r"\b[A-Z]{2,4}[-\s]?\d{4}[-\s]?\d{2,3}\b", "part_number", 0.95),
+
+            # BOX location codes: BOX-2A, BOX 3D, BOX-4
+            (r"\bBOX[-\s]?\d[A-Z]?\b", "location_code", 0.93),
+
+            # Locker codes: LOCKER-A1, LOCKER B2
+            (r"\bLOCKER[-\s]?[A-Z]\d?\b", "location_code", 0.93),
+        ]
+
+        # =====================================================================
         # PERSON/ROLE PATTERNS
         # =====================================================================
         # These detect crew roles mentioned in queries
@@ -469,6 +542,18 @@ class MaritimeEntityExtractor:
             canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
             for canonical, patterns in self.person_patterns.items()
         }
+
+        # Compile equipment code patterns (case-insensitive)
+        self.compiled_equipment_codes = [
+            (re.compile(pattern, re.IGNORECASE), entity_type, confidence)
+            for pattern, entity_type, confidence in self.equipment_code_patterns
+        ]
+
+        # Compile part number patterns (case-insensitive)
+        self.compiled_part_numbers = [
+            (re.compile(pattern, re.IGNORECASE), entity_type, confidence)
+            for pattern, entity_type, confidence in self.part_number_patterns
+        ]
 
     def extract_entities(self, query: str) -> List[EntityDetection]:
         """
@@ -856,6 +941,55 @@ class MaritimeEntityExtractor:
                     confidence=confidence,
                     span=(match.start(), match.end()),
                     metadata={"source": "measurement_pattern", "measurement_type": entity_type}
+                ))
+
+        # =====================================================================
+        # STEP 5.5: EQUIPMENT CODES - PMS Asset Identifiers
+        # =====================================================================
+        # Match specific equipment codes: ME-S-001, GEN-002, THR-B-001, etc.
+        # These are CRITICAL for LOOKUP queries that reference specific assets
+        # Run EARLY because equipment codes should take priority over generic matches
+
+        for pattern, entity_type, confidence in self.compiled_equipment_codes:
+            for match in pattern.finditer(query):
+                matched_text = match.group(0)
+                # Normalize to canonical form: ME-S-001 (uppercase, hyphen-separated)
+                canonical = matched_text.upper().replace(" ", "-")
+                # Ensure proper hyphen placement for codes like MES001 -> ME-S-001
+                if len(canonical) >= 6 and "-" not in canonical:
+                    # Try to insert hyphens at common positions
+                    if canonical.startswith("ME") and len(canonical) >= 6:
+                        canonical = f"{canonical[:2]}-{canonical[2]}-{canonical[3:]}"
+                    elif canonical.startswith("GEN") and len(canonical) >= 6:
+                        canonical = f"{canonical[:3]}-{canonical[3:]}"
+                    elif canonical.startswith("THR") and len(canonical) >= 7:
+                        canonical = f"{canonical[:3]}-{canonical[3]}-{canonical[4:]}"
+
+                entities.append(EntityDetection(
+                    type=entity_type,
+                    value=matched_text,
+                    canonical=canonical,
+                    confidence=confidence,
+                    span=(match.start(), match.end()),
+                    metadata={"source": "equipment_code_pattern"}
+                ))
+
+        # =====================================================================
+        # STEP 5.6: PART NUMBERS - PMS Part/Location Identifiers
+        # =====================================================================
+        # Match part numbers and location codes: ENG-0008-103, BOX-2A, etc.
+
+        for pattern, entity_type, confidence in self.compiled_part_numbers:
+            for match in pattern.finditer(query):
+                matched_text = match.group(0)
+                canonical = matched_text.upper().replace(" ", "-")
+                entities.append(EntityDetection(
+                    type=entity_type,
+                    value=matched_text,
+                    canonical=canonical,
+                    confidence=confidence,
+                    span=(match.start(), match.end()),
+                    metadata={"source": "part_number_pattern"}
                 ))
 
         # =====================================================================

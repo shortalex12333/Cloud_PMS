@@ -589,8 +589,19 @@ class GraphRAGQueryService:
     # INTENT EXECUTION
     # ========================================================================
 
-    def _execute_query(self, yacht_id: str, intent: QueryIntent, query: str, entities: List[Dict]) -> List[Dict]:
-        """Execute intent-specific query pattern"""
+    def _execute_query(self, yacht_id: str, intent: QueryIntent, query: str, entities: List[Dict],
+                       similar_docs: List[Dict] = None, person_filter: str = None) -> List[Dict]:
+        """Execute intent-specific query pattern
+
+        Args:
+            yacht_id: Yacht identifier for filtering
+            intent: Query intent (diagnose_fault, find_document, etc.)
+            query: Original query text
+            entities: Resolved entities from GPT extraction
+            similar_docs: Vector similarity matches from match_documents()
+            person_filter: Person filter from GPT extraction (e.g., "captain")
+        """
+        similar_docs = similar_docs or []
         if intent == QueryIntent.DIAGNOSE_FAULT:
             return self._query_fault(yacht_id, query, entities)
         elif intent == QueryIntent.FIND_DOCUMENT:
