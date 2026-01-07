@@ -1,0 +1,82 @@
+ENGINE MAINTENANCE MANUAL
+==========================
+
+CATERPILLAR C32 ACERT MARINE DIESEL ENGINE
+Model: C32 ACERT
+Serial Number: CAT32-2024-001
+
+IMPORTANT SAFETY INFORMATION
+-----------------------------
+Always ensure proper ventilation when working on engines.
+Wear appropriate personal protective equipment.
+Follow all manufacturer guidelines.
+
+SCHEDULED MAINTENANCE
+--------------------
+
+DAILY CHECKS:
+1. Check engine oil level
+2. Inspect for leaks
+3. Check coolant level
+4. Verify fuel filters
+5. Test alarm systems
+
+WEEKLY MAINTENANCE:
+1. Check air filter condition
+2. Inspect belts and hoses
+3. Test battery voltage
+4. Verify coolant quality
+5. Check exhaust system
+
+MONTHLY PROCEDURES:
+1. Change engine oil and filters
+2. Inspect turbocharger
+3. Check injector performance
+4. Test cooling system pressure
+5. Verify fuel quality
+
+ANNUAL SERVICE:
+1. Complete engine inspection
+2. Replace all filters
+3. Test compression
+4. Inspect valve clearances
+5. Check governor settings
+
+TROUBLESHOOTING
+---------------
+
+Problem: Engine won't start
+- Check fuel supply
+- Verify battery charge
+- Inspect starter motor
+- Check safety interlocks
+
+Problem: Loss of power
+- Inspect air filter
+- Check fuel filters
+- Verify turbocharger operation
+- Test injectors
+
+Problem: Overheating
+- Check coolant level
+- Inspect water pump
+- Verify thermostat operation
+- Check heat exchanger
+
+SPECIFICATIONS
+--------------
+Displacement: 32.1 liters
+Power Output: 1,200 HP @ 2,100 RPM
+Torque: 3,500 lb-ft @ 1,500 RPM
+Compression Ratio: 14.5:1
+Weight: 5,100 lbs
+
+PARTS REFERENCE
+---------------
+Oil Filter: CAT-1R-0750
+Fuel Filter Primary: CAT-1R-0756
+Fuel Filter Secondary: CAT-1R-0762
+Air Filter: CAT-2S-1286
+Coolant Filter: CAT-9N-6123
+
+For technical support, contact Caterpillar Marine at 1-800-CAT-MARINE

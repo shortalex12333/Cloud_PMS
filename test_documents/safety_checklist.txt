@@ -1,0 +1,63 @@
+MONTHLY SAFETY INSPECTION CHECKLIST
+====================================
+
+Vessel: M/Y SERENITY
+Inspector: Chief Engineer - Alex Rodriguez
+Date: January 7, 2026
+
+FIRE SAFETY EQUIPMENT
+---------------------
+[X] Fire extinguishers inspected and tagged
+[X] Fire hoses pressure tested
+[X] Smoke detectors tested (all zones)
+[X] CO2 system pressure checked
+[X] Fire pumps tested and logged
+[ ] Sprinkler heads inspected - DEFERRED TO FEBRUARY
+
+LIFE SAVING EQUIPMENT
+---------------------
+[X] Life jackets counted and inspected (24 total)
+[X] Life rafts service dates verified
+[X] EPIRB battery expiration checked
+[X] Flares inventory verified
+[X] Man overboard equipment tested
+
+NAVIGATION & COMMUNICATION
+--------------------------
+[X] VHF radios tested on all channels
+[X] EPIRB self-test completed
+[X] Navigation lights tested
+[X] Horn and whistle tested
+[X] AIS transponder verified
+
+MACHINERY SPACES
+----------------
+[X] Emergency lighting tested
+[X] Bilge alarms tested
+[X] High water alarms tested
+[X] Emergency stop buttons tested
+[X] Ventilation systems verified
+
+SAFETY CONCERNS IDENTIFIED:
+---------------------------
+1. Port side fire hose shows minor wear on coupling - recommend replacement
+2. Life raft service due March 2026 - schedule appointment
+3. One CO detector in crew mess reading low battery - replaced
+
+ACTION ITEMS:
+-------------
+1. Order new fire hose coupling (part# FH-250-C)
+2. Contact LifeRaft Services for March inspection
+3. Update fire drill schedule for February
+4. Verify crew training certificates current
+
+NOTES:
+------
+Overall vessel safety systems in excellent condition.
+All required equipment present and functional.
+Crew demonstrated excellent emergency response knowledge during drill.
+
+Next inspection due: February 7, 2026
+
+Inspector Signature: A. Rodriguez
+Date: January 7, 2026

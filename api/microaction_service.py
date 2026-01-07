@@ -25,7 +25,7 @@ Endpoints:
 Similar architecture to maritime entity extraction service.
 """
 
-from fastapi import FastAPI, HTTPException, Request, Header, Depends
+from fastapi import FastAPI, HTTPException, Request, Header, Depends, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
@@ -35,6 +35,7 @@ import logging
 import os
 import jwt
 import hashlib
+import json
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -1958,6 +1959,127 @@ def extract_for_n8n(query: str) -> Dict:
         "count": len(actions),
         "success": True
     }
+
+
+# ========================================================================
+# DOCUMENT PROCESSING ENDPOINTS
+# ========================================================================
+
+from workflows.document_ingestion import handle_document_ingestion
+from workflows.document_indexing import handle_document_indexing
+
+
+class DocumentMetadata(BaseModel):
+    """Metadata for document upload"""
+    yacht_id: str
+    filename: str
+    content_type: str
+    file_size: int
+    system_path: str = ""
+    directories: list = []
+    doc_type: str = "general"
+    system_tag: str = "general"
+    local_path: str = ""
+    sha256: Optional[str] = None
+
+
+class IndexingRequest(BaseModel):
+    """Request for document indexing"""
+    filename: str
+    content_type: str
+    storage_path: str
+    document_id: str
+    yacht_id: str
+    system_tag: str
+    doc_type: str
+
+
+@app.post("/webhook/ingest-docs-nas-cloud", tags=["Document Processing"])
+async def ingest_document(
+    file: UploadFile = File(...),
+    data: str = Form(...)
+):
+    """
+    Ingest document from Local Agent (NAS upload)
+
+    Receives:
+    - file: Binary file content (multipart/form-data)
+    - data: JSON string with metadata
+
+    Flow:
+    1. Check for duplicates
+    2. Upload to Supabase Storage
+    3. Insert metadata to doc_metadata
+    4. Trigger indexing workflow
+    5. Return status
+
+    Converted from n8n: Ingestion_Docs.json
+    """
+    try:
+        # Parse metadata
+        metadata_dict = json.loads(data)
+        metadata = DocumentMetadata(**metadata_dict)
+
+        # Read file content
+        file_content = await file.read()
+
+        # Process ingestion
+        result = await handle_document_ingestion(
+            yacht_id=metadata.yacht_id,
+            filename=metadata.filename,
+            content_type=metadata.content_type,
+            file_size=metadata.file_size,
+            system_path=metadata.system_path,
+            directories=metadata.directories,
+            doc_type=metadata.doc_type,
+            system_tag=metadata.system_tag,
+            local_path=metadata.local_path,
+            file_content=file_content,
+            sha256=metadata.sha256
+        )
+
+        return result
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in metadata: {e}")
+        raise HTTPException(status_code=400, detail="Invalid metadata JSON")
+    except Exception as e:
+        logger.error(f"Document ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/webhook/index-documents", tags=["Document Processing"])
+async def index_document(request: IndexingRequest):
+    """
+    Index document - extract text, chunk, embed, and store
+
+    Receives document metadata from ingestion workflow
+
+    Flow:
+    1. Call extraction service to get text
+    2. Chunk text (RecursiveCharacterTextSplitter)
+    3. Generate embeddings (OpenAI text-embedding-3-small)
+    4. Insert to search_document_chunks
+    5. Mark doc_metadata as indexed
+
+    Converted from n8n: Index_docs.json
+    """
+    try:
+        result = await handle_document_indexing(
+            filename=request.filename,
+            content_type=request.content_type,
+            storage_path=request.storage_path,
+            document_id=request.document_id,
+            yacht_id=request.yacht_id,
+            system_tag=request.system_tag,
+            doc_type=request.doc_type
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Document indexing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ========================================================================

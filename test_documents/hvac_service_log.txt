@@ -1,0 +1,54 @@
+HVAC SERVICE LOG
+================
+
+Yacht: M/Y SERENITY
+System: Cruisair SMX-16 Air Conditioning
+
+DATE: 2024-01-15
+TECHNICIAN: James Morrison
+-------------------------------------------
+
+Service Type: Quarterly Preventive Maintenance
+
+CHILLER INSPECTION:
+- Refrigerant pressure: 185 PSI (normal range)
+- Compressor temperature: 145°F
+- Oil level: Within spec
+- No unusual sounds or vibrations
+
+CONDENSER UNIT:
+- Cleaned sea strainer
+- Checked seawater flow: 12 GPM (normal)
+- Inspected titanium coils: No corrosion
+- Zinc anode condition: 60% remaining
+
+AIR HANDLERS:
+- Replaced all cabin filters (8 units)
+- Cleaned blower wheels
+- Checked drain pans and condensate pumps
+- Verified temperature differentials: 18-22°F
+
+ELECTRICAL:
+- All contactors tested
+- Amperage readings normal
+- Control board status: OK
+- Remote sensors calibrated
+
+RECOMMENDATIONS:
+1. Replace zinc anode at next service
+2. Monitor compressor temperature trend
+3. Schedule duct cleaning for guest cabins
+4. Consider upgrading to variable frequency drive
+
+Next service due: April 15, 2024
+
+Parts used:
+- (8x) Air filters - Cruisair AF-16
+- (1x) Sea strainer gasket
+- Refrigerant R-410A (top-up): 2 lbs
+
+Labor hours: 4.5
+Total cost: $1,250
+
+Technician signature: [JM]
+Date: January 15, 2024

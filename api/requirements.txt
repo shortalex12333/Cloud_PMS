@@ -8,6 +8,7 @@ pydantic==2.5.0
 
 # HTTP and CORS
 python-multipart==0.0.6
+httpx==0.25.0
 
 # Security
 PyJWT==2.8.0
@@ -27,4 +28,3 @@ supabase==2.10.0
 # Testing (optional, for local development)
 pytest==7.4.3
 pytest-asyncio==0.21.1
-# Note: httpx version managed by supabase dependency
