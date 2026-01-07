@@ -181,18 +181,28 @@ class Pipeline:
             response.execute_ms = (time.time() - start) * 1000
             response.execute = execute_result
 
-            response.results = execute_result.get('results', [])
-            response.total_count = len(response.results)
+            raw_results = execute_result.get('results', [])
 
             # ================================================================
-            # STAGE 4: ATTACH ACTIONS
+            # STAGE 4: RANK RESULTS
+            # ================================================================
+            start = time.time()
+            ranked_results = self._rank_results(raw_results, query, entities)
+            rank_ms = (time.time() - start) * 1000
+            logger.info(f"Ranking completed in {rank_ms:.2f}ms")
+
+            response.results = ranked_results
+            response.total_count = len(ranked_results)
+
+            # ================================================================
+            # STAGE 5: ATTACH ACTIONS
             # ================================================================
             response.available_actions = self._get_available_actions(plans)
 
             # ================================================================
-            # STAGE 5: GROUP RESULTS BY DOMAIN
+            # STAGE 6: GROUP RESULTS BY DOMAIN
             # ================================================================
-            response.results_by_domain = self._group_by_domain(response.results)
+            response.results_by_domain = self._group_by_domain(ranked_results)
 
             response.success = True
             response.total_ms = (time.time() - start_total) * 1000
@@ -389,9 +399,52 @@ class Pipeline:
             logger.error(f"Execute failed: {e}")
             return {'results': [], 'error': str(e)}
 
+    def _rank_results(
+        self,
+        results: List[Dict[str, Any]],
+        query: str,
+        entities: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Stage 4: Rank and score results based on match quality, intent, and relevance.
+
+        Uses result_ranker for comprehensive scoring:
+        - Match mode hierarchy (EXACT_ID > CANONICAL > FUZZY > VECTOR)
+        - Conjunction bonus for multi-entity matches
+        - Intent-table priors based on query signals
+        - Recency bonus for operational data
+        - Noise penalties for low-quality matches
+        """
+        try:
+            from execute.result_ranker import (
+                rank_results,
+                create_scoring_context,
+                group_results_by_domain
+            )
+
+            # Create scoring context from query and entities
+            context = create_scoring_context(query, entities)
+
+            # Rank results with diversification
+            ranked = rank_results(
+                results,
+                context,
+                max_per_table=10,      # Max 10 results from same table
+                max_per_parent=3,      # Max 3 chunks from same PDF/work order
+            )
+
+            logger.info(f"Ranked {len(ranked)}/{len(results)} results (context: vague={context.is_vague}, diagnostic={context.is_diagnostic}, signals={context.intent_signals})")
+
+            return ranked
+
+        except Exception as e:
+            logger.error(f"Ranking failed: {e}", exc_info=True)
+            # Fallback: return original results unranked
+            return results
+
     def _get_available_actions(self, plans: List[Dict]) -> List[Dict[str, Any]]:
         """
-        Stage 4: Get available actions from executed capabilities.
+        Stage 5: Get available actions from executed capabilities.
 
         Uses table_capabilities to look up available_actions per capability.
         """
@@ -435,7 +488,9 @@ class Pipeline:
 
     def _group_by_domain(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Group results by capability/domain for frontend display.
+        Stage 6: Group results by capability/domain for frontend display.
+
+        Results are already ranked, so grouping preserves rank order within each domain.
 
         Returns dict with structure:
         {
