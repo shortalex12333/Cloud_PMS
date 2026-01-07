@@ -207,21 +207,38 @@ class Pipeline:
             result = extractor.extract(query)
 
             # Normalize entity format for downstream stages
+            # Orchestrator returns: {'entities': {'location_on_board': ['Deck'], 'equipment': ['Pump']}}
             entities = []
-            for entity in result.get('entities', []):
-                # Handle both dict and Entity object formats
-                if hasattr(entity, 'type'):
-                    entities.append({
-                        'type': entity.type.upper(),
-                        'value': entity.text,
-                        'confidence': getattr(entity, 'confidence', 0.8),
-                    })
-                elif isinstance(entity, dict):
-                    entities.append({
-                        'type': entity.get('type', 'UNKNOWN').upper(),
-                        'value': entity.get('text', entity.get('value', '')),
-                        'confidence': entity.get('confidence', 0.8),
-                    })
+            raw_entities = result.get('entities', {})
+
+            if isinstance(raw_entities, dict):
+                # Handle dict format: {entity_type: [values]}
+                for entity_type, values in raw_entities.items():
+                    if not isinstance(values, list):
+                        values = [values]
+                    for value in values:
+                        # Normalize entity type to match capability mapping
+                        normalized_type = self._normalize_entity_type(entity_type)
+                        entities.append({
+                            'type': normalized_type,
+                            'value': value,
+                            'confidence': 0.8,
+                        })
+            elif isinstance(raw_entities, list):
+                # Handle list format (legacy or alternate)
+                for entity in raw_entities:
+                    if hasattr(entity, 'type'):
+                        entities.append({
+                            'type': entity.type.upper(),
+                            'value': entity.text,
+                            'confidence': getattr(entity, 'confidence', 0.8),
+                        })
+                    elif isinstance(entity, dict):
+                        entities.append({
+                            'type': entity.get('type', 'UNKNOWN').upper(),
+                            'value': entity.get('text', entity.get('value', '')),
+                            'confidence': entity.get('confidence', 0.8),
+                        })
 
             return {
                 'entities': entities,
@@ -233,6 +250,51 @@ class Pipeline:
         except Exception as e:
             logger.error(f"Extraction failed: {e}")
             return {'entities': [], 'error': str(e)}
+
+    def _normalize_entity_type(self, entity_type: str) -> str:
+        """
+        Normalize entity type from extraction format to capability mapping format.
+
+        Extraction returns: location_on_board, equipment, po_number
+        Capabilities expect: LOCATION, EQUIPMENT_NAME, PART_NUMBER
+
+        See ENTITY_TO_SEARCH_COLUMN in prepare/capability_composer.py for valid types.
+        """
+        type_mapping = {
+            # Location types
+            'location_on_board': 'LOCATION',
+            'location': 'LOCATION',
+            # Equipment types
+            'equipment': 'EQUIPMENT_NAME',
+            'equipment_name': 'EQUIPMENT_NAME',
+            'equipment_type': 'EQUIPMENT_TYPE',
+            # Part types
+            'part_number': 'PART_NUMBER',
+            'po_number': 'PART_NUMBER',
+            'part_name': 'PART_NAME',
+            'manufacturer': 'MANUFACTURER',
+            # Fault types
+            'fault_code': 'FAULT_CODE',
+            'symptom': 'SYMPTOM',
+            # Work order types
+            'work_order': 'WORK_ORDER_ID',
+            'wo_number': 'WO_NUMBER',
+            # Document types
+            'document': 'DOCUMENT_QUERY',
+            'manual': 'MANUAL_SEARCH',
+            'procedure': 'PROCEDURE_SEARCH',
+            # Graph types
+            'system': 'SYSTEM_NAME',
+            'component': 'COMPONENT_NAME',
+            'subcomponent': 'PART_NAME',  # Subcomponents are searchable as parts
+            # Other
+            'date': 'DATE',
+            'date_range': 'DATE_RANGE',
+            'quantity': 'QUANTITY',
+            'stock': 'STOCK_QUERY',
+        }
+        normalized = entity_type.lower().strip()
+        return type_mapping.get(normalized, normalized.upper().replace(' ', '_'))
 
     def _prepare(self, entities: List[Dict]) -> Dict[str, Any]:
         """

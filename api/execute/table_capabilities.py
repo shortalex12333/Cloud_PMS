@@ -105,7 +105,7 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
                 searchable_columns=[
                     SearchableColumn(
                         name="part_number",
-                        match_types=[MatchType.EXACT, MatchType.ILIKE],
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],  # ILIKE first for partial matches
                         description="Manufacturer part number (e.g., ENG-0008-103)",
                         is_primary=True,
                     ),
@@ -153,7 +153,7 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
                 searchable_columns=[
                     SearchableColumn(
                         name="location",
-                        match_types=[MatchType.EXACT, MatchType.ILIKE],
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],  # ILIKE first for partial matches
                         description="Stock location (e.g., Yacht, Agent - Antibes)",
                         is_primary=True,
                     ),
@@ -164,7 +164,7 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
                     ),
                     SearchableColumn(
                         name="part_number",
-                        match_types=[MatchType.EXACT, MatchType.ILIKE],
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],  # ILIKE first for partial matches
                         description="Part number",
                     ),
                     SearchableColumn(
