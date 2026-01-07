@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * CelesteOS Global Styles
+ * Source: branding/Brand/colour-system.md, branding/Brand/Brand Guidelines.md
+ *
+ * "Colour is a signal of state, not personality."
+ */
+
+@layer base {
+  :root {
+    /* Legacy shadcn variables (for compatibility) */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+
+    /* =========================================================================
+       CELESTE BRAND TOKENS
+       Source: branding/Brand/colour-system.md
+       ========================================================================= */
+
+    /* Neutral Foundation (80-90% of interface) */
+    --celeste-white: #FFFFFF;
+    --celeste-white-soft: #FAFAFA;
+    --celeste-white-muted: #F8F8F0;
+    --celeste-white-dim: #F4F4F4;
+
+    --celeste-black: #020202;
+    --celeste-black-deep: #181818;
+    --celeste-black-base: #242424;
+
+    /* Functional Blue (selection, focus ONLY) */
+    --celeste-blue: #0070FF;
+    --celeste-blue-secondary: #00A4FF;
+    --celeste-blue-soft: #BADDE9;
+
+    /* Restricted Colors (specific contexts only) */
+    --celeste-red: #FF3B30;      /* Irreversible destructive only */
+    --celeste-orange: #FF9500;   /* Inspection warnings only */
+    --celeste-yellow: #FFCC00;   /* Time-sensitive only */
+    --celeste-green: #34C759;    /* Committed confirmation only */
+
+    /* Semantic Text */
+    --celeste-text-primary: #1D1D1F;
+    --celeste-text-secondary: #6E6E73;
+    --celeste-text-muted: #86868B;
+    --celeste-text-disabled: #AEAEB2;
+
+    /* Semantic Backgrounds */
+    --celeste-bg-primary: #FFFFFF;
+    --celeste-bg-secondary: #F5F5F7;
+    --celeste-bg-tertiary: #E8E8ED;
+
+    /* Borders */
+    --celeste-border: #D2D2D7;
+    --celeste-border-subtle: rgba(0, 0, 0, 0.08);
+
+    /* Typography */
+    --celeste-font-display: 'Eloquia Display', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --celeste-font-body: 'Eloquia Text', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    --celeste-font-mono: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+
+    /* Spacing */
+    --celeste-spacing-1: 0.25rem;
+    --celeste-spacing-2: 0.5rem;
+    --celeste-spacing-3: 0.75rem;
+    --celeste-spacing-4: 1rem;
+    --celeste-spacing-6: 1.5rem;
+    --celeste-spacing-8: 2rem;
+
+    /* Layout */
+    --celeste-max-width-search: 680px;
+    --celeste-max-width-modal: 400px;
+    --celeste-page-top-offset: 18vh;
+
+    /* Motion */
+    --celeste-duration-fast: 100ms;
+    --celeste-duration-normal: 200ms;
+    --celeste-duration-slow: 300ms;
+    --celeste-duration-deliberate: 400ms;
+    --celeste-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  .dark {
+    /* Legacy shadcn dark mode */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    /* CELESTE DARK MODE OVERRIDES */
+    --celeste-text-primary: #F5F5F7;
+    --celeste-text-secondary: #98989F;
+    --celeste-text-muted: #86868B;
+    --celeste-text-disabled: #636366;
+
+    --celeste-bg-primary: #1C1C1E;
+    --celeste-bg-secondary: #2C2C2E;
+    --celeste-bg-tertiary: #3D3D3F;
+
+    --celeste-border: #3D3D3F;
+    --celeste-border-subtle: rgba(61, 61, 63, 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Spotlight-inspired centered container */
+.spotlight-container {
+  @apply flex flex-col items-center justify-start pt-[15vh] px-4;
+  min-height: calc(100vh - 80px); /* Account for bottom nav */
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background)),
+    hsl(var(--muted) / 0.3)
+  );
+}
+
+/* Full screen centered layout (login, etc) */
+.centered-screen {
+  @apply min-h-screen flex flex-col items-center justify-center px-4;
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background)),
+    hsl(var(--muted) / 0.3)
+  );
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* Loading skeleton */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton {
+  @apply animate-pulse bg-muted rounded;
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Streaming progress bar animation */
+@keyframes pulse-progress {
+  0% {
+    transform: translateX(-100%);
+    width: 30%;
+  }
+  50% {
+    width: 60%;
+  }
+  100% {
+    transform: translateX(400%);
+    width: 30%;
+  }
+}
+
+.animate-pulse-progress {
+  animation: pulse-progress 1.5s ease-in-out infinite;
+}
+
+/* Slide in animation for results */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
+}
+
+/* ============================================================================
+   APPLE SPOTLIGHT - Unified Panel
+   Exact recreation of macOS Spotlight appearance
+   ============================================================================ */
+
+.spotlight-panel {
+  /* Glass material - high blur, subtle tint */
+  background: rgba(246, 246, 246, 0.88);
+  backdrop-filter: blur(72px) saturate(210%);
+  -webkit-backdrop-filter: blur(72px) saturate(210%);
+
+  /* Large radius - Apple uses ~18-20px */
+  border-radius: 18px;
+
+  /* Dramatic shadow - floating effect */
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.08),
+    0 24px 48px rgba(0, 0, 0, 0.16);
+
+  /* Overflow handling */
+  overflow: hidden;
+}
+
+.dark .spotlight-panel {
+  background: rgba(30, 30, 30, 0.92);
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 24px 48px rgba(0, 0, 0, 0.5);
+}
+
+/* Spotlight scrollbar - thin, subtle */
+.spotlight-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.spotlight-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.spotlight-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.spotlight-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.spotlight-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.dark .spotlight-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark .spotlight-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Spotlight entrance animation */
+@keyframes spotlight-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-spotlight-in {
+  animation: spotlight-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
