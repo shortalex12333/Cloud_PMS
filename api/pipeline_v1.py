@@ -49,6 +49,9 @@ class PipelineResponse:
     prepare: Dict[str, Any] = field(default_factory=dict)
     execute: Dict[str, Any] = field(default_factory=dict)
 
+    # Grouped results by domain (NEW)
+    results_by_domain: Dict[str, Any] = field(default_factory=dict)
+
     # Metrics
     extraction_ms: float = 0.0
     prepare_ms: float = 0.0
@@ -66,6 +69,7 @@ class PipelineResponse:
             "results": self.results,
             "total_count": self.total_count,
             "available_actions": self.available_actions,
+            "results_by_domain": self.results_by_domain,
             "metadata": {
                 "extraction_ms": self.extraction_ms,
                 "prepare_ms": self.prepare_ms,
@@ -184,6 +188,11 @@ class Pipeline:
             # STAGE 4: ATTACH ACTIONS
             # ================================================================
             response.available_actions = self._get_available_actions(plans)
+
+            # ================================================================
+            # STAGE 5: GROUP RESULTS BY DOMAIN
+            # ================================================================
+            response.results_by_domain = self._group_by_domain(response.results)
 
             response.success = True
             response.total_ms = (time.time() - start_total) * 1000
@@ -423,6 +432,51 @@ class Pipeline:
         except Exception as e:
             logger.error(f"Get actions failed: {e}")
             return []
+
+    def _group_by_domain(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Group results by capability/domain for frontend display.
+
+        Returns dict with structure:
+        {
+            'parts': {'count': 2, 'results': [...], 'source_capability': '...'},
+            'inventory': {'count': 1, 'results': [...], 'source_capability': '...'},
+            ...
+        }
+        """
+        from collections import defaultdict
+
+        # Map capability names to user-facing domain names
+        domain_mapping = {
+            'part_by_part_number_or_name': 'parts',
+            'inventory_by_location': 'inventory',
+            'fault_by_fault_code': 'faults',
+            'equipment_by_name_or_model': 'equipment',
+            'work_order_by_id': 'work_orders',
+            'documents_search': 'documents',
+            'graph_node_search': 'systems'
+        }
+
+        grouped = defaultdict(lambda: {
+            'count': 0,
+            'results': [],
+            'source_capability': None
+        })
+
+        # Group results by their source capability
+        for result in results:
+            source_capability = result.get('_capability')
+            if not source_capability:
+                # Fallback if _capability metadata is missing
+                continue
+
+            domain = domain_mapping.get(source_capability, 'other')
+
+            grouped[domain]['count'] += 1
+            grouped[domain]['results'].append(result)
+            grouped[domain]['source_capability'] = source_capability
+
+        return dict(grouped)
 
 
 # =============================================================================

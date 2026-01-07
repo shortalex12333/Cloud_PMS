@@ -75,6 +75,7 @@ class SearchResponse(BaseModel):
     entities: List[Entity]
     plans: List[Dict[str, Any]]
     timing_ms: Dict[str, float]
+    results_by_domain: Dict[str, Any] = {}
     error: Optional[str] = None
 
 class ExtractResponse(BaseModel):
@@ -175,6 +176,7 @@ async def search(request: SearchRequest):
                 "execute": response.execute_ms,
                 "total": response.total_ms,
             },
+            results_by_domain=response.results_by_domain,
             error=response.error,
         )
 
