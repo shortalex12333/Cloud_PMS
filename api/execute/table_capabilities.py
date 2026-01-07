@@ -212,7 +212,7 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
                 searchable_columns=[
                     SearchableColumn(
                         name="code",
-                        match_types=[MatchType.EXACT, MatchType.ILIKE],
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],  # ILIKE first for partial/case-insensitive
                         description="Fault code (e.g., 1234, E047)",
                         is_primary=True,
                     ),
