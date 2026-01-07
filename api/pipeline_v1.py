@@ -268,24 +268,31 @@ class Pipeline:
             'equipment': 'EQUIPMENT_NAME',
             'equipment_name': 'EQUIPMENT_NAME',
             'equipment_type': 'EQUIPMENT_TYPE',
+            'product_name': 'EQUIPMENT_NAME',  # "Perkins AC" extracted as PRODUCT_NAME
             # Part types
             'part_number': 'PART_NUMBER',
             'po_number': 'PART_NUMBER',
             'part_name': 'PART_NAME',
             'manufacturer': 'MANUFACTURER',
+            'org': 'MANUFACTURER',  # "Racor" extracted as ORG
             # Fault types
             'fault_code': 'FAULT_CODE',
+            'model': 'FAULT_CODE',  # "E122" extracted as MODEL
             'symptom': 'SYMPTOM',
+            'status': 'SYMPTOM',  # "fault", "error" extracted as STATUS
             # Work order types
             'work_order': 'WORK_ORDER_ID',
             'wo_number': 'WO_NUMBER',
             # Document types
             'document': 'DOCUMENT_QUERY',
+            'document_type': 'DOCUMENT_QUERY',  # "manual" extracted as DOCUMENT_TYPE
             'manual': 'MANUAL_SEARCH',
             'procedure': 'PROCEDURE_SEARCH',
             # Graph types
             'system': 'SYSTEM_NAME',
+            'system_name': 'SYSTEM_NAME',
             'component': 'COMPONENT_NAME',
+            'component_name': 'COMPONENT_NAME',
             'subcomponent': 'PART_NAME',  # Subcomponents are searchable as parts
             # Other
             'date': 'DATE',
