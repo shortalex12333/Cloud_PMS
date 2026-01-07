@@ -62,3 +62,12 @@ Thumbs.db
 
 # Archived junk files
 _archive/
+
+# Test outputs
+pipeline_test_results_*.json
+*_test_results.json
+*_test_queries.jsonl
+
+# Temp metrics
+*_before_changes.json
+*_after_changes*.json
