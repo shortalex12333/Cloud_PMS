@@ -24,11 +24,22 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# Initialize Supabase client
+# Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vzsohavtuotocgrfkfyd.supabase.co")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+# Lazy-initialized Supabase client (created on first use)
+_supabase_client: Optional[Client] = None
+
+
+def get_supabase_client() -> Client:
+    """Get or create Supabase client (lazy initialization)"""
+    global _supabase_client
+    if _supabase_client is None:
+        if not SUPABASE_SERVICE_KEY:
+            raise ValueError("SUPABASE_SERVICE_KEY environment variable not set")
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return _supabase_client
 
 
 async def handle_document_ingestion(
@@ -65,6 +76,9 @@ async def handle_document_ingestion(
     """
 
     try:
+        # Get Supabase client
+        supabase = get_supabase_client()
+
         # Step 1: Check for duplicate
         logger.info(f"Checking for duplicate: {filename} for yacht {yacht_id}")
 

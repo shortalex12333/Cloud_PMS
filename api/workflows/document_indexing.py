@@ -23,14 +23,25 @@ import openai
 
 logger = logging.getLogger(__name__)
 
-# Initialize Supabase client
+# Supabase configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vzsohavtuotocgrfkfyd.supabase.co")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+# Lazy-initialized Supabase client (created on first use)
+_supabase_client: Optional[Client] = None
 
-# Initialize OpenAI client
-openai.api_key = os.getenv("OPENAI_API_KEY", "")
+
+def get_supabase_client() -> Client:
+    """Get or create Supabase client (lazy initialization)"""
+    global _supabase_client
+    if _supabase_client is None:
+        if not SUPABASE_SERVICE_KEY:
+            raise ValueError("SUPABASE_SERVICE_KEY environment variable not set")
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return _supabase_client
+
+# OpenAI configuration (set on first use)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # Chunking configuration (matching n8n Text Splitter)
 CHUNK_SIZE = 1000  # Default RecursiveCharacterTextSplitter
@@ -92,6 +103,12 @@ async def generate_embeddings(text_chunks: List[str]) -> List[List[float]]:
     Returns:
         List of embedding vectors
     """
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY environment variable not set")
+
+    # Set API key
+    openai.api_key = OPENAI_API_KEY
+
     embeddings = []
 
     for chunk in text_chunks:
@@ -131,6 +148,9 @@ async def handle_document_indexing(
     """
 
     try:
+        # Get Supabase client
+        supabase = get_supabase_client()
+
         # Step 1: Call extraction service
         extraction_url = os.getenv(
             "EXTRACTION_SERVICE_URL",
