@@ -74,10 +74,10 @@ export default function DocumentSituationView({
         // Try to get storage_path from metadata first
         let docStoragePath = metadata?.storage_path as string;
 
-        // If not in metadata, query the chunks table directly
-        // (Backend search may not return metadata field)
+        // If not in metadata, query via document_id chain
+        // documentId is actually a chunk ID → get document_id from chunk → query doc_metadata
         if (!docStoragePath) {
-          console.log('[DocumentSituationView] No storage_path in metadata, querying chunks table...');
+          console.log('[DocumentSituationView] No storage_path in metadata, querying via document_id chain...');
 
           const { createClient } = await import('@supabase/supabase-js');
           const supabase = createClient(
@@ -85,27 +85,46 @@ export default function DocumentSituationView({
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
           );
 
+          // STEP 1: Get document_id from chunk
+          // NOTE: RLS on search_document_chunks references non-existent "users" table
+          // This will fail with anon key, but we need the document_id
           const { data: chunkData, error: chunkError } = await supabase
             .from('search_document_chunks')
-            .select('metadata')
+            .select('document_id')
             .eq('id', documentId)
             .single();
 
           if (chunkError || !chunkData) {
-            console.error('[DocumentSituationView] Chunk query error:', chunkError);
-            setError('Could not find document chunk');
+            console.error('[DocumentSituationView] Chunk query failed (RLS broken?):', chunkError);
+            setError(`Could not find document: ${chunkError?.message || 'Unknown error'}`);
             return;
           }
 
-          console.log('[DocumentSituationView] Chunk metadata:', chunkData.metadata);
+          const docId = chunkData.document_id;
+          console.log('[DocumentSituationView] Got document_id:', docId);
 
-          docStoragePath = chunkData.metadata?.storage_path as string;
+          // STEP 2: Query doc_metadata with document_id to get storage_path
+          const { data: docData, error: docError } = await supabase
+            .from('doc_metadata')
+            .select('storage_path')
+            .eq('id', docId)
+            .single();
+
+          if (docError || !docData) {
+            console.error('[DocumentSituationView] doc_metadata query error:', docError);
+            setError('Document metadata not found');
+            return;
+          }
+
+          docStoragePath = docData.storage_path;
 
           if (!docStoragePath) {
-            console.error('[DocumentSituationView] No storage_path in chunk metadata');
+            console.error('[DocumentSituationView] No storage_path in doc_metadata');
             setError('Document storage path not found');
             return;
           }
+
+          console.log('[DocumentSituationView] Got storage_path from doc_metadata:', docStoragePath);
         }
 
         // Strip "documents/" prefix if present (chunks include it, but documentLoader expects path without bucket name)
