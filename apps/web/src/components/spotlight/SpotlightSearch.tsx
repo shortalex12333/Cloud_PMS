@@ -53,12 +53,14 @@ interface SpotlightSearchProps {
 // ============================================================================
 
 function mapAPIResult(result: APISearchResult): SpotlightResult {
+  // Backend returns different field names than frontend expects
+  // Map backend schema → frontend schema
   return {
-    id: result.id,
-    type: result.type,
-    title: result.title,
-    subtitle: result.subtitle || result.preview || '',
-    metadata: result.metadata,
+    id: result.id || result.primary_id || '',
+    type: result.type || result.source_table || 'document',
+    title: result.title || '',
+    subtitle: result.subtitle || result.snippet || result.preview || '',
+    metadata: result.metadata || result.raw_data || {},
   };
 }
 
