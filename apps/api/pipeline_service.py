@@ -222,7 +222,10 @@ async def webhook_search(request: Request):
         )
 
         result = await search(search_request)
-        return result
+
+        # Convert to format frontend expects
+        # Frontend parses response.results, so return the inner structure
+        return JSONResponse(content=result.model_dump())
 
     except Exception as e:
         logger.error(f"[webhook/search] Error: {e}", exc_info=True)

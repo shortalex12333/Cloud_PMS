@@ -230,8 +230,12 @@ async function* streamSearch(
   try {
     while (true) {
       const { done, value } = await reader.read();
+      console.log('[useCelesteSearch] 📖 Reader chunk:', { done, hasValue: !!value, bufferLength: buffer.length });
 
-      if (done) break;
+      if (done) {
+        console.log('[useCelesteSearch] ✅ Stream done, buffer length:', buffer.length);
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
 
@@ -255,14 +259,19 @@ async function* streamSearch(
 
     // Process remaining buffer
     if (buffer.trim()) {
+      console.log('[useCelesteSearch] 📋 Processing remaining buffer, length:', buffer.length);
       try {
         const data = JSON.parse(buffer);
+        console.log('[useCelesteSearch] ✅ Parsed final JSON:', { hasResults: !!data.results, resultCount: data.results?.length });
         if (data.results) {
           yield data.results;
         }
-      } catch {
+      } catch (e) {
+        console.error('[useCelesteSearch] ❌ Failed to parse buffer:', e);
         // Skip malformed JSON
       }
+    } else {
+      console.log('[useCelesteSearch] ⚠️ No remaining buffer to process');
     }
   } finally {
     reader.releaseLock();
