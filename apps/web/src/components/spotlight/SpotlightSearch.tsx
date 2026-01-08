@@ -9,10 +9,13 @@ import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import { Search, X, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
+import { useSituationState } from '@/hooks/useSituationState';
 import type { SearchResult as APISearchResult } from '@/types/search';
+import type { EntityType, SituationDomain } from '@/types/situation';
 import SpotlightResultRow from './SpotlightResultRow';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
+import DocumentViewer from '@/components/document/DocumentViewer';
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -114,10 +117,19 @@ export default function SpotlightSearch({
     clear,
   } = useCelesteSearch();
 
+  const {
+    situation,
+    createSituation,
+    transitionTo,
+    resetToIdle,
+  } = useSituationState();
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+  const [activeDocument, setActiveDocument] = useState<SpotlightResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -156,6 +168,100 @@ export default function SpotlightSearch({
     }
   }, [selectedIndex, results.length]);
 
+  /**
+   * Map result type to entity type for situation creation
+   */
+  const mapResultTypeToEntityType = useCallback((type: string): EntityType => {
+    if (type.includes('document') || type === 'search_document_chunks') return 'document';
+    if (type.includes('equipment') || type === 'pms_equipment') return 'equipment';
+    if (type.includes('part') || type === 'pms_parts') return 'part';
+    if (type.includes('work_order')) return 'work_order';
+    if (type.includes('fault')) return 'fault';
+    if (type.includes('inventory') || type === 'v_inventory') return 'inventory';
+    return 'document'; // Default fallback
+  }, []);
+
+  /**
+   * Map entity type to domain
+   */
+  const mapEntityTypeToDomain = useCallback((entityType: EntityType): SituationDomain => {
+    if (entityType === 'document') return 'manuals';
+    if (entityType === 'equipment' || entityType === 'work_order' || entityType === 'fault') return 'maintenance';
+    if (entityType === 'part' || entityType === 'inventory') return 'inventory';
+    return 'manuals'; // Default fallback
+  }, []);
+
+  /**
+   * Handle result selection (single click) - Creates CANDIDATE situation
+   */
+  const handleResultSelect = useCallback((result: SpotlightResult, index: number) => {
+    setSelectedIndex(index);
+
+    // Create CANDIDATE situation
+    const entityType = mapResultTypeToEntityType(result.type);
+    const domain = mapEntityTypeToDomain(entityType);
+
+    createSituation({
+      entity_type: entityType,
+      entity_id: result.id,
+      domain,
+      initial_state: 'CANDIDATE',
+      metadata: result.metadata,
+    });
+
+    console.log('[SpotlightSearch] CANDIDATE situation created:', {
+      entity_type: entityType,
+      entity_id: result.id,
+      title: result.title,
+    });
+  }, [createSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
+
+  /**
+   * Handle result open (double-click or Enter) - Creates ACTIVE situation
+   */
+  const handleResultOpen = useCallback(async (result: SpotlightResult) => {
+    const entityType = mapResultTypeToEntityType(result.type);
+    const domain = mapEntityTypeToDomain(entityType);
+
+    // Create or transition to ACTIVE situation
+    if (situation && situation.state === 'CANDIDATE') {
+      await transitionTo('ACTIVE', 'User opened entity from CANDIDATE state');
+    } else {
+      await createSituation({
+        entity_type: entityType,
+        entity_id: result.id,
+        domain,
+        initial_state: 'ACTIVE',
+        metadata: result.metadata,
+      });
+    }
+
+    console.log('[SpotlightSearch] ACTIVE situation created:', {
+      entity_type: entityType,
+      entity_id: result.id,
+      title: result.title,
+    });
+
+    // Open appropriate viewer based on entity type
+    if (entityType === 'document') {
+      setActiveDocument(result);
+      setShowDocumentViewer(true);
+    } else {
+      // TODO: Handle other entity types (equipment, work orders, etc.)
+      console.log('[SpotlightSearch] Entity viewer not yet implemented for:', entityType);
+    }
+  }, [situation, createSituation, transitionTo, mapResultTypeToEntityType, mapEntityTypeToDomain]);
+
+  /**
+   * Handle document viewer close
+   */
+  const handleDocumentViewerClose = useCallback(() => {
+    setShowDocumentViewer(false);
+    setActiveDocument(null);
+    resetToIdle();
+    inputRef.current?.focus();
+  }, [resetToIdle]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'ArrowDown':
@@ -169,7 +275,7 @@ export default function SpotlightSearch({
       case 'Enter':
         e.preventDefault();
         if (results[selectedIndex]) {
-          console.log('Open:', results[selectedIndex]);
+          handleResultOpen(results[selectedIndex]);
         }
         break;
       case 'Escape':
@@ -181,7 +287,7 @@ export default function SpotlightSearch({
         }
         break;
     }
-  }, [results, selectedIndex, query, clear, onClose]);
+  }, [results, selectedIndex, query, clear, onClose, handleResultOpen]);
 
   const handleClear = useCallback(() => {
     clear();
@@ -320,8 +426,8 @@ export default function SpotlightSearch({
                       result={result}
                       isSelected={index === selectedIndex}
                       index={index}
-                      onClick={() => setSelectedIndex(index)}
-                      onDoubleClick={() => console.log('Open:', result)}
+                      onClick={() => handleResultSelect(result, index)}
+                      onDoubleClick={() => handleResultOpen(result)}
                     />
                   ))}
                 </div>
@@ -365,6 +471,22 @@ export default function SpotlightSearch({
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Document Viewer - Full screen overlay */}
+      {showDocumentViewer && activeDocument && (
+        <DocumentViewer
+          documentId={activeDocument.id}
+          documentTitle={activeDocument.title}
+          storagePath={(activeDocument.metadata?.storage_path as string) || (activeDocument.metadata?.path as string) || `documents/${activeDocument.id}`}
+          metadata={activeDocument.metadata}
+          onClose={handleDocumentViewerClose}
+          onAddToHandover={() => {
+            console.log('[SpotlightSearch] Add to handover:', activeDocument);
+            // TODO: Implement handover addition
+            alert('Add to Handover functionality coming soon');
+          }}
+        />
+      )}
     </div>
   );
 }
