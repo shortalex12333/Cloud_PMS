@@ -230,14 +230,25 @@ async function* streamSearch(
   try {
     while (true) {
       const { done, value } = await reader.read();
-      console.log('[useCelesteSearch] 📖 Reader chunk:', { done, hasValue: !!value, bufferLength: buffer.length });
 
       if (done) {
         console.log('[useCelesteSearch] ✅ Stream done, buffer length:', buffer.length);
         break;
       }
 
-      buffer += decoder.decode(value, { stream: true });
+      // Debug: log actual byte length and decoded content
+      const byteLength = value?.byteLength || 0;
+      const decoded = decoder.decode(value, { stream: true });
+      console.log('[useCelesteSearch] 📖 Reader chunk:', {
+        done,
+        hasValue: !!value,
+        byteLength,
+        decodedLength: decoded.length,
+        decodedPreview: decoded.substring(0, 100),
+        bufferLengthBefore: buffer.length
+      });
+
+      buffer += decoded;
 
       // Parse newline-delimited JSON
       const lines = buffer.split('\n');
