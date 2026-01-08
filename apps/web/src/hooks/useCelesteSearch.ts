@@ -172,6 +172,7 @@ async function* streamSearch(
   query: string,
   signal: AbortSignal
 ): AsyncGenerator<SearchResult[], void, unknown> {
+  console.log('[useCelesteSearch] 🎬 streamSearch STARTED');
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://internal.celeste7.ai';
   const streamId = crypto.randomUUID();
 
@@ -411,6 +412,7 @@ export function useCelesteSearch() {
     // Check cache first
     const cached = getCachedResults(query);
     if (cached) {
+      console.log('[useCelesteSearch] 💾 Using cached results:', cached.length);
       setState(prev => ({
         ...prev,
         results: cached,
@@ -420,6 +422,8 @@ export function useCelesteSearch() {
       return;
     }
 
+    console.log('[useCelesteSearch] 🚀 Starting new search (no cache)');
+
     // Create new abort controller
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
@@ -427,6 +431,7 @@ export function useCelesteSearch() {
     // Clear previous results for new query
     clearResultMap();
 
+    console.log('[useCelesteSearch] 📍 Setting loading state...');
     setState(prev => ({
       ...prev,
       isLoading: true,
@@ -438,6 +443,7 @@ export function useCelesteSearch() {
       // Try streaming first
       let hasResults = false;
 
+      console.log('[useCelesteSearch] 📡 About to call streamSearch...');
       try {
         for await (const chunk of streamSearch(query, signal)) {
           if (signal.aborted) break;
