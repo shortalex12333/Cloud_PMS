@@ -15,7 +15,7 @@ import type { EntityType, SituationDomain } from '@/types/situation';
 import SpotlightResultRow from './SpotlightResultRow';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
-import DocumentViewer from '@/components/document/DocumentViewer';
+import SituationRouter from '@/components/situations/SituationRouter';
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -58,27 +58,51 @@ interface SpotlightSearchProps {
 function mapAPIResult(result: APISearchResult): SpotlightResult {
   // Backend returns different field names than frontend expects
   // Map backend schema → frontend schema
+  const anyResult = result as any;
 
   // Try to extract title from various possible fields
-  const title =
+  let title =
     result.title ||
-    (result as any).name ||
-    (result as any).equipment_name ||
-    (result as any).part_name ||
-    (result as any).section_title ||
-    (result as any).code ||
-    result.id ||
-    'Untitled Result';
+    anyResult.name ||
+    anyResult.equipment_name ||
+    anyResult.part_name ||
+    anyResult.section_title ||
+    anyResult.document_name ||
+    anyResult.filename ||
+    anyResult.code ||
+    '';
+
+  // If title is generic or missing, try to extract from content fields
+  if (!title || title === 'Untitled' || title === 'Untitled Result') {
+    // Try subtitle/snippet/preview for better title
+    const contentText = result.subtitle || result.snippet || result.preview || anyResult.content || anyResult.text || '';
+    if (contentText) {
+      // Extract first meaningful sentence (up to 80 chars)
+      const firstSentence = contentText.split(/[.!?]|  /)[0].trim();
+      if (firstSentence.length > 0 && firstSentence.length < 120) {
+        title = firstSentence;
+      } else if (contentText.length > 0) {
+        // Use first 80 characters
+        title = contentText.substring(0, 80).trim();
+      }
+    }
+  }
+
+  // Final fallback
+  if (!title) {
+    title = result.id ? `Document ${result.id.substring(0, 8)}` : 'Untitled Document';
+  }
 
   // Try to construct subtitle from available fields
   const subtitleParts: string[] = [];
-  const anyResult = result as any;
 
   if (anyResult.manufacturer) subtitleParts.push(`Manufacturer: ${anyResult.manufacturer}`);
   if (anyResult.category) subtitleParts.push(`Category: ${anyResult.category}`);
   if (anyResult.part_number) subtitleParts.push(`P/N: ${anyResult.part_number}`);
   if (anyResult.location) subtitleParts.push(`Location: ${anyResult.location}`);
   if (anyResult.equipment_type) subtitleParts.push(`Type: ${anyResult.equipment_type}`);
+  if (anyResult.page_number) subtitleParts.push(`Page: ${anyResult.page_number}`);
+  if (anyResult.section_title && anyResult.section_title !== title) subtitleParts.push(`Section: ${anyResult.section_title}`);
 
   const subtitle =
     result.subtitle ||
@@ -86,13 +110,14 @@ function mapAPIResult(result: APISearchResult): SpotlightResult {
     result.preview ||
     subtitleParts.join(' | ') ||
     (anyResult.description || '').substring(0, 100) ||
-    'No description';
+    (anyResult.content || '').substring(0, 100) ||
+    '';
 
   return {
     id: result.id || result.primary_id || crypto.randomUUID(),
     type: result.type || result.source_table || 'document',
-    title,
-    subtitle,
+    title: title.trim(),
+    subtitle: subtitle.trim(),
     metadata: result.metadata || result.raw_data || (result as Record<string, any>),
   };
 }
@@ -120,6 +145,7 @@ export default function SpotlightSearch({
   const {
     situation,
     createSituation,
+    updateSituation,
     transitionTo,
     resetToIdle,
   } = useSituationState();
@@ -128,8 +154,6 @@ export default function SpotlightSearch({
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
-  const [activeDocument, setActiveDocument] = useState<SpotlightResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -201,18 +225,29 @@ export default function SpotlightSearch({
     const entityType = mapResultTypeToEntityType(result.type);
     const domain = mapEntityTypeToDomain(entityType);
 
+    // Store full result in metadata for later access
+    const situationMetadata = {
+      ...result.metadata,
+      title: result.title,
+      subtitle: result.subtitle,
+      type: result.type,
+      storage_path: result.metadata?.storage_path || result.metadata?.path,
+      name: result.title,
+    };
+
     createSituation({
       entity_type: entityType,
       entity_id: result.id,
       domain,
       initial_state: 'CANDIDATE',
-      metadata: result.metadata,
+      metadata: situationMetadata,
     });
 
     console.log('[SpotlightSearch] CANDIDATE situation created:', {
       entity_type: entityType,
       entity_id: result.id,
       title: result.title,
+      metadata: situationMetadata,
     });
   }, [createSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
 
@@ -223,8 +258,29 @@ export default function SpotlightSearch({
     const entityType = mapResultTypeToEntityType(result.type);
     const domain = mapEntityTypeToDomain(entityType);
 
+    // Store full result in metadata for viewer access
+    const situationMetadata = {
+      ...result.metadata,
+      title: result.title,
+      subtitle: result.subtitle,
+      type: result.type,
+      storage_path: result.metadata?.storage_path || result.metadata?.path,
+      name: result.title,
+    };
+
+    console.log('[SpotlightSearch] Opening entity:', {
+      entity_type: entityType,
+      entity_id: result.id,
+      title: result.title,
+      metadata: situationMetadata,
+    });
+
     // Create or transition to ACTIVE situation
     if (situation && situation.state === 'CANDIDATE') {
+      // Update evidence with metadata before transitioning
+      await updateSituation({
+        evidence: situationMetadata as any,
+      });
       await transitionTo('ACTIVE', 'User opened entity from CANDIDATE state');
     } else {
       await createSituation({
@@ -232,35 +288,29 @@ export default function SpotlightSearch({
         entity_id: result.id,
         domain,
         initial_state: 'ACTIVE',
-        metadata: result.metadata,
+        metadata: situationMetadata,
       });
     }
 
-    console.log('[SpotlightSearch] ACTIVE situation created:', {
-      entity_type: entityType,
-      entity_id: result.id,
-      title: result.title,
-    });
-
-    // Open appropriate viewer based on entity type
-    if (entityType === 'document') {
-      setActiveDocument(result);
-      setShowDocumentViewer(true);
-    } else {
-      // TODO: Handle other entity types (equipment, work orders, etc.)
-      console.log('[SpotlightSearch] Entity viewer not yet implemented for:', entityType);
-    }
-  }, [situation, createSituation, transitionTo, mapResultTypeToEntityType, mapEntityTypeToDomain]);
+    console.log('[SpotlightSearch] ACTIVE situation created/transitioned');
+  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
 
   /**
-   * Handle document viewer close
+   * Handle situation close (any viewer)
    */
-  const handleDocumentViewerClose = useCallback(() => {
-    setShowDocumentViewer(false);
-    setActiveDocument(null);
+  const handleSituationClose = useCallback(() => {
     resetToIdle();
     inputRef.current?.focus();
   }, [resetToIdle]);
+
+  /**
+   * Handle situation actions (add to handover, etc.)
+   */
+  const handleSituationAction = useCallback((action: string, payload: any) => {
+    console.log('[SpotlightSearch] Situation action:', action, payload);
+    // TODO: Implement action handlers
+    alert(`Action "${action}" not yet implemented`);
+  }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
@@ -472,21 +522,12 @@ export default function SpotlightSearch({
         onClose={() => setShowSettings(false)}
       />
 
-      {/* Document Viewer - Full screen overlay */}
-      {showDocumentViewer && activeDocument && (
-        <DocumentViewer
-          documentId={activeDocument.id}
-          documentTitle={activeDocument.title}
-          storagePath={(activeDocument.metadata?.storage_path as string) || (activeDocument.metadata?.path as string) || `documents/${activeDocument.id}`}
-          metadata={activeDocument.metadata}
-          onClose={handleDocumentViewerClose}
-          onAddToHandover={() => {
-            console.log('[SpotlightSearch] Add to handover:', activeDocument);
-            // TODO: Implement handover addition
-            alert('Add to Handover functionality coming soon');
-          }}
-        />
-      )}
+      {/* Situation Router - Renders appropriate viewer based on situation type */}
+      <SituationRouter
+        situation={situation}
+        onClose={handleSituationClose}
+        onAction={handleSituationAction}
+      />
     </div>
   );
 }
