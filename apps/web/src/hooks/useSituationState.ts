@@ -154,8 +154,11 @@ export function useSituationState(): UseSituationStateReturn {
         confidence_points: payload.initial_state === 'ACTIVE' ? CONFIDENCE_THRESHOLDS.ACTIVE : CONFIDENCE_THRESHOLDS.CANDIDATE,
         phase: 'investigating',
 
-        // Evidence
-        evidence: createInitialEvidence(),
+        // Evidence - Store metadata in evidence for access by viewers
+        evidence: {
+          ...createInitialEvidence(),
+          ...(payload.metadata || {}),
+        } as any,
 
         // Nudge control
         nudge_dismissed: {},
