@@ -219,73 +219,26 @@ async function* streamSearch(
     throw new Error(`Search failed: ${response.status}`);
   }
 
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('No response body');
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
+  // SIMPLIFIED: Backend sends complete JSON response, not streaming chunks
+  // Parse the full response as JSON
   try {
-    while (true) {
-      const { done, value } = await reader.read();
+    const data = await response.json();
+    console.log('[useCelesteSearch] ✅ Parsed response:', {
+      success: data.success,
+      hasResults: !!data.results,
+      resultCount: data.results?.length || 0,
+      totalCount: data.total_count,
+      timing: data.timing_ms
+    });
 
-      if (done) {
-        console.log('[useCelesteSearch] ✅ Stream done, buffer length:', buffer.length);
-        break;
-      }
-
-      // Debug: log actual byte length and decoded content
-      const byteLength = value?.byteLength || 0;
-      const decoded = decoder.decode(value, { stream: true });
-      console.log('[useCelesteSearch] 📖 Reader chunk:', {
-        done,
-        hasValue: !!value,
-        byteLength,
-        decodedLength: decoded.length,
-        decodedPreview: decoded.substring(0, 100),
-        bufferLengthBefore: buffer.length
-      });
-
-      buffer += decoded;
-
-      // Parse newline-delimited JSON
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        try {
-          const data = JSON.parse(line);
-          if (data.results) {
-            yield data.results;
-          }
-        } catch {
-          // Skip malformed JSON lines
-        }
-      }
-    }
-
-    // Process remaining buffer
-    if (buffer.trim()) {
-      console.log('[useCelesteSearch] 📋 Processing remaining buffer, length:', buffer.length);
-      try {
-        const data = JSON.parse(buffer);
-        console.log('[useCelesteSearch] ✅ Parsed final JSON:', { hasResults: !!data.results, resultCount: data.results?.length });
-        if (data.results) {
-          yield data.results;
-        }
-      } catch (e) {
-        console.error('[useCelesteSearch] ❌ Failed to parse buffer:', e);
-        // Skip malformed JSON
-      }
+    if (data.results && Array.isArray(data.results)) {
+      yield data.results;
     } else {
-      console.log('[useCelesteSearch] ⚠️ No remaining buffer to process');
+      console.warn('[useCelesteSearch] ⚠️ No results array in response:', data);
     }
-  } finally {
-    reader.releaseLock();
+  } catch (e) {
+    console.error('[useCelesteSearch] ❌ Failed to parse JSON response:', e);
+    throw new Error('Failed to parse search response');
   }
 }
 
