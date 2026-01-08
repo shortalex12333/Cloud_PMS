@@ -182,8 +182,13 @@ export default function SpotlightSearch({
   }, [query]);
 
   useEffect(() => {
+    console.log('[SpotlightSearch] Results length changed, resetting selectedIndex to 0');
     setSelectedIndex(0);
   }, [results.length]);
+
+  useEffect(() => {
+    console.log('[SpotlightSearch] selectedIndex changed to:', selectedIndex);
+  }, [selectedIndex]);
 
   useEffect(() => {
     if (resultsRef.current && results.length > 0) {
@@ -219,6 +224,7 @@ export default function SpotlightSearch({
    * Handle result selection (single click) - Creates CANDIDATE situation
    */
   const handleResultSelect = useCallback((result: SpotlightResult, index: number) => {
+    console.log('[SpotlightSearch] Result selected - setting index to:', index);
     setSelectedIndex(index);
 
     // Create CANDIDATE situation
@@ -248,6 +254,7 @@ export default function SpotlightSearch({
       entity_id: result.id,
       title: result.title,
       metadata: situationMetadata,
+      selectedIndex: index,
     });
   }, [createSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
 
