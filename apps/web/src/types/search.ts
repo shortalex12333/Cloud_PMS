@@ -19,7 +19,15 @@ export type ResultCardType =
   | 'predictive'
   | 'handover_item'
   | 'email'
-  | 'note';
+  | 'note'
+  // Backend source_table values (from result_normalizer.py)
+  | 'pms_parts'
+  | 'pms_equipment'
+  | 'v_inventory'
+  | 'search_fault_code_catalog'
+  | 'search_document_chunks'
+  | 'graph_nodes'
+  | 'document';
 
 export type MicroAction =
   | 'create_work_order'
@@ -54,6 +62,12 @@ export interface SearchResult {
   actions: MicroAction[];
   timestamp?: string;
   source?: string;
+
+  // Backend field names (for compatibility with result_normalizer.py)
+  primary_id?: string;      // Backend uses primary_id instead of id
+  source_table?: string;    // Backend uses source_table instead of type
+  snippet?: string;         // Backend uses snippet instead of subtitle
+  raw_data?: Record<string, any>; // Backend includes raw_data alongside metadata
 }
 
 export interface SearchResponse {
