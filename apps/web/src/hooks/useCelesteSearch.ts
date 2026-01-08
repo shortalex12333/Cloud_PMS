@@ -234,15 +234,23 @@ async function* streamSearch(
     if (data.results && Array.isArray(data.results)) {
       // DEBUG: Log first result structure to diagnose rendering issue
       if (data.results.length > 0) {
+        const firstResult = data.results[0];
         console.log('[useCelesteSearch] 🔬 First result structure:', {
-          keys: Object.keys(data.results[0]),
-          id: data.results[0].id,
-          type: data.results[0].type,
-          title: data.results[0].title,
-          subtitle: data.results[0].subtitle,
-          preview: data.results[0].preview?.substring(0, 50),
-          score: data.results[0].score,
-          fullResult: data.results[0]
+          keys: Object.keys(firstResult),
+
+          // Frontend expected fields
+          id: firstResult.id,
+          type: firstResult.type,
+          title: firstResult.title,
+          subtitle: firstResult.subtitle,
+
+          // Backend field names
+          primary_id: firstResult.primary_id,
+          source_table: firstResult.source_table,
+          snippet: firstResult.snippet,
+
+          // Full object
+          fullResult: firstResult
         });
       }
       yield data.results;
