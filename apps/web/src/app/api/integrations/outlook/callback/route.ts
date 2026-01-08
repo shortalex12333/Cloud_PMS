@@ -2,7 +2,7 @@
  * Microsoft OAuth - Token Exchange Callback
  *
  * Exchanges the authorization code for access/refresh tokens.
- * Stores tokens in Supabase api_tokens table.
+ * Stores tokens in Supabase auth_microsoft_tokens table.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -148,14 +148,14 @@ export async function GET(request: NextRequest) {
 
     // Check for existing OAuth token for this user
     const { data: existingToken } = await supabase
-      .from('api_tokens')
+      .from('auth_microsoft_tokens')
       .select('id')
       .eq('user_id', userId)
       .eq('token_type', 'oauth')
       .eq('token_name', 'microsoft_outlook')
       .single();
 
-    // Build token record matching api_tokens schema
+    // Build token record matching auth_microsoft_tokens schema
     const tokenRecord = {
       id: existingToken?.id || crypto.randomUUID(),
       user_id: userId,
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
 
     // Upsert to handle reconnections
     const { error: upsertError } = await supabase
-      .from('api_tokens')
+      .from('auth_microsoft_tokens')
       .upsert(tokenRecord, {
         onConflict: 'id',
         ignoreDuplicates: false

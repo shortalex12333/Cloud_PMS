@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Check for existing Microsoft OAuth token
     const { data: tokenData, error: tokenError } = await supabase
-      .from('api_tokens')
+      .from('auth_microsoft_tokens')
       .select('metadata, issued_at, expires_at, is_revoked')
       .eq('user_id', user.id)
       .eq('token_type', 'oauth')

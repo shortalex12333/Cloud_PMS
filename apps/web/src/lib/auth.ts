@@ -106,7 +106,7 @@ export async function getYachtSignature(): Promise<string | null> {
   if (!user) return null;
 
   const { data, error } = await supabase
-    .from('yacht_signatures')
+    .from('auth_signatures')
     .select('signature')
     .eq('yacht_id', user.yacht_id)
     .single();
