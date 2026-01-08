@@ -178,7 +178,7 @@ async function* streamSearch(
   signal: AbortSignal
 ): AsyncGenerator<SearchResult[], void, unknown> {
   console.log('[useCelesteSearch] 🎬 streamSearch STARTED');
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://internal.celeste7.ai';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
 
   console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL });
@@ -282,7 +282,7 @@ async function* streamSearch(
  * Non-streaming fallback fetch
  */
 async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://internal.celeste7.ai';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
 
   // Get fresh token (auto-refreshes if expiring soon)

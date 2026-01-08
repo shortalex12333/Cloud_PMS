@@ -168,7 +168,7 @@ interface DashboardState {
 // API HELPERS
 // ============================================================================
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://internal.celeste7.ai';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 async function fetchDashboardEndpoint<T>(endpoint: string): Promise<T> {
   const jwt = await ensureFreshToken();
