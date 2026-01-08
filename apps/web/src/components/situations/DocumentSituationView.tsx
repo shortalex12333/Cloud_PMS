@@ -16,7 +16,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X, Search, Download, Plus, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabaseClient';
 import { loadDocument, downloadDocument } from '@/lib/documentLoader';
 import { classifyDocument, shouldShowAddToHandoverButton } from '@/lib/documentTypes';
 import type { SituationContext, DocumentClassification } from '@/types/situation';
@@ -67,31 +66,29 @@ export default function DocumentSituationView({
       setError(null);
 
       try {
-        // STEP 1: Query doc_metadata to get the real storage_path
-        console.log('[DocumentSituationView] Querying doc_metadata for document:', documentId);
+        // Get storage_path directly from search result metadata
+        // Search returns chunks with metadata.storage_path already populated
+        console.log('[DocumentSituationView] Loading document with metadata:', metadata);
 
-        const { data: docMetadata, error: queryError } = await supabase
-          .from('doc_metadata')
-          .select('storage_path')
-          .eq('id', documentId)
-          .single();
+        let docStoragePath = metadata?.storage_path as string;
 
-        if (queryError || !docMetadata) {
-          console.error('[DocumentSituationView] Query error:', queryError);
-          setError('Document metadata not found');
-          return;
-        }
-
-        const docStoragePath = docMetadata.storage_path;
         if (!docStoragePath) {
-          setError('Document storage path not found');
+          console.error('[DocumentSituationView] No storage_path in metadata:', metadata);
+          setError('Document storage path not available in search results');
           return;
         }
 
-        console.log('[DocumentSituationView] Found storage path:', docStoragePath);
+        // Strip "documents/" prefix if present (chunks include it, but documentLoader expects path without bucket name)
+        // Format from chunks: "documents/yacht_id/..."
+        // Format for documentLoader: "yacht_id/..."
+        if (docStoragePath.startsWith('documents/')) {
+          docStoragePath = docStoragePath.substring('documents/'.length);
+        }
+
+        console.log('[DocumentSituationView] Using storage path:', docStoragePath);
         setStoragePath(docStoragePath);
 
-        // STEP 2: Load document using the real storage path
+        // Load document using storage path from search results
         const result = await loadDocument(docStoragePath);
 
         if (!result.success) {
@@ -111,6 +108,7 @@ export default function DocumentSituationView({
         console.log('[DocumentSituationView] Document loaded successfully:', {
           title: finalTitle,
           classification: docClassification,
+          storage_path: docStoragePath,
         });
       } catch (err) {
         console.error('[DocumentSituationView] Load error:', err);
