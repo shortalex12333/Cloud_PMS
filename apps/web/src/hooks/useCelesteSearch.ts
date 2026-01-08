@@ -232,6 +232,19 @@ async function* streamSearch(
     });
 
     if (data.results && Array.isArray(data.results)) {
+      // DEBUG: Log first result structure to diagnose rendering issue
+      if (data.results.length > 0) {
+        console.log('[useCelesteSearch] 🔬 First result structure:', {
+          keys: Object.keys(data.results[0]),
+          id: data.results[0].id,
+          type: data.results[0].type,
+          title: data.results[0].title,
+          subtitle: data.results[0].subtitle,
+          preview: data.results[0].preview?.substring(0, 50),
+          score: data.results[0].score,
+          fullResult: data.results[0]
+        });
+      }
       yield data.results;
     } else {
       console.warn('[useCelesteSearch] ⚠️ No results array in response:', data);
