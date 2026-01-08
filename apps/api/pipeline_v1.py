@@ -184,10 +184,19 @@ class Pipeline:
             raw_results = execute_result.get('results', [])
 
             # ================================================================
-            # STAGE 4: RANK RESULTS
+            # STAGE 4: NORMALIZE RESULTS
+            # ================================================================
+            # Transform raw database rows into frontend-expected format
+            start = time.time()
+            normalized_results = self._normalize_results(raw_results)
+            normalize_ms = (time.time() - start) * 1000
+            logger.info(f"Normalization completed in {normalize_ms:.2f}ms")
+
+            # ================================================================
+            # STAGE 5: RANK RESULTS
             # ================================================================
             start = time.time()
-            ranked_results = self._rank_results(raw_results, query, entities)
+            ranked_results = self._rank_results(normalized_results, query, entities)
             rank_ms = (time.time() - start) * 1000
             logger.info(f"Ranking completed in {rank_ms:.2f}ms")
 
@@ -195,12 +204,12 @@ class Pipeline:
             response.total_count = len(ranked_results)
 
             # ================================================================
-            # STAGE 5: ATTACH ACTIONS
+            # STAGE 6: ATTACH ACTIONS
             # ================================================================
             response.available_actions = self._get_available_actions(plans)
 
             # ================================================================
-            # STAGE 6: GROUP RESULTS BY DOMAIN
+            # STAGE 7: GROUP RESULTS BY DOMAIN
             # ================================================================
             response.results_by_domain = self._group_by_domain(ranked_results)
 
@@ -399,6 +408,101 @@ class Pipeline:
             logger.error(f"Execute failed: {e}")
             return {'results': [], 'error': str(e)}
 
+    def _normalize_results(
+        self,
+        raw_results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Stage 4: Normalize raw database rows into frontend-expected format.
+
+        Transforms database column names into standardized fields:
+        - id: primary key
+        - type: source table or entity type
+        - title: human-readable name
+        - subtitle: secondary info / description
+        - preview: full text preview
+        - metadata: additional structured data
+        """
+        normalized = []
+
+        for row in raw_results:
+            # Determine ID (try common primary key column names)
+            result_id = (
+                row.get('id') or
+                row.get('primary_id') or
+                row.get('stock_id') or
+                row.get('chunk_id') or
+                str(row.get('uuid', ''))
+            )
+
+            # Determine type (from source_table or infer from structure)
+            result_type = row.get('source_table', 'document')
+
+            # Determine title (try common title-like columns)
+            title = (
+                row.get('title') or
+                row.get('name') or
+                row.get('equipment_name') or
+                row.get('part_name') or
+                row.get('section_title') or
+                row.get('code') or
+                'Untitled'
+            )
+
+            # Determine subtitle/description
+            subtitle_parts = []
+            if row.get('manufacturer'):
+                subtitle_parts.append(f"Manufacturer: {row['manufacturer']}")
+            if row.get('category'):
+                subtitle_parts.append(f"Category: {row['category']}")
+            if row.get('part_number'):
+                subtitle_parts.append(f"P/N: {row['part_number']}")
+            if row.get('location'):
+                subtitle_parts.append(f"Location: {row['location']}")
+            if row.get('equipment_type'):
+                subtitle_parts.append(f"Type: {row['equipment_type']}")
+
+            subtitle = (
+                row.get('subtitle') or
+                row.get('snippet') or
+                row.get('description') or
+                ' | '.join(subtitle_parts) or
+                ''
+            )
+
+            # Truncate if too long
+            if len(subtitle) > 200:
+                subtitle = subtitle[:200] + '...'
+
+            # Preview (for longer text content)
+            preview = (
+                row.get('preview') or
+                row.get('content') or
+                row.get('text') or
+                row.get('searchable_text') or
+                ''
+            )
+
+            # Build normalized result
+            normalized_result = {
+                'id': result_id,
+                'type': result_type,
+                'title': title,
+                'subtitle': subtitle,
+                'preview': preview[:500] if preview else '',  # Truncate preview
+                'score': row.get('score', 0.5),
+                'metadata': {
+                    'source_table': result_type,
+                    **{k: v for k, v in row.items() if k not in ['id', 'title', 'name', 'content', 'text']}
+                },
+                'actions': row.get('actions', []),
+            }
+
+            normalized.append(normalized_result)
+
+        logger.info(f"Normalized {len(normalized)} results")
+        return normalized
+
     def _rank_results(
         self,
         results: List[Dict[str, Any]],
@@ -406,7 +510,7 @@ class Pipeline:
         entities: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Stage 4: Rank and score results based on match quality, intent, and relevance.
+        Stage 5: Rank and score results based on match quality, intent, and relevance.
 
         Uses result_ranker for comprehensive scoring:
         - Match mode hierarchy (EXACT_ID > CANONICAL > FUZZY > VECTOR)
