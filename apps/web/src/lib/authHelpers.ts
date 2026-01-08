@@ -189,8 +189,8 @@ export async function isAuthenticated(): Promise<boolean> {
 /**
  * Get yacht ID from current session
  *
- * Extracts yacht_id from auth.users user_metadata.
- * No database query needed - uses session data directly.
+ * Queries auth_users_yacht table to get the user's assigned yacht.
+ * Falls back to user_metadata if database query fails.
  *
  * @returns yacht_id or null
  */
@@ -204,9 +204,22 @@ export async function getYachtId(): Promise<string | null> {
       return null;
     }
 
-    // Get yacht_id from user metadata (no DB query needed)
-    const meta = session.user.user_metadata || {};
-    return meta.yacht_id || meta.yachtId || null;
+    // Query auth_users_yacht table for yacht assignment
+    const { data, error } = await supabase
+      .from('auth_users_yacht')
+      .select('yacht_id')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (error || !data) {
+      console.warn('[authHelpers] No yacht assignment found in database');
+
+      // Fallback: check user metadata
+      const meta = session.user.user_metadata || {};
+      return meta.yacht_id || meta.yachtId || null;
+    }
+
+    return data.yacht_id;
   } catch (err) {
     console.warn('[authHelpers] Failed to get yacht_id:', err);
     return null;
