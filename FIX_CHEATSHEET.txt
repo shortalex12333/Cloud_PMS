@@ -1,0 +1,42 @@
+================================================================================
+                    RLS POLICY FIX - QUICK REFERENCE
+================================================================================
+
+PROBLEM:
+Documents don't load. Error: "relation 'users' does not exist"
+
+ROOT CAUSE:
+RLS policy on search_document_chunks references wrong table name
+
+FIX (5 minutes):
+1. Go to: https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd
+2. Navigate to: SQL Editor
+3. Run this SQL:
+
+   -- Get current policy name
+   SELECT policyname FROM pg_policies WHERE tablename = 'search_document_chunks';
+
+   -- Drop broken policy (replace POLICY_NAME with name from above)
+   DROP POLICY IF EXISTS "POLICY_NAME" ON search_document_chunks;
+
+   -- Create correct policy
+   CREATE POLICY "chunks_yacht_isolation"
+   ON search_document_chunks FOR SELECT TO authenticated, anon
+   USING (yacht_id IN (SELECT yacht_id FROM auth_users WHERE auth_user_id = auth.uid()));
+
+4. Test: node test-rls-fix.js
+5. Should see: ✅ Anon key access working!
+
+VERIFICATION:
+- Before: ❌ Error: relation "users" does not exist
+- After:  ✅ Documents load successfully
+
+FILES:
+- README_RLS_FIX.md - Full guide
+- test-rls-fix.js - Test script
+- database/migrations/03_fix_search_chunks_rls.sql - Migration file
+
+CONTACT:
+If you need the exact SQL or have questions, all details are in README_RLS_FIX.md
+
+================================================================================
