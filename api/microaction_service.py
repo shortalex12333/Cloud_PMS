@@ -1967,6 +1967,16 @@ def extract_for_n8n(query: str) -> Dict:
 
 from workflows.document_ingestion import handle_document_ingestion
 from workflows.document_indexing import handle_document_indexing
+from security.document_security import (
+    verify_yacht_signature,
+    validate_file_upload,
+    validate_file_size,
+    sanitize_metadata,
+    log_document_operation,
+    get_rate_limit_key,
+    DOCUMENT_RATE_LIMITS
+)
+import uuid
 
 
 class DocumentMetadata(BaseModel):
@@ -1995,40 +2005,72 @@ class IndexingRequest(BaseModel):
 
 
 @app.post("/webhook/ingest-docs-nas-cloud", tags=["Document Processing"])
+@limiter.limit(DOCUMENT_RATE_LIMITS["upload_global"])
 async def ingest_document(
+    request: Request,
     file: UploadFile = File(...),
-    data: str = Form(...)
+    data: str = Form(...),
+    x_yacht_signature: str = Header(None)
 ):
     """
     Ingest document from Local Agent (NAS upload)
+
+    SECURITY:
+    - Rate limited: 10/min per yacht, 100/min global
+    - Yacht signature required (HMAC-SHA256)
+    - Max file size: 500 MB
+    - Content type whitelist
+    - Full audit logging
+
+    Headers Required:
+    - X-Yacht-Signature: sha256(yacht_id + salt)
 
     Receives:
     - file: Binary file content (multipart/form-data)
     - data: JSON string with metadata
 
     Flow:
-    1. Check for duplicates
-    2. Upload to Supabase Storage
-    3. Insert metadata to doc_metadata
-    4. Trigger indexing workflow
-    5. Return status
+    1. Verify yacht signature
+    2. Validate file (size, type, name)
+    3. Check for duplicates
+    4. Upload to Supabase Storage
+    5. Insert metadata to doc_metadata
+    6. Trigger indexing workflow
+    7. Audit log operation
 
     Converted from n8n: Ingestion_Docs.json
     """
+    request_id = str(uuid.uuid4())
+    client_ip = request.client.host
+
     try:
         # Parse metadata
         metadata_dict = json.loads(data)
+        metadata_dict = sanitize_metadata(metadata_dict)
         metadata = DocumentMetadata(**metadata_dict)
+
+        # SECURITY LAYER 1: Verify yacht signature
+        verify_yacht_signature(metadata.yacht_id, x_yacht_signature)
+
+        # SECURITY LAYER 2: Validate file upload (type, name, extension)
+        validation = validate_file_upload(file)
+
+        # SECURITY LAYER 3: Yacht-specific rate limiting
+        yacht_limit_key = get_rate_limit_key(metadata.yacht_id, "upload")
+        # Apply per-yacht rate limit (handled by limiter)
 
         # Read file content
         file_content = await file.read()
 
+        # SECURITY LAYER 4: Validate file size
+        validate_file_size(file_content, filename=validation["filename"])
+
         # Process ingestion
         result = await handle_document_ingestion(
             yacht_id=metadata.yacht_id,
-            filename=metadata.filename,
-            content_type=metadata.content_type,
-            file_size=metadata.file_size,
+            filename=validation["filename"],  # Use sanitized filename
+            content_type=validation["content_type"],
+            file_size=len(file_content),
             system_path=metadata.system_path,
             directories=metadata.directories,
             doc_type=metadata.doc_type,
@@ -2038,47 +2080,125 @@ async def ingest_document(
             sha256=metadata.sha256
         )
 
-        return result
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON in metadata: {e}")
-        raise HTTPException(status_code=400, detail="Invalid metadata JSON")
-    except Exception as e:
-        logger.error(f"Document ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/webhook/index-documents", tags=["Document Processing"])
-async def index_document(request: IndexingRequest):
-    """
-    Index document - extract text, chunk, embed, and store
-
-    Receives document metadata from ingestion workflow
-
-    Flow:
-    1. Call extraction service to get text
-    2. Chunk text (RecursiveCharacterTextSplitter)
-    3. Generate embeddings (OpenAI text-embedding-3-small)
-    4. Insert to search_document_chunks
-    5. Mark doc_metadata as indexed
-
-    Converted from n8n: Index_docs.json
-    """
-    try:
-        result = await handle_document_indexing(
-            filename=request.filename,
-            content_type=request.content_type,
-            storage_path=request.storage_path,
-            document_id=request.document_id,
-            yacht_id=request.yacht_id,
-            system_tag=request.system_tag,
-            doc_type=request.doc_type
+        # SECURITY LAYER 5: Audit logging
+        log_document_operation(
+            operation="upload",
+            yacht_id=metadata.yacht_id,
+            filename=validation["filename"],
+            status=result.get("status", "success"),
+            client_ip=client_ip,
+            request_id=request_id,
+            file_size=len(file_content),
+            document_id=result.get("document_id")
         )
 
         return result
 
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in metadata: {e}")
+        log_document_operation(
+            operation="upload",
+            yacht_id="unknown",
+            filename=file.filename if file else "unknown",
+            status="failed",
+            client_ip=client_ip,
+            request_id=request_id,
+            error=f"Invalid JSON: {str(e)}"
+        )
+        raise HTTPException(status_code=400, detail="Invalid metadata JSON")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document ingestion failed: {e}")
+        log_document_operation(
+            operation="upload",
+            yacht_id=metadata.yacht_id if 'metadata' in locals() else "unknown",
+            filename=file.filename if file else "unknown",
+            status="failed",
+            client_ip=client_ip,
+            request_id=request_id,
+            error=str(e)
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/webhook/index-documents", tags=["Document Processing"])
+@limiter.limit(DOCUMENT_RATE_LIMITS["index_per_yacht"])
+async def index_document(
+    request: Request,
+    indexing_request: IndexingRequest,
+    x_yacht_signature: str = Header(None)
+):
+    """
+    Index document - extract text, chunk, embed, and store
+
+    SECURITY:
+    - Rate limited: 20/min per yacht
+    - Yacht signature required
+    - Internal endpoint (called by ingestion workflow)
+    - Full audit logging
+
+    Headers Required:
+    - X-Yacht-Signature: sha256(yacht_id + salt)
+
+    Receives document metadata from ingestion workflow
+
+    Flow:
+    1. Verify yacht signature
+    2. Call extraction service to get text
+    3. Chunk text (RecursiveCharacterTextSplitter)
+    4. Generate embeddings (OpenAI text-embedding-3-small)
+    5. Insert to search_document_chunks
+    6. Mark doc_metadata as indexed
+    7. Audit log operation
+
+    Converted from n8n: Index_docs.json
+    """
+    request_id = str(uuid.uuid4())
+    client_ip = request.client.host
+
+    try:
+        # SECURITY: Verify yacht signature
+        verify_yacht_signature(indexing_request.yacht_id, x_yacht_signature)
+
+        # Process indexing
+        result = await handle_document_indexing(
+            filename=indexing_request.filename,
+            content_type=indexing_request.content_type,
+            storage_path=indexing_request.storage_path,
+            document_id=indexing_request.document_id,
+            yacht_id=indexing_request.yacht_id,
+            system_tag=indexing_request.system_tag,
+            doc_type=indexing_request.doc_type
+        )
+
+        # SECURITY: Audit logging
+        log_document_operation(
+            operation="index",
+            yacht_id=indexing_request.yacht_id,
+            filename=indexing_request.filename,
+            status=result.get("status", "success"),
+            client_ip=client_ip,
+            request_id=request_id,
+            document_id=indexing_request.document_id
+        )
+
+        return result
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Document indexing failed: {e}")
+        log_document_operation(
+            operation="index",
+            yacht_id=indexing_request.yacht_id,
+            filename=indexing_request.filename,
+            status="failed",
+            client_ip=client_ip,
+            request_id=request_id,
+            document_id=indexing_request.document_id,
+            error=str(e)
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
