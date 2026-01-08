@@ -16,6 +16,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X, Search, Download, Plus, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabaseClient';
 import { loadDocument, downloadDocument } from '@/lib/documentLoader';
 import { classifyDocument, shouldShowAddToHandoverButton } from '@/lib/documentTypes';
 import type { SituationContext, DocumentClassification } from '@/types/situation';
@@ -44,17 +45,16 @@ export default function DocumentSituationView({
   const [error, setError] = useState<string | null>(null);
   const [classification, setClassification] = useState<DocumentClassification>('operational');
   const [showFindDialog, setShowFindDialog] = useState(false);
+  const [storagePath, setStoragePath] = useState<string | null>(null);
 
   // Extract document info from situation metadata
   const documentId = situation.primary_entity_id;
   const metadata = situation.evidence as any;  // Contains the original result metadata
   const documentTitle = metadata?.title || metadata?.name || 'Document';
-  const storagePath = metadata?.storage_path || metadata?.path || `documents/${documentId}`;
 
   console.log('[DocumentSituationView] Rendering with:', {
     documentId,
     documentTitle,
-    storagePath,
     metadata,
   });
 
@@ -67,8 +67,32 @@ export default function DocumentSituationView({
       setError(null);
 
       try {
-        console.log('[DocumentSituationView] Loading document:', storagePath);
-        const result = await loadDocument(storagePath);
+        // STEP 1: Query doc_metadata to get the real storage_path
+        console.log('[DocumentSituationView] Querying doc_metadata for document:', documentId);
+
+        const { data: docMetadata, error: queryError } = await supabase
+          .from('doc_metadata')
+          .select('storage_path, file_path, title, classification')
+          .eq('id', documentId)
+          .single();
+
+        if (queryError || !docMetadata) {
+          console.error('[DocumentSituationView] Query error:', queryError);
+          setError('Document metadata not found');
+          return;
+        }
+
+        const docStoragePath = docMetadata.storage_path || docMetadata.file_path;
+        if (!docStoragePath) {
+          setError('Document storage path not found');
+          return;
+        }
+
+        console.log('[DocumentSituationView] Found storage path:', docStoragePath);
+        setStoragePath(docStoragePath);
+
+        // STEP 2: Load document using the real storage path
+        const result = await loadDocument(docStoragePath);
 
         if (!result.success) {
           setError(result.error || 'Failed to load document');
@@ -77,14 +101,16 @@ export default function DocumentSituationView({
 
         setDocumentUrl(result.url || null);
 
+        // Use title from doc_metadata if available
+        const finalTitle = docMetadata.title || documentTitle;
+
         // Classify document
-        const docClassification = classifyDocument(documentTitle, metadata);
+        const docClassification = classifyDocument(finalTitle, docMetadata as any);
         setClassification(docClassification);
 
-        console.log('[DocumentSituationView] Document loaded:', {
-          title: documentTitle,
+        console.log('[DocumentSituationView] Document loaded successfully:', {
+          title: finalTitle,
           classification: docClassification,
-          url_length: result.url?.length,
         });
       } catch (err) {
         console.error('[DocumentSituationView] Load error:', err);
@@ -95,7 +121,7 @@ export default function DocumentSituationView({
     }
 
     load();
-  }, [storagePath, documentTitle, metadata]);
+  }, [documentId, documentTitle, metadata]);
 
   /**
    * Handle Cmd+F / Ctrl+F keyboard shortcut
@@ -126,6 +152,10 @@ export default function DocumentSituationView({
    * Handle download
    */
   const handleDownload = useCallback(async () => {
+    if (!storagePath) {
+      alert('Document path not available');
+      return;
+    }
     try {
       await downloadDocument(storagePath);
     } catch (err) {
