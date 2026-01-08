@@ -223,9 +223,13 @@ async def webhook_search(request: Request):
 
         result = await search(search_request)
 
-        # Convert to format frontend expects
-        # Frontend parses response.results, so return the inner structure
-        return JSONResponse(content=result.model_dump())
+        # Frontend expects newline-delimited JSON for streaming parser
+        # Send as single line with newline terminator
+        import json
+        from fastapi.responses import Response
+
+        json_str = json.dumps(result.model_dump()) + "\n"
+        return Response(content=json_str, media_type="application/json")
 
     except Exception as e:
         logger.error(f"[webhook/search] Error: {e}", exc_info=True)
