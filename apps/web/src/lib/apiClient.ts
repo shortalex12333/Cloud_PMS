@@ -19,7 +19,7 @@ import { getAuthHeaders, handle401, getYachtId, getYachtSignature, AuthError } f
 export { AuthError };
 
 // Use same env var as actionClient for consistency
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://internal.celeste7.ai';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 export class CelesteApiError extends Error {
   constructor(

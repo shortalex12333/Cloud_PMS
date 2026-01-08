@@ -332,7 +332,7 @@ Required in `.env.local`:
 
 ```bash
 # Backend API URL
-NEXT_PUBLIC_API_URL=https://internal.celeste7.ai
+NEXT_PUBLIC_API_URL=https://pipeline-core.int.celeste7.ai
 
 # Yacht signature salt (must match backend)
 NEXT_PUBLIC_YACHT_SALT=your-secret-salt-here
