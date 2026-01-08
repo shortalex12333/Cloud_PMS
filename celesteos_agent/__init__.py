@@ -15,7 +15,7 @@ from .logger import get_logger
 from .scanner import FileScanner, NASWatcher
 from .change_detector import ChangeDetector, ChangeType, FileChange
 from .telemetry import TelemetryCollector, TelemetryEvent
-from .uploader import UploadManager, UploadState
+from .uploader import FileUploader
 from .hasher import FileHasher
 from .chunker import FileChunker
 
@@ -30,8 +30,7 @@ __all__ = [
     "FileChange",
     "TelemetryCollector",
     "TelemetryEvent",
-    "UploadManager",
-    "UploadState",
+    "FileUploader",
     "FileHasher",
     "FileChunker",
     "__version__"

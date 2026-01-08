@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from celesteos_agent.uploader import FileUploader
 from celesteos_agent.metadata_extractor import extract_metadata_from_path, is_supported_file
+from celesteos_agent.async_uploader import create_async_uploader
 
 app = Flask(__name__)
 
@@ -32,22 +33,13 @@ PID_FILE = Path("~/.celesteos/celesteos-agent.pid").expanduser()
 # Track scan status
 scan_status = {"running": False, "message": "", "progress": 0}
 
-# Track upload status
-upload_status = {
-    "running": False,
-    "total": 0,
-    "uploaded": 0,
-    "failed": 0,
-    "current_file": "",
-    "start_time": None,
-    "errors": []
-}
-
 # Uploader config
 YACHT_ID = "85fe1119-b04c-41ac-80f1-829d23322598"
 WEBHOOK_ENDPOINT = "https://celeste-digest-index.onrender.com"
 YACHT_SALT = os.getenv("YACHT_SALT", "e49469e09cb6529e0bfef118370cf8425b006f0abbc77475da2e0cb479af8b18")
-uploader = None
+
+# Async upload manager (created on startup)
+async_uploader = None
 
 
 def get_db():
@@ -1444,6 +1436,8 @@ def api_pick_folder():
 @app.route('/upload')
 def upload_page():
     """Upload management page with real-time progress."""
+    global async_uploader
+
     conn = get_db()
     nas_path = None
 
@@ -1454,25 +1448,42 @@ def upload_page():
         finally:
             conn.close()
 
-    # Calculate duration
-    duration = 0
-    if upload_status["start_time"]:
-        duration = int(time.time() - upload_status["start_time"])
+    # Initialize async uploader if needed
+    if async_uploader is None:
+        async_uploader = create_async_uploader(
+            webhook_endpoint=WEBHOOK_ENDPOINT,
+            yacht_id=YACHT_ID,
+            yacht_salt=YACHT_SALT,
+            auto_start=True
+        )
+
+    # Get progress from async uploader
+    progress = async_uploader.get_progress()
+    queue_status = async_uploader.get_queue_status()
+
+    # Convert to format expected by template
+    upload_status = {
+        "running": progress['is_uploading'] or progress['queue_pending'] > 0,
+        "total": progress['queue_total'],
+        "uploaded": progress['queue_completed'],
+        "failed": progress['queue_failed'],
+        "current_file": progress['current_file'] or "",
+        "start_time": None,  # Not tracked in async uploader
+        "errors": [{"file": item['filename'], "message": item['error']}
+                   for item in queue_status.get('failed_items', [])]
+    }
 
     return render(UPLOAD_CONTENT, 'upload',
         upload_status=upload_status,
         nas_path=nas_path,
-        upload_duration=duration
+        upload_duration=0  # Not tracked
     )
 
 
 @app.route('/upload/start', methods=['POST'])
 def upload_start():
-    """Start batch upload of all documents from NAS."""
-    global uploader, upload_status
-
-    if upload_status["running"]:
-        return redirect('/upload?message=Upload already running&message_type=warning')
+    """Start batch upload of all documents from NAS using async uploader."""
+    global async_uploader
 
     conn = get_db()
     if not conn:
@@ -1487,103 +1498,81 @@ def upload_start():
     if not nas_path or not Path(nas_path).exists():
         return redirect('/upload?message=Source path not configured or does not exist&message_type=error')
 
-    # Initialize uploader
-    uploader = FileUploader(WEBHOOK_ENDPOINT, YACHT_ID, YACHT_SALT)
+    # Initialize async uploader if needed
+    if async_uploader is None:
+        async_uploader = create_async_uploader(
+            webhook_endpoint=WEBHOOK_ENDPOINT,
+            yacht_id=YACHT_ID,
+            yacht_salt=YACHT_SALT,
+            auto_start=True
+        )
 
-    # Reset status
-    upload_status = {
-        "running": True,
-        "total": 0,
-        "uploaded": 0,
-        "failed": 0,
-        "current_file": "",
-        "start_time": time.time(),
-        "errors": []
-    }
+    # Find all documents and add to queue
+    nas_root = Path(nas_path)
+    documents_added = 0
 
-    # Run upload in background thread
-    def run_upload():
-        global upload_status
-        try:
-            nas_root = Path(nas_path)
+    print(f"[UPLOAD] Scanning {nas_root} for documents...")
 
-            # Find all documents
-            documents = []
-            for file_path in nas_root.rglob('*'):
-                if file_path.is_file() and is_supported_file(file_path):
-                    documents.append(file_path)
+    for file_path in nas_root.rglob('*'):
+        if file_path.is_file() and is_supported_file(file_path):
+            try:
+                # Extract metadata
+                metadata = extract_metadata_from_path(file_path, nas_root=nas_root)
 
-            upload_status["total"] = len(documents)
-            print(f"[UPLOAD] Found {len(documents)} documents to upload")
+                # Add to async upload queue (non-blocking)
+                async_uploader.add_to_queue(
+                    file_path=str(file_path),
+                    system_path=metadata['system_path'],
+                    directories=metadata['directories'],
+                    doc_type=metadata['doc_type'],
+                    system_tag=metadata['system_tag'],
+                    priority=5
+                )
 
-            # Upload each document
-            for i, file_path in enumerate(documents, 1):
-                if not upload_status["running"]:
-                    print("[UPLOAD] Upload stopped by user")
-                    break
+                documents_added += 1
 
-                upload_status["current_file"] = file_path.name
+            except Exception as e:
+                print(f"[UPLOAD] Failed to queue {file_path.name}: {e}")
 
-                try:
-                    # Extract metadata
-                    metadata = extract_metadata_from_path(file_path, nas_root=nas_root)
+    print(f"[UPLOAD] Added {documents_added} documents to upload queue")
 
-                    # Upload
-                    result = uploader.upload_file(
-                        file_path=file_path,
-                        system_path=metadata['system_path'],
-                        directories=metadata['directories'],
-                        doc_type=metadata['doc_type'],
-                        system_tag=metadata['system_tag']
-                    )
-
-                    upload_status["uploaded"] += 1
-                    print(f"[UPLOAD] [{i}/{len(documents)}] ✓ {file_path.name}")
-
-                except Exception as e:
-                    upload_status["failed"] += 1
-                    upload_status["errors"].append({
-                        "file": file_path.name,
-                        "message": str(e)
-                    })
-                    print(f"[UPLOAD] [{i}/{len(documents)}] ✗ {file_path.name}: {e}")
-
-                time.sleep(0.3)  # Rate limit
-
-            print(f"[UPLOAD] Complete! {upload_status['uploaded']} uploaded, {upload_status['failed']} failed")
-
-        except Exception as e:
-            upload_status["errors"].append({
-                "file": "SYSTEM",
-                "message": f"Fatal error: {str(e)}"
-            })
-            print(f"[UPLOAD] Fatal error: {e}")
-        finally:
-            upload_status["running"] = False
-            upload_status["current_file"] = ""
-
-    thread = threading.Thread(target=run_upload, daemon=True)
-    thread.start()
-
-    return redirect('/upload?message=Upload started! Page will auto-refresh.&message_type=success')
+    return redirect(f'/upload?message=Added {documents_added} documents to upload queue. Background processor will handle uploads.&message_type=success')
 
 
 @app.route('/upload/stop', methods=['POST'])
 def upload_stop():
-    """Stop running upload and reset all progress."""
-    global upload_status
+    """Pause async upload processing."""
+    global async_uploader
 
-    upload_status = {
-        "running": False,
-        "total": 0,
-        "uploaded": 0,
-        "failed": 0,
-        "current_file": "",
-        "start_time": None,
-        "errors": []
-    }
+    if async_uploader:
+        async_uploader.pause()
+        return redirect('/upload?message=Upload processing paused (queue preserved)&message_type=success')
 
-    return redirect('/upload?message=Upload stopped and reset&message_type=success')
+    return redirect('/upload?message=No uploader running&message_type=warning')
+
+
+@app.route('/upload/resume', methods=['POST'])
+def upload_resume():
+    """Resume async upload processing."""
+    global async_uploader
+
+    if async_uploader:
+        async_uploader.resume()
+        return redirect('/upload?message=Upload processing resumed&message_type=success')
+
+    return redirect('/upload?message=No uploader running&message_type=warning')
+
+
+@app.route('/upload/retry-failed', methods=['POST'])
+def upload_retry_failed():
+    """Retry all permanently failed uploads."""
+    global async_uploader
+
+    if async_uploader:
+        async_uploader.retry_all_failed()
+        return redirect('/upload?message=Retrying all failed uploads&message_type=success')
+
+    return redirect('/upload?message=No uploader running&message_type=warning')
 
 
 if __name__ == '__main__':

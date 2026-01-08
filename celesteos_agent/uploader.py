@@ -149,6 +149,12 @@ class FileUploader:
 
         for attempt in range(self.max_retries):
             try:
+                # Calculate exponential backoff (if retrying)
+                if attempt > 0:
+                    backoff_seconds = min(2 ** attempt, 60)  # Max 60s
+                    print(f"⏳ Retry {attempt}/{self.max_retries - 1} - waiting {backoff_seconds}s...")
+                    time.sleep(backoff_seconds)
+
                 response = requests.post(
                     url,
                     files=files,
@@ -176,24 +182,57 @@ class FileUploader:
                     else:
                         raise UploadError(f"Unexpected response: {result}")
 
+                elif response.status_code == 401:
+                    # Unauthorized - missing signature
+                    raise UploadError(f"Unauthorized (401): Missing yacht signature - check YACHT_SALT")
+
+                elif response.status_code == 403:
+                    # Forbidden - invalid signature (don't retry)
+                    raise UploadError(f"Forbidden (403): Invalid yacht signature - check yacht_id and YACHT_SALT")
+
+                elif response.status_code == 413:
+                    # File too large (don't retry)
+                    raise UploadError(f"File too large (413): {file_size:,} bytes - max 500 MB")
+
+                elif response.status_code == 415:
+                    # Unsupported file type (don't retry)
+                    raise UploadError(f"Unsupported file type (415): {metadata['content_type']}")
+
+                elif response.status_code == 429:
+                    # Rate limited - retry with longer backoff
+                    last_error = f"Rate limited (429): Too many requests"
+                    backoff_seconds = min(60 * (2 ** attempt), 300)  # Max 5 minutes
+                    print(f"⚠️  {last_error} - waiting {backoff_seconds}s...")
+                    time.sleep(backoff_seconds)
+                    continue
+
                 elif response.status_code >= 500:
                     # Server error, retry
                     last_error = f"Server error {response.status_code}: {response.text[:200]}"
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    print(f"⚠️  {last_error} - will retry")
                     continue
 
                 else:
-                    # Client error, don't retry
-                    raise UploadError(f"Upload failed {response.status_code}: {response.text[:200]}")
+                    # Other client error, don't retry
+                    raise UploadError(f"Upload failed ({response.status_code}): {response.text[:200]}")
 
             except requests.Timeout:
                 last_error = f"Request timeout (>{self.timeout}s)"
-                time.sleep(2 ** attempt)
+                print(f"⚠️  {last_error} - will retry")
                 continue
+
+            except requests.ConnectionError as e:
+                last_error = f"Connection error: {e}"
+                print(f"⚠️  {last_error} - will retry")
+                continue
+
+            except UploadError:
+                # Re-raise UploadError (don't retry client errors)
+                raise
 
             except requests.RequestException as e:
                 last_error = f"Request error: {e}"
-                time.sleep(2 ** attempt)
+                print(f"⚠️  {last_error} - will retry")
                 continue
 
         # All retries exhausted
