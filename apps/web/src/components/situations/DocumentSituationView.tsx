@@ -66,16 +66,46 @@ export default function DocumentSituationView({
       setError(null);
 
       try {
-        // Get storage_path directly from search result metadata
-        // Search returns chunks with metadata.storage_path already populated
-        console.log('[DocumentSituationView] Loading document with metadata:', metadata);
+        console.log('[DocumentSituationView] Loading document:', {
+          documentId,
+          metadata,
+        });
 
+        // Try to get storage_path from metadata first
         let docStoragePath = metadata?.storage_path as string;
 
+        // If not in metadata, query the chunks table directly
+        // (Backend search may not return metadata field)
         if (!docStoragePath) {
-          console.error('[DocumentSituationView] No storage_path in metadata:', metadata);
-          setError('Document storage path not available in search results');
-          return;
+          console.log('[DocumentSituationView] No storage_path in metadata, querying chunks table...');
+
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          );
+
+          const { data: chunkData, error: chunkError } = await supabase
+            .from('search_document_chunks')
+            .select('metadata')
+            .eq('id', documentId)
+            .single();
+
+          if (chunkError || !chunkData) {
+            console.error('[DocumentSituationView] Chunk query error:', chunkError);
+            setError('Could not find document chunk');
+            return;
+          }
+
+          console.log('[DocumentSituationView] Chunk metadata:', chunkData.metadata);
+
+          docStoragePath = chunkData.metadata?.storage_path as string;
+
+          if (!docStoragePath) {
+            console.error('[DocumentSituationView] No storage_path in chunk metadata');
+            setError('Document storage path not found');
+            return;
+          }
         }
 
         // Strip "documents/" prefix if present (chunks include it, but documentLoader expects path without bucket name)
@@ -88,7 +118,7 @@ export default function DocumentSituationView({
         console.log('[DocumentSituationView] Using storage path:', docStoragePath);
         setStoragePath(docStoragePath);
 
-        // Load document using storage path from search results
+        // Load document using storage path
         const result = await loadDocument(docStoragePath);
 
         if (!result.success) {
