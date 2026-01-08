@@ -322,6 +322,37 @@ async def list_entity_types():
         logger.error(f"Failed to list entity types: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/debug/extractor")
+async def debug_extractor():
+    """Debug endpoint to check extractor initialization."""
+    import traceback
+    import sys
+
+    return {
+        "python_version": sys.version,
+        "sys_path": sys.path[:5],  # First 5 paths
+        "cwd": os.getcwd(),
+        "extractor_status": {
+            "loaded": _extractor is not None,
+            "attempt_result": None if _extractor else try_load_extractor_debug()
+        }
+    }
+
+def try_load_extractor_debug():
+    """Try to load extractor and return detailed error."""
+    import traceback
+    try:
+        from extraction.orchestrator import ExtractionOrchestrator
+        ExtractionOrchestrator()
+        return {"success": True}
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        }
+
 
 # ============================================================================
 # MAIN
