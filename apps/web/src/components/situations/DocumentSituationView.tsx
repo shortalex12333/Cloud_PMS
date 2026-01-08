@@ -72,7 +72,7 @@ export default function DocumentSituationView({
 
         const { data: docMetadata, error: queryError } = await supabase
           .from('doc_metadata')
-          .select('storage_path, file_path, title, classification')
+          .select('storage_path, title, classification')
           .eq('id', documentId)
           .single();
 
@@ -82,7 +82,7 @@ export default function DocumentSituationView({
           return;
         }
 
-        const docStoragePath = docMetadata.storage_path || docMetadata.file_path;
+        const docStoragePath = docMetadata.storage_path;
         if (!docStoragePath) {
           setError('Document storage path not found');
           return;
