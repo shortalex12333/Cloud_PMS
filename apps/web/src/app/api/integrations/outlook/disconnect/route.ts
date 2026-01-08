@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Revoke Microsoft OAuth token (soft delete)
     const { error: revokeError } = await supabase
-      .from('api_tokens')
+      .from('auth_microsoft_tokens')
       .update({
         is_revoked: true,
         revoked_at: new Date().toISOString(),
