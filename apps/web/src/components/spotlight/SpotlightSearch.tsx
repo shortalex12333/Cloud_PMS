@@ -55,12 +55,42 @@ interface SpotlightSearchProps {
 function mapAPIResult(result: APISearchResult): SpotlightResult {
   // Backend returns different field names than frontend expects
   // Map backend schema → frontend schema
+
+  // Try to extract title from various possible fields
+  const title =
+    result.title ||
+    (result as any).name ||
+    (result as any).equipment_name ||
+    (result as any).part_name ||
+    (result as any).section_title ||
+    (result as any).code ||
+    result.id ||
+    'Untitled Result';
+
+  // Try to construct subtitle from available fields
+  const subtitleParts: string[] = [];
+  const anyResult = result as any;
+
+  if (anyResult.manufacturer) subtitleParts.push(`Manufacturer: ${anyResult.manufacturer}`);
+  if (anyResult.category) subtitleParts.push(`Category: ${anyResult.category}`);
+  if (anyResult.part_number) subtitleParts.push(`P/N: ${anyResult.part_number}`);
+  if (anyResult.location) subtitleParts.push(`Location: ${anyResult.location}`);
+  if (anyResult.equipment_type) subtitleParts.push(`Type: ${anyResult.equipment_type}`);
+
+  const subtitle =
+    result.subtitle ||
+    result.snippet ||
+    result.preview ||
+    subtitleParts.join(' | ') ||
+    (anyResult.description || '').substring(0, 100) ||
+    'No description';
+
   return {
-    id: result.id || result.primary_id || '',
+    id: result.id || result.primary_id || crypto.randomUUID(),
     type: result.type || result.source_table || 'document',
-    title: result.title || '',
-    subtitle: result.subtitle || result.snippet || result.preview || '',
-    metadata: result.metadata || result.raw_data || {},
+    title,
+    subtitle,
+    metadata: result.metadata || result.raw_data || (result as Record<string, any>),
   };
 }
 
