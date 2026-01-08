@@ -8,6 +8,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 // Azure App credentials from environment
 const AZURE_APP_ID = process.env.AZURE_APP_ID || '41f6dc82-8127-4330-97e0-c6b26e6aa967';
 const AZURE_CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || '';
