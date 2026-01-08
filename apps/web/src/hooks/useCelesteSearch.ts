@@ -107,13 +107,18 @@ const resultCache = new Map<string, CachedResult>();
 
 function getCachedResults(query: string): SearchResult[] | null {
   const cached = resultCache.get(query.toLowerCase());
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  // Don't return empty cached results - let search retry
+  if (cached && cached.results.length > 0 && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.results;
   }
   return null;
 }
 
 function setCachedResults(query: string, results: SearchResult[]): void {
+  // Don't cache empty results - let future searches retry
+  if (results.length === 0) {
+    return;
+  }
   resultCache.set(query.toLowerCase(), {
     query,
     results,
@@ -604,6 +609,14 @@ export function useCelesteSearch() {
     };
   }, [cancelCurrentRequest]);
 
+  /**
+   * Clear all cached results (for debugging)
+   */
+  const clearCache = useCallback(() => {
+    resultCache.clear();
+    console.log('[useCelesteSearch] 🗑️ Cache cleared');
+  }, []);
+
   return {
     // State
     query: state.query,
@@ -617,6 +630,7 @@ export function useCelesteSearch() {
     handleQueryChange,
     search,
     clear,
+    clearCache,
     selectSuggestion,
 
     // Utils
