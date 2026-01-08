@@ -195,8 +195,8 @@ async function* streamSearch(
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  // POST to API_URL/search endpoint
-  const searchUrl = `${API_URL}/search`;
+  // POST to API_URL/webhook/search endpoint
+  const searchUrl = `${API_URL}/webhook/search`;
   console.log('[useCelesteSearch] 📤 Sending request to:', searchUrl);
   console.log('[useCelesteSearch] 📤 Payload:', payload);
 
@@ -288,7 +288,7 @@ async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchRe
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  const searchUrl = `${API_URL}/search`;
+  const searchUrl = `${API_URL}/webhook/search`;
   const response = await fetch(searchUrl, {
     method: 'POST',
     headers,

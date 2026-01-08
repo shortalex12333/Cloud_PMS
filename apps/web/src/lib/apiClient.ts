@@ -41,7 +41,7 @@ export class CelesteApiError extends Error {
  *
  * Automatically retries 401s with token refresh.
  *
- * @param path - API path (e.g., '/search', '/v1/actions/execute')
+ * @param path - API path (e.g., '/webhook/search', '/v1/actions/execute')
  * @param options - Fetch options (method, body, etc.)
  * @returns Parsed JSON response
  * @throws CelesteApiError on request failure
@@ -267,7 +267,7 @@ export const celesteApi = {
       },
     };
 
-    return callCelesteApi<T>('/search', {
+    return callCelesteApi<T>('/webhook/search', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -292,7 +292,7 @@ export async function searchWithStream(query: string): Promise<ReadableStream | 
   // Get secure auth headers (JWT + yacht signature)
   const authHeaders = await getAuthHeaders(yachtId);
 
-  const url = `${API_BASE_URL}/search`;
+  const url = `${API_BASE_URL}/webhook/search`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
