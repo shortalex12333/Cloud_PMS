@@ -11,7 +11,7 @@ import { supabase } from './supabaseClient';
 // Action Router endpoint
 const ACTION_ROUTER_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/v1/actions/execute`
-  : 'https://api.celeste7.ai/v1/actions/execute';
+  : 'https://internal.celeste7.ai/v1/actions/execute';
 
 /**
  * Action execution result
