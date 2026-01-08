@@ -11,9 +11,16 @@ import time
 import os
 import subprocess
 import threading
+import sys
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, redirect, url_for
+
+# Add current directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from celesteos_agent.uploader import FileUploader
+from celesteos_agent.metadata_extractor import extract_metadata_from_path, is_supported_file
 
 app = Flask(__name__)
 
@@ -24,6 +31,23 @@ PID_FILE = Path("~/.celesteos/celesteos-agent.pid").expanduser()
 
 # Track scan status
 scan_status = {"running": False, "message": "", "progress": 0}
+
+# Track upload status
+upload_status = {
+    "running": False,
+    "total": 0,
+    "uploaded": 0,
+    "failed": 0,
+    "current_file": "",
+    "start_time": None,
+    "errors": []
+}
+
+# Uploader config
+YACHT_ID = "85fe1119-b04c-41ac-80f1-829d23322598"
+WEBHOOK_ENDPOINT = "https://celeste-digest-index.onrender.com"
+YACHT_SALT = os.getenv("YACHT_SALT", "e49469e09cb6529e0bfef118370cf8425b006f0abbc77475da2e0cb479af8b18")
+uploader = None
 
 
 def get_db():
@@ -479,6 +503,7 @@ BASE_HTML = '''
     <div class="container">
         <nav class="tabs">
             <a href="/" class="tab {{ 'active' if page == 'dashboard' else '' }}">Dashboard</a>
+            <a href="/upload" class="tab {{ 'active' if page == 'upload' else '' }}" style="color: #58a6ff; font-weight: 600;">📤 UPLOAD</a>
             <a href="/files" class="tab {{ 'active' if page == 'files' else '' }}">Files</a>
             <a href="/queue" class="tab {{ 'active' if page == 'queue' else '' }}">Upload Queue</a>
             <a href="/errors" class="tab {{ 'active' if page == 'errors' else '' }}">Errors</a>
@@ -939,6 +964,110 @@ ACTIVITY_CONTENT = '''
 </div>
 '''
 
+UPLOAD_CONTENT = '''
+<div class="digestion-source" style="border-color: #1f6feb; background: linear-gradient(135deg, #1e3a5f 0%, #162b16 100%);">
+    <h2 style="color: #58a6ff;">📤 Batch Upload All Documents</h2>
+    <p class="subtitle">Upload all discovered documents from configured source path to cloud for processing (ingestion, chunking, embedding, GraphRAG)</p>
+
+    {% if upload_status.running %}
+    <div class="alert alert-info" style="margin-top: 16px;">
+        <strong>🔄 UPLOAD IN PROGRESS...</strong><br>
+        Current File: <code>{{ upload_status.current_file }}</code><br>
+        Progress: <strong>{{ upload_status.uploaded }}</strong> of <strong>{{ upload_status.total }}</strong> files uploaded
+    </div>
+    {% endif %}
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3>Total Files Found</h3>
+        <div class="value info">{{ upload_status.total }}</div>
+    </div>
+    <div class="card">
+        <h3>Successfully Uploaded</h3>
+        <div class="value success">{{ upload_status.uploaded }}</div>
+    </div>
+    <div class="card">
+        <h3>Failed</h3>
+        <div class="value error">{{ upload_status.failed }}</div>
+    </div>
+    <div class="card">
+        <h3>Upload Status</h3>
+        <div class="value {{ 'warning' if upload_status.running else '' }}">{{ 'RUNNING' if upload_status.running else 'IDLE' }}</div>
+    </div>
+    <div class="card">
+        <h3>Duration</h3>
+        <div class="value">{{ upload_duration }}s</div>
+    </div>
+    <div class="card">
+        <h3>Source Path</h3>
+        <div class="value" style="font-size: 0.75rem; word-break: break-all;">{{ nas_path[:30] if nas_path else 'Not Set' }}...</div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="section-header">
+        <h2>Upload Controls</h2>
+    </div>
+    <div style="padding: 40px; text-align: center;">
+        {% if not upload_status.running %}
+            {% if nas_path %}
+            <form method="POST" action="/upload/start" style="display: inline;">
+                <button type="submit" class="btn btn-lg" style="background: #238636; font-size: 1.25rem; padding: 18px 40px;">
+                    🚀 START BATCH UPLOAD
+                </button>
+            </form>
+            <p style="color: #8b949e; margin-top: 16px;">This will upload ALL documents from: <code>{{ nas_path }}</code></p>
+            {% else %}
+            <div class="alert alert-error">
+                ⚠️ <strong>Source path not configured!</strong><br>
+                Go to <a href="/source" style="color: #58a6ff;">Source Path</a> tab to configure it first.
+            </div>
+            {% endif %}
+        {% else %}
+        <form method="POST" action="/upload/stop" style="display: inline;">
+            <button type="submit" class="btn btn-lg btn-danger" style="font-size: 1.25rem; padding: 18px 40px;" onclick="return confirm('Stop upload and reset all progress?')">
+                🛑 STOP UPLOAD & RESET
+            </button>
+        </form>
+        <p style="color: #d29922; margin-top: 16px;">Upload in progress. Page will auto-refresh.</p>
+        {% endif %}
+
+        <div style="margin-top: 24px;">
+            <button class="btn btn-secondary" onclick="location.reload()">🔄 Refresh Stats</button>
+        </div>
+    </div>
+</div>
+
+{% if upload_status.errors %}
+<div class="section">
+    <div class="section-header">
+        <h2>Upload Errors ({{ upload_status.errors|length }} total)</h2>
+    </div>
+    <table>
+        <thead>
+            <tr><th>File</th><th>Error Message</th></tr>
+        </thead>
+        <tbody>
+        {% for err in upload_status.errors[-30:] %}
+            <tr>
+                <td class="filename">{{ err.file }}</td>
+                <td class="path" style="color: #f85149;">{{ err.message[:150] }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<script>
+// Auto-refresh every 3 seconds when upload is running
+{% if upload_status.running %}
+setTimeout(() => location.reload(), 3000);
+{% endif %}
+</script>
+'''
+
 
 def render(content, page, **kwargs):
     """Render page with base template."""
@@ -1310,6 +1439,151 @@ def api_pick_folder():
         return jsonify({'success': True, 'path': path})
     else:
         return jsonify({'success': False, 'error': error or 'No folder selected'})
+
+
+@app.route('/upload')
+def upload_page():
+    """Upload management page with real-time progress."""
+    conn = get_db()
+    nas_path = None
+
+    if conn:
+        try:
+            row = conn.execute("SELECT nas_path FROM agent_settings WHERE id = 1").fetchone()
+            nas_path = row['nas_path'] if row else None
+        finally:
+            conn.close()
+
+    # Calculate duration
+    duration = 0
+    if upload_status["start_time"]:
+        duration = int(time.time() - upload_status["start_time"])
+
+    return render(UPLOAD_CONTENT, 'upload',
+        upload_status=upload_status,
+        nas_path=nas_path,
+        upload_duration=duration
+    )
+
+
+@app.route('/upload/start', methods=['POST'])
+def upload_start():
+    """Start batch upload of all documents from NAS."""
+    global uploader, upload_status
+
+    if upload_status["running"]:
+        return redirect('/upload?message=Upload already running&message_type=warning')
+
+    conn = get_db()
+    if not conn:
+        return redirect('/upload?message=Database not found&message_type=error')
+
+    try:
+        row = conn.execute("SELECT nas_path FROM agent_settings WHERE id = 1").fetchone()
+        nas_path = row['nas_path'] if row else None
+    finally:
+        conn.close()
+
+    if not nas_path or not Path(nas_path).exists():
+        return redirect('/upload?message=Source path not configured or does not exist&message_type=error')
+
+    # Initialize uploader
+    uploader = FileUploader(WEBHOOK_ENDPOINT, YACHT_ID, YACHT_SALT)
+
+    # Reset status
+    upload_status = {
+        "running": True,
+        "total": 0,
+        "uploaded": 0,
+        "failed": 0,
+        "current_file": "",
+        "start_time": time.time(),
+        "errors": []
+    }
+
+    # Run upload in background thread
+    def run_upload():
+        global upload_status
+        try:
+            nas_root = Path(nas_path)
+
+            # Find all documents
+            documents = []
+            for file_path in nas_root.rglob('*'):
+                if file_path.is_file() and is_supported_file(file_path):
+                    documents.append(file_path)
+
+            upload_status["total"] = len(documents)
+            print(f"[UPLOAD] Found {len(documents)} documents to upload")
+
+            # Upload each document
+            for i, file_path in enumerate(documents, 1):
+                if not upload_status["running"]:
+                    print("[UPLOAD] Upload stopped by user")
+                    break
+
+                upload_status["current_file"] = file_path.name
+
+                try:
+                    # Extract metadata
+                    metadata = extract_metadata_from_path(file_path, nas_root=nas_root)
+
+                    # Upload
+                    result = uploader.upload_file(
+                        file_path=file_path,
+                        system_path=metadata['system_path'],
+                        directories=metadata['directories'],
+                        doc_type=metadata['doc_type'],
+                        system_tag=metadata['system_tag']
+                    )
+
+                    upload_status["uploaded"] += 1
+                    print(f"[UPLOAD] [{i}/{len(documents)}] ✓ {file_path.name}")
+
+                except Exception as e:
+                    upload_status["failed"] += 1
+                    upload_status["errors"].append({
+                        "file": file_path.name,
+                        "message": str(e)
+                    })
+                    print(f"[UPLOAD] [{i}/{len(documents)}] ✗ {file_path.name}: {e}")
+
+                time.sleep(0.3)  # Rate limit
+
+            print(f"[UPLOAD] Complete! {upload_status['uploaded']} uploaded, {upload_status['failed']} failed")
+
+        except Exception as e:
+            upload_status["errors"].append({
+                "file": "SYSTEM",
+                "message": f"Fatal error: {str(e)}"
+            })
+            print(f"[UPLOAD] Fatal error: {e}")
+        finally:
+            upload_status["running"] = False
+            upload_status["current_file"] = ""
+
+    thread = threading.Thread(target=run_upload, daemon=True)
+    thread.start()
+
+    return redirect('/upload?message=Upload started! Page will auto-refresh.&message_type=success')
+
+
+@app.route('/upload/stop', methods=['POST'])
+def upload_stop():
+    """Stop running upload and reset all progress."""
+    global upload_status
+
+    upload_status = {
+        "running": False,
+        "total": 0,
+        "uploaded": 0,
+        "failed": 0,
+        "current_file": "",
+        "start_time": None,
+        "errors": []
+    }
+
+    return redirect('/upload?message=Upload stopped and reset&message_type=success')
 
 
 if __name__ == '__main__':
