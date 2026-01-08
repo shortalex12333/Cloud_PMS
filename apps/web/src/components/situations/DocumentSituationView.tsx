@@ -72,7 +72,7 @@ export default function DocumentSituationView({
 
         const { data: docMetadata, error: queryError } = await supabase
           .from('doc_metadata')
-          .select('storage_path, title, classification')
+          .select('storage_path')
           .eq('id', documentId)
           .single();
 
@@ -101,11 +101,11 @@ export default function DocumentSituationView({
 
         setDocumentUrl(result.url || null);
 
-        // Use title from doc_metadata if available
-        const finalTitle = docMetadata.title || documentTitle;
+        // Use title from situation metadata
+        const finalTitle = documentTitle;
 
-        // Classify document
-        const docClassification = classifyDocument(finalTitle, docMetadata as any);
+        // Classify document using title from search results
+        const docClassification = classifyDocument(finalTitle, metadata);
         setClassification(docClassification);
 
         console.log('[DocumentSituationView] Document loaded successfully:', {
