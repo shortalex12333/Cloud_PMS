@@ -120,9 +120,13 @@ def get_extractor():
     if _extractor is None:
         try:
             from extraction.orchestrator import ExtractionOrchestrator
+            logger.info("Initializing ExtractionOrchestrator...")
             _extractor = ExtractionOrchestrator()
+            logger.info("✅ ExtractionOrchestrator initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to load extractor: {e}")
+            import traceback
+            logger.error(f"❌ Failed to load extractor: {e}")
+            logger.error(f"Traceback:\n{traceback.format_exc()}")
             return None
     return _extractor
 
