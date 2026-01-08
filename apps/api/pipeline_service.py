@@ -184,6 +184,46 @@ async def search(request: SearchRequest):
         logger.error(f"Search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/webhook/search")
+async def webhook_search(request: Request):
+    """
+    Webhook endpoint for frontend search requests.
+
+    Accepts frontend payload format with auth and context.
+    Extracts yacht_id from auth payload and routes to pipeline.
+    """
+    try:
+        body = await request.json()
+        logger.info(f"[webhook/search] Received query: {body.get('query')}")
+
+        # Extract data from frontend format
+        query = body.get('query')
+        auth = body.get('auth', {})
+        yacht_id = auth.get('yacht_id')
+        limit = body.get('limit', 20)
+
+        # Validate required fields
+        if not query:
+            raise HTTPException(status_code=400, detail="Missing required field: query")
+        if not yacht_id:
+            raise HTTPException(status_code=400, detail="Missing required field: auth.yacht_id")
+
+        logger.info(f"[webhook/search] yacht_id={yacht_id}, query='{query}'")
+
+        # Call main search logic
+        search_request = SearchRequest(
+            query=query,
+            yacht_id=yacht_id,
+            limit=limit
+        )
+
+        result = await search(search_request)
+        return result
+
+    except Exception as e:
+        logger.error(f"[webhook/search] Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/extract", response_model=ExtractResponse)
 async def extract(request: ExtractRequest):
     """
