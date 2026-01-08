@@ -79,7 +79,7 @@ See `TEST_STORAGE_IN_BROWSER.md` for code you can run **right now** in your brow
    - See which files/buckets are missing
 
 2. **Check Supabase Dashboard**
-   - Go to: https://supabase.com/dashboard/project/qapnhmmyqkbxwbqxbdxq/storage/buckets
+   - Go to: https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd/storage/buckets
    - Check if "documents" bucket exists
    - Browse folders to see current structure
 
