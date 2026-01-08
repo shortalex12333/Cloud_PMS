@@ -22,8 +22,8 @@ You can test storage immediately without waiting for deployment.
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
 
   // Use your credentials
-  const SUPABASE_URL = 'https://qapnhmmyqkbxwbqxbdxq.supabase.co';
-  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhcG5obW15cWtieHdicXhiZHhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA1Njk3MzYsImV4cCI6MjA0NjE0NTczNn0.MmGOiIDSwfnbhLVq7vYYyD8WQ-FtXNbabLQ1Tz3HF3M';
+  const SUPABASE_URL = 'https://vzsohavtuotocgrfkfyd.supabase.co';
+  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1OTI4NzUsImV4cCI6MjA3OTE2ODg3NX0.JhJLvLSfLD3OtPDxTgHqgF8dNaZk8ius62jKN68E4WE';
 
   const supabase = createClient(SUPABASE_URL, ANON_KEY);
 
@@ -156,7 +156,7 @@ This means at least some files exist - document loading should work!
 
 ## Alternative: Check Supabase Dashboard
 
-1. Go to: https://supabase.com/dashboard/project/qapnhmmyqkbxwbqxbdxq/storage/buckets
+1. Go to: https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd/storage/buckets
 2. Click "documents" bucket (or create it if missing)
 3. Browse folders to see what files exist
 4. Compare with storage_path values in doc_metadata table

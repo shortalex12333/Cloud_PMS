@@ -5,8 +5,8 @@
  * Checks what buckets exist and what files are in them
  */
 
-const SUPABASE_URL = 'https://qapnhmmyqkbxwbqxbdxq.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhcG5obW15cWtieHdicXhiZHhxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMDU2OTczNiwiZXhwIjoyMDQ2MTQ1NzM2fQ.pYqLc-1Mfqyo3NZRGO-5Q29x2gWVCCvWFoXDCXDgwQk';
+const SUPABASE_URL = 'https://vzsohavtuotocgrfkfyd.supabase.co';
+const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY';
 
 async function checkStorage() {
   console.log('='.repeat(80));
