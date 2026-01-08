@@ -83,12 +83,6 @@ export default function SpotlightResultRow({
   const config = TYPE_CONFIG[result.type] || DEFAULT_CONFIG;
   const Icon = config.icon;
 
-  console.log(`[SpotlightResultRow] Rendering index ${index}:`, {
-    title: result.title.substring(0, 30),
-    isSelected,
-    bgClass: isSelected ? 'bg-celeste-blue' : 'bg-transparent'
-  });
-
   return (
     <div
       data-index={index}

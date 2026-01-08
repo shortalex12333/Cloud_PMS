@@ -59,9 +59,20 @@ export async function loadDocument(
       };
     }
 
-    // Ensure path starts with yacht_id for isolation
-    if (!storagePath.startsWith(`yacht_${yachtId}/`) && !storagePath.startsWith('yacht_')) {
-      storagePath = `yacht_${yachtId}/${storagePath}`;
+    // Storage path should already have yacht UUID prefix from doc_metadata
+    // Format: {yacht_id}/{category}/{subcategory}/{type}/{filename}
+    // Example: 85fe1119-b04c-41ac-80f1-829d23322598/01_BRIDGE/ais_equipment/installation_guides/manual.pdf
+
+    // Validate that path starts with this yacht's UUID (security check)
+    if (!storagePath.startsWith(`${yachtId}/`)) {
+      console.warn('[documentLoader] Path does not start with yacht UUID, security risk!', {
+        storagePath,
+        expectedPrefix: yachtId,
+      });
+      return {
+        success: false,
+        error: 'Invalid document path - yacht isolation check failed',
+      };
     }
 
     console.log('[documentLoader] Loading document:', {
@@ -161,8 +172,10 @@ export async function getDocumentMetadata(
     const yachtId = await getYachtId();
     if (!yachtId) return null;
 
-    if (!storagePath.startsWith(`yacht_${yachtId}/`) && !storagePath.startsWith('yacht_')) {
-      storagePath = `yacht_${yachtId}/${storagePath}`;
+    // Validate yacht isolation - path should already start with yacht UUID
+    if (!storagePath.startsWith(`${yachtId}/`)) {
+      console.warn('[documentLoader] Metadata path security check failed');
+      return null;
     }
 
     const { data: fileData, error } = await supabase.storage

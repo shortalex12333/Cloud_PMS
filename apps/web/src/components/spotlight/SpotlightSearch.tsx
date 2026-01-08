@@ -182,13 +182,8 @@ export default function SpotlightSearch({
   }, [query]);
 
   useEffect(() => {
-    console.log('[SpotlightSearch] Results length changed, resetting selectedIndex to 0');
     setSelectedIndex(0);
   }, [results.length]);
-
-  useEffect(() => {
-    console.log('[SpotlightSearch] selectedIndex changed to:', selectedIndex);
-  }, [selectedIndex]);
 
   useEffect(() => {
     if (resultsRef.current && results.length > 0) {
@@ -224,7 +219,6 @@ export default function SpotlightSearch({
    * Handle result selection (single click) - Creates CANDIDATE situation
    */
   const handleResultSelect = useCallback((result: SpotlightResult, index: number) => {
-    console.log('[SpotlightSearch] Result selected - setting index to:', index);
     setSelectedIndex(index);
 
     // Create CANDIDATE situation
@@ -248,14 +242,6 @@ export default function SpotlightSearch({
       initial_state: 'CANDIDATE',
       metadata: situationMetadata,
     });
-
-    console.log('[SpotlightSearch] CANDIDATE situation created:', {
-      entity_type: entityType,
-      entity_id: result.id,
-      title: result.title,
-      metadata: situationMetadata,
-      selectedIndex: index,
-    });
   }, [createSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
 
   /**
@@ -275,13 +261,6 @@ export default function SpotlightSearch({
       name: result.title,
     };
 
-    console.log('[SpotlightSearch] Opening entity:', {
-      entity_type: entityType,
-      entity_id: result.id,
-      title: result.title,
-      metadata: situationMetadata,
-    });
-
     // Create or transition to ACTIVE situation
     if (situation && situation.state === 'CANDIDATE') {
       // Update evidence with metadata before transitioning
@@ -298,8 +277,6 @@ export default function SpotlightSearch({
         metadata: situationMetadata,
       });
     }
-
-    console.log('[SpotlightSearch] ACTIVE situation created/transitioned');
   }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
 
   /**
@@ -483,7 +460,7 @@ export default function SpotlightSearch({
                       result={result}
                       isSelected={index === selectedIndex}
                       index={index}
-                      onClick={() => handleResultSelect(result, index)}
+                      onClick={() => handleResultOpen(result)}
                       onDoubleClick={() => handleResultOpen(result)}
                     />
                   ))}
