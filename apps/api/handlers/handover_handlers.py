@@ -320,7 +320,7 @@ class HandoverHandlers:
                 )
 
             # Get user name
-            user_result = self.db.table("user_profiles").select(
+            user_result = self.db.table("auth_users_profiles").select(
                 "full_name"
             ).eq("id", user_id).maybe_single().execute()
             user_name = user_result.data.get("full_name", "Unknown") if user_result.data else "Unknown"

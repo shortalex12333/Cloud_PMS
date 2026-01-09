@@ -490,7 +490,7 @@ class WorkOrderMutationHandlers:
             note = note_result.data[0]
 
             # Get user name
-            user_result = self.db.table("user_profiles").select(
+            user_result = self.db.table("auth_users_profiles").select(
                 "name"
             ).eq("id", user_id).maybe_single().execute()
             user_name = user_result.data.get("name") if user_result.data else "Unknown User"
@@ -1005,13 +1005,13 @@ class WorkOrderMutationHandlers:
             wo = wo_result.data
 
             # Get user name
-            user_result = self.db.table("user_profiles").select(
+            user_result = self.db.table("auth_users_profiles").select(
                 "name"
             ).eq("id", user_id).maybe_single().execute()
             user_name = user_result.data.get("name") if user_result.data else "Unknown User"
 
             # Get user role
-            role_result = self.db.table("user_roles").select(
+            role_result = self.db.table("auth_users_roles").select(
                 "role"
             ).eq("user_id", user_id).eq("yacht_id", yacht_id).eq("is_active", True).maybe_single().execute()
             user_role = role_result.data.get("role") if role_result.data else "crew"

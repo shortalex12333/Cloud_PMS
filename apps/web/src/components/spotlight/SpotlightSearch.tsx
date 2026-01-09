@@ -306,7 +306,7 @@ export default function SpotlightSearch({
 
       // Get yacht_id from user profile
       const { data: profile } = await supabase
-        .from('user_profiles')
+        .from('auth_users_profiles')
         .select('yacht_id')
         .eq('id', session.user.id)
         .single();
