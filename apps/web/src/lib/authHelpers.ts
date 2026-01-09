@@ -204,11 +204,11 @@ export async function getYachtId(): Promise<string | null> {
       return null;
     }
 
-    // Query auth_users_yacht table for yacht assignment
+    // Query auth_users table for yacht assignment
     const { data, error } = await supabase
-      .from('auth_users_yacht')
+      .from('auth_users')
       .select('yacht_id')
-      .eq('user_id', session.user.id)
+      .eq('auth_user_id', session.user.id)
       .single();
 
     if (error || !data) {
