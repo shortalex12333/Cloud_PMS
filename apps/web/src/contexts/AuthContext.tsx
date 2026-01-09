@@ -40,15 +40,16 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
 
   try {
     // Use RPC function (SECURITY DEFINER - bypasses RLS)
-    // Add timeout via AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const { data, error } = await supabase.rpc('get_user_auth_info', {
+    // Add timeout via Promise.race
+    const rpcPromise = supabase.rpc('get_user_auth_info', {
       p_user_id: authUser.id
-    }).abortSignal(controller.signal);
+    });
 
-    clearTimeout(timeoutId);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('RPC timeout')), 5000);
+    });
+
+    const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
     console.log('[AuthContext] RPC result:', { data, error: error?.message });
 
     if (error) {
