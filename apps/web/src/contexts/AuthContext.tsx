@@ -78,26 +78,24 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
   }
 
   const authUser = session.user;
-  console.log('[AuthContext] Validating:', authUser.email);
-
-  // Debug auth state before RPC
-  await debugAuthState('Before RPC call');
+  console.log('[AuthContext] Validating user:', authUser.email, 'ID:', authUser.id);
 
   try {
-    // Use RPC function (SECURITY DEFINER - bypasses RLS)
-    // Add timeout via Promise.race
-    console.log('[AuthContext] Calling RPC get_user_auth_info with user_id:', authUser.id);
+    // Use RPC function with aggressive 3s timeout
+    console.log('[AuthContext] Calling RPC get_user_auth_info...');
 
     const rpcPromise = supabase.rpc('get_user_auth_info', {
       p_user_id: authUser.id
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RPC timeout after 5s')), 5000);
+      setTimeout(() => reject(new Error('RPC timeout after 3s')), 3000);
     });
 
-    const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
-    console.log('[AuthContext] RPC result:', { data, error: error?.message });
+    const result = await Promise.race([rpcPromise, timeoutPromise]);
+    console.log('[AuthContext] RPC completed');
+
+    const { data, error } = result;
 
     if (error) {
       console.error('[AuthContext] RPC error:', error.message);
@@ -176,11 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let maxTimeout: NodeJS.Timeout;
     let subscription: { unsubscribe: () => void } | null = null;
 
-    // ABSOLUTE maximum timeout - clear loading after 5s no matter what
+    // ABSOLUTE maximum timeout - clear loading after 3s no matter what
     maxTimeout = setTimeout(() => {
-      console.warn('[AuthContext] FORCE clearing loading state after 5s');
+      console.warn('[AuthContext] FORCE clearing loading state after 3s');
       setLoading(false);
-    }, 5000);
+    }, 3000);
 
     const initAuth = async () => {
       try {
@@ -219,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         subscription = data.subscription;
 
-        // Fallback timeout - if no auth event fires within 3s, check manually
+        // Fallback timeout - if no auth event fires within 2s, check manually
         timeout = setTimeout(async () => {
           console.log('[AuthContext] Timeout - checking session manually');
           try {
@@ -239,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // ALWAYS clear loading state
             setLoading(false);
           }
-        }, 3000);
+        }, 2000);
 
       } catch (err) {
         console.error('[AuthContext] Init error:', err);
