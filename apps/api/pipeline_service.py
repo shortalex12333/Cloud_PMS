@@ -14,9 +14,9 @@ Deployment:
 - Render: uvicorn api.pipeline_service:app --host 0.0.0.0 --port $PORT
 """
 
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 import time
@@ -344,6 +344,193 @@ async def list_entity_types():
     except Exception as e:
         logger.error(f"Failed to list entity types: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# DOCUMENT STREAMING ENDPOINT
+# ============================================================================
+
+def normalize_storage_path(storage_path: str, bucket: str = 'documents') -> str:
+    """
+    Normalize storage path for Supabase Storage API.
+
+    Database stores: "documents/yacht_id/folder/file.pdf"
+    API expects:     "yacht_id/folder/file.pdf"
+
+    Args:
+        storage_path: Path from database
+        bucket: Bucket name to strip
+
+    Returns:
+        Normalized path without bucket prefix
+    """
+    prefix = f"{bucket}/"
+    if storage_path.startswith(prefix):
+        return storage_path[len(prefix):]
+    return storage_path
+
+
+async def validate_jwt_simple(authorization: str = Header(None, alias='Authorization')):
+    """
+    Simple JWT validation for document access.
+
+    Returns dict with user_id and yacht_id extracted from JWT.
+    For now, this is a simplified version - full validation should use middleware.auth
+    """
+    if not authorization:
+        raise HTTPException(401, detail="Missing Authorization header")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(401, detail="Invalid Authorization header format")
+
+    token = authorization.replace("Bearer ", "")
+
+    try:
+        import jwt
+
+        # Get JWT secret from environment
+        jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
+        if not jwt_secret:
+            logger.warning("SUPABASE_JWT_SECRET not set - JWT validation disabled")
+            # In development, extract yacht_id from token without validation
+            # WARNING: This is insecure! Only for development.
+            payload = jwt.decode(token, options={"verify_signature": False})
+        else:
+            # Production: Validate JWT signature
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                options={"verify_exp": True}
+            )
+
+        user_id = payload.get("sub") or payload.get("user_id")
+
+        # yacht_id might be in user_metadata or directly in payload
+        yacht_id = payload.get("yacht_id")
+        if not yacht_id:
+            user_metadata = payload.get("user_metadata", {})
+            yacht_id = user_metadata.get("yacht_id") or user_metadata.get("yachtId")
+
+        if not yacht_id:
+            logger.warning(f"No yacht_id found in JWT payload: {list(payload.keys())}")
+            raise HTTPException(403, detail="No yacht_id in token")
+
+        return {
+            "user_id": user_id,
+            "yacht_id": yacht_id,
+            "role": payload.get("role", "crew"),
+            "email": payload.get("email", ""),
+        }
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid JWT: {e}")
+        raise HTTPException(401, detail=f"Invalid token: {str(e)}")
+    except Exception as e:
+        logger.error(f"JWT validation error: {e}")
+        raise HTTPException(401, detail="Authentication failed")
+
+
+@app.get("/v1/documents/{document_id}/stream")
+async def stream_document(
+    document_id: str,
+    auth: dict = Depends(validate_jwt_simple),
+    x_yacht_signature: str = Header(None, alias='X-Yacht-Signature')
+):
+    """
+    Stream document from Supabase Storage.
+
+    Security:
+    - Validates JWT
+    - Enforces yacht_id isolation
+    - Verifies document ownership
+
+    Returns:
+    - File bytes with proper Content-Type
+    - Content-Disposition header for inline viewing
+    """
+    user_id = auth['user_id']
+    yacht_id = auth['yacht_id']
+
+    logger.info(f"[stream_document] user={user_id[:8]}..., yacht={yacht_id[:8]}..., doc={document_id[:8]}...")
+
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(503, detail="Database connection not available")
+
+    # 1. Query doc_metadata with yacht isolation
+    try:
+        response = supabase.table('doc_metadata') \
+            .select('*') \
+            .eq('id', document_id) \
+            .eq('yacht_id', yacht_id) \
+            .single() \
+            .execute()
+
+        if not response.data:
+            logger.warning(f"[stream_document] Document not found: {document_id}")
+            raise HTTPException(404, detail="Document not found")
+
+        doc = response.data
+        logger.info(f"[stream_document] Found document: {doc.get('filename')}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[stream_document] Database query failed: {e}")
+        raise HTTPException(500, detail="Failed to query document metadata")
+
+    # 2. Extract correct storage path (strip 'documents/' prefix if present)
+    storage_path = doc.get('storage_path', '')
+    if not storage_path:
+        raise HTTPException(404, detail="Document has no storage path")
+
+    # Normalize path (remove bucket prefix if present)
+    storage_path = normalize_storage_path(storage_path, bucket='documents')
+
+    logger.info(f"[stream_document] Storage path: {storage_path[:50]}...")
+
+    # 3. Download from Supabase Storage
+    try:
+        file_bytes = supabase.storage.from_('documents').download(storage_path)
+        logger.info(f"[stream_document] Downloaded {len(file_bytes)} bytes")
+    except Exception as e:
+        logger.error(f"[stream_document] Storage download failed: {e}")
+        raise HTTPException(404, detail=f"File not found in storage")
+
+    # 4. Detect content type
+    filename = doc.get('filename', 'document')
+    content_type = doc.get('content_type')
+
+    # Fallback content type detection from filename
+    if not content_type:
+        if filename.lower().endswith('.pdf'):
+            content_type = 'application/pdf'
+        elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            content_type = 'image/png' if filename.lower().endswith('.png') else 'image/jpeg'
+        elif filename.lower().endswith('.txt'):
+            content_type = 'text/plain'
+        else:
+            content_type = 'application/octet-stream'
+
+    # 5. Return file stream
+    logger.info(f"[stream_document] Streaming {filename} ({content_type})")
+
+    return Response(
+        content=file_bytes,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "private, max-age=3600",
+            "X-Document-Id": document_id,
+        }
+    )
+
+
+# ============================================================================
+# DEBUG ENDPOINTS
+# ============================================================================
 
 @app.get("/debug/extractor")
 async def debug_extractor():
