@@ -4,6 +4,48 @@ import React, { createContext, useEffect, useState, useCallback, useRef } from '
 import { supabase } from '@/lib/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 
+// Debug function to log auth state
+async function debugAuthState(label: string) {
+  console.log(`\n========== AUTH DEBUG: ${label} ==========`);
+
+  // Check environment
+  console.log('[DEBUG] Supabase URL set:', !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log('[DEBUG] Supabase Anon Key set:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  try {
+    // Get current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      console.error('[DEBUG] Session error:', sessionError.message);
+      return;
+    }
+
+    if (!session) {
+      console.log('[DEBUG] No active session');
+      console.log('[DEBUG] JWT present: false');
+      return;
+    }
+
+    // Session exists - log details
+    console.log('[DEBUG] Session exists: true');
+    console.log('[DEBUG] JWT present:', !!session.access_token);
+    console.log('[DEBUG] JWT length:', session.access_token?.length || 0);
+    console.log('[DEBUG] JWT expires at:', session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A');
+    console.log('[DEBUG] JWT expired:', session.expires_at ? Date.now() > session.expires_at * 1000 : 'unknown');
+    console.log('[DEBUG] Refresh token present:', !!session.refresh_token);
+    console.log('[DEBUG] User ID:', session.user?.id || 'N/A');
+    console.log('[DEBUG] User email:', session.user?.email || 'N/A');
+    console.log('[DEBUG] User metadata:', JSON.stringify(session.user?.user_metadata || {}));
+    console.log('[DEBUG] Auth provider:', session.user?.app_metadata?.provider || 'N/A');
+
+  } catch (err) {
+    console.error('[DEBUG] Error checking auth state:', err);
+  }
+
+  console.log('==========================================\n');
+}
+
 export type CelesteUser = {
   id: string;
   email: string | null;
@@ -38,15 +80,20 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
   const authUser = session.user;
   console.log('[AuthContext] Validating:', authUser.email);
 
+  // Debug auth state before RPC
+  await debugAuthState('Before RPC call');
+
   try {
     // Use RPC function (SECURITY DEFINER - bypasses RLS)
     // Add timeout via Promise.race
+    console.log('[AuthContext] Calling RPC get_user_auth_info with user_id:', authUser.id);
+
     const rpcPromise = supabase.rpc('get_user_auth_info', {
       p_user_id: authUser.id
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RPC timeout')), 5000);
+      setTimeout(() => reject(new Error('RPC timeout after 5s')), 5000);
     });
 
     const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
@@ -117,10 +164,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
-    console.log('[AuthContext] Init');
+    console.log('[AuthContext] Init - starting auth state listener');
+    debugAuthState('AuthProvider Init');
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Event:', event);
+      console.log('[AuthContext] Auth event:', event, '| Session present:', !!session);
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -147,19 +195,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     setError(null);
-    console.log('[AuthContext] Login:', email);
+    console.log('[AuthContext] Login attempt:', email);
 
     const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (loginError) throw new Error(loginError.message);
-    if (!data.session) throw new Error('No session');
+    if (loginError) {
+      console.error('[AuthContext] Login error:', loginError.message);
+      throw new Error(loginError.message);
+    }
+
+    if (!data.session) {
+      console.error('[AuthContext] No session returned after login');
+      throw new Error('No session');
+    }
+
+    console.log('[AuthContext] Login successful, session obtained');
+    await debugAuthState('After successful login');
 
     const validatedUser = await validateAndBuildUser(data.session);
     if (!validatedUser) {
+      console.error('[AuthContext] User validation failed - signing out');
       await supabase.auth.signOut();
       throw new Error('Account not configured. Contact admin.');
     }
 
+    console.log('[AuthContext] User validated successfully:', validatedUser.email);
     setUser(validatedUser);
   }, []);
 
