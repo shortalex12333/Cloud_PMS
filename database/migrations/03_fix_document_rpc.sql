@@ -39,11 +39,11 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  -- Get user's yacht_id from auth_users (bypasses RLS since SECURITY DEFINER)
-  SELECT au.yacht_id INTO v_user_yacht_id
-  FROM auth_users au
-  WHERE au.auth_user_id = v_user_id
-    AND au.is_active = true;
+  -- Get user's yacht_id from auth_users_profiles (bypasses RLS since SECURITY DEFINER)
+  SELECT up.yacht_id INTO v_user_yacht_id
+  FROM auth_users_profiles up
+  WHERE up.id = v_user_id
+    AND up.is_active = true;
 
   IF v_user_yacht_id IS NULL THEN
     RAISE EXCEPTION 'User not assigned to yacht';

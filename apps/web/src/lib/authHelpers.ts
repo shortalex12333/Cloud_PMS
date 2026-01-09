@@ -189,7 +189,7 @@ export async function isAuthenticated(): Promise<boolean> {
 /**
  * Get yacht ID from current session
  *
- * Queries auth_users_yacht table to get the user's assigned yacht.
+ * Queries auth_users_profiles table to get the user's assigned yacht.
  * Falls back to user_metadata if database query fails.
  *
  * @returns yacht_id or null
@@ -204,11 +204,11 @@ export async function getYachtId(): Promise<string | null> {
       return null;
     }
 
-    // Query auth_users table for yacht assignment
+    // Query auth_users_profiles table for yacht assignment
     const { data, error } = await supabase
-      .from('auth_users')
+      .from('auth_users_profiles')
       .select('yacht_id')
-      .eq('auth_user_id', session.user.id)
+      .eq('id', session.user.id)
       .single();
 
     if (error || !data) {

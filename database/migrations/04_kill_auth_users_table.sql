@@ -1,12 +1,16 @@
 -- ================================================================================
--- MIGRATION: Kill auth_users table - Use only auth_users_yacht
+-- MIGRATION: DEPRECATED - Use 05_rename_auth_tables.sql instead
 -- ================================================================================
 --
--- Problem: auth_users table has wrong yacht_id and missing role column
--- Solution: Migrate everything to use auth_users_yacht
+-- This migration file is obsolete. Tables were renamed to:
+-- - user_profiles → auth_users_profiles
+-- - user_roles → auth_users_roles
 --
--- This fixes the document loading bug where get_user_yacht_id() returned NULL
+-- See 05_rename_auth_tables.sql for the correct migration
 -- ================================================================================
+
+-- This file is kept for historical reference only
+-- DO NOT RUN THIS MIGRATION
 
 -- STEP 1: Add missing is_active column to auth_users_yacht
 -- ================================================================================
