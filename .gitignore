@@ -46,7 +46,9 @@ logs/
 
 # Environment variables
 .env
+.env.*
 .env.local
+.env.vercel
 
 # OS
 .DS_Store
