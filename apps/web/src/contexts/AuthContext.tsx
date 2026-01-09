@@ -161,70 +161,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Only run on client-side
+    if (typeof window === 'undefined') {
+      console.log('[AuthContext] Skipping - server-side');
+      return;
+    }
+
     if (initialized.current) return;
     initialized.current = true;
 
-    console.log('[AuthContext] Init - starting auth state listener');
+    console.log('[AuthContext] Init - client-side, starting auth');
 
-    // First, try to get existing session
-    const initSession = async () => {
-      console.log('[AuthContext] Checking for existing session...');
+    let timeout: NodeJS.Timeout;
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    const initAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Set up listener FIRST (to catch any auth events)
+        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('[AuthContext] Auth event:', event, '| Session:', !!session);
 
-        if (error) {
-          console.error('[AuthContext] getSession error:', error.message);
+          // Clear timeout on any event
+          if (timeout) clearTimeout(timeout);
+
+          if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setError(null);
+            setLoading(false);
+          } else if (event === 'INITIAL_SESSION') {
+            // Handle initial session from storage
+            if (session) {
+              console.log('[AuthContext] Restoring session for:', session.user.email);
+              const validatedUser = await validateAndBuildUser(session);
+              setUser(validatedUser);
+              setError(validatedUser ? null : 'User not configured');
+            } else {
+              console.log('[AuthContext] No stored session');
+            }
+            setLoading(false);
+          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (session) {
+              const validatedUser = await validateAndBuildUser(session);
+              setUser(validatedUser);
+              setError(validatedUser ? null : 'User not configured');
+            }
+            setLoading(false);
+          }
+        });
+
+        subscription = data.subscription;
+
+        // Fallback timeout - if no auth event fires within 2s, check manually
+        timeout = setTimeout(async () => {
+          console.log('[AuthContext] Timeout - checking session manually');
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              console.log('[AuthContext] Found session via manual check');
+              const validatedUser = await validateAndBuildUser(session);
+              setUser(validatedUser);
+              setError(validatedUser ? null : 'User not configured');
+            } else {
+              console.log('[AuthContext] No session found');
+            }
+          } catch (e) {
+            console.error('[AuthContext] Manual check failed:', e);
+          }
           setLoading(false);
-          return;
-        }
+        }, 2000);
 
-        if (session) {
-          console.log('[AuthContext] Found existing session for:', session.user.email);
-          const validatedUser = await validateAndBuildUser(session);
-          setUser(validatedUser);
-          setError(validatedUser ? null : 'User not configured');
-        } else {
-          console.log('[AuthContext] No existing session found');
-        }
-        setLoading(false);
       } catch (err) {
         console.error('[AuthContext] Init error:', err);
         setLoading(false);
       }
     };
 
-    initSession();
-
-    // Set up listener for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Auth event:', event, '| Session present:', !!session);
-
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setError(null);
-        setLoading(false);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session) {
-          const validatedUser = await validateAndBuildUser(session);
-          setUser(validatedUser);
-          setError(validatedUser ? null : 'User not configured');
-        }
-        setLoading(false);
-      }
-      // Ignore INITIAL_SESSION as we handle it above
-    });
-
-    // Fallback timeout (reduced to 3s since we're now proactive)
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.log('[AuthContext] Timeout - forcing loading=false');
-        setLoading(false);
-      }
-    }, 3000);
+    initAuth();
 
     return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
+      if (timeout) clearTimeout(timeout);
+      if (subscription) subscription.unsubscribe();
     };
   }, []);
 
