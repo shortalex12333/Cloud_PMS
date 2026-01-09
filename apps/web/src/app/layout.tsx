@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
+import AuthDebug from '@/components/AuthDebug';
 
 export const metadata: Metadata = {
   title: 'CelesteOS - Engineering Intelligence for Yachts',
@@ -17,7 +18,10 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <AuthDebug />
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>
