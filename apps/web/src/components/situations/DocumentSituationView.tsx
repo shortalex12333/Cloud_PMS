@@ -79,15 +79,11 @@ export default function DocumentSituationView({
         if (!docStoragePath) {
           console.log('[DocumentSituationView] No storage_path in metadata, querying via document_id chain...');
 
-          const { createClient } = await import('@supabase/supabase-js');
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-          );
+          // READ MICROACTION: Use existing authenticated Supabase client
+          // Do NOT create new client - this loses user authentication
+          const { supabase } = await import('@/lib/supabaseClient');
 
-          // STEP 1: Get document_id from chunk
-          // NOTE: RLS on search_document_chunks references non-existent "users" table
-          // This will fail with anon key, but we need the document_id
+          // STEP 1: Get document_id from chunk (RLS enforced - user must have access to yacht)
           const { data: chunkData, error: chunkError } = await supabase
             .from('search_document_chunks')
             .select('document_id')
@@ -95,7 +91,7 @@ export default function DocumentSituationView({
             .single();
 
           if (chunkError || !chunkData) {
-            console.error('[DocumentSituationView] Chunk query failed (RLS broken?):', chunkError);
+            console.error('[DocumentSituationView] READ failed - user may not have access to this yacht:', chunkError);
             setError(`Could not find document: ${chunkError?.message || 'Unknown error'}`);
             return;
           }
