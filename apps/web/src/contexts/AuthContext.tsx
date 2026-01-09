@@ -107,7 +107,7 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
     const dbUser = Array.isArray(data) ? data[0] : data;
 
     if (!dbUser) {
-      console.error('[AuthContext] User not in auth_users');
+      console.error('[AuthContext] User not in auth_users_profiles');
       return null;
     }
 
@@ -173,7 +173,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] Init - client-side, starting auth');
 
     let timeout: NodeJS.Timeout;
+    let maxTimeout: NodeJS.Timeout;
     let subscription: { unsubscribe: () => void } | null = null;
+
+    // ABSOLUTE maximum timeout - clear loading after 5s no matter what
+    maxTimeout = setTimeout(() => {
+      console.warn('[AuthContext] FORCE clearing loading state after 5s');
+      setLoading(false);
+    }, 5000);
 
     const initAuth = async () => {
       try {
@@ -181,8 +188,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('[AuthContext] Auth event:', event, '| Session:', !!session);
 
-          // Clear timeout on any event
+          // Clear timeouts on any event
           if (timeout) clearTimeout(timeout);
+          if (maxTimeout) clearTimeout(maxTimeout);
 
           if (event === 'SIGNED_OUT') {
             setUser(null);
@@ -211,7 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         subscription = data.subscription;
 
-        // Fallback timeout - if no auth event fires within 2s, check manually
+        // Fallback timeout - if no auth event fires within 3s, check manually
         timeout = setTimeout(async () => {
           console.log('[AuthContext] Timeout - checking session manually');
           try {
@@ -226,9 +234,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (e) {
             console.error('[AuthContext] Manual check failed:', e);
+            setError('Failed to validate session');
+          } finally {
+            // ALWAYS clear loading state
+            setLoading(false);
           }
-          setLoading(false);
-        }, 2000);
+        }, 3000);
 
       } catch (err) {
         console.error('[AuthContext] Init error:', err);
@@ -240,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       if (timeout) clearTimeout(timeout);
+      if (maxTimeout) clearTimeout(maxTimeout);
       if (subscription) subscription.unsubscribe();
     };
   }, []);
