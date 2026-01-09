@@ -74,53 +74,45 @@ export default function DocumentSituationView({
         // Try to get storage_path from metadata first
         let docStoragePath = metadata?.storage_path as string;
 
-        // If not in metadata, query via document_id chain
-        // documentId is actually a chunk ID → get document_id from chunk → query doc_metadata
+        // If not in metadata, query via RPC function (bypasses RLS cascade)
+        // documentId is actually a chunk ID → use get_document_storage_path RPC
         if (!docStoragePath) {
-          console.log('[DocumentSituationView] No storage_path in metadata, querying via document_id chain...');
+          console.log('[DocumentSituationView] No storage_path in metadata, querying via RPC...');
 
           // READ MICROACTION: Use existing authenticated Supabase client
           // Do NOT create new client - this loses user authentication
           const { supabase } = await import('@/lib/supabaseClient');
 
-          // STEP 1: Get document_id from chunk (RLS enforced - user must have access to yacht)
-          const { data: chunkData, error: chunkError } = await supabase
-            .from('search_document_chunks')
-            .select('document_id')
-            .eq('id', documentId)
-            .single();
+          // Use RPC function with SECURITY DEFINER (bypasses RLS cascade)
+          const { data: rpcData, error: rpcError } = await supabase
+            .rpc('get_document_storage_path', { p_chunk_id: documentId });
 
-          if (chunkError || !chunkData) {
-            console.error('[DocumentSituationView] READ failed - user may not have access to this yacht:', chunkError);
-            setError(`Could not find document: ${chunkError?.message || 'Unknown error'}`);
+          if (rpcError) {
+            console.error('[DocumentSituationView] RPC failed:', rpcError);
+            // Provide helpful error message
+            if (rpcError.message.includes('Not authenticated')) {
+              setError('Session expired. Please log in again.');
+            } else if (rpcError.message.includes('not assigned to yacht')) {
+              setError('Your account is not configured. Contact admin.');
+            } else if (rpcError.message.includes('access denied')) {
+              setError('You do not have access to this document.');
+            } else {
+              setError(`Could not find document: ${rpcError.message}`);
+            }
             return;
           }
 
-          const docId = chunkData.document_id;
-          console.log('[DocumentSituationView] Got document_id:', docId);
+          // RPC returns array, get first result
+          const docInfo = Array.isArray(rpcData) ? rpcData[0] : rpcData;
 
-          // STEP 2: Query doc_metadata with document_id to get storage_path
-          const { data: docData, error: docError } = await supabase
-            .from('doc_metadata')
-            .select('storage_path')
-            .eq('id', docId)
-            .single();
-
-          if (docError || !docData) {
-            console.error('[DocumentSituationView] doc_metadata query error:', docError);
-            setError('Document metadata not found');
-            return;
-          }
-
-          docStoragePath = docData.storage_path;
-
-          if (!docStoragePath) {
-            console.error('[DocumentSituationView] No storage_path in doc_metadata');
+          if (!docInfo?.storage_path) {
+            console.error('[DocumentSituationView] No storage_path from RPC');
             setError('Document storage path not found');
             return;
           }
 
-          console.log('[DocumentSituationView] Got storage_path from doc_metadata:', docStoragePath);
+          docStoragePath = docInfo.storage_path;
+          console.log('[DocumentSituationView] Got storage_path from RPC:', docStoragePath);
         }
 
         // Strip "documents/" prefix if present (chunks include it, but documentLoader expects path without bucket name)
