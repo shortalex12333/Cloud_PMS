@@ -50,6 +50,18 @@ app.add_middleware(
 )
 
 # ============================================================================
+# P0 ACTIONS ROUTES
+# ============================================================================
+
+try:
+    from routes.p0_actions_routes import router as p0_actions_router
+    app.include_router(p0_actions_router)
+    logger.info("✅ P0 Actions routes registered at /v1/actions/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register P0 Actions routes: {e}")
+    logger.error("P0 Actions will not be available via API")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
