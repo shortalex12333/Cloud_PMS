@@ -12,7 +12,7 @@
 
 import React, { createContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { User, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 
 // CelesteOS user type - includes validated yacht_id from database
 export type CelesteUser = {
@@ -21,7 +21,6 @@ export type CelesteUser = {
   role: 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior';
   yachtId: string | null;
   displayName: string | null;
-  // Session validation timestamp
   validatedAt: number;
 };
 
@@ -31,7 +30,6 @@ export type AuthContextValue = {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  // Force re-validation of session
   validateSession: () => Promise<boolean>;
 };
 
@@ -54,19 +52,29 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
   }
 
   const authUser = session.user;
-  console.log('[AuthContext] Validating user:', authUser.email);
+  console.log('[AuthContext] Validating user:', authUser.email, 'id:', authUser.id);
 
   try {
-    // CRITICAL: Query auth_users table to verify user exists and get yacht_id
-    // This ensures user has proper database entry, not just Supabase Auth account
+    // Small delay to ensure Supabase client has JWT ready after auth state change
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Query auth_users table - use maybeSingle() to avoid throwing on 0 rows
+    console.log('[AuthContext] Querying auth_users table...');
     const { data: dbUser, error } = await supabase
       .from('auth_users')
       .select('yacht_id, email, name, is_active')
       .eq('auth_user_id', authUser.id)
-      .single();
+      .maybeSingle();
 
-    if (error || !dbUser) {
-      console.error('[AuthContext] User not found in auth_users table:', error?.message);
+    console.log('[AuthContext] Query result:', { dbUser, error: error?.message });
+
+    if (error) {
+      console.error('[AuthContext] Database error:', error.message, error.code);
+      return null;
+    }
+
+    if (!dbUser) {
+      console.error('[AuthContext] User not found in auth_users table for id:', authUser.id);
       return null;
     }
 
@@ -85,7 +93,6 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
       yacht_id: dbUser.yacht_id,
     });
 
-    // Get role from user_metadata or default to 'crew'
     const meta = authUser.user_metadata || {};
 
     return {
@@ -112,10 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Validate current session - can be called anytime to re-verify
    */
   const validateSession = useCallback(async (): Promise<boolean> => {
-    console.log('[AuthContext] Validating session...');
+    console.log('[AuthContext] validateSession called');
 
     try {
-      // Get current session from Supabase
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) {
@@ -131,55 +137,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
+      console.log('[AuthContext] Session found, validating user...');
+
       // Check if token is expired
       const expiresAt = session.expires_at || 0;
       const now = Math.floor(Date.now() / 1000);
+
       if (expiresAt < now) {
-        console.log('[AuthContext] Session expired, attempting refresh...');
+        console.log('[AuthContext] Session expired, refreshing...');
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
 
         if (refreshError || !refreshData.session) {
-          console.error('[AuthContext] Failed to refresh session:', refreshError?.message);
+          console.error('[AuthContext] Refresh failed:', refreshError?.message);
           setUser(null);
           return false;
         }
 
-        // Use refreshed session
         const validatedUser = await validateAndBuildUser(refreshData.session);
         setUser(validatedUser);
         return !!validatedUser;
       }
 
-      // Validate user against database
       const validatedUser = await validateAndBuildUser(session);
       setUser(validatedUser);
       setError(validatedUser ? null : 'User not found in database');
       return !!validatedUser;
 
     } catch (err) {
-      console.error('[AuthContext] Validation failed:', err);
+      console.error('[AuthContext] validateSession error:', err);
       setUser(null);
       setError('Validation failed');
       return false;
     }
   }, []);
 
-  // Initialize auth on mount - ALWAYS validate, never trust cache
+  // Initialize auth on mount
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
     console.log('[AuthContext] Initializing...');
 
-    const initAuth = async () => {
-      setLoading(true);
-      await validateSession();
-      setLoading(false);
-    };
-
-    initAuth();
-
-    // Subscribe to auth state changes
+    // Subscribe to auth state changes FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -188,19 +187,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setError(null);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const validatedUser = await validateAndBuildUser(session);
-        setUser(validatedUser);
-        if (!validatedUser && session) {
-          setError('User not found in database');
+        setLoading(false);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        if (session) {
+          const validatedUser = await validateAndBuildUser(session);
+          setUser(validatedUser);
+          if (!validatedUser) {
+            setError('User not found in database');
+          }
         }
+        setLoading(false);
       }
     });
 
+    // Timeout fallback - end loading after 5 seconds no matter what
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[AuthContext] Timeout - ending loading state');
+        setLoading(false);
+      }
+    }, 5000);
+
     return () => {
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, [validateSession]);
+  }, []);
 
   // Login function
   const login = useCallback(async (email: string, password: string) => {
@@ -221,17 +233,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('No session returned from login');
     }
 
+    console.log('[AuthContext] Login successful, validating user...');
+
     // Validate user exists in database with yacht assignment
     const validatedUser = await validateAndBuildUser(data.session);
 
     if (!validatedUser) {
-      // Sign out if user doesn't have proper database entry
       await supabase.auth.signOut();
       throw new Error('Account not properly configured. Contact administrator.');
     }
 
     setUser(validatedUser);
-    console.log('[AuthContext] Login success:', validatedUser.email);
+    console.log('[AuthContext] Login complete:', validatedUser.email);
   }, []);
 
   // Logout function
