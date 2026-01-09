@@ -16,6 +16,9 @@ import SpotlightResultRow from './SpotlightResultRow';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
 import SituationRouter from '@/components/situations/SituationRouter';
+import { toast } from 'sonner';
+import { executeAction } from '@/lib/actionClient';
+import { supabase } from '@/lib/supabaseClient';
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -290,11 +293,108 @@ export default function SpotlightSearch({
   /**
    * Handle situation actions (add to handover, etc.)
    */
-  const handleSituationAction = useCallback((action: string, payload: any) => {
+  const handleSituationAction = useCallback(async (action: string, payload: any) => {
     console.log('[SpotlightSearch] Situation action:', action, payload);
-    // TODO: Implement action handlers
-    alert(`Action "${action}" not yet implemented`);
+
+    try {
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      // Get yacht_id from user profile
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('yacht_id')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!profile?.yacht_id) {
+        toast.error('No yacht associated with user');
+        return;
+      }
+
+      // Handle different actions
+      switch (action) {
+        case 'add_to_handover':
+          await handleAddToHandover(session.user.id, profile.yacht_id, payload);
+          break;
+
+        default:
+          console.warn(`[SpotlightSearch] Unknown action: ${action}`);
+          toast.error(`Action "${action}" not yet implemented`);
+      }
+    } catch (error) {
+      console.error('[SpotlightSearch] Action failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Action failed');
+    }
   }, []);
+
+  /**
+   * Handle add_to_handover action
+   */
+  const handleAddToHandover = async (
+    userId: string,
+    yachtId: string,
+    payload: any
+  ) => {
+    // Map entity type for documents
+    const entityType = payload.type === 'document' || payload.document_id
+      ? 'document_chunk'
+      : payload.type || 'document_chunk';
+
+    // Generate summary from available data
+    const summaryText = payload.document_title || payload.title || payload.name || 'Document reference';
+
+    // Map entity type to category
+    const categoryMap: Record<string, string> = {
+      'fault': 'ongoing_fault',
+      'work_order': 'work_in_progress',
+      'equipment': 'equipment_status',
+      'document': 'important_info',
+      'document_chunk': 'important_info',
+      'part': 'general',
+    };
+    const category = categoryMap[entityType] || 'important_info';
+
+    // Build API request payload
+    const requestPayload = {
+      entity_type: entityType,
+      entity_id: payload.document_id || payload.entity_id || payload.id,
+      summary_text: summaryText,
+      category: category,
+      priority: payload.priority || 'normal',
+    };
+
+    console.log('[SpotlightSearch] Executing add_to_handover:', {
+      action: 'add_to_handover',
+      context: { yacht_id: yachtId, user_id: userId },
+      payload: requestPayload,
+    });
+
+    // Call backend API via actionClient
+    const result = await executeAction(
+      'add_to_handover',
+      {
+        yacht_id: yachtId,
+        user_id: userId,
+      },
+      requestPayload
+    );
+
+    if (result.status === 'error') {
+      throw new Error(result.message || 'Failed to add to handover');
+    }
+
+    // Show success message
+    toast.success('Added to handover', {
+      description: summaryText.substring(0, 80),
+    });
+
+    console.log('[SpotlightSearch] Handover entry created:', result);
+  };
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
