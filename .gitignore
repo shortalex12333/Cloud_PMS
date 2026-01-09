@@ -71,3 +71,4 @@ pipeline_test_results_*.json
 # Temp metrics
 *_before_changes.json
 *_after_changes*.json
+.vercel
