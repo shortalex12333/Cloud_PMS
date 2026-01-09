@@ -1,33 +1,47 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Environment variables - must be set in Vercel
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Validate env vars on load (client-side only)
-if (typeof window !== 'undefined') {
-  if (!supabaseUrl) {
-    console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_URL is not set!');
+// Singleton pattern - only create client once, and only on client-side
+let supabaseInstance: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  // Return existing instance if available
+  if (supabaseInstance) {
+    return supabaseInstance;
   }
-  if (!supabaseAnonKey) {
-    console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is not set!');
+
+  // Validate env vars (client-side only for logging)
+  if (typeof window !== 'undefined') {
+    if (!supabaseUrl) {
+      console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_URL is not set!');
+    }
+    if (!supabaseAnonKey) {
+      console.error('[Supabase] ❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is not set!');
+    }
+    if (supabaseUrl && supabaseAnonKey) {
+      console.log('[Supabase] ✅ Client initialized:', supabaseUrl.substring(0, 30) + '...');
+    }
   }
-  if (supabaseUrl && supabaseAnonKey) {
-    console.log('[Supabase] ✅ Client initialized:', supabaseUrl.substring(0, 30) + '...');
-  }
+
+  // Create client with appropriate settings
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: typeof window !== 'undefined', // Only persist on client
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      // Don't specify storage - let Supabase use its default (localStorage on client)
+    },
+  });
+
+  return supabaseInstance;
 }
 
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: `sb-${supabaseUrl.split('//')[1]?.split('.')[0] || 'celeste'}-auth-token`,
-  },
-});
+// Export a getter that ensures client-side only usage for auth
+export const supabase = getSupabaseClient();
 
 // Helper function to get current user (placeholder)
 export async function getCurrentUser() {
