@@ -29,14 +29,6 @@ export function isHOD(user: CelesteUser | null): boolean {
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Timeout wrapper for promises
-function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
-  ]);
-}
-
 async function validateAndBuildUser(session: Session | null): Promise<CelesteUser | null> {
   if (!session?.user) {
     console.log('[AuthContext] No session');
@@ -48,12 +40,15 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
 
   try {
     // Use RPC function (SECURITY DEFINER - bypasses RLS)
-    const { data, error } = await withTimeout(
-      supabase.rpc('get_user_auth_info', { p_user_id: authUser.id }),
-      5000,
-      'Database query timeout'
-    );
+    // Add timeout via AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+    const { data, error } = await supabase.rpc('get_user_auth_info', {
+      p_user_id: authUser.id
+    }).abortSignal(controller.signal);
+
+    clearTimeout(timeoutId);
     console.log('[AuthContext] RPC result:', { data, error: error?.message });
 
     if (error) {
