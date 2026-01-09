@@ -78,10 +78,29 @@ export default function DocumentSituationView({
         // documentId is actually a chunk ID → use get_document_storage_path RPC
         if (!docStoragePath) {
           console.log('[DocumentSituationView] No storage_path in metadata, querying via RPC...');
+          console.log('[DocumentSituationView] documentId value:', documentId);
+          console.log('[DocumentSituationView] documentId type:', typeof documentId);
+
+          // Validate documentId is not null/undefined
+          if (!documentId) {
+            console.error('[DocumentSituationView] documentId is null or undefined!');
+            setError('Invalid document ID');
+            return;
+          }
+
+          // Validate documentId looks like a UUID
+          const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidPattern.test(documentId)) {
+            console.error('[DocumentSituationView] documentId is not a valid UUID:', documentId);
+            setError(`Invalid document ID format: ${documentId}`);
+            return;
+          }
 
           // READ MICROACTION: Use existing authenticated Supabase client
           // Do NOT create new client - this loses user authentication
           const { supabase } = await import('@/lib/supabaseClient');
+
+          console.log('[DocumentSituationView] Calling RPC with UUID:', documentId);
 
           // Use RPC function with SECURITY DEFINER (bypasses RLS cascade)
           const { data: rpcData, error: rpcError } = await supabase
