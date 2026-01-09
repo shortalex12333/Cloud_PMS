@@ -11,7 +11,7 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://vzsohavtuotocgrfkfyd.supabase.co",
               "font-src 'self'",
@@ -20,7 +20,7 @@ const nextConfig = {
               "form-action 'self'",
               "frame-ancestors 'none'",
               "frame-src 'self' https://vzsohavtuotocgrfkfyd.supabase.co",
-              "connect-src 'self' https://vzsohavtuotocgrfkfyd.supabase.co",
+              "connect-src 'self' https://vzsohavtuotocgrfkfyd.supabase.co https://pipeline-core.int.celeste7.ai",
             ].join('; '),
           },
         ],
