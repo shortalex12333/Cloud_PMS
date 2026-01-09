@@ -1,487 +1,563 @@
 """
-Inventory Domain Handlers
-=========================
+Inventory & Parts Handlers
+===========================
 
-Group 2: READ handlers for inventory/parts actions.
+P0 Actions for inventory management:
+- check_stock_level (P0 Action #6) - READ
+- log_part_usage (P0 Action #7) - MUTATE
 
-Handlers:
-- view_inventory_item: Part details with stock status
-- view_stock_levels: Stock levels with history
-- view_part_location: Storage location
-- view_part_usage: Usage history
-- scan_part_barcode: Lookup by barcode
-- check_stock_level: Quick stock check (alias)
-
-All handlers return standardized ActionResponseEnvelope.
+Based on specs: /P0_ACTION_CONTRACTS.md - Cluster 04: INVENTORY_PARTS
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Optional, List
 import logging
+import uuid
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from action_response_schema import (
-    ResponseBuilder,
-    FileReference,
-    AvailableAction,
-    SignedUrlGenerator,
-    StockStatus
-)
-
-from .schema_mapping import get_table, normalize_part, map_parts_select
+from actions.action_response_schema import ResponseBuilder
 
 logger = logging.getLogger(__name__)
 
 
 class InventoryHandlers:
     """
-    Inventory domain READ handlers.
+    Handlers for inventory and parts management actions.
+
+    Implements P0 actions:
+    - check_stock_level (READ)
+    - log_part_usage (MUTATE)
     """
 
     def __init__(self, supabase_client):
         self.db = supabase_client
-        self.url_generator = SignedUrlGenerator(supabase_client) if supabase_client else None
 
-    async def view_inventory_item(
+    # =========================================================================
+    # P0 ACTION #6: check_stock_level
+    # =========================================================================
+
+    async def check_stock_level_execute(
         self,
-        entity_id: str,
+        part_id: str,
         yacht_id: str,
-        params: Optional[Dict] = None
+        user_id: str
     ) -> Dict:
         """
-        View inventory item/part details.
+        POST /v1/actions/execute (action=check_stock_level)
+
+        Check current stock level for a part.
+
+        READ action - execute only (no prefill or preview needed).
 
         Returns:
-        - Part data (name, part_number, manufacturer, quantity, etc.)
-        - Stock status (IN_STOCK, LOW_STOCK, OUT_OF_STOCK)
-        - Available actions
+        - Part details (name, part_number, category, unit)
+        - Stock info (quantity_on_hand, minimum_quantity, stock_status, location)
+        - Usage stats (last 30 days, estimated runout)
+        - Last counted info (accountability: who counted, when)
+
+        Stock status logic:
+        - OUT_OF_STOCK: quantity_on_hand == 0
+        - LOW_STOCK: quantity_on_hand > 0 AND quantity_on_hand <= minimum_quantity
+        - IN_STOCK: quantity_on_hand > minimum_quantity
         """
-        builder = ResponseBuilder("view_inventory_item", entity_id, "part", yacht_id)
-
         try:
-            # Use actual schema columns
-            result = self.db.table(get_table("parts")).select(
-                map_parts_select()
-            ).eq("yacht_id", yacht_id).eq("id", entity_id).maybe_single().execute()
+            # Get part details with stock info
+            part_result = self.db.table("pms_parts").select(
+                "id, name, part_number, category, description, unit, "
+                "quantity_on_hand, minimum_quantity, maximum_quantity, location, "
+                "last_counted_at, last_counted_by, "
+                "counter:last_counted_by(id, full_name)"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not result.data:
-                builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
-                return builder.build()
+            if not part_result.data:
+                return ResponseBuilder.error(
+                    action="check_stock_level",
+                    error_code="PART_NOT_FOUND",
+                    message=f"Part not found: {part_id}"
+                )
 
-            # Normalize to handler expected format
-            part = normalize_part(result.data)
+            part = part_result.data
+            quantity_on_hand = part.get("quantity_on_hand", 0)
+            minimum_quantity = part.get("minimum_quantity", 0)
+            maximum_quantity = part.get("maximum_quantity")
 
-            # Add computed fields
-            part["stock_status"] = self._compute_stock_status(part)
-            part["is_low_stock"] = part["stock_status"] in ("LOW_STOCK", "OUT_OF_STOCK")
-            part["reorder_needed"] = part["is_low_stock"]
+            # Determine stock status
+            if quantity_on_hand == 0:
+                stock_status = "OUT_OF_STOCK"
+            elif quantity_on_hand <= minimum_quantity:
+                stock_status = "LOW_STOCK"
+            elif maximum_quantity and quantity_on_hand > maximum_quantity:
+                stock_status = "OVERSTOCKED"
+            else:
+                stock_status = "IN_STOCK"
 
-            # Calculate value
-            if part.get("quantity") and part.get("unit_cost"):
-                part["total_value"] = part["quantity"] * part["unit_cost"]
+            # Get usage stats (last 30 days)
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+            usage_result = self.db.table("pms_part_usage").select(
+                "quantity, used_at"
+            ).eq("yacht_id", yacht_id).eq(
+                "part_id", part_id
+            ).gte(
+                "used_at", thirty_days_ago.isoformat()
+            ).execute()
 
-            builder.set_data(part)
+            # Calculate usage stats
+            usage_last_30_days = sum(u.get("quantity", 0) for u in usage_result.data) if usage_result.data else 0
+            average_monthly = usage_last_30_days  # Already 30 days
 
-            # Get part images if any
-            files = await self._get_part_files(entity_id)
-            if files:
-                builder.add_files(files)
+            # Estimate runout days (if usage > 0)
+            estimated_runout_days = None
+            if usage_last_30_days > 0 and quantity_on_hand > 0:
+                daily_usage = usage_last_30_days / 30
+                estimated_runout_days = int(quantity_on_hand / daily_usage)
 
-            # Add available actions
-            builder.add_available_actions(self._get_part_actions(part))
+            # Get counter name
+            counter_name = "Unknown"
+            if part.get("counter"):
+                counter_name = part["counter"].get("full_name", "Unknown")
 
-            return builder.build()
+            # Build response
+            return ResponseBuilder.success(
+                action="check_stock_level",
+                result={
+                    "part": {
+                        "id": part["id"],
+                        "name": part["name"],
+                        "part_number": part.get("part_number", ""),
+                        "category": part.get("category", ""),
+                        "description": part.get("description", ""),
+                        "unit": part.get("unit", "ea")
+                    },
+                    "stock": {
+                        "quantity_on_hand": quantity_on_hand,
+                        "minimum_quantity": minimum_quantity,
+                        "maximum_quantity": maximum_quantity,
+                        "stock_status": stock_status,
+                        "location": part.get("location", ""),
+                        "last_counted_at": part.get("last_counted_at"),
+                        "last_counted_by": counter_name
+                    },
+                    "usage_stats": {
+                        "last_30_days": usage_last_30_days,
+                        "average_monthly": average_monthly,
+                        "estimated_runout_days": estimated_runout_days
+                    },
+                    "pending_orders": []  # TODO: Implement when purchase orders exist
+                }
+            )
 
         except Exception as e:
-            logger.error(f"view_inventory_item failed: {e}", exc_info=True)
-            builder.set_error("INTERNAL_ERROR", str(e))
-            return builder.build()
+            logger.exception(f"Error checking stock level for part {part_id}")
+            return ResponseBuilder.error(
+                action="check_stock_level",
+                error_code="INTERNAL_ERROR",
+                message=f"Failed to check stock level: {str(e)}"
+            )
 
-    async def view_stock_levels(
+
+    # =========================================================================
+    # P0 ACTION #7: log_part_usage
+    # =========================================================================
+
+    async def log_part_usage_prefill(
         self,
-        entity_id: str,
+        part_id: str,
         yacht_id: str,
-        params: Optional[Dict] = None
+        user_id: str,
+        work_order_id: Optional[str] = None
     ) -> Dict:
         """
-        View stock levels with status.
+        GET /v1/actions/log_part_usage/prefill
+
+        Pre-fill part usage form.
 
         Returns:
-        - Current quantity and status
-        - Min/max thresholds
-        - Recent transactions (if available)
+        - Part details (name, part_number, unit, stock_available)
+        - Work order details (if work_order_id provided)
+        - Suggested quantity = 1
+        - Usage reason = "work_order" if WO provided, else "other"
         """
-        builder = ResponseBuilder("view_stock_levels", entity_id, "part", yacht_id)
-
         try:
-            # Get current stock using actual schema
-            result = self.db.table(get_table("parts")).select(
-                map_parts_select()
-            ).eq("yacht_id", yacht_id).eq("id", entity_id).maybe_single().execute()
+            # Get part details
+            part_result = self.db.table("pms_parts").select(
+                "id, name, part_number, unit, quantity_on_hand"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not result.data:
-                builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
-                return builder.build()
+            if not part_result.data:
+                return {
+                    "status": "error",
+                    "error_code": "PART_NOT_FOUND",
+                    "message": f"Part not found: {part_id}"
+                }
 
-            # Normalize to handler expected format
-            part = normalize_part(result.data)
-            stock_status = self._compute_stock_status(part)
+            part = part_result.data
 
-            # Try to get recent transactions
-            transactions = []
-            try:
-                tx_result = self.db.table("stock_transactions").select(
-                    "id, transaction_type, quantity, created_at, notes, user_id"
-                ).eq("part_id", entity_id).order(
-                    "created_at", desc=True
-                ).limit(10).execute()
-                transactions = tx_result.data or []
-            except Exception:
-                pass  # Table may not exist
+            prefill_data = {
+                "part_id": part["id"],
+                "part_name": part["name"],
+                "part_number": part.get("part_number", ""),
+                "unit": part.get("unit", "ea"),
+                "stock_available": part.get("quantity_on_hand", 0),
+                "suggested_quantity": 1
+            }
 
-            builder.set_data({
-                "part_id": entity_id,
-                "part_name": part.get("canonical_name"),
-                "current": {
-                    "quantity": part.get("quantity", 0),
-                    "unit": part.get("unit", "units"),
-                    "status": stock_status,
-                    "location": part.get("location")
-                },
-                "thresholds": {
-                    "min_quantity": part.get("min_quantity", 0),
-                    "max_quantity": part.get("max_quantity"),
-                    "reorder_point": part.get("min_quantity", 0)
-                },
-                "recent_transactions": transactions
-            })
+            # Add work order details if provided
+            if work_order_id:
+                wo_result = self.db.table("pms_work_orders").select(
+                    "id, number, title"
+                ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            # Actions based on status
-            actions = [
-                AvailableAction(
-                    action_id="edit_inventory_quantity",
-                    label="Adjust Quantity",
-                    variant="MUTATE",
-                    icon="edit",
-                    requires_signature=True,
-                    confirmation_message="Adjust inventory quantity?"
+                if wo_result.data:
+                    prefill_data["work_order_id"] = work_order_id
+                    prefill_data["work_order_number"] = wo_result.data.get("number", "")
+                    prefill_data["usage_reason"] = "work_order"
+                else:
+                    prefill_data["usage_reason"] = "other"
+            else:
+                prefill_data["usage_reason"] = "other"
+
+            return {
+                "status": "success",
+                "prefill_data": prefill_data
+            }
+
+        except Exception as e:
+            logger.exception(f"Error prefilling log_part_usage for part {part_id}")
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": f"Failed to prefill: {str(e)}"
+            }
+
+    async def log_part_usage_preview(
+        self,
+        part_id: str,
+        quantity: float,
+        yacht_id: str,
+        user_id: str,
+        work_order_id: Optional[str] = None,
+        equipment_id: Optional[str] = None,
+        usage_reason: str = "other",
+        notes: Optional[str] = None
+    ) -> Dict:
+        """
+        POST /v1/actions/log_part_usage/preview
+
+        Preview inventory deduction before execution.
+
+        Shows:
+        - What will be deducted
+        - Current stock → new stock
+        - Warnings if stock goes to zero or below minimum
+        """
+        try:
+            # Get part details
+            part_result = self.db.table("pms_parts").select(
+                "id, name, part_number, unit, quantity_on_hand, minimum_quantity"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not part_result.data:
+                return ResponseBuilder.error(
+                    action="log_part_usage",
+                    error_code="PART_NOT_FOUND",
+                    message=f"Part not found: {part_id}"
                 )
+
+            part = part_result.data
+            current_stock = part.get("quantity_on_hand", 0)
+            minimum_quantity = part.get("minimum_quantity", 0)
+            after_usage = current_stock - quantity
+
+            # Get user name
+            user_result = self.db.table("user_profiles").select(
+                "full_name"
+            ).eq("id", user_id).maybe_single().execute()
+            user_name = user_result.data.get("full_name", "Unknown") if user_result.data else "Unknown"
+
+            # Get work order number if provided
+            wo_number = None
+            if work_order_id:
+                wo_result = self.db.table("pms_work_orders").select(
+                    "number"
+                ).eq("id", work_order_id).maybe_single().execute()
+                if wo_result.data:
+                    wo_number = wo_result.data.get("number", "")
+
+            # Build preview
+            changes = {
+                "part": f"{part['name']} ({part.get('part_number', '')})",
+                "quantity": f"{quantity} {part.get('unit', 'ea')}",
+                "used_by": user_name,
+                "used_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            }
+
+            if wo_number:
+                changes["work_order"] = wo_number
+
+            side_effects = [
+                f"Inventory will be DEDUCTED by {quantity} {part.get('unit', 'ea')}",
+                "Part usage log entry will be created",
+                f"Stock level will change from {current_stock} → {after_usage}",
+                "Audit log entry will be created",
+                "Usage will be attributed to your user account"
             ]
 
-            if stock_status in ("LOW_STOCK", "OUT_OF_STOCK"):
-                actions.insert(0, AvailableAction(
-                    action_id="create_reorder",
-                    label="Create Reorder",
-                    variant="MUTATE",
-                    icon="cart",
-                    requires_signature=True,
-                    is_primary=True
-                ))
+            # Check for warnings
+            warnings = []
+            warning_obj = None
 
-            builder.add_available_actions(actions)
+            if after_usage < 0:
+                warnings.append(f"❌ INSUFFICIENT STOCK: Current stock ({current_stock}) is less than requested quantity ({quantity})")
+                warning_obj = "INSUFFICIENT_STOCK"
+            elif after_usage == 0:
+                warnings.append(f"⚠️  Stock will be ZERO after this usage")
+            elif after_usage <= minimum_quantity:
+                warnings.append(f"⚠️  Stock will be LOW after this usage (below minimum: {minimum_quantity})")
 
-            return builder.build()
+            inventory_changes = [{
+                "part": f"{part['name']} ({part.get('part_number', '')})",
+                "current_stock": current_stock,
+                "after_usage": after_usage,
+                "warning": warning_obj
+            }]
 
-        except Exception as e:
-            logger.error(f"view_stock_levels failed: {e}", exc_info=True)
-            builder.set_error("INTERNAL_ERROR", str(e))
-            return builder.build()
-
-    async def view_part_location(
-        self,
-        entity_id: str,
-        yacht_id: str,
-        params: Optional[Dict] = None
-    ) -> Dict:
-        """
-        View part storage location.
-
-        Returns:
-        - Location details (deck, compartment, bin)
-        """
-        builder = ResponseBuilder("view_part_location", entity_id, "part", yacht_id)
-
-        try:
-            result = self.db.table(get_table("parts")).select(
-                "id, name, description, metadata"
-            ).eq("yacht_id", yacht_id).eq("id", entity_id).maybe_single().execute()
-
-            if not result.data:
-                builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
-                return builder.build()
-
-            part = result.data
-            # Extract location from metadata if available
-            metadata = part.get("metadata") or {}
-
-            builder.set_data({
-                "part_id": entity_id,
-                "part_name": part.get("name"),
-                "location": {
-                    "description": metadata.get("location", part.get("description")),
-                    "bin_number": metadata.get("bin_number"),
-                    "deck": metadata.get("deck"),
-                    "compartment": metadata.get("compartment")
+            return {
+                "status": "success",
+                "preview": {
+                    "action": "log_part_usage",
+                    "summary": "You are about to log part usage:",
+                    "changes": changes,
+                    "side_effects": side_effects,
+                    "inventory_changes": inventory_changes,
+                    "requires_signature": False,
+                    "warnings": warnings
                 }
-            })
-
-            return builder.build()
+            }
 
         except Exception as e:
-            logger.error(f"view_part_location failed: {e}", exc_info=True)
-            builder.set_error("INTERNAL_ERROR", str(e))
-            return builder.build()
-
-    async def view_part_usage(
-        self,
-        entity_id: str,
-        yacht_id: str,
-        params: Optional[Dict] = None
-    ) -> Dict:
-        """
-        View part usage history.
-
-        Returns:
-        - List of work orders where part was used
-        - Usage statistics
-        """
-        builder = ResponseBuilder("view_part_usage", entity_id, "part", yacht_id)
-
-        try:
-            offset = (params or {}).get("offset", 0)
-            limit = (params or {}).get("limit", 20)
-
-            # Get part name
-            part_result = self.db.table(get_table("parts")).select(
-                "name"
-            ).eq("id", entity_id).maybe_single().execute()
-
-            part_name = part_result.data.get("name") if part_result.data else "Unknown"
-
-            # Try to query usage log (table may not exist yet)
-            usage_records = []
-            total_count = 0
-            try:
-                result = self.db.table(get_table("work_order_parts")).select(
-                    "work_order_id, quantity_used, used_at",
-                    count="exact"
-                ).eq("part_id", entity_id).order(
-                    "used_at", desc=True
-                ).range(offset, offset + limit - 1).execute()
-
-                usage_records = result.data or []
-                total_count = result.count or len(usage_records)
-            except Exception as table_err:
-                # Table doesn't exist - return empty usage history
-                logger.debug(f"work_order_parts table not available: {table_err}")
-
-            # Calculate total used
-            total_used = sum(r.get("quantity_used", 0) for r in usage_records)
-
-            builder.set_data({
-                "part_id": entity_id,
-                "part_name": part_name,
-                "usage_history": [
-                    {
-                        "work_order_id": r.get("work_order_id"),
-                        "work_order_title": None,  # Simplified - no FK join
-                        "quantity_used": r.get("quantity_used"),
-                        "used_at": r.get("used_at")
-                    }
-                    for r in usage_records
-                ],
-                "summary": {
-                    "total_records": total_count,
-                    "total_quantity_used": total_used
-                },
-                "message": "Usage tracking not configured" if not usage_records else None
-            })
-
-            builder.set_pagination(offset, limit, total_count)
-
-            return builder.build()
-
-        except Exception as e:
-            logger.error(f"view_part_usage failed: {e}", exc_info=True)
-            builder.set_error("INTERNAL_ERROR", str(e))
-            return builder.build()
-
-    async def scan_part_barcode(
-        self,
-        entity_id: str,
-        yacht_id: str,
-        params: Optional[Dict] = None
-    ) -> Dict:
-        """
-        Lookup part by barcode.
-
-        Params:
-        - barcode: The scanned barcode value
-
-        Returns:
-        - Part data if found
-        """
-        builder = ResponseBuilder("scan_part_barcode", entity_id, "part", yacht_id)
-
-        try:
-            barcode = (params or {}).get("barcode", entity_id)
-
-            # Search by part_number (barcode column may not exist)
-            result = self.db.table(get_table("parts")).select(
-                "id, name, part_number, manufacturer, description, category, metadata"
-            ).eq("yacht_id", yacht_id).eq(
-                "part_number", barcode
-            ).maybe_single().execute()
-
-            if not result or not result.data:
-                builder.set_error(
-                    "NOT_FOUND",
-                    f"No part found for barcode: {barcode}",
-                    suggestions=["Verify barcode is correct", "Part may not be in inventory"]
-                )
-                return builder.build()
-
-            # Normalize part data
-            part = normalize_part(result.data)
-            part["stock_status"] = self._compute_stock_status(part)
-            part["scanned_barcode"] = barcode
-
-            builder.set_data(part)
-
-            # Update entity_id to actual part ID
-            builder.entity_id = part["id"]
-
-            builder.add_available_actions(self._get_part_actions(part))
-
-            return builder.build()
-
-        except Exception as e:
-            logger.error(f"scan_part_barcode failed: {e}", exc_info=True)
-            builder.set_error("INTERNAL_ERROR", str(e))
-            return builder.build()
-
-    async def check_stock_level(
-        self,
-        entity_id: str,
-        yacht_id: str,
-        params: Optional[Dict] = None
-    ) -> Dict:
-        """
-        Quick stock level check (alias for view_stock_levels).
-        """
-        return await self.view_stock_levels(entity_id, yacht_id, params)
-
-    # =========================================================================
-    # HELPER METHODS
-    # =========================================================================
-
-    def _compute_stock_status(self, part: Dict) -> str:
-        """Compute stock status for a part"""
-        qty = part.get("quantity", 0) or 0
-        min_qty = part.get("min_quantity", 0) or 0
-        max_qty = part.get("max_quantity") or float("inf")
-
-        if qty <= 0:
-            return "OUT_OF_STOCK"
-        elif qty <= min_qty:
-            return "LOW_STOCK"
-        elif max_qty != float("inf") and qty >= max_qty:
-            return "OVERSTOCKED"
-        else:
-            return "IN_STOCK"
-
-    async def _get_part_files(self, part_id: str) -> List[Dict]:
-        """Get files associated with part"""
-        files = []
-
-        if not self.url_generator:
-            return files
-
-        try:
-            result = self.db.table("attachments").select(
-                "id, filename, mime_type, storage_path"
-            ).eq("entity_type", "part").eq("entity_id", part_id).execute()
-
-            for att in (result.data or []):
-                file_ref = self.url_generator.create_file_reference(
-                    bucket="attachments",
-                    path=att.get("storage_path", ""),
-                    filename=att.get("filename", "file"),
-                    file_id=att["id"],
-                    mime_type=att.get("mime_type"),
-                    expires_in_minutes=30
-                )
-                if file_ref:
-                    files.append(file_ref.to_dict())
-
-        except Exception as e:
-            logger.warning(f"Failed to get part files: {e}")
-
-        return files
-
-    def _get_part_actions(self, part: Dict) -> List[AvailableAction]:
-        """Get available actions for part entity"""
-        actions = [
-            AvailableAction(
-                action_id="view_stock_levels",
-                label="Stock Levels",
-                variant="READ",
-                icon="chart"
-            ),
-            AvailableAction(
-                action_id="view_part_location",
-                label="View Location",
-                variant="READ",
-                icon="map-pin"
-            ),
-            AvailableAction(
-                action_id="view_part_usage",
-                label="Usage History",
-                variant="READ",
-                icon="activity"
-            ),
-            AvailableAction(
-                action_id="edit_inventory_quantity",
-                label="Adjust Quantity",
-                variant="MUTATE",
-                icon="edit",
-                requires_signature=True,
-                confirmation_message="Adjust inventory quantity?"
-            ),
-            AvailableAction(
-                action_id="log_part_usage",
-                label="Log Usage",
-                variant="MUTATE",
-                icon="minus"
+            logger.exception(f"Error previewing log_part_usage for part {part_id}")
+            return ResponseBuilder.error(
+                action="log_part_usage",
+                error_code="INTERNAL_ERROR",
+                message=f"Failed to preview: {str(e)}"
             )
-        ]
 
-        # Add reorder if low stock
-        if part.get("stock_status") in ("LOW_STOCK", "OUT_OF_STOCK"):
-            actions.insert(0, AvailableAction(
-                action_id="create_reorder",
-                label="Create Reorder",
-                variant="MUTATE",
-                icon="cart",
-                requires_signature=True,
-                is_primary=True
-            ))
+    async def log_part_usage_execute(
+        self,
+        part_id: str,
+        quantity: float,
+        usage_reason: str,
+        yacht_id: str,
+        user_id: str,
+        work_order_id: Optional[str] = None,
+        equipment_id: Optional[str] = None,
+        notes: Optional[str] = None
+    ) -> Dict:
+        """
+        POST /v1/actions/execute (action=log_part_usage)
 
-        return actions
+        Execute part usage logging with inventory deduction.
+
+        Uses deduct_part_inventory() helper function for atomic operation.
+
+        Creates:
+        - pms_part_usage log entry
+        - Updates pms_parts.quantity_on_hand
+        - Creates audit log entry
+
+        Returns error if insufficient stock.
+        """
+        try:
+            # Validate quantity
+            if quantity <= 0:
+                return ResponseBuilder.error(
+                    action="log_part_usage",
+                    error_code="INVALID_QUANTITY",
+                    message="Quantity must be positive"
+                )
+
+            # Validate work order exists if provided
+            if work_order_id:
+                wo_result = self.db.table("pms_work_orders").select(
+                    "id"
+                ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                if not wo_result.data:
+                    return ResponseBuilder.error(
+                        action="log_part_usage",
+                        error_code="WO_NOT_FOUND",
+                        message=f"Work order not found: {work_order_id}"
+                    )
+
+            # Call deduct_part_inventory() helper function
+            # This does atomic operation: row lock, check stock, deduct, create usage log
+            try:
+                deduct_result = self.db.rpc(
+                    "deduct_part_inventory",
+                    {
+                        "p_yacht_id": yacht_id,
+                        "p_part_id": part_id,
+                        "p_quantity": int(quantity) if quantity == int(quantity) else quantity,
+                        "p_work_order_id": work_order_id,
+                        "p_equipment_id": equipment_id,
+                        "p_usage_reason": usage_reason,
+                        "p_notes": notes,
+                        "p_used_by": user_id
+                    }
+                ).execute()
+
+                # If function returned false, insufficient stock
+                if not deduct_result.data:
+                    return ResponseBuilder.error(
+                        action="log_part_usage",
+                        error_code="INSUFFICIENT_STOCK",
+                        message="Not enough stock to deduct requested quantity"
+                    )
+
+            except Exception as e:
+                # Function doesn't exist yet (migrations not deployed)
+                logger.warning(f"deduct_part_inventory() function not found. Using manual deduction.")
+
+                # Manual deduction (fallback)
+                # Get current stock with row lock
+                part_result = self.db.table("pms_parts").select(
+                    "id, name, part_number, quantity_on_hand, minimum_quantity"
+                ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not part_result.data:
+                    return ResponseBuilder.error(
+                        action="log_part_usage",
+                        error_code="PART_NOT_FOUND",
+                        message=f"Part not found: {part_id}"
+                    )
+
+                part = part_result.data
+                current_stock = part.get("quantity_on_hand", 0)
+
+                # Check sufficient stock
+                if current_stock < quantity:
+                    return ResponseBuilder.error(
+                        action="log_part_usage",
+                        error_code="INSUFFICIENT_STOCK",
+                        message=f"Insufficient stock: {current_stock} available, {quantity} requested"
+                    )
+
+                # Update part stock
+                new_stock = current_stock - quantity
+                update_result = self.db.table("pms_parts").update({
+                    "quantity_on_hand": new_stock,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", part_id).eq("yacht_id", yacht_id).execute()
+
+                # Create usage log entry
+                usage_log_id = str(uuid.uuid4())
+                usage_result = self.db.table("pms_part_usage").insert({
+                    "id": usage_log_id,
+                    "yacht_id": yacht_id,
+                    "part_id": part_id,
+                    "quantity": quantity,
+                    "work_order_id": work_order_id,
+                    "equipment_id": equipment_id,
+                    "usage_reason": usage_reason,
+                    "notes": notes,
+                    "used_by": user_id,
+                    "used_at": datetime.now(timezone.utc).isoformat()
+                }).execute()
+
+            # Get created usage log entry
+            usage_log = self.db.table("pms_part_usage").select(
+                "id, part_id, quantity, work_order_id, equipment_id, "
+                "usage_reason, notes, used_at, used_by, "
+                "part:part_id(name, part_number), "
+                "user:used_by(full_name)"
+            ).eq("part_id", part_id).eq("yacht_id", yacht_id).order(
+                "used_at", desc=True
+            ).limit(1).maybe_single().execute()
+
+            if not usage_log.data:
+                logger.error(f"Failed to retrieve usage log after creation")
+                usage_log_data = {}
+            else:
+                usage_log_data = usage_log.data
+
+            # Get new stock level
+            part_result = self.db.table("pms_parts").select(
+                "quantity_on_hand, minimum_quantity"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            new_stock_level = part_result.data.get("quantity_on_hand", 0) if part_result.data else 0
+            minimum_quantity = part_result.data.get("minimum_quantity", 0) if part_result.data else 0
+
+            # Check stock warning
+            stock_warning = new_stock_level <= minimum_quantity or new_stock_level == 0
+
+            # Get part and user names
+            part_name = "Unknown"
+            user_name = "Unknown"
+            if usage_log_data.get("part"):
+                part_name = usage_log_data["part"].get("name", "Unknown")
+            if usage_log_data.get("user"):
+                user_name = usage_log_data["user"].get("full_name", "Unknown")
+
+            # Create audit log entry
+            audit_log_id = str(uuid.uuid4())
+            try:
+                self.db.table("pms_audit_log").insert({
+                    "id": audit_log_id,
+                    "yacht_id": yacht_id,
+                    "action": "log_part_usage",
+                    "entity_type": "part_usage",
+                    "entity_id": usage_log_data.get("id", ""),
+                    "user_id": user_id,
+                    "signature": {
+                        "user_id": user_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    },
+                    "old_values": None,
+                    "new_values": {
+                        "part_id": part_id,
+                        "quantity": quantity,
+                        "usage_reason": usage_reason,
+                        "new_stock_level": new_stock_level
+                    },
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }).execute()
+            except Exception as e:
+                logger.warning(f"Failed to create audit log: {e}")
+
+            # Build response
+            return ResponseBuilder.success(
+                action="log_part_usage",
+                result={
+                    "usage_log": {
+                        "id": usage_log_data.get("id", ""),
+                        "part_id": part_id,
+                        "part_name": part_name,
+                        "quantity": quantity,
+                        "work_order_id": work_order_id,
+                        "equipment_id": equipment_id,
+                        "usage_reason": usage_reason,
+                        "notes": notes,
+                        "used_at": usage_log_data.get("used_at", datetime.now(timezone.utc).isoformat()),
+                        "used_by": user_id,
+                        "used_by_name": user_name
+                    },
+                    "new_stock_level": new_stock_level,
+                    "stock_warning": stock_warning,
+                    "audit_log_id": audit_log_id
+                },
+                message="Part usage logged"
+            )
+
+        except Exception as e:
+            logger.exception(f"Error executing log_part_usage for part {part_id}")
+            return ResponseBuilder.error(
+                action="log_part_usage",
+                error_code="INTERNAL_ERROR",
+                message=f"Failed to log part usage: {str(e)}"
+            )
 
 
-def get_inventory_handlers(supabase_client) -> Dict[str, callable]:
-    """Get inventory handler functions for registration."""
-    handlers = InventoryHandlers(supabase_client)
-
-    return {
-        "view_inventory_item": handlers.view_inventory_item,
-        "view_stock_levels": handlers.view_stock_levels,
-        "view_part_location": handlers.view_part_location,
-        "view_part_usage": handlers.view_part_usage,
-        "scan_part_barcode": handlers.scan_part_barcode,
-        "check_stock_level": handlers.check_stock_level,
-    }
+__all__ = ["InventoryHandlers"]
