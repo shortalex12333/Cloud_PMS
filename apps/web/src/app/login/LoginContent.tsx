@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import AuthDebug from '@/components/AuthDebug';
 
 export default function LoginContent() {
   const router = useRouter();
@@ -148,6 +149,9 @@ export default function LoginContent() {
           Secure crew access only
         </p>
       </div>
+
+      {/* Debug panel - remove after fixing auth */}
+      <AuthDebug />
     </div>
   );
 }
