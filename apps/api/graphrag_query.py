@@ -133,13 +133,15 @@ class ResolvedEntity:
 # ============================================================================
 
 class CardType(str, Enum):
-    DOCUMENT_CHUNK = "document_chunk"
-    FAULT = "fault"
-    WORK_ORDER = "work_order"
-    PART = "part"
-    EQUIPMENT = "equipment"
-    PREDICTIVE = "predictive"
-    HANDOVER = "handover"
+    # FIX: Use actual table names instead of enum strings for frontend compatibility
+    # Frontend DocumentSituationView expects table names, not custom enum values
+    DOCUMENT_CHUNK = "search_document_chunks"  # Was: "document_chunk"
+    FAULT = "search_fault_code_catalog"        # Was: "fault"
+    WORK_ORDER = "pms_work_orders"             # Was: "work_order"
+    PART = "pms_parts"                         # Was: "part"
+    EQUIPMENT = "pms_equipment"                # Was: "equipment"
+    PREDICTIVE = "predictive_insights"         # Was: "predictive"
+    HANDOVER = "handover_items"                # Was: "handover"
 
 
 class QueryIntent(str, Enum):
@@ -263,8 +265,35 @@ def build_action(action_name: str, yacht_id: str, **fields) -> Optional[Dict]:
 
 
 def build_card(card_type: CardType, title: str, yacht_id: str, actions: List[str] = None, **data) -> Dict:
-    """Build spec-compliant card"""
-    card = {"type": card_type.value, "title": title, **data}
+    """Build spec-compliant card with canonical fields for frontend compatibility"""
+
+    # Determine primary_id based on card type and available data
+    primary_id = None
+    if card_type == CardType.DOCUMENT_CHUNK:
+        # For documents: prefer chunk id, fallback to document_id
+        primary_id = data.get("id") or data.get("chunk_id") or data.get("document_id")
+    elif card_type == CardType.FAULT:
+        primary_id = data.get("id") or data.get("fault_id")
+    elif card_type == CardType.WORK_ORDER:
+        primary_id = data.get("id") or data.get("work_order_id")
+    elif card_type == CardType.PART:
+        primary_id = data.get("id") or data.get("part_id")
+    elif card_type == CardType.EQUIPMENT:
+        primary_id = data.get("id") or data.get("equipment_id")
+    elif card_type == CardType.HANDOVER:
+        primary_id = data.get("id") or data.get("handover_id")
+    else:
+        # Generic fallback
+        primary_id = data.get("id")
+
+    # Build card with canonical fields that frontend expects
+    card = {
+        "type": card_type.value,           # Table name (e.g., "search_document_chunks")
+        "source_table": card_type.value,   # Same as type for consistency
+        "primary_id": primary_id,          # UUID of the record
+        "title": title,
+        **data  # All original data preserved
+    }
 
     if actions:
         card["actions"] = []
@@ -624,6 +653,7 @@ class GraphRAGQueryService:
             cards.append(build_card(
                 CardType.FAULT, f"Fault {code}", yacht_id,
                 actions=["diagnose_fault", "create_work_order_fault", "add_note"],
+                id=info.get("id") if info else None,  # FIX: Add fault id for primary_id field
                 fault_code=code, equipment_id=equipment_id,
                 summary=info.get("description", "") if info else "",
                 severity=info.get("severity") if info else None
@@ -634,6 +664,7 @@ class GraphRAGQueryService:
                 cards.append(build_card(
                     CardType.DOCUMENT_CHUNK, chunk.get("section_title", "Document"), yacht_id,
                     actions=["open_document", "add_document_to_handover"],
+                    id=chunk.get("id"),  # FIX: Add chunk id for primary_id field
                     document_id=chunk.get("document_id"),
                     page_number=chunk.get("page_number"),
                     text_preview=chunk.get("content", "")[:200],
@@ -653,6 +684,7 @@ class GraphRAGQueryService:
             cards.append(build_card(
                 CardType.DOCUMENT_CHUNK, chunk.get("section_title", "Document"), yacht_id,
                 actions=["open_document", "add_document_to_handover"],
+                id=chunk.get("id"),  # FIX: Add chunk id for primary_id field
                 document_id=chunk.get("document_id"),
                 page_number=chunk.get("page_number"),
                 text_preview=chunk.get("content", "")[:200],
@@ -672,6 +704,7 @@ class GraphRAGQueryService:
             cards.append(build_card(
                 CardType.PART, part.get("canonical_name", "Part"), yacht_id,
                 actions=["view_stock", "order_part", "add_to_handover"],
+                id=part.get("id"),  # FIX: Add part id for primary_id field
                 part_id=part.get("id"),
                 name=part.get("canonical_name"),
                 in_stock=part.get("current_stock", 0),
@@ -703,6 +736,7 @@ class GraphRAGQueryService:
             cards.append(build_card(
                 CardType.EQUIPMENT, e.get("text", "Equipment"), yacht_id,
                 actions=["view_history", "create_work_order", "add_note", "add_to_handover"],
+                id=eid,  # FIX: Add equipment id for primary_id field
                 equipment_id=eid,
                 symptom_detected=symptom_text,
                 symptom_code=symptom_code,
@@ -715,6 +749,7 @@ class GraphRAGQueryService:
                 cards.append(build_card(
                     CardType.WORK_ORDER, wo.get("title", "Work Order"), yacht_id,
                     actions=["view_history", "add_to_handover"],
+                    id=wo.get("id"),  # FIX: Add work order id for primary_id field
                     work_order_id=wo.get("id"),
                     status=wo.get("status"),
                     equipment_id=eid,
@@ -730,6 +765,7 @@ class GraphRAGQueryService:
                     cards.append(build_card(
                         CardType.HANDOVER, hi.get("summary", "Handover Item"), yacht_id,
                         actions=["add_to_handover"],
+                        id=hi.get("id"),  # FIX: Add handover id for primary_id field
                         handover_id=hi.get("id"),
                         author=hi.get("author"),
                         content=hi.get("content", "")[:200],
@@ -743,6 +779,7 @@ class GraphRAGQueryService:
                     cards.append(build_card(
                         CardType.DOCUMENT_CHUNK, doc.get("section_title", "Related Document"), yacht_id,
                         actions=["open_document", "add_document_to_handover"],
+                        id=doc.get("id"),  # FIX: Add chunk id for primary_id field
                         document_id=doc.get("document_id"),
                         page_number=doc.get("page_number"),
                         text_preview=doc.get("content", "")[:200],
