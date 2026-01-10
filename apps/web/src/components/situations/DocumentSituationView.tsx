@@ -71,6 +71,14 @@ export default function DocumentSituationView({
           metadata,
         });
 
+        // GUARD: Validate this is actually a document type
+        const resultType = metadata?.type || metadata?.source_table || '';
+        if (resultType && !['document', 'search_document_chunks', 'doc_metadata'].includes(resultType)) {
+          console.error('[DocumentSituationView] Wrong type - expected document, got:', resultType);
+          setError(`This is not a document. Type: ${resultType}. Please use the appropriate viewer.`);
+          return;
+        }
+
         // Try to get storage_path from metadata first
         let docStoragePath = metadata?.storage_path as string;
 
@@ -80,6 +88,7 @@ export default function DocumentSituationView({
           console.log('[DocumentSituationView] No storage_path in metadata, querying via RPC...');
           console.log('[DocumentSituationView] documentId value:', documentId);
           console.log('[DocumentSituationView] documentId type:', typeof documentId);
+          console.log('[DocumentSituationView] result type:', resultType);
 
           // Validate documentId is not null/undefined
           if (!documentId) {

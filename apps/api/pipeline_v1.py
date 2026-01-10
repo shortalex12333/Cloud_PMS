@@ -436,7 +436,12 @@ class Pipeline:
             )
 
             # Determine type (from source_table or infer from structure)
-            result_type = row.get('source_table', 'document')
+            # BUG FIX: Executor sets _source_table (with underscore), check both variants
+            result_type = (
+                row.get('source_table') or      # Without underscore (legacy/future)
+                row.get('_source_table') or     # With underscore (current executor)
+                'unknown'                        # Don't default to 'document'!
+            )
 
             # Determine title (try common title-like columns)
             title = (
