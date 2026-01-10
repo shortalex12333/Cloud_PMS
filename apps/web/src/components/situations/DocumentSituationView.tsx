@@ -100,14 +100,25 @@ export default function DocumentSituationView({
           // Do NOT create new client - this loses user authentication
           const { supabase } = await import('@/lib/supabaseClient');
 
-          console.log('[DocumentSituationView] Calling RPC with UUID:', documentId);
+          console.log('[DocumentSituationView] Calling RPC get_document_storage_path:', {
+            chunk_id: documentId,
+            metadata_has_storage_path: !!metadata?.storage_path,
+          });
 
           // Use RPC function with SECURITY DEFINER (bypasses RLS cascade)
           const { data: rpcData, error: rpcError } = await supabase
             .rpc('get_document_storage_path', { p_chunk_id: documentId });
 
           if (rpcError) {
-            console.error('[DocumentSituationView] RPC failed:', rpcError);
+            console.error('[DocumentSituationView] RPC ERROR DETAILS:', {
+              code: rpcError.code,
+              message: rpcError.message,
+              details: rpcError.details,
+              hint: rpcError.hint,
+              chunk_id: documentId,
+              timestamp: new Date().toISOString(),
+            });
+
             // Provide helpful error message
             if (rpcError.message.includes('Not authenticated')) {
               setError('Session expired. Please log in again.');
@@ -116,7 +127,7 @@ export default function DocumentSituationView({
             } else if (rpcError.message.includes('access denied')) {
               setError('You do not have access to this document.');
             } else {
-              setError(`Could not find document: ${rpcError.message}`);
+              setError(`Could not find document: ${rpcError.message} (code: ${rpcError.code})`);
             }
             return;
           }
@@ -124,14 +135,19 @@ export default function DocumentSituationView({
           // RPC returns array, get first result
           const docInfo = Array.isArray(rpcData) ? rpcData[0] : rpcData;
 
+          console.log('[DocumentSituationView] RPC SUCCESS:', {
+            returned_data: docInfo,
+            has_storage_path: !!docInfo?.storage_path,
+          });
+
           if (!docInfo?.storage_path) {
-            console.error('[DocumentSituationView] No storage_path from RPC');
+            console.error('[DocumentSituationView] No storage_path in RPC result');
             setError('Document storage path not found');
             return;
           }
 
           docStoragePath = docInfo.storage_path;
-          console.log('[DocumentSituationView] Got storage_path from RPC:', docStoragePath);
+          console.log('[DocumentSituationView] storage_path from RPC:', docStoragePath);
         }
 
         // Strip "documents/" prefix if present (chunks include it, but documentLoader expects path without bucket name)

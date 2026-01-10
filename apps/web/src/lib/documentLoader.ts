@@ -63,6 +63,13 @@ export async function loadDocument(
     // Format: {yacht_id}/{category}/{subcategory}/{type}/{filename}
     // Example: 85fe1119-b04c-41ac-80f1-829d23322598/01_BRIDGE/ais_equipment/installation_guides/manual.pdf
 
+    console.log('[documentLoader] Validating path format:', {
+      storagePath,
+      yachtId,
+      expectedPrefix: `${yachtId}/`,
+      pathStartsCorrectly: storagePath.startsWith(`${yachtId}/`),
+    });
+
     // Validate that path starts with this yacht's UUID (security check)
     if (!storagePath.startsWith(`${yachtId}/`)) {
       console.warn('[documentLoader] Path does not start with yacht UUID, security risk!', {
