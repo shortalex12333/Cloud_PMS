@@ -73,7 +73,14 @@ export default function DocumentSituationView({
 
         // GUARD: Validate this is actually a document type
         const resultType = metadata?.type || metadata?.source_table || '';
-        if (resultType && !['document', 'search_document_chunks', 'doc_metadata'].includes(resultType)) {
+        const validDocumentTypes = [
+          'document',                  // Generic document type
+          'search_document_chunks',    // Table name (canonical)
+          'doc_metadata',              // Document metadata table
+          'document_chunk',            // Legacy enum value (backwards compatibility)
+        ];
+
+        if (resultType && !validDocumentTypes.includes(resultType)) {
           console.error('[DocumentSituationView] Wrong type - expected document, got:', resultType);
           setError(`This is not a document. Type: ${resultType}. Please use the appropriate viewer.`);
           return;
