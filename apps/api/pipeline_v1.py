@@ -488,16 +488,19 @@ class Pipeline:
                 ''
             )
 
-            # Build normalized result
+            # Build normalized result with canonical fields (Phase 2)
+            # Ensure consistency with GraphRAG responses (/v1/search endpoint)
             normalized_result = {
-                'id': result_id,
-                'type': result_type,
+                'id': result_id,                # Backwards compatibility
+                'primary_id': result_id,        # PHASE 2: Canonical field name (matches GraphRAG)
+                'type': result_type,            # Table name (e.g., "search_document_chunks")
+                'source_table': result_type,    # PHASE 2: Top-level canonical field (matches GraphRAG)
                 'title': title,
                 'subtitle': subtitle,
                 'preview': preview[:500] if preview else '',  # Truncate preview
                 'score': row.get('score', 0.5),
                 'metadata': {
-                    'source_table': result_type,
+                    'source_table': result_type,  # Backwards compatibility (kept in metadata too)
                     **{k: v for k, v in row.items() if k not in ['id', 'title', 'name', 'content', 'text']}
                 },
                 'actions': row.get('actions', []),
