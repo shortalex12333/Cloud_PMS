@@ -23,6 +23,10 @@ import time
 import logging
 import os
 import sys
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # Setup path for imports
 from pathlib import Path
@@ -109,6 +113,17 @@ async def add_vary_origin(request, call_next):
         response.headers["Vary"] = "Origin"
 
     return response
+
+# ============================================================================
+# RATE LIMITING CONFIGURATION
+# ============================================================================
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+logger.info("✅ [Pipeline] Rate limiting enabled")
 
 # ============================================================================
 # P0 ACTIONS ROUTES
@@ -491,6 +506,160 @@ async def validate_jwt_simple(authorization: str = Header(None, alias='Authoriza
     except Exception as e:
         logger.error(f"JWT validation error: {e}")
         raise HTTPException(401, detail="Authentication failed")
+
+
+@app.post("/v1/documents/{document_id}/sign")
+@limiter.limit("60/minute")
+async def sign_document_url(
+    document_id: str,
+    request: Request,
+    auth: dict = Depends(validate_jwt_simple),
+    x_yacht_signature: str = Header(None, alias='X-Yacht-Signature')
+):
+    """
+    Generate short-lived signed URL for document access.
+
+    Security (Production-Grade for Yacht Fleet):
+    - Validates JWT (user authentication)
+    - Enforces yacht_id isolation (user can only access their yacht's docs)
+    - Verifies document ownership (document belongs to yacht)
+    - Rate limited to prevent bulk download attacks
+    - Audit logged for compliance (ISM Code, insurance requirements)
+    - Short TTL (10 min) reduces leak window while allowing normal workflow
+
+    Workflow:
+    - Engineer opens document → frontend calls this endpoint
+    - Gets signed URL (valid 10 min)
+    - Fetches PDF once → converts to blob → works for hours
+    - If page reloaded/memory evicted → calls this again
+
+    Returns:
+    - signed_url: Supabase Storage signed URL (10 min TTL)
+    - expires_at: Unix timestamp when URL expires
+    - document_id: Original document ID for client tracking
+    - size_bytes: File size for progress indication
+    """
+    user_id = auth['user_id']
+    yacht_id = auth['yacht_id']
+    ip_address = request.client.host if request.client else 'unknown'
+
+    logger.info(f"[sign_document] user={user_id[:8]}..., yacht={yacht_id[:8]}..., doc={document_id[:8]}..., ip={ip_address}")
+
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(503, detail="Database connection not available")
+
+    # 1. Query doc_metadata with yacht isolation
+    try:
+        response = supabase.table('doc_metadata') \
+            .select('id, filename, storage_path, content_type, yacht_id') \
+            .eq('id', document_id) \
+            .eq('yacht_id', yacht_id) \
+            .single() \
+            .execute()
+
+        if not response.data:
+            logger.warning(f"[sign_document] Document not found or access denied: {document_id}")
+
+            # Audit: Log access denial
+            try:
+                supabase.table('audit_log').insert({
+                    'event_type': 'document_sign_denied',
+                    'user_id': user_id,
+                    'yacht_id': yacht_id,
+                    'entity_id': document_id,
+                    'metadata': {'reason': 'not_found_or_wrong_yacht', 'ip': ip_address},
+                }).execute()
+            except Exception as audit_err:
+                logger.error(f"[sign_document] Audit log failed: {audit_err}")
+
+            raise HTTPException(404, detail="Document not found")
+
+        doc = response.data
+        logger.info(f"[sign_document] Access granted: {doc.get('filename')}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[sign_document] Database query failed: {e}")
+        raise HTTPException(500, detail="Failed to query document metadata")
+
+    # 2. Extract and normalize storage path
+    storage_path = doc.get('storage_path', '')
+    if not storage_path:
+        raise HTTPException(404, detail="Document has no storage path")
+
+    # Normalize path (remove bucket prefix if present)
+    storage_path = normalize_storage_path(storage_path, bucket='documents')
+
+    # 3. Generate short-lived signed URL (10 minutes)
+    # Why 10 min: Balances security (short leak window) with UX (normal workflow)
+    # - Engineer opens PDF, fetches once, converts to blob
+    # - Blob stays in memory for hours (no re-fetch needed)
+    # - 10 min allows: open, get interrupted, come back, re-open
+    # - If >10 min away, simple re-search is reasonable
+    TTL_SECONDS = 600  # 10 minutes
+
+    try:
+        signed_data = supabase.storage.from_('documents').create_signed_url(
+            storage_path,
+            TTL_SECONDS
+        )
+
+        if not signed_data or 'signedURL' not in signed_data:
+            logger.error(f"[sign_document] create_signed_url returned invalid data: {signed_data}")
+            raise HTTPException(500, detail="Failed to generate signed URL")
+
+        signed_url = signed_data['signedURL']
+        expires_at = int(time.time()) + TTL_SECONDS
+
+        logger.info(f"[sign_document] Signed URL generated, expires in {TTL_SECONDS}s")
+
+    except Exception as e:
+        logger.error(f"[sign_document] Failed to create signed URL: {e}")
+        raise HTTPException(500, detail="Failed to generate signed URL")
+
+    # 4. Audit log: Document access (compliance requirement for yachts)
+    try:
+        supabase.table('audit_log').insert({
+            'event_type': 'document_sign',
+            'user_id': user_id,
+            'yacht_id': yacht_id,
+            'entity_id': document_id,
+            'metadata': {
+                'filename': doc.get('filename'),
+                'ttl_seconds': TTL_SECONDS,
+                'ip': ip_address,
+                'storage_path': storage_path[:100],  # Truncate for privacy
+            },
+        }).execute()
+        logger.info(f"[sign_document] Audit logged")
+    except Exception as audit_err:
+        # Don't fail request if audit fails, but log it
+        logger.error(f"[sign_document] Audit log failed: {audit_err}")
+
+    # 5. Get file size for client progress indication (optional, best effort)
+    size_bytes = None
+    try:
+        file_info = supabase.storage.from_('documents').list(
+            path=storage_path.rsplit('/', 1)[0],
+            search=storage_path.rsplit('/', 1)[1]
+        )
+        if file_info and len(file_info) > 0:
+            size_bytes = file_info[0].get('metadata', {}).get('size')
+    except Exception as size_err:
+        logger.debug(f"[sign_document] Could not get file size: {size_err}")
+
+    # 6. Return signed URL + metadata
+    return {
+        "signed_url": signed_url,
+        "expires_at": expires_at,
+        "document_id": document_id,
+        "filename": doc.get('filename'),
+        "content_type": doc.get('content_type'),
+        "size_bytes": size_bytes,
+        "ttl_seconds": TTL_SECONDS,
+    }
 
 
 @app.get("/v1/documents/{document_id}/stream")
