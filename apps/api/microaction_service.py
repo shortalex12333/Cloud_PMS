@@ -125,18 +125,21 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://app.celeste7.ai",
-        "https://api.celeste7.ai",
-        "http://localhost:3000",  # For local development
-        "http://localhost:8000"   # For local testing
+        "https://app.celeste7.ai",                                   # Production domain
+        "https://api.celeste7.ai",                                   # API domain
+        "https://cloud-ezkuoo4zj-c7s-projects-4a165667.vercel.app",  # Vercel deployment
+        "http://localhost:3000",                                      # Local development
+        "http://localhost:8000"                                       # Local testing
     ],
     allow_credentials=True,
-    allow_methods=["POST", "GET"],
+    allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=[
         "Content-Type",
         "Authorization",      # JWT from Supabase
-        "X-Yacht-Signature"   # Yacht ownership proof
+        "X-Yacht-Signature",  # Yacht ownership proof
+        "X-Request-Id",       # Request tracing
     ],
+    max_age=3600,  # Cache preflight for 1 hour
 )
 
 # ========================================================================
