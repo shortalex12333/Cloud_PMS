@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isHOD } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import AuthDebug from '@/components/AuthDebug';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginContent() {
   const router = useRouter();
@@ -28,8 +29,37 @@ export default function LoginContent() {
   useEffect(() => {
     if (!authLoading && user && user.yachtId) {
       console.log('[LoginPage] User authenticated, redirecting...');
-      const destination = isHOD(user) ? '/dashboard' : '/search';
-      router.replace(destination);
+
+      // Check if we're on auth domain (auth.celeste7.ai)
+      const isAuthDomain = typeof window !== 'undefined' && window.location.hostname.includes('auth.celeste7.ai');
+
+      if (isAuthDomain) {
+        // Transfer session to app domain
+        console.log('[LoginPage] On auth domain, transferring session to app domain...');
+
+        // Get current session tokens
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+            const destination = isHOD(user) ? '/dashboard' : '/search';
+
+            // Build callback URL with tokens
+            const params = new URLSearchParams({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              redirect: destination,
+            });
+
+            // Redirect to app domain callback
+            window.location.href = `https://app.celeste7.ai/auth/callback?${params}`;
+          } else {
+            console.error('[LoginPage] No session found despite user being set');
+          }
+        });
+      } else {
+        // Already on app domain or localhost - use normal redirect
+        const destination = isHOD(user) ? '/dashboard' : '/search';
+        router.replace(destination);
+      }
     }
   }, [user, authLoading, router]);
 
