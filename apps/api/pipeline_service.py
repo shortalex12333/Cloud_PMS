@@ -53,15 +53,23 @@ app = FastAPI(
 import os
 import logging
 
-# Parse origins from env var or use defaults
+# Parse and normalize origins from env var
 ALLOWED_ORIGINS_STR = os.getenv(
     "ALLOWED_ORIGINS",
     "https://app.celeste7.ai,https://staging.celeste7.ai,http://localhost:3000,http://localhost:8000"
 )
-ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",") if origin.strip()]
 
-# Log allowed origins on startup for verification
-logger.info(f"✅ CORS ALLOWED_ORIGINS: {ALLOWED_ORIGINS}")
+# Normalize: strip whitespace, remove empties, deduplicate
+ALLOWED_ORIGINS = list(dict.fromkeys([
+    origin.strip()
+    for origin in ALLOWED_ORIGINS_STR.split(",")
+    if origin.strip()  # Drop empty strings
+]))
+
+# Log normalized origins on startup for verification
+logger.info(f"✅ [Pipeline] CORS ALLOWED_ORIGINS (normalized): {ALLOWED_ORIGINS}")
+if len(ALLOWED_ORIGINS) == 0:
+    logger.error("❌ [Pipeline] CRITICAL: No allowed origins configured!")
 
 # WARNING: Never add *.vercel.app preview URLs to production CORS
 # Preview URLs change constantly and create maintenance burden
@@ -83,10 +91,23 @@ app.add_middleware(
 )
 
 # Middleware to add Vary: Origin for CDN cache correctness
+# IMPORTANT: Append to existing Vary header, don't overwrite
 @app.middleware("http")
 async def add_vary_origin(request, call_next):
     response = await call_next(request)
-    response.headers["Vary"] = "Origin"
+
+    # Get existing Vary header
+    existing_vary = response.headers.get("Vary", "")
+
+    # Only add Origin if not already present
+    if existing_vary:
+        # Split on comma, normalize, check if Origin is present
+        vary_values = [v.strip() for v in existing_vary.split(",")]
+        if "Origin" not in vary_values:
+            response.headers["Vary"] = f"{existing_vary}, Origin"
+    else:
+        response.headers["Vary"] = "Origin"
+
     return response
 
 # ============================================================================
