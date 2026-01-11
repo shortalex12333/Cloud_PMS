@@ -6,7 +6,7 @@
  */
 
 import { supabase } from './supabaseClient';
-import { getYachtId } from './authHelpers';
+import { getYachtId, getAuthenticatedFetch } from './authHelpers';
 
 // ============================================================================
 // TYPES
@@ -29,7 +29,111 @@ export interface DocumentLoadResult {
 // ============================================================================
 
 /**
+ * Load document using backend signing endpoint (RECOMMENDED)
+ *
+ * This is the secure approach that:
+ * - Prevents uncontrolled frontend signing
+ * - Enforces access control at backend
+ * - Provides audit logging for compliance
+ * - Uses short-lived URLs (10 min TTL)
+ * - Rate limits to prevent bulk downloads
+ *
+ * @param documentId - Document UUID from doc_metadata table
+ * @returns DocumentLoadResult with blob URL
+ */
+export async function loadDocumentWithBackend(
+  documentId: string
+): Promise<DocumentLoadResult> {
+  try {
+    console.log('[documentLoader] Loading document via backend:', documentId);
+
+    // Get authenticated fetch function
+    const authFetch = await getAuthenticatedFetch();
+
+    // Call backend signing endpoint
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://pipeline-core.int.celeste7.ai';
+    const response = await authFetch(`${API_BASE}/v1/documents/${documentId}/sign`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[documentLoader] Backend signing failed:', response.status, errorText);
+
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: 'Document not found or access denied',
+        };
+      } else if (response.status === 429) {
+        return {
+          success: false,
+          error: 'Too many requests. Please wait a moment.',
+        };
+      } else {
+        return {
+          success: false,
+          error: `Failed to load document: ${response.statusText}`,
+        };
+      }
+    }
+
+    const data = await response.json();
+    const { signed_url, filename, content_type, size_bytes, expires_at } = data;
+
+    console.log('[documentLoader] Signed URL received:', {
+      filename,
+      content_type,
+      size_bytes,
+      expires_in: expires_at ? `${expires_at - Math.floor(Date.now() / 1000)}s` : 'unknown',
+    });
+
+    // Fetch PDF as blob (same approach as before - works well)
+    console.log('[documentLoader] Fetching PDF as blob...');
+
+    const pdfResponse = await fetch(signed_url);
+
+    if (!pdfResponse.ok) {
+      console.error('[documentLoader] Failed to fetch PDF:', pdfResponse.status, pdfResponse.statusText);
+      return {
+        success: false,
+        error: `Failed to fetch document: ${pdfResponse.statusText}`,
+      };
+    }
+
+    const blob = await pdfResponse.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    console.log('[documentLoader] Created blob URL:', {
+      blob_size: blob.size,
+      blob_type: blob.type,
+      filename,
+    });
+
+    return {
+      success: true,
+      url: blobUrl,
+      metadata: {
+        name: filename || 'document.pdf',
+        size: size_bytes || blob.size,
+        mime_type: content_type || blob.type || 'application/pdf',
+        last_modified: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('[documentLoader] Backend document loading error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error loading document',
+    };
+  }
+}
+
+/**
  * Load document from Supabase Storage with JWT authentication
+ *
+ * DEPRECATED: Use loadDocumentWithBackend() instead for production.
+ * This direct approach bypasses backend access control and audit logging.
  *
  * @param storagePath - Path to document in Supabase Storage (e.g., "yacht_123/manuals/engine_manual.pdf")
  * @param bucketName - Storage bucket name (default: "documents")
