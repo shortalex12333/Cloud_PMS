@@ -6,7 +6,7 @@
  */
 
 import { supabase } from './supabaseClient';
-import { getYachtId, getAuthenticatedFetch } from './authHelpers';
+import { getYachtId, getAuthHeaders } from './authHelpers';
 
 // ============================================================================
 // TYPES
@@ -47,13 +47,23 @@ export async function loadDocumentWithBackend(
   try {
     console.log('[documentLoader] Loading document via backend:', documentId);
 
-    // Get authenticated fetch function
-    const authFetch = await getAuthenticatedFetch();
+    // Get yacht ID for auth headers
+    const yachtId = await getYachtId();
+    if (!yachtId) {
+      return {
+        success: false,
+        error: 'Yacht context required',
+      };
+    }
+
+    // Get authenticated headers
+    const headers = await getAuthHeaders(yachtId);
 
     // Call backend signing endpoint
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://pipeline-core.int.celeste7.ai';
-    const response = await authFetch(`${API_BASE}/v1/documents/${documentId}/sign`, {
+    const response = await fetch(`${API_BASE}/v1/documents/${documentId}/sign`, {
       method: 'POST',
+      headers,
     });
 
     if (!response.ok) {
