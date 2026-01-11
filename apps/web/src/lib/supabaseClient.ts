@@ -26,6 +26,24 @@ function getSupabaseClient(): SupabaseClient {
     }
   }
 
+  // During build or if env vars missing, throw a descriptive error only in browser
+  if (!supabaseUrl || !supabaseAnonKey) {
+    if (typeof window !== 'undefined') {
+      throw new Error('Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    }
+    // During build (server-side), create a dummy client to prevent build errors
+    // This won't actually be used since pages are client-side rendered
+    supabaseInstance = createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        flowType: 'pkce',
+      },
+    });
+    return supabaseInstance;
+  }
+
   // Create client with appropriate settings
   supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
