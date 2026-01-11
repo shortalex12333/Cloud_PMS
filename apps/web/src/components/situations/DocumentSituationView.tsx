@@ -46,6 +46,16 @@ export default function DocumentSituationView({
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [storagePath, setStoragePath] = useState<string | null>(null);
 
+  // Cleanup blob URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (documentUrl && documentUrl.startsWith('blob:')) {
+        console.log('[DocumentSituationView] Cleaning up blob URL');
+        URL.revokeObjectURL(documentUrl);
+      }
+    };
+  }, [documentUrl]);
+
   // Extract document info from situation metadata
   const documentId = situation.primary_entity_id;
   const metadata = situation.evidence as any;  // Contains the original result metadata

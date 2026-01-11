@@ -108,35 +108,76 @@ export async function loadDocument(
       };
     }
 
-    // Get document metadata
-    const { data: fileData, error: fileError } = await supabase.storage
-      .from(bucketName)
-      .list(storagePath.substring(0, storagePath.lastIndexOf('/')), {
-        search: storagePath.split('/').pop(),
+    // FIX: Fetch PDF as blob to avoid Chrome blocking cross-origin iframe embeds
+    // Chrome blocks iframes loading content from different origins (Supabase Storage)
+    // Solution: Fetch the PDF data using the signed URL, then create a local blob URL
+    // This makes the content same-origin and avoids X-Frame-Options / CSP issues
+    console.log('[documentLoader] Fetching PDF as blob to avoid CORS/CSP blocking...');
+
+    try {
+      const response = await fetch(urlData.signedUrl);
+
+      if (!response.ok) {
+        console.error('[documentLoader] Failed to fetch blob:', response.status, response.statusText);
+        return {
+          success: false,
+          error: `Failed to fetch document: ${response.statusText}`,
+        };
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      console.log('[documentLoader] Created blob URL:', {
+        path: storagePath,
+        blob_size: blob.size,
+        blob_type: blob.type,
       });
 
-    let metadata;
-    if (!fileError && fileData && fileData.length > 0) {
-      const file = fileData[0];
-      metadata = {
-        name: file.name,
-        size: file.metadata?.size || 0,
-        mime_type: file.metadata?.mimetype || 'application/octet-stream',
-        last_modified: file.updated_at || file.created_at || new Date().toISOString(),
+      // Get document metadata
+      const { data: fileData, error: fileError } = await supabase.storage
+        .from(bucketName)
+        .list(storagePath.substring(0, storagePath.lastIndexOf('/')), {
+          search: storagePath.split('/').pop(),
+        });
+
+      let metadata;
+      if (!fileError && fileData && fileData.length > 0) {
+        const file = fileData[0];
+        metadata = {
+          name: file.name,
+          size: file.metadata?.size || blob.size || 0,
+          mime_type: file.metadata?.mimetype || blob.type || 'application/pdf',
+          last_modified: file.updated_at || file.created_at || new Date().toISOString(),
+        };
+      } else {
+        // Fallback metadata from blob
+        metadata = {
+          name: storagePath.split('/').pop() || 'document.pdf',
+          size: blob.size,
+          mime_type: blob.type || 'application/pdf',
+          last_modified: new Date().toISOString(),
+        };
+      }
+
+      console.log('[documentLoader] Document loaded successfully:', {
+        path: storagePath,
+        url_type: 'blob',
+        metadata,
+      });
+
+      return {
+        success: true,
+        url: blobUrl, // Return blob URL instead of signed URL
+        metadata,
+      };
+    } catch (fetchError) {
+      console.error('[documentLoader] Error fetching blob:', fetchError);
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : 'Failed to fetch document',
       };
     }
-
-    console.log('[documentLoader] Document loaded successfully:', {
-      path: storagePath,
-      url_length: urlData.signedUrl.length,
-      metadata,
-    });
-
-    return {
-      success: true,
-      url: urlData.signedUrl,
-      metadata,
-    };
   } catch (error) {
     console.error('[documentLoader] Unexpected error:', error);
     return {
@@ -153,19 +194,52 @@ export async function downloadDocument(
   storagePath: string,
   bucketName: string = 'documents'
 ): Promise<void> {
-  const result = await loadDocument(storagePath, bucketName);
+  try {
+    // Validate authentication
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
 
-  if (!result.success || !result.url) {
-    throw new Error(result.error || 'Failed to download document');
+    if (authError || !session) {
+      throw new Error('Authentication required to download documents');
+    }
+
+    // Validate yacht isolation
+    const yachtId = await getYachtId();
+    if (!yachtId || !storagePath.startsWith(`${yachtId}/`)) {
+      throw new Error('Invalid document path');
+    }
+
+    // Get signed URL for download
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(storagePath, 3600);
+
+    if (urlError || !urlData?.signedUrl) {
+      throw new Error(urlError?.message || 'Failed to get download URL');
+    }
+
+    // Fetch the blob and trigger download
+    const response = await fetch(urlData.signedUrl);
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = storagePath.split('/').pop() || 'document.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Cleanup blob URL after download
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (error) {
+    console.error('[documentLoader] Download error:', error);
+    throw error;
   }
-
-  // Create temporary link and trigger download
-  const link = document.createElement('a');
-  link.href = result.url;
-  link.download = result.metadata?.name || storagePath.split('/').pop() || 'document';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
 /**
