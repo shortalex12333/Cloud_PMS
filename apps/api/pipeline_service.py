@@ -42,31 +42,52 @@ app = FastAPI(
 )
 
 # ============================================================================
-# CORS CONFIGURATION (Secure)
+# CORS CONFIGURATION (Production-Grade)
 # ============================================================================
-# SECURITY: Never use wildcard origins with credentials
-# Explicit allowlist prevents CSRF and data exfiltration attacks
+# SECURITY:
+# - Bearer token auth (Authorization header) = allow_credentials=False
+# - No cookies = no CSRF risk
+# - Explicit stable domains only (no preview URLs)
+# - Verify ALLOWED_ORIGINS matches actual deployments
 
-ALLOWED_ORIGINS = [
-    "https://app.celeste7.ai",                                   # Production domain
-    "https://cloud-ezkuoo4zj-c7s-projects-4a165667.vercel.app",  # Vercel deployment
-    "http://localhost:3000",                                      # Local dev
-    "http://localhost:8000",                                      # Local API testing
-]
+import os
+import logging
+
+# Parse origins from env var or use defaults
+ALLOWED_ORIGINS_STR = os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://app.celeste7.ai,https://staging.celeste7.ai,http://localhost:3000,http://localhost:8000"
+)
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",") if origin.strip()]
+
+# Log allowed origins on startup for verification
+logger.info(f"✅ CORS ALLOWED_ORIGINS: {ALLOWED_ORIGINS}")
+
+# WARNING: Never add *.vercel.app preview URLs to production CORS
+# Preview URLs change constantly and create maintenance burden
+# Use staging.celeste7.ai for pre-production testing instead
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,  # Bearer tokens in headers, no cookies
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=[
-        "Authorization",
+        "Authorization",        # JWT bearer token
         "Content-Type",
         "X-Request-Id",
         "X-Yacht-Signature",
     ],
+    expose_headers=["X-Request-Id"],  # Allow client to read request ID
     max_age=3600,  # Cache preflight for 1 hour
 )
+
+# Middleware to add Vary: Origin for CDN cache correctness
+@app.middleware("http")
+async def add_vary_origin(request, call_next):
+    response = await call_next(request)
+    response.headers["Vary"] = "Origin"
+    return response
 
 # ============================================================================
 # P0 ACTIONS ROUTES

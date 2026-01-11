@@ -24,16 +24,19 @@ Even though we're using blob URLs for PDF viewing, the browser still needs to **
 
 ### CORS Configuration (Battle-Tested)
 
+**IMPORTANT:** Only include stable domains. Never add changing Vercel preview URLs.
+
 ```json
 {
   "allowedOrigins": [
-    "https://cloud-ezkuoo4zj-c7s-projects-4a165667.vercel.app",
     "https://app.celeste7.ai",
+    "https://staging.celeste7.ai",
     "http://localhost:3000"
   ],
   "allowedMethods": [
     "GET",
-    "HEAD"
+    "HEAD",
+    "OPTIONS"
   ],
   "allowedHeaders": [
     "Authorization",
@@ -43,11 +46,16 @@ Even though we're using blob URLs for PDF viewing, the browser still needs to **
   "exposedHeaders": [
     "Content-Length",
     "Content-Range",
+    "Accept-Ranges",
     "Content-Type"
   ],
   "maxAge": 3600
 }
 ```
+
+**Why OPTIONS:** Browsers send preflight OPTIONS requests when using Authorization header or Range requests. Without OPTIONS support, preflight fails and PDF won't load.
+
+**Why Accept-Ranges:** PDF viewers use Range requests for progressive loading. Exposing this header helps clients optimize requests.
 
 ---
 
