@@ -14,7 +14,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { X, Search, Download, Plus, FileText } from 'lucide-react';
+import { X, Search, Download, Plus, FileText, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { loadDocument, loadDocumentWithBackend, downloadDocument } from '@/lib/documentLoader';
 import { classifyDocument, shouldShowAddToHandoverButton } from '@/lib/documentTypes';
@@ -45,6 +45,7 @@ export default function DocumentSituationView({
   const [classification, setClassification] = useState<DocumentClassification>('operational');
   const [showFindDialog, setShowFindDialog] = useState(false);
   const [storagePath, setStoragePath] = useState<string | null>(null);
+  const [documentMetadataId, setDocumentMetadataId] = useState<string | null>(null);
 
   // Cleanup blob URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -108,6 +109,8 @@ export default function DocumentSituationView({
         // If document_id is available in metadata, use backend signing (preferred)
         if (docMetadataId) {
           console.log('[DocumentSituationView] Using backend signing with document_id from metadata:', docMetadataId);
+
+          setDocumentMetadataId(docMetadataId); // Store for reload capability
 
           const result = await loadDocumentWithBackend(docMetadataId);
 
@@ -217,6 +220,8 @@ export default function DocumentSituationView({
           if (docInfo?.document_id) {
             console.log('[DocumentSituationView] Using backend signing with document_id:', docInfo.document_id);
 
+            setDocumentMetadataId(docInfo.document_id); // Store for reload capability
+
             const result = await loadDocumentWithBackend(docInfo.document_id);
 
             if (!result.success) {
@@ -314,6 +319,66 @@ export default function DocumentSituationView({
   }, [onClose]);
 
   /**
+   * Handle reload (Resume button)
+   * For cases where blob URL expired due to page reload or memory eviction
+   */
+  const handleReload = useCallback(async () => {
+    if (!documentMetadataId && !storagePath) {
+      alert('Cannot reload: document information not available');
+      return;
+    }
+
+    console.log('[DocumentSituationView] Reloading document...');
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Prefer backend signing (secure, audited)
+      if (documentMetadataId) {
+        console.log('[DocumentSituationView] Reloading via backend:', documentMetadataId);
+
+        const result = await loadDocumentWithBackend(documentMetadataId);
+
+        if (!result.success) {
+          setError(result.error || 'Failed to reload document');
+          return;
+        }
+
+        // Cleanup old blob URL if exists
+        if (documentUrl && documentUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(documentUrl);
+        }
+
+        setDocumentUrl(result.url || null);
+        console.log('[DocumentSituationView] Document reloaded successfully');
+      } else if (storagePath) {
+        // Fallback to direct Supabase signing
+        console.log('[DocumentSituationView] Reloading via Supabase (fallback):', storagePath);
+
+        const result = await loadDocument(storagePath);
+
+        if (!result.success) {
+          setError(result.error || 'Failed to reload document');
+          return;
+        }
+
+        // Cleanup old blob URL if exists
+        if (documentUrl && documentUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(documentUrl);
+        }
+
+        setDocumentUrl(result.url || null);
+        console.log('[DocumentSituationView] Document reloaded successfully');
+      }
+    } catch (err) {
+      console.error('[DocumentSituationView] Reload error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to reload document');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [documentMetadataId, storagePath, documentUrl]);
+
+  /**
    * Handle download
    */
   const handleDownload = useCallback(async () => {
@@ -387,6 +452,16 @@ export default function DocumentSituationView({
             <span className="text-sm hidden sm:inline">Find</span>
           </button>
 
+          {/* Reload */}
+          <button
+            onClick={handleReload}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+            title="Reload document"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="text-sm hidden sm:inline">Reload</span>
+          </button>
+
           {/* Download */}
           <button
             onClick={handleDownload}
@@ -424,12 +499,20 @@ export default function DocumentSituationView({
             <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-6 max-w-md">
               <h2 className="text-lg font-semibold text-red-500 mb-2">Failed to Load Document</h2>
               <p className="text-sm text-[#98989f] mb-4">{error}</p>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-white text-sm transition-colors"
-              >
-                Back to Search
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleReload}
+                  className="flex-1 px-4 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-white text-sm transition-colors font-medium"
+                >
+                  Resume
+                </button>
+                <button
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-white text-sm transition-colors"
+                >
+                  Back to Search
+                </button>
+              </div>
             </div>
           </div>
         )}
