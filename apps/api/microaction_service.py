@@ -119,19 +119,29 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # ========================================================================
-# STRICT CORS CONFIGURATION
+# CORS CONFIGURATION (Production-Grade)
 # ========================================================================
+# SECURITY:
+# - Bearer token auth (Authorization header) = allow_credentials=False
+# - No cookies = no CSRF risk
+# - Explicit stable domains only (no preview URLs)
+
+import os
+
+# Parse origins from env var or use defaults
+ALLOWED_ORIGINS_STR = os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://app.celeste7.ai,https://api.celeste7.ai,https://staging.celeste7.ai,http://localhost:3000,http://localhost:8000"
+)
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",") if origin.strip()]
+
+# Log allowed origins on startup for verification
+logger.info(f"✅ [Microaction] CORS ALLOWED_ORIGINS: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://app.celeste7.ai",                                   # Production domain
-        "https://api.celeste7.ai",                                   # API domain
-        "https://cloud-ezkuoo4zj-c7s-projects-4a165667.vercel.app",  # Vercel deployment
-        "http://localhost:3000",                                      # Local development
-        "http://localhost:8000"                                       # Local testing
-    ],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,  # Bearer tokens in headers, no cookies
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=[
         "Content-Type",
@@ -139,8 +149,16 @@ app.add_middleware(
         "X-Yacht-Signature",  # Yacht ownership proof
         "X-Request-Id",       # Request tracing
     ],
+    expose_headers=["X-Request-Id"],  # Allow client to read request ID
     max_age=3600,  # Cache preflight for 1 hour
 )
+
+# Middleware to add Vary: Origin for CDN cache correctness
+@app.middleware("http")
+async def add_vary_origin_microaction(request, call_next):
+    response = await call_next(request)
+    response.headers["Vary"] = "Origin"
+    return response
 
 # ========================================================================
 # GLOBAL STATE (load patterns once at startup)
