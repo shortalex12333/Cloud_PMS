@@ -131,7 +131,7 @@ import os
 # Parse and normalize origins from env var
 ALLOWED_ORIGINS_STR = os.getenv(
     "ALLOWED_ORIGINS",
-    "https://auth.celeste7.ai,https://app.celeste7.ai,https://api.celeste7.ai,http://localhost:3000,http://localhost:8000"
+    "https://auth.celeste7.ai,https://app.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,https://api.celeste7.ai,http://localhost:3000,http://localhost:8000"
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
