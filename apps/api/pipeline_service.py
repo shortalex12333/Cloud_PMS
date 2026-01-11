@@ -564,11 +564,18 @@ async def sign_document_url(
             # Audit: Log access denial
             try:
                 supabase.table('audit_log').insert({
-                    'event_type': 'document_sign_denied',
+                    'action': 'document_sign_denied',
+                    'entity_type': 'document',
+                    'entity_id': document_id,
                     'user_id': user_id,
                     'yacht_id': yacht_id,
-                    'entity_id': document_id,
-                    'metadata': {'reason': 'not_found_or_wrong_yacht', 'ip': ip_address},
+                    'old_values': None,
+                    'new_values': {'reason': 'not_found_or_wrong_yacht'},
+                    'signature': {
+                        'user_id': user_id,
+                        'timestamp': time.time(),
+                        'ip_address': ip_address,
+                    },
                 }).execute()
             except Exception as audit_err:
                 logger.error(f"[sign_document] Audit log failed: {audit_err}")
@@ -622,15 +629,22 @@ async def sign_document_url(
     # 4. Audit log: Document access (compliance requirement for yachts)
     try:
         supabase.table('audit_log').insert({
-            'event_type': 'document_sign',
+            'action': 'document_sign',
+            'entity_type': 'document',
+            'entity_id': document_id,
             'user_id': user_id,
             'yacht_id': yacht_id,
-            'entity_id': document_id,
-            'metadata': {
+            'old_values': None,
+            'new_values': {
                 'filename': doc.get('filename'),
                 'ttl_seconds': TTL_SECONDS,
-                'ip': ip_address,
                 'storage_path': storage_path[:100],  # Truncate for privacy
+                'signed_at': time.time(),
+            },
+            'signature': {
+                'user_id': user_id,
+                'timestamp': time.time(),
+                'ip_address': ip_address,
             },
         }).execute()
         logger.info(f"[sign_document] Audit logged")
