@@ -41,12 +41,31 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# ============================================================================
+# CORS CONFIGURATION (Secure)
+# ============================================================================
+# SECURITY: Never use wildcard origins with credentials
+# Explicit allowlist prevents CSRF and data exfiltration attacks
+
+ALLOWED_ORIGINS = [
+    "https://app.celeste7.ai",                                   # Production domain
+    "https://cloud-ezkuoo4zj-c7s-projects-4a165667.vercel.app",  # Vercel deployment
+    "http://localhost:3000",                                      # Local dev
+    "http://localhost:8000",                                      # Local API testing
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Request-Id",
+        "X-Yacht-Signature",
+    ],
+    max_age=3600,  # Cache preflight for 1 hour
 )
 
 # ============================================================================
