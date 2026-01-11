@@ -370,7 +370,7 @@ export default function DocumentSituationView({
             src={documentUrl}
             className="w-full h-full border-0"
             title={documentTitle}
-            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            allow="fullscreen"
           />
         )}
       </div>
