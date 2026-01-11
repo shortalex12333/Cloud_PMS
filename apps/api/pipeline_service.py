@@ -234,6 +234,7 @@ async def health_check():
     )
 
 @app.post("/search", response_model=SearchResponse)
+@limiter.limit("100/minute")
 async def search(request: SearchRequest):
     """
     Main search endpoint.
@@ -277,6 +278,7 @@ async def search(request: SearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/webhook/search")
+@limiter.limit("100/minute")
 async def webhook_search(request: Request):
     """
     Webhook endpoint for frontend search requests.
@@ -324,6 +326,7 @@ async def webhook_search(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/extract", response_model=ExtractResponse)
+@limiter.limit("100/minute")
 async def extract(request: ExtractRequest):
     """
     Entity extraction only (no database query).
@@ -677,6 +680,7 @@ async def sign_document_url(
 
 
 @app.get("/v1/documents/{document_id}/stream")
+@limiter.limit("60/minute")
 async def stream_document(
     document_id: str,
     auth: dict = Depends(validate_jwt_simple),
