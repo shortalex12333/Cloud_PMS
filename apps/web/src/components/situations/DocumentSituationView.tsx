@@ -16,7 +16,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { X, Search, Download, Plus, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { loadDocument, downloadDocument } from '@/lib/documentLoader';
+import { loadDocument, loadDocumentWithBackend, downloadDocument } from '@/lib/documentLoader';
 import { classifyDocument, shouldShowAddToHandoverButton } from '@/lib/documentTypes';
 import type { SituationContext, DocumentClassification } from '@/types/situation';
 
@@ -96,8 +96,44 @@ export default function DocumentSituationView({
           return;
         }
 
-        // Try to get storage_path from metadata first
+        // Try to get storage_path and document_id from metadata first
         let docStoragePath = metadata?.storage_path as string;
+        let docMetadataId = metadata?.document_id as string;
+
+        console.log('[DocumentSituationView] Metadata check:', {
+          has_storage_path: !!docStoragePath,
+          has_document_id: !!docMetadataId,
+        });
+
+        // If document_id is available in metadata, use backend signing (preferred)
+        if (docMetadataId) {
+          console.log('[DocumentSituationView] Using backend signing with document_id from metadata:', docMetadataId);
+
+          const result = await loadDocumentWithBackend(docMetadataId);
+
+          if (!result.success) {
+            setError(result.error || 'Failed to load document');
+            return;
+          }
+
+          setDocumentUrl(result.url || null);
+          setStoragePath(docStoragePath || ''); // Keep for download fallback
+
+          // Use title from situation metadata
+          const finalTitle = documentTitle;
+
+          // Classify document using title from search results
+          const docClassification = classifyDocument(finalTitle, metadata);
+          setClassification(docClassification);
+
+          console.log('[DocumentSituationView] Document loaded successfully via backend (metadata path):', {
+            title: finalTitle,
+            classification: docClassification,
+            document_id: docMetadataId,
+          });
+
+          return; // Exit early - document loaded successfully
+        }
 
         // If not in metadata, query via RPC function (bypasses RLS cascade)
         // documentId is actually a chunk ID → use get_document_storage_path RPC
@@ -164,6 +200,7 @@ export default function DocumentSituationView({
           console.log('[DocumentSituationView] RPC SUCCESS:', {
             returned_data: docInfo,
             has_storage_path: !!docInfo?.storage_path,
+            has_document_id: !!docInfo?.document_id,
           });
 
           if (!docInfo?.storage_path) {
@@ -174,8 +211,40 @@ export default function DocumentSituationView({
 
           docStoragePath = docInfo.storage_path;
           console.log('[DocumentSituationView] storage_path from RPC:', docStoragePath);
+
+          // SECURITY: Use backend signing endpoint if document_id is available
+          // This provides access control, audit logging, and rate limiting
+          if (docInfo?.document_id) {
+            console.log('[DocumentSituationView] Using backend signing with document_id:', docInfo.document_id);
+
+            const result = await loadDocumentWithBackend(docInfo.document_id);
+
+            if (!result.success) {
+              setError(result.error || 'Failed to load document');
+              return;
+            }
+
+            setDocumentUrl(result.url || null);
+            setStoragePath(docStoragePath); // Keep for download fallback
+
+            // Use title from situation metadata
+            const finalTitle = documentTitle;
+
+            // Classify document using title from search results
+            const docClassification = classifyDocument(finalTitle, metadata);
+            setClassification(docClassification);
+
+            console.log('[DocumentSituationView] Document loaded successfully via backend:', {
+              title: finalTitle,
+              classification: docClassification,
+              document_id: docInfo.document_id,
+            });
+
+            return; // Exit early - document loaded successfully
+          }
         }
 
+        // FALLBACK: Direct Supabase signing (deprecated, lacks audit logging)
         // Strip "documents/" prefix if present (chunks include it, but documentLoader expects path without bucket name)
         // Format from chunks: "documents/yacht_id/..."
         // Format for documentLoader: "yacht_id/..."
@@ -183,10 +252,10 @@ export default function DocumentSituationView({
           docStoragePath = docStoragePath.substring('documents/'.length);
         }
 
-        console.log('[DocumentSituationView] Using storage path:', docStoragePath);
+        console.log('[DocumentSituationView] Using storage path (fallback):', docStoragePath);
         setStoragePath(docStoragePath);
 
-        // Load document using storage path
+        // Load document using storage path (old approach)
         const result = await loadDocument(docStoragePath);
 
         if (!result.success) {
