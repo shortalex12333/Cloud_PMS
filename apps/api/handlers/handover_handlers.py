@@ -66,7 +66,7 @@ class HandoverHandlers:
 
             # Fetch entity data based on type
             if entity_type == "fault":
-                result = self.db.table("faults").select(
+                result = self.db.table("pms_faults").select(
                     "id, fault_code, title, description, severity, "
                     "equipment:equipment_id(name, location)"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -94,7 +94,7 @@ class HandoverHandlers:
                 })
 
             elif entity_type == "work_order":
-                result = self.db.table("work_orders").select(
+                result = self.db.table("pms_work_orders").select(
                     "id, number, title, description, status, priority, "
                     "equipment:equipment_id(name, location)"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -124,7 +124,7 @@ class HandoverHandlers:
                 })
 
             elif entity_type == "equipment":
-                result = self.db.table("equipment").select(
+                result = self.db.table("pms_equipment").select(
                     "id, name, model, manufacturer, location, status"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -178,7 +178,7 @@ class HandoverHandlers:
                 })
 
             elif entity_type == "part":
-                result = self.db.table("parts").select(
+                result = self.db.table("pms_parts").select(
                     "id, name, part_number, category, quantity_on_hand, minimum_quantity, location"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -286,7 +286,7 @@ class HandoverHandlers:
 
             # Check for duplicate entry (optional - allow override)
             # NOTE: As per spec, duplicates are allowed but can be flagged
-            existing = self.db.table("handover").select(
+            existing = self.db.table("pms_handover").select(
                 "id"
             ).eq("yacht_id", yacht_id).eq(
                 "entity_type", entity_type
@@ -308,7 +308,7 @@ class HandoverHandlers:
                 "added_at": datetime.now(timezone.utc).isoformat()
             }
 
-            insert_result = self.db.table("handover").insert(
+            insert_result = self.db.table("pms_handover").insert(
                 handover_entry
             ).execute()
 
@@ -328,7 +328,7 @@ class HandoverHandlers:
             # Create audit log entry
             audit_log_id = str(uuid.uuid4())
             try:
-                self.db.table("audit_log").insert({
+                self.db.table("pms_audit_log").insert({
                     "id": audit_log_id,
                     "yacht_id": yacht_id,
                     "action": "add_to_handover",
