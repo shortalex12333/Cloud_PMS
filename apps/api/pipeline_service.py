@@ -23,10 +23,16 @@ import time
 import logging
 import os
 import sys
+import uuid
+import traceback
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+
+# Git commit for /version endpoint
+GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", os.environ.get("GIT_COMMIT", "dev"))
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
 # Setup path for imports
 from pathlib import Path
@@ -233,6 +239,17 @@ async def health_check():
         pipeline_ready=pipeline_ready,
     )
 
+
+@app.get("/version")
+async def version():
+    """Version endpoint - returns git commit and environment."""
+    return {
+        "git_commit": GIT_COMMIT,
+        "environment": ENVIRONMENT,
+        "version": "1.0.0",
+        "api": "pipeline_v1"
+    }
+
 @app.post("/search", response_model=SearchResponse)
 @limiter.limit("100/minute")
 async def search(request: SearchRequest):
@@ -285,24 +302,51 @@ async def webhook_search(request: Request):
 
     Accepts frontend payload format with auth and context.
     Extracts yacht_id from auth payload and routes to pipeline.
+
+    ALWAYS returns structured JSON - never raw 500 errors.
     """
+    # Generate request_id for tracing
+    request_id = str(uuid.uuid4())[:8]
+
     try:
         body = await request.json()
-        logger.info(f"[webhook/search] Received query: {body.get('query')}")
+        query = body.get('query', '')
+        logger.info(f"[webhook/search:{request_id}] Received query: '{query}' | payload_keys: {list(body.keys())}")
 
         # Extract data from frontend format
-        query = body.get('query')
         auth = body.get('auth', {})
         yacht_id = auth.get('yacht_id')
         limit = body.get('limit', 20)
 
-        # Validate required fields
+        # Validate required fields - return 400 JSON, not raw error
         if not query:
-            raise HTTPException(status_code=400, detail="Missing required field: query")
+            logger.warning(f"[webhook/search:{request_id}] Missing query field")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "ok": False,
+                    "request_id": request_id,
+                    "error_code": "MISSING_QUERY",
+                    "message": "Missing required field: query",
+                    "results": [],
+                    "total_count": 0
+                }
+            )
         if not yacht_id:
-            raise HTTPException(status_code=400, detail="Missing required field: auth.yacht_id")
+            logger.warning(f"[webhook/search:{request_id}] Missing yacht_id in auth")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "ok": False,
+                    "request_id": request_id,
+                    "error_code": "MISSING_YACHT_ID",
+                    "message": "Missing required field: auth.yacht_id",
+                    "results": [],
+                    "total_count": 0
+                }
+            )
 
-        logger.info(f"[webhook/search] yacht_id={yacht_id}, query='{query}'")
+        logger.info(f"[webhook/search:{request_id}] yacht_id={yacht_id[:8]}..., query='{query}'")
 
         # Call main search logic
         search_request = SearchRequest(
@@ -316,14 +360,46 @@ async def webhook_search(request: Request):
         # Frontend expects newline-delimited JSON for streaming parser
         # Send as single line with newline terminator
         import json
-        from fastapi.responses import Response
 
-        json_str = json.dumps(result.model_dump()) + "\n"
+        response_data = result.model_dump()
+        response_data["request_id"] = request_id
+        response_data["ok"] = response_data.get("success", False)
+
+        json_str = json.dumps(response_data) + "\n"
+        logger.info(f"[webhook/search:{request_id}] Success: {response_data.get('success')}, results: {response_data.get('total_count', 0)}")
         return Response(content=json_str, media_type="application/json")
 
+    except HTTPException as he:
+        # Re-raise HTTP exceptions but log them
+        logger.error(f"[webhook/search:{request_id}] HTTPException: {he.detail}")
+        return JSONResponse(
+            status_code=he.status_code,
+            content={
+                "ok": False,
+                "request_id": request_id,
+                "error_code": "HTTP_ERROR",
+                "message": str(he.detail),
+                "results": [],
+                "total_count": 0
+            }
+        )
     except Exception as e:
-        logger.error(f"[webhook/search] Error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        # CRITICAL: Never return raw 500 - always return structured JSON
+        error_tb = traceback.format_exc()
+        logger.error(f"[webhook/search:{request_id}] PIPELINE_INTERNAL_ERROR: {e}\n{error_tb}")
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "request_id": request_id,
+                "error_code": "PIPELINE_INTERNAL",
+                "message": f"Search failed: {str(e)}",
+                "error_type": type(e).__name__,
+                "results": [],
+                "total_count": 0
+            }
+        )
 
 @app.post("/extract", response_model=ExtractResponse)
 @limiter.limit("100/minute")

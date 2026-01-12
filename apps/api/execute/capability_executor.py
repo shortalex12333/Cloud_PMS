@@ -20,6 +20,7 @@ USAGE:
 """
 
 import re
+import logging
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
@@ -33,6 +34,8 @@ from .table_capabilities import (
     SearchableColumn,
     get_active_capabilities,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionError(Exception):
@@ -150,6 +153,20 @@ class CapabilityExecutor:
             return result
 
         except Exception as e:
+            error_msg = str(e)
+            # Log detailed error for debugging
+            logger.error(
+                f"[CapabilityExecutor] EXECUTE FAILED: "
+                f"capability={capability_name}, table={table_spec.name}, "
+                f"search_terms={search_terms}, error={error_msg}"
+            )
+
+            # Check for common table-not-found patterns
+            if "relation" in error_msg.lower() and "does not exist" in error_msg.lower():
+                error_msg = f"Table '{table_spec.name}' does not exist in database. {error_msg}"
+            elif "column" in error_msg.lower() and "does not exist" in error_msg.lower():
+                error_msg = f"Column not found in table '{table_spec.name}'. {error_msg}"
+
             return QueryResult(
                 success=False,
                 capability_name=capability_name,
@@ -157,7 +174,7 @@ class CapabilityExecutor:
                 rows=[],
                 row_count=0,
                 query_type="error",
-                error=str(e),
+                error=error_msg,
                 execution_time_ms=(time.time() - start_time) * 1000,
             )
 
@@ -170,6 +187,11 @@ class CapabilityExecutor:
         offset: int,
     ) -> QueryResult:
         """Execute a SQL query via Supabase client."""
+
+        logger.debug(
+            f"[CapabilityExecutor] _execute_sql: table={table_spec.name}, "
+            f"capability={capability.name}, search_terms={search_terms}"
+        )
 
         # Validate search terms against declared columns
         searchable_cols = {col.name: col for col in table_spec.searchable_columns}
