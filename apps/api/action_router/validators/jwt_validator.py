@@ -41,11 +41,13 @@ def validate_jwt(token: str) -> ValidationResult:
             )
 
         # Decode and verify JWT
+        # Note: Supabase tokens have audience="authenticated", skip audience verification
+        # as we validate yacht_id separately for tenant isolation
         payload = jwt.decode(
             token,
             jwt_secret,
             algorithms=["HS256"],
-            options={"verify_exp": True},
+            options={"verify_exp": True, "verify_aud": False},
         )
 
         # Extract user context from JWT
@@ -60,9 +62,11 @@ def validate_jwt(token: str) -> ValidationResult:
         app_metadata = payload.get("app_metadata", {})
         user_metadata = payload.get("user_metadata", {})
 
-        # yacht_id and role can be in either app_metadata or user_metadata
+        # yacht_id can be in either app_metadata or user_metadata
         yacht_id = app_metadata.get("yacht_id") or user_metadata.get("yacht_id")
-        role = app_metadata.get("role") or user_metadata.get("role")
+
+        # role can be at top level (Supabase default) or in metadata
+        role = payload.get("role") or app_metadata.get("role") or user_metadata.get("role")
 
         if not yacht_id:
             return ValidationResult.failure(

@@ -69,7 +69,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get fault details
-            fault_result = self.db.table("pms_faults").select(
+            fault_result = self.db.table("faults").select(
                 "id, fault_code, title, description, severity, equipment_id, "
                 "equipment:equipment_id(id, name, location), detected_at"
             ).eq("id", fault_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -87,7 +87,7 @@ class WorkOrderMutationHandlers:
             # Get fault occurrence count (last 30 days)
             occurrence_count = 0
             if fault.get("fault_code"):
-                count_result = self.db.table("pms_faults").select(
+                count_result = self.db.table("faults").select(
                     "id", count="exact"
                 ).eq("yacht_id", yacht_id).eq(
                     "fault_code", fault["fault_code"]
@@ -173,7 +173,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get fault info for preview
-            fault_result = self.db.table("pms_faults").select(
+            fault_result = self.db.table("faults").select(
                 "id, fault_code, title"
             ).eq("id", fault_id).maybe_single().execute()
 
@@ -189,7 +189,7 @@ class WorkOrderMutationHandlers:
             # Get equipment name
             equipment_name = "Unknown Equipment"
             if equipment_id:
-                eq_result = self.db.table("pms_equipment").select(
+                eq_result = self.db.table("equipment").select(
                     "name, model"
                 ).eq("id", equipment_id).maybe_single().execute()
                 if eq_result.data:
@@ -286,7 +286,7 @@ class WorkOrderMutationHandlers:
                     }
 
             # Validate fault exists
-            fault_result = self.db.table("pms_faults").select("id").eq(
+            fault_result = self.db.table("faults").select("id").eq(
                 "id", fault_id
             ).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -299,7 +299,7 @@ class WorkOrderMutationHandlers:
 
             # Validate equipment exists (if provided)
             if equipment_id:
-                eq_result = self.db.table("pms_equipment").select("id").eq(
+                eq_result = self.db.table("equipment").select("id").eq(
                     "id", equipment_id
                 ).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -330,7 +330,7 @@ class WorkOrderMutationHandlers:
                 "updated_at": now
             }
 
-            wo_result = self.db.table("pms_work_orders").insert(wo_data).execute()
+            wo_result = self.db.table("work_orders").insert(wo_data).execute()
 
             if not wo_result.data:
                 return {
@@ -402,7 +402,7 @@ class WorkOrderMutationHandlers:
         """GET /v1/actions/add_note_to_work_order/prefill"""
         try:
             # Get work order info
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, equipment_id, equipment:equipment_id(name), status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -449,7 +449,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Validate work order exists and not closed
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -478,7 +478,7 @@ class WorkOrderMutationHandlers:
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
 
-            note_result = self.db.table("pms_work_order_notes").insert(note_data).execute()
+            note_result = self.db.table("work_order_notes").insert(note_data).execute()
 
             if not note_result.data:
                 return {
@@ -539,7 +539,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order details
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -560,7 +560,7 @@ class WorkOrderMutationHandlers:
                 }
 
             # Get part details
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "id, name, part_number, unit, quantity_on_hand, minimum_quantity, location"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -628,7 +628,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -642,7 +642,7 @@ class WorkOrderMutationHandlers:
             wo = wo_result.data
 
             # Get part
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "id, name, part_number, unit, quantity_on_hand, minimum_quantity"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -725,7 +725,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Validate work order
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -746,7 +746,7 @@ class WorkOrderMutationHandlers:
                 }
 
             # Validate part
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "id, name, part_number, quantity_on_hand, minimum_quantity"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -768,14 +768,14 @@ class WorkOrderMutationHandlers:
                 }
 
             # Check if part already added to this WO
-            existing_result = self.db.table("pms_work_order_parts").select(
+            existing_result = self.db.table("work_order_parts").select(
                 "id, quantity"
             ).eq("work_order_id", work_order_id).eq("part_id", part_id).maybe_single().execute()
 
             if existing_result.data:
                 # Update quantity instead of creating duplicate
                 new_quantity = existing_result.data["quantity"] + quantity
-                update_result = self.db.table("pms_work_order_parts").update({
+                update_result = self.db.table("work_order_parts").update({
                     "quantity": new_quantity,
                     "notes": notes
                 }).eq("id", existing_result.data["id"]).execute()
@@ -792,7 +792,7 @@ class WorkOrderMutationHandlers:
                     "added_at": datetime.now(timezone.utc).isoformat()
                 }
 
-                wo_part_result = self.db.table("pms_work_order_parts").insert(wo_part_data).execute()
+                wo_part_result = self.db.table("work_order_parts").insert(wo_part_data).execute()
 
                 if not wo_part_result.data:
                     return {
@@ -873,7 +873,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order details
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, title, status, equipment_id, created_at, "
                 "equipment:equipment_id(name)"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -889,7 +889,7 @@ class WorkOrderMutationHandlers:
             equipment = wo.get("equipment") or {}
 
             # Get parts list for this WO
-            parts_result = self.db.table("pms_work_order_parts").select(
+            parts_result = self.db.table("work_order_parts").select(
                 "id, part_id, quantity, notes, "
                 "part:part_id(id, name, part_number, quantity_on_hand)"
             ).eq("work_order_id", work_order_id).execute()
@@ -907,7 +907,7 @@ class WorkOrderMutationHandlers:
                 })
 
             # Get notes count
-            notes_result = self.db.table("pms_work_order_notes").select(
+            notes_result = self.db.table("work_order_notes").select(
                 "id", count="exact"
             ).eq("work_order_id", work_order_id).execute()
             notes_count = notes_result.count or 0
@@ -991,7 +991,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1025,7 +1025,7 @@ class WorkOrderMutationHandlers:
                 quantity_used = part_usage["quantity_used"]
 
                 # Get part details
-                part_result = self.db.table("pms_parts").select(
+                part_result = self.db.table("parts").select(
                     "id, name, part_number, quantity_on_hand, minimum_quantity"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1116,7 +1116,7 @@ class WorkOrderMutationHandlers:
                 }
 
             # Validate work order
-            wo_result = self.db.table("pms_work_orders").select(
+            wo_result = self.db.table("work_orders").select(
                 "id, number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1151,7 +1151,7 @@ class WorkOrderMutationHandlers:
                 quantity_used = part_usage["quantity_used"]
 
                 # Get part details first
-                part_result = self.db.table("pms_parts").select(
+                part_result = self.db.table("parts").select(
                     "id, name, part_number, quantity_on_hand"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1206,7 +1206,7 @@ class WorkOrderMutationHandlers:
                 "completion_notes": completion_notes
             }
 
-            wo_update_result = self.db.table("pms_work_orders").update(update_data).eq(
+            wo_update_result = self.db.table("work_orders").update(update_data).eq(
                 "id", work_order_id
             ).eq("yacht_id", yacht_id).execute()
 
@@ -1279,7 +1279,7 @@ class WorkOrderMutationHandlers:
         }
         """
         try:
-            result = self.db.table("pms_work_orders").select(
+            result = self.db.table("work_orders").select(
                 "id, number, status, assigned_to, created_at, "
                 "assigned_user:assigned_to(name)"
             ).eq("yacht_id", yacht_id).eq("fault_id", fault_id).not_.in_(
@@ -1336,7 +1336,7 @@ class WorkOrderMutationHandlers:
         year = datetime.now(timezone.utc).year
 
         # Get count of WOs this year
-        count_result = self.db.table("pms_work_orders").select(
+        count_result = self.db.table("work_orders").select(
             "id", count="exact"
         ).eq("yacht_id", yacht_id).gte(
             "created_at", f"{year}-01-01"

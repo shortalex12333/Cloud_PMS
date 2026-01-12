@@ -574,6 +574,30 @@ class ResponseBuilder:
 
         return response.to_dict()
 
+    # =========================================================================
+    # STATIC HELPERS (for simpler handler code)
+    # =========================================================================
+
+    @staticmethod
+    def success(action: str, result: Dict, message: str = "") -> Dict:
+        """Quick success response builder."""
+        return {
+            "status": "success",
+            "action": action,
+            "result": result,
+            "message": message
+        }
+
+    @staticmethod
+    def error(action: str, error_code: str, message: str) -> Dict:
+        """Quick error response builder."""
+        return {
+            "status": "error",
+            "action": action,
+            "error_code": error_code,
+            "message": message
+        }
+
 
 # =============================================================================
 # SIGNED URL GENERATOR (Supabase Storage)
