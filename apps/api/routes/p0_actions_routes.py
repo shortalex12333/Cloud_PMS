@@ -516,6 +516,100 @@ async def execute_action(
 # HEALTH CHECK
 # ============================================================================
 
+@router.get("/handover")
+async def get_handover_items(
+    yacht_id: Optional[str] = None,
+    limit: int = 20,
+    category: Optional[str] = None,
+    authorization: str = Header(None)
+):
+    """
+    Get handover items for a yacht, sorted by priority and recency.
+
+    Query Parameters:
+    - yacht_id: Optional (uses JWT yacht_id if not provided)
+    - limit: Maximum number of items to return (default: 20)
+    - category: Optional filter by category
+
+    Returns:
+    - List of handover items with user names
+    - Sorted by priority (desc) and added_at (desc)
+    """
+    # Validate JWT
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+
+    user_context = jwt_result.context
+
+    # Use yacht_id from JWT if not provided in query
+    if not yacht_id:
+        yacht_id = user_context.get("yacht_id")
+
+    if not yacht_id:
+        raise HTTPException(status_code=400, detail="yacht_id is required")
+
+    # Validate yacht isolation
+    if yacht_id != user_context.get("yacht_id"):
+        raise HTTPException(status_code=403, detail="Access denied: yacht isolation violation")
+
+    try:
+        # Build query
+        # Note: Removed users:added_by join as it requires explicit FK relationship
+        # User names can be resolved separately if needed
+        query = supabase.table("handover").select(
+            "id, yacht_id, entity_type, entity_id, summary_text, category, priority, "
+            "added_at, added_by"
+        ).eq("yacht_id", yacht_id)
+
+        # Apply category filter if provided
+        if category:
+            query = query.eq("category", category)
+
+        # Order by priority (desc) and added_at (desc)
+        query = query.order("priority", desc=True).order("added_at", desc=True)
+
+        # Apply limit
+        query = query.limit(limit)
+
+        # Execute query
+        result = query.execute()
+
+        if not result.data:
+            return {
+                "status": "success",
+                "items": [],
+                "count": 0
+            }
+
+        # Transform results to include user names
+        items = []
+        for item in result.data:
+            user_info = item.get("users", {})
+            items.append({
+                "id": item["id"],
+                "entity_type": item["entity_type"],
+                "entity_id": item["entity_id"],
+                "title": None,  # TODO: Could be fetched from entity if needed
+                "summary_text": item["summary_text"],
+                "category": item["category"],
+                "priority": item["priority"],
+                "added_by": item["added_by"],
+                "added_by_name": user_info.get("full_name", "Unknown") if user_info else "Unknown",
+                "added_at": item["added_at"]
+            })
+
+        return {
+            "status": "success",
+            "items": items,
+            "count": len(items)
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to fetch handover items: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch handover items: {str(e)}")
+
+
 @router.get("/health")
 async def health_check():
     """Health check for P0 actions routes."""

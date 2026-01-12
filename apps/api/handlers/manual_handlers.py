@@ -68,7 +68,7 @@ class ManualHandlers:
         """
         try:
             # Get equipment details
-            equipment_result = self.db.table("pms_equipment").select(
+            equipment_result = self.db.table("equipment").select(
                 "id, name, manufacturer, model, manual_id"
             ).eq("id", equipment_id).eq("yacht_id", yacht_id).maybe_single().execute()
 

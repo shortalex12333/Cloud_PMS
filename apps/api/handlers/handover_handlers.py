@@ -66,7 +66,7 @@ class HandoverHandlers:
 
             # Fetch entity data based on type
             if entity_type == "fault":
-                result = self.db.table("pms_faults").select(
+                result = self.db.table("faults").select(
                     "id, fault_code, title, description, severity, "
                     "equipment:equipment_id(name, location)"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -94,7 +94,7 @@ class HandoverHandlers:
                 })
 
             elif entity_type == "work_order":
-                result = self.db.table("pms_work_orders").select(
+                result = self.db.table("work_orders").select(
                     "id, number, title, description, status, priority, "
                     "equipment:equipment_id(name, location)"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -124,7 +124,7 @@ class HandoverHandlers:
                 })
 
             elif entity_type == "equipment":
-                result = self.db.table("pms_equipment").select(
+                result = self.db.table("equipment").select(
                     "id, name, model, manufacturer, location, status"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -178,7 +178,7 @@ class HandoverHandlers:
                 })
 
             elif entity_type == "part":
-                result = self.db.table("pms_parts").select(
+                result = self.db.table("parts").select(
                     "id, name, part_number, category, quantity_on_hand, minimum_quantity, location"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -243,7 +243,7 @@ class HandoverHandlers:
 
         MUTATE action - execute only (no preview needed, low-risk).
 
-        Creates entry in pms_handover table linking to entity.
+        Creates entry in handover table linking to entity.
 
         Returns:
         - Handover entry details
@@ -275,8 +275,8 @@ class HandoverHandlers:
                     message="Summary text must be less than 2000 characters"
                 )
 
-            # Validate category
-            valid_categories = ["ongoing_fault", "work_in_progress", "important_info", "equipment_status", "general"]
+            # Validate category (must match DB constraint)
+            valid_categories = ["urgent", "in_progress", "completed", "watch", "fyi"]
             if category not in valid_categories:
                 return ResponseBuilder.error(
                     action="add_to_handover",
@@ -286,7 +286,7 @@ class HandoverHandlers:
 
             # Check for duplicate entry (optional - allow override)
             # NOTE: As per spec, duplicates are allowed but can be flagged
-            existing = self.db.table("pms_handover").select(
+            existing = self.db.table("handover").select(
                 "id"
             ).eq("yacht_id", yacht_id).eq(
                 "entity_type", entity_type
@@ -308,7 +308,7 @@ class HandoverHandlers:
                 "added_at": datetime.now(timezone.utc).isoformat()
             }
 
-            insert_result = self.db.table("pms_handover").insert(
+            insert_result = self.db.table("handover").insert(
                 handover_entry
             ).execute()
 
@@ -321,14 +321,14 @@ class HandoverHandlers:
 
             # Get user name
             user_result = self.db.table("auth_users_profiles").select(
-                "full_name"
+                "name"
             ).eq("id", user_id).maybe_single().execute()
-            user_name = user_result.data.get("full_name", "Unknown") if user_result.data else "Unknown"
+            user_name = user_result.data.get("name", "Unknown") if user_result.data else "Unknown"
 
             # Create audit log entry
             audit_log_id = str(uuid.uuid4())
             try:
-                self.db.table("pms_audit_log").insert({
+                self.db.table("audit_log").insert({
                     "id": audit_log_id,
                     "yacht_id": yacht_id,
                     "action": "add_to_handover",

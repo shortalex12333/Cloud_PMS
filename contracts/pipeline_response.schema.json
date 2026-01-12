@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://celeste7.ai/schemas/pipeline_response.json",
+  "title": "Pipeline Response",
+  "description": "Standardized response from CelesteOS pipeline (search/query)",
+  "type": "object",
+  "required": ["success", "query"],
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether the pipeline executed successfully"
+    },
+    "query": {
+      "type": "string",
+      "description": "Original user query"
+    },
+    "query_intent": {
+      "type": "object",
+      "description": "Parsed intent from query",
+      "properties": {
+        "primary_intent": {
+          "type": "string",
+          "description": "Main intent category"
+        },
+        "action": {
+          "type": "string",
+          "description": "Detected action verb"
+        },
+        "entities": {
+          "type": "object",
+          "description": "Extracted entities from query"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "ranked_groups": {
+      "type": "array",
+      "description": "Result groups ranked by relevance",
+      "items": {
+        "type": "object",
+        "required": ["group_type", "items"],
+        "properties": {
+          "group_type": {
+            "type": "string",
+            "enum": ["documents", "work_orders", "inventory", "equipment", "faults", "finance", "crew", "handover"],
+            "description": "Type of results in this group"
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title for group"
+          },
+          "relevance_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/result_item"
+            }
+          }
+        }
+      }
+    },
+    "situation_seed": {
+      "type": "object",
+      "description": "Seed data for situation view",
+      "properties": {
+        "situation_type": {
+          "type": "string"
+        },
+        "entity_type": {
+          "type": "string"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "context": {
+          "type": "object"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "description": "Error details if success=false",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object"
+        }
+      },
+      "required": ["code", "message"]
+    },
+    "meta": {
+      "type": "object",
+      "description": "Execution metadata",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["local", "remote", "replay"]
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status_code": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["local", "render", "cassette", "gateway"]
+        },
+        "cassette_id": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "result_item": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title"
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Secondary text"
+        },
+        "entity_type": {
+          "type": "string",
+          "description": "Type of entity"
+        },
+        "relevance_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Entity-specific metadata"
+        },
+        "microactions": {
+          "type": "array",
+          "description": "Available actions for this item",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action_id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "requires_confirmation": {
+                "type": "boolean"
+              }
+            },
+            "required": ["action_id", "label"]
+          }
+        },
+        "preview": {
+          "type": "object",
+          "description": "Preview content",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "image_url": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

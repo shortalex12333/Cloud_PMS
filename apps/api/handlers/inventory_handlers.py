@@ -65,11 +65,11 @@ class InventoryHandlers:
         """
         try:
             # Get part details with stock info
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "id, name, part_number, category, description, unit, "
                 "quantity_on_hand, minimum_quantity, maximum_quantity, location, "
                 "last_counted_at, last_counted_by, "
-                "counter:last_counted_by(id, full_name)"
+                "counter:last_counted_by(id, name)"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not part_result.data:
@@ -96,7 +96,7 @@ class InventoryHandlers:
 
             # Get usage stats (last 30 days)
             thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-            usage_result = self.db.table("pms_part_usage").select(
+            usage_result = self.db.table("part_usage").select(
                 "quantity, used_at"
             ).eq("yacht_id", yacht_id).eq(
                 "part_id", part_id
@@ -117,7 +117,7 @@ class InventoryHandlers:
             # Get counter name
             counter_name = "Unknown"
             if part.get("counter"):
-                counter_name = part["counter"].get("full_name", "Unknown")
+                counter_name = part["counter"].get("name", "Unknown")
 
             # Build response
             return ResponseBuilder.success(
@@ -182,7 +182,7 @@ class InventoryHandlers:
         """
         try:
             # Get part details
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "id, name, part_number, unit, quantity_on_hand"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -206,7 +206,7 @@ class InventoryHandlers:
 
             # Add work order details if provided
             if work_order_id:
-                wo_result = self.db.table("pms_work_orders").select(
+                wo_result = self.db.table("work_orders").select(
                     "id, number, title"
                 ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -255,7 +255,7 @@ class InventoryHandlers:
         """
         try:
             # Get part details
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "id, name, part_number, unit, quantity_on_hand, minimum_quantity"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -273,14 +273,14 @@ class InventoryHandlers:
 
             # Get user name
             user_result = self.db.table("auth_users_profiles").select(
-                "full_name"
+                "name"
             ).eq("id", user_id).maybe_single().execute()
-            user_name = user_result.data.get("full_name", "Unknown") if user_result.data else "Unknown"
+            user_name = user_result.data.get("name", "Unknown") if user_result.data else "Unknown"
 
             # Get work order number if provided
             wo_number = None
             if work_order_id:
-                wo_result = self.db.table("pms_work_orders").select(
+                wo_result = self.db.table("work_orders").select(
                     "number"
                 ).eq("id", work_order_id).maybe_single().execute()
                 if wo_result.data:
@@ -364,8 +364,8 @@ class InventoryHandlers:
         Uses deduct_part_inventory() helper function for atomic operation.
 
         Creates:
-        - pms_part_usage log entry
-        - Updates pms_parts.quantity_on_hand
+        - part_usage log entry
+        - Updates parts.quantity_on_hand
         - Creates audit log entry
 
         Returns error if insufficient stock.
@@ -381,7 +381,7 @@ class InventoryHandlers:
 
             # Validate work order exists if provided
             if work_order_id:
-                wo_result = self.db.table("pms_work_orders").select(
+                wo_result = self.db.table("work_orders").select(
                     "id"
                 ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
                 if not wo_result.data:
@@ -422,7 +422,7 @@ class InventoryHandlers:
 
                 # Manual deduction (fallback)
                 # Get current stock with row lock
-                part_result = self.db.table("pms_parts").select(
+                part_result = self.db.table("parts").select(
                     "id, name, part_number, quantity_on_hand, minimum_quantity"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -446,14 +446,14 @@ class InventoryHandlers:
 
                 # Update part stock
                 new_stock = current_stock - quantity
-                update_result = self.db.table("pms_parts").update({
+                update_result = self.db.table("parts").update({
                     "quantity_on_hand": new_stock,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }).eq("id", part_id).eq("yacht_id", yacht_id).execute()
 
                 # Create usage log entry
                 usage_log_id = str(uuid.uuid4())
-                usage_result = self.db.table("pms_part_usage").insert({
+                usage_result = self.db.table("part_usage").insert({
                     "id": usage_log_id,
                     "yacht_id": yacht_id,
                     "part_id": part_id,
@@ -467,11 +467,11 @@ class InventoryHandlers:
                 }).execute()
 
             # Get created usage log entry
-            usage_log = self.db.table("pms_part_usage").select(
+            usage_log = self.db.table("part_usage").select(
                 "id, part_id, quantity, work_order_id, equipment_id, "
                 "usage_reason, notes, used_at, used_by, "
                 "part:part_id(name, part_number), "
-                "user:used_by(full_name)"
+                "user:used_by(name)"
             ).eq("part_id", part_id).eq("yacht_id", yacht_id).order(
                 "used_at", desc=True
             ).limit(1).maybe_single().execute()
@@ -483,7 +483,7 @@ class InventoryHandlers:
                 usage_log_data = usage_log.data
 
             # Get new stock level
-            part_result = self.db.table("pms_parts").select(
+            part_result = self.db.table("parts").select(
                 "quantity_on_hand, minimum_quantity"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -499,12 +499,12 @@ class InventoryHandlers:
             if usage_log_data.get("part"):
                 part_name = usage_log_data["part"].get("name", "Unknown")
             if usage_log_data.get("user"):
-                user_name = usage_log_data["user"].get("full_name", "Unknown")
+                user_name = usage_log_data["user"].get("name", "Unknown")
 
             # Create audit log entry
             audit_log_id = str(uuid.uuid4())
             try:
-                self.db.table("pms_audit_log").insert({
+                self.db.table("audit_log").insert({
                     "id": audit_log_id,
                     "yacht_id": yacht_id,
                     "action": "log_part_usage",

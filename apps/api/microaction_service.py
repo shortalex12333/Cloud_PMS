@@ -161,6 +161,57 @@ app.add_middleware(
     max_age=3600,  # Cache preflight for 1 hour
 )
 
+# ========================================================================
+# P0 ACTIONS ROUTES
+# ========================================================================
+# Include P0 actions router for handover, work orders, inventory, etc.
+try:
+    from routes.p0_actions_routes import router as p0_actions_router
+    app.include_router(p0_actions_router)
+    logger.info("✅ P0 Actions routes loaded")
+except Exception as e:
+    logger.warning(f"⚠ P0 Actions routes not loaded: {e}")
+
+# ========================================================================
+# PIPELINE GATEWAY (Prod-Parity Harness)
+# ========================================================================
+# Routes pipeline calls through LOCAL/REMOTE/REPLAY modes
+try:
+    from pipeline_gateway import get_gateway, PipelineResponse
+    from schema_validator import get_validator
+
+    @app.post("/api/pipeline/execute")
+    async def pipeline_execute(request: Request):
+        """
+        Pipeline Gateway endpoint.
+
+        Routes to LOCAL, REMOTE, or REPLAY based on PIPELINE_MODE env var.
+        Validates response against schema contract.
+        Records cassettes when PIPELINE_RECORD=1.
+        """
+        body = await request.json()
+        query = body.get("query", "")
+        context = body.get("context", {})
+        auth_header = request.headers.get("Authorization")
+        auth_token = auth_header.split(" ")[1] if auth_header and auth_header.startswith("Bearer ") else None
+
+        gateway = get_gateway()
+        response = await gateway.execute(query, context, auth_token)
+        response_dict = response.to_dict()
+
+        # Validate against schema
+        validator = get_validator()
+        validation = validator.validate_pipeline_response(response_dict)
+        if not validation.valid:
+            logger.warning(f"Schema validation failed: {validation.errors}")
+            response_dict["_schema_errors"] = validation.errors
+
+        return response_dict
+
+    logger.info(f"✅ Pipeline Gateway loaded (mode={os.getenv('PIPELINE_MODE', 'local')})")
+except Exception as e:
+    logger.warning(f"⚠ Pipeline Gateway not loaded: {e}")
+
 # Middleware to add Vary: Origin for CDN cache correctness
 # IMPORTANT: Append to existing Vary header, don't overwrite
 @app.middleware("http")
