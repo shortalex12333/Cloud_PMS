@@ -251,7 +251,6 @@ async def version():
     }
 
 @app.post("/search", response_model=SearchResponse)
-@limiter.limit("100/minute")
 async def search(request: SearchRequest):
     """
     Main search endpoint.
