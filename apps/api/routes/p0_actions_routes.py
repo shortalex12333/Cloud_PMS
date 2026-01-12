@@ -42,8 +42,9 @@ logger = logging.getLogger(__name__)
 
 def get_supabase_client() -> Client:
     """Get Supabase client instance."""
-    url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    # Support both naming conventions (Render uses SUPABASE_URL, frontend uses NEXT_PUBLIC_*)
+    url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
     if not url or not key:
         raise ValueError("Missing Supabase credentials")
