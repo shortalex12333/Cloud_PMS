@@ -60,7 +60,9 @@ export async function loadDocumentWithBackend(
     const headers = await getAuthHeaders(yachtId);
 
     // Call backend signing endpoint
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://pipeline-core.int.celeste7.ai';
+    // Strip trailing slashes and /webhook suffix to get clean base URL
+    let API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://pipeline-core.int.celeste7.ai';
+    API_BASE = API_BASE.replace(/\/+$/, '').replace(/\/webhook$/, '');
     const response = await fetch(`${API_BASE}/v1/documents/${documentId}/sign`, {
       method: 'POST',
       headers,
