@@ -682,6 +682,7 @@ async def sign_document_url(
 @app.get("/v1/documents/{document_id}/stream")
 @limiter.limit("60/minute")
 async def stream_document(
+    request: Request,
     document_id: str,
     auth: dict = Depends(validate_jwt_simple),
     x_yacht_signature: str = Header(None, alias='X-Yacht-Signature')
