@@ -51,13 +51,32 @@
 | # | Action | Cluster | Handler | DB Tables | Status | Notes |
 |---|--------|---------|---------|-----------|--------|-------|
 | 9 | diagnose_fault | fix_something | ✅ fault_handlers.py | ✅ pms_faults | **DONE** | Tested 2026-01-12 |
-| 10 | create_work_order | do_maintenance | ❌ NEEDS CREATION | ✅ pms_work_orders | PENDING | Similar to create_wo_from_fault |
-| 11 | order_part | control_inventory | ❌ NEEDS CREATION | ✅ pms_purchase_orders | PENDING | Creates purchase request for part |
+| 10 | create_work_order | do_maintenance | ✅ p1_purchasing_handlers.py | ✅ pms_work_orders | **DONE** | Standalone WO creation |
+| 11 | order_part | control_inventory | ✅ p1_purchasing_handlers.py | ✅ pms_purchase_orders | **DONE** | Add part to PO |
 | 12 | update_hours_of_rest | comply_audit | ❌ NEEDS CREATION | ❌ NO TABLES | **BLOCKED** | No HOR tables exist |
-| 13 | create_purchase_request | procure_suppliers | ❌ NEEDS CREATION | ✅ pms_purchase_orders | PENDING | Generic purchase request |
-| 14 | approve_purchase | procure_suppliers | ❌ NEEDS CREATION | ✅ pms_purchase_orders | PENDING | Role-based approval |
-| 15 | log_delivery_received | procure_suppliers | ✅ commit_receiving_session | ✅ pms_receiving_* | READY | Test needed |
+| 13 | create_purchase_request | procure_suppliers | ✅ p1_purchasing_handlers.py | ✅ pms_purchase_orders | **DONE** | Creates PO in 'requested' status |
+| 14 | approve_purchase | procure_suppliers | ✅ p1_purchasing_handlers.py | ✅ pms_purchase_orders | **DONE** | Role-based approval |
+| 15 | log_delivery_received | procure_suppliers | ❌ commit_receiving_session | ❌ NO receiving_* TABLES | **BLOCKED** | receiving_sessions/items tables don't exist |
 | 16 | add_worklist_task | do_maintenance | ❌ NEEDS CREATION | ❌ NO TABLES | **BLOCKED** | No worklist tables exist |
+
+> **P1 Completed:** 2026-01-12 | **Commit:** d697a58 | **Actions:** 5/8 done, 3 blocked
+
+### P1 Purchase Order Status Workflow
+
+```
+draft → requested → approved → ordered → partially_received → received
+                  ↘ rejected → draft (resubmit)
+                  ↘ cancelled (terminal)
+```
+
+### P1 Role-Based Approval
+
+Roles that can approve purchases:
+- captain
+- chief_engineer
+- chief_officer
+- admin
+- owner
 
 ### P1 Blockers
 
@@ -65,7 +84,7 @@
 |-------|--------|---------------------|
 | No `hours_of_rest` tables | `update_hours_of_rest` blocked | Create HOR schema migration |
 | No `worklist` tables | `add_worklist_task` blocked | Create worklist schema migration |
-| 5 handlers need creation | Requires development | Create handlers for: create_work_order, order_part, create_purchase_request, approve_purchase |
+| No `receiving_sessions/items` tables | `log_delivery_received` blocked | Create receiving schema migration |
 
 ---
 
