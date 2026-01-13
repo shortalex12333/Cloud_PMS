@@ -8,3 +8,4 @@ export const dynamic = 'force-dynamic';
 export default function Home() {
   redirect('/login');
 }
+// Deployment proof: 2026-01-13T15:41:08Z
