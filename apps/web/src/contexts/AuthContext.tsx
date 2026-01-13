@@ -81,7 +81,7 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
   console.log('[AuthContext] Validating user:', authUser.email, 'ID:', authUser.id);
 
   try {
-    // Use RPC function with aggressive 3s timeout
+    // Use RPC function with 10s timeout (increased from 3s due to cold start issues)
     console.log('[AuthContext] Calling RPC get_user_auth_info...');
 
     const rpcPromise = supabase.rpc('get_user_auth_info', {
@@ -89,7 +89,7 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RPC timeout after 3s')), 3000);
+      setTimeout(() => reject(new Error('RPC timeout after 10s')), 10000);
     });
 
     const result = await Promise.race([rpcPromise, timeoutPromise]);
@@ -174,11 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let maxTimeout: NodeJS.Timeout;
     let subscription: { unsubscribe: () => void } | null = null;
 
-    // ABSOLUTE maximum timeout - clear loading after 3s no matter what
+    // ABSOLUTE maximum timeout - clear loading after 12s no matter what (RPC timeout is 10s)
     maxTimeout = setTimeout(() => {
-      console.warn('[AuthContext] FORCE clearing loading state after 3s');
+      console.warn('[AuthContext] FORCE clearing loading state after 12s');
       setLoading(false);
-    }, 3000);
+    }, 12000);
 
     const initAuth = async () => {
       try {
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         subscription = data.subscription;
 
-        // Fallback timeout - if no auth event fires within 2s, check manually
+        // Fallback timeout - if no auth event fires within 5s, check manually
         timeout = setTimeout(async () => {
           console.log('[AuthContext] Timeout - checking session manually');
           try {
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // ALWAYS clear loading state
             setLoading(false);
           }
-        }, 2000);
+        }, 5000);
 
       } catch (err) {
         console.error('[AuthContext] Init error:', err);
