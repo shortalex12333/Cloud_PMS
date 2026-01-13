@@ -65,21 +65,20 @@ class InventoryHandlers:
         """
         try:
             # Get part details with stock info
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "id, name, part_number, category, description, unit, "
-                "quantity_on_hand, minimum_quantity, maximum_quantity, location, "
-                "last_counted_at, last_counted_by, "
-                "counter:last_counted_by(id, name)"
-            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                "quantity_on_hand, minimum_quantity, location, "
+                "last_counted_at, last_counted_by"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not part_result.data:
+            if not part_result.data or len(part_result.data) == 0:
                 return ResponseBuilder.error(
                     action="check_stock_level",
                     error_code="PART_NOT_FOUND",
                     message=f"Part not found: {part_id}"
                 )
 
-            part = part_result.data
+            part = part_result.data[0]  # Get first result from array
             quantity_on_hand = part.get("quantity_on_hand", 0)
             minimum_quantity = part.get("minimum_quantity", 0)
             maximum_quantity = part.get("maximum_quantity")
@@ -96,7 +95,7 @@ class InventoryHandlers:
 
             # Get usage stats (last 30 days)
             thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-            usage_result = self.db.table("part_usage").select(
+            usage_result = self.db.table("pms_part_usage").select(
                 "quantity, used_at"
             ).eq("yacht_id", yacht_id).eq(
                 "part_id", part_id
@@ -114,10 +113,17 @@ class InventoryHandlers:
                 daily_usage = usage_last_30_days / 30
                 estimated_runout_days = int(quantity_on_hand / daily_usage)
 
-            # Get counter name
+            # Get counter name (from user profile if available)
             counter_name = "Unknown"
-            if part.get("counter"):
-                counter_name = part["counter"].get("name", "Unknown")
+            if part.get("last_counted_by"):
+                try:
+                    user_result = self.db.table("auth_users_profiles").select(
+                        "name"
+                    ).eq("id", part["last_counted_by"]).maybe_single().execute()
+                    if user_result.data:
+                        counter_name = user_result.data.get("name", "Unknown")
+                except Exception:
+                    pass  # Fallback to Unknown
 
             # Build response
             return ResponseBuilder.success(
@@ -182,7 +188,7 @@ class InventoryHandlers:
         """
         try:
             # Get part details
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "id, name, part_number, unit, quantity_on_hand"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -206,7 +212,7 @@ class InventoryHandlers:
 
             # Add work order details if provided
             if work_order_id:
-                wo_result = self.db.table("work_orders").select(
+                wo_result = self.db.table("pms_work_orders").select(
                     "id, number, title"
                 ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -255,7 +261,7 @@ class InventoryHandlers:
         """
         try:
             # Get part details
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "id, name, part_number, unit, quantity_on_hand, minimum_quantity"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -280,7 +286,7 @@ class InventoryHandlers:
             # Get work order number if provided
             wo_number = None
             if work_order_id:
-                wo_result = self.db.table("work_orders").select(
+                wo_result = self.db.table("pms_work_orders").select(
                     "number"
                 ).eq("id", work_order_id).maybe_single().execute()
                 if wo_result.data:
@@ -381,7 +387,7 @@ class InventoryHandlers:
 
             # Validate work order exists if provided
             if work_order_id:
-                wo_result = self.db.table("work_orders").select(
+                wo_result = self.db.table("pms_work_orders").select(
                     "id"
                 ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
                 if not wo_result.data:
@@ -422,7 +428,7 @@ class InventoryHandlers:
 
                 # Manual deduction (fallback)
                 # Get current stock with row lock
-                part_result = self.db.table("parts").select(
+                part_result = self.db.table("pms_parts").select(
                     "id, name, part_number, quantity_on_hand, minimum_quantity"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -446,14 +452,14 @@ class InventoryHandlers:
 
                 # Update part stock
                 new_stock = current_stock - quantity
-                update_result = self.db.table("parts").update({
+                update_result = self.db.table("pms_parts").update({
                     "quantity_on_hand": new_stock,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }).eq("id", part_id).eq("yacht_id", yacht_id).execute()
 
                 # Create usage log entry
                 usage_log_id = str(uuid.uuid4())
-                usage_result = self.db.table("part_usage").insert({
+                usage_result = self.db.table("pms_part_usage").insert({
                     "id": usage_log_id,
                     "yacht_id": yacht_id,
                     "part_id": part_id,
@@ -467,28 +473,26 @@ class InventoryHandlers:
                 }).execute()
 
             # Get created usage log entry
-            usage_log = self.db.table("part_usage").select(
+            usage_log = self.db.table("pms_part_usage").select(
                 "id, part_id, quantity, work_order_id, equipment_id, "
-                "usage_reason, notes, used_at, used_by, "
-                "part:part_id(name, part_number), "
-                "user:used_by(name)"
+                "usage_reason, notes, used_at, used_by"
             ).eq("part_id", part_id).eq("yacht_id", yacht_id).order(
                 "used_at", desc=True
-            ).limit(1).maybe_single().execute()
+            ).limit(1).execute()
 
-            if not usage_log.data:
+            if not usage_log.data or len(usage_log.data) == 0:
                 logger.error(f"Failed to retrieve usage log after creation")
                 usage_log_data = {}
             else:
-                usage_log_data = usage_log.data
+                usage_log_data = usage_log.data[0]
 
             # Get new stock level
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "quantity_on_hand, minimum_quantity"
-            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            new_stock_level = part_result.data.get("quantity_on_hand", 0) if part_result.data else 0
-            minimum_quantity = part_result.data.get("minimum_quantity", 0) if part_result.data else 0
+            new_stock_level = part_result.data[0].get("quantity_on_hand", 0) if part_result.data and len(part_result.data) > 0 else 0
+            minimum_quantity = part_result.data[0].get("minimum_quantity", 0) if part_result.data and len(part_result.data) > 0 else 0
 
             # Check stock warning
             stock_warning = new_stock_level <= minimum_quantity or new_stock_level == 0
@@ -504,7 +508,7 @@ class InventoryHandlers:
             # Create audit log entry
             audit_log_id = str(uuid.uuid4())
             try:
-                self.db.table("audit_log").insert({
+                self.db.table("pms_audit_log").insert({
                     "id": audit_log_id,
                     "yacht_id": yacht_id,
                     "action": "log_part_usage",

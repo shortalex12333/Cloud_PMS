@@ -1,0 +1,278 @@
+{
+  "contract_version": "1.0.0",
+  "generated": "2026-01-12T22:10:00Z",
+  "description": "CelesteOS Frontend Microaction Contract - Canonical response schema for all handler responses",
+
+  "base_response_schema": {
+    "type": "object",
+    "required": ["status", "action"],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success", "error", "gated", "pending"],
+        "description": "Execution status"
+      },
+      "action": {
+        "type": "string",
+        "description": "Handler action name that was executed"
+      },
+      "result": {
+        "type": "object",
+        "description": "Handler-specific result data"
+      },
+      "message": {
+        "type": "string",
+        "description": "Human-readable status message"
+      },
+      "error_code": {
+        "type": "string",
+        "description": "Error code for error responses (e.g., NOT_FOUND, UNAUTHORIZED)"
+      }
+    }
+  },
+
+  "execution_trace_schema": {
+    "type": "object",
+    "description": "Full execution trace for debugging/analytics",
+    "properties": {
+      "query": { "type": "string" },
+      "timestamp": { "type": "string", "format": "date-time" },
+      "intent": { "type": "string", "nullable": true },
+      "intent_category": { "type": "string", "nullable": true },
+      "intent_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+      "query_type": { "type": "string", "enum": ["search", "mutation", "compliance", "lookup", "aggregation"] },
+      "requires_mutation": { "type": "boolean" },
+      "best_action": { "type": "string", "nullable": true },
+      "action_confidence": { "type": "number" },
+      "entities_extracted": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "value": { "type": "string" },
+            "canonical": { "type": "string" },
+            "confidence": { "type": "number" }
+          }
+        }
+      },
+      "handler_selected": { "type": "string", "nullable": true },
+      "handler_category": { "type": "string", "enum": ["P0", "P1", "P2", "P3", "Situation", null] },
+      "requires_confirmation": { "type": "boolean" },
+      "execution_status": { "type": "string", "enum": ["success", "error", "gated", "no_handler", "exception"] },
+      "execution_latency_ms": { "type": "integer" },
+      "db_effects": { "type": "array", "items": { "type": "string" } }
+    }
+  },
+
+  "handler_response_schemas": {
+    "view_compliance_status": {
+      "description": "P3 Read-Only: Returns yacht compliance status",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "yacht_id": { "type": "string", "format": "uuid" },
+          "compliance": {
+            "type": "object",
+            "properties": {
+              "hours_of_rest": {
+                "type": "object",
+                "properties": {
+                  "total_records": { "type": "integer" },
+                  "compliant": { "type": "integer" },
+                  "non_compliant": { "type": "integer" },
+                  "compliance_rate": { "type": "number" }
+                }
+              },
+              "survey": {
+                "type": "object",
+                "properties": {
+                  "items_tagged_for_survey": { "type": "integer" }
+                }
+              },
+              "certification": {
+                "type": "object",
+                "properties": {
+                  "expiring_within_30_days": { "type": "integer" },
+                  "expiring_certificates": { "type": "array" }
+                }
+              }
+            }
+          },
+          "checked_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+
+    "view_worklist": {
+      "description": "P3 Read-Only: Returns user's assigned work items",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "yacht_id": { "type": "string", "format": "uuid" },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "format": "uuid" },
+                "type": { "type": "string", "enum": ["work_order", "fault", "inspection"] },
+                "title": { "type": "string" },
+                "priority": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                "due_date": { "type": "string", "format": "date-time", "nullable": true },
+                "status": { "type": "string" }
+              }
+            }
+          },
+          "total_count": { "type": "integer" }
+        }
+      }
+    },
+
+    "view_equipment_details": {
+      "description": "P3 Read-Only: Returns equipment details",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "equipment_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "system_id": { "type": "string" },
+          "location": { "type": "string" },
+          "manufacturer": { "type": "string" },
+          "model": { "type": "string" },
+          "serial_number": { "type": "string" },
+          "status": { "type": "string", "enum": ["operational", "degraded", "out_of_service"] },
+          "running_hours": { "type": "number" },
+          "last_maintenance": { "type": "string", "format": "date-time" },
+          "next_maintenance_due": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+
+    "fault_situation": {
+      "description": "Situation State Machine: Fault diagnosis and workflow",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "fault_id": { "type": "string", "format": "uuid" },
+          "current_state": { "type": "string", "enum": ["reported", "acknowledged", "investigating", "work_order_created", "resolved", "closed"] },
+          "fault_code": { "type": "string" },
+          "description": { "type": "string" },
+          "equipment": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "available_actions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": { "type": "string" },
+                "reason": { "type": "string" },
+                "priority": { "type": "string" }
+              }
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "timestamp": { "type": "string" },
+                "state": { "type": "string" },
+                "user": { "type": "string" },
+                "note": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "create_work_order": {
+      "description": "P0 Mutation: Creates new work order (requires confirmation)",
+      "requires_confirmation": true,
+      "gating": {
+        "route_to": "n8n_webhook",
+        "confirmation_prompt": "Create work order for {equipment}?"
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "work_order_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["created", "pending_approval"] },
+          "title": { "type": "string" },
+          "equipment_id": { "type": "string" },
+          "created_by": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+
+  "entity_types": {
+    "brand": { "description": "Equipment manufacturer (MTU, Caterpillar, Furuno)", "weight": 3.5 },
+    "model": { "description": "Product model number (16V4000, 3512, LB-2800)", "weight": 4.0 },
+    "equipment": { "description": "Equipment type (generator, radar, pump)", "weight": 2.8 },
+    "part": { "description": "Component part (membrane, impeller, seal)", "weight": 3.0 },
+    "symptom": { "description": "Problem indicator (overheating, vibration, alarm)", "weight": 4.0 },
+    "fault_code": { "description": "Diagnostic code (E047, SPN 100 FMI 3, P0420)", "weight": 4.5 },
+    "measurement": { "description": "Value with unit (24V, 85C, 3 bar)", "weight": 3.8 },
+    "document_type": { "description": "Document category (manual, schematic)", "weight": 3.2 },
+    "person": { "description": "Crew role (captain, chief engineer)", "weight": 2.0 },
+    "location": { "description": "Physical location (engine room, box 3d)", "weight": 2.0 }
+  },
+
+  "intent_categories": {
+    "fix_something": ["diagnose_fault", "report_fault", "show_manual_section", "view_fault_history", "acknowledge_fault"],
+    "do_maintenance": ["create_work_order", "view_work_order_history", "mark_work_order_complete", "add_work_order_note"],
+    "manage_equipment": ["view_equipment_details", "view_equipment_history", "view_linked_faults", "request_predictive_insight"],
+    "control_inventory": ["view_part_stock", "view_part_location", "view_part_usage", "order_part", "scan_part_barcode"],
+    "communicate_status": ["add_to_handover", "export_handover", "view_handover"],
+    "comply_audit": ["view_compliance_status", "log_hours_of_rest", "export_hours_of_rest"],
+    "procure_suppliers": ["create_purchase_request", "track_delivery", "receive_delivery"],
+    "search_documents": ["find_document", "view_document", "view_related_documents"],
+    "analytics": ["view_fleet_summary", "view_smart_summary", "export_fleet_summary"]
+  },
+
+  "mutation_intents": [
+    "create_work_order",
+    "mark_work_order_complete",
+    "add_work_order_note",
+    "add_fault_note",
+    "report_fault",
+    "acknowledge_fault",
+    "order_part",
+    "create_purchase_request",
+    "receive_delivery",
+    "add_to_handover",
+    "log_hours_of_rest"
+  ],
+
+  "known_issues": [
+    {
+      "issue": "IntentParser defaults to find_document",
+      "impact": "93% of queries get wrong intent",
+      "severity": "CRITICAL"
+    },
+    {
+      "issue": "Module A results not used for routing",
+      "impact": "Accurate action detection ignored",
+      "severity": "CRITICAL"
+    },
+    {
+      "issue": "Mutation gating not implemented",
+      "impact": "Write operations could execute without confirmation",
+      "severity": "CRITICAL"
+    }
+  ]
+}

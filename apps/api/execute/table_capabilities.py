@@ -146,53 +146,43 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
         entity_triggers=["LOCATION", "STOCK_QUERY"],
         available_actions=["view_stock", "reorder", "transfer_stock", "adjust_quantity"],
         tables=[
+            # NOTE: v_inventory VIEW may not exist on all deployments
+            # Fallback to pms_parts which is confirmed to exist
             TableSpec(
-                name="v_inventory",  # VIEW that joins parts + stock
+                name="pms_parts",  # CONFIRMED EXISTS - use parts table directly
                 yacht_id_column="yacht_id",
-                primary_key="stock_id",
+                primary_key="id",
                 searchable_columns=[
-                    SearchableColumn(
-                        name="location",
-                        match_types=[MatchType.ILIKE, MatchType.EXACT],  # ILIKE first for partial matches
-                        description="Stock location (e.g., Yacht, Agent - Antibes)",
-                        is_primary=True,
-                    ),
                     SearchableColumn(
                         name="name",
                         match_types=[MatchType.ILIKE, MatchType.TRIGRAM],
                         description="Part name",
+                        is_primary=True,
                     ),
                     SearchableColumn(
                         name="part_number",
-                        match_types=[MatchType.ILIKE, MatchType.EXACT],  # ILIKE first for partial matches
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],
                         description="Part number",
                     ),
                     SearchableColumn(
-                        name="quantity",
-                        match_types=[MatchType.NUMERIC_RANGE],
-                        description="Current stock quantity",
-                        bounds={"min": 0, "max": 10000},
-                    ),
-                    SearchableColumn(
-                        name="needs_reorder",
-                        match_types=[MatchType.EXACT],
-                        description="Boolean flag: quantity < min_quantity",
-                    ),
-                    SearchableColumn(
-                        name="equipment",
+                        name="manufacturer",
                         match_types=[MatchType.ILIKE],
-                        description="Equipment this part belongs to",
+                        description="Part manufacturer",
                     ),
                     SearchableColumn(
-                        name="system",
-                        match_types=[MatchType.ILIKE],
-                        description="System category (e.g., Propulsion System)",
+                        name="category",
+                        match_types=[MatchType.EXACT, MatchType.ILIKE],
+                        description="Part category",
+                    ),
+                    SearchableColumn(
+                        name="description",
+                        match_types=[MatchType.ILIKE, MatchType.TRIGRAM],
+                        description="Part description text",
                     ),
                 ],
                 response_columns=[
-                    "stock_id", "part_id", "name", "part_number", "manufacturer",
-                    "location", "quantity", "min_quantity", "max_quantity",
-                    "needs_reorder", "equipment", "system", "unit_cost"
+                    "id", "part_number", "name", "manufacturer",
+                    "category", "description", "model_compatibility"
                 ],
             ),
         ],
