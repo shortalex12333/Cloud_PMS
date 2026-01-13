@@ -93,7 +93,7 @@ test.describe('Render Search Contract', () => {
         'Content-Type': 'application/json',
         // No Authorization header
       },
-      body: JSON.stringify({ query: 'test', limit: 1 }),
+      body: JSON.stringify({ query: 'test', limit: 1, yacht_id: process.env.TEST_USER_YACHT_ID }),
     });
 
     const body = await response.json().catch(() => ({}));
@@ -264,6 +264,7 @@ test.describe('Render Search Contract', () => {
     const response = await apiClient.post('/webhook/search', {
       query: 'engine',
       limit: 3,
+      yacht_id: process.env.TEST_USER_YACHT_ID,
     });
 
     saveRequest(testName, response.request);
