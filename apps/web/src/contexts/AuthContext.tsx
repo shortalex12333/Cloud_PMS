@@ -2,66 +2,45 @@
 
 import React, { createContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 
-// Debug function to log auth state
-async function debugAuthState(label: string) {
-  console.log(`\n========== AUTH DEBUG: ${label} ==========`);
+/**
+ * AuthContext - Non-blocking authentication context
+ *
+ * Architecture (2026-01-13):
+ * - Session existence = authenticated (fast path)
+ * - Bootstrap data (yacht context) loaded in background
+ * - Never blocks UI on slow RPCs
+ * - PENDING state shows "Awaiting activation" screen
+ */
 
-  // Check environment
-  console.log('[DEBUG] Supabase URL set:', !!process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log('[DEBUG] Supabase Anon Key set:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
-  try {
-    // Get current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError) {
-      console.error('[DEBUG] Session error:', sessionError.message);
-      return;
-    }
-
-    if (!session) {
-      console.log('[DEBUG] No active session');
-      console.log('[DEBUG] JWT present: false');
-      return;
-    }
-
-    // Session exists - log details
-    console.log('[DEBUG] Session exists: true');
-    console.log('[DEBUG] JWT present:', !!session.access_token);
-    console.log('[DEBUG] JWT length:', session.access_token?.length || 0);
-    console.log('[DEBUG] JWT expires at:', session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A');
-    console.log('[DEBUG] JWT expired:', session.expires_at ? Date.now() > session.expires_at * 1000 : 'unknown');
-    console.log('[DEBUG] Refresh token present:', !!session.refresh_token);
-    console.log('[DEBUG] User ID:', session.user?.id || 'N/A');
-    console.log('[DEBUG] User email:', session.user?.email || 'N/A');
-    console.log('[DEBUG] User metadata:', JSON.stringify(session.user?.user_metadata || {}));
-    console.log('[DEBUG] Auth provider:', session.user?.app_metadata?.provider || 'N/A');
-
-  } catch (err) {
-    console.error('[DEBUG] Error checking auth state:', err);
-  }
-
-  console.log('==========================================\n');
-}
+export type BootstrapStatus =
+  | 'loading'      // Initial state, fetching bootstrap
+  | 'active'       // User has active yacht assignment
+  | 'pending'      // User exists but account pending activation
+  | 'inactive'     // Yacht is inactive
+  | 'error';       // Bootstrap failed (will retry)
 
 export type CelesteUser = {
   id: string;
   email: string | null;
-  role: 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior';
+  role: string;
   yachtId: string | null;
+  yachtName: string | null;
   displayName: string | null;
+  bootstrapStatus: BootstrapStatus;
   validatedAt: number;
 };
 
 export type AuthContextValue = {
   user: CelesteUser | null;
+  session: Session | null;  // Raw session for direct access
   loading: boolean;
+  bootstrapping: boolean;   // True while loading yacht context
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  validateSession: () => Promise<boolean>;
+  refreshBootstrap: () => Promise<void>;
 };
 
 export function isHOD(user: CelesteUser | null): boolean {
@@ -69,175 +48,216 @@ export function isHOD(user: CelesteUser | null): boolean {
   return ['chief_engineer', 'eto', 'captain', 'manager'].includes(user.role);
 }
 
+export function isAuthenticated(user: CelesteUser | null): boolean {
+  return user !== null;
+}
+
+export function isFullyActivated(user: CelesteUser | null): boolean {
+  return user !== null && user.bootstrapStatus === 'active' && user.yachtId !== null;
+}
+
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function validateAndBuildUser(session: Session | null): Promise<CelesteUser | null> {
-  if (!session?.user) {
-    console.log('[AuthContext] No session');
-    return null;
-  }
-
+/**
+ * Build minimal user from session (fast, no RPC)
+ * Used for immediate auth state without blocking on bootstrap
+ */
+function buildUserFromSession(session: Session): CelesteUser {
   const authUser = session.user;
-  console.log('[AuthContext] Validating user:', authUser.email, 'ID:', authUser.id);
+  const meta = authUser.user_metadata || {};
 
+  return {
+    id: authUser.id,
+    email: authUser.email || null,
+    role: (meta.role as string) || 'member',
+    yachtId: (meta.yacht_id as string) || null,
+    yachtName: null,
+    displayName: authUser.email || null,
+    bootstrapStatus: 'loading',
+    validatedAt: Date.now(),
+  };
+}
+
+/**
+ * Fetch bootstrap data from master DB (background, non-blocking)
+ * Returns enriched user with yacht context
+ */
+async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
   try {
-    // Use RPC function with 10s timeout (increased from 3s due to cold start issues)
-    console.log('[AuthContext] Calling RPC get_user_auth_info...');
+    console.log('[AuthContext] Fetching bootstrap for user:', baseUser.id);
 
-    const rpcPromise = supabase.rpc('get_user_auth_info', {
-      p_user_id: authUser.id
-    });
+    // Call get_my_bootstrap RPC with 5s timeout (fast RPC on master DB)
+    const rpcPromise = supabase.rpc('get_my_bootstrap');
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RPC timeout after 10s')), 10000);
+      setTimeout(() => reject(new Error('Bootstrap timeout after 5s')), 5000);
     });
 
     const result = await Promise.race([rpcPromise, timeoutPromise]);
-    console.log('[AuthContext] RPC completed');
-
     const { data, error } = result;
 
     if (error) {
-      console.error('[AuthContext] RPC error:', error.message);
-      return null;
+      console.error('[AuthContext] Bootstrap RPC error:', error.message);
+      return { ...baseUser, bootstrapStatus: 'error' };
     }
 
-    const dbUser = Array.isArray(data) ? data[0] : data;
-
-    if (!dbUser) {
-      console.error('[AuthContext] User not in auth_users_profiles');
-      return null;
+    if (!data) {
+      console.log('[AuthContext] No bootstrap data, user pending');
+      return { ...baseUser, bootstrapStatus: 'pending', yachtId: null };
     }
 
-    if (!dbUser.is_active) {
-      console.error('[AuthContext] User deactivated');
-      return null;
+    // Handle different status values
+    const status = data.status?.toUpperCase() || 'PENDING';
+
+    if (status === 'PENDING_ACTIVATION' || status === 'PENDING') {
+      console.log('[AuthContext] User pending activation');
+      return {
+        ...baseUser,
+        bootstrapStatus: 'pending',
+        yachtId: null,
+        yachtName: null,
+      };
     }
 
-    if (!dbUser.yacht_id) {
-      console.error('[AuthContext] No yacht assignment');
-      return null;
+    if (status === 'YACHT_INACTIVE') {
+      console.log('[AuthContext] Yacht inactive');
+      return {
+        ...baseUser,
+        bootstrapStatus: 'inactive',
+        yachtId: data.yacht_id,
+        yachtName: data.yacht_name,
+      };
     }
 
-    console.log('[AuthContext] Validated:', dbUser.email, dbUser.yacht_id);
+    if (status !== 'ACTIVE') {
+      console.log('[AuthContext] Account status:', status);
+      return {
+        ...baseUser,
+        bootstrapStatus: 'pending',
+        yachtId: data.yacht_id,
+        yachtName: data.yacht_name,
+      };
+    }
 
-    const meta = authUser.user_metadata || {};
+    // Success - user is fully active
+    console.log('[AuthContext] Bootstrap success:', data.yacht_id, data.role);
     return {
-      id: authUser.id,
-      email: authUser.email || null,
-      role: (meta.role as CelesteUser['role']) || 'crew',
-      yachtId: dbUser.yacht_id,
-      displayName: dbUser.name || authUser.email || null,
+      ...baseUser,
+      role: data.role || baseUser.role,
+      yachtId: data.yacht_id,
+      yachtName: data.yacht_name,
+      bootstrapStatus: 'active',
       validatedAt: Date.now(),
     };
+
   } catch (err) {
-    console.error('[AuthContext] Error:', err);
-    return null;
+    console.error('[AuthContext] Bootstrap error:', err);
+    return { ...baseUser, bootstrapStatus: 'error' };
   }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CelesteUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
+  const bootstrapRetryRef = useRef<NodeJS.Timeout | null>(null);
 
-  const validateSession = useCallback(async (): Promise<boolean> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setUser(null);
-        return false;
-      }
-      const validatedUser = await validateAndBuildUser(session);
-      setUser(validatedUser);
-      return !!validatedUser;
-    } catch {
+  /**
+   * Refresh bootstrap data (can be called manually to retry after error)
+   */
+  const refreshBootstrap = useCallback(async () => {
+    if (!user) return;
+
+    setBootstrapping(true);
+    const enrichedUser = await fetchBootstrap(user);
+    setUser(enrichedUser);
+    setBootstrapping(false);
+
+    // If error, schedule retry
+    if (enrichedUser.bootstrapStatus === 'error') {
+      bootstrapRetryRef.current = setTimeout(() => {
+        console.log('[AuthContext] Retrying bootstrap...');
+        refreshBootstrap();
+      }, 10000); // Retry in 10s
+    }
+  }, [user]);
+
+  /**
+   * Handle session changes - fast path, sets user immediately from session
+   * Then triggers background bootstrap for yacht context
+   */
+  const handleSession = useCallback(async (newSession: Session | null) => {
+    setSession(newSession);
+
+    if (!newSession) {
       setUser(null);
-      return false;
+      setLoading(false);
+      setBootstrapping(false);
+      return;
+    }
+
+    // FAST PATH: Build user from session immediately (no RPC)
+    const baseUser = buildUserFromSession(newSession);
+    setUser(baseUser);
+    setLoading(false);
+
+    // BACKGROUND: Fetch bootstrap data (yacht context)
+    setBootstrapping(true);
+    const enrichedUser = await fetchBootstrap(baseUser);
+    setUser(enrichedUser);
+    setBootstrapping(false);
+
+    // Schedule retry if bootstrap failed
+    if (enrichedUser.bootstrapStatus === 'error') {
+      bootstrapRetryRef.current = setTimeout(() => {
+        console.log('[AuthContext] Retrying bootstrap after error...');
+        refreshBootstrap();
+      }, 10000);
     }
   }, []);
 
   useEffect(() => {
     // Only run on client-side
     if (typeof window === 'undefined') {
-      console.log('[AuthContext] Skipping - server-side');
       return;
     }
 
     if (initialized.current) return;
     initialized.current = true;
 
-    console.log('[AuthContext] Init - client-side, starting auth');
+    console.log('[AuthContext] Init - non-blocking auth');
 
-    let timeout: NodeJS.Timeout;
-    let maxTimeout: NodeJS.Timeout;
     let subscription: { unsubscribe: () => void } | null = null;
-
-    // ABSOLUTE maximum timeout - clear loading after 12s no matter what (RPC timeout is 10s)
-    maxTimeout = setTimeout(() => {
-      console.warn('[AuthContext] FORCE clearing loading state after 12s');
-      setLoading(false);
-    }, 12000);
 
     const initAuth = async () => {
       try {
-        // Set up listener FIRST (to catch any auth events)
-        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('[AuthContext] Auth event:', event, '| Session:', !!session);
-
-          // Clear timeouts on any event
-          if (timeout) clearTimeout(timeout);
-          if (maxTimeout) clearTimeout(maxTimeout);
+        // Set up auth state listener
+        const { data } = supabase.auth.onAuthStateChange(async (event, eventSession) => {
+          console.log('[AuthContext] Auth event:', event, '| Session:', !!eventSession);
 
           if (event === 'SIGNED_OUT') {
             setUser(null);
+            setSession(null);
             setError(null);
             setLoading(false);
-          } else if (event === 'INITIAL_SESSION') {
-            // Handle initial session from storage
-            if (session) {
-              console.log('[AuthContext] Restoring session for:', session.user.email);
-              const validatedUser = await validateAndBuildUser(session);
-              setUser(validatedUser);
-              setError(validatedUser ? null : 'User not configured');
-            } else {
-              console.log('[AuthContext] No stored session');
-            }
-            setLoading(false);
-          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            if (session) {
-              const validatedUser = await validateAndBuildUser(session);
-              setUser(validatedUser);
-              setError(validatedUser ? null : 'User not configured');
-            }
-            setLoading(false);
+            setBootstrapping(false);
+          } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            await handleSession(eventSession);
           }
         });
 
         subscription = data.subscription;
 
-        // Fallback timeout - if no auth event fires within 5s, check manually
-        timeout = setTimeout(async () => {
-          console.log('[AuthContext] Timeout - checking session manually');
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              console.log('[AuthContext] Found session via manual check');
-              const validatedUser = await validateAndBuildUser(session);
-              setUser(validatedUser);
-              setError(validatedUser ? null : 'User not configured');
-            } else {
-              console.log('[AuthContext] No session found');
-            }
-          } catch (e) {
-            console.error('[AuthContext] Manual check failed:', e);
-            setError('Failed to validate session');
-          } finally {
-            // ALWAYS clear loading state
-            setLoading(false);
-          }
-        }, 5000);
+        // Also check current session immediately (don't wait for event)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession && !user) {
+          await handleSession(currentSession);
+        } else if (!currentSession) {
+          setLoading(false);
+        }
 
       } catch (err) {
         console.error('[AuthContext] Init error:', err);
@@ -248,11 +268,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     return () => {
-      if (timeout) clearTimeout(timeout);
-      if (maxTimeout) clearTimeout(maxTimeout);
       if (subscription) subscription.unsubscribe();
+      if (bootstrapRetryRef.current) clearTimeout(bootstrapRetryRef.current);
     };
-  }, []);
+  }, [handleSession]);
 
   const login = useCallback(async (email: string, password: string) => {
     setError(null);
@@ -270,27 +289,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('No session');
     }
 
-    console.log('[AuthContext] Login successful, session obtained');
-    await debugAuthState('After successful login');
-
-    const validatedUser = await validateAndBuildUser(data.session);
-    if (!validatedUser) {
-      console.error('[AuthContext] User validation failed - signing out');
-      await supabase.auth.signOut();
-      throw new Error('Account not configured. Contact admin.');
-    }
-
-    console.log('[AuthContext] User validated successfully:', validatedUser.email);
-    setUser(validatedUser);
+    console.log('[AuthContext] Login successful');
+    // Session change will be handled by onAuthStateChange listener
+    // No need to manually call handleSession here
   }, []);
 
   const logout = useCallback(async () => {
+    if (bootstrapRetryRef.current) {
+      clearTimeout(bootstrapRetryRef.current);
+    }
     await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout, validateSession }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
+      bootstrapping,
+      error,
+      login,
+      logout,
+      refreshBootstrap
+    }}>
       {children}
     </AuthContext.Provider>
   );
