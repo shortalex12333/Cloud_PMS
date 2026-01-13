@@ -19,10 +19,11 @@ interface SetupResult {
  */
 function getMasterAdminClient(): SupabaseClient {
   const url = process.env.MASTER_SUPABASE_URL;
-  const serviceKey = process.env.MASTER_SUPABASE_SERVICE_KEY;
+  // Check both naming conventions for service key
+  const serviceKey = process.env.MASTER_SUPABASE_SERVICE_ROLE_KEY || process.env.MASTER_SUPABASE_SERVICE_KEY;
 
   if (!url || !serviceKey) {
-    throw new Error('MASTER_SUPABASE_URL and MASTER_SUPABASE_SERVICE_KEY must be set');
+    throw new Error('MASTER_SUPABASE_URL and MASTER_SUPABASE_SERVICE_ROLE_KEY must be set');
   }
 
   return createClient(url, serviceKey);
@@ -32,40 +33,60 @@ function getMasterAdminClient(): SupabaseClient {
  * Ensure fleet_registry has entry for test yacht
  */
 async function ensureFleetRegistry(client: SupabaseClient): Promise<any> {
-  const yachtId = process.env.TEST_USER_YACHT_ID || 'TEST_YACHT_001';
-  const tenantKeyAlias = `y${yachtId}`;
+  const yachtId = process.env.TEST_USER_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
+  const tenantKeyAlias = process.env.TEST_USER_TENANT_KEY || 'yTEST_YACHT_001';
 
   // Check if exists
-  const { data: existing } = await client
+  const { data: existing, error: selectError } = await client
     .from('fleet_registry')
-    .select('*')
+    .select('yacht_id, yacht_name, active')
     .eq('yacht_id', yachtId)
     .single();
 
   if (existing) {
-    console.log(`[Setup] fleet_registry row exists for ${yachtId}`);
+    console.log(`[Setup] fleet_registry row exists for ${yachtId.slice(0, 8)}...`);
     return existing;
   }
 
-  // Insert new row
+  // Insert new row (only core fields that are guaranteed to exist)
   const { data, error } = await client
     .from('fleet_registry')
     .insert({
       yacht_id: yachtId,
-      tenant_key_alias: tenantKeyAlias,
       yacht_name: 'M/Y Test Vessel',
       active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
 
   if (error) {
+    // If insert fails, the table might have different schema
+    // Try upsert approach
+    console.log(`[Setup] Insert failed: ${error.message}, trying alternative...`);
+
+    // Check if row exists (selectError could have been "no rows" not "error")
+    if (selectError && selectError.code === 'PGRST116') {
+      // No rows - try insert without timestamps
+      const { data: data2, error: error2 } = await client
+        .from('fleet_registry')
+        .upsert({
+          yacht_id: yachtId,
+          yacht_name: 'M/Y Test Vessel',
+          active: true,
+        }, { onConflict: 'yacht_id' })
+        .select()
+        .single();
+
+      if (error2) {
+        throw new Error(`Failed to upsert fleet_registry: ${error2.message}`);
+      }
+      console.log(`[Setup] Created fleet_registry row for ${yachtId.slice(0, 8)}...`);
+      return data2;
+    }
     throw new Error(`Failed to insert fleet_registry: ${error.message}`);
   }
 
-  console.log(`[Setup] Created fleet_registry row for ${yachtId}`);
+  console.log(`[Setup] Created fleet_registry row for ${yachtId.slice(0, 8)}...`);
   return data;
 }
 
@@ -76,7 +97,7 @@ async function ensureUserAccount(
   client: SupabaseClient,
   userId: string
 ): Promise<any> {
-  const yachtId = process.env.TEST_USER_YACHT_ID || 'TEST_YACHT_001';
+  const yachtId = process.env.TEST_USER_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
   const role = process.env.TEST_USER_ROLE || 'chief_engineer';
 
   // Check if exists
