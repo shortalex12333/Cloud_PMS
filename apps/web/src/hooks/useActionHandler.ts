@@ -88,7 +88,7 @@ export function useActionHandler() {
           throw new Error('User not authenticated');
         }
 
-        if (!canPerformAction(action, user.role)) {
+        if (!canPerformAction(action, user.role as 'chief_engineer' | 'eto' | 'captain' | 'manager' | 'vendor' | 'crew' | 'deck' | 'interior')) {
           toast.error('Permission Denied', {
             description: `You don't have permission to perform this action.`,
           });
