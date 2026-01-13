@@ -31,6 +31,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 # Git commit for /version endpoint
+# Updated: 2026-01-13 - trigger redeploy for tenant routing
 GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", os.environ.get("GIT_COMMIT", "dev"))
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
@@ -39,6 +40,9 @@ from pathlib import Path
 _api_dir = Path(__file__).parent
 if str(_api_dir) not in sys.path:
     sys.path.insert(0, str(_api_dir))
+
+# Import auth middleware for JWT validation + tenant lookup
+from middleware.auth import get_authenticated_user, lookup_tenant_for_user
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -149,7 +153,7 @@ except Exception as e:
 
 class SearchRequest(BaseModel):
     query: str = Field(..., description="Natural language search query")
-    yacht_id: str = Field(..., description="UUID of the yacht")
+    yacht_id: Optional[str] = Field(None, description="UUID of the yacht (optional - derived from JWT)")
     limit: int = Field(default=20, ge=1, le=100, description="Max results per capability")
 
 class ExtractRequest(BaseModel):
@@ -236,6 +240,55 @@ def reset_supabase_error_count():
     if _supabase_client_errors > 0:
         _supabase_client_errors = 0
 
+# ============================================================================
+# TENANT CLIENT FACTORY (Per-Yacht DB Routing)
+# ============================================================================
+
+_tenant_clients: Dict[str, Any] = {}
+
+def get_tenant_client(tenant_key_alias: str):
+    """
+    Get or create Supabase client for a specific tenant.
+
+    Loads credentials from environment variables:
+        {tenant_key_alias}_SUPABASE_URL
+        {tenant_key_alias}_SUPABASE_SERVICE_KEY
+
+    Args:
+        tenant_key_alias: e.g., 'yTEST_YACHT_001'
+
+    Returns:
+        Supabase client for the tenant's database
+
+    Raises:
+        ValueError: If tenant credentials not found in environment
+    """
+    global _tenant_clients
+
+    if tenant_key_alias in _tenant_clients:
+        return _tenant_clients[tenant_key_alias]
+
+    url_key = f'{tenant_key_alias}_SUPABASE_URL'
+    key_key = f'{tenant_key_alias}_SUPABASE_SERVICE_KEY'
+
+    tenant_url = os.environ.get(url_key)
+    tenant_key = os.environ.get(key_key)
+
+    if not tenant_url or not tenant_key:
+        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
+        logger.error(f"[TenantClient] Expected env vars: {url_key}, {key_key}")
+        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
+
+    try:
+        from supabase import create_client
+        client = create_client(tenant_url, tenant_key)
+        _tenant_clients[tenant_key_alias] = client
+        logger.info(f"[TenantClient] Created client for {tenant_key_alias}")
+        return client
+    except Exception as e:
+        logger.error(f"[TenantClient] Failed to create client for {tenant_key_alias}: {e}")
+        raise
+
 def get_extractor():
     """Lazy-load extraction orchestrator."""
     global _extractor
@@ -279,22 +332,39 @@ async def version():
     }
 
 @app.post("/search", response_model=SearchResponse)
-async def search(request: SearchRequest):
+async def search(
+    request: SearchRequest,
+    auth: dict = Depends(get_authenticated_user)
+):
     """
-    Main search endpoint.
+    Main search endpoint with JWT authentication.
 
-    Flow: Query → Extract entities → Map to capabilities → Execute SQL → Attach actions
+    Flow: JWT verify → Tenant lookup → Query → Extract entities → Execute SQL → Actions
+
+    Auth:
+        - JWT verified using MASTER_SUPABASE_JWT_SECRET
+        - Tenant (yacht_id) looked up from MASTER DB user_accounts
+        - Request routed to tenant's per-yacht Supabase DB
     """
     start = time.time()
 
-    client = get_supabase_client()
-    if not client:
-        raise HTTPException(status_code=503, detail="Database connection not available")
+    # Get yacht_id from auth context (override request body if present)
+    yacht_id = auth['yacht_id']
+    tenant_key_alias = auth['tenant_key_alias']
+
+    logger.info(f"[search] user={auth['user_id'][:8]}..., yacht={yacht_id}, tenant={tenant_key_alias}")
+
+    # Get tenant-specific Supabase client
+    try:
+        client = get_tenant_client(tenant_key_alias)
+    except ValueError as e:
+        logger.error(f"[search] Tenant client error: {e}")
+        raise HTTPException(status_code=500, detail="Tenant configuration error")
 
     try:
         from pipeline_v1 import Pipeline
 
-        pipeline = Pipeline(client, request.yacht_id)
+        pipeline = Pipeline(client, yacht_id)
         response = pipeline.search(request.query, limit=request.limit)
 
         return SearchResponse(
@@ -323,12 +393,17 @@ async def search(request: SearchRequest):
 
 @app.post("/webhook/search")
 @limiter.limit("100/minute")
-async def webhook_search(request: Request):
+async def webhook_search(
+    request: Request,
+    auth: dict = Depends(get_authenticated_user)
+):
     """
-    Webhook endpoint for frontend search requests.
+    Webhook endpoint for frontend search requests with JWT auth.
 
-    Accepts frontend payload format with auth and context.
-    Extracts yacht_id from auth payload and routes to pipeline.
+    Auth:
+        - JWT verified using MASTER_SUPABASE_JWT_SECRET
+        - Tenant (yacht_id) looked up from MASTER DB user_accounts
+        - Request routed to tenant's per-yacht Supabase DB
 
     ALWAYS returns structured JSON - never raw 500 errors.
     """
@@ -338,12 +413,13 @@ async def webhook_search(request: Request):
     try:
         body = await request.json()
         query = body.get('query', '')
-        logger.info(f"[webhook/search:{request_id}] Received query: '{query}' | payload_keys: {list(body.keys())}")
-
-        # Extract data from frontend format
-        auth = body.get('auth', {})
-        yacht_id = auth.get('yacht_id')
         limit = body.get('limit', 20)
+
+        # Get yacht_id from JWT auth context (not from request body)
+        yacht_id = auth['yacht_id']
+        tenant_key_alias = auth['tenant_key_alias']
+
+        logger.info(f"[webhook/search:{request_id}] user={auth['user_id'][:8]}..., yacht={yacht_id}, query='{query}'")
 
         # Validate required fields - return 400 JSON, not raw error
         if not query:
@@ -359,41 +435,54 @@ async def webhook_search(request: Request):
                     "total_count": 0
                 }
             )
-        if not yacht_id:
-            logger.warning(f"[webhook/search:{request_id}] Missing yacht_id in auth")
+
+        # Get tenant-specific Supabase client
+        try:
+            client = get_tenant_client(tenant_key_alias)
+        except ValueError as e:
+            logger.error(f"[webhook/search:{request_id}] Tenant client error: {e}")
             return JSONResponse(
-                status_code=400,
+                status_code=500,
                 content={
                     "ok": False,
                     "request_id": request_id,
-                    "error_code": "MISSING_YACHT_ID",
-                    "message": "Missing required field: auth.yacht_id",
+                    "error_code": "TENANT_CONFIG_ERROR",
+                    "message": "Tenant configuration error",
                     "results": [],
                     "total_count": 0
                 }
             )
 
-        logger.info(f"[webhook/search:{request_id}] yacht_id={yacht_id[:8]}..., query='{query}'")
-
-        # Call main search logic
-        search_request = SearchRequest(
-            query=query,
-            yacht_id=yacht_id,
-            limit=limit
-        )
-
-        result = await search(search_request)
+        # Execute search with tenant's DB
+        from pipeline_v1 import Pipeline
+        pipeline = Pipeline(client, yacht_id)
+        response = pipeline.search(query, limit=limit)
 
         # Frontend expects newline-delimited JSON for streaming parser
-        # Send as single line with newline terminator
         import json
 
-        response_data = result.model_dump()
-        response_data["request_id"] = request_id
-        response_data["ok"] = response_data.get("success", False)
+        response_data = {
+            "success": response.success,
+            "query": query,
+            "results": response.results,
+            "total_count": response.total_count,
+            "available_actions": response.available_actions,
+            "entities": response.extraction.get("entities", []),
+            "plans": response.prepare.get("plans", []),
+            "timing_ms": {
+                "extraction": response.extraction_ms,
+                "prepare": response.prepare_ms,
+                "execute": response.execute_ms,
+                "total": response.total_ms,
+            },
+            "results_by_domain": response.results_by_domain,
+            "error": response.error,
+            "request_id": request_id,
+            "ok": response.success,
+        }
 
         json_str = json.dumps(response_data) + "\n"
-        logger.info(f"[webhook/search:{request_id}] Success: {response_data.get('success')}, results: {response_data.get('total_count', 0)}")
+        logger.info(f"[webhook/search:{request_id}] Success: {response.success}, results: {response.total_count}")
 
         # Reset error count on success (connection is healthy)
         reset_supabase_error_count()
@@ -561,82 +650,20 @@ def normalize_storage_path(storage_path: str, bucket: str = 'documents') -> str:
     return storage_path
 
 
-async def validate_jwt_simple(authorization: str = Header(None, alias='Authorization')):
-    """
-    Simple JWT validation for document access.
-
-    Returns dict with user_id and yacht_id extracted from JWT.
-    For now, this is a simplified version - full validation should use middleware.auth
-    """
-    if not authorization:
-        raise HTTPException(401, detail="Missing Authorization header")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(401, detail="Invalid Authorization header format")
-
-    token = authorization.replace("Bearer ", "")
-
-    try:
-        import jwt
-
-        # Get JWT secret from environment
-        jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
-        if not jwt_secret:
-            logger.warning("SUPABASE_JWT_SECRET not set - JWT validation disabled")
-            # In development, extract yacht_id from token without validation
-            # WARNING: This is insecure! Only for development.
-            payload = jwt.decode(token, options={"verify_signature": False})
-        else:
-            # Production: Validate JWT signature
-            payload = jwt.decode(
-                token,
-                jwt_secret,
-                algorithms=["HS256"],
-                options={"verify_exp": True}
-            )
-
-        user_id = payload.get("sub") or payload.get("user_id")
-
-        # yacht_id might be in user_metadata or directly in payload
-        yacht_id = payload.get("yacht_id")
-        if not yacht_id:
-            user_metadata = payload.get("user_metadata", {})
-            yacht_id = user_metadata.get("yacht_id") or user_metadata.get("yachtId")
-
-        if not yacht_id:
-            logger.warning(f"No yacht_id found in JWT payload: {list(payload.keys())}")
-            raise HTTPException(403, detail="No yacht_id in token")
-
-        return {
-            "user_id": user_id,
-            "yacht_id": yacht_id,
-            "role": payload.get("role", "crew"),
-            "email": payload.get("email", ""),
-        }
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(401, detail="Token expired")
-    except jwt.InvalidTokenError as e:
-        logger.error(f"Invalid JWT: {e}")
-        raise HTTPException(401, detail=f"Invalid token: {str(e)}")
-    except Exception as e:
-        logger.error(f"JWT validation error: {e}")
-        raise HTTPException(401, detail="Authentication failed")
-
-
 @app.post("/v1/documents/{document_id}/sign")
 @limiter.limit("60/minute")
 async def sign_document_url(
     document_id: str,
     request: Request,
-    auth: dict = Depends(validate_jwt_simple),
+    auth: dict = Depends(get_authenticated_user),
     x_yacht_signature: str = Header(None, alias='X-Yacht-Signature')
 ):
     """
     Generate short-lived signed URL for document access.
 
     Security (Production-Grade for Yacht Fleet):
-    - Validates JWT (user authentication)
+    - Validates JWT using MASTER_SUPABASE_JWT_SECRET
+    - Tenant lookup from MASTER DB user_accounts
     - Enforces yacht_id isolation (user can only access their yacht's docs)
     - Verifies document ownership (document belongs to yacht)
     - Rate limited to prevent bulk download attacks
@@ -657,13 +684,17 @@ async def sign_document_url(
     """
     user_id = auth['user_id']
     yacht_id = auth['yacht_id']
+    tenant_key_alias = auth['tenant_key_alias']
     ip_address = request.client.host if request.client else 'unknown'
 
-    logger.info(f"[sign_document] user={user_id[:8]}..., yacht={yacht_id[:8]}..., doc={document_id[:8]}..., ip={ip_address}")
+    logger.info(f"[sign_document] user={user_id[:8]}..., yacht={yacht_id}, doc={document_id[:8]}..., ip={ip_address}")
 
-    supabase = get_supabase_client()
-    if not supabase:
-        raise HTTPException(503, detail="Database connection not available")
+    # Get tenant-specific Supabase client
+    try:
+        supabase = get_tenant_client(tenant_key_alias)
+    except ValueError as e:
+        logger.error(f"[sign_document] Tenant client error: {e}")
+        raise HTTPException(500, detail="Tenant configuration error")
 
     # 1. Query doc_metadata with yacht isolation
     try:
@@ -797,14 +828,15 @@ async def sign_document_url(
 async def stream_document(
     request: Request,
     document_id: str,
-    auth: dict = Depends(validate_jwt_simple),
+    auth: dict = Depends(get_authenticated_user),
     x_yacht_signature: str = Header(None, alias='X-Yacht-Signature')
 ):
     """
     Stream document from Supabase Storage.
 
     Security:
-    - Validates JWT
+    - Validates JWT using MASTER_SUPABASE_JWT_SECRET
+    - Tenant lookup from MASTER DB
     - Enforces yacht_id isolation
     - Verifies document ownership
 
@@ -814,12 +846,16 @@ async def stream_document(
     """
     user_id = auth['user_id']
     yacht_id = auth['yacht_id']
+    tenant_key_alias = auth['tenant_key_alias']
 
-    logger.info(f"[stream_document] user={user_id[:8]}..., yacht={yacht_id[:8]}..., doc={document_id[:8]}...")
+    logger.info(f"[stream_document] user={user_id[:8]}..., yacht={yacht_id}, doc={document_id[:8]}...")
 
-    supabase = get_supabase_client()
-    if not supabase:
-        raise HTTPException(503, detail="Database connection not available")
+    # Get tenant-specific Supabase client
+    try:
+        supabase = get_tenant_client(tenant_key_alias)
+    except ValueError as e:
+        logger.error(f"[stream_document] Tenant client error: {e}")
+        raise HTTPException(500, detail="Tenant configuration error")
 
     # 1. Query doc_metadata with yacht isolation
     try:
