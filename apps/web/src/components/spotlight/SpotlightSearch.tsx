@@ -19,6 +19,7 @@ import SituationRouter from '@/components/situations/SituationRouter';
 import { toast } from 'sonner';
 import { executeAction } from '@/lib/actionClient';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/hooks/useAuth';
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -154,6 +155,9 @@ export default function SpotlightSearch({
     transitionTo,
     resetToIdle,
   } = useSituationState();
+
+  // Get user context from auth (yacht_id comes from bootstrap, not DB query)
+  const { user } = useAuth();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -299,21 +303,14 @@ export default function SpotlightSearch({
     console.log('[SpotlightSearch] Situation action:', action, payload);
 
     try {
-      // Get current user session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      // Use auth context instead of querying database
+      // Backend handles tenant routing via JWT verification
+      if (!user) {
         toast.error('Authentication required');
         return;
       }
 
-      // Get yacht_id from user profile
-      const { data: profile } = await supabase
-        .from('auth_users_profiles')
-        .select('yacht_id')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!profile?.yacht_id) {
+      if (!user.yachtId) {
         toast.error('No yacht associated with user');
         return;
       }
@@ -321,7 +318,7 @@ export default function SpotlightSearch({
       // Handle different actions
       switch (action) {
         case 'add_to_handover':
-          await handleAddToHandover(session.user.id, profile.yacht_id, payload);
+          await handleAddToHandover(user.id, user.yachtId, payload);
           break;
 
         default:
@@ -332,7 +329,7 @@ export default function SpotlightSearch({
       console.error('[SpotlightSearch] Action failed:', error);
       toast.error(error instanceof Error ? error.message : 'Action failed');
     }
-  }, []);
+  }, [user]);
 
   /**
    * Handle add_to_handover action
