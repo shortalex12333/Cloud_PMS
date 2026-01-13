@@ -40,9 +40,9 @@ BEGIN
     END IF;
 
     -- Fetch user account with yacht info
-    -- NOTE: user_accounts.id matches auth.uid()
+    -- NOTE: user_accounts.user_id matches auth.uid()
     SELECT
-        ua.id,
+        ua.user_id,
         ua.yacht_id,
         ua.role,
         ua.status,
@@ -52,7 +52,7 @@ BEGIN
     INTO v_result
     FROM public.user_accounts ua
     LEFT JOIN public.fleet_registry fr ON fr.yacht_id = ua.yacht_id
-    WHERE ua.id = v_user_id;
+    WHERE ua.user_id = v_user_id;
 
     -- If no user_accounts row exists, return PENDING state
     IF v_result.user_id IS NULL THEN

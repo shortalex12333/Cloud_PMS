@@ -1,0 +1,28 @@
+{
+  "name": "celesteos-testing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CelesteOS E2E Testing Suite",
+  "scripts": {
+    "test": "npm run test:contracts && npm run test:e2e",
+    "test:contracts": "npx playwright test --project=contracts",
+    "test:e2e": "npx playwright test --project=e2e-chromium",
+    "test:all": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:debug": "npx playwright test --debug",
+    "test:demo-failure": "npx playwright test --project=demo-failure",
+    "report": "npx playwright show-report test-results/report",
+    "verify-env": "./scripts/e2e/verify_env.sh",
+    "ci-gate": "./scripts/e2e/ci_gate.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "@types/node": "^20.11.0",
+    "dotenv": "^16.3.1",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
