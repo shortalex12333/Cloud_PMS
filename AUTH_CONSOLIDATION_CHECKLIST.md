@@ -10,7 +10,7 @@
 ### 1. Master DB Migrations Applied
 
 ```sql
--- Run in Supabase SQL Editor (master project)
+-- Run in Supabase SQL Editor (master project: qvzmkaamzaqxpzbewjxe)
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
 AND table_name IN ('fleet_registry', 'user_accounts', 'db_registry', 'security_events');
@@ -33,16 +33,38 @@ AND routine_name IN ('get_my_bootstrap', 'ensure_user_account', 'log_security_ev
 
 | RPC | Expected |
 |-----|----------|
-| get_my_bootstrap | ✅ Exists |
+| get_my_bootstrap | ✅ Exists (returns tenant_key_alias) |
 | ensure_user_account | ✅ Exists |
 | log_security_event | ✅ Exists |
 
-### 3. Code Changes Deployed
+### 3. tenant_key_alias Populated
+
+```sql
+-- Verify tenant_key_alias is set for all yachts
+SELECT yacht_id, yacht_name, tenant_key_alias FROM public.fleet_registry;
+```
+
+| Column | Expected Format |
+|--------|----------------|
+| tenant_key_alias | `y<yacht_id_no_dashes>` (e.g., `y85fe1119b04c41ac80f1829d23322598`) |
+
+### 4. Vercel Env Vars Updated (CRITICAL)
+
+Frontend MUST point to **Master DB** (qvzmkaamzaqxpzbewjxe):
+
+| Env Var | Value |
+|---------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://qvzmkaamzaqxpzbewjxe.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw` |
+
+**Warning:** If these env vars point to a per-yacht DB instead of master, login will fail with "function get_my_bootstrap does not exist".
+
+### 5. Code Changes Deployed
 
 | File | Change |
 |------|--------|
 | `middleware.ts` | auth.celeste7.ai → 308 redirect to app |
-| `AuthContext.tsx` | Non-blocking bootstrap, new types |
+| `AuthContext.tsx` | Non-blocking bootstrap, includes tenantKeyAlias |
 | `LoginContent.tsx` | Removed cross-domain logic |
 | `/api/whoami/route.ts` | New endpoint |
 
@@ -133,18 +155,20 @@ Open DevTools Network tab on app.celeste7.ai login page:
 
 | # | Check | Status |
 |---|-------|--------|
-| 1 | Master DB migrations applied | ☐ |
-| 2 | RPCs return correct data | ☐ |
-| 3 | auth.celeste7.ai returns 308 redirect | ☐ |
-| 4 | app.celeste7.ai/login renders login form | ☐ |
-| 5 | Login works for active user | ☐ |
-| 6 | Pending user sees activation screen | ☐ |
-| 7 | /api/whoami returns user context | ☐ |
-| 8 | No CORS errors in browser console | ☐ |
-| 9 | No cross-domain fetches | ☐ |
-| 10 | Session persists across page refresh | ☐ |
+| 1 | Master DB migrations applied (006, 007) | ☐ |
+| 2 | RPCs return correct data (incl. tenant_key_alias) | ☐ |
+| 3 | Vercel env vars point to MASTER DB (qvzmkaamzaqxpzbewjxe) | ☐ |
+| 4 | auth.celeste7.ai returns 308 redirect | ☐ |
+| 5 | app.celeste7.ai/login renders login form | ☐ |
+| 6 | Login works for active user | ☐ |
+| 7 | Pending user sees activation screen | ☐ |
+| 8 | /api/whoami returns user context | ☐ |
+| 9 | No CORS errors in browser console | ☐ |
+| 10 | No cross-domain fetches | ☐ |
+| 11 | Session persists across page refresh | ☐ |
+| 12 | tenantKeyAlias available in AuthContext | ☐ |
 
-**GO:** All 10 checks pass
+**GO:** All 12 checks pass
 **NO-GO:** Any check fails
 
 ---
