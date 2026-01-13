@@ -99,9 +99,10 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
 
     try:
         # Query user_accounts joined with fleet_registry
+        # Note: PK column is 'user_id', not 'id'
         result = client.table('user_accounts').select(
             'yacht_id, role, status'
-        ).eq('id', user_id).single().execute()
+        ).eq('user_id', user_id).single().execute()
 
         if not result.data:
             logger.warning(f"[Auth] No user_accounts row for user {user_id[:8]}...")
