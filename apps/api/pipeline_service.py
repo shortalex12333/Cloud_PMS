@@ -23,10 +23,16 @@ import time
 import logging
 import os
 import sys
+import uuid
+import traceback
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+
+# Git commit for /version endpoint
+GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", os.environ.get("GIT_COMMIT", "dev"))
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
 # Setup path for imports
 from pathlib import Path
@@ -60,7 +66,7 @@ import logging
 # Parse and normalize origins from env var
 ALLOWED_ORIGINS_STR = os.getenv(
     "ALLOWED_ORIGINS",
-    "https://auth.celeste7.ai,https://app.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
+    "https://auth.celeste7.ai,https://app.celeste7.ai,https://api.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
@@ -77,7 +83,7 @@ if len(ALLOWED_ORIGINS) == 0:
 
 # WARNING: Never add *.vercel.app preview URLs to production CORS
 # Preview URLs change constantly and create maintenance burden
-# Use staging.celeste7.ai for pre-production testing instead
+# Production is the only execution surface
 
 app.add_middleware(
     CORSMiddleware,
@@ -184,11 +190,25 @@ class HealthResponse(BaseModel):
 _pipeline = None
 _extractor = None
 _supabase_client = None
+_supabase_client_errors = 0
 
-def get_supabase_client():
-    """Lazy-load Supabase client."""
-    global _supabase_client
-    if _supabase_client is None:
+def get_supabase_client(force_new: bool = False):
+    """
+    Lazy-load Supabase client with connection recovery.
+
+    If the client is stale (>3 consecutive errors), recreate it.
+    This handles connection pool exhaustion and timeout issues.
+    """
+    global _supabase_client, _supabase_client_errors
+
+    # Force recreation if too many errors (connection might be stale)
+    if _supabase_client_errors >= 3:
+        logger.warning(f"[Supabase] Resetting client after {_supabase_client_errors} consecutive errors")
+        _supabase_client = None
+        _supabase_client_errors = 0
+        force_new = True
+
+    if _supabase_client is None or force_new:
         try:
             from supabase import create_client
             url = os.environ.get("SUPABASE_URL", "https://vzsohavtuotocgrfkfyd.supabase.co")
@@ -197,10 +217,24 @@ def get_supabase_client():
                 logger.warning("SUPABASE_SERVICE_KEY not set")
                 return None
             _supabase_client = create_client(url, key)
+            _supabase_client_errors = 0  # Reset error count on successful creation
+            logger.info("[Supabase] Client created/recreated successfully")
         except Exception as e:
             logger.error(f"Failed to create Supabase client: {e}")
             return None
     return _supabase_client
+
+def mark_supabase_error():
+    """Track consecutive Supabase errors for connection recovery."""
+    global _supabase_client_errors
+    _supabase_client_errors += 1
+    logger.warning(f"[Supabase] Error count: {_supabase_client_errors}")
+
+def reset_supabase_error_count():
+    """Reset error count after successful operation."""
+    global _supabase_client_errors
+    if _supabase_client_errors > 0:
+        _supabase_client_errors = 0
 
 def get_extractor():
     """Lazy-load extraction orchestrator."""
@@ -233,8 +267,18 @@ async def health_check():
         pipeline_ready=pipeline_ready,
     )
 
+
+@app.get("/version")
+async def version():
+    """Version endpoint - returns git commit and environment."""
+    return {
+        "git_commit": GIT_COMMIT,
+        "environment": ENVIRONMENT,
+        "version": "1.0.0",
+        "api": "pipeline_v1"
+    }
+
 @app.post("/search", response_model=SearchResponse)
-@limiter.limit("100/minute")
 async def search(request: SearchRequest):
     """
     Main search endpoint.
@@ -285,24 +329,51 @@ async def webhook_search(request: Request):
 
     Accepts frontend payload format with auth and context.
     Extracts yacht_id from auth payload and routes to pipeline.
+
+    ALWAYS returns structured JSON - never raw 500 errors.
     """
+    # Generate request_id for tracing
+    request_id = str(uuid.uuid4())[:8]
+
     try:
         body = await request.json()
-        logger.info(f"[webhook/search] Received query: {body.get('query')}")
+        query = body.get('query', '')
+        logger.info(f"[webhook/search:{request_id}] Received query: '{query}' | payload_keys: {list(body.keys())}")
 
         # Extract data from frontend format
-        query = body.get('query')
         auth = body.get('auth', {})
         yacht_id = auth.get('yacht_id')
         limit = body.get('limit', 20)
 
-        # Validate required fields
+        # Validate required fields - return 400 JSON, not raw error
         if not query:
-            raise HTTPException(status_code=400, detail="Missing required field: query")
+            logger.warning(f"[webhook/search:{request_id}] Missing query field")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "ok": False,
+                    "request_id": request_id,
+                    "error_code": "MISSING_QUERY",
+                    "message": "Missing required field: query",
+                    "results": [],
+                    "total_count": 0
+                }
+            )
         if not yacht_id:
-            raise HTTPException(status_code=400, detail="Missing required field: auth.yacht_id")
+            logger.warning(f"[webhook/search:{request_id}] Missing yacht_id in auth")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "ok": False,
+                    "request_id": request_id,
+                    "error_code": "MISSING_YACHT_ID",
+                    "message": "Missing required field: auth.yacht_id",
+                    "results": [],
+                    "total_count": 0
+                }
+            )
 
-        logger.info(f"[webhook/search] yacht_id={yacht_id}, query='{query}'")
+        logger.info(f"[webhook/search:{request_id}] yacht_id={yacht_id[:8]}..., query='{query}'")
 
         # Call main search logic
         search_request = SearchRequest(
@@ -316,14 +387,56 @@ async def webhook_search(request: Request):
         # Frontend expects newline-delimited JSON for streaming parser
         # Send as single line with newline terminator
         import json
-        from fastapi.responses import Response
 
-        json_str = json.dumps(result.model_dump()) + "\n"
+        response_data = result.model_dump()
+        response_data["request_id"] = request_id
+        response_data["ok"] = response_data.get("success", False)
+
+        json_str = json.dumps(response_data) + "\n"
+        logger.info(f"[webhook/search:{request_id}] Success: {response_data.get('success')}, results: {response_data.get('total_count', 0)}")
+
+        # Reset error count on success (connection is healthy)
+        reset_supabase_error_count()
+
         return Response(content=json_str, media_type="application/json")
 
+    except HTTPException as he:
+        # Track errors for connection recovery
+        if he.status_code >= 500:
+            mark_supabase_error()
+
+        logger.error(f"[webhook/search:{request_id}] HTTPException: {he.detail}")
+        return JSONResponse(
+            status_code=he.status_code,
+            content={
+                "ok": False,
+                "request_id": request_id,
+                "error_code": "HTTP_ERROR",
+                "message": str(he.detail),
+                "results": [],
+                "total_count": 0
+            }
+        )
     except Exception as e:
-        logger.error(f"[webhook/search] Error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        # Track errors for connection recovery
+        mark_supabase_error()
+
+        # CRITICAL: Never return raw 500 - always return structured JSON
+        error_tb = traceback.format_exc()
+        logger.error(f"[webhook/search:{request_id}] PIPELINE_INTERNAL_ERROR: {e}\n{error_tb}")
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "request_id": request_id,
+                "error_code": "PIPELINE_INTERNAL",
+                "message": f"Search failed: {str(e)}",
+                "error_type": type(e).__name__,
+                "results": [],
+                "total_count": 0
+            }
+        )
 
 @app.post("/extract", response_model=ExtractResponse)
 @limiter.limit("100/minute")
@@ -682,6 +795,7 @@ async def sign_document_url(
 @app.get("/v1/documents/{document_id}/stream")
 @limiter.limit("60/minute")
 async def stream_document(
+    request: Request,
     document_id: str,
     auth: dict = Depends(validate_jwt_simple),
     x_yacht_signature: str = Header(None, alias='X-Yacht-Signature')

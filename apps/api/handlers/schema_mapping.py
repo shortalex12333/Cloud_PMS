@@ -36,6 +36,10 @@ TABLE_MAP = {
     "part_usage": "pms_part_usage",         # CREATED in migration 04
     "audit_log": "pms_audit_log",           # CREATED in migration 04
     "handover": "pms_handover",             # CREATED in migration 04
+    # P1 Purchasing tables (confirmed from docs/DATABASE_SCHEMA.md)
+    "purchase_orders": "pms_purchase_orders",       # PO headers
+    "purchase_order_items": "pms_purchase_order_items",  # PO line items
+    "suppliers": "pms_suppliers",                   # Vendor registry
 }
 
 

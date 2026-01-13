@@ -1,0 +1,1372 @@
+[
+  {
+    "query": "diagnose E047 on main engine",
+    "timestamp": "2026-01-12T22:18:36.849447+00:00",
+    "routing": {
+      "module_a_action": "diagnose_fault",
+      "module_a_confidence": 0.93,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "diagnose_fault",
+      "source": "module_a",
+      "reason": "Module A confidence 0.93 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "diagnose_fault",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.93,
+      "requires_confirmation": false,
+      "auto_execute_allowed": true,
+      "reason": "Safe action with confidence 0.93 >= 0.8"
+    },
+    "handler_selected": "fault_situation",
+    "handler_category": "Situation",
+    "executed": true,
+    "execution_status": "success",
+    "execution_latency_ms": 273,
+    "entities": [
+      {
+        "type": "fault_code",
+        "value": "E047",
+        "canonical": "E047",
+        "confidence": 0.95
+      },
+      {
+        "type": "equipment",
+        "value": "main engine",
+        "canonical": "MAIN_ENGINE",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "success",
+      "situation": "fault_situation",
+      "entity_id": "f0000001-0001-4001-8001-000000000001",
+      "current_state": "reported",
+      "entity": {
+        "id": "f0000001-0001-4001-8001-000000000001",
+        "fault_code": "E047",
+        "title": "High Exhaust Temperature Port Engine",
+        "description": "Exhaust temperature on cylinder 8 reading 50\u00b0C above normal. Possible injector issue or turbocharger efficiency loss.",
+        "severity": "high",
+        "status": "open",
+        "equipment_id": "e1000001-0001-4001-8001-000000000001",
+        "detected_at": "2025-01-15T08:30:00+00:00",
+        "resolved_at": null,
+        "resolved_by": null,
+        "work_order_id": "10000001-0001-4001-8001-000000000001",
+        "metadata": {}
+      },
+      "context": {
+        "equipment": {
+          "id": "e1000001-0001-4001-8001-000000000001",
+          "name": "Main Engine Port",
+          "model": "16V4000 M93L",
+          "criticality": "critical"
+        },
+        "work_orders": [
+          {
+            "id": "10000001-0001-4001-8001-000000000001",
+            "wo_number": "WO-0010",
+            "status": "planned"
+          }
+        ],
+        "has_work_order": true,
+        "is_resolved": false,
+        "is_critical": false
+      },
+      "available_transitions": [
+        "investigating",
+        "diagnosed",
+        "deferred"
+      ],
+      "available_actions": [
+        "view_fault_history",
+        "add_fault_note",
+        "add_fault_photo",
+        "diagnose_fault",
+        "create_work_order_from_fault",
+        "suggest_parts"
+      ],
+      "guards": {
+        "can_create_work_order": true,
+        "can_diagnose": true,
+        "can_resolve": false,
+        "requires_work_order_for_resolution": false,
+        "can_close": false
+      }
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "troubleshoot fault P0420 generator",
+    "timestamp": "2026-01-12T22:18:37.124519+00:00",
+    "routing": {
+      "module_a_action": "diagnose_fault",
+      "module_a_confidence": 0.93,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "diagnose_fault",
+      "source": "module_a",
+      "reason": "Module A confidence 0.93 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "diagnose_fault",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.93,
+      "requires_confirmation": false,
+      "auto_execute_allowed": true,
+      "reason": "Safe action with confidence 0.93 >= 0.8"
+    },
+    "handler_selected": "fault_situation",
+    "handler_category": "Situation",
+    "executed": true,
+    "execution_status": "success",
+    "execution_latency_ms": 270,
+    "entities": [
+      {
+        "type": "fault_code",
+        "value": "P0420",
+        "canonical": "P0420",
+        "confidence": 0.95
+      },
+      {
+        "type": "action",
+        "value": "troubleshoot",
+        "canonical": "TROUBLESHOOT_SYSTEM",
+        "confidence": 0.9
+      },
+      {
+        "type": "equipment",
+        "value": "generator",
+        "canonical": "GENERATOR",
+        "confidence": 0.9
+      },
+      {
+        "type": "symptom",
+        "value": "fault",
+        "canonical": "FAULT",
+        "confidence": 0.88
+      }
+    ],
+    "response": {
+      "status": "success",
+      "situation": "fault_situation",
+      "entity_id": "f0000001-0001-4001-8001-000000000001",
+      "current_state": "reported",
+      "entity": {
+        "id": "f0000001-0001-4001-8001-000000000001",
+        "fault_code": "E047",
+        "title": "High Exhaust Temperature Port Engine",
+        "description": "Exhaust temperature on cylinder 8 reading 50\u00b0C above normal. Possible injector issue or turbocharger efficiency loss.",
+        "severity": "high",
+        "status": "open",
+        "equipment_id": "e1000001-0001-4001-8001-000000000001",
+        "detected_at": "2025-01-15T08:30:00+00:00",
+        "resolved_at": null,
+        "resolved_by": null,
+        "work_order_id": "10000001-0001-4001-8001-000000000001",
+        "metadata": {}
+      },
+      "context": {
+        "equipment": {
+          "id": "e1000001-0001-4001-8001-000000000001",
+          "name": "Main Engine Port",
+          "model": "16V4000 M93L",
+          "criticality": "critical"
+        },
+        "work_orders": [
+          {
+            "id": "10000001-0001-4001-8001-000000000001",
+            "wo_number": "WO-0010",
+            "status": "planned"
+          }
+        ],
+        "has_work_order": true,
+        "is_resolved": false,
+        "is_critical": false
+      },
+      "available_transitions": [
+        "investigating",
+        "diagnosed",
+        "deferred"
+      ],
+      "available_actions": [
+        "view_fault_history",
+        "add_fault_note",
+        "add_fault_photo",
+        "diagnose_fault",
+        "create_work_order_from_fault",
+        "suggest_parts"
+      ],
+      "guards": {
+        "can_create_work_order": true,
+        "can_diagnose": true,
+        "can_resolve": false,
+        "requires_work_order_for_resolution": false,
+        "can_close": false
+      }
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "what's wrong with the bilge pump",
+    "timestamp": "2026-01-12T22:18:37.395693+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_equipment_details",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected equipment -> view_equipment_details"
+    },
+    "gating": {
+      "action": "view_equipment_details",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_equipment_details",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 88,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "bilge pump",
+        "canonical": "BILGE_PUMP",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_equipment_details",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "show fault history for equipment",
+    "timestamp": "2026-01-12T22:18:37.484115+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_fault_history",
+      "source": "keyword_fallback",
+      "reason": "Keyword match -> view_fault_history"
+    },
+    "gating": {
+      "action": "view_fault_history",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_fault_history",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 33,
+    "entities": [
+      {
+        "type": "symptom",
+        "value": "fault",
+        "canonical": "FAULT",
+        "confidence": 0.88
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_fault_history",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "investigate the overheating issue",
+    "timestamp": "2026-01-12T22:18:37.517407+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": null,
+      "source": "none",
+      "reason": "No confident routing available"
+    },
+    "gating": {
+      "action": "",
+      "is_gated": false,
+      "is_safe": false,
+      "confidence": 0.0,
+      "requires_confirmation": false,
+      "auto_execute_allowed": false,
+      "reason": "No action to gate"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "no_handler",
+    "execution_latency_ms": 64,
+    "entities": [
+      {
+        "type": "fault",
+        "value": "overheating",
+        "canonical": "OVERHEATING_CONDITION",
+        "confidence": 0.9
+      }
+    ],
+    "response": null,
+    "error": "No handler mapped for action: None",
+    "success": false
+  },
+  {
+    "query": "create work order for generator service",
+    "timestamp": "2026-01-12T22:18:37.581585+00:00",
+    "routing": {
+      "module_a_action": "create_work_order",
+      "module_a_confidence": 0.95,
+      "intent_parser_intent": "create_work_order",
+      "intent_parser_confidence": 0.5,
+      "final_action": "create_work_order",
+      "source": "module_a",
+      "reason": "Module A confidence 0.95 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "create_work_order",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.95,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'create_work_order' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "create_work_order",
+    "handler_category": "P0",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "generator",
+        "canonical": "GENERATOR",
+        "confidence": 0.9
+      },
+      {
+        "type": "action",
+        "value": "service",
+        "canonical": "SERVICE_COMPONENT",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "create_work_order",
+      "message": "Action requires confirmation: Action 'create_work_order' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "open work order for bilge pump repair",
+    "timestamp": "2026-01-12T22:18:37.614498+00:00",
+    "routing": {
+      "module_a_action": "create_work_order",
+      "module_a_confidence": 0.95,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "create_work_order",
+      "source": "module_a",
+      "reason": "Module A confidence 0.95 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "create_work_order",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.95,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'create_work_order' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "create_work_order",
+    "handler_category": "P0",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 35,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "bilge pump",
+        "canonical": "BILGE_PUMP",
+        "confidence": 0.9
+      },
+      {
+        "type": "action",
+        "value": "repair",
+        "canonical": "REPAIR_COMPONENT",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "create_work_order",
+      "message": "Action requires confirmation: Action 'create_work_order' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "show work order history",
+    "timestamp": "2026-01-12T22:18:37.649648+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_work_order_history",
+      "source": "keyword_fallback",
+      "reason": "Keyword match -> view_work_order_history"
+    },
+    "gating": {
+      "action": "view_work_order_history",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_work_order_history",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 33,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "view_work_order_history",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "list pending work orders",
+    "timestamp": "2026-01-12T22:18:37.683408+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "view_failure_stats",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_failure_stats",
+      "source": "intent_parser",
+      "reason": "IntentParser last resort"
+    },
+    "gating": {
+      "action": "view_failure_stats",
+      "is_gated": false,
+      "is_safe": false,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Unknown action 'view_failure_stats' - requires confirmation"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 33,
+    "entities": [
+      {
+        "type": "fault",
+        "value": "pending",
+        "canonical": "PENDING_STATUS",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_failure_stats",
+      "message": "Action requires confirmation: Unknown action 'view_failure_stats' - requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "close work order for main engine",
+    "timestamp": "2026-01-12T22:18:37.717421+00:00",
+    "routing": {
+      "module_a_action": "close_work_order",
+      "module_a_confidence": 0.95,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "close_work_order",
+      "source": "module_a",
+      "reason": "Module A confidence 0.95 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "close_work_order",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.95,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'close_work_order' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "close_work_order",
+    "handler_category": "P0",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 33,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "main engine",
+        "canonical": "MAIN_ENGINE",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "close_work_order",
+      "message": "Action requires confirmation: Action 'close_work_order' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "view compliance status",
+    "timestamp": "2026-01-12T22:18:37.751485+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "view_compliance_status",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_compliance_status",
+      "source": "intent_parser",
+      "reason": "IntentParser last resort"
+    },
+    "gating": {
+      "action": "view_compliance_status",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_compliance_status",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "view_compliance_status",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "show hours of rest report",
+    "timestamp": "2026-01-12T22:18:37.784028+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "view_compliance_status",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_compliance_status",
+      "source": "intent_parser",
+      "reason": "IntentParser last resort"
+    },
+    "gating": {
+      "action": "view_compliance_status",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_compliance_status",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [
+      {
+        "type": "action",
+        "value": "report",
+        "canonical": "REPORT_ISSUE",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_compliance_status",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "log my hours of rest for today",
+    "timestamp": "2026-01-12T22:18:37.816856+00:00",
+    "routing": {
+      "module_a_action": "log_hours_of_rest",
+      "module_a_confidence": 0.95,
+      "intent_parser_intent": "update_hours_of_rest",
+      "intent_parser_confidence": 0.5,
+      "final_action": "log_hours_of_rest",
+      "source": "module_a",
+      "reason": "Module A confidence 0.95 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "log_hours_of_rest",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.95,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'log_hours_of_rest' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "log_hours_of_rest",
+    "handler_category": "P2",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "log_hours_of_rest",
+      "message": "Action requires confirmation: Action 'log_hours_of_rest' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "track delivery for purchase order",
+    "timestamp": "2026-01-12T22:18:37.849540+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "track_delivery",
+      "source": "keyword_fallback",
+      "reason": "Keyword match -> track_delivery"
+    },
+    "gating": {
+      "action": "track_delivery",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "track_delivery",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "track_delivery",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "order parts for the generator",
+    "timestamp": "2026-01-12T22:18:37.881936+00:00",
+    "routing": {
+      "module_a_action": "order_parts",
+      "module_a_confidence": 0.95,
+      "intent_parser_intent": "order_part",
+      "intent_parser_confidence": 0.5,
+      "final_action": "order_parts",
+      "source": "module_a",
+      "reason": "Module A confidence 0.95 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "order_parts",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.95,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'order_parts' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "order_parts",
+    "handler_category": "P0",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "generator",
+        "canonical": "GENERATOR",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "order_parts",
+      "message": "Action requires confirmation: Action 'order_parts' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "create purchase request for filters",
+    "timestamp": "2026-01-12T22:18:37.914239+00:00",
+    "routing": {
+      "module_a_action": "create_purchase_request",
+      "module_a_confidence": 0.9784999999999999,
+      "intent_parser_intent": "create_work_order",
+      "intent_parser_confidence": 0.5,
+      "final_action": "create_purchase_request",
+      "source": "module_a",
+      "reason": "Module A confidence 0.98 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "create_purchase_request",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.9784999999999999,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'create_purchase_request' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [
+      {
+        "type": "action",
+        "value": "request",
+        "canonical": "REQUEST_ACTION",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "create_purchase_request",
+      "message": "Action requires confirmation: Action 'create_purchase_request' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "view equipment details for main engine",
+    "timestamp": "2026-01-12T22:18:37.946697+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_equipment_details",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected equipment -> view_equipment_details"
+    },
+    "gating": {
+      "action": "view_equipment_details",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_equipment_details",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 64,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "main engine",
+        "canonical": "MAIN_ENGINE",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_equipment_details",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "show part stock levels",
+    "timestamp": "2026-01-12T22:18:38.011581+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "view_part_location",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_part_location",
+      "source": "intent_parser",
+      "reason": "IntentParser last resort"
+    },
+    "gating": {
+      "action": "view_part_location",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 31,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "view_part_location",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "what's my worklist",
+    "timestamp": "2026-01-12T22:18:38.043195+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_worklist",
+      "source": "keyword_fallback",
+      "reason": "Keyword match -> view_worklist"
+    },
+    "gating": {
+      "action": "view_worklist",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_worklist",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 31,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "view_worklist",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "view fleet summary",
+    "timestamp": "2026-01-12T22:18:38.075030+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "view_failure_stats",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_failure_stats",
+      "source": "intent_parser",
+      "reason": "IntentParser last resort"
+    },
+    "gating": {
+      "action": "view_failure_stats",
+      "is_gated": false,
+      "is_safe": false,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Unknown action 'view_failure_stats' - requires confirmation"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 31,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "view_failure_stats",
+      "message": "Action requires confirmation: Unknown action 'view_failure_stats' - requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "show smart summary",
+    "timestamp": "2026-01-12T22:18:38.106735+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "view_failure_stats",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_failure_stats",
+      "source": "intent_parser",
+      "reason": "IntentParser last resort"
+    },
+    "gating": {
+      "action": "view_failure_stats",
+      "is_gated": false,
+      "is_safe": false,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Unknown action 'view_failure_stats' - requires confirmation"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 31,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "view_failure_stats",
+      "message": "Action requires confirmation: Unknown action 'view_failure_stats' - requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "bilge manifold",
+    "timestamp": "2026-01-12T22:18:38.137961+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_equipment_details",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected equipment -> view_equipment_details"
+    },
+    "gating": {
+      "action": "view_equipment_details",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_equipment_details",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 62,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "manifold",
+        "canonical": "MANIFOLD",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_equipment_details",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "MTU 16V4000 engine overheating",
+    "timestamp": "2026-01-12T22:18:38.200349+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "diagnose_fault",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected fault_code/symptom -> diagnose_fault"
+    },
+    "gating": {
+      "action": "diagnose_fault",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "fault_situation",
+    "handler_category": "Situation",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 63,
+    "entities": [
+      {
+        "type": "brand",
+        "value": "MTU",
+        "canonical": "MTU",
+        "confidence": 0.95
+      },
+      {
+        "type": "model",
+        "value": "16V4000",
+        "canonical": "16V4000",
+        "confidence": 0.92
+      },
+      {
+        "type": "symptom",
+        "value": "engine overheating",
+        "canonical": "ENGINE_OVERHEATING",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "diagnose_fault",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "sea water pump pressure low",
+    "timestamp": "2026-01-12T22:18:38.264169+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "diagnose_fault",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected measurement -> diagnose_fault"
+    },
+    "gating": {
+      "action": "diagnose_fault",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "fault_situation",
+    "handler_category": "Situation",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 63,
+    "entities": [
+      {
+        "type": "measurement_term",
+        "value": "water pump pressure",
+        "canonical": "`WATER_PRESSURE_READING`",
+        "confidence": 0.9
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "diagnose_fault",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "find documents about fire safety",
+    "timestamp": "2026-01-12T22:18:38.328082+00:00",
+    "routing": {
+      "module_a_action": "search_documents",
+      "module_a_confidence": 0.9,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "search_documents",
+      "source": "module_a",
+      "reason": "Module A confidence 0.90 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "search_documents",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.9,
+      "requires_confirmation": false,
+      "auto_execute_allowed": true,
+      "reason": "Safe action with confidence 0.90 >= 0.8"
+    },
+    "handler_selected": "search_documents",
+    "handler_category": "P3",
+    "executed": true,
+    "execution_status": "error",
+    "execution_latency_ms": 32,
+    "entities": [],
+    "response": {
+      "status": "error",
+      "message": "Handler 'search_documents' not found in P3"
+    },
+    "error": "Handler 'search_documents' not found in P3",
+    "success": false
+  },
+  {
+    "query": "search for bilge pump manual",
+    "timestamp": "2026-01-12T22:18:38.360261+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_equipment_details",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected equipment -> view_equipment_details"
+    },
+    "gating": {
+      "action": "view_equipment_details",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_equipment_details",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 63,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "bilge pump",
+        "canonical": "BILGE_PUMP",
+        "confidence": 0.9
+      },
+      {
+        "type": "document_type",
+        "value": "manual",
+        "canonical": "MANUAL",
+        "confidence": 0.88
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_equipment_details",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "show manual section for generator maintenance",
+    "timestamp": "2026-01-12T22:18:38.424103+00:00",
+    "routing": {
+      "module_a_action": null,
+      "module_a_confidence": 0.0,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "view_equipment_details",
+      "source": "entity_inference",
+      "reason": "Entity-based: detected equipment -> view_equipment_details"
+    },
+    "gating": {
+      "action": "view_equipment_details",
+      "is_gated": false,
+      "is_safe": true,
+      "confidence": 0.5,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Safe action but confidence 0.50 < 0.8 - confirm intent"
+    },
+    "handler_selected": "view_equipment_details",
+    "handler_category": "P3",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 65,
+    "entities": [
+      {
+        "type": "equipment",
+        "value": "generator",
+        "canonical": "GENERATOR",
+        "confidence": 0.9
+      },
+      {
+        "type": "document_type",
+        "value": "manual",
+        "canonical": "MANUAL",
+        "confidence": 0.88
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "view_equipment_details",
+      "message": "Action requires confirmation: Safe action but confidence 0.50 < 0.8 - confirm intent",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "acknowledge the fault",
+    "timestamp": "2026-01-12T22:18:38.489375+00:00",
+    "routing": {
+      "module_a_action": "acknowledge_fault",
+      "module_a_confidence": 0.9784999999999999,
+      "intent_parser_intent": "find_document",
+      "intent_parser_confidence": 0.5,
+      "final_action": "acknowledge_fault",
+      "source": "module_a",
+      "reason": "Module A confidence 0.98 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "acknowledge_fault",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.9784999999999999,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'acknowledge_fault' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "acknowledge_fault",
+    "handler_category": "P2",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 33,
+    "entities": [
+      {
+        "type": "symptom",
+        "value": "fault",
+        "canonical": "FAULT",
+        "confidence": 0.88
+      }
+    ],
+    "response": {
+      "status": "gated",
+      "action": "acknowledge_fault",
+      "message": "Action requires confirmation: Action 'acknowledge_fault' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "add note to work order: checked oil level",
+    "timestamp": "2026-01-12T22:18:38.522778+00:00",
+    "routing": {
+      "module_a_action": "add_note_to_work_order",
+      "module_a_confidence": 0.9784999999999999,
+      "intent_parser_intent": "create_work_order",
+      "intent_parser_confidence": 0.5,
+      "final_action": "add_note_to_work_order",
+      "source": "module_a",
+      "reason": "Module A confidence 0.98 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "add_note_to_work_order",
+      "is_gated": false,
+      "is_safe": false,
+      "confidence": 0.9784999999999999,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Unknown action 'add_note_to_work_order' - requires confirmation"
+    },
+    "handler_selected": null,
+    "handler_category": null,
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 34,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "add_note_to_work_order",
+      "message": "Action requires confirmation: Unknown action 'add_note_to_work_order' - requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  },
+  {
+    "query": "add this to handover",
+    "timestamp": "2026-01-12T22:18:38.557093+00:00",
+    "routing": {
+      "module_a_action": "add_to_handover",
+      "module_a_confidence": 0.95,
+      "intent_parser_intent": "add_work_order_note",
+      "intent_parser_confidence": 0.5,
+      "final_action": "add_to_handover",
+      "source": "module_a",
+      "reason": "Module A confidence 0.95 >= threshold 0.85"
+    },
+    "gating": {
+      "action": "add_to_handover",
+      "is_gated": true,
+      "is_safe": false,
+      "confidence": 0.95,
+      "requires_confirmation": true,
+      "auto_execute_allowed": false,
+      "reason": "Action 'add_to_handover' is in GATED_ACTIONS - mutation requires confirmation"
+    },
+    "handler_selected": "add_to_handover",
+    "handler_category": "P2",
+    "executed": false,
+    "execution_status": "gated",
+    "execution_latency_ms": 32,
+    "entities": [],
+    "response": {
+      "status": "gated",
+      "action": "add_to_handover",
+      "message": "Action requires confirmation: Action 'add_to_handover' is in GATED_ACTIONS - mutation requires confirmation",
+      "confirmation_required": true
+    },
+    "error": null,
+    "success": true
+  }
+]

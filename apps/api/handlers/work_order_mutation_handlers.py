@@ -69,7 +69,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get fault details
-            fault_result = self.db.table("faults").select(
+            fault_result = self.db.table("pms_faults").select(
                 "id, fault_code, title, description, severity, equipment_id, "
                 "equipment:equipment_id(id, name, location), detected_at"
             ).eq("id", fault_id).eq("yacht_id", yacht_id).maybe_single().execute()
@@ -87,7 +87,7 @@ class WorkOrderMutationHandlers:
             # Get fault occurrence count (last 30 days)
             occurrence_count = 0
             if fault.get("fault_code"):
-                count_result = self.db.table("faults").select(
+                count_result = self.db.table("pms_faults").select(
                     "id", count="exact"
                 ).eq("yacht_id", yacht_id).eq(
                     "fault_code", fault["fault_code"]
@@ -117,14 +117,14 @@ class WorkOrderMutationHandlers:
             if occurrence_count > 1:
                 description += f"\n\nOccurrences: {occurrence_count} in last 30 days"
 
-            # Priority from severity mapping
+            # Priority from severity mapping (DB enum: routine, urgent, emergency)
             severity_to_priority = {
-                "critical": "urgent",
-                "high": "high",
-                "medium": "normal",
-                "low": "low"
+                "critical": "emergency",
+                "high": "urgent",
+                "medium": "routine",
+                "low": "routine"
             }
-            priority = severity_to_priority.get(fault.get("severity"), "normal")
+            priority = severity_to_priority.get(fault.get("severity"), "routine")
 
             prefill_data = {
                 "title": title,
@@ -173,7 +173,7 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get fault info for preview
-            fault_result = self.db.table("faults").select(
+            fault_result = self.db.table("pms_faults").select(
                 "id, fault_code, title"
             ).eq("id", fault_id).maybe_single().execute()
 
@@ -189,7 +189,7 @@ class WorkOrderMutationHandlers:
             # Get equipment name
             equipment_name = "Unknown Equipment"
             if equipment_id:
-                eq_result = self.db.table("equipment").select(
+                eq_result = self.db.table("pms_equipment").select(
                     "name, model"
                 ).eq("id", equipment_id).maybe_single().execute()
                 if eq_result.data:
@@ -286,7 +286,7 @@ class WorkOrderMutationHandlers:
                     }
 
             # Validate fault exists
-            fault_result = self.db.table("faults").select("id").eq(
+            fault_result = self.db.table("pms_faults").select("id").eq(
                 "id", fault_id
             ).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -299,7 +299,7 @@ class WorkOrderMutationHandlers:
 
             # Validate equipment exists (if provided)
             if equipment_id:
-                eq_result = self.db.table("equipment").select("id").eq(
+                eq_result = self.db.table("pms_equipment").select("id").eq(
                     "id", equipment_id
                 ).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -313,24 +313,24 @@ class WorkOrderMutationHandlers:
             # Generate work order number
             wo_number = await self._generate_wo_number(yacht_id)
 
-            # Create work order
+            # Create work order (using actual schema columns)
             now = datetime.now(timezone.utc).isoformat()
             wo_data = {
                 "yacht_id": yacht_id,
-                "number": wo_number,
+                "wo_number": wo_number,  # Column is wo_number, not number
                 "title": title,
                 "description": description,
                 "equipment_id": equipment_id,
                 "fault_id": fault_id,
-                "location": location,
+                # "location" column doesn't exist - stored in equipment table
                 "priority": priority,
-                "status": "candidate",
+                "status": "planned",
                 "created_by": user_id,
                 "created_at": now,
                 "updated_at": now
             }
 
-            wo_result = self.db.table("work_orders").insert(wo_data).execute()
+            wo_result = self.db.table("pms_work_orders").insert(wo_data).execute()
 
             if not wo_result.data:
                 return {
@@ -352,18 +352,17 @@ class WorkOrderMutationHandlers:
                 signature=signature
             )
 
-            # Build response
+            # Build response (use wo_number column)
             result = {
                 "work_order": {
                     "id": work_order["id"],
-                    "number": work_order["number"],
+                    "number": work_order.get("wo_number", wo_number),  # Use wo_number column
                     "title": work_order["title"],
                     "equipment_id": work_order.get("equipment_id"),
-                    "location": work_order.get("location"),
                     "description": work_order.get("description"),
                     "priority": work_order["priority"],
                     "status": work_order["status"],
-                    "fault_id": work_order["fault_id"],
+                    "fault_id": work_order.get("fault_id"),
                     "created_at": work_order["created_at"],
                     "created_by": work_order["created_by"]
                 },
@@ -402,25 +401,33 @@ class WorkOrderMutationHandlers:
         """GET /v1/actions/add_note_to_work_order/prefill"""
         try:
             # Get work order info
-            wo_result = self.db.table("work_orders").select(
-                "id, number, equipment_id, equipment:equipment_id(name), status"
-            ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, equipment_id, status"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not wo_result.data:
+            if not wo_result.data or len(wo_result.data) == 0:
                 return {
                     "status": "error",
                     "error_code": "WO_NOT_FOUND",
                     "message": f"Work order not found: {work_order_id}"
                 }
 
-            wo = wo_result.data
+            wo = wo_result.data[0]
+
+            # Get equipment name separately
+            equipment_name = "Unknown Equipment"
+            if wo.get("equipment_id"):
+                eq_result = self.db.table("pms_equipment").select("name").eq("id", wo["equipment_id"]).limit(1).execute()
+                if eq_result.data and len(eq_result.data) > 0:
+                    equipment_name = eq_result.data[0].get("name", "Unknown Equipment")
+            wo["equipment"] = {"name": equipment_name}
             equipment_name = wo.get("equipment", {}).get("name", "Unknown Equipment")
 
             return {
                 "status": "success",
                 "prefill_data": {
                     "work_order_id": work_order_id,
-                    "work_order_number": wo["number"],
+                    "work_order_number": wo.get("wo_number", "N/A"),
                     "equipment_name": equipment_name,
                     "current_status": wo["status"]
                 }
@@ -449,18 +456,18 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Validate work order exists and not closed
-            wo_result = self.db.table("work_orders").select(
-                "id, number, status"
-            ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not wo_result.data:
+            if not wo_result.data or len(wo_result.data) == 0:
                 return {
                     "status": "error",
                     "error_code": "WO_NOT_FOUND",
                     "message": f"Work order not found: {work_order_id}"
                 }
 
-            wo = wo_result.data
+            wo = wo_result.data[0]
 
             if wo["status"] in ("closed", "cancelled"):
                 return {
@@ -478,7 +485,7 @@ class WorkOrderMutationHandlers:
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
 
-            note_result = self.db.table("work_order_notes").insert(note_data).execute()
+            note_result = self.db.table("pms_work_order_notes").insert(note_data).execute()
 
             if not note_result.data:
                 return {
@@ -492,8 +499,8 @@ class WorkOrderMutationHandlers:
             # Get user name
             user_result = self.db.table("auth_users_profiles").select(
                 "name"
-            ).eq("id", user_id).maybe_single().execute()
-            user_name = user_result.data.get("name") if user_result.data else "Unknown User"
+            ).eq("id", user_id).limit(1).execute()
+            user_name = user_result.data[0].get("name") if user_result.data and len(user_result.data) > 0 else "Unknown User"
 
             result = {
                 "note": {
@@ -511,7 +518,7 @@ class WorkOrderMutationHandlers:
                 "status": "success",
                 "action": "add_note_to_work_order",
                 "result": result,
-                "message": f"Note added to {wo['number']}"
+                "message": f"Note added to {wo['wo_number']}"
             }
 
         except Exception as e:
@@ -539,8 +546,8 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order details
-            wo_result = self.db.table("work_orders").select(
-                "id, number, status"
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not wo_result.data:
@@ -560,7 +567,7 @@ class WorkOrderMutationHandlers:
                 }
 
             # Get part details
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "id, name, part_number, unit, quantity_on_hand, minimum_quantity, location"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -586,7 +593,7 @@ class WorkOrderMutationHandlers:
 
             prefill_data = {
                 "work_order_id": work_order_id,
-                "work_order_number": wo["number"],
+                "work_order_number": wo.get("wo_number", "N/A"),
                 "part": {
                     "id": part["id"],
                     "name": part["name"],
@@ -628,8 +635,8 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order
-            wo_result = self.db.table("work_orders").select(
-                "id, number, status"
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not wo_result.data:
@@ -642,7 +649,7 @@ class WorkOrderMutationHandlers:
             wo = wo_result.data
 
             # Get part
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "id, name, part_number, unit, quantity_on_hand, minimum_quantity"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -662,7 +669,7 @@ class WorkOrderMutationHandlers:
                 "action": "add_part_to_work_order",
                 "summary": "You are about to add part to work order:",
                 "changes": {
-                    "work_order": wo["number"],
+                    "work_order": wo.get("wo_number", "N/A"),
                     "part": f"{part['name']} ({part.get('part_number', 'N/A')})",
                     "quantity": f"{quantity} {part.get('unit', 'each')}",
                     "notes": notes or "None"
@@ -725,18 +732,18 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Validate work order
-            wo_result = self.db.table("work_orders").select(
-                "id, number, status"
-            ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not wo_result.data:
+            if not wo_result.data or len(wo_result.data) == 0:
                 return {
                     "status": "error",
                     "error_code": "WO_NOT_FOUND",
                     "message": f"Work order not found: {work_order_id}"
                 }
 
-            wo = wo_result.data
+            wo = wo_result.data[0]
 
             if wo["status"] in ("closed", "cancelled"):
                 return {
@@ -746,18 +753,18 @@ class WorkOrderMutationHandlers:
                 }
 
             # Validate part
-            part_result = self.db.table("parts").select(
+            part_result = self.db.table("pms_parts").select(
                 "id, name, part_number, quantity_on_hand, minimum_quantity"
-            ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not part_result.data:
+            if not part_result.data or len(part_result.data) == 0:
                 return {
                     "status": "error",
                     "error_code": "PART_NOT_FOUND",
                     "message": f"Part not found: {part_id}"
                 }
 
-            part = part_result.data
+            part = part_result.data[0]
 
             # Validate quantity
             if quantity <= 0:
@@ -768,19 +775,20 @@ class WorkOrderMutationHandlers:
                 }
 
             # Check if part already added to this WO
-            existing_result = self.db.table("work_order_parts").select(
+            existing_result = self.db.table("pms_work_order_parts").select(
                 "id, quantity"
-            ).eq("work_order_id", work_order_id).eq("part_id", part_id).maybe_single().execute()
+            ).eq("work_order_id", work_order_id).eq("part_id", part_id).limit(1).execute()
 
-            if existing_result.data:
+            if existing_result and existing_result.data and len(existing_result.data) > 0:
                 # Update quantity instead of creating duplicate
-                new_quantity = existing_result.data["quantity"] + quantity
-                update_result = self.db.table("work_order_parts").update({
+                existing_record = existing_result.data[0]
+                new_quantity = existing_record["quantity"] + quantity
+                update_result = self.db.table("pms_work_order_parts").update({
                     "quantity": new_quantity,
                     "notes": notes
-                }).eq("id", existing_result.data["id"]).execute()
+                }).eq("id", existing_record["id"]).execute()
 
-                wo_part = update_result.data[0] if update_result.data else existing_result.data
+                wo_part = update_result.data[0] if update_result.data else existing_record
             else:
                 # Create new work_order_part entry
                 wo_part_data = {
@@ -788,11 +796,11 @@ class WorkOrderMutationHandlers:
                     "part_id": part_id,
                     "quantity": quantity,
                     "notes": notes,
-                    "added_by": user_id,
-                    "added_at": datetime.now(timezone.utc).isoformat()
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
                 }
 
-                wo_part_result = self.db.table("work_order_parts").insert(wo_part_data).execute()
+                wo_part_result = self.db.table("pms_work_order_parts").insert(wo_part_data).execute()
 
                 if not wo_part_result.data:
                     return {
@@ -817,7 +825,7 @@ class WorkOrderMutationHandlers:
                 user_id=user_id,
                 new_values={
                     "work_order_id": work_order_id,
-                    "work_order_number": wo["number"],
+                    "work_order_number": wo.get("wo_number", "N/A"),
                     "part_id": part_id,
                     "part_name": part["name"],
                     "quantity": quantity,
@@ -835,8 +843,8 @@ class WorkOrderMutationHandlers:
                     "part_number": part.get("part_number", "N/A"),
                     "quantity": wo_part["quantity"],
                     "notes": wo_part.get("notes"),
-                    "added_at": wo_part["added_at"],
-                    "added_by": wo_part["added_by"]
+                    "created_at": wo_part.get("created_at"),
+                    "added_by": user_id
                 },
                 "stock_warning": stock_warning
             }
@@ -845,7 +853,7 @@ class WorkOrderMutationHandlers:
                 "status": "success",
                 "action": "add_part_to_work_order",
                 "result": result,
-                "message": f"Part added to {wo['number']}"
+                "message": f"Part added to {wo['wo_number']}"
             }
 
         except Exception as e:
@@ -873,30 +881,39 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order details
-            wo_result = self.db.table("work_orders").select(
-                "id, number, title, status, equipment_id, created_at, "
-                "equipment:equipment_id(name)"
-            ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, title, status, equipment_id, created_at"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not wo_result.data:
+            if not wo_result.data or len(wo_result.data) == 0:
                 return {
                     "status": "error",
                     "error_code": "WO_NOT_FOUND",
                     "message": f"Work order not found: {work_order_id}"
                 }
 
-            wo = wo_result.data
-            equipment = wo.get("equipment") or {}
+            wo = wo_result.data[0]
+
+            # Get equipment name separately
+            equipment = {}
+            if wo.get("equipment_id"):
+                eq_result = self.db.table("pms_equipment").select("name").eq("id", wo["equipment_id"]).limit(1).execute()
+                if eq_result.data and len(eq_result.data) > 0:
+                    equipment = eq_result.data[0]
 
             # Get parts list for this WO
-            parts_result = self.db.table("work_order_parts").select(
-                "id, part_id, quantity, notes, "
-                "part:part_id(id, name, part_number, quantity_on_hand)"
+            parts_result = self.db.table("pms_work_order_parts").select(
+                "id, part_id, quantity, notes"
             ).eq("work_order_id", work_order_id).execute()
 
             parts_list = []
             for wp in parts_result.data or []:
-                part = wp.get("part") or {}
+                # Get part details separately
+                part = {}
+                if wp.get("part_id"):
+                    part_res = self.db.table("pms_parts").select("id, name, part_number, quantity_on_hand").eq("id", wp["part_id"]).limit(1).execute()
+                    if part_res.data and len(part_res.data) > 0:
+                        part = part_res.data[0]
                 parts_list.append({
                     "id": wp["id"],
                     "part_id": wp["part_id"],
@@ -907,7 +924,7 @@ class WorkOrderMutationHandlers:
                 })
 
             # Get notes count
-            notes_result = self.db.table("work_order_notes").select(
+            notes_result = self.db.table("pms_work_order_notes").select(
                 "id", count="exact"
             ).eq("work_order_id", work_order_id).execute()
             notes_count = notes_result.count or 0
@@ -928,8 +945,8 @@ class WorkOrderMutationHandlers:
             elif wo["status"] == "pending_parts":
                 can_complete = False
                 blockers.append("❌ Work order status is 'pending_parts' - cannot complete until parts arrive")
-            elif wo["status"] == "candidate":
-                warnings.append("⚠️  Work order was never started (status: candidate)")
+            elif wo["status"] == "planned":
+                warnings.append("⚠️  Work order was never started (status: planned)")
 
             # Check for notes
             if notes_count == 0:
@@ -945,7 +962,7 @@ class WorkOrderMutationHandlers:
 
             prefill_data = {
                 "work_order_id": work_order_id,
-                "work_order_number": wo["number"],
+                "work_order_number": wo.get("wo_number", "N/A"),
                 "title": wo["title"],
                 "equipment_name": equipment.get("name", "Unknown Equipment"),
                 "current_status": wo["status"],
@@ -991,8 +1008,8 @@ class WorkOrderMutationHandlers:
         """
         try:
             # Get work order
-            wo_result = self.db.table("work_orders").select(
-                "id, number, status"
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not wo_result.data:
@@ -1007,8 +1024,8 @@ class WorkOrderMutationHandlers:
             # Get user name
             user_result = self.db.table("auth_users_profiles").select(
                 "name"
-            ).eq("id", user_id).maybe_single().execute()
-            user_name = user_result.data.get("name") if user_result.data else "Unknown User"
+            ).eq("id", user_id).limit(1).execute()
+            user_name = user_result.data[0].get("name") if user_result.data and len(user_result.data) > 0 else "Unknown User"
 
             # Get user role
             role_result = self.db.table("auth_users_roles").select(
@@ -1025,7 +1042,7 @@ class WorkOrderMutationHandlers:
                 quantity_used = part_usage["quantity_used"]
 
                 # Get part details
-                part_result = self.db.table("parts").select(
+                part_result = self.db.table("pms_parts").select(
                     "id, name, part_number, quantity_on_hand, minimum_quantity"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1058,7 +1075,7 @@ class WorkOrderMutationHandlers:
                 "summary": "You are about to mark work order as complete:",
                 "entity_type": "work_order",
                 "changes": {
-                    "work_order": wo["number"],
+                    "work_order": wo.get("wo_number", "N/A"),
                     "status_change": f"{wo['status']} → completed",
                     "completion_notes": completion_notes[:100] + "..." if len(completion_notes) > 100 else completion_notes,
                     "parts_to_deduct": parts_to_deduct if parts_to_deduct else ["None"],
@@ -1116,8 +1133,8 @@ class WorkOrderMutationHandlers:
                 }
 
             # Validate work order
-            wo_result = self.db.table("work_orders").select(
-                "id, number, status"
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not wo_result.data:
@@ -1151,7 +1168,7 @@ class WorkOrderMutationHandlers:
                 quantity_used = part_usage["quantity_used"]
 
                 # Get part details first
-                part_result = self.db.table("parts").select(
+                part_result = self.db.table("pms_parts").select(
                     "id, name, part_number, quantity_on_hand"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1174,7 +1191,7 @@ class WorkOrderMutationHandlers:
                         'p_work_order_id': work_order_id,
                         'p_equipment_id': None,
                         'p_usage_reason': 'work_order',
-                        'p_notes': f"Used for {wo['number']}",
+                        'p_notes': f"Used for {wo['wo_number']}",
                         'p_used_by': user_id
                     }
                 ).execute()
@@ -1206,7 +1223,7 @@ class WorkOrderMutationHandlers:
                 "completion_notes": completion_notes
             }
 
-            wo_update_result = self.db.table("work_orders").update(update_data).eq(
+            wo_update_result = self.db.table("pms_work_orders").update(update_data).eq(
                 "id", work_order_id
             ).eq("yacht_id", yacht_id).execute()
 
@@ -1240,7 +1257,7 @@ class WorkOrderMutationHandlers:
             result = {
                 "work_order": {
                     "id": completed_wo["id"],
-                    "number": completed_wo["number"],
+                    "number": completed_wo.get("wo_number", "N/A"),
                     "status": completed_wo["status"],
                     "completed_at": completed_wo["completed_at"],
                     "completed_by": completed_wo["completed_by"],
@@ -1253,7 +1270,7 @@ class WorkOrderMutationHandlers:
                 "status": "success",
                 "action": "mark_work_order_complete",
                 "result": result,
-                "message": f"✓ {wo['number']} marked as complete"
+                "message": f"✓ {wo['wo_number']} marked as complete"
             }
 
         except Exception as e:
@@ -1279,16 +1296,16 @@ class WorkOrderMutationHandlers:
         }
         """
         try:
-            result = self.db.table("work_orders").select(
-                "id, number, status, assigned_to, created_at, "
-                "assigned_user:assigned_to(name)"
+            # Simplified query - no join on assigned_to (foreign key may not exist)
+            result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status, assigned_to, created_at"
             ).eq("yacht_id", yacht_id).eq("fault_id", fault_id).not_.in_(
                 "status", ["cancelled"]
             ).order("created_at", desc=True).limit(1).execute()
 
             if result.data and len(result.data) > 0:
                 wo = result.data[0]
-                assigned_to = wo.get("assigned_user", {}).get("name") if wo.get("assigned_user") else None
+                assigned_to = wo.get("assigned_to")  # Just the ID, no name lookup
 
                 # Calculate days ago
                 created_at = datetime.fromisoformat(wo["created_at"].replace("Z", "+00:00"))
@@ -1298,7 +1315,7 @@ class WorkOrderMutationHandlers:
                     "has_duplicate": True,
                     "existing_wo": {
                         "id": wo["id"],
-                        "number": wo["number"],
+                        "number": wo.get("wo_number", "N/A"),
                         "status": wo["status"],
                         "assigned_to": assigned_to,
                         "created_at": wo["created_at"],
@@ -1336,7 +1353,7 @@ class WorkOrderMutationHandlers:
         year = datetime.now(timezone.utc).year
 
         # Get count of WOs this year
-        count_result = self.db.table("work_orders").select(
+        count_result = self.db.table("pms_work_orders").select(
             "id", count="exact"
         ).eq("yacht_id", yacht_id).gte(
             "created_at", f"{year}-01-01"
@@ -1371,7 +1388,7 @@ class WorkOrderMutationHandlers:
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
 
-            result = self.db.table("audit_log").insert(audit_data).execute()
+            result = self.db.table("pms_audit_log").insert(audit_data).execute()
 
             if result.data:
                 return result.data[0]["id"]

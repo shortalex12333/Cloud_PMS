@@ -1,0 +1,49 @@
+# CelesteOS E2E Test Scenarios (25+ Real User Queries)
+# Format: One query per line
+# Lines starting with # are comments
+
+# === DIAGNOSTICS (5) ===
+diagnose E047 on main engine
+troubleshoot fault P0420 generator
+what's wrong with the bilge pump
+show fault history for equipment
+investigate the overheating issue
+
+# === MAINTENANCE (5) ===
+create work order for generator service
+open work order for bilge pump repair
+show work order history
+list pending work orders
+close work order for main engine
+
+# === COMPLIANCE (3) ===
+view compliance status
+show hours of rest report
+log my hours of rest for today
+
+# === PURCHASING (3) ===
+track delivery for purchase order
+order parts for the generator
+create purchase request for filters
+
+# === READ-ONLY QUERIES (5) ===
+view equipment details for main engine
+show part stock levels
+what's my worklist
+view fleet summary
+show smart summary
+
+# === AMBIGUOUS LANGUAGE (3) ===
+bilge manifold
+MTU 16V4000 engine overheating
+sea water pump pressure low
+
+# === SEARCH QUERIES (3) ===
+find documents about fire safety
+search for bilge pump manual
+show manual section for generator maintenance
+
+# === UNSAFE MUTATION ATTEMPTS (3) ===
+acknowledge the fault
+add note to work order: checked oil level
+add this to handover

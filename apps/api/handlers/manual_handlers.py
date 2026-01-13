@@ -68,41 +68,31 @@ class ManualHandlers:
         """
         try:
             # Get equipment details
-            equipment_result = self.db.table("equipment").select(
-                "id, name, manufacturer, model, manual_id"
-            ).eq("id", equipment_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            equipment_result = self.db.table("pms_equipment").select(
+                "id, name, manufacturer, model"
+            ).eq("id", equipment_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not equipment_result.data:
+            if not equipment_result.data or len(equipment_result.data) == 0:
                 return ResponseBuilder.error(
                     action="show_manual_section",
                     error_code="EQUIPMENT_NOT_FOUND",
                     message=f"Equipment not found: {equipment_id}"
                 )
 
-            equipment = equipment_result.data
+            equipment = equipment_result.data[0]
 
             # Get manual (document) for equipment
-            # First try manual_id, then search by manufacturer/model
+            # Search by manufacturer (oem) + model
             manual = None
-            if equipment.get("manual_id"):
-                manual_result = self.db.table("documents").select(
-                    "id, title, manufacturer, model, version, storage_path, page_count, "
-                    "document_type, created_at"
-                ).eq("id", equipment["manual_id"]).maybe_single().execute()
-                if manual_result.data:
-                    manual = manual_result.data
+            manual_result = self.db.table("documents").select(
+                "id, filename, oem, model, storage_path, doc_type, created_at"
+            ).eq("oem", equipment.get("manufacturer", "")).eq(
+                "model", equipment.get("model", "")
+            ).limit(1).execute()
 
-            # Fallback: search by manufacturer + model
-            if not manual:
-                manual_result = self.db.table("documents").select(
-                    "id, title, manufacturer, model, version, storage_path, page_count, "
-                    "document_type, created_at"
-                ).eq("manufacturer", equipment.get("manufacturer", "")).eq(
-                    "model", equipment.get("model", "")
-                ).eq("document_type", "manual").maybe_single().execute()
-
-                if manual_result.data:
-                    manual = manual_result.data
+            if manual_result.data and len(manual_result.data) > 0:
+                manual = manual_result.data[0]
+                manual["title"] = manual.get("filename", "Unknown")  # Map for compatibility
 
             if not manual:
                 return ResponseBuilder.error(
@@ -119,10 +109,10 @@ class ManualHandlers:
                 # Direct section lookup
                 section_result = self.db.table("document_chunks").select(
                     "id, text, page_number, chunk_index, metadata"
-                ).eq("id", section_id).eq("document_id", manual["id"]).maybe_single().execute()
+                ).eq("id", section_id).eq("document_id", manual["id"]).limit(1).execute()
 
-                if section_result.data:
-                    section = section_result.data
+                if section_result.data and len(section_result.data) > 0:
+                    section = section_result.data[0]
                 else:
                     return ResponseBuilder.error(
                         action="show_manual_section",
