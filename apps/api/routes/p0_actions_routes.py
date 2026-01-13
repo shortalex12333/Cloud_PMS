@@ -54,19 +54,22 @@ def get_supabase_client() -> Client:
 
 
 def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
-    """Get tenant-specific Supabase client instance."""
-    # Try tenant-specific env vars first (e.g., yTEST_YACHT_001_SUPABASE_URL)
-    url = os.getenv(f"{tenant_key_alias}_SUPABASE_URL")
-    key = os.getenv(f"{tenant_key_alias}_SUPABASE_SERVICE_KEY") or os.getenv(f"{tenant_key_alias}_SUPABASE_SERVICE_ROLE_KEY")
+    """Get tenant-specific Supabase client instance.
 
-    # Fall back to generic env vars if tenant-specific not found
-    if not url:
-        url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    if not key:
-        key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    Routing contract:
+    - tenant_key_alias comes from MASTER DB fleet_registry (e.g., 'yTEST_YACHT_001')
+    - Env vars on Render: {tenant_key_alias}_SUPABASE_URL, {tenant_key_alias}_SUPABASE_SERVICE_KEY
+    - Example: yTEST_YACHT_001_SUPABASE_URL, yTEST_YACHT_001_SUPABASE_SERVICE_KEY
+    """
+    if not tenant_key_alias:
+        raise ValueError("tenant_key_alias is required for tenant DB access")
+
+    url = os.getenv(f"{tenant_key_alias}_SUPABASE_URL")
+    key = os.getenv(f"{tenant_key_alias}_SUPABASE_SERVICE_KEY")
 
     if not url or not key:
-        raise ValueError(f"Missing Supabase credentials for tenant {tenant_key_alias}")
+        raise ValueError(f"Missing tenant credentials for {tenant_key_alias}. "
+                        f"Expected: {tenant_key_alias}_SUPABASE_URL and {tenant_key_alias}_SUPABASE_SERVICE_KEY")
 
     return create_client(url, key)
 
