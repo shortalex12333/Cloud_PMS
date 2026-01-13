@@ -114,10 +114,9 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             logger.warning(f"[Auth] User {user_id[:8]}... status is {user_account.get('status')}")
             return None
 
-        # Get yacht info from fleet_registry
-        # tenant_key_alias may or may not exist in the schema
+        # Get yacht info from fleet_registry (including tenant_key_alias)
         fleet_result = client.table('fleet_registry').select(
-            'yacht_name, active'
+            'yacht_name, active, tenant_key_alias'
         ).eq('yacht_id', user_account['yacht_id']).single().execute()
 
         if not fleet_result.data:
@@ -130,15 +129,9 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
             logger.warning(f"[Auth] Yacht {user_account['yacht_id']} is inactive")
             return None
 
-        # Compute tenant_key_alias from yacht_id if not in DB
-        # Convention: y + first 8 chars of yacht_id (no hyphens) OR yTEST_YACHT_001 for test
+        # Get tenant_key_alias from fleet_registry (already fetched above)
         yacht_id = user_account['yacht_id']
-        if yacht_id == '85fe1119-b04c-41ac-80f1-829d23322598':
-            # Known test yacht - use the configured alias
-            tenant_key_alias = 'yTEST_YACHT_001'
-        else:
-            # Default pattern: y + yacht_id with hyphens removed
-            tenant_key_alias = f"y{yacht_id.replace('-', '')}"
+        tenant_key_alias = fleet.get('tenant_key_alias') or f"y{yacht_id}"
 
         tenant_info = {
             'yacht_id': yacht_id,
