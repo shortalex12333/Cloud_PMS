@@ -263,9 +263,11 @@ class P1PurchasingHandlers:
                 "po_number": po_number,
                 "supplier_id": supplier_id,
                 "status": "requested",
-                "notes": notes,
-                "requested_by": user_id,
-                "requested_at": now,
+                "metadata": {
+                    "notes": notes,
+                    "requested_by": user_id,
+                    "requested_at": now
+                },
                 "created_at": now,
                 "updated_at": now
             }
@@ -293,7 +295,7 @@ class P1PurchasingHandlers:
                         "part_id": item.get("part_id"),
                         "quantity_ordered": item.get("quantity", 1),
                         "unit_price": item.get("unit_price"),
-                        "notes": item.get("notes"),
+                        "description": item.get("notes"),  # Use description column
                         "created_at": now
                     }
                     item_result = self.db.table("pms_purchase_order_items").insert(item_data).execute()
@@ -311,6 +313,7 @@ class P1PurchasingHandlers:
                 signature=signature
             )
 
+            metadata = purchase_order.get("metadata", {}) or {}
             return ResponseBuilder.success(
                 action="create_purchase_request",
                 result={
@@ -319,9 +322,9 @@ class P1PurchasingHandlers:
                         "po_number": purchase_order.get("po_number", po_number),
                         "supplier_id": purchase_order.get("supplier_id"),
                         "status": purchase_order["status"],
-                        "notes": purchase_order.get("notes"),
-                        "requested_by": purchase_order.get("requested_by"),
-                        "requested_at": purchase_order.get("requested_at"),
+                        "notes": metadata.get("notes"),
+                        "requested_by": metadata.get("requested_by"),
+                        "requested_at": metadata.get("requested_at"),
                         "items_count": len(items_created)
                     },
                     "items": items_created,
@@ -417,7 +420,7 @@ class P1PurchasingHandlers:
 
             # Validate part exists
             part_result = self.db.table("pms_parts").select(
-                "id, name, part_number, unit_price"
+                "id, name, part_number"
             ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not part_result.data or len(part_result.data) == 0:
@@ -450,8 +453,8 @@ class P1PurchasingHandlers:
                 "purchase_order_id": purchase_order_id,
                 "part_id": part_id,
                 "quantity_ordered": quantity,
-                "unit_price": unit_price or part.get("unit_price"),
-                "notes": notes,
+                "unit_price": unit_price,  # User provides price
+                "description": notes,  # Use description column
                 "created_at": now
             }
 
@@ -495,7 +498,7 @@ class P1PurchasingHandlers:
                         "part_number": part.get("part_number"),
                         "quantity_ordered": line_item["quantity_ordered"],
                         "unit_price": line_item.get("unit_price"),
-                        "notes": line_item.get("notes")
+                        "description": line_item.get("description")
                     },
                     "audit_log_id": audit_log_id,
                     "next_actions": [
@@ -566,7 +569,7 @@ class P1PurchasingHandlers:
 
             # Get PO
             po_result = self.db.table("pms_purchase_orders").select(
-                "id, po_number, status, yacht_id, supplier_id, requested_by"
+                "id, po_number, status, yacht_id, supplier_id, metadata"
             ).eq("id", purchase_order_id).eq("yacht_id", yacht_id).limit(1).execute()
 
             if not po_result.data or len(po_result.data) == 0:
@@ -595,13 +598,19 @@ class P1PurchasingHandlers:
             #         message="Cannot approve your own purchase request"
             #     )
 
-            # Update PO status
+            # Update PO status - merge approval info into metadata
             now = datetime.now(timezone.utc).isoformat()
-            update_data = {
-                "status": "approved",
+            existing_metadata = po.get("metadata", {}) or {}
+            updated_metadata = {
+                **existing_metadata,
                 "approved_by": user_id,
                 "approved_at": now,
                 "approval_notes": approval_notes,
+                "approver_role": user_role
+            }
+            update_data = {
+                "status": "approved",
+                "metadata": updated_metadata,
                 "updated_at": now
             }
 
@@ -617,6 +626,7 @@ class P1PurchasingHandlers:
                 )
 
             updated_po = update_result.data[0]
+            result_metadata = updated_po.get("metadata", {}) or {}
 
             # Create audit log entry
             audit_log_id = await self._create_audit_log(
@@ -642,9 +652,9 @@ class P1PurchasingHandlers:
                         "id": updated_po["id"],
                         "po_number": updated_po.get("po_number"),
                         "status": updated_po["status"],
-                        "approved_by": updated_po.get("approved_by"),
-                        "approved_at": updated_po.get("approved_at"),
-                        "approval_notes": updated_po.get("approval_notes")
+                        "approved_by": result_metadata.get("approved_by"),
+                        "approved_at": result_metadata.get("approved_at"),
+                        "approval_notes": result_metadata.get("approval_notes")
                     },
                     "audit_log_id": audit_log_id,
                     "next_actions": [
@@ -734,4 +744,16 @@ class P1PurchasingHandlers:
         return audit_id
 
 
-__all__ = ["P1PurchasingHandlers"]
+def get_p1_purchasing_handlers(supabase_client) -> Dict[str, callable]:
+    """Get P1 purchasing handler functions for registration."""
+    handlers = P1PurchasingHandlers(supabase_client)
+
+    return {
+        "create_work_order": handlers.create_work_order_execute,
+        "create_purchase_request": handlers.create_purchase_request_execute,
+        "order_part": handlers.order_part_execute,
+        "approve_purchase": handlers.approve_purchase_execute,
+    }
+
+
+__all__ = ["P1PurchasingHandlers", "get_p1_purchasing_handlers"]
