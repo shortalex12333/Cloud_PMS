@@ -33,6 +33,7 @@ from handlers.inventory_handlers import InventoryHandlers
 from handlers.handover_handlers import HandoverHandlers
 from handlers.manual_handlers import ManualHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation
+from middleware.auth import lookup_tenant_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -371,6 +372,16 @@ async def execute_action(
         raise HTTPException(status_code=401, detail=jwt_result.error.message)
 
     user_context = jwt_result.context
+
+    # Resolve tenant from MASTER DB if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_context["user_id"])
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info["yacht_id"]
+            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+        else:
+            raise HTTPException(status_code=403, detail="User is not assigned to any yacht/tenant")
 
     # Validate yacht isolation
     yacht_result = validate_yacht_isolation(request.context, user_context)
