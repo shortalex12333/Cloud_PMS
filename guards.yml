@@ -1,0 +1,323 @@
+# GUARD DEFINITIONS
+# Machine-readable source of truth for security guard rails
+# CI reads this file to enforce compliance
+---
+version: "1.0"
+effective_date: "2026-01-12"
+
+# G0: MANDATORY BLOCKERS
+# Build MUST fail without these - NO WAIVERS ALLOWED
+g0:
+  - id: G0.1
+    name: Yacht Isolation
+    description: Validate user's yacht_id matches request yacht_id
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    required_calls:
+      - "require_yacht_isolation"
+      - "user['yacht_id'] != yacht_id"
+    behavioral_check: |
+      Handler must call require_yacht_isolation(user_id, yacht_id)
+      or implement inline check: if user["yacht_id"] != yacht_id: raise Forbidden
+    failure_severity: CRITICAL
+    security_violation: true
+
+  - id: G0.2
+    name: Authentication Gate
+    description: Validate user_id exists and session is valid
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    required_calls:
+      - "require_authenticated"
+      - "if not user_id"
+    behavioral_check: |
+      Handler must validate user_id is not None/undefined
+    failure_severity: CRITICAL
+    security_violation: true
+
+  - id: G0.3
+    name: Role-Based Access Control
+    description: Check user role against allowed list
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    required_calls:
+      - "require_role"
+      - "allowed_roles"
+    behavioral_check: |
+      Handler must define allowed_roles and check user["role"] in allowed_roles
+    failure_severity: CRITICAL
+    security_violation: true
+
+  - id: G0.4
+    name: Atomic Transactions
+    description: Multi-table mutations must be atomic (all-or-nothing)
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM]
+    conditional: "Only if multi-table mutation"
+    required_calls:
+      - "async with.*transaction"
+      - "BEGIN TRANSACTION"
+    behavioral_check: |
+      If handler modifies >1 table, must wrap in transaction
+    failure_severity: HIGH
+
+  - id: G0.5
+    name: Idempotency
+    description: Critical operations must be replay-safe
+    required_for: [MUTATE_HIGH]
+    conditional: "Financial operations, imports, commits"
+    required_calls:
+      - "idempotency_key"
+      - "check_duplicate_operation"
+    behavioral_check: |
+      Handler must accept idempotency_key and check for duplicates
+    failure_severity: HIGH
+
+  - id: G0.6
+    name: Audit Trail
+    description: ALL mutations must create audit log entry
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    required_calls:
+      - "create_audit_log"
+      - "pms_audit_log.*insert"
+    behavioral_check: |
+      Handler must call create_audit_log() or insert into pms_audit_log
+      with: action, entity_type, entity_id, user_id, old_values, new_values
+    failure_severity: CRITICAL
+    security_violation: true
+
+  - id: G0.7
+    name: State Machine Enforcement
+    description: Validate state transitions are valid
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM]
+    conditional: "Only if entity is state-based"
+    required_calls:
+      - "VALID_TRANSITIONS"
+      - "validate_state_transition"
+    behavioral_check: |
+      Handler must define VALID_TRANSITIONS and validate current → new state
+    failure_severity: HIGH
+
+  - id: G0.8
+    name: Signature Required
+    description: High-risk operations require cryptographic signature
+    required_for: [MUTATE_HIGH]
+    conditional: "Only if signature_required=true in action catalog"
+    required_calls:
+      - "signature_data"
+      - "SIGNATURE_REQUIRED"
+    behavioral_check: |
+      Handler must validate signature_data present when required
+    failure_severity: HIGH
+
+  - id: G0.9
+    name: Situation Context
+    description: MUTATE_HIGH operations require situation_id
+    required_for: [MUTATE_HIGH]
+    required_calls:
+      - "require_situation"
+      - "situation_id"
+    behavioral_check: |
+      Handler must require situation_id parameter
+      Enforces "search is orientation, click is commitment"
+    failure_severity: CRITICAL
+    structural_enforcement: true
+
+# G1: CRITICAL SAFETY
+# Required with explicit waiver if missing
+# Waivers must include: reason, mitigation, expiry, owner
+g1:
+  - id: G1.1
+    name: Concurrency Control
+    description: Prevent conflicting simultaneous edits
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM]
+    conditional: "Frequently updated entities"
+    waiver_allowed: true
+    waiver_requires: ["reason", "mitigation", "expiry_date", "owner"]
+
+  - id: G1.2
+    name: Deduplication
+    description: Prevent duplicate entity creation
+    required_for: [MUTATE_MEDIUM]
+    conditional: "CREATE operations"
+    waiver_allowed: true
+
+  - id: G1.3
+    name: Input Validation
+    description: Strict type, format, range validation
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    waiver_allowed: true
+    waiver_max_duration_days: 30
+
+  - id: G1.4
+    name: SQL Injection Prevention
+    description: Use parameterized queries only
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    waiver_allowed: false  # NEVER waive this
+
+  - id: G1.5
+    name: XSS Prevention
+    description: Sanitize user input before storage
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    waiver_allowed: false  # NEVER waive this
+
+  - id: G1.6
+    name: Immutability Enforcement
+    description: Prevent modification of committed records
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM]
+    conditional: "State-based entities"
+    waiver_allowed: true
+
+  - id: G1.7
+    name: Foreign Key Validation
+    description: Validate referenced entities exist
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM, MUTATE_LOW]
+    waiver_allowed: true
+
+# G2: OPERATIONAL HARDENING
+# Recommended - track as tech debt if missing
+g2:
+  - id: G2.1
+    name: Performance Metrics
+    description: Log duration, status, error codes
+    required_for: [MUTATE_HIGH, MUTATE_MEDIUM]
+    waiver_allowed: true
+    tech_debt_if_missing: true
+
+  - id: G2.2
+    name: Query Timeouts
+    description: Prevent runaway queries
+    required_for: [READ, MUTATE_MEDIUM, MUTATE_HIGH]
+    waiver_allowed: true
+    tech_debt_if_missing: true
+
+  - id: G2.3
+    name: Result Set Limits
+    description: Prevent memory overflow
+    required_for: [READ]
+    waiver_allowed: true
+    tech_debt_if_missing: true
+
+  - id: G2.4
+    name: Retry Policy
+    description: Handle transient failures
+    required_for: [MUTATE_HIGH]
+    conditional: "External API calls"
+    waiver_allowed: true
+    tech_debt_if_missing: true
+
+# G3: UX/CONVENIENCE
+# Optional - no enforcement
+g3:
+  - id: G3.1
+    name: Friendly Error Messages
+    description: User-readable error messages
+    required_for: []
+    optional: true
+
+  - id: G3.2
+    name: Follow-up Actions
+    description: Suggest next actions
+    required_for: []
+    optional: true
+
+  - id: G3.3
+    name: Smart Defaults
+    description: Pre-fill common values
+    required_for: []
+    optional: true
+
+# ENFORCEMENT RULES
+enforcement:
+  g0_violations:
+    action: BLOCK_PR
+    message: "G0 violation detected. Build MUST fail. No waivers allowed."
+
+  g1_violations:
+    action: REQUIRE_WAIVER
+    message: "G1 violation detected. Waiver required or fix implementation."
+    waiver_path: "waivers/{action_name}.md"
+    waiver_schema:
+      required_fields: ["guard_id", "reason", "mitigation", "expiry_date", "owner"]
+      max_duration_days: 90
+
+  g2_violations:
+    action: CREATE_TECH_DEBT
+    message: "G2 violation detected. Create tech debt issue."
+
+  g3_violations:
+    action: NONE
+    message: "G3 is optional. No enforcement."
+
+# BEHAVIORAL CHECKS
+# CI will verify these function calls exist in handlers
+behavioral_checks:
+  required_functions:
+    - name: "require_yacht_isolation"
+      guards: [G0.1]
+      signature: "require_yacht_isolation(user_id: str, yacht_id: str) -> None"
+
+    - name: "require_authenticated"
+      guards: [G0.2]
+      signature: "require_authenticated(user_id: str) -> None"
+
+    - name: "require_role"
+      guards: [G0.3]
+      signature: "require_role(user: dict, allowed_roles: list) -> None"
+
+    - name: "require_situation"
+      guards: [G0.9]
+      signature: "require_situation(situation_id: str) -> None"
+
+    - name: "create_audit_log"
+      guards: [G0.6]
+      signature: "create_audit_log(action, entity_type, entity_id, user_id, old_values, new_values) -> None"
+
+  required_handler_attributes:
+    - name: "GUARDS"
+      type: "dict"
+      description: "Handler must expose GUARDS dict declaring implemented guards"
+      example: |
+        GUARDS = {
+          "G0.1": True,
+          "G0.2": True,
+          "G0.3": True,
+          "G0.4": "conditional",
+          "G0.6": True,
+          "G0.9": True
+        }
+
+# ACTION CLASSIFICATION
+# Maps action types to required guards
+action_types:
+  READ:
+    required_g0: [G0.1, G0.2]  # Yacht isolation + auth only
+    required_g1: []
+    required_g2: [G2.2, G2.3]  # Timeouts + limits
+
+  MUTATE_LOW:
+    required_g0: [G0.1, G0.2, G0.3, G0.6]
+    required_g1: [G1.3, G1.4, G1.5, G1.7]
+    required_g2: []
+
+  MUTATE_MEDIUM:
+    required_g0: [G0.1, G0.2, G0.3, G0.6]
+    conditional_g0: [G0.4, G0.7]  # If multi-table or state-based
+    required_g1: [G1.1, G1.3, G1.4, G1.5, G1.6, G1.7]
+    required_g2: [G2.1]
+
+  MUTATE_HIGH:
+    required_g0: [G0.1, G0.2, G0.3, G0.4, G0.5, G0.6, G0.7, G0.8, G0.9]
+    required_g1: [G1.1, G1.2, G1.3, G1.4, G1.5, G1.6, G1.7]
+    required_g2: [G2.1, G2.4]
+
+# CI INTEGRATION
+ci:
+  script: "scripts/check_g0_compliance.py"
+  config_file: "guards.yml"
+  exit_codes:
+    0: "All checks passed"
+    1: "G0 violations - BLOCK PR"
+    2: "G1 violations without waiver - BLOCK PR"
+    3: "Script error"
+
+  hooks:
+    pre_commit: true
+    pre_push: true
+    pr_required: true

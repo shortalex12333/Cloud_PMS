@@ -1,0 +1,81 @@
+================================================================================
+VERCEL CONFIGURATION FOR universal_v1 BRANCH
+================================================================================
+
+Repository:  shortalex12333/Cloud_PMS
+Branch:      universal_v1
+Directory:   apps/web
+
+================================================================================
+VERCEL PROJECT SETTINGS
+================================================================================
+
+General Settings:
+-----------------
+Framework Preset:     Next.js
+Root Directory:       apps/web         ← CRITICAL: Must be set
+Build Command:        npm run build
+Output Directory:     .next
+Install Command:      npm install
+Node.js Version:      (use default or 18.x)
+
+Git Settings:
+-------------
+Production Branch:    universal_v1     ← CRITICAL: Change from main
+Auto Deploy:          ✅ Enabled
+Ignored Build Step:   (leave empty)
+
+================================================================================
+QUICK DEPLOY VIA DASHBOARD
+================================================================================
+
+1. Go to https://vercel.com/dashboard
+2. Find your Cloud PMS project (or import if doesn't exist)
+3. Settings → General → Root Directory → Set to: apps/web
+4. Settings → Git → Production Branch → Set to: universal_v1
+5. Deployments → Click "Deploy" button
+6. Select branch: universal_v1
+7. Click "Deploy"
+
+Wait ~2-5 minutes for deployment to complete.
+
+================================================================================
+QUICK DEPLOY VIA CLI
+================================================================================
+
+# Install CLI (one-time)
+npm install -g vercel
+
+# Navigate to frontend
+cd /Users/celeste7/Documents/Cloud_PMS/apps/web
+
+# Deploy
+vercel --prod
+
+================================================================================
+VERIFY DEPLOYMENT
+================================================================================
+
+1. Check Vercel Dashboard → Deployments
+   - Status: "Ready" (green)
+   - Branch: universal_v1
+   - Commit: 11cf69a or later
+
+2. Test live app:
+   - Search "generator" → Should show clear error about type pms_equipment
+   - Search "manual" → Should open document viewer
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Build Fails?
+→ Check Root Directory is set to: apps/web
+
+Wrong Branch?
+→ Settings → Git → Production Branch → Change to: universal_v1
+
+Not Auto-Deploying?
+→ Settings → Git → Reconnect GitHub integration
+
+================================================================================
