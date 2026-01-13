@@ -1,13 +1,18 @@
 /**
  * Secure Authentication Helpers
  *
- * Central auth utilities for JWT management and yacht signature generation.
+ * Central auth utilities for JWT management.
  * All backend calls MUST use these helpers to ensure proper authentication.
  *
+ * Architecture (2026-01-13):
+ * - Frontend sends ONLY Authorization: Bearer <master_jwt>
+ * - Backend verifies JWT using MASTER_SUPABASE_JWT_SECRET
+ * - Backend extracts user_id and looks up tenant in MASTER DB
+ * - Backend routes to correct per-yacht DB using tenant credentials
+ *
  * Security Requirements:
- * - Every backend request needs JWT + yacht signature
- * - Never store JWT in localStorage/sessionStorage
- * - Never log JWT, yacht_signature, or raw tokens
+ * - Never store JWT in localStorage/sessionStorage (Supabase handles this)
+ * - Never log JWT or raw tokens
  * - Auto-refresh expired tokens
  * - Fail fast if authentication is unavailable
  */
@@ -149,25 +154,19 @@ export async function getYachtSignature(yachtId: string | null): Promise<string 
  * Get authentication headers for backend requests
  *
  * This is the primary function that all API calls should use.
- * Returns JWT header always, yacht signature only if available.
+ * Returns ONLY the JWT - backend handles tenant routing.
  *
- * @param yachtId - Yacht ID from user context
- * @returns Headers object with Authorization and optionally X-Yacht-Signature
+ * @param yachtId - DEPRECATED: ignored, backend looks up tenant from JWT
+ * @returns Headers object with Authorization
  * @throws AuthError if JWT is unavailable
  */
-export async function getAuthHeaders(yachtId: string | null): Promise<HeadersInit> {
+export async function getAuthHeaders(yachtId?: string | null): Promise<HeadersInit> {
   const jwt = await getValidJWT();
-  const yachtSignature = await getYachtSignature(yachtId);
 
-  const headers: HeadersInit = {
+  // Only send JWT - backend handles tenant routing via user_id lookup
+  return {
     Authorization: `Bearer ${jwt}`,
   };
-
-  if (yachtSignature) {
-    (headers as Record<string, string>)['X-Yacht-Signature'] = yachtSignature;
-  }
-
-  return headers;
 }
 
 /**
@@ -189,10 +188,12 @@ export async function isAuthenticated(): Promise<boolean> {
 /**
  * Get yacht ID from current session
  *
- * Queries auth_users_profiles table to get the user's assigned yacht.
- * Falls back to user_metadata if database query fails.
+ * DEPRECATED: Frontend no longer queries yacht_id directly.
+ * Use AuthContext.user.yachtId instead.
+ * Backend handles tenant routing via JWT verification.
  *
- * @returns yacht_id or null
+ * @deprecated Use AuthContext instead
+ * @returns yacht_id from user metadata or null
  */
 export async function getYachtId(): Promise<string | null> {
   try {
@@ -204,22 +205,10 @@ export async function getYachtId(): Promise<string | null> {
       return null;
     }
 
-    // Query auth_users_profiles table for yacht assignment
-    const { data, error } = await supabase
-      .from('auth_users_profiles')
-      .select('yacht_id')
-      .eq('id', session.user.id)
-      .single();
-
-    if (error || !data) {
-      console.warn('[authHelpers] No yacht assignment found in database');
-
-      // Fallback: check user metadata
-      const meta = session.user.user_metadata || {};
-      return meta.yacht_id || meta.yachtId || null;
-    }
-
-    return data.yacht_id;
+    // Only check user metadata - no database query
+    // Backend handles tenant routing via JWT user_id lookup
+    const meta = session.user.user_metadata || {};
+    return meta.yacht_id || meta.yachtId || null;
   } catch (err) {
     console.warn('[authHelpers] Failed to get yacht_id:', err);
     return null;
