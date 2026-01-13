@@ -1,0 +1,205 @@
+{
+  "generated": "2026-01-12T22:20:00Z",
+  "description": "Actions confirmed safe for auto-execution when confidence >= 0.80",
+
+  "safe_actions": [
+    {
+      "action": "diagnose_fault",
+      "category": "Situation",
+      "handler": "fault_situation",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_fault_history",
+      "category": "P3",
+      "handler": "view_fault_history",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_work_order_history",
+      "category": "P3",
+      "handler": "view_work_order_history",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_equipment_details",
+      "category": "P3",
+      "handler": "view_equipment_details",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_equipment_history",
+      "category": "P3",
+      "handler": "view_equipment_history",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_part_stock",
+      "category": "P3",
+      "handler": "view_part_stock",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_compliance_status",
+      "category": "P3",
+      "handler": "view_compliance_status",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_worklist",
+      "category": "P3",
+      "handler": "view_worklist",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_fleet_summary",
+      "category": "P3",
+      "handler": "view_fleet_summary",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_smart_summary",
+      "category": "P3",
+      "handler": "view_smart_summary",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "suggest_parts",
+      "category": "P3",
+      "handler": "suggest_parts",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "track_delivery",
+      "category": "P3",
+      "handler": "track_delivery",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "view_handover",
+      "category": "P3",
+      "handler": "view_handover",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "export_handover",
+      "category": "P3",
+      "handler": "export_handover",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    },
+    {
+      "action": "search_documents",
+      "category": "P3",
+      "handler": "search_documents",
+      "auto_execute_threshold": 0.80,
+      "tested": true,
+      "test_result": "PASS"
+    }
+  ],
+
+  "gated_actions": [
+    {
+      "action": "create_work_order",
+      "category": "P0",
+      "always_requires_confirmation": true,
+      "reason": "Database write - creates new work order"
+    },
+    {
+      "action": "update_work_order",
+      "category": "P0",
+      "always_requires_confirmation": true,
+      "reason": "Database write - modifies existing work order"
+    },
+    {
+      "action": "close_work_order",
+      "category": "P0",
+      "always_requires_confirmation": true,
+      "reason": "Database write - changes work order status"
+    },
+    {
+      "action": "report_fault",
+      "category": "P0",
+      "always_requires_confirmation": true,
+      "reason": "Database write - creates new fault record"
+    },
+    {
+      "action": "acknowledge_fault",
+      "category": "P2",
+      "always_requires_confirmation": true,
+      "reason": "Database write - updates fault status"
+    },
+    {
+      "action": "add_fault_note",
+      "category": "P2",
+      "always_requires_confirmation": true,
+      "reason": "Database write - adds note to fault"
+    },
+    {
+      "action": "add_work_order_note",
+      "category": "P2",
+      "always_requires_confirmation": true,
+      "reason": "Database write - adds note to work order"
+    },
+    {
+      "action": "add_to_handover",
+      "category": "P2",
+      "always_requires_confirmation": true,
+      "reason": "Database write - adds item to handover"
+    },
+    {
+      "action": "log_hours_of_rest",
+      "category": "P2",
+      "always_requires_confirmation": true,
+      "reason": "Database write - logs compliance data"
+    },
+    {
+      "action": "order_parts",
+      "category": "P0",
+      "always_requires_confirmation": true,
+      "reason": "Database write + external action - creates purchase request"
+    },
+    {
+      "action": "create_purchase_request",
+      "category": "P0",
+      "always_requires_confirmation": true,
+      "reason": "Database write - creates purchase request"
+    }
+  ],
+
+  "verification_summary": {
+    "total_safe_actions": 15,
+    "total_gated_actions": 11,
+    "tested_safe_actions": 15,
+    "tested_gated_actions": 9,
+    "unsafe_mutations_executed": 0,
+    "verification_status": "PASS"
+  }
+}

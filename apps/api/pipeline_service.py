@@ -66,7 +66,7 @@ import logging
 # Parse and normalize origins from env var
 ALLOWED_ORIGINS_STR = os.getenv(
     "ALLOWED_ORIGINS",
-    "https://auth.celeste7.ai,https://app.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
+    "https://auth.celeste7.ai,https://app.celeste7.ai,https://staging.celeste7.ai,https://api.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
@@ -190,11 +190,25 @@ class HealthResponse(BaseModel):
 _pipeline = None
 _extractor = None
 _supabase_client = None
+_supabase_client_errors = 0
 
-def get_supabase_client():
-    """Lazy-load Supabase client."""
-    global _supabase_client
-    if _supabase_client is None:
+def get_supabase_client(force_new: bool = False):
+    """
+    Lazy-load Supabase client with connection recovery.
+
+    If the client is stale (>3 consecutive errors), recreate it.
+    This handles connection pool exhaustion and timeout issues.
+    """
+    global _supabase_client, _supabase_client_errors
+
+    # Force recreation if too many errors (connection might be stale)
+    if _supabase_client_errors >= 3:
+        logger.warning(f"[Supabase] Resetting client after {_supabase_client_errors} consecutive errors")
+        _supabase_client = None
+        _supabase_client_errors = 0
+        force_new = True
+
+    if _supabase_client is None or force_new:
         try:
             from supabase import create_client
             url = os.environ.get("SUPABASE_URL", "https://vzsohavtuotocgrfkfyd.supabase.co")
@@ -203,10 +217,24 @@ def get_supabase_client():
                 logger.warning("SUPABASE_SERVICE_KEY not set")
                 return None
             _supabase_client = create_client(url, key)
+            _supabase_client_errors = 0  # Reset error count on successful creation
+            logger.info("[Supabase] Client created/recreated successfully")
         except Exception as e:
             logger.error(f"Failed to create Supabase client: {e}")
             return None
     return _supabase_client
+
+def mark_supabase_error():
+    """Track consecutive Supabase errors for connection recovery."""
+    global _supabase_client_errors
+    _supabase_client_errors += 1
+    logger.warning(f"[Supabase] Error count: {_supabase_client_errors}")
+
+def reset_supabase_error_count():
+    """Reset error count after successful operation."""
+    global _supabase_client_errors
+    if _supabase_client_errors > 0:
+        _supabase_client_errors = 0
 
 def get_extractor():
     """Lazy-load extraction orchestrator."""
@@ -366,10 +394,17 @@ async def webhook_search(request: Request):
 
         json_str = json.dumps(response_data) + "\n"
         logger.info(f"[webhook/search:{request_id}] Success: {response_data.get('success')}, results: {response_data.get('total_count', 0)}")
+
+        # Reset error count on success (connection is healthy)
+        reset_supabase_error_count()
+
         return Response(content=json_str, media_type="application/json")
 
     except HTTPException as he:
-        # Re-raise HTTP exceptions but log them
+        # Track errors for connection recovery
+        if he.status_code >= 500:
+            mark_supabase_error()
+
         logger.error(f"[webhook/search:{request_id}] HTTPException: {he.detail}")
         return JSONResponse(
             status_code=he.status_code,
@@ -383,6 +418,9 @@ async def webhook_search(request: Request):
             }
         )
     except Exception as e:
+        # Track errors for connection recovery
+        mark_supabase_error()
+
         # CRITICAL: Never return raw 500 - always return structured JSON
         error_tb = traceback.format_exc()
         logger.error(f"[webhook/search:{request_id}] PIPELINE_INTERNAL_ERROR: {e}\n{error_tb}")

@@ -1,0 +1,85 @@
+{
+  "generated": "2026-01-12T22:30:00Z",
+  "description": "P6 E2E Test Configuration extracted from codebase",
+
+  "endpoints": {
+    "pipeline_api": {
+      "base_url": "https://pipeline-core.int.celeste7.ai",
+      "endpoints": {
+        "search": "POST /search",
+        "extract": "POST /extract",
+        "health": "GET /health",
+        "capabilities": "GET /capabilities",
+        "document_sign": "POST /v1/documents/{document_id}/sign",
+        "document_stream": "GET /v1/documents/{document_id}/stream"
+      }
+    },
+    "microaction_api": {
+      "base_url": "https://api.celeste7.ai",
+      "endpoints": {
+        "actions": "POST /v1/actions/*"
+      }
+    },
+    "supabase": {
+      "url": "https://vzsohavtuotocgrfkfyd.supabase.co",
+      "storage_bucket": "documents"
+    }
+  },
+
+  "cors": {
+    "allowed_origins": [
+      "https://auth.celeste7.ai",
+      "https://app.celeste7.ai",
+      "https://staging.celeste7.ai",
+      "https://api.celeste7.ai",
+      "https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:8000"
+    ],
+    "allowed_methods": ["GET", "POST", "OPTIONS"],
+    "allowed_headers": [
+      "Authorization",
+      "Content-Type",
+      "X-Request-Id",
+      "X-Yacht-Signature"
+    ],
+    "credentials": false,
+    "max_age": 3600
+  },
+
+  "csp": {
+    "connect-src": [
+      "'self'",
+      "https://vzsohavtuotocgrfkfyd.supabase.co",
+      "https://pipeline-core.int.celeste7.ai",
+      "https://api.celeste7.ai"
+    ],
+    "frame-src": [
+      "'self'",
+      "blob:",
+      "https://vzsohavtuotocgrfkfyd.supabase.co"
+    ],
+    "worker-src": [
+      "'self'",
+      "blob:"
+    ]
+  },
+
+  "test_data": {
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "user_id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
+  },
+
+  "known_issues": {
+    "CSP-001": {
+      "status": "VERIFY_REQUIRED",
+      "symptom": "Browser blocks fetch to api.celeste7.ai due to connect-src CSP restriction",
+      "current_state": "api.celeste7.ai appears to be in next.config.js connect-src"
+    },
+    "CORS-001": {
+      "status": "VERIFY_REQUIRED",
+      "symptom": "Preflight fails: No Access-Control-Allow-Origin on /v1/documents/:id/sign",
+      "current_state": "FastAPI CORS middleware configured with preview URL in allowed_origins"
+    }
+  }
+}
