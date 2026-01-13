@@ -59,33 +59,25 @@ def validate_jwt(token: str) -> ValidationResult:
                 message="Token missing user ID (sub claim)",
             )
 
-        # Extract custom claims
+        # Extract custom claims (may or may not exist depending on Supabase setup)
         app_metadata = payload.get("app_metadata", {})
         user_metadata = payload.get("user_metadata", {})
 
-        # yacht_id can be in either app_metadata or user_metadata
+        # yacht_id is optional in JWT - will be looked up from MASTER DB
         yacht_id = app_metadata.get("yacht_id") or user_metadata.get("yacht_id")
 
         # role can be at top level (Supabase default) or in metadata
-        role = payload.get("role") or app_metadata.get("role") or user_metadata.get("role")
+        # Default to 'authenticated' if not present (standard Supabase claim)
+        role = payload.get("role") or app_metadata.get("role") or user_metadata.get("role") or "authenticated"
 
-        if not yacht_id:
-            return ValidationResult.failure(
-                error_code="invalid_token",
-                message="Token missing yacht_id claim",
-            )
+        # NOTE: yacht_id may be None - caller must look it up from MASTER DB
+        # This matches Architecture Option 1: JWT verification + DB tenant lookup
 
-        if not role:
-            return ValidationResult.failure(
-                error_code="invalid_token",
-                message="Token missing role claim",
-            )
-
-        # Return user context
+        # Return user context (yacht_id may be None)
         return ValidationResult.success(
             context={
                 "user_id": user_id,
-                "yacht_id": yacht_id,
+                "yacht_id": yacht_id,  # May be None - caller looks up from MASTER DB
                 "role": role,
                 "email": payload.get("email"),
                 "exp": payload.get("exp"),

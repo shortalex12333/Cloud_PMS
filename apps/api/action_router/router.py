@@ -22,6 +22,13 @@ from .validators import (
 from .dispatchers import internal_dispatcher, n8n_dispatcher
 from .logger import log_action
 
+# Import tenant lookup from auth middleware (Architecture Option 1)
+try:
+    from middleware.auth import lookup_tenant_for_user
+except ImportError:
+    # Fallback if middleware not available
+    lookup_tenant_for_user = None
+
 
 # ============================================================================
 # REQUEST/RESPONSE MODELS
@@ -111,6 +118,28 @@ async def execute_action(
             )
 
         user_context = jwt_result.context
+
+        # ====================================================================
+        # STEP 1.5: Resolve tenant from MASTER DB if yacht_id not in JWT
+        # Architecture Option 1: JWT verification + DB tenant lookup
+        # ====================================================================
+        if not user_context.get("yacht_id") and lookup_tenant_for_user:
+            tenant_info = lookup_tenant_for_user(user_context["user_id"])
+            if tenant_info:
+                user_context["yacht_id"] = tenant_info["yacht_id"]
+                user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+                user_context["role"] = tenant_info.get("role", user_context.get("role"))
+            else:
+                # User not assigned to any tenant
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": "user_no_tenant",
+                        "message": "User is not assigned to any yacht/tenant",
+                        "action": action_id,
+                    },
+                )
 
         # ====================================================================
         # STEP 2: Validate action exists
