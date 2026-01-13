@@ -66,7 +66,7 @@ import logging
 # Parse and normalize origins from env var
 ALLOWED_ORIGINS_STR = os.getenv(
     "ALLOWED_ORIGINS",
-    "https://auth.celeste7.ai,https://app.celeste7.ai,https://staging.celeste7.ai,https://api.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
+    "https://auth.celeste7.ai,https://app.celeste7.ai,https://api.celeste7.ai,https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app,http://localhost:3000,http://localhost:8000"
 )
 
 # Normalize: strip whitespace, remove empties, deduplicate
@@ -83,7 +83,7 @@ if len(ALLOWED_ORIGINS) == 0:
 
 # WARNING: Never add *.vercel.app preview URLs to production CORS
 # Preview URLs change constantly and create maintenance burden
-# Use staging.celeste7.ai for pre-production testing instead
+# Production is the only execution surface
 
 app.add_middleware(
     CORSMiddleware,

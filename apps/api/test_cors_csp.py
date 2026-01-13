@@ -22,7 +22,6 @@ SUPABASE_URL = "https://vzsohavtuotocgrfkfyd.supabase.co"
 # Test origins (simulate browser Origin header)
 TEST_ORIGINS = [
     "https://app.celeste7.ai",  # Production
-    "https://staging.celeste7.ai",  # Staging
     "https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app",  # Preview
     "http://localhost:3000",  # Local
     "https://malicious-site.com",  # SHOULD BE BLOCKED
@@ -247,7 +246,7 @@ def main():
 
     # CSP-001: Check if legitimate origins can connect
     legit_origins = [o for o in analysis["allowed_origins"] if "malicious" not in o]
-    if len(legit_origins) >= 4:  # app, staging, preview, localhost
+    if len(legit_origins) >= 3:  # app, preview, localhost
         print("CSP-001: RESOLVED - Legitimate origins can connect")
     else:
         print(f"CSP-001: ISSUE - Only {len(legit_origins)} origins allowed")

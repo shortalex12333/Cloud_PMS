@@ -30,7 +30,6 @@
     "allowed_origins": [
       "https://auth.celeste7.ai",
       "https://app.celeste7.ai",
-      "https://staging.celeste7.ai",
       "https://api.celeste7.ai",
       "https://cloud-pms-git-universalv1-c7s-projects-4a165667.vercel.app",
       "http://localhost:3000",
