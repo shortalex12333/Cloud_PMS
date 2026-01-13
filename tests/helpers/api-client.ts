@@ -133,12 +133,13 @@ export class ApiClient {
   /**
    * Search endpoint
    */
-  async search(query: string, limit: number = 10): Promise<ApiResponse<{
+  async search(query: string, limit: number = 10, yachtId?: string): Promise<ApiResponse<{
     success: boolean;
     results: any[];
     total_count: number;
   }>> {
-    return this.post('/search', { query, limit });
+    const yacht_id = yachtId || process.env.TEST_USER_YACHT_ID;
+    return this.post('/search', { query, limit, yacht_id });
   }
 
   /**
