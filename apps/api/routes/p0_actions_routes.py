@@ -553,12 +553,12 @@ async def execute_action(
                 }
 
         elif action == "acknowledge_fault":
-            # Update fault status (no acknowledged_by column, use metadata)
+            # Update fault status to investigating (valid: open, investigating, resolved, closed)
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_result = db_client.table("pms_faults").update({
-                "status": "acknowledged",
+                "status": "investigating",
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
@@ -583,6 +583,125 @@ async def execute_action(
                 result = {"status": "success", "message": "Fault resolved"}
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to resolve fault"}
+
+        elif action == "diagnose_fault":
+            # Add diagnosis to fault metadata
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            # Get current fault to preserve metadata
+            current = db_client.table("pms_faults").select("metadata").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
+            metadata = current.data.get("metadata", {}) if current.data else {}
+            metadata["diagnosis"] = payload.get("diagnosis", "")
+            metadata["diagnosed_by"] = user_id
+            metadata["diagnosed_at"] = datetime.now(timezone.utc).isoformat()
+            fault_result = db_client.table("pms_faults").update({
+                "metadata": metadata,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Diagnosis added"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add diagnosis"}
+
+        elif action == "close_fault":
+            # Close fault (status = closed)
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_result = db_client.table("pms_faults").update({
+                "status": "closed",
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Fault closed"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
+
+        elif action == "update_fault":
+            # Update fault details
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            update_data = {"updated_by": user_id, "updated_at": datetime.now(timezone.utc).isoformat()}
+            if payload.get("title"): update_data["title"] = payload["title"]
+            if payload.get("description"): update_data["description"] = payload["description"]
+            if payload.get("severity"): update_data["severity"] = payload["severity"]
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Fault updated"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update fault"}
+
+        elif action == "reopen_fault":
+            # Reopen a closed fault
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_result = db_client.table("pms_faults").update({
+                "status": "open",
+                "resolved_at": None,
+                "resolved_by": None,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Fault reopened"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to reopen fault"}
+
+        elif action == "mark_fault_false_alarm":
+            # Mark fault as false alarm (use closed status + metadata)
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            current = db_client.table("pms_faults").select("metadata").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
+            metadata = current.data.get("metadata", {}) if current.data else {}
+            metadata["false_alarm"] = True
+            metadata["false_alarm_by"] = user_id
+            metadata["false_alarm_at"] = datetime.now(timezone.utc).isoformat()
+            fault_result = db_client.table("pms_faults").update({
+                "status": "closed",
+                "metadata": metadata,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Fault marked as false alarm"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to mark as false alarm"}
+
+        elif action == "add_fault_photo":
+            # Add photo URL to fault metadata
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            current = db_client.table("pms_faults").select("metadata").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
+            metadata = current.data.get("metadata", {}) if current.data else {}
+            photos = metadata.get("photos", [])
+            photos.append({"url": payload.get("photo_url"), "added_by": user_id, "added_at": datetime.now(timezone.utc).isoformat()})
+            metadata["photos"] = photos
+            fault_result = db_client.table("pms_faults").update({
+                "metadata": metadata,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Photo added to fault"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to add photo"}
+
+        elif action == "view_fault_detail":
+            # Get fault details with equipment info
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_result = db_client.table("pms_faults").select("*, pms_equipment(*)").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
+            if fault_result.data:
+                result = {"status": "success", "fault": fault_result.data}
+            else:
+                result = {"status": "error", "error_code": "NOT_FOUND", "message": "Fault not found"}
 
         else:
             raise HTTPException(
