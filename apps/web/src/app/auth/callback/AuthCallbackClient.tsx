@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Auth Callback Client Component
@@ -20,8 +21,37 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export default function AuthCallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [sessionSet, setSessionSet] = useState(false);
+  const [redirectTo, setRedirectTo] = useState('/search');
+
+  // Wait for user validation after session is set
+  useEffect(() => {
+    if (sessionSet && !authLoading && user) {
+      console.log('[AuthCallback] User validated, redirecting to:', redirectTo);
+      setStatus('success');
+      setTimeout(() => {
+        router.push(redirectTo);
+      }, 300);
+    }
+  }, [sessionSet, authLoading, user, redirectTo, router]);
+
+  // Timeout fallback - if auth takes too long, redirect anyway
+  useEffect(() => {
+    if (!sessionSet) return;
+
+    const timeout = setTimeout(() => {
+      if (status === 'loading') {
+        console.warn('[AuthCallback] Auth validation timeout, redirecting anyway');
+        setStatus('success');
+        router.push(redirectTo);
+      }
+    }, 8000);
+
+    return () => clearTimeout(timeout);
+  }, [sessionSet, status, redirectTo, router]);
 
   useEffect(() => {
     async function handleCallback() {
@@ -52,16 +82,12 @@ export default function AuthCallbackClient() {
           }
 
           console.log('[AuthCallback] Session set successfully:', data.session?.user?.email);
-          setStatus('success');
 
           // Get intended destination or default to search
-          const redirectTo = searchParams.get('redirect') || '/search';
-          console.log('[AuthCallback] Redirecting to:', redirectTo);
-
-          // Small delay to show success message
-          setTimeout(() => {
-            router.push(redirectTo);
-          }, 500);
+          const destination = searchParams.get('redirect') || '/search';
+          setRedirectTo(destination);
+          setSessionSet(true);
+          console.log('[AuthCallback] Waiting for AuthContext validation...');
 
           return;
         }
@@ -88,11 +114,7 @@ export default function AuthCallbackClient() {
           }
 
           console.log('[AuthCallback] Hash session set successfully');
-          setStatus('success');
-
-          setTimeout(() => {
-            router.push('/search');
-          }, 500);
+          setSessionSet(true);
 
           return;
         }
@@ -101,9 +123,8 @@ export default function AuthCallbackClient() {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-          console.log('[AuthCallback] Already authenticated, redirecting...');
-          setStatus('success');
-          router.push('/search');
+          console.log('[AuthCallback] Already authenticated, waiting for validation...');
+          setSessionSet(true);
           return;
         }
 
@@ -119,7 +140,7 @@ export default function AuthCallbackClient() {
     }
 
     handleCallback();
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   // Loading state
   if (status === 'loading') {
@@ -127,7 +148,7 @@ export default function AuthCallbackClient() {
       <div className="min-h-screen flex items-center justify-center bg-[#1c1c1e]">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-celeste-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg">Completing sign in...</p>
+          <p className="text-white text-lg">{sessionSet ? 'Validating session...' : 'Completing sign in...'}</p>
         </div>
       </div>
     );
