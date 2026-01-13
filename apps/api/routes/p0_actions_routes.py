@@ -612,22 +612,20 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-
-            # Get current fault to check severity
             fault_id = payload.get("fault_id")
-            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-            if not current.data:
+
+            # Check if fault exists (don't select severity to avoid enum errors)
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
-            # Build update data - fix invalid severity if needed
+            # Always include severity in update to fix any bad data
             update_data = {
                 "status": "investigating",
+                "severity": "medium",  # Always set valid severity
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -642,21 +640,19 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Check severity and fix if invalid
-            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-            if not current.data:
+            # Check if fault exists
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
             update_data = {
                 "status": "resolved",
+                "severity": "medium",  # Always set valid severity
                 "resolved_by": user_id,
                 "resolved_at": datetime.now(timezone.utc).isoformat(),
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -671,8 +667,8 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Get current fault to preserve metadata and check severity
-            current = db_client.table("pms_faults").select("metadata, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            # Get current fault metadata (avoid selecting severity to prevent enum errors)
+            current = db_client.table("pms_faults").select("id, metadata").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
             if not current.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
@@ -683,12 +679,10 @@ async def execute_action(
 
             update_data = {
                 "metadata": metadata,
+                "severity": "medium",  # Always set valid severity
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -703,19 +697,17 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Check severity and fix if invalid
-            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-            if not current.data:
+            # Check if fault exists
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
             update_data = {
                 "status": "closed",
+                "severity": "medium",  # Always set valid severity
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -730,9 +722,9 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Check current severity
-            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-            if not current.data:
+            # Check if fault exists
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
             update_data = {"updated_by": user_id, "updated_at": datetime.now(timezone.utc).isoformat()}
@@ -741,13 +733,11 @@ async def execute_action(
             if payload.get("description"):
                 update_data["description"] = payload["description"]
 
-            # Handle severity - validate and fix if needed
+            # Handle severity - use provided value if valid, otherwise default to medium
             if payload.get("severity") and payload["severity"] in ("low", "medium", "high", "critical"):
                 update_data["severity"] = payload["severity"]
             else:
-                current_severity = current.data.get("severity", "")
-                if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                    update_data["severity"] = "medium"
+                update_data["severity"] = "medium"  # Always set valid severity
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -762,21 +752,19 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Check severity and fix if invalid
-            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
-            if not current.data:
+            # Check if fault exists
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
             update_data = {
                 "status": "open",
+                "severity": "medium",  # Always set valid severity
                 "resolved_at": None,
                 "resolved_by": None,
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -791,8 +779,8 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Get current fault
-            current = db_client.table("pms_faults").select("metadata, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            # Get current fault (avoid selecting severity)
+            current = db_client.table("pms_faults").select("id, metadata").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
             if not current.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
@@ -804,12 +792,10 @@ async def execute_action(
             update_data = {
                 "status": "closed",
                 "metadata": metadata,
+                "severity": "medium",  # Always set valid severity
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -824,8 +810,8 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Get current fault
-            current = db_client.table("pms_faults").select("metadata, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            # Get current fault (avoid selecting severity)
+            current = db_client.table("pms_faults").select("id, metadata").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
             if not current.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
 
@@ -836,12 +822,10 @@ async def execute_action(
 
             update_data = {
                 "metadata": metadata,
+                "severity": "medium",  # Always set valid severity
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
-            current_severity = current.data.get("severity", "")
-            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
-                update_data["severity"] = "medium"
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
@@ -865,6 +849,9 @@ async def execute_action(
                 detail=f"Action '{action}' not found or not implemented"
             )
 
+    except HTTPException:
+        # Let HTTPExceptions propagate with their original status code
+        raise
     except Exception as e:
         logger.error(f"Action execution failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
