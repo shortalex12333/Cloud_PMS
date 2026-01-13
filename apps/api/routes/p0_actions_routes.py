@@ -53,6 +53,24 @@ def get_supabase_client() -> Client:
     return create_client(url, key)
 
 
+def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
+    """Get tenant-specific Supabase client instance."""
+    # Try tenant-specific env vars first (e.g., yTEST_YACHT_001_SUPABASE_URL)
+    url = os.getenv(f"{tenant_key_alias}_SUPABASE_URL")
+    key = os.getenv(f"{tenant_key_alias}_SUPABASE_SERVICE_KEY") or os.getenv(f"{tenant_key_alias}_SUPABASE_SERVICE_ROLE_KEY")
+
+    # Fall back to generic env vars if tenant-specific not found
+    if not url:
+        url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    if not key:
+        key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+    if not url or not key:
+        raise ValueError(f"Missing Supabase credentials for tenant {tenant_key_alias}")
+
+    return create_client(url, key)
+
+
 # ============================================================================
 # ROUTER
 # ============================================================================
@@ -501,7 +519,8 @@ async def execute_action(
         elif action == "report_fault":
             # Insert fault record
             from datetime import datetime, timezone
-            db_client = get_supabase_client()
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
             fault_data = {
                 "yacht_id": yacht_id,
                 "equipment_id": payload.get("equipment_id"),
@@ -530,7 +549,8 @@ async def execute_action(
         elif action == "acknowledge_fault":
             # Update fault status to acknowledged
             from datetime import datetime, timezone
-            db_client = get_supabase_client()
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
             fault_result = db_client.table("pms_faults").update({
                 "status": "acknowledged",
                 "acknowledged_by": user_id,
@@ -544,7 +564,8 @@ async def execute_action(
         elif action == "resolve_fault":
             # Update fault status to resolved
             from datetime import datetime, timezone
-            db_client = get_supabase_client()
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
             fault_result = db_client.table("pms_faults").update({
                 "status": "resolved",
                 "resolved_by": user_id,
