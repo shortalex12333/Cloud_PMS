@@ -519,6 +519,9 @@ async def execute_action(
             )
 
         # ===== FAULT ACTIONS =====
+        # pms_faults schema: id, yacht_id, equipment_id, fault_code, title, description,
+        #                    severity, detected_at, resolved_at, resolved_by, work_order_id,
+        #                    metadata, status, created_at, updated_by, updated_at
         elif action == "report_fault":
             # Insert fault record
             from datetime import datetime, timezone
@@ -527,13 +530,13 @@ async def execute_action(
             fault_data = {
                 "yacht_id": yacht_id,
                 "equipment_id": payload.get("equipment_id"),
-                "fault_type": payload.get("fault_type", "general"),
+                "fault_code": payload.get("fault_code", "MANUAL"),
+                "title": payload.get("title", payload.get("description", "Reported fault")[:100]),
                 "description": payload.get("description", ""),
                 "severity": payload.get("severity", "medium"),
                 "status": "open",
-                "reported_by": user_id,
-                "reported_at": datetime.now(timezone.utc).isoformat(),
-                "requires_immediate_attention": payload.get("requires_immediate_attention", False)
+                "detected_at": datetime.now(timezone.utc).isoformat(),
+                "metadata": {"reported_by": user_id}
             }
             fault_result = db_client.table("pms_faults").insert(fault_data).execute()
             if fault_result.data:
@@ -550,14 +553,14 @@ async def execute_action(
                 }
 
         elif action == "acknowledge_fault":
-            # Update fault status to acknowledged
+            # Update fault status (no acknowledged_by column, use metadata)
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_result = db_client.table("pms_faults").update({
                 "status": "acknowledged",
-                "acknowledged_by": user_id,
-                "acknowledged_at": datetime.now(timezone.utc).isoformat()
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault acknowledged"}
@@ -573,7 +576,8 @@ async def execute_action(
                 "status": "resolved",
                 "resolved_by": user_id,
                 "resolved_at": datetime.now(timezone.utc).isoformat(),
-                "resolution_notes": payload.get("resolution_notes", "")
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault resolved"}
