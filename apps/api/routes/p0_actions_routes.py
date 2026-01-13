@@ -497,6 +497,61 @@ async def execute_action(
                 section_id=payload.get("section_id")
             )
 
+        # ===== FAULT ACTIONS =====
+        elif action == "report_fault":
+            # Insert fault record
+            from datetime import datetime, timezone
+            fault_data = {
+                "yacht_id": yacht_id,
+                "equipment_id": payload.get("equipment_id"),
+                "fault_type": payload.get("fault_type", "general"),
+                "description": payload.get("description", ""),
+                "severity": payload.get("severity", "medium"),
+                "status": "open",
+                "reported_by": user_id,
+                "reported_at": datetime.now(timezone.utc).isoformat(),
+                "requires_immediate_attention": payload.get("requires_immediate_attention", False)
+            }
+            fault_result = supabase.table("pms_faults").insert(fault_data).execute()
+            if fault_result.data:
+                result = {
+                    "status": "success",
+                    "fault_id": fault_result.data[0]["id"],
+                    "message": "Fault reported successfully"
+                }
+            else:
+                result = {
+                    "status": "error",
+                    "error_code": "INSERT_FAILED",
+                    "message": "Failed to create fault record"
+                }
+
+        elif action == "acknowledge_fault":
+            # Update fault status to acknowledged
+            fault_result = supabase.table("pms_faults").update({
+                "status": "acknowledged",
+                "acknowledged_by": user_id,
+                "acknowledged_at": datetime.now(timezone.utc).isoformat() if 'datetime' in dir() else None
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Fault acknowledged"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to acknowledge fault"}
+
+        elif action == "resolve_fault":
+            # Update fault status to resolved
+            from datetime import datetime, timezone
+            fault_result = supabase.table("pms_faults").update({
+                "status": "resolved",
+                "resolved_by": user_id,
+                "resolved_at": datetime.now(timezone.utc).isoformat(),
+                "resolution_notes": payload.get("resolution_notes", "")
+            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "message": "Fault resolved"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to resolve fault"}
+
         else:
             raise HTTPException(
                 status_code=404,
