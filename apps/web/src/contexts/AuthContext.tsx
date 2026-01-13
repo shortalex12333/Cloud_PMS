@@ -27,6 +27,7 @@ export type CelesteUser = {
   role: string;
   yachtId: string | null;
   yachtName: string | null;
+  tenantKeyAlias: string | null;  // For backend DB routing (e.g., "y85fe1119...")
   displayName: string | null;
   bootstrapStatus: BootstrapStatus;
   validatedAt: number;
@@ -72,6 +73,7 @@ function buildUserFromSession(session: Session): CelesteUser {
     role: (meta.role as string) || 'member',
     yachtId: (meta.yacht_id as string) || null,
     yachtName: null,
+    tenantKeyAlias: null,  // Set from bootstrap RPC
     displayName: authUser.email || null,
     bootstrapStatus: 'loading',
     validatedAt: Date.now(),
@@ -116,6 +118,7 @@ async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
         bootstrapStatus: 'pending',
         yachtId: null,
         yachtName: null,
+        tenantKeyAlias: null,
       };
     }
 
@@ -126,6 +129,7 @@ async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
         bootstrapStatus: 'inactive',
         yachtId: data.yacht_id,
         yachtName: data.yacht_name,
+        tenantKeyAlias: data.tenant_key_alias || null,
       };
     }
 
@@ -136,16 +140,18 @@ async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
         bootstrapStatus: 'pending',
         yachtId: data.yacht_id,
         yachtName: data.yacht_name,
+        tenantKeyAlias: data.tenant_key_alias || null,
       };
     }
 
     // Success - user is fully active
-    console.log('[AuthContext] Bootstrap success:', data.yacht_id, data.role);
+    console.log('[AuthContext] Bootstrap success:', data.yacht_id, data.role, data.tenant_key_alias);
     return {
       ...baseUser,
       role: data.role || baseUser.role,
       yachtId: data.yacht_id,
       yachtName: data.yacht_name,
+      tenantKeyAlias: data.tenant_key_alias || null,
       bootstrapStatus: 'active',
       validatedAt: Date.now(),
     };
