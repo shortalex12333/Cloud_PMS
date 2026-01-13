@@ -501,6 +501,7 @@ async def execute_action(
         elif action == "report_fault":
             # Insert fault record
             from datetime import datetime, timezone
+            db_client = get_supabase_client()
             fault_data = {
                 "yacht_id": yacht_id,
                 "equipment_id": payload.get("equipment_id"),
@@ -512,7 +513,7 @@ async def execute_action(
                 "reported_at": datetime.now(timezone.utc).isoformat(),
                 "requires_immediate_attention": payload.get("requires_immediate_attention", False)
             }
-            fault_result = supabase.table("pms_faults").insert(fault_data).execute()
+            fault_result = db_client.table("pms_faults").insert(fault_data).execute()
             if fault_result.data:
                 result = {
                     "status": "success",
@@ -528,10 +529,12 @@ async def execute_action(
 
         elif action == "acknowledge_fault":
             # Update fault status to acknowledged
-            fault_result = supabase.table("pms_faults").update({
+            from datetime import datetime, timezone
+            db_client = get_supabase_client()
+            fault_result = db_client.table("pms_faults").update({
                 "status": "acknowledged",
                 "acknowledged_by": user_id,
-                "acknowledged_at": datetime.now(timezone.utc).isoformat() if 'datetime' in dir() else None
+                "acknowledged_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault acknowledged"}
@@ -541,7 +544,8 @@ async def execute_action(
         elif action == "resolve_fault":
             # Update fault status to resolved
             from datetime import datetime, timezone
-            fault_result = supabase.table("pms_faults").update({
+            db_client = get_supabase_client()
+            fault_result = db_client.table("pms_faults").update({
                 "status": "resolved",
                 "resolved_by": user_id,
                 "resolved_at": datetime.now(timezone.utc).isoformat(),
