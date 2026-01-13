@@ -104,11 +104,9 @@ export function AuthDebug() {
             ? Date.now() > session.expires_at * 1000
             : false;
 
-          // Test RPC
+          // Test RPC - use get_my_bootstrap (no args, uses auth.uid() internally)
           state.rpc.called = true;
-          const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_auth_info', {
-            p_user_id: session.user.id,
-          });
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_my_bootstrap');
 
           if (rpcError) {
             state.rpc.error = rpcError.message;
@@ -186,12 +184,14 @@ export function AuthDebug() {
 
           {/* RPC */}
           <div>
-            <div className="text-[#98989f] mb-1">RPC get_user_auth_info</div>
+            <div className="text-[#98989f] mb-1">RPC get_my_bootstrap</div>
             {debug.rpc.error ? (
               <div className="text-red-400">{debug.rpc.error}</div>
             ) : debug.rpc.result ? (
-              <div className="text-green-400">
-                {ok(true)} yacht_id: {Array.isArray(debug.rpc.result) ? debug.rpc.result[0]?.yacht_id : debug.rpc.result?.yacht_id || 'null'}
+              <div className="text-green-400 space-y-0.5">
+                <div>{ok(true)} yacht: {debug.rpc.result?.yacht_id || 'null'}</div>
+                <div>{ok(true)} role: {debug.rpc.result?.role || 'null'}</div>
+                <div>{ok(true)} status: {debug.rpc.result?.status || 'null'}</div>
               </div>
             ) : (
               <div className="text-[#636366]">No session to test</div>
