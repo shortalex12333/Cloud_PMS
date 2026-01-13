@@ -17,6 +17,8 @@ Execute these migrations in order on the **Master Supabase project** (qvzmkaamza
 | 4 | `003_create_security_events.sql` | Audit trail table |
 | 5 | `004_create_get_my_bootstrap_rpc.sql` | Bootstrap RPC for frontend |
 | 6 | `005_create_ensure_user_account_rpc.sql` | Account creation RPC |
+| 7 | `006_add_tenant_key_alias.sql` | Add tenant_key_alias to fleet_registry |
+| 8 | `007_update_get_my_bootstrap_with_alias.sql` | Update RPC to return tenant_key_alias |
 
 ## Execution
 
