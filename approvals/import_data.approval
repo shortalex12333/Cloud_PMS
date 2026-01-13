@@ -1,0 +1,25 @@
+# Approval: import_data
+#
+# This operation is BLOCKED until all 3 approvers sign below.
+#
+# Operation: import_data (MUTATE_HIGH)
+# Risk: Can corrupt thousands of records, cross-yacht contamination
+# Pre-requisites: See IMPORT_DATA_PRE_AUDIT.md checklist
+#
+# By signing, approvers confirm:
+# - All 12 pre-audit items are completed
+# - Natural keys defined for all scopes
+# - Unit normalization approved
+# - Ownership rules approved
+# - Schema validation complete
+# - Database tables created
+# - Threat model reviewed
+#
+# Format:
+# Product: @handle YYYY-MM-DD
+# Engineering: @handle YYYY-MM-DD
+# Security: @handle YYYY-MM-DD
+
+Product:
+Engineering:
+Security:

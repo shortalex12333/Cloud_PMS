@@ -97,19 +97,22 @@ DECLARE
     v_event_id UUID;
 BEGIN
     INSERT INTO public.security_events (
-        user_id,
-        yacht_id,
         event_type,
-        event_data
+        yacht_id,
+        description,
+        metadata
     ) VALUES (
-        auth.uid(),
-        COALESCE(p_yacht_id, (SELECT yacht_id FROM user_accounts WHERE user_id = auth.uid())),
+        p_event_type,
+        COALESCE(p_yacht_id, (SELECT yacht_id FROM user_accounts WHERE id = auth.uid())),
         p_event_type,
         p_event_data
     )
-    RETURNING event_id INTO v_event_id;
+    RETURNING id INTO v_event_id;
 
     RETURN v_event_id;
+EXCEPTION WHEN OTHERS THEN
+    -- Don't fail the parent operation if logging fails
+    RETURN NULL;
 END;
 $$;
 
