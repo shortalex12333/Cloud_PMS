@@ -1,31 +1,159 @@
 """
 CelesteOS Backend - Authentication Middleware
 
+Architecture (2026-01-13):
+- JWT is verified using MASTER Supabase JWT secret
+- user_id is extracted from JWT (sub claim)
+- Tenant (yacht_id) is looked up from MASTER DB user_accounts table
+- Frontend sends ONLY Authorization: Bearer <token>, no yacht_id
+
 Handles:
-- JWT validation
+- JWT validation against MASTER DB
+- Tenant lookup from MASTER DB
 - Yacht context injection
 - Agent token validation
 - Role-based access control
 """
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict
 from functools import wraps
 import jwt
-from fastapi import Request, HTTPException, Header
+from fastapi import Request, HTTPException, Header, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-SUPABASE_JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET', '')
+# MASTER DB JWT secret - used to verify all JWTs
+MASTER_SUPABASE_JWT_SECRET = os.getenv('MASTER_SUPABASE_JWT_SECRET', '')
+# Legacy - keep for backwards compatibility during transition
+SUPABASE_JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET', '') or MASTER_SUPABASE_JWT_SECRET
 AGENT_TOKEN_SECRET = os.getenv('AGENT_TOKEN_SECRET', '')
 
-if not SUPABASE_JWT_SECRET:
-    raise ValueError('SUPABASE_JWT_SECRET environment variable not set')
+# MASTER DB connection for tenant lookup
+MASTER_SUPABASE_URL = os.getenv('MASTER_SUPABASE_URL', 'https://qvzmkaamzaqxpzbewjxe.supabase.co')
+MASTER_SUPABASE_SERVICE_KEY = os.getenv('MASTER_SUPABASE_SERVICE_KEY', '')
+
+if not MASTER_SUPABASE_JWT_SECRET and not SUPABASE_JWT_SECRET:
+    logger.error('MASTER_SUPABASE_JWT_SECRET environment variable not set')
+    # Don't raise on import - allow health checks to work
 
 security = HTTPBearer()
+
+# ============================================================================
+# MASTER DB CLIENT (for tenant lookup)
+# ============================================================================
+
+_master_client = None
+
+def get_master_client():
+    """Get or create MASTER DB Supabase client."""
+    global _master_client
+    if _master_client is None:
+        if not MASTER_SUPABASE_SERVICE_KEY:
+            logger.error("MASTER_SUPABASE_SERVICE_KEY not set")
+            return None
+        try:
+            from supabase import create_client
+            _master_client = create_client(MASTER_SUPABASE_URL, MASTER_SUPABASE_SERVICE_KEY)
+            logger.info(f"[Auth] MASTER DB client created: {MASTER_SUPABASE_URL[:30]}...")
+        except Exception as e:
+            logger.error(f"[Auth] Failed to create MASTER client: {e}")
+            return None
+    return _master_client
+
+# ============================================================================
+# TENANT LOOKUP CACHE
+# ============================================================================
+
+# Cache tenant info by user_id (cleared on restart)
+_tenant_cache: Dict[str, Dict] = {}
+
+def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
+    """
+    Look up tenant info from MASTER DB for a user.
+
+    Returns:
+        {
+            'yacht_id': 'TEST_YACHT_001',
+            'tenant_key_alias': 'yTEST_YACHT_001',
+            'role': 'chief_engineer',
+            'status': 'active',
+            'yacht_name': 'M/Y Test Vessel'
+        }
+    Or None if user has no tenant assignment.
+    """
+    # Check cache first
+    if user_id in _tenant_cache:
+        return _tenant_cache[user_id]
+
+    client = get_master_client()
+    if not client:
+        logger.error("[Auth] Cannot lookup tenant - no MASTER client")
+        return None
+
+    try:
+        # Query user_accounts joined with fleet_registry
+        result = client.table('user_accounts').select(
+            'yacht_id, role, status'
+        ).eq('user_id', user_id).single().execute()
+
+        if not result.data:
+            logger.warning(f"[Auth] No user_accounts row for user {user_id[:8]}...")
+            return None
+
+        user_account = result.data
+
+        # Check account status
+        if user_account.get('status') != 'active':
+            logger.warning(f"[Auth] User {user_id[:8]}... status is {user_account.get('status')}")
+            return None
+
+        # Get tenant_key_alias from fleet_registry
+        fleet_result = client.table('fleet_registry').select(
+            'tenant_key_alias, yacht_name, active'
+        ).eq('yacht_id', user_account['yacht_id']).single().execute()
+
+        if not fleet_result.data:
+            logger.warning(f"[Auth] No fleet_registry for yacht {user_account['yacht_id']}")
+            return None
+
+        fleet = fleet_result.data
+
+        if not fleet.get('active'):
+            logger.warning(f"[Auth] Yacht {user_account['yacht_id']} is inactive")
+            return None
+
+        tenant_info = {
+            'yacht_id': user_account['yacht_id'],
+            'tenant_key_alias': fleet['tenant_key_alias'],
+            'role': user_account.get('role', 'member'),
+            'status': user_account['status'],
+            'yacht_name': fleet.get('yacht_name'),
+        }
+
+        # Cache for future requests
+        _tenant_cache[user_id] = tenant_info
+        logger.info(f"[Auth] Tenant lookup success: user={user_id[:8]}... -> yacht={tenant_info['yacht_id']}")
+
+        return tenant_info
+
+    except Exception as e:
+        logger.error(f"[Auth] Tenant lookup failed for {user_id[:8]}...: {e}")
+        return None
+
+def clear_tenant_cache(user_id: str = None):
+    """Clear tenant cache (on logout or role change)."""
+    global _tenant_cache
+    if user_id:
+        _tenant_cache.pop(user_id, None)
+    else:
+        _tenant_cache.clear()
 
 # ============================================================================
 # JWT VALIDATION
@@ -33,19 +161,24 @@ security = HTTPBearer()
 
 def decode_jwt(token: str) -> dict:
     """
-    Decode and validate JWT token from Supabase.
+    Decode and validate JWT token using MASTER Supabase JWT secret.
 
     Returns decoded payload with:
-    - user_id
-    - yacht_id
-    - role
+    - sub (user_id)
+    - email
+    - role (from JWT, not authoritative - use tenant lookup)
     - exp (expiration)
     """
+    secret = MASTER_SUPABASE_JWT_SECRET or SUPABASE_JWT_SECRET
+    if not secret:
+        raise HTTPException(status_code=500, detail='JWT secret not configured')
+
     try:
         payload = jwt.decode(
             token,
-            SUPABASE_JWT_SECRET,
+            secret,
             algorithms=['HS256'],
+            audience='authenticated',
             options={'verify_exp': True}
         )
         return payload
@@ -99,6 +232,7 @@ async def validate_user_jwt(
 ) -> dict:
     """
     FastAPI dependency to validate user JWT and return payload.
+    DEPRECATED: Use get_authenticated_user() for tenant lookup.
 
     Usage:
         @app.get('/endpoint')
@@ -114,6 +248,69 @@ async def validate_user_jwt(
         'yacht_id': payload.get('yacht_id'),
         'role': payload.get('role', 'crew'),
         'email': payload.get('email'),
+    }
+
+
+async def get_authenticated_user(
+    authorization: str = Header(..., alias='Authorization')
+) -> dict:
+    """
+    FastAPI dependency for JWT validation + tenant lookup.
+
+    This is the PRIMARY auth dependency for all endpoints.
+    - Validates JWT using MASTER DB secret
+    - Looks up tenant from MASTER DB user_accounts
+    - Returns full auth context including tenant_key_alias
+
+    Usage:
+        @app.post('/search')
+        async def search(auth: dict = Depends(get_authenticated_user)):
+            yacht_id = auth['yacht_id']
+            tenant_key_alias = auth['tenant_key_alias']
+
+    Returns:
+        {
+            'user_id': 'uuid',
+            'email': 'user@example.com',
+            'yacht_id': 'TEST_YACHT_001',
+            'tenant_key_alias': 'yTEST_YACHT_001',
+            'role': 'chief_engineer',
+            'yacht_name': 'M/Y Test Vessel'
+        }
+
+    Raises:
+        401: Invalid/expired JWT
+        403: User has no tenant assignment or account not active
+    """
+    # Extract token from "Bearer <token>"
+    if not authorization.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail='Invalid Authorization header format')
+
+    token = authorization.split(' ', 1)[1]
+
+    # Verify JWT
+    payload = decode_jwt(token)
+    user_id = payload.get('sub')
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail='Invalid token: no user_id')
+
+    # Look up tenant from MASTER DB
+    tenant = lookup_tenant_for_user(user_id)
+
+    if not tenant:
+        raise HTTPException(
+            status_code=403,
+            detail='User not assigned to any tenant or account not active'
+        )
+
+    return {
+        'user_id': user_id,
+        'email': payload.get('email'),
+        'yacht_id': tenant['yacht_id'],
+        'tenant_key_alias': tenant['tenant_key_alias'],
+        'role': tenant['role'],
+        'yacht_name': tenant.get('yacht_name'),
     }
 
 
@@ -260,6 +457,9 @@ __all__ = [
     'extract_user_id',
     'extract_role',
     'validate_user_jwt',
+    'get_authenticated_user',  # NEW: Primary auth dependency
+    'lookup_tenant_for_user',  # NEW: Tenant lookup
+    'clear_tenant_cache',      # NEW: Cache management
     'inject_yacht_context',
     'validate_agent_token',
     'require_role',

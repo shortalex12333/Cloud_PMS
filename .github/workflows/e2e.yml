@@ -1,0 +1,177 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run with debug logging'
+        required: false
+        default: false
+
+env:
+  CI: true
+  HEADLESS: true
+
+jobs:
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify environment
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+          TEST_USER_TENANT_KEY: ${{ secrets.TEST_USER_TENANT_KEY }}
+        run: |
+          chmod +x ./scripts/e2e/verify_env.sh
+          ./scripts/e2e/verify_env.sh
+
+      - name: Run contract tests
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+          TEST_USER_TENANT_KEY: ${{ secrets.TEST_USER_TENANT_KEY }}
+        run: npx playwright test --project=contracts
+
+      - name: Run E2E tests
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+          TEST_USER_TENANT_KEY: ${{ secrets.TEST_USER_TENANT_KEY }}
+          TEST_WORK_ORDER_ID: ${{ secrets.TEST_WORK_ORDER_ID }}
+          TEST_EQUIPMENT_ID: ${{ secrets.TEST_EQUIPMENT_ID }}
+        run: npx playwright test --project=e2e-chromium
+
+      - name: Verify artifacts exist
+        if: always()
+        run: |
+          echo "=== Artifacts Summary ==="
+          if [ -d "test-results/artifacts" ]; then
+            find test-results/artifacts -type f -name "*.json" | wc -l
+            echo "JSON evidence files captured"
+            find test-results/artifacts -type f -name "*.json" | head -20
+          else
+            echo "No artifacts directory found"
+            exit 1
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: test-results/report/
+          retention-days: 30
+
+  # Build job to ensure frontend compiles
+  build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: cd apps/web && npm ci
+
+      - name: TypeScript check
+        run: cd apps/web && npm run typecheck
+
+      - name: ESLint
+        run: cd apps/web && npm run lint
+
+      - name: Build
+        run: cd apps/web && npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_API_URL: https://placeholder.api.com
+
+  # Summary job
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [e2e, build]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          echo "=== Test Summary ==="
+          echo "E2E Tests: ${{ needs.e2e.result }}"
+          echo "Build: ${{ needs.build.result }}"
+
+          if [ "${{ needs.e2e.result }}" != "success" ] || [ "${{ needs.build.result }}" != "success" ]; then
+            echo ""
+            echo "FAILED: One or more checks failed"
+            echo "DO NOT declare this as complete"
+            exit 1
+          fi
+
+          echo ""
+          echo "ALL CHECKS PASSED"
+          echo "You may proceed with deployment"

@@ -49,6 +49,7 @@ logs/
 .env.*
 .env.local
 .env.vercel
+.env.e2e.local
 
 # OS
 .DS_Store
@@ -69,6 +70,11 @@ _archive/
 pipeline_test_results_*.json
 *_test_results.json
 *_test_queries.jsonl
+
+# Playwright E2E test artifacts
+test-results/
+playwright-report/
+.auth-state.json
 
 # Temp metrics
 *_before_changes.json

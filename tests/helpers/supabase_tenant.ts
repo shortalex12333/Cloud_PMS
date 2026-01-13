@@ -1,0 +1,261 @@
+/**
+ * Tenant Supabase Client for Test Verification
+ *
+ * Uses service role key to bypass RLS for verification queries
+ * ONLY use for test assertions, not for simulating user actions
+ */
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+let tenantClient: SupabaseClient | null = null;
+
+/**
+ * Get Tenant Supabase client with service role
+ */
+export function getTenantClient(): SupabaseClient {
+  if (tenantClient) {
+    return tenantClient;
+  }
+
+  const url = process.env.TENANT_SUPABASE_URL;
+  const key = process.env.TENANT_SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      'TENANT_SUPABASE_URL and TENANT_SUPABASE_SERVICE_ROLE_KEY must be set'
+    );
+  }
+
+  tenantClient = createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return tenantClient;
+}
+
+/**
+ * Get work order by ID
+ */
+export async function getWorkOrder(workOrderId: string): Promise<any> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_work_orders')
+    .select('*')
+    .eq('id', workOrderId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get work order: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get equipment by ID
+ */
+export async function getEquipment(equipmentId: string): Promise<any> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_equipment')
+    .select('*')
+    .eq('id', equipmentId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get equipment: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get fault by ID
+ */
+export async function getFault(faultId: string): Promise<any> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_faults')
+    .select('*')
+    .eq('id', faultId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get fault: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get parts inventory item
+ */
+export async function getPartInventory(partId: string): Promise<any> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('parts_inventory')
+    .select('*')
+    .eq('id', partId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to get part inventory: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get latest audit log entry for entity
+ */
+export async function getLatestAuditLog(
+  entityId: string,
+  entityType?: string
+): Promise<any> {
+  const client = getTenantClient();
+
+  let query = client
+    .from('audit_log')
+    .select('*')
+    .eq('entity_id', entityId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (entityType) {
+    query = query.eq('entity_type', entityType);
+  }
+
+  const { data, error } = await query.single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to get audit log: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get handover items for yacht
+ */
+export async function getHandoverItems(
+  yachtId: string,
+  limit: number = 10
+): Promise<any[]> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('handover_items')
+    .select('*')
+    .eq('yacht_id', yachtId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to get handover items: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Count document chunks for yacht
+ */
+export async function countDocumentChunks(yachtId: string): Promise<number> {
+  const client = getTenantClient();
+
+  const { count, error } = await client
+    .from('document_chunks')
+    .select('*', { count: 'exact', head: true })
+    .eq('yacht_id', yachtId);
+
+  if (error) {
+    throw new Error(`Failed to count document chunks: ${error.message}`);
+  }
+
+  return count || 0;
+}
+
+/**
+ * Create test work order (for testing purposes)
+ */
+export async function createTestWorkOrder(
+  yachtId: string,
+  title: string = 'Test Work Order'
+): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_work_orders')
+    .insert({
+      yacht_id: yachtId,
+      title,
+      number: `WO-TEST-${Date.now()}`,
+      status: 'open',
+      work_type: 'corrective',
+      priority: 'normal',
+      created_by: 'test-system',
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create test work order: ${error.message}`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Create test equipment (for testing purposes)
+ */
+export async function createTestEquipment(
+  yachtId: string,
+  name: string = 'Test Equipment'
+): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_equipment')
+    .insert({
+      yacht_id: yachtId,
+      name,
+      status: 'operational',
+      criticality: 'low',
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create test equipment: ${error.message}`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Cleanup test data
+ */
+export async function cleanupTestData(yachtId: string): Promise<void> {
+  const client = getTenantClient();
+
+  // Delete test work orders
+  await client
+    .from('pms_work_orders')
+    .delete()
+    .eq('yacht_id', yachtId)
+    .like('number', 'WO-TEST-%');
+
+  // Delete test equipment
+  await client
+    .from('pms_equipment')
+    .delete()
+    .eq('yacht_id', yachtId)
+    .like('name', 'Test Equipment%');
+}
