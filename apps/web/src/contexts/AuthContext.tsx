@@ -89,7 +89,7 @@ async function validateAndBuildUser(session: Session | null): Promise<CelesteUse
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RPC timeout after 3s')), 3000);
+      setTimeout(() => reject(new Error('RPC timeout after 10s')), 10000);
     });
 
     const result = await Promise.race([rpcPromise, timeoutPromise]);
@@ -174,11 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let maxTimeout: NodeJS.Timeout;
     let subscription: { unsubscribe: () => void } | null = null;
 
-    // ABSOLUTE maximum timeout - clear loading after 3s no matter what
+    // ABSOLUTE maximum timeout - clear loading after 12s no matter what
     maxTimeout = setTimeout(() => {
-      console.warn('[AuthContext] FORCE clearing loading state after 3s');
+      console.warn('[AuthContext] FORCE clearing loading state after 12s');
       setLoading(false);
-    }, 3000);
+    }, 12000);
 
     const initAuth = async () => {
       try {
