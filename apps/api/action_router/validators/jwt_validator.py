@@ -33,11 +33,12 @@ def validate_jwt(token: str) -> ValidationResult:
 
     try:
         # Get JWT secret from environment
-        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        # Use MASTER_SUPABASE_JWT_SECRET (preferred) with legacy fallback
+        jwt_secret = os.getenv("MASTER_SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
         if not jwt_secret:
             return ValidationResult.failure(
                 error_code="server_config_error",
-                message="JWT secret not configured",
+                message="JWT secret not configured (MASTER_SUPABASE_JWT_SECRET)",
             )
 
         # Decode and verify JWT

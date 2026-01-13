@@ -144,17 +144,30 @@ export class ApiClient {
 
   /**
    * Execute microaction
+   *
+   * API expects: { action, context, payload }
+   * - action: The action ID (e.g., "add_equipment")
+   * - context: Includes yacht_id, user context
+   * - payload: The action-specific parameters
    */
   async executeAction(
     actionName: string,
-    context: Record<string, any>
+    payload: Record<string, any>,
+    context?: Record<string, any>
   ): Promise<ApiResponse<{
     success: boolean;
+    status?: string;
+    result?: any;
     [key: string]: any;
   }>> {
+    const yacht_id = payload.yacht_id || process.env.TEST_USER_YACHT_ID;
     return this.post('/v1/actions/execute', {
-      action_name: actionName,
-      context,
+      action: actionName,
+      context: {
+        yacht_id,
+        ...context,
+      },
+      payload,
     });
   }
 
