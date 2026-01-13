@@ -25,11 +25,15 @@ export interface UserBootstrap {
 
 /**
  * Login to Supabase and get access token
+ *
+ * Architecture: Frontend/tests authenticate against MASTER Supabase.
+ * Backend verifies JWT using MASTER_SUPABASE_JWT_SECRET, then routes to tenant.
  */
 export async function login(
   email?: string,
   password?: string
 ): Promise<AuthTokens> {
+  // Use MASTER Supabase for authentication (Architecture Option 1)
   const supabaseUrl = process.env.MASTER_SUPABASE_URL;
   const supabaseKey = process.env.MASTER_SUPABASE_ANON_KEY;
 

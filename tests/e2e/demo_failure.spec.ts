@@ -13,8 +13,8 @@ import {
 } from '../helpers/artifacts';
 
 test.describe('Demo Failure (skipped by default)', () => {
-  // This test is skipped unless explicitly run
-  test.skip(({ project }) => project.name !== 'demo-failure');
+  // This test is skipped unless explicitly run with: npm run test:demo-failure
+  test.skip();
 
   test('Intentional failure with artifact capture', async ({ page }) => {
     const testName = 'demo/intentional_failure';
