@@ -418,20 +418,60 @@ async def execute_action(
     try:
         # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
         if action == "create_work_order_from_fault":
-            if not wo_handlers:
-                raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-            result = await wo_handlers.create_work_order_from_fault_execute(
-                fault_id=payload["fault_id"],
-                title=payload["title"],
-                equipment_id=payload.get("equipment_id"),
-                location=payload.get("location"),
-                description=payload.get("description"),
-                priority=payload["priority"],
-                signature=payload["signature"],
-                yacht_id=yacht_id,
-                user_id=user_id,
-                override_duplicate=payload.get("override_duplicate", False)
-            )
+            # Use tenant client directly (wo_handlers may not be available)
+            from datetime import datetime, timezone
+            import uuid
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_id = payload.get("fault_id")
+
+            # Get fault info
+            fault = db_client.table("pms_faults").select("*").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not fault.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            # Check for duplicate WO
+            existing = db_client.table("pms_work_orders").select("id").eq("fault_id", fault_id).execute()
+            if existing.data and not payload.get("override_duplicate", False):
+                result = {
+                    "status": "error",
+                    "error_code": "DUPLICATE_WO_EXISTS",
+                    "message": f"Work order already exists for this fault"
+                }
+            else:
+                # Create work order
+                wo_data = {
+                    "yacht_id": yacht_id,
+                    "fault_id": fault_id,
+                    "equipment_id": payload.get("equipment_id") or fault.data.get("equipment_id"),
+                    "title": payload.get("title", fault.data.get("title", "Work order from fault")),
+                    "description": payload.get("description", fault.data.get("description", "")),
+                    "priority": payload.get("priority", "normal"),
+                    "status": "pending",
+                    "created_by": user_id,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                wo_result = db_client.table("pms_work_orders").insert(wo_data).execute()
+                if wo_result.data:
+                    wo_id = wo_result.data[0]["id"]
+                    # Link WO to fault
+                    db_client.table("pms_faults").update({
+                        "work_order_id": wo_id,
+                        "updated_by": user_id,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+
+                    result = {
+                        "status": "success",
+                        "work_order_id": wo_id,
+                        "message": "Work order created from fault"
+                    }
+                else:
+                    result = {
+                        "status": "error",
+                        "error_code": "INSERT_FAILED",
+                        "message": "Failed to create work order"
+                    }
 
         elif action == "add_note_to_work_order":
             if not wo_handlers:
@@ -522,18 +562,33 @@ async def execute_action(
         # pms_faults schema: id, yacht_id, equipment_id, fault_code, title, description,
         #                    severity, detected_at, resolved_at, resolved_by, work_order_id,
         #                    metadata, status, created_at, updated_by, updated_at
+        # Valid severity values: low, medium, high, critical
+        # Valid status values: open, investigating, resolved, closed
         elif action == "report_fault":
+            # Validate required fields
+            if not payload.get("equipment_id"):
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+            description = payload.get("description", "")
+            if len(description) < 10:
+                raise HTTPException(status_code=400, detail="description must be at least 10 characters")
+
             # Insert fault record
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
+
+            # Ensure severity is valid (default to medium)
+            severity = payload.get("severity", "medium")
+            if severity not in ("low", "medium", "high", "critical"):
+                severity = "medium"
+
             fault_data = {
                 "yacht_id": yacht_id,
                 "equipment_id": payload.get("equipment_id"),
                 "fault_code": payload.get("fault_code", "MANUAL"),
-                "title": payload.get("title", payload.get("description", "Reported fault")[:100]),
-                "description": payload.get("description", ""),
-                "severity": payload.get("severity", "medium"),
+                "title": payload.get("title", description[:100] if description else "Reported fault"),
+                "description": description,
+                "severity": severity,
                 "status": "open",
                 "detected_at": datetime.now(timezone.utc).isoformat(),
                 "metadata": {"reported_by": user_id}
@@ -557,11 +612,24 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            fault_result = db_client.table("pms_faults").update({
+
+            # Get current fault to check severity
+            fault_id = payload.get("fault_id")
+            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            # Build update data - fix invalid severity if needed
+            update_data = {
                 "status": "investigating",
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault acknowledged"}
             else:
@@ -572,13 +640,25 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            fault_result = db_client.table("pms_faults").update({
+            fault_id = payload.get("fault_id")
+
+            # Check severity and fix if invalid
+            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            update_data = {
                 "status": "resolved",
                 "resolved_by": user_id,
                 "resolved_at": datetime.now(timezone.utc).isoformat(),
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault resolved"}
             else:
@@ -589,17 +669,28 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            # Get current fault to preserve metadata
-            current = db_client.table("pms_faults").select("metadata").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
-            metadata = current.data.get("metadata", {}) if current.data else {}
+            fault_id = payload.get("fault_id")
+
+            # Get current fault to preserve metadata and check severity
+            current = db_client.table("pms_faults").select("metadata, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            metadata = current.data.get("metadata", {}) or {}
             metadata["diagnosis"] = payload.get("diagnosis", "")
             metadata["diagnosed_by"] = user_id
             metadata["diagnosed_at"] = datetime.now(timezone.utc).isoformat()
-            fault_result = db_client.table("pms_faults").update({
+
+            update_data = {
                 "metadata": metadata,
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Diagnosis added"}
             else:
@@ -610,11 +701,23 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            fault_result = db_client.table("pms_faults").update({
+            fault_id = payload.get("fault_id")
+
+            # Check severity and fix if invalid
+            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            update_data = {
                 "status": "closed",
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault closed"}
             else:
@@ -625,11 +728,28 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
+            fault_id = payload.get("fault_id")
+
+            # Check current severity
+            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
             update_data = {"updated_by": user_id, "updated_at": datetime.now(timezone.utc).isoformat()}
-            if payload.get("title"): update_data["title"] = payload["title"]
-            if payload.get("description"): update_data["description"] = payload["description"]
-            if payload.get("severity"): update_data["severity"] = payload["severity"]
-            fault_result = db_client.table("pms_faults").update(update_data).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            if payload.get("title"):
+                update_data["title"] = payload["title"]
+            if payload.get("description"):
+                update_data["description"] = payload["description"]
+
+            # Handle severity - validate and fix if needed
+            if payload.get("severity") and payload["severity"] in ("low", "medium", "high", "critical"):
+                update_data["severity"] = payload["severity"]
+            else:
+                current_severity = current.data.get("severity", "")
+                if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                    update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault updated"}
             else:
@@ -640,13 +760,25 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            fault_result = db_client.table("pms_faults").update({
+            fault_id = payload.get("fault_id")
+
+            # Check severity and fix if invalid
+            current = db_client.table("pms_faults").select("severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            update_data = {
                 "status": "open",
                 "resolved_at": None,
                 "resolved_by": None,
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault reopened"}
             else:
@@ -657,17 +789,29 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            current = db_client.table("pms_faults").select("metadata").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
-            metadata = current.data.get("metadata", {}) if current.data else {}
+            fault_id = payload.get("fault_id")
+
+            # Get current fault
+            current = db_client.table("pms_faults").select("metadata, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            metadata = current.data.get("metadata", {}) or {}
             metadata["false_alarm"] = True
             metadata["false_alarm_by"] = user_id
             metadata["false_alarm_at"] = datetime.now(timezone.utc).isoformat()
-            fault_result = db_client.table("pms_faults").update({
+
+            update_data = {
                 "status": "closed",
                 "metadata": metadata,
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Fault marked as false alarm"}
             else:
@@ -678,16 +822,28 @@ async def execute_action(
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
-            current = db_client.table("pms_faults").select("metadata").eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).single().execute()
-            metadata = current.data.get("metadata", {}) if current.data else {}
+            fault_id = payload.get("fault_id")
+
+            # Get current fault
+            current = db_client.table("pms_faults").select("metadata, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            metadata = current.data.get("metadata", {}) or {}
             photos = metadata.get("photos", [])
             photos.append({"url": payload.get("photo_url"), "added_by": user_id, "added_at": datetime.now(timezone.utc).isoformat()})
             metadata["photos"] = photos
-            fault_result = db_client.table("pms_faults").update({
+
+            update_data = {
                 "metadata": metadata,
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", payload.get("fault_id")).eq("yacht_id", yacht_id).execute()
+            }
+            current_severity = current.data.get("severity", "")
+            if not current_severity or current_severity not in ("low", "medium", "high", "critical"):
+                update_data["severity"] = "medium"
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
                 result = {"status": "success", "message": "Photo added to fault"}
             else:
