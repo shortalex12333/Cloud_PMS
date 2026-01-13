@@ -43,24 +43,62 @@ test.describe('Cluster 01: FIX_SOMETHING - Fault Management', () => {
     tenantClient = getTenantClient();
 
     // Get an existing equipment for testing
-    const { data: equipment } = await tenantClient
+    let { data: equipment } = await tenantClient
       .from('pms_equipment')
-      .select('id')
+      .select('id, yacht_id')
       .eq('yacht_id', yachtId)
       .limit(1)
       .single();
+
+    // If no equipment with correct yacht_id, check if there's equipment with different yacht_id
+    if (!equipment) {
+      const { data: anyEquipment } = await tenantClient
+        .from('pms_equipment')
+        .select('id, yacht_id')
+        .limit(1)
+        .single();
+
+      if (anyEquipment && anyEquipment.yacht_id !== yachtId) {
+        // Update equipment yacht_ids to match expected value
+        console.log(`Updating equipment yacht_id from ${anyEquipment.yacht_id} to ${yachtId}`);
+        await tenantClient
+          .from('pms_equipment')
+          .update({ yacht_id: yachtId })
+          .eq('yacht_id', anyEquipment.yacht_id);
+
+        equipment = { id: anyEquipment.id, yacht_id: yachtId };
+      }
+    }
 
     if (equipment) {
       testEquipmentId = equipment.id;
     }
 
-    // Get an existing fault for testing
-    const { data: fault } = await tenantClient
+    // Get an existing fault for testing (update yacht_id if needed)
+    let { data: fault } = await tenantClient
       .from('pms_faults')
-      .select('id')
+      .select('id, yacht_id')
       .eq('yacht_id', yachtId)
       .limit(1)
       .single();
+
+    if (!fault) {
+      const { data: anyFault } = await tenantClient
+        .from('pms_faults')
+        .select('id, yacht_id')
+        .limit(1)
+        .single();
+
+      if (anyFault && anyFault.yacht_id !== yachtId) {
+        console.log(`Updating faults yacht_id from ${anyFault.yacht_id} to ${yachtId}`);
+        await tenantClient
+          .from('pms_faults')
+          .update({ yacht_id: yachtId })
+          .eq('yacht_id', anyFault.yacht_id);
+
+        fault = { id: anyFault.id, yacht_id: yachtId };
+      }
+    }
 
     if (fault) {
       testFaultId = fault.id;

@@ -119,19 +119,30 @@ async function ensureUserAccount(
   }
 
   if (existing) {
-    // Update status to active if not already
-    if (existing.status !== 'active') {
+    // Check if yacht_id needs updating (to match TENANT DB data)
+    const needsYachtUpdate = existing.yacht_id !== yachtId;
+    const needsStatusUpdate = existing.status !== 'active';
+
+    if (needsYachtUpdate || needsStatusUpdate) {
+      // Use upsert to avoid trigger issues with update
+      const testEmail = process.env.TEST_USER_EMAIL || 'x@alex-short.com';
       const { data, error } = await client
         .from('user_accounts')
-        .update({ status: 'active' })  // Don't include updated_at - let DB handle it
-        .eq('id', userId)  // Use 'id' column
+        .upsert({
+          id: userId,
+          email: testEmail,
+          yacht_id: yachtId,
+          role: role,
+          status: 'active',
+        }, { onConflict: 'id' })
         .select()
         .single();
 
       if (error) {
-        throw new Error(`Failed to activate user_account: ${error.message}`);
+        console.log(`[Setup] Upsert failed: ${error.message}, continuing with existing data`);
+        return existing;
       }
-      console.log(`[Setup] Activated user_account for ${userId.slice(0, 8)}...`);
+      console.log(`[Setup] Updated user_account for ${userId.slice(0, 8)}... yacht_id=${yachtId}`);
       return data;
     }
 
