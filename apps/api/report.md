@@ -1,26 +1,22 @@
 # P6 E2E Test Report
 
-**Generated:** 2026-01-12T22:44:12.157710+00:00
-**Total Scenarios:** 220
+**Generated:** 2026-01-13T00:05:41.962363+00:00
+**Total Scenarios:** 60
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total | 220 |
-| Passed | 121 |
-| Failed | 99 |
-| **Pass Rate** | **55.0%** |
+| Total | 60 |
+| Passed | 39 |
+| Failed | 21 |
+| **Pass Rate** | **65.0%** |
 
 ## Results by Category
 
 | Category | Total | Passed | Failed | Rate |
 |----------|-------|--------|--------|------|
-| abuse | 40 | 33 | 7 | 82.5% |
-| edge | 60 | 44 | 16 | 73.3% |
 | normal | 60 | 39 | 21 | 65.0% |
-| regression | 30 | 0 | 30 | 0.0% |
-| security | 30 | 5 | 25 | 16.7% |
 
 ## Failures
 
@@ -47,26 +43,16 @@
 | N056 | normal | gated | no_match | No handler mapped for action:  |
 | N058 | normal | gated | no_match | No handler mapped for action:  |
 | N060 | normal | success | no_match | No handler mapped for action:  |
-| E007 | edge | error | skipped | No query provided |
-| E011 | edge | success | no_match | No handler mapped for action:  |
-| E021 | edge | success | no_match | No handler mapped for action:  |
-| E026 | edge | acknowledgment | no_match | No handler mapped for action:  |
-| E027 | edge | confirmation_context_required | no_match | No handler mapped for action:  |
-| E028 | edge | rejection_context_required | no_match | No handler mapped for action:  |
-| E029 | edge | cancel_context_required | no_match | No handler mapped for action:  |
-| E033 | edge | success | no_match | No handler mapped for action:  |
-| E035 | edge | success | no_match | No handler mapped for action:  |
-| ... | ... | ... | ... | (69 more) |
 
 ## Latency Distribution
 
-- Average: 54ms
-- Min: 0ms
-- Max: 596ms
+- Average: 55ms
+- Min: 30ms
+- Max: 371ms
 
 ## Acceptance Criteria
 
-- [FAIL] NORMAL+EDGE pass rate >= 95%: 69.2%
+- [FAIL] NORMAL+EDGE pass rate >= 95%: 65.0%
 - [PASS] Silent failures = 0: 0
 - [PASS] Unsafe mutations = 0: 0
 
