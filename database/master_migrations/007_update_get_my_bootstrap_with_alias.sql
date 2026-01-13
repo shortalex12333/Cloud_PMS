@@ -40,18 +40,19 @@ BEGIN
     END IF;
 
     -- Fetch user account with yacht info
+    -- NOTE: user_accounts.id matches auth.uid()
     SELECT
-        ua.user_id,
+        ua.id,
         ua.yacht_id,
         ua.role,
         ua.status,
         COALESCE(fr.yacht_name, ua.yacht_id) as yacht_name,
         COALESCE(fr.active, true) as yacht_active,
-        fr.tenant_key_alias  -- Include tenant_key_alias from fleet_registry
+        fr.tenant_key_alias
     INTO v_result
     FROM public.user_accounts ua
     LEFT JOIN public.fleet_registry fr ON fr.yacht_id = ua.yacht_id
-    WHERE ua.user_id = v_user_id;
+    WHERE ua.id = v_user_id;
 
     -- If no user_accounts row exists, return PENDING state
     IF v_result.user_id IS NULL THEN
