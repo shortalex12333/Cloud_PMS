@@ -896,16 +896,14 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             work_order_id = payload.get("work_order_id")
 
+            # Note: completed_by has FK to non-existent users table, skip it
             update_data = {
                 "status": "completed",
                 "completed_at": datetime.now(timezone.utc).isoformat(),
-                "completed_by": user_id,
-                "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
             if payload.get("completion_notes"):
                 update_data["completion_notes"] = payload["completion_notes"]
-            # Note: actual_hours column doesn't exist, store in metadata if needed
 
             wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
             if wo_result.data:
