@@ -1165,65 +1165,16 @@ async def execute_action(
                 detail=f"Action '{action}' BLOCKED: pms_certificates/pms_service_contracts tables do not exist."
             )
 
-        # ===== EQUIPMENT STATUS ACTION (Cluster 03) =====
+        # ===== EQUIPMENT STATUS ACTION (Cluster 03 - BLOCKED: column not exists) =====
         elif action == "update_equipment_status":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            equipment_id = payload.get("equipment_id")
-            new_status = payload.get("new_status")
-            reason = payload.get("reason", "")
-
-            if not equipment_id:
-                raise HTTPException(status_code=400, detail="equipment_id is required")
-            if not new_status:
-                raise HTTPException(status_code=400, detail="new_status is required")
-
-            # Valid status values: operational, degraded, failed, maintenance, decommissioned
-            valid_statuses = ("operational", "degraded", "failed", "maintenance", "decommissioned")
-            if new_status not in valid_statuses:
-                raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
-
-            # Check if equipment exists
-            check = db_client.table("pms_equipment").select("id, status").eq("id", equipment_id).eq("yacht_id", yacht_id).single().execute()
-            if not check.data:
-                raise HTTPException(status_code=404, detail="Equipment not found")
-
-            old_status = check.data.get("status")
-
-            # Update equipment status
-            update_data = {
-                "status": new_status,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            update_result = db_client.table("pms_equipment").update(update_data).eq("id", equipment_id).eq("yacht_id", yacht_id).execute()
-
-            # Create audit log entry
-            audit_entry = {
-                "yacht_id": yacht_id,
-                "action": "update_equipment_status",
-                "entity_type": "equipment",
-                "entity_id": equipment_id,
-                "user_id": user_id,
-                "old_values": {"status": old_status},
-                "new_values": {"status": new_status, "reason": reason},
-                "signature": {"user_id": user_id, "timestamp": datetime.now(timezone.utc).isoformat()}
-            }
-            try:
-                db_client.table("audit_log").insert(audit_entry).execute()
-            except Exception as audit_err:
-                logger.warning(f"Failed to create audit log: {audit_err}")
-
-            result = {
-                "status": "success",
-                "success": True,
-                "equipment_id": equipment_id,
-                "old_status": old_status,
-                "new_status": new_status,
-                "message": f"Equipment status updated from {old_status} to {new_status}"
-            }
-
+            # BLOCKED: pms_equipment table does not have a 'status' column in tenant DB
+            # The equipment table from 02_p0_actions_tables_REVISED.sql has status, but
+            # the actual pms_equipment table in production does not.
+            raise HTTPException(
+                status_code=501,
+                detail="Action 'update_equipment_status' BLOCKED: pms_equipment table does not have a 'status' column. "
+                       "Run migration to add status column: ALTER TABLE pms_equipment ADD COLUMN status TEXT DEFAULT 'operational';"
+            )
         # ===== DOCUMENT DELETE ACTION (Cluster 07) =====
         elif action == "delete_document":
             tenant_alias = user_context.get("tenant_key_alias", "")
