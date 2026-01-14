@@ -107,17 +107,31 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
+    # EQUIPMENT ACTIONS
+    # ========================================================================
+    "update_equipment_status": ActionDefinition(
+        action_id="update_equipment_status",
+        label="Update Equipment Status",
+        endpoint="/v1/equipment/update-status",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "equipment_id", "attention_flag"],
+        schema_file=None,
+    ),
+
+    # ========================================================================
     # HANDOVER ACTIONS
     # ========================================================================
     "add_to_handover": ActionDefinition(
         action_id="add_to_handover",
         label="Add to Handover",
         endpoint="/v1/handover/add-item",
-        handler_type=HandlerType.N8N,
+        handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "equipment_id", "summary_text"],
-        schema_file="add_to_handover.json",
+        required_fields=["yacht_id", "summary_text"],
+        schema_file=None,
     ),
 
     "add_document_to_handover": ActionDefinition(
