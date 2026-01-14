@@ -119,29 +119,61 @@ async function ensureUserAccount(
   }
 
   if (existing) {
-    // Check if yacht_id needs updating (to match TENANT DB data)
+    // Check if yacht_id needs updating (to match env var doc)
     const needsYachtUpdate = existing.yacht_id !== yachtId;
     const needsStatusUpdate = existing.status !== 'active';
 
     if (needsYachtUpdate || needsStatusUpdate) {
-      // Use upsert to avoid trigger issues with update
-      const testEmail = process.env.TEST_USER_EMAIL || 'x@alex-short.com';
+      console.log(`[Setup] Updating user_accounts: yacht_id ${existing.yacht_id} -> ${yachtId}`);
+
+      // Try simple update with only the fields that need changing
+      const updateFields: any = {};
+      if (needsYachtUpdate) updateFields.yacht_id = yachtId;
+      if (needsStatusUpdate) updateFields.status = 'active';
+
       const { data, error } = await client
         .from('user_accounts')
-        .upsert({
-          id: userId,
-          email: testEmail,
-          yacht_id: yachtId,
-          role: role,
-          status: 'active',
-        }, { onConflict: 'id' })
+        .update(updateFields)
+        .eq('id', userId)
         .select()
         .single();
 
       if (error) {
-        console.log(`[Setup] Upsert failed: ${error.message}, continuing with existing data`);
-        return existing;
+        console.log(`[Setup] Update failed: ${error.message}`);
+        // Try delete and insert as last resort
+        console.log(`[Setup] Trying delete + insert...`);
+        const { error: delError } = await client
+          .from('user_accounts')
+          .delete()
+          .eq('id', userId);
+
+        if (delError) {
+          console.log(`[Setup] Delete failed: ${delError.message}, continuing with existing data`);
+          return existing;
+        }
+
+        // Insert fresh row
+        const testEmail = process.env.TEST_USER_EMAIL || 'x@alex-short.com';
+        const { data: newData, error: insertError } = await client
+          .from('user_accounts')
+          .insert({
+            id: userId,
+            email: testEmail,
+            yacht_id: yachtId,
+            role: role,
+            status: 'active',
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.log(`[Setup] Insert after delete failed: ${insertError.message}`);
+          return existing;
+        }
+        console.log(`[Setup] Recreated user_accounts for ${userId.slice(0, 8)}... yacht_id=${yachtId}`);
+        return newData;
       }
+
       console.log(`[Setup] Updated user_account for ${userId.slice(0, 8)}... yacht_id=${yachtId}`);
       return data;
     }
