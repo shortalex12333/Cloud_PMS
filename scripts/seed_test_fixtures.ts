@@ -54,6 +54,55 @@ interface SeedResult {
   errors: string[];
 }
 
+/**
+ * Ensure test user exists in local users table
+ * Required for FK constraints on pms_handover.added_by, pms_work_order_notes.created_by, etc.
+ */
+async function ensureTestUser(): Promise<SeedResult> {
+  const result: SeedResult = { entity: 'users', created: 0, failed: 0, ids: [], errors: [] };
+
+  // Check if user already exists
+  const { data: existing } = await tenant
+    .from('users')
+    .select('id')
+    .eq('id', TEST_USER_ID)
+    .single();
+
+  if (existing) {
+    console.log(`  Test user already exists: ${TEST_USER_ID}`);
+    result.ids.push(TEST_USER_ID);
+    return result;
+  }
+
+  // Insert test user
+  const { data, error } = await tenant
+    .from('users')
+    .insert({
+      id: TEST_USER_ID,
+      yacht_id: TEST_YACHT_ID,
+      email: process.env.TEST_USER_EMAIL || 'test@celesteos.com',
+      name: 'Test User',
+      role: 'chief_engineer',
+      auth_provider: 'password',
+      is_active: true,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    // May fail if users table doesn't exist or has different schema
+    result.failed++;
+    result.errors.push(`Users: ${error.message}`);
+    console.log(`  Warning: Could not create test user: ${error.message}`);
+  } else {
+    result.created++;
+    result.ids.push(data.id);
+    console.log(`  Created test user: ${data.id}`);
+  }
+
+  return result;
+}
+
 async function seedEquipment(): Promise<SeedResult> {
   const result: SeedResult = { entity: 'equipment', created: 0, failed: 0, ids: [], errors: [] };
 
@@ -313,6 +362,10 @@ async function main() {
   console.log('');
 
   const results: SeedResult[] = [];
+
+  // First ensure test user exists (required for FK constraints)
+  console.log('0. Ensuring test user exists in users table...');
+  results.push(await ensureTestUser());
 
   // Seed in order (respecting FK dependencies)
   console.log('1. Seeding Equipment (15 variations)...');

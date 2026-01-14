@@ -510,20 +510,42 @@ async def execute_action(
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
 
-            note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
-            if note_result.data:
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "note_id": note_result.data[0]["id"],
-                    "message": "Note added to work order successfully"
-                }
-            else:
-                result = {
-                    "status": "error",
-                    "error_code": "INSERT_FAILED",
-                    "message": "Failed to add note to work order"
-                }
+            try:
+                note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
+                if note_result.data:
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "note_id": note_result.data[0]["id"],
+                        "message": "Note added to work order successfully"
+                    }
+                else:
+                    result = {
+                        "status": "error",
+                        "error_code": "INSERT_FAILED",
+                        "message": "Failed to add note to work order"
+                    }
+            except Exception as db_err:
+                error_str = str(db_err)
+                if "23503" in error_str or "foreign key" in error_str.lower():
+                    # FK constraint - user doesn't exist in local users table
+                    # Try without created_by
+                    note_data.pop("created_by", None)
+                    try:
+                        note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
+                        if note_result.data:
+                            result = {
+                                "status": "success",
+                                "success": True,
+                                "note_id": note_result.data[0]["id"],
+                                "message": "Note added (without user attribution)"
+                            }
+                        else:
+                            raise HTTPException(status_code=500, detail=f"Insert failed: {error_str}")
+                    except Exception:
+                        raise HTTPException(status_code=500, detail=f"FK constraint: User {user_id} not in users table. {error_str}")
+                else:
+                    raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
 
         elif action == "add_part_to_work_order":
             if not wo_handlers:
