@@ -283,11 +283,12 @@ test.describe('Microactions Smoke Tests (5+ actions with DB verification)', () =
     }
 
     // Execute action
-    const handoverTitle = `Test handover item ${Date.now()}`;
+    // Note: title is converted to summary_text in the backend
+    const handoverSummary = `Test handover item ${Date.now()}`;
     const response = await apiClient.executeAction('add_to_handover', {
-      title: handoverTitle,
+      title: handoverSummary,
       description: 'Test handover description for e2e test',
-      category: 'equipment',
+      category: 'watch',  // Valid: urgent, in_progress, completed, watch, fyi
       priority: 'normal',
     });
 
@@ -308,14 +309,14 @@ test.describe('Microactions Smoke Tests (5+ actions with DB verification)', () =
       handoverAfter = [];
     }
 
-    // Find the new item
-    const newItem = handoverAfter.find((item) => item.title === handoverTitle);
+    // Find the new item by summary_text (backend stores title as summary_text)
+    const newItem = handoverAfter.find((item) => item.summary_text === handoverSummary);
 
     // Check audit log for new item
     let auditLog: any;
     if (newItem?.id) {
       try {
-        auditLog = await getLatestAuditLog(newItem.id, 'handover_item');
+        auditLog = await getLatestAuditLog(newItem.id, 'handover');
         saveAuditLog(testName, auditLog);
       } catch (error: any) {
         saveArtifact('audit_log_error.json', { error: error.message }, testName);

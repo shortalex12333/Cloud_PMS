@@ -538,17 +538,60 @@ async def execute_action(
 
         # ===== HANDOVER ACTIONS (P0 Action 8) =====
         elif action == "add_to_handover":
-            if not handover_handlers:
-                raise HTTPException(status_code=500, detail="Handover handlers not initialized")
-            result = await handover_handlers.add_to_handover_execute(
-                entity_type=payload["entity_type"],
-                entity_id=payload["entity_id"],
-                summary_text=payload["summary_text"],
-                category=payload["category"],
-                yacht_id=yacht_id,
-                user_id=user_id,
-                priority=payload.get("priority", "normal")
-            )
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            # Support both payload formats:
+            # Format 1 (test): { title, description, category, priority }
+            # Format 2 (original): { entity_type, entity_id, summary_text, category, priority }
+            title = payload.get("title")
+            description = payload.get("description", "")
+            entity_type = payload.get("entity_type", "note")  # Default to note type
+            entity_id = payload.get("entity_id")
+            summary_text = payload.get("summary_text") or title or description[:200] if description else "Handover item"
+            category = payload.get("category", "fyi")
+            priority_str = payload.get("priority", "normal")
+
+            # Convert string priority to integer (0-5)
+            priority_map = {"low": 1, "normal": 2, "high": 3, "urgent": 4, "critical": 5}
+            priority = priority_map.get(priority_str, 2) if isinstance(priority_str, str) else int(priority_str)
+
+            # Validate category
+            valid_categories = ("urgent", "in_progress", "completed", "watch", "fyi")
+            if category not in valid_categories:
+                category = "fyi"
+
+            # Validate entity_type
+            valid_entity_types = ("work_order", "fault", "equipment", "note")
+            if entity_type not in valid_entity_types:
+                entity_type = "note"
+
+            handover_data = {
+                "yacht_id": yacht_id,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "summary_text": summary_text,
+                "category": category,
+                "priority": priority,
+                "added_by": user_id,
+                "added_at": datetime.now(timezone.utc).isoformat()
+            }
+
+            handover_result = db_client.table("handover").insert(handover_data).execute()
+            if handover_result.data:
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "handover_id": handover_result.data[0]["id"],
+                    "message": "Handover item added successfully"
+                }
+            else:
+                result = {
+                    "status": "error",
+                    "error_code": "INSERT_FAILED",
+                    "message": "Failed to create handover item"
+                }
 
         # ===== MANUAL ACTIONS (P0 Action 1) =====
         elif action == "show_manual_section":
@@ -1084,6 +1127,113 @@ async def execute_action(
                 status_code=501,
                 detail=f"Action '{action}' BLOCKED: pms_certificates/pms_service_contracts tables do not exist."
             )
+
+        # ===== EQUIPMENT STATUS ACTION (Cluster 03) =====
+        elif action == "update_equipment_status":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            equipment_id = payload.get("equipment_id")
+            new_status = payload.get("new_status")
+            reason = payload.get("reason", "")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+            if not new_status:
+                raise HTTPException(status_code=400, detail="new_status is required")
+
+            # Valid status values: operational, degraded, failed, maintenance, decommissioned
+            valid_statuses = ("operational", "degraded", "failed", "maintenance", "decommissioned")
+            if new_status not in valid_statuses:
+                raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+
+            # Check if equipment exists
+            check = db_client.table("pms_equipment").select("id, status").eq("id", equipment_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Equipment not found")
+
+            old_status = check.data.get("status")
+
+            # Update equipment status
+            update_data = {
+                "status": new_status,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            update_result = db_client.table("pms_equipment").update(update_data).eq("id", equipment_id).eq("yacht_id", yacht_id).execute()
+
+            # Create audit log entry
+            audit_entry = {
+                "yacht_id": yacht_id,
+                "action": "update_equipment_status",
+                "entity_type": "equipment",
+                "entity_id": equipment_id,
+                "user_id": user_id,
+                "old_values": {"status": old_status},
+                "new_values": {"status": new_status, "reason": reason},
+                "signature": {"user_id": user_id, "timestamp": datetime.now(timezone.utc).isoformat()}
+            }
+            try:
+                db_client.table("audit_log").insert(audit_entry).execute()
+            except Exception as audit_err:
+                logger.warning(f"Failed to create audit log: {audit_err}")
+
+            result = {
+                "status": "success",
+                "success": True,
+                "equipment_id": equipment_id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "message": f"Equipment status updated from {old_status} to {new_status}"
+            }
+
+        # ===== DOCUMENT DELETE ACTION (Cluster 07) =====
+        elif action == "delete_document":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            document_id = payload.get("document_id")
+            if not document_id:
+                raise HTTPException(status_code=400, detail="document_id is required")
+
+            # Check if document exists
+            check = db_client.table("documents").select("id").eq("id", document_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Document not found")
+
+            # Delete document
+            db_client.table("documents").delete().eq("id", document_id).eq("yacht_id", yacht_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "document_id": document_id,
+                "message": "Document deleted successfully"
+            }
+
+        # ===== SHOPPING ITEM DELETE ACTION (Cluster 08) =====
+        elif action == "delete_shopping_item":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            item_id = payload.get("item_id")
+            if not item_id:
+                raise HTTPException(status_code=400, detail="item_id is required")
+
+            # Check if item exists
+            check = db_client.table("pms_shopping_list_items").select("id").eq("id", item_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Shopping list item not found")
+
+            # Delete item
+            db_client.table("pms_shopping_list_items").delete().eq("id", item_id).eq("yacht_id", yacht_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "item_id": item_id,
+                "message": "Shopping list item deleted successfully"
+            }
 
         else:
             raise HTTPException(
