@@ -71,10 +71,11 @@ export function saveRequest(
 export function saveResponse(
   testName: string,
   response: {
-    status: number;
+    status?: number;
     statusText?: string;
     headers?: Record<string, string>;
     body?: any;
+    [key: string]: any; // Allow additional properties for test metadata
   }
 ): string {
   return saveArtifact(
@@ -155,6 +156,7 @@ export function createEvidenceBundle(
     auditLog?: any;
     consoleLogs?: any[];
     assertions?: Array<{ name: string; passed: boolean; message?: string }>;
+    [key: string]: any; // Allow additional evidence properties
   }
 ): string {
   const bundle = {

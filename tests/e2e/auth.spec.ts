@@ -39,7 +39,7 @@ test.describe('Authentication Flow', () => {
 
     // Check for CSP errors in console
     const cspErrors = consoleLogs.filter(
-      (log) =>
+      (log: { type: string; text: string }) =>
         log.type === 'error' &&
         (log.text.includes('Content Security Policy') ||
           log.text.includes('Refused to connect'))

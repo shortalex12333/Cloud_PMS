@@ -421,7 +421,7 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       dbAfter: woParts,
       assertions: [
         { name: 'HTTP status is 200', passed: response.status === 200 },
-        { name: 'Part linked to WO', passed: woParts && woParts.length > 0 },
+        { name: 'Part linked to WO', passed: !!(woParts && woParts.length > 0) },
       ],
     });
 
