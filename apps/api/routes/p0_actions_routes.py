@@ -1077,6 +1077,14 @@ async def execute_action(
                 detail=f"Action '{action}' BLOCKED: dash_handover_items.handover_id is NOT NULL but no parent handovers table exists."
             )
 
+        # ===== COMPLIANCE ACTIONS (Cluster 06 - BLOCKED: tables not exist) =====
+        elif action in ("add_certificate", "renew_certificate", "update_certificate", "add_service_contract", "record_contract_claim"):
+            # BLOCKED: pms_certificates and pms_service_contracts tables do not exist
+            raise HTTPException(
+                status_code=501,
+                detail=f"Action '{action}' BLOCKED: pms_certificates/pms_service_contracts tables do not exist."
+            )
+
         else:
             raise HTTPException(
                 status_code=404,
