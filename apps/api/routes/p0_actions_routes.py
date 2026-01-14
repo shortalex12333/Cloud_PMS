@@ -451,7 +451,7 @@ async def execute_action(
                     "title": payload.get("title", fault.data.get("title", "Work order from fault")),
                     "description": payload.get("description", fault.data.get("description", "")),
                     "priority": priority,
-                    "status": "pending",
+                    "status": "planned",
                     "created_by": user_id,
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
