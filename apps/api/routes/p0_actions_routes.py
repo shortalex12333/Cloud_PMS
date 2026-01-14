@@ -510,7 +510,7 @@ async def execute_action(
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
 
-            note_result = db_client.table("work_order_notes").insert(note_data).execute()
+            note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
             if note_result.data:
                 result = {
                     "status": "success",
@@ -615,20 +615,42 @@ async def execute_action(
                 "added_at": datetime.now(timezone.utc).isoformat()
             }
 
-            handover_result = db_client.table("pms_handover").insert(handover_data).execute()
-            if handover_result.data:
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "handover_id": handover_result.data[0]["id"],
-                    "message": "Handover item added successfully"
-                }
-            else:
-                result = {
-                    "status": "error",
-                    "error_code": "INSERT_FAILED",
-                    "message": "Failed to create handover item"
-                }
+            try:
+                handover_result = db_client.table("pms_handover").insert(handover_data).execute()
+                if handover_result.data:
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "handover_id": handover_result.data[0]["id"],
+                        "message": "Handover item added successfully"
+                    }
+                else:
+                    result = {
+                        "status": "error",
+                        "error_code": "INSERT_FAILED",
+                        "message": "Failed to create handover item"
+                    }
+            except Exception as db_err:
+                error_str = str(db_err)
+                if "23503" in error_str or "foreign key" in error_str.lower():
+                    # FK constraint - user doesn't exist in local users table
+                    # Try without added_by (if schema allows NULL)
+                    handover_data.pop("added_by", None)
+                    try:
+                        handover_result = db_client.table("pms_handover").insert(handover_data).execute()
+                        if handover_result.data:
+                            result = {
+                                "status": "success",
+                                "success": True,
+                                "handover_id": handover_result.data[0]["id"],
+                                "message": "Handover item added (without user attribution)"
+                            }
+                        else:
+                            raise HTTPException(status_code=500, detail=f"Insert failed: {error_str}")
+                    except Exception:
+                        raise HTTPException(status_code=500, detail=f"FK constraint: User {user_id} not found in users table. {error_str}")
+                else:
+                    raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
 
         # ===== MANUAL ACTIONS (P0 Action 1) =====
         elif action == "show_manual_section":
