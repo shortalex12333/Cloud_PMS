@@ -578,7 +578,7 @@ async def execute_action(
                 "added_at": datetime.now(timezone.utc).isoformat()
             }
 
-            handover_result = db_client.table("handover").insert(handover_data).execute()
+            handover_result = db_client.table("pms_handover").insert(handover_data).execute()
             if handover_result.data:
                 result = {
                     "status": "success",
