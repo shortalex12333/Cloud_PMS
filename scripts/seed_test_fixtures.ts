@@ -55,49 +55,63 @@ interface SeedResult {
 }
 
 /**
- * Ensure test user exists in local users table
+ * Ensure test user exists in auth_users_profiles table
  * Required for FK constraints on pms_handover.added_by, pms_work_order_notes.created_by, etc.
  */
 async function ensureTestUser(): Promise<SeedResult> {
-  const result: SeedResult = { entity: 'users', created: 0, failed: 0, ids: [], errors: [] };
+  const result: SeedResult = { entity: 'auth_users_profiles', created: 0, failed: 0, ids: [], errors: [] };
+  const testEmail = process.env.TEST_USER_EMAIL || 'test@celesteos.com';
 
-  // Check if user already exists
-  const { data: existing } = await tenant
-    .from('users')
-    .select('id')
+  // Check if user already exists in auth_users_profiles by ID
+  const { data: existingById } = await tenant
+    .from('auth_users_profiles')
+    .select('id, email')
     .eq('id', TEST_USER_ID)
     .single();
 
-  if (existing) {
-    console.log(`  Test user already exists: ${TEST_USER_ID}`);
+  if (existingById) {
+    console.log(`  Test user already exists in auth_users_profiles: ${TEST_USER_ID}`);
     result.ids.push(TEST_USER_ID);
     return result;
   }
 
-  // Insert test user
+  // Check if user exists with our test email but different ID
+  const { data: existingByEmail } = await tenant
+    .from('auth_users_profiles')
+    .select('id, email')
+    .eq('email', testEmail)
+    .single();
+
+  if (existingByEmail && existingByEmail.id !== TEST_USER_ID) {
+    // Delete the conflicting record so we can insert with correct ID
+    console.log(`  Removing conflicting user profile with email ${testEmail} (id: ${existingByEmail.id})`);
+    await tenant
+      .from('auth_users_profiles')
+      .delete()
+      .eq('id', existingByEmail.id);
+  }
+
+  // Insert test user into auth_users_profiles
   const { data, error } = await tenant
-    .from('users')
+    .from('auth_users_profiles')
     .insert({
       id: TEST_USER_ID,
       yacht_id: TEST_YACHT_ID,
-      email: process.env.TEST_USER_EMAIL || 'test@celesteos.com',
+      email: testEmail,
       name: 'Test User',
-      role: 'chief_engineer',
-      auth_provider: 'password',
       is_active: true,
     })
     .select('id')
     .single();
 
   if (error) {
-    // May fail if users table doesn't exist or has different schema
     result.failed++;
-    result.errors.push(`Users: ${error.message}`);
-    console.log(`  Warning: Could not create test user: ${error.message}`);
+    result.errors.push(`auth_users_profiles: ${error.message}`);
+    console.log(`  Warning: Could not create test user profile: ${error.message}`);
   } else {
     result.created++;
     result.ids.push(data.id);
-    console.log(`  Created test user: ${data.id}`);
+    console.log(`  Created test user profile: ${data.id}`);
   }
 
   return result;
