@@ -258,10 +258,13 @@ test.describe('Microactions Smoke Tests (5+ actions with DB verification)', () =
       assertions,
     });
 
-    // Accept 200 (success) or 501 (blocked - pms_equipment has no status column)
-    expect([200, 501]).toContain(response.status);
+    // Expect 200 (success) after migration adds status column
+    // Falls back to 501 if migration not yet applied
     if (response.status === 501) {
-      console.log('Note: update_equipment_status blocked - pms_equipment needs status column migration');
+      console.log('Note: update_equipment_status needs migration 00000000000018');
+      expect([200, 501]).toContain(response.status);
+    } else {
+      expect(response.status).toBe(200);
     }
   });
 
