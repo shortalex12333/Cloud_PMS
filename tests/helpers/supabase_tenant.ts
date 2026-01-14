@@ -143,6 +143,8 @@ export async function getLatestAuditLog(
 
 /**
  * Get handover items for yacht
+ * Table: handover (per 02_p0_actions_tables_REVISED.sql migration)
+ * Columns: id, yacht_id, entity_type, entity_id, summary_text, category, priority, added_by, added_at
  */
 export async function getHandoverItems(
   yachtId: string,
@@ -151,10 +153,10 @@ export async function getHandoverItems(
   const client = getTenantClient();
 
   const { data, error } = await client
-    .from('handover_items')
+    .from('handover')
     .select('*')
     .eq('yacht_id', yachtId)
-    .order('created_at', { ascending: false })
+    .order('added_at', { ascending: false })
     .limit(limit);
 
   if (error) {
@@ -225,7 +227,8 @@ export async function createTestWorkOrder(
 
 /**
  * Create test equipment (for testing purposes)
- * Uses correct column names from actual DB schema (no 'status' column)
+ * Uses pms_equipment table with status column (per DATABASE_SCHEMA_V3_COMPLETE.sql)
+ * Status values: operational, degraded, failed, maintenance, decommissioned
  */
 export async function createTestEquipment(
   yachtId: string,
@@ -242,6 +245,7 @@ export async function createTestEquipment(
       criticality: 'low',
       system_type: 'mechanical',
       attention_flag: false,
+      status: 'operational',  // Explicitly set status for test clarity
     })
     .select('id')
     .single();
