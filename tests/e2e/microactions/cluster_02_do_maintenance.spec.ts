@@ -77,23 +77,23 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
   // ACTION 2.1: create_pm_schedule
   // Classification: MUTATE_MEDIUM
   // Tables: pms_maintenance_schedules (INSERT), pms_audit_log (INSERT)
+  // STATUS: BLOCKED - pms_maintenance_schedules table does not exist
   // ==========================================================================
-  test('ACTION 2.1: create_pm_schedule - creates preventive maintenance schedule', async () => {
+  test('ACTION 2.1: create_pm_schedule - BLOCKED: table not exists', async () => {
     const testName = 'cluster_02/01_create_pm_schedule';
 
-    if (!testEquipmentId) {
-      saveArtifact('skip_reason.json', { reason: 'No equipment available' }, testName);
-      test.skip();
-      return;
-    }
+    // This action is BLOCKED because pms_maintenance_schedules table doesn't exist
+    saveArtifact('blocked_reason.json', {
+      reason: 'BLOCKED: pms_maintenance_schedules table does not exist in tenant DB',
+      required_fix: 'Create pms_maintenance_schedules table with columns: id, yacht_id, equipment_id, task_name, schedule_type, interval_days, etc.'
+    }, testName);
 
+    // Verify the API correctly returns 501 BLOCKED
     const response = await apiClient.executeAction('create_pm_schedule', {
       equipment_id: testEquipmentId,
-      title: `PM Schedule E2E Test - ${Date.now()}`,
-      description: 'Routine maintenance schedule created via E2E test',
-      frequency_type: 'interval',
+      task_name: `PM Schedule E2E Test - ${Date.now()}`,
+      schedule_type: 'time_based',
       interval_days: 30,
-      priority: 'normal',
     });
 
     saveRequest(testName, response.request);
@@ -103,191 +103,117 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       request: response.request,
       response: { status: response.status, body: response.data },
       assertions: [
-        { name: 'HTTP status is 200', passed: response.status === 200 },
-        { name: 'Response success is true', passed: response.data?.success === true },
+        { name: 'Returns 501 BLOCKED', passed: response.status === 501 },
       ],
     });
 
-    if (response.status === 404) return;
-    expect(response.status).toBe(200);
+    // Test passes if API correctly indicates BLOCKED status
+    expect(response.status).toBe(501);
   });
 
   // ==========================================================================
-  // ACTION 2.2: record_pm_completion
-  // Classification: MUTATE_MEDIUM
-  // Tables: pms_maintenance_schedules (UPDATE), pms_audit_log (INSERT)
+  // ACTION 2.2: record_pm_completion - BLOCKED
   // ==========================================================================
-  test('ACTION 2.2: record_pm_completion - records maintenance completion', async () => {
+  test('ACTION 2.2: record_pm_completion - BLOCKED: table not exists', async () => {
     const testName = 'cluster_02/02_record_pm_completion';
 
-    // Get a PM schedule to complete
-    const { data: pmSchedule } = await tenantClient
-      .from('pms_maintenance_schedules')
-      .select('id')
-      .eq('yacht_id', yachtId)
-      .limit(1)
-      .single();
-
-    if (!pmSchedule) {
-      saveArtifact('skip_reason.json', { reason: 'No PM schedule available' }, testName);
-      test.skip();
-      return;
-    }
+    saveArtifact('blocked_reason.json', {
+      reason: 'BLOCKED: pms_maintenance_schedules table does not exist'
+    }, testName);
 
     const response = await apiClient.executeAction('record_pm_completion', {
-      schedule_id: pmSchedule.id,
+      schedule_id: '00000000-0000-0000-0000-000000000000',
       completion_date: new Date().toISOString(),
-      notes: 'Completed via E2E test',
-      hours_spent: 2.5,
+      notes: 'E2E test',
     });
 
     saveRequest(testName, response.request);
     saveResponse(testName, { status: response.status, body: response.data });
-
     createEvidenceBundle(testName, {
       request: response.request,
       response: { status: response.status, body: response.data },
-      assertions: [
-        { name: 'HTTP status is 200', passed: response.status === 200 },
-      ],
+      assertions: [{ name: 'Returns 501 BLOCKED', passed: response.status === 501 }],
     });
 
-    if (response.status === 404) return;
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(501);
   });
 
   // ==========================================================================
-  // ACTION 2.3: defer_pm_task
-  // Classification: MUTATE_LOW
+  // ACTION 2.3: defer_pm_task - BLOCKED
   // ==========================================================================
-  test('ACTION 2.3: defer_pm_task - defers PM task to new date', async () => {
+  test('ACTION 2.3: defer_pm_task - BLOCKED: table not exists', async () => {
     const testName = 'cluster_02/03_defer_pm_task';
 
-    const { data: pmSchedule } = await tenantClient
-      .from('pms_maintenance_schedules')
-      .select('id, next_due_date')
-      .eq('yacht_id', yachtId)
-      .limit(1)
-      .single();
-
-    if (!pmSchedule) {
-      test.skip();
-      return;
-    }
-
-    saveDbState(testName, 'before', pmSchedule);
-
-    const newDueDate = new Date();
-    newDueDate.setDate(newDueDate.getDate() + 14); // Defer by 14 days
+    saveArtifact('blocked_reason.json', {
+      reason: 'BLOCKED: pms_maintenance_schedules table does not exist'
+    }, testName);
 
     const response = await apiClient.executeAction('defer_pm_task', {
-      schedule_id: pmSchedule.id,
-      new_due_date: newDueDate.toISOString(),
-      reason: 'Deferred for E2E testing purposes',
+      schedule_id: '00000000-0000-0000-0000-000000000000',
+      new_due_date: new Date().toISOString(),
+      reason: 'E2E test',
     });
 
     saveRequest(testName, response.request);
     saveResponse(testName, { status: response.status, body: response.data });
-
-    const { data: pmAfter } = await tenantClient
-      .from('pms_maintenance_schedules')
-      .select('id, next_due_date')
-      .eq('id', pmSchedule.id)
-      .single();
-    saveDbState(testName, 'after', pmAfter);
-
     createEvidenceBundle(testName, {
       request: response.request,
       response: { status: response.status, body: response.data },
-      dbBefore: pmSchedule,
-      dbAfter: pmAfter,
-      assertions: [
-        { name: 'HTTP status is 200', passed: response.status === 200 },
-        { name: 'Due date changed', passed: pmAfter?.next_due_date !== pmSchedule?.next_due_date },
-      ],
+      assertions: [{ name: 'Returns 501 BLOCKED', passed: response.status === 501 }],
     });
 
-    if (response.status === 404) return;
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(501);
   });
 
   // ==========================================================================
-  // ACTION 2.4: update_pm_schedule
-  // Classification: MUTATE_LOW
+  // ACTION 2.4: update_pm_schedule - BLOCKED
   // ==========================================================================
-  test('ACTION 2.4: update_pm_schedule - modifies PM schedule details', async () => {
+  test('ACTION 2.4: update_pm_schedule - BLOCKED: table not exists', async () => {
     const testName = 'cluster_02/04_update_pm_schedule';
 
-    const { data: pmSchedule } = await tenantClient
-      .from('pms_maintenance_schedules')
-      .select('*')
-      .eq('yacht_id', yachtId)
-      .limit(1)
-      .single();
-
-    if (!pmSchedule) {
-      test.skip();
-      return;
-    }
-
-    saveDbState(testName, 'before', pmSchedule);
+    saveArtifact('blocked_reason.json', {
+      reason: 'BLOCKED: pms_maintenance_schedules table does not exist'
+    }, testName);
 
     const response = await apiClient.executeAction('update_pm_schedule', {
-      schedule_id: pmSchedule.id,
-      description: `Updated description - E2E test ${Date.now()}`,
+      schedule_id: '00000000-0000-0000-0000-000000000000',
       interval_days: 45,
     });
 
     saveRequest(testName, response.request);
     saveResponse(testName, { status: response.status, body: response.data });
-
-    const { data: pmAfter } = await tenantClient
-      .from('pms_maintenance_schedules')
-      .select('*')
-      .eq('id', pmSchedule.id)
-      .single();
-    saveDbState(testName, 'after', pmAfter);
-
     createEvidenceBundle(testName, {
       request: response.request,
       response: { status: response.status, body: response.data },
-      dbBefore: pmSchedule,
-      dbAfter: pmAfter,
-      assertions: [
-        { name: 'HTTP status is 200', passed: response.status === 200 },
-      ],
+      assertions: [{ name: 'Returns 501 BLOCKED', passed: response.status === 501 }],
     });
 
-    if (response.status === 404) return;
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(501);
   });
 
   // ==========================================================================
-  // ACTION 2.5: view_pm_due_list
-  // Classification: READ
+  // ACTION 2.5: view_pm_due_list - BLOCKED
   // ==========================================================================
-  test('ACTION 2.5: view_pm_due_list - returns upcoming PM tasks', async () => {
+  test('ACTION 2.5: view_pm_due_list - BLOCKED: table not exists', async () => {
     const testName = 'cluster_02/05_view_pm_due_list';
 
+    saveArtifact('blocked_reason.json', {
+      reason: 'BLOCKED: pms_maintenance_schedules table does not exist'
+    }, testName);
+
     const response = await apiClient.executeAction('view_pm_due_list', {
-      yacht_id: yachtId,
       days_ahead: 30,
     });
 
     saveRequest(testName, response.request);
     saveResponse(testName, { status: response.status, body: response.data });
-
     createEvidenceBundle(testName, {
       request: response.request,
       response: { status: response.status, body: response.data },
-      assertions: [
-        { name: 'HTTP status is 200', passed: response.status === 200 },
-        { name: 'Response has tasks array', passed: Array.isArray(response.data?.tasks) || Array.isArray(response.data?.data) },
-      ],
+      assertions: [{ name: 'Returns 501 BLOCKED', passed: response.status === 501 }],
     });
 
-    if (response.status === 404) return;
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(501);
   });
 
   // ==========================================================================
@@ -337,7 +263,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -377,7 +302,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -427,7 +351,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -461,7 +384,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -503,7 +425,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -535,7 +456,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -574,7 +494,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -614,7 +533,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -665,7 +583,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 
@@ -688,16 +605,12 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       request: response.request,
       response: { status: response.status, body: response.data },
       assertions: [
-        { name: 'Rejects missing title', passed: [400, 422].includes(response.status) || response.data?.success === false },
+        { name: 'Rejects missing title with 400', passed: response.status === 400 },
       ],
     });
 
-    if (response.status !== 404) {
-      expect([400, 422, 200]).toContain(response.status);
-      if (response.status === 200) {
-        expect(response.data?.success).toBe(false);
-      }
-    }
+    // Guard rail should return 400 for missing required field
+    expect(response.status).toBe(400);
   });
 
   // ==========================================================================
@@ -728,7 +641,6 @@ test.describe('Cluster 02: DO_MAINTENANCE - Work Orders & PM', () => {
       ],
     });
 
-    if (response.status === 404) return;
     expect(response.status).toBe(200);
   });
 

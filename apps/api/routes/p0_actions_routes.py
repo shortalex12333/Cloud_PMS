@@ -847,6 +847,226 @@ async def execute_action(
             else:
                 result = {"status": "error", "error_code": "NOT_FOUND", "message": "Fault not found"}
 
+        # ===== WORK ORDER ACTIONS (Cluster 02) =====
+        elif action in ("update_work_order", "update_wo"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+
+            # Build update data
+            update_data = {"updated_by": user_id, "updated_at": datetime.now(timezone.utc).isoformat()}
+            if payload.get("description"):
+                update_data["description"] = payload["description"]
+            if payload.get("priority"):
+                # Map priority values
+                priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
+                raw_priority = payload["priority"]
+                update_data["priority"] = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
+            if payload.get("title"):
+                update_data["title"] = payload["title"]
+
+            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+            if wo_result.data:
+                result = {"status": "success", "message": "Work order updated"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update work order"}
+
+        elif action in ("assign_work_order", "assign_wo"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            assigned_to = payload.get("assigned_to")
+
+            update_data = {
+                "assigned_to": assigned_to,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+            if wo_result.data:
+                result = {"status": "success", "message": "Work order assigned"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to assign work order"}
+
+        elif action in ("close_work_order", "complete_work_order"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+
+            update_data = {
+                "status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "completed_by": user_id,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            if payload.get("completion_notes"):
+                update_data["completion_notes"] = payload["completion_notes"]
+            if payload.get("actual_hours"):
+                update_data["actual_hours"] = payload["actual_hours"]
+
+            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+            if wo_result.data:
+                result = {"status": "success", "message": "Work order closed"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close work order"}
+
+        elif action in ("add_wo_hours", "log_work_hours"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            hours = payload.get("hours", 0)
+
+            # Add to work order notes as hours entry
+            note_data = {
+                "work_order_id": work_order_id,
+                "yacht_id": yacht_id,
+                "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
+                "note_type": "hours",
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
+            if note_result.data:
+                result = {"status": "success", "message": f"Logged {hours} hours"}
+            else:
+                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to log hours"}
+
+        elif action in ("add_wo_part", "add_part_to_wo"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            part_id = payload.get("part_id")
+            quantity = payload.get("quantity", 1)
+
+            part_data = {
+                "work_order_id": work_order_id,
+                "part_id": part_id,
+                "quantity": quantity,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            part_result = db_client.table("pms_work_order_parts").insert(part_data).execute()
+            if part_result.data:
+                result = {"status": "success", "message": "Part added to work order"}
+            else:
+                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add part"}
+
+        elif action in ("add_wo_note", "add_note_to_wo"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            note_text = payload.get("note_text")
+
+            note_data = {
+                "work_order_id": work_order_id,
+                "yacht_id": yacht_id,
+                "note_text": note_text,
+                "note_type": payload.get("note_type", "general"),
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
+            if note_result.data:
+                result = {"status": "success", "message": "Note added to work order"}
+            else:
+                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to add note"}
+
+        elif action in ("start_work_order", "begin_wo"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+
+            update_data = {
+                "status": "in_progress",
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+            if wo_result.data:
+                result = {"status": "success", "message": "Work order started"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to start work order"}
+
+        elif action in ("cancel_work_order", "cancel_wo"):
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+
+            update_data = {
+                "status": "cancelled",
+                "cancellation_reason": payload.get("reason", "Cancelled"),
+                "cancelled_by": user_id,
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+            if wo_result.data:
+                result = {"status": "success", "message": "Work order cancelled"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to cancel work order"}
+
+        elif action in ("create_work_order", "create_wo"):
+            from datetime import datetime, timezone
+            import uuid
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            # Validate required fields
+            title = payload.get("title")
+            if not title:
+                raise HTTPException(status_code=400, detail="title is required")
+
+            # Map priority
+            raw_priority = payload.get("priority", "routine")
+            priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
+            priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
+
+            wo_data = {
+                "yacht_id": yacht_id,
+                "equipment_id": payload.get("equipment_id"),
+                "title": title,
+                "description": payload.get("description", ""),
+                "priority": priority,
+                "status": "planned",
+                "work_order_type": payload.get("work_order_type", "corrective"),
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            wo_result = db_client.table("pms_work_orders").insert(wo_data).execute()
+            if wo_result.data:
+                result = {"status": "success", "work_order_id": wo_result.data[0]["id"], "message": "Work order created"}
+            else:
+                result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create work order"}
+
+        elif action in ("view_work_order_detail", "get_work_order"):
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+
+            wo_result = db_client.table("pms_work_orders").select("*, pms_equipment(*)").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+            if wo_result.data:
+                result = {"status": "success", "work_order": wo_result.data}
+            else:
+                result = {"status": "error", "error_code": "NOT_FOUND", "message": "Work order not found"}
+
+        # ===== PM SCHEDULE ACTIONS (Cluster 02 - BLOCKED: table not exists) =====
+        elif action in ("create_pm_schedule", "record_pm_completion", "defer_pm_task", "update_pm_schedule", "view_pm_due_list"):
+            # BLOCKED: pms_maintenance_schedules table does not exist in tenant DB
+            raise HTTPException(
+                status_code=501,
+                detail=f"Action '{action}' BLOCKED: pms_maintenance_schedules table does not exist. Create table first."
+            )
+
         else:
             raise HTTPException(
                 status_code=404,
