@@ -1069,6 +1069,14 @@ async def execute_action(
                 detail=f"Action '{action}' BLOCKED: pms_maintenance_schedules table does not exist. Create table first."
             )
 
+        # ===== HANDOVER ACTIONS (Cluster 05 - BLOCKED: handover_id NOT NULL) =====
+        elif action in ("create_handover", "acknowledge_handover", "update_handover", "delete_handover", "filter_handover"):
+            # BLOCKED: dash_handover_items requires handover_id NOT NULL but no parent handovers table exists
+            raise HTTPException(
+                status_code=501,
+                detail=f"Action '{action}' BLOCKED: dash_handover_items.handover_id is NOT NULL but no parent handovers table exists."
+            )
+
         else:
             raise HTTPException(
                 status_code=404,
