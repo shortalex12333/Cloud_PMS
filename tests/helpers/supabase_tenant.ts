@@ -184,6 +184,7 @@ export async function countDocumentChunks(yachtId: string): Promise<number> {
 
 /**
  * Create test work order (for testing purposes)
+ * Uses correct column names and enum values from actual DB schema
  */
 export async function createTestWorkOrder(
   yachtId: string,
@@ -191,16 +192,26 @@ export async function createTestWorkOrder(
 ): Promise<string> {
   const client = getTenantClient();
 
+  // Get a valid created_by from existing work orders
+  const { data: existingWo } = await client
+    .from('pms_work_orders')
+    .select('created_by')
+    .not('created_by', 'is', null)
+    .limit(1);
+
+  const validCreatedBy = existingWo?.[0]?.created_by || null;
+
   const { data, error } = await client
     .from('pms_work_orders')
     .insert({
       yacht_id: yachtId,
       title,
-      number: `WO-TEST-${Date.now()}`,
-      status: 'open',
-      work_type: 'corrective',
-      priority: 'normal',
-      created_by: 'test-system',
+      wo_number: `WO-TEST-${Date.now()}`,
+      status: 'planned', // Valid enum: planned, completed, cancelled
+      type: 'scheduled', // Valid enum
+      work_order_type: 'planned', // Valid enum
+      priority: 'routine', // Valid enum: routine, critical
+      created_by: validCreatedBy,
     })
     .select('id')
     .single();
@@ -214,6 +225,7 @@ export async function createTestWorkOrder(
 
 /**
  * Create test equipment (for testing purposes)
+ * Uses correct column names from actual DB schema (no 'status' column)
  */
 export async function createTestEquipment(
   yachtId: string,
@@ -226,8 +238,10 @@ export async function createTestEquipment(
     .insert({
       yacht_id: yachtId,
       name,
-      status: 'operational',
+      code: `TEST-EQ-${Date.now()}`,
       criticality: 'low',
+      system_type: 'mechanical',
+      attention_flag: false,
     })
     .select('id')
     .single();
