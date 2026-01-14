@@ -440,13 +440,17 @@ async def execute_action(
                 }
             else:
                 # Create work order
+                # Map priority: "normal" -> "routine" for enum compatibility
+                raw_priority = payload.get("priority", "routine")
+                priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
+                priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
                 wo_data = {
                     "yacht_id": yacht_id,
                     "fault_id": fault_id,
                     "equipment_id": payload.get("equipment_id") or fault.data.get("equipment_id"),
                     "title": payload.get("title", fault.data.get("title", "Work order from fault")),
                     "description": payload.get("description", fault.data.get("description", "")),
-                    "priority": payload.get("priority", "normal"),
+                    "priority": priority,
                     "status": "pending",
                     "created_by": user_id,
                     "created_at": datetime.now(timezone.utc).isoformat()

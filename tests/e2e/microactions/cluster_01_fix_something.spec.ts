@@ -102,6 +102,16 @@ test.describe('Cluster 01: FIX_SOMETHING - Fault Management', () => {
 
     if (fault) {
       testFaultId = fault.id;
+      // Clear work_order_id on fault AND unlink any work orders that reference this fault
+      await tenantClient
+        .from('pms_faults')
+        .update({ work_order_id: null, status: 'open' })
+        .eq('id', fault.id);
+      // Also clear fault_id on any work orders that reference this fault
+      await tenantClient
+        .from('pms_work_orders')
+        .update({ fault_id: null })
+        .eq('fault_id', fault.id);
     }
   });
 
