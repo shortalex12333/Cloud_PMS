@@ -943,13 +943,14 @@ async def execute_action(
             part_id = payload.get("part_id")
             quantity = payload.get("quantity", 1)
 
+            # Use upsert to handle duplicate key (work_order_id, part_id)
             part_data = {
                 "work_order_id": work_order_id,
                 "part_id": part_id,
                 "quantity": quantity,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
-            part_result = db_client.table("pms_work_order_parts").insert(part_data).execute()
+            part_result = db_client.table("pms_work_order_parts").upsert(part_data, on_conflict="work_order_id,part_id").execute()
             if part_result.data:
                 result = {"status": "success", "message": "Part added to work order"}
             else:
