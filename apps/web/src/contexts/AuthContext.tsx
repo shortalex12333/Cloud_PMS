@@ -81,85 +81,112 @@ function buildUserFromSession(session: Session): CelesteUser {
 }
 
 /**
- * Fetch bootstrap data from master DB (background, non-blocking)
+ * Fetch bootstrap data from master DB with exponential backoff
  * Returns enriched user with yacht context
+ *
+ * Retry strategy: 2s, 4s, 8s, 16s timeouts (30s total before giving up)
+ * This prevents tab-resume logout on slow connections
  */
 async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
-  try {
-    console.log('[AuthContext] Fetching bootstrap for user:', baseUser.id);
+  const RETRY_TIMEOUTS = [2000, 4000, 8000, 16000]; // Exponential backoff
+  let lastError: Error | null = null;
 
-    // Call get_my_bootstrap RPC with 5s timeout (fast RPC on master DB)
-    const rpcPromise = supabase.rpc('get_my_bootstrap');
+  for (let attempt = 0; attempt < RETRY_TIMEOUTS.length; attempt++) {
+    const timeout = RETRY_TIMEOUTS[attempt];
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Bootstrap timeout after 5s')), 5000);
-    });
+    try {
+      console.log(`[AuthContext] Bootstrap attempt ${attempt + 1}/${RETRY_TIMEOUTS.length} (timeout: ${timeout}ms)`);
 
-    const result = await Promise.race([rpcPromise, timeoutPromise]);
-    const { data, error } = result;
+      const rpcPromise = supabase.rpc('get_my_bootstrap');
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Bootstrap timeout after ${timeout}ms`)), timeout);
+      });
 
-    if (error) {
-      console.error('[AuthContext] Bootstrap RPC error:', error.message);
-      return { ...baseUser, bootstrapStatus: 'error' };
+      const result = await Promise.race([rpcPromise, timeoutPromise]);
+      const { data, error } = result;
+
+      if (error) {
+        console.warn(`[AuthContext] Bootstrap RPC error (attempt ${attempt + 1}):`, error.message);
+        lastError = new Error(error.message);
+        continue; // Retry on RPC error
+      }
+
+      // Success - process the data
+      return processBootstrapData(baseUser, data);
+
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`[AuthContext] Bootstrap attempt ${attempt + 1} failed:`, lastError.message);
+
+      // Don't retry on last attempt
+      if (attempt < RETRY_TIMEOUTS.length - 1) {
+        // Small delay before retry
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
+  }
 
-    if (!data) {
-      console.log('[AuthContext] No bootstrap data, user pending');
-      return { ...baseUser, bootstrapStatus: 'pending', yachtId: null };
-    }
+  // All retries exhausted - return error state but KEEP USER LOGGED IN
+  console.error('[AuthContext] Bootstrap failed after all retries:', lastError?.message);
+  return { ...baseUser, bootstrapStatus: 'error' };
+}
 
-    // Handle different status values
-    const status = data.status?.toUpperCase() || 'PENDING';
+/**
+ * Process bootstrap response data
+ */
+function processBootstrapData(baseUser: CelesteUser, data: any): CelesteUser {
+  if (!data) {
+    console.log('[AuthContext] No bootstrap data, user pending');
+    return { ...baseUser, bootstrapStatus: 'pending', yachtId: null };
+  }
 
-    if (status === 'PENDING_ACTIVATION' || status === 'PENDING') {
-      console.log('[AuthContext] User pending activation');
-      return {
-        ...baseUser,
-        bootstrapStatus: 'pending',
-        yachtId: null,
-        yachtName: null,
-        tenantKeyAlias: null,
-      };
-    }
+  // Handle different status values
+  const status = data.status?.toUpperCase() || 'PENDING';
 
-    if (status === 'YACHT_INACTIVE') {
-      console.log('[AuthContext] Yacht inactive');
-      return {
-        ...baseUser,
-        bootstrapStatus: 'inactive',
-        yachtId: data.yacht_id,
-        yachtName: data.yacht_name,
-        tenantKeyAlias: data.tenant_key_alias || null,
-      };
-    }
-
-    if (status !== 'ACTIVE') {
-      console.log('[AuthContext] Account status:', status);
-      return {
-        ...baseUser,
-        bootstrapStatus: 'pending',
-        yachtId: data.yacht_id,
-        yachtName: data.yacht_name,
-        tenantKeyAlias: data.tenant_key_alias || null,
-      };
-    }
-
-    // Success - user is fully active
-    console.log('[AuthContext] Bootstrap success:', data.yacht_id, data.role, data.tenant_key_alias);
+  if (status === 'PENDING_ACTIVATION' || status === 'PENDING') {
+    console.log('[AuthContext] User pending activation');
     return {
       ...baseUser,
-      role: data.role || baseUser.role,
+      bootstrapStatus: 'pending',
+      yachtId: null,
+      yachtName: null,
+      tenantKeyAlias: null,
+    };
+  }
+
+  if (status === 'YACHT_INACTIVE') {
+    console.log('[AuthContext] Yacht inactive');
+    return {
+      ...baseUser,
+      bootstrapStatus: 'inactive',
       yachtId: data.yacht_id,
       yachtName: data.yacht_name,
       tenantKeyAlias: data.tenant_key_alias || null,
-      bootstrapStatus: 'active',
-      validatedAt: Date.now(),
     };
-
-  } catch (err) {
-    console.error('[AuthContext] Bootstrap error:', err);
-    return { ...baseUser, bootstrapStatus: 'error' };
   }
+
+  if (status !== 'ACTIVE') {
+    console.log('[AuthContext] Account status:', status);
+    return {
+      ...baseUser,
+      bootstrapStatus: 'pending',
+      yachtId: data.yacht_id,
+      yachtName: data.yacht_name,
+      tenantKeyAlias: data.tenant_key_alias || null,
+    };
+  }
+
+  // Success - user is fully active
+  console.log('[AuthContext] Bootstrap success:', data.yacht_id, data.role, data.tenant_key_alias);
+  return {
+    ...baseUser,
+    role: data.role || baseUser.role,
+    yachtId: data.yacht_id,
+    yachtName: data.yacht_name,
+    tenantKeyAlias: data.tenant_key_alias || null,
+    bootstrapStatus: 'active',
+    validatedAt: Date.now(),
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -278,6 +305,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (bootstrapRetryRef.current) clearTimeout(bootstrapRetryRef.current);
     };
   }, [handleSession]);
+
+  /**
+   * Tab visibility handler - re-check session when user returns to tab
+   * This prevents logout after tab-switching on mobile or slow connections
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') {
+        return; // Tab is hidden, no action needed
+      }
+
+      console.log('[AuthContext] Tab became visible, checking session...');
+
+      try {
+        // Quick session check (no RPC, fast)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+        if (!currentSession) {
+          // User is actually logged out - clear state
+          console.log('[AuthContext] No session on tab resume - user logged out');
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+          return;
+        }
+
+        // Session exists - update session state
+        setSession(currentSession);
+
+        // If we have a user but bootstrap failed/errored, retry bootstrap
+        if (user && (user.bootstrapStatus === 'error' || user.bootstrapStatus === 'loading')) {
+          console.log('[AuthContext] Tab resume: retrying bootstrap...');
+          setBootstrapping(true);
+          const enrichedUser = await fetchBootstrap(user);
+          setUser(enrichedUser);
+          setBootstrapping(false);
+        } else if (!user && currentSession) {
+          // Edge case: session exists but no user (shouldn't happen, but handle it)
+          console.log('[AuthContext] Tab resume: session exists but no user, re-initializing...');
+          await handleSession(currentSession);
+        }
+
+      } catch (err) {
+        console.warn('[AuthContext] Tab resume check failed:', err);
+        // Don't logout on error - keep existing state
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, handleSession]);
 
   const login = useCallback(async (email: string, password: string) => {
     setError(null);

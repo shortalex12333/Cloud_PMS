@@ -125,21 +125,40 @@ export function useSituationState(): UseSituationStateReturn {
 
   /**
    * Create a new situation
+   *
+   * Auth requirement: User must have valid session (JWT).
+   * yachtId is optional - may be null during bootstrap, but situation
+   * can still be created for local state management.
    */
   const createSituation = useCallback(async (payload: CreateSituationPayload) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const yachtId = await getYachtId();
 
-      if (!session?.user || !yachtId) {
-        console.warn('[useSituationState] Cannot create situation: no auth');
+      if (!session?.user) {
+        console.warn('[useSituationState] Cannot create situation: no session');
         return;
+      }
+
+      // Try to get yachtId from multiple sources (fallback chain)
+      // 1. getYachtId() helper (deprecated but may have cached value)
+      // 2. User metadata yacht_id
+      // 3. Null (acceptable during bootstrap)
+      let yachtId = await getYachtId();
+      if (!yachtId) {
+        yachtId = session.user.user_metadata?.yacht_id || null;
+      }
+
+      // Log but don't fail if yachtId is missing - bootstrap may still be in progress
+      // Use placeholder that will be updated when bootstrap completes
+      const effectiveYachtId = yachtId || 'bootstrap-pending';
+      if (!yachtId) {
+        console.log('[useSituationState] Creating situation with placeholder yachtId (bootstrap may be in progress)');
       }
 
       const now = Date.now();
       const newSituation: SituationContext = {
         // Identity
-        yacht_id: yachtId,
+        yacht_id: effectiveYachtId,
         user_id: session.user.id,
         role: session.user.user_metadata?.role || 'Engineer',
         device_type: typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop',
