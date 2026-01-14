@@ -26,8 +26,8 @@ test.describe('Cluster 09 & 10: CHECKLISTS', () => {
   let tenantClient: ReturnType<typeof getTenantClient>;
   const yachtId = process.env.TEST_USER_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
 
-  let testChecklistId: string;
-  let testChecklistItemId: string;
+  let testChecklistId: string = '';
+  let testChecklistItemId: string = '';
 
   test.beforeAll(async () => {
     apiClient = new ApiClient();
@@ -113,8 +113,8 @@ test.describe('Cluster 09 & 10: CHECKLISTS', () => {
     const testName = 'cluster_09_10/03_complete_checklist_item';
 
     const response = await apiClient.executeAction('complete_checklist_item', {
-      checklist_id: testChecklistId || 'test-checklist-id',
-      item_id: testChecklistItemId || 'test-item-id',
+      checklist_id: testChecklistId ?? 'test-checklist-id',
+      item_id: testChecklistItemId ?? 'test-item-id',
       completed: true,
       notes: 'Item completed via E2E test',
     });
