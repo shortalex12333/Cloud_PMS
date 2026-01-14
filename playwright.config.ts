@@ -95,17 +95,6 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
     },
-
-    // Demo failing test (skipped by default)
-    {
-      name: 'demo-failure',
-      testDir: './tests/e2e',
-      testMatch: '**/demo_failure.spec.ts',
-      use: {
-        ...devices['Desktop Chrome'],
-        headless: true,
-      },
-    },
   ],
 
   // Global setup and teardown

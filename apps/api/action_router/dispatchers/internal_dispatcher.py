@@ -362,6 +362,117 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+async def delete_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Soft delete a document.
+
+    Required params:
+        - yacht_id: UUID
+        - document_id: UUID
+        - reason: str (optional)
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    # Verify document exists and belongs to yacht
+    doc_result = supabase.table("documents").select(
+        "id, filename, deleted_at"
+    ).eq("id", params["document_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not doc_result.data:
+        raise ValueError(f"Document {params['document_id']} not found or access denied")
+
+    doc = doc_result.data[0]
+
+    if doc.get("deleted_at"):
+        raise ValueError("Document is already deleted")
+
+    # Soft delete by setting deleted_at
+    result = supabase.table("documents").update({
+        "deleted_at": datetime.utcnow().isoformat(),
+        "deleted_by": params["user_id"],
+        "delete_reason": params.get("reason", "Deleted via API"),
+    }).eq("id", params["document_id"]).execute()
+
+    if not result.data:
+        raise Exception("Failed to delete document")
+
+    # Create audit log
+    try:
+        supabase.table("pms_audit_log").insert({
+            "yacht_id": params["yacht_id"],
+            "action": "delete_document",
+            "entity_type": "document",
+            "entity_id": params["document_id"],
+            "user_id": params["user_id"],
+            "old_values": {"deleted_at": None},
+            "new_values": {"deleted_at": result.data[0].get("deleted_at")},
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception:
+        pass
+
+    return {
+        "document_id": params["document_id"],
+        "filename": doc.get("filename"),
+        "deleted_at": result.data[0].get("deleted_at"),
+        "deleted_by": params["user_id"],
+    }
+
+
+async def delete_shopping_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Delete a shopping list item.
+
+    Required params:
+        - yacht_id: UUID
+        - item_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    # Verify item exists and belongs to yacht
+    item_result = supabase.table("pms_shopping_list_items").select(
+        "id, part_name, status"
+    ).eq("id", params["item_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not item_result.data:
+        raise ValueError(f"Shopping item {params['item_id']} not found or access denied")
+
+    item = item_result.data[0]
+
+    # Don't allow deletion of ordered items
+    if item.get("status") in ("ordered", "partially_fulfilled", "installed"):
+        raise ValueError(f"Cannot delete item with status '{item.get('status')}'")
+
+    # Hard delete the item
+    result = supabase.table("pms_shopping_list_items").delete().eq(
+        "id", params["item_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    # Create audit log
+    try:
+        supabase.table("pms_audit_log").insert({
+            "yacht_id": params["yacht_id"],
+            "action": "delete_shopping_item",
+            "entity_type": "shopping_item",
+            "entity_id": params["item_id"],
+            "user_id": params["user_id"],
+            "old_values": {"part_name": item.get("part_name"), "status": item.get("status")},
+            "new_values": None,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception:
+        pass
+
+    return {
+        "item_id": params["item_id"],
+        "part_name": item.get("part_name"),
+        "deleted": True,
+        "deleted_by": params["user_id"],
+    }
+
+
 # ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
@@ -374,6 +485,8 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "edit_handover_section": edit_handover_section,
     "update_equipment_status": update_equipment_status,
     "add_to_handover": add_to_handover,
+    "delete_document": delete_document,
+    "delete_shopping_item": delete_shopping_item,
 }
 
 

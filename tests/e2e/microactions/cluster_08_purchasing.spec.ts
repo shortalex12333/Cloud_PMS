@@ -373,18 +373,31 @@ test.describe('Cluster 08: PURCHASING', () => {
     const testName = 'cluster_08/10_delete_shopping_item';
 
     // Create temp item to delete
-    const { data: tempItem } = await tenantClient
+    if (!testPartId) {
+      saveArtifact('skip_reason.json', { reason: 'No test part ID available' }, testName);
+      test.skip();
+      return;
+    }
+
+    const { data: tempItem, error: insertError } = await tenantClient
       .from('pms_shopping_list_items')
       .insert({
         yacht_id: yachtId,
         part_id: testPartId,
-        quantity: 1,
-        status: 'pending',
+        part_name: 'Test Part for Delete',
+        quantity_requested: 1,
+        unit: 'ea',
+        status: 'candidate',  // Valid enum: candidate, under_review, approved, ordered, partially_fulfilled, installed
+        source_type: 'manual_add',
       })
       .select()
       .single();
 
-    if (!tempItem) {
+    if (!tempItem || insertError) {
+      saveArtifact('skip_reason.json', {
+        reason: 'Could not create temp shopping item',
+        error: insertError?.message
+      }, testName);
       test.skip();
       return;
     }

@@ -203,6 +203,31 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         schema_file="open_document.json",
     ),
 
+    "delete_document": ActionDefinition(
+        action_id="delete_document",
+        label="Delete Document",
+        endpoint="/v1/documents/delete",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=["yacht_id", "document_id"],
+        schema_file=None,
+    ),
+
+    # ========================================================================
+    # INVENTORY/SHOPPING ACTIONS
+    # ========================================================================
+    "delete_shopping_item": ActionDefinition(
+        action_id="delete_shopping_item",
+        label="Delete Shopping Item",
+        endpoint="/v1/shopping/delete-item",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "item_id"],
+        schema_file=None,
+    ),
+
     # ========================================================================
     # INVENTORY ACTIONS
     # ========================================================================

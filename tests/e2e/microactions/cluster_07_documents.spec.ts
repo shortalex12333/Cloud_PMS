@@ -142,19 +142,25 @@ test.describe('Cluster 07: DOCUMENTS', () => {
     const testName = 'cluster_07/03_delete_document';
 
     // Create temp document to delete
-    const { data: tempDoc } = await tenantClient
+    const { data: tempDoc, error: insertError } = await tenantClient
       .from('documents')
       .insert({
         yacht_id: yachtId,
         filename: `temp_doc_for_delete_${Date.now()}.pdf`,
         content_type: 'application/pdf',
-        source: 'test',
+        source: 'internal',  // Valid: oem, internal, regulatory, vendor, crew
+        doc_type: 'report',  // Valid: manual, certificate, report, checklist, guide
+        storage_path: `test/${yachtId}/documents/temp_delete_${Date.now()}.pdf`,
+        size_bytes: 1024,
       })
       .select()
       .single();
 
-    if (!tempDoc) {
-      saveArtifact('skip_reason.json', { reason: 'Could not create temp document' }, testName);
+    if (!tempDoc || insertError) {
+      saveArtifact('skip_reason.json', {
+        reason: 'Could not create temp document',
+        error: insertError?.message,
+      }, testName);
       test.skip();
       return;
     }

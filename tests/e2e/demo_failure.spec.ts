@@ -1,131 +1,114 @@
 /**
- * Demo Failure Test
+ * Evidence Capture Demo Tests
  *
- * This test intentionally fails to demonstrate artifact capture on failure.
- * Skipped by default - run with: npx playwright test --project=demo-failure
+ * These tests demonstrate proper evidence capture for E2E tests.
+ * They run as part of the normal test suite and validate the artifact system.
  */
 
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   saveScreenshot,
   saveArtifact,
   createEvidenceBundle,
 } from '../helpers/artifacts';
 
-test.describe('Demo Failure (skipped by default)', () => {
-  // This test is skipped unless explicitly run with: npm run test:demo-failure
-  test.skip();
-
-  test('Intentional failure with artifact capture', async ({ page }) => {
-    const testName = 'demo/intentional_failure';
+test.describe('Evidence Capture Demo', () => {
+  test('Demo: Captures request/response evidence', async ({ page }) => {
+    const testName = 'demo/request_response';
 
     // Navigate to the app
     await page.goto('/');
-
-    // Take screenshot before failure
-    await saveScreenshot(page, testName, 'before_failure');
-
-    // Save some mock data
-    saveArtifact('request.json', {
-      method: 'GET',
-      url: page.url(),
-      timestamp: new Date().toISOString(),
-    }, testName);
-
-    saveArtifact('response.json', {
-      status: 200,
-      body: { mock: 'This is mock data for demo' },
-    }, testName);
-
-    // Create evidence bundle
-    createEvidenceBundle(testName, {
-      request: { method: 'GET', url: page.url() },
-      response: { status: 200, body: { mock: true } },
-      assertions: [
-        { name: 'This will pass', passed: true },
-        { name: 'This will fail', passed: false, message: 'Intentional failure for demo' },
-      ],
-    });
-
-    // Take screenshot at failure point
-    await saveScreenshot(page, testName, 'at_failure');
-
-    // This assertion intentionally fails
-    expect(
-      false,
-      'This is an intentional failure to demonstrate artifact capture. ' +
-      'Check test-results/artifacts/demo/intentional_failure/ for evidence files.'
-    ).toBe(true);
-  });
-
-  test('Demo: What good evidence looks like', async ({ page }) => {
-    const testName = 'demo/good_evidence';
-
-    // This test passes but shows what complete evidence looks like
-
-    await page.goto('/');
     await saveScreenshot(page, testName, 'page_loaded');
 
-    // Simulate a full evidence capture
-    saveArtifact('request.json', {
+    // Simulate request/response capture
+    const mockRequest = {
       timestamp: new Date().toISOString(),
       method: 'POST',
       url: 'https://pipeline-core.int.celeste7.ai/search',
-      headers: { 'Authorization': 'Bearer xxx...', 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: { query: 'generator maintenance', limit: 5 },
-    }, testName);
+    };
 
-    saveArtifact('response.json', {
+    const mockResponse = {
       timestamp: new Date().toISOString(),
       status: 200,
       body: {
         success: true,
-        results: [
-          { type: 'document', content: 'Generator maintenance procedure...' },
-        ],
+        results: [{ type: 'document', content: 'Generator maintenance...' }],
         total_count: 1,
       },
-    }, testName);
+    };
 
-    saveArtifact('db_before.json', {
-      table: 'pms_work_orders',
-      query: "SELECT * FROM pms_work_orders WHERE id = 'abc123'",
-      result: { id: 'abc123', status: 'open', notes: null },
-    }, testName);
-
-    saveArtifact('db_after.json', {
-      table: 'pms_work_orders',
-      query: "SELECT * FROM pms_work_orders WHERE id = 'abc123'",
-      result: { id: 'abc123', status: 'open', notes: 'Test note added' },
-    }, testName);
-
-    saveArtifact('audit_log.json', {
-      table: 'audit_log',
-      query: "SELECT * FROM audit_log WHERE entity_id = 'abc123' ORDER BY created_at DESC LIMIT 1",
-      result: {
-        id: 'xyz789',
-        action: 'add_note',
-        entity_type: 'work_order',
-        entity_id: 'abc123',
-        created_at: new Date().toISOString(),
-      },
-    }, testName);
+    saveArtifact('request.json', mockRequest, testName);
+    saveArtifact('response.json', mockResponse, testName);
 
     createEvidenceBundle(testName, {
-      request: { method: 'POST', url: '/search' },
-      response: { status: 200, body: { success: true } },
-      dbBefore: { status: 'open', notes: null },
-      dbAfter: { status: 'open', notes: 'Test note added' },
-      auditLog: { action: 'add_note' },
+      request: mockRequest,
+      response: mockResponse,
       assertions: [
-        { name: 'HTTP status 200', passed: true },
-        { name: 'Success is true', passed: true },
-        { name: 'Notes field updated', passed: true },
-        { name: 'Audit log created', passed: true },
+        { name: 'Request captured', passed: true },
+        { name: 'Response captured', passed: true },
       ],
     });
 
-    // This passes
+    // Verify artifacts were created
+    const artifactsDir = path.join(process.cwd(), 'test-results', 'artifacts', testName);
+    expect(fs.existsSync(artifactsDir)).toBe(true);
+    expect(true).toBe(true);
+  });
+
+  test('Demo: Captures DB state evidence', async ({ page }) => {
+    const testName = 'demo/db_state';
+
+    await page.goto('/');
+    await saveScreenshot(page, testName, 'page_loaded');
+
+    // Simulate DB state capture
+    const dbBefore = {
+      table: 'pms_work_orders',
+      query: "SELECT * FROM pms_work_orders WHERE id = 'test123'",
+      result: { id: 'test123', status: 'open', notes: null },
+    };
+
+    const dbAfter = {
+      table: 'pms_work_orders',
+      query: "SELECT * FROM pms_work_orders WHERE id = 'test123'",
+      result: { id: 'test123', status: 'open', notes: 'Test note added' },
+    };
+
+    const auditLog = {
+      table: 'audit_log',
+      query: "SELECT * FROM audit_log WHERE entity_id = 'test123' ORDER BY created_at DESC LIMIT 1",
+      result: {
+        id: 'audit123',
+        action: 'add_note',
+        entity_type: 'work_order',
+        entity_id: 'test123',
+        created_at: new Date().toISOString(),
+      },
+    };
+
+    saveArtifact('db_before.json', dbBefore, testName);
+    saveArtifact('db_after.json', dbAfter, testName);
+    saveArtifact('audit_log.json', auditLog, testName);
+
+    createEvidenceBundle(testName, {
+      dbBefore: dbBefore.result,
+      dbAfter: dbAfter.result,
+      auditLog: auditLog.result,
+      assertions: [
+        { name: 'DB before state captured', passed: true },
+        { name: 'DB after state captured', passed: true },
+        { name: 'Audit log captured', passed: true },
+        { name: 'Notes field was updated', passed: dbAfter.result.notes !== dbBefore.result.notes },
+      ],
+    });
+
+    // Verify artifacts directory exists
+    const artifactsDir = path.join(process.cwd(), 'test-results', 'artifacts', testName);
+    expect(fs.existsSync(artifactsDir)).toBe(true);
     expect(true).toBe(true);
 
     console.log(`
@@ -133,11 +116,9 @@ test.describe('Demo Failure (skipped by default)', () => {
     DEMO: Good Evidence Structure
     ===================================
 
-    Check: test-results/artifacts/demo/good_evidence/
+    Check: test-results/artifacts/${testName}/
 
     Files created:
-    - request.json    : Full HTTP request with headers
-    - response.json   : Full HTTP response with body
     - db_before.json  : Database state before mutation
     - db_after.json   : Database state after mutation
     - audit_log.json  : Audit trail entry
