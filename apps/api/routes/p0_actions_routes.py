@@ -478,15 +478,52 @@ async def execute_action(
                     }
 
         elif action == "add_note_to_work_order":
-            if not wo_handlers:
-                raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-            result = await wo_handlers.add_note_to_work_order_execute(
-                work_order_id=payload["work_order_id"],
-                note_text=payload["note_text"],
-                note_type=payload.get("note_type", "general"),
-                yacht_id=yacht_id,
-                user_id=user_id
-            )
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            work_order_id = payload.get("work_order_id")
+            note_text = payload.get("note_text", "")
+            note_type = payload.get("note_type", "general")
+
+            if not work_order_id:
+                raise HTTPException(status_code=400, detail="work_order_id is required")
+            if not note_text or len(note_text) < 1:
+                raise HTTPException(status_code=400, detail="note_text is required")
+
+            # Validate note_type
+            valid_types = ("general", "progress", "issue", "resolution")
+            if note_type not in valid_types:
+                note_type = "general"
+
+            # Check if work order exists
+            check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Work order not found")
+
+            # Insert note
+            note_data = {
+                "work_order_id": work_order_id,
+                "note_text": note_text,
+                "note_type": note_type,
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+
+            note_result = db_client.table("work_order_notes").insert(note_data).execute()
+            if note_result.data:
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "note_id": note_result.data[0]["id"],
+                    "message": "Note added to work order successfully"
+                }
+            else:
+                result = {
+                    "status": "error",
+                    "error_code": "INSERT_FAILED",
+                    "message": "Failed to add note to work order"
+                }
 
         elif action == "add_part_to_work_order":
             if not wo_handlers:
