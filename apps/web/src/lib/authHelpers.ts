@@ -136,7 +136,8 @@ export async function getJWTMetadata(): Promise<JWTMetadata> {
  */
 export async function getYachtSignature(yachtId: string | null): Promise<string | null> {
   if (!yachtId) {
-    console.warn('[authHelpers] No yacht_id, skipping yacht signature');
+    // This is expected behavior - yacht_id may not be in user metadata
+    // Backend handles tenant routing from JWT, signature is optional
     return null;
   }
 
