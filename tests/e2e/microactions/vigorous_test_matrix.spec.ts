@@ -43,7 +43,7 @@ interface ActionDef {
 
 const ACTIONS: ActionDef[] = [
   // Cluster 01: FIX_SOMETHING (Fault Management)
-  { id: '1.1', cluster: 1, name: 'report_fault', requiredFields: ['description'], optionalFields: ['equipment_id', 'priority', 'photos'], expectedStatus: 200, samplePayload: { description: 'Test fault report', priority: 'medium' } },
+  { id: '1.1', cluster: 1, name: 'report_fault', requiredFields: ['description', 'equipment_id'], optionalFields: ['priority', 'photos'], expectedStatus: 200, samplePayload: { description: 'Test fault report', equipment_id: '558373b5-5c88-4596-85c7-50aaf2ebdde1', priority: 'medium' } },
   { id: '1.2', cluster: 1, name: 'classify_fault', requiredFields: ['fault_id', 'category'], optionalFields: ['subcategory'], expectedStatus: 200, samplePayload: { fault_id: 'test-fault-id', category: 'electrical' } },
   { id: '1.3', cluster: 1, name: 'generate_work_order_from_fault', requiredFields: ['fault_id'], optionalFields: ['priority', 'assigned_to'], expectedStatus: 200, samplePayload: { fault_id: 'test-fault-id' } },
   { id: '1.4', cluster: 1, name: 'close_fault', requiredFields: ['fault_id'], optionalFields: ['resolution_notes'], expectedStatus: 200, samplePayload: { fault_id: 'test-fault-id', resolution_notes: 'Fixed' } },
