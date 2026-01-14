@@ -905,8 +905,7 @@ async def execute_action(
             }
             if payload.get("completion_notes"):
                 update_data["completion_notes"] = payload["completion_notes"]
-            if payload.get("actual_hours"):
-                update_data["actual_hours"] = payload["actual_hours"]
+            # Note: actual_hours column doesn't exist, store in metadata if needed
 
             wo_result = db_client.table("pms_work_orders").update(update_data).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
             if wo_result.data:
@@ -921,10 +920,9 @@ async def execute_action(
             work_order_id = payload.get("work_order_id")
             hours = payload.get("hours", 0)
 
-            # Add to work order notes as hours entry
+            # Add to work order notes as hours entry (pms_work_order_notes doesn't have yacht_id)
             note_data = {
                 "work_order_id": work_order_id,
-                "yacht_id": yacht_id,
                 "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
                 "note_type": "hours",
                 "created_by": user_id,
@@ -965,7 +963,6 @@ async def execute_action(
 
             note_data = {
                 "work_order_id": work_order_id,
-                "yacht_id": yacht_id,
                 "note_text": note_text,
                 "note_type": payload.get("note_type", "general"),
                 "created_by": user_id,
@@ -983,9 +980,9 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             work_order_id = payload.get("work_order_id")
 
+            # Note: started_at column doesn't exist, just update status
             update_data = {
                 "status": "in_progress",
-                "started_at": datetime.now(timezone.utc).isoformat(),
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
@@ -1001,11 +998,9 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             work_order_id = payload.get("work_order_id")
 
+            # Note: cancellation columns don't exist, just update status and add note
             update_data = {
                 "status": "cancelled",
-                "cancellation_reason": payload.get("reason", "Cancelled"),
-                "cancelled_by": user_id,
-                "cancelled_at": datetime.now(timezone.utc).isoformat(),
                 "updated_by": user_id,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
