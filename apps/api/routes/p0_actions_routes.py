@@ -918,12 +918,13 @@ async def execute_action(
             work_order_id = payload.get("work_order_id")
             hours = payload.get("hours", 0)
 
-            # Add to work order notes as hours entry (pms_work_order_notes doesn't have yacht_id)
+            # Add to work order notes as hours entry
+            # Note: created_by has FK to non-existent users table, skip it
+            # Note: note_type must be 'general' or 'progress'
             note_data = {
                 "work_order_id": work_order_id,
                 "note_text": f"Hours logged: {hours}h - {payload.get('description', 'Work performed')}",
-                "note_type": "hours",
-                "created_by": user_id,
+                "note_type": "progress",
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
@@ -959,11 +960,14 @@ async def execute_action(
             work_order_id = payload.get("work_order_id")
             note_text = payload.get("note_text")
 
+            # Note: created_by has FK to non-existent users table, skip it
+            # Note: note_type must be 'general' or 'progress'
+            raw_note_type = payload.get("note_type", "general")
+            note_type = raw_note_type if raw_note_type in ("general", "progress") else "general"
             note_data = {
                 "work_order_id": work_order_id,
                 "note_text": note_text,
-                "note_type": payload.get("note_type", "general"),
-                "created_by": user_id,
+                "note_type": note_type,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             note_result = db_client.table("pms_work_order_notes").insert(note_data).execute()
