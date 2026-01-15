@@ -16,7 +16,9 @@ import type {
   ActionContext,
   AvailableAction,
   SideEffectType,
+  TriggerContext,
 } from '../types';
+import { shouldShowAction, shouldAutoRun, getAutoRunActions } from '../triggers';
 
 interface UseAvailableActionsOptions {
   /** Card type to get actions for */
@@ -35,6 +37,8 @@ interface UseAvailableActionsOptions {
   requireHandler?: boolean;
   /** Maximum number of actions to return */
   limit?: number;
+  /** Trigger context for conditional visibility */
+  triggerContext?: TriggerContext;
 }
 
 interface UseAvailableActionsReturn {
@@ -52,6 +56,8 @@ interface UseAvailableActionsReturn {
   isActionAvailable: (actionName: string) => boolean;
   /** Get action by name from available set */
   getActionByName: (actionName: string) => MicroAction | undefined;
+  /** Actions that should auto-run when card mounts */
+  autoRunActions: MicroAction[];
 }
 
 /**
@@ -135,6 +141,7 @@ export function useAvailableActions(
     sideEffectFilter,
     requireHandler = true,
     limit,
+    triggerContext,
   } = options;
 
   const context: ActionContext = useMemo(
@@ -146,6 +153,15 @@ export function useAvailableActions(
       source_card: cardType,
     }),
     [yachtId, userId, userRole, entityId, cardType]
+  );
+
+  // Merge user role into trigger context if provided
+  const effectiveTriggerContext: TriggerContext = useMemo(
+    () => ({
+      ...triggerContext,
+      user_role: triggerContext?.user_role || userRole,
+    }),
+    [triggerContext, userRole]
   );
 
   const actions = useMemo(() => {
@@ -165,13 +181,20 @@ export function useAvailableActions(
       );
     }
 
+    // Filter by trigger context (conditional visibility)
+    if (triggerContext) {
+      availableActions = availableActions.filter((action) =>
+        shouldShowAction(action.action_name, effectiveTriggerContext)
+      );
+    }
+
     // Apply limit
     if (limit && limit > 0) {
       availableActions = availableActions.slice(0, limit);
     }
 
     return availableActions;
-  }, [cardType, sideEffectFilter, requireHandler, limit]);
+  }, [cardType, sideEffectFilter, requireHandler, limit, triggerContext, effectiveTriggerContext]);
 
   const primaryAction = useMemo(() => {
     // Prefer mutation_heavy actions as primary
@@ -228,6 +251,12 @@ export function useAvailableActions(
     [actions]
   );
 
+  // Actions that should auto-run when card mounts
+  const autoRunActions = useMemo(
+    () => actions.filter((action) => shouldAutoRun(action.action_name)),
+    [actions]
+  );
+
   return {
     actions,
     primaryAction,
@@ -236,6 +265,7 @@ export function useAvailableActions(
     formattedActions,
     isActionAvailable,
     getActionByName,
+    autoRunActions,
   };
 }
 

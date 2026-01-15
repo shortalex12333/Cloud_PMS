@@ -112,3 +112,69 @@ export interface ActionState {
   result: ActionResult | null;
   confirmation_pending: boolean;
 }
+
+// Trigger context for conditional action visibility
+export interface TriggerContext {
+  // Fault-specific context
+  fault?: {
+    id: string;
+    code?: string;
+    ai_diagnosis?: {
+      is_known: boolean;
+      diagnosis?: string;
+      confidence?: number;
+    };
+    equipment_id?: string;
+    has_work_order?: boolean;
+  };
+
+  // Equipment-specific context
+  equipment?: {
+    id: string;
+    has_manual?: boolean;
+    predictive_maintenance_enabled?: boolean;
+  };
+
+  // Part-specific context
+  part?: {
+    id: string;
+    stock_level?: number;
+    reorder_threshold?: number;
+    is_out_of_stock?: boolean;
+  };
+
+  // Work order-specific context
+  work_order?: {
+    id: string;
+    status?: 'open' | 'in_progress' | 'completed' | 'cancelled';
+    has_checklist?: boolean;
+    equipment_id?: string;
+  };
+
+  // Purchase-specific context
+  purchase?: {
+    id: string;
+    status?: 'draft' | 'pending_approval' | 'approved' | 'ordered' | 'in_transit' | 'received';
+  };
+
+  // Handover-specific context
+  handover?: {
+    id?: string;
+    exists?: boolean;
+  };
+
+  // User role for permission checks
+  user_role?: string;
+
+  // Environmental context
+  environment?: 'at_sea' | 'port' | 'shipyard' | 'guest_trip';
+}
+
+// Trigger rule definition
+export interface TriggerRule {
+  action_name: string;
+  // Returns true if action should be visible
+  condition: (ctx: TriggerContext) => boolean;
+  // If true, action auto-executes when card mounts
+  auto_run?: boolean;
+}
