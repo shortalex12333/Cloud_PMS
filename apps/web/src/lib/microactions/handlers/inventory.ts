@@ -312,6 +312,283 @@ export async function logPartUsage(
 }
 
 /**
+ * View part usage history
+ */
+export async function viewPartUsage(
+  context: ActionContext,
+  params?: { part_id?: string; offset?: number; limit?: number }
+): Promise<ActionResult> {
+  const partId = params?.part_id || context.entity_id;
+  const offset = params?.offset || 0;
+  const limit = params?.limit || 20;
+
+  if (!partId) {
+    return {
+      success: false,
+      action_name: 'view_part_usage',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Part ID is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Get part info
+    const { data: part, error: partError } = await supabase
+      .from('pms_parts')
+      .select('id, name, part_number')
+      .eq('id', partId)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (partError || !part) {
+      return {
+        success: false,
+        action_name: 'view_part_usage',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Part not found: ${partId}` },
+        confirmation_required: false,
+      };
+    }
+
+    // Get usage history from work_order_parts or pms_work_order_parts
+    let usageHistory: Array<{
+      id: string;
+      work_order_id: string;
+      quantity: number;
+      created_at: string;
+    }> = [];
+
+    try {
+      const { data } = await supabase
+        .from('pms_work_order_parts')
+        .select('id, work_order_id, quantity, created_at')
+        .eq('part_id', partId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      usageHistory = data || [];
+    } catch {
+      // Table may not exist or have different schema
+    }
+
+    const totalUsed = usageHistory.reduce((sum, u) => sum + (u.quantity || 0), 0);
+
+    return {
+      success: true,
+      action_name: 'view_part_usage',
+      data: {
+        part_id: partId,
+        part_name: part.name,
+        part_number: part.part_number,
+        usage_history: usageHistory,
+        summary: {
+          total_entries: usageHistory.length,
+          total_quantity_used: totalUsed,
+        },
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'view_part_usage',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Scan part barcode - identify part by barcode
+ */
+export async function scanPartBarcode(
+  context: ActionContext,
+  params: { barcode: string }
+): Promise<ActionResult> {
+  if (!params?.barcode) {
+    return {
+      success: false,
+      action_name: 'scan_part_barcode',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Barcode is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Search by part_number, barcode, or serial_number
+    const { data: part, error } = await supabase
+      .from('pms_parts')
+      .select('*')
+      .eq('yacht_id', context.yacht_id)
+      .or(`part_number.eq.${params.barcode},barcode.eq.${params.barcode},serial_number.eq.${params.barcode}`)
+      .single();
+
+    if (error || !part) {
+      return {
+        success: false,
+        action_name: 'scan_part_barcode',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `No part found with barcode: ${params.barcode}` },
+        confirmation_required: false,
+      };
+    }
+
+    // Compute stock status
+    const qty = part.quantity || 0;
+    const minQty = part.min_quantity || 0;
+    let stockStatus = 'IN_STOCK';
+    if (qty <= 0) stockStatus = 'OUT_OF_STOCK';
+    else if (qty <= minQty) stockStatus = 'LOW_STOCK';
+
+    return {
+      success: true,
+      action_name: 'scan_part_barcode',
+      data: {
+        part: {
+          ...part,
+          stock_status: stockStatus,
+        },
+        scanned_barcode: params.barcode,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'scan_part_barcode',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * View equipment linked to part
+ */
+export async function viewLinkedEquipment(
+  context: ActionContext,
+  params?: { part_id?: string }
+): Promise<ActionResult> {
+  const partId = params?.part_id || context.entity_id;
+
+  if (!partId) {
+    return {
+      success: false,
+      action_name: 'view_linked_equipment',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Part ID is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Get part info
+    const { data: part, error: partError } = await supabase
+      .from('pms_parts')
+      .select('id, name, part_number, equipment_id')
+      .eq('id', partId)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (partError || !part) {
+      return {
+        success: false,
+        action_name: 'view_linked_equipment',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Part not found: ${partId}` },
+        confirmation_required: false,
+      };
+    }
+
+    // Get linked equipment (from direct FK or from work orders)
+    let linkedEquipment: Array<{
+      id: string;
+      name: string;
+      location?: string;
+      status?: string;
+    }> = [];
+
+    // First try direct equipment_id link
+    if (part.equipment_id) {
+      const { data: eq } = await supabase
+        .from('pms_equipment')
+        .select('id, name, location, status')
+        .eq('id', part.equipment_id)
+        .single();
+      if (eq) linkedEquipment.push(eq);
+    }
+
+    // Also find equipment from work orders that used this part
+    try {
+      const { data: woEquipment } = await supabase
+        .from('pms_work_orders')
+        .select('equipment_id')
+        .in('id', (
+          await supabase
+            .from('pms_work_order_parts')
+            .select('work_order_id')
+            .eq('part_id', partId)
+        ).data?.map((wo) => wo.work_order_id) || []);
+
+      if (woEquipment) {
+        const equipmentIds = [...new Set(woEquipment.map((wo) => wo.equipment_id).filter(Boolean))];
+        if (equipmentIds.length > 0) {
+          const { data: additionalEquipment } = await supabase
+            .from('pms_equipment')
+            .select('id, name, location, status')
+            .in('id', equipmentIds);
+          if (additionalEquipment) {
+            // Deduplicate
+            for (const eq of additionalEquipment) {
+              if (!linkedEquipment.find((e) => e.id === eq.id)) {
+                linkedEquipment.push(eq);
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore errors from complex query
+    }
+
+    return {
+      success: true,
+      action_name: 'view_linked_equipment',
+      data: {
+        part_id: partId,
+        part_name: part.name,
+        linked_equipment: linkedEquipment,
+        count: linkedEquipment.length,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'view_linked_equipment',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
  * Get all inventory handlers for registration
  */
 export const inventoryHandlers = {
@@ -319,4 +596,7 @@ export const inventoryHandlers = {
   view_part_location: viewPartLocation,
   order_part: orderPart,
   log_part_usage: logPartUsage,
+  view_part_usage: viewPartUsage,
+  scan_part_barcode: scanPartBarcode,
+  view_linked_equipment: viewLinkedEquipment,
 };

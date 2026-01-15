@@ -570,6 +570,863 @@ export async function assignWorkOrder(
 }
 
 /**
+ * Add photo to work order
+ */
+export async function addWorkOrderPhoto(
+  context: ActionContext,
+  params: { work_order_id: string; photo_url: string; caption?: string }
+): Promise<ActionResult> {
+  if (!params?.work_order_id || !params?.photo_url) {
+    return {
+      success: false,
+      action_name: 'add_work_order_photo',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Work order ID and photo URL are required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Verify work order exists and is not closed
+    const { data: wo, error: woError } = await supabase
+      .from('pms_work_orders')
+      .select('id, status')
+      .eq('id', params.work_order_id)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (woError || !wo) {
+      return {
+        success: false,
+        action_name: 'add_work_order_photo',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Work order not found: ${params.work_order_id}` },
+        confirmation_required: false,
+      };
+    }
+
+    if (['completed', 'closed', 'cancelled'].includes(wo.status)) {
+      return {
+        success: false,
+        action_name: 'add_work_order_photo',
+        data: null,
+        error: { code: 'VALIDATION_ERROR', message: 'Cannot add photo to closed work order' },
+        confirmation_required: false,
+      };
+    }
+
+    // Add photo attachment
+    const { data, error } = await supabase
+      .from('attachments')
+      .insert({
+        entity_type: 'work_order',
+        entity_id: params.work_order_id,
+        storage_path: params.photo_url,
+        filename: params.caption || 'work_order_photo.jpg',
+        mime_type: 'image/jpeg',
+        category: 'photo',
+        uploaded_by: context.user_id,
+        yacht_id: context.yacht_id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'add_work_order_photo',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'add_work_order_photo',
+      data: { attachment: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_work_order_photo',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Add parts to work order
+ */
+export async function addPartsToWorkOrder(
+  context: ActionContext,
+  params: { work_order_id: string; part_id: string; quantity: number; notes?: string }
+): Promise<ActionResult> {
+  if (!params?.work_order_id || !params?.part_id || !params?.quantity) {
+    return {
+      success: false,
+      action_name: 'add_parts_to_work_order',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Work order ID, part ID, and quantity are required' },
+      confirmation_required: false,
+    };
+  }
+
+  if (params.quantity <= 0) {
+    return {
+      success: false,
+      action_name: 'add_parts_to_work_order',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Quantity must be positive' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Verify work order exists and is not closed
+    const { data: wo, error: woError } = await supabase
+      .from('pms_work_orders')
+      .select('id, wo_number, status')
+      .eq('id', params.work_order_id)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (woError || !wo) {
+      return {
+        success: false,
+        action_name: 'add_parts_to_work_order',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Work order not found: ${params.work_order_id}` },
+        confirmation_required: false,
+      };
+    }
+
+    if (['completed', 'closed', 'cancelled'].includes(wo.status)) {
+      return {
+        success: false,
+        action_name: 'add_parts_to_work_order',
+        data: null,
+        error: { code: 'VALIDATION_ERROR', message: 'Cannot add parts to closed work order' },
+        confirmation_required: false,
+      };
+    }
+
+    // Verify part exists
+    const { data: part, error: partError } = await supabase
+      .from('pms_parts')
+      .select('id, name, part_number, quantity_on_hand, minimum_quantity')
+      .eq('id', params.part_id)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (partError || !part) {
+      return {
+        success: false,
+        action_name: 'add_parts_to_work_order',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Part not found: ${params.part_id}` },
+        confirmation_required: false,
+      };
+    }
+
+    // Check if part already exists on this WO
+    const { data: existing } = await supabase
+      .from('pms_work_order_parts')
+      .select('id, quantity')
+      .eq('work_order_id', params.work_order_id)
+      .eq('part_id', params.part_id)
+      .single();
+
+    let woPart;
+    if (existing) {
+      // Update existing entry
+      const { data, error } = await supabase
+        .from('pms_work_order_parts')
+        .update({
+          quantity: existing.quantity + params.quantity,
+          notes: params.notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          action_name: 'add_parts_to_work_order',
+          data: null,
+          error: { code: 'INTERNAL_ERROR', message: error.message },
+          confirmation_required: false,
+        };
+      }
+      woPart = data;
+    } else {
+      // Create new entry
+      const { data, error } = await supabase
+        .from('pms_work_order_parts')
+        .insert({
+          work_order_id: params.work_order_id,
+          part_id: params.part_id,
+          quantity: params.quantity,
+          notes: params.notes,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          action_name: 'add_parts_to_work_order',
+          data: null,
+          error: { code: 'INTERNAL_ERROR', message: error.message },
+          confirmation_required: false,
+        };
+      }
+      woPart = data;
+    }
+
+    // Check stock warning
+    const stockAvailable = part.quantity_on_hand || 0;
+    const minQty = part.minimum_quantity || 0;
+    const stockWarning = stockAvailable <= minQty || stockAvailable < params.quantity;
+
+    return {
+      success: true,
+      action_name: 'add_parts_to_work_order',
+      data: {
+        work_order_part: {
+          ...woPart,
+          part_name: part.name,
+          part_number: part.part_number,
+        },
+        stock_warning: stockWarning,
+        stock_available: stockAvailable,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_parts_to_work_order',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * View work order checklist
+ */
+export async function viewWorkOrderChecklist(
+  context: ActionContext,
+  params?: { work_order_id?: string }
+): Promise<ActionResult> {
+  const workOrderId = params?.work_order_id || context.entity_id;
+
+  if (!workOrderId) {
+    return {
+      success: false,
+      action_name: 'view_work_order_checklist',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Work order ID is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Get checklist items
+    let items: Array<{
+      id: string;
+      description: string;
+      is_completed: boolean;
+      completed_at?: string;
+      completed_by?: string;
+      notes?: string;
+      sequence: number;
+    }> = [];
+
+    try {
+      const { data } = await supabase
+        .from('checklist_items')
+        .select('id, description, is_completed, completed_at, completed_by, notes, sequence')
+        .eq('work_order_id', workOrderId)
+        .order('sequence');
+
+      items = data || [];
+    } catch {
+      // Table may not exist
+    }
+
+    const completed = items.filter((i) => i.is_completed).length;
+    const total = items.length;
+
+    return {
+      success: true,
+      action_name: 'view_work_order_checklist',
+      data: {
+        work_order_id: workOrderId,
+        checklist: items,
+        progress: {
+          completed,
+          total,
+          percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+        },
+        message: items.length === 0 ? 'No checklist items configured' : undefined,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'view_work_order_checklist',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Mark checklist item complete
+ */
+export async function markChecklistItemComplete(
+  context: ActionContext,
+  params: { checklist_item_id: string; notes?: string }
+): Promise<ActionResult> {
+  if (!params?.checklist_item_id) {
+    return {
+      success: false,
+      action_name: 'mark_checklist_item_complete',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Checklist item ID is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('checklist_items')
+      .update({
+        is_completed: true,
+        completed_at: new Date().toISOString(),
+        completed_by: context.user_id,
+        notes: params.notes,
+      })
+      .eq('id', params.checklist_item_id)
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'mark_checklist_item_complete',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'mark_checklist_item_complete',
+      data: { checklist_item: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'mark_checklist_item_complete',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Add note to checklist item
+ */
+export async function addChecklistNote(
+  context: ActionContext,
+  params: { checklist_item_id: string; note_text: string }
+): Promise<ActionResult> {
+  if (!params?.checklist_item_id || !params?.note_text) {
+    return {
+      success: false,
+      action_name: 'add_checklist_note',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Checklist item ID and note text are required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({
+        entity_type: 'checklist_item',
+        entity_id: params.checklist_item_id,
+        content: params.note_text,
+        created_by: context.user_id,
+        yacht_id: context.yacht_id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'add_checklist_note',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'add_checklist_note',
+      data: { note: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_checklist_note',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Add photo to checklist item
+ */
+export async function addChecklistPhoto(
+  context: ActionContext,
+  params: { checklist_item_id: string; photo_url: string; caption?: string }
+): Promise<ActionResult> {
+  if (!params?.checklist_item_id || !params?.photo_url) {
+    return {
+      success: false,
+      action_name: 'add_checklist_photo',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Checklist item ID and photo URL are required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('attachments')
+      .insert({
+        entity_type: 'checklist_item',
+        entity_id: params.checklist_item_id,
+        storage_path: params.photo_url,
+        filename: params.caption || 'checklist_photo.jpg',
+        mime_type: 'image/jpeg',
+        category: 'photo',
+        uploaded_by: context.user_id,
+        yacht_id: context.yacht_id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'add_checklist_photo',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'add_checklist_photo',
+      data: { attachment: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_checklist_photo',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * View worklist (shipyard work items)
+ */
+export async function viewWorklist(
+  context: ActionContext,
+  params?: { worklist_id?: string }
+): Promise<ActionResult> {
+  const worklistId = params?.worklist_id || context.entity_id;
+
+  try {
+    // Get worklist items
+    let items: Array<{
+      id: string;
+      title: string;
+      description?: string;
+      status: string;
+      priority: string;
+      progress_percent: number;
+      assigned_to?: string;
+      due_date?: string;
+      created_at: string;
+    }> = [];
+
+    try {
+      let query = supabase
+        .from('worklist_items')
+        .select('*')
+        .eq('yacht_id', context.yacht_id)
+        .order('created_at', { ascending: false });
+
+      if (worklistId) {
+        query = query.eq('worklist_id', worklistId);
+      }
+
+      const { data } = await query;
+      items = data || [];
+    } catch {
+      // Table may not exist
+    }
+
+    const totalItems = items.length;
+    const completedItems = items.filter((i) => i.status === 'completed').length;
+    const inProgressItems = items.filter((i) => i.status === 'in_progress').length;
+
+    return {
+      success: true,
+      action_name: 'view_worklist',
+      data: {
+        worklist_id: worklistId,
+        items,
+        summary: {
+          total: totalItems,
+          completed: completedItems,
+          in_progress: inProgressItems,
+          pending: totalItems - completedItems - inProgressItems,
+        },
+        message: items.length === 0 ? 'No worklist items found' : undefined,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'view_worklist',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Add task to worklist
+ */
+export async function addWorklistTask(
+  context: ActionContext,
+  params: {
+    worklist_id?: string;
+    title: string;
+    description?: string;
+    priority?: string;
+    due_date?: string;
+  }
+): Promise<ActionResult> {
+  if (!params?.title) {
+    return {
+      success: false,
+      action_name: 'add_worklist_task',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Task title is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('worklist_items')
+      .insert({
+        yacht_id: context.yacht_id,
+        worklist_id: params.worklist_id,
+        title: params.title,
+        description: params.description,
+        priority: params.priority || 'medium',
+        status: 'pending',
+        progress_percent: 0,
+        due_date: params.due_date,
+        created_by: context.user_id,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'add_worklist_task',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'add_worklist_task',
+      data: { worklist_item: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_worklist_task',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Update worklist progress
+ */
+export async function updateWorklistProgress(
+  context: ActionContext,
+  params: { worklist_item_id: string; progress_percent: number; status?: string; notes?: string }
+): Promise<ActionResult> {
+  if (!params?.worklist_item_id || params?.progress_percent === undefined) {
+    return {
+      success: false,
+      action_name: 'update_worklist_progress',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Worklist item ID and progress percent are required' },
+      confirmation_required: false,
+    };
+  }
+
+  if (params.progress_percent < 0 || params.progress_percent > 100) {
+    return {
+      success: false,
+      action_name: 'update_worklist_progress',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Progress must be between 0 and 100' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Determine status based on progress
+    let status = params.status;
+    if (!status) {
+      if (params.progress_percent === 100) {
+        status = 'completed';
+      } else if (params.progress_percent > 0) {
+        status = 'in_progress';
+      } else {
+        status = 'pending';
+      }
+    }
+
+    const updateData: Record<string, unknown> = {
+      progress_percent: params.progress_percent,
+      status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === 'completed') {
+      updateData.completed_at = new Date().toISOString();
+      updateData.completed_by = context.user_id;
+    }
+
+    const { data, error } = await supabase
+      .from('worklist_items')
+      .update(updateData)
+      .eq('id', params.worklist_item_id)
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'update_worklist_progress',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    // Add note if provided
+    if (params.notes) {
+      await supabase.from('notes').insert({
+        entity_type: 'worklist_item',
+        entity_id: params.worklist_item_id,
+        content: params.notes,
+        created_by: context.user_id,
+        yacht_id: context.yacht_id,
+      });
+    }
+
+    return {
+      success: true,
+      action_name: 'update_worklist_progress',
+      data: { worklist_item: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'update_worklist_progress',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
+ * Export worklist
+ */
+export async function exportWorklist(
+  context: ActionContext,
+  params?: { worklist_id?: string; format?: 'json' | 'csv' }
+): Promise<ActionResult> {
+  const worklistId = params?.worklist_id || context.entity_id;
+  const format = params?.format || 'json';
+
+  try {
+    // Get worklist items
+    let items: Array<Record<string, unknown>> = [];
+
+    try {
+      let query = supabase
+        .from('worklist_items')
+        .select('*')
+        .eq('yacht_id', context.yacht_id)
+        .order('created_at', { ascending: false });
+
+      if (worklistId) {
+        query = query.eq('worklist_id', worklistId);
+      }
+
+      const { data } = await query;
+      items = data || [];
+    } catch {
+      // Table may not exist
+    }
+
+    if (format === 'csv') {
+      // Generate CSV
+      const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Progress', 'Due Date', 'Created At'];
+      const rows = items.map((item) => [
+        item.id,
+        item.title,
+        item.description || '',
+        item.status,
+        item.priority,
+        `${item.progress_percent}%`,
+        item.due_date || '',
+        item.created_at,
+      ]);
+
+      const csv = [headers.join(','), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))].join('\n');
+
+      return {
+        success: true,
+        action_name: 'export_worklist',
+        data: {
+          format: 'csv',
+          content: csv,
+          filename: `worklist_export_${new Date().toISOString().split('T')[0]}.csv`,
+          item_count: items.length,
+        },
+        error: null,
+        confirmation_required: false,
+      };
+    }
+
+    // JSON format
+    return {
+      success: true,
+      action_name: 'export_worklist',
+      data: {
+        format: 'json',
+        items,
+        item_count: items.length,
+        exported_at: new Date().toISOString(),
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'export_worklist',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
  * Get all work order handlers for registration
  */
 export const workOrderHandlers = {
@@ -579,4 +1436,14 @@ export const workOrderHandlers = {
   mark_work_order_complete: markWorkOrderComplete,
   add_work_order_note: addWorkOrderNote,
   assign_work_order: assignWorkOrder,
+  add_work_order_photo: addWorkOrderPhoto,
+  add_parts_to_work_order: addPartsToWorkOrder,
+  view_work_order_checklist: viewWorkOrderChecklist,
+  mark_checklist_item_complete: markChecklistItemComplete,
+  add_checklist_note: addChecklistNote,
+  add_checklist_photo: addChecklistPhoto,
+  view_worklist: viewWorklist,
+  add_worklist_task: addWorklistTask,
+  update_worklist_progress: updateWorklistProgress,
+  export_worklist: exportWorklist,
 };

@@ -523,6 +523,87 @@ export async function addFaultNote(
 }
 
 /**
+ * Add photo to fault
+ */
+export async function addFaultPhoto(
+  context: ActionContext,
+  params: {
+    fault_id?: string;
+    entity_type?: string;
+    entity_id?: string;
+    caption?: string;
+    file_name?: string;
+    file_size?: number;
+    file_type?: string;
+    photo_url?: string;
+  }
+): Promise<ActionResult> {
+  const faultId = params?.fault_id || params?.entity_id || context.entity_id;
+
+  if (!faultId) {
+    return {
+      success: false,
+      action_name: 'add_fault_photo',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Fault ID is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // In production, this would store photo metadata after upload
+    const photoRecord = {
+      entity_type: 'fault',
+      entity_id: faultId,
+      yacht_id: context.yacht_id,
+      file_name: params?.file_name || 'photo.jpg',
+      file_size: params?.file_size || 0,
+      mime_type: params?.file_type || 'image/jpeg',
+      caption: params?.caption || '',
+      storage_path: params?.photo_url || `faults/${faultId}/${Date.now()}.jpg`,
+      created_by: context.user_id,
+      created_at: new Date().toISOString(),
+    };
+
+    // Try to insert into attachments table
+    const { data, error } = await supabase
+      .from('attachments')
+      .insert(photoRecord)
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'add_fault_photo',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'add_fault_photo',
+      data: { attachment: data },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_fault_photo',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
  * Create work order from fault
  */
 export async function createWorkOrderFromFault(
@@ -616,6 +697,221 @@ export async function createWorkOrderFromFault(
 }
 
 /**
+ * Show manual section for equipment/fault context
+ * Matches Python handler: manual_handlers.py show_manual_section_execute
+ */
+export async function showManualSection(
+  context: ActionContext,
+  params?: {
+    equipment_id?: string;
+    fault_code?: string;
+    section_id?: string;
+  }
+): Promise<ActionResult> {
+  const equipmentId = params?.equipment_id || context.entity_id;
+
+  if (!equipmentId) {
+    return {
+      success: false,
+      action_name: 'show_manual_section',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Equipment ID is required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // 1. Get equipment details
+    const { data: equipment, error: eqError } = await supabase
+      .from('pms_equipment')
+      .select('id, name, manufacturer, model')
+      .eq('id', equipmentId)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (eqError || !equipment) {
+      return {
+        success: false,
+        action_name: 'show_manual_section',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Equipment not found: ${equipmentId}` },
+        confirmation_required: false,
+      };
+    }
+
+    // 2. Find manual (document) by manufacturer + model
+    const { data: manuals } = await supabase
+      .from('documents')
+      .select('id, filename, oem, model, storage_path, doc_type, created_at')
+      .eq('oem', equipment.manufacturer || '')
+      .eq('model', equipment.model || '')
+      .limit(1);
+
+    const manual = manuals?.[0];
+
+    if (!manual) {
+      return {
+        success: false,
+        action_name: 'show_manual_section',
+        data: null,
+        error: {
+          code: 'NOT_FOUND',
+          message: `No manual available for ${equipment.manufacturer || ''} ${equipment.model || ''}`,
+        },
+        confirmation_required: false,
+      };
+    }
+
+    // 3. Find relevant section
+    let section: {
+      id: string;
+      text: string;
+      page_number: number;
+      chunk_index?: number;
+      metadata?: Record<string, unknown>;
+    } | null = null;
+
+    if (params?.section_id) {
+      // Direct section lookup
+      const { data: sectionData } = await supabase
+        .from('document_chunks')
+        .select('id, text, page_number, chunk_index, metadata')
+        .eq('id', params.section_id)
+        .eq('document_id', manual.id)
+        .single();
+
+      if (!sectionData) {
+        return {
+          success: false,
+          action_name: 'show_manual_section',
+          data: null,
+          error: { code: 'NOT_FOUND', message: `Section not found: ${params.section_id}` },
+          confirmation_required: false,
+        };
+      }
+      section = sectionData;
+    } else if (params?.fault_code) {
+      // Search for fault code in document chunks
+      const { data: searchResults } = await supabase
+        .from('document_chunks')
+        .select('id, text, page_number, chunk_index, metadata')
+        .eq('document_id', manual.id)
+        .ilike('text', `%${params.fault_code}%`)
+        .order('page_number')
+        .limit(1);
+
+      if (searchResults?.[0]) {
+        section = searchResults[0];
+      } else {
+        // Fallback to first section
+        const { data: fallback } = await supabase
+          .from('document_chunks')
+          .select('id, text, page_number, chunk_index, metadata')
+          .eq('document_id', manual.id)
+          .order('page_number')
+          .limit(1);
+        section = fallback?.[0] || null;
+      }
+    } else {
+      // No fault_code or section_id - show first section
+      const { data: firstSection } = await supabase
+        .from('document_chunks')
+        .select('id, text, page_number, chunk_index, metadata')
+        .eq('document_id', manual.id)
+        .order('page_number')
+        .limit(1);
+      section = firstSection?.[0] || null;
+    }
+
+    if (!section) {
+      return {
+        success: false,
+        action_name: 'show_manual_section',
+        data: null,
+        error: { code: 'NOT_FOUND', message: 'No sections found in manual' },
+        confirmation_required: false,
+      };
+    }
+
+    // 4. Get related sections (nearby pages)
+    const currentPage = section.page_number || 1;
+    const { data: relatedData } = await supabase
+      .from('document_chunks')
+      .select('id, text, page_number, chunk_index, metadata')
+      .eq('document_id', manual.id)
+      .gte('page_number', Math.max(1, currentPage - 2))
+      .lte('page_number', currentPage + 2)
+      .neq('id', section.id)
+      .order('page_number')
+      .limit(5);
+
+    const relatedSections = (relatedData || []).map((r) => ({
+      id: r.id,
+      title:
+        (r.metadata as Record<string, unknown>)?.heading ||
+        `Page ${r.page_number || '?'}`,
+      page_number: r.page_number || 0,
+    }));
+
+    // 5. Generate signed URL (if storage_path exists)
+    let signedUrl: string | null = null;
+    if (manual.storage_path) {
+      try {
+        const { data: urlData } = await supabase.storage
+          .from('documents')
+          .createSignedUrl(manual.storage_path, 1800); // 30 min
+        signedUrl = urlData?.signedUrl || null;
+      } catch {
+        // Signed URL generation may fail
+      }
+    }
+
+    // 6. Extract section title
+    const sectionMetadata = section.metadata as Record<string, unknown> | undefined;
+    let sectionTitle = (sectionMetadata?.heading as string) || '';
+    if (!sectionTitle) {
+      const textLines = (section.text || '').split('\n');
+      sectionTitle = textLines[0] || `Page ${section.page_number || '?'}`;
+    }
+
+    return {
+      success: true,
+      action_name: 'show_manual_section',
+      data: {
+        document: {
+          id: manual.id,
+          title: manual.filename || '',
+          manufacturer: manual.oem || '',
+          model: manual.model || '',
+          storage_path: manual.storage_path || '',
+          signed_url: signedUrl,
+        },
+        section: {
+          id: section.id,
+          title: sectionTitle,
+          page_number: section.page_number || 0,
+          text_preview: (section.text || '').substring(0, 500),
+        },
+        related_sections: relatedSections,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'show_manual_section',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
  * Get all fault handlers for registration
  */
 export const faultHandlers = {
@@ -624,5 +920,7 @@ export const faultHandlers = {
   view_fault_history: viewFaultHistory,
   suggest_parts: suggestParts,
   add_fault_note: addFaultNote,
+  add_fault_photo: addFaultPhoto,
   create_work_order_from_fault: createWorkOrderFromFault,
+  show_manual_section: showManualSection,
 };

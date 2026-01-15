@@ -586,6 +586,89 @@ function computeHealthStatus(
 }
 
 /**
+ * Add note to equipment
+ */
+export async function addEquipmentNote(
+  context: ActionContext,
+  params: { equipment_id: string; note_text: string }
+): Promise<ActionResult> {
+  if (!params?.equipment_id || !params?.note_text) {
+    return {
+      success: false,
+      action_name: 'add_equipment_note',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Equipment ID and note text are required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Verify equipment exists
+    const { data: equipment, error: eqError } = await supabase
+      .from('pms_equipment')
+      .select('id, name')
+      .eq('id', params.equipment_id)
+      .eq('yacht_id', context.yacht_id)
+      .single();
+
+    if (eqError || !equipment) {
+      return {
+        success: false,
+        action_name: 'add_equipment_note',
+        data: null,
+        error: { code: 'NOT_FOUND', message: `Equipment not found: ${params.equipment_id}` },
+        confirmation_required: false,
+      };
+    }
+
+    // Add note
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({
+        entity_type: 'equipment',
+        entity_id: params.equipment_id,
+        content: params.note_text,
+        created_by: context.user_id,
+        yacht_id: context.yacht_id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        success: false,
+        action_name: 'add_equipment_note',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'add_equipment_note',
+      data: {
+        note: data,
+        equipment_name: equipment.name,
+      },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'add_equipment_note',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
  * Get all equipment handlers for registration
  */
 export const equipmentHandlers = {
@@ -594,5 +677,6 @@ export const equipmentHandlers = {
   view_equipment_parts: viewEquipmentParts,
   view_linked_faults: viewLinkedFaults,
   view_equipment_manual: viewEquipmentManual,
+  add_equipment_note: addEquipmentNote,
   run_diagnostic: runDiagnostic,
 };
