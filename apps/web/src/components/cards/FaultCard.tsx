@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Wrench, ChevronRight, Stethoscope, Book, History, Package, StickyNote, Camera } from 'lucide-react';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { DiagnoseFaultModal } from '@/components/modals/DiagnoseFaultModal';
@@ -21,6 +21,8 @@ import { AddNoteModal } from '@/components/modals/AddNoteModal';
 import { AddPhotoModal } from '@/components/modals/AddPhotoModal';
 import { ActionButton } from '@/components/actions/ActionButton';
 import { cn } from '@/lib/utils';
+import { shouldShowAction, shouldAutoRun } from '@/lib/microactions/triggers';
+import type { TriggerContext } from '@/lib/microactions/types';
 import type { MicroAction } from '@/types/actions';
 
 interface FaultCardProps {
@@ -33,11 +35,23 @@ interface FaultCardProps {
     equipment_name: string;
     reported_at: string;
     reporter: string;
+    // Optional AI diagnosis for trigger conditions
+    ai_diagnosis?: {
+      is_known: boolean;
+      diagnosis?: string;
+      confidence?: number;
+    };
+    // Whether a work order already exists for this fault
+    has_work_order?: boolean;
   };
   actions?: MicroAction[];
+  // User role for permission checks
+  userRole?: string;
+  // Callback when auto-run action executes
+  onAutoRun?: (actionName: string, result: unknown) => void;
 }
 
-export function FaultCard({ fault, actions = [] }: FaultCardProps) {
+export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCardProps) {
   const [showCreateWO, setShowCreateWO] = useState(false);
   const [showDiagnose, setShowDiagnose] = useState(false);
   const [showManual, setShowManual] = useState(false);
@@ -45,6 +59,42 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
   const [showSuggestParts, setShowSuggestParts] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [showAddPhoto, setShowAddPhoto] = useState(false);
+
+  // Track if auto-run has been triggered
+  const hasAutoRun = useRef(false);
+
+  // Build trigger context from fault data
+  const triggerContext: TriggerContext = {
+    fault: {
+      id: fault.id,
+      ai_diagnosis: fault.ai_diagnosis,
+      equipment_id: fault.equipment_id,
+      has_work_order: fault.has_work_order,
+    },
+    equipment: {
+      id: fault.equipment_id,
+      has_manual: true, // Assume manual exists for now
+    },
+    user_role: userRole,
+  };
+
+  // Check which actions should be visible based on trigger rules
+  const showDiagnoseButton = shouldShowAction('diagnose_fault', triggerContext);
+  const showManualButton = shouldShowAction('show_manual_section', triggerContext);
+  const showHistoryButton = shouldShowAction('view_fault_history', triggerContext);
+  const showSuggestPartsButton = shouldShowAction('suggest_parts', triggerContext);
+  const showAddNoteButton = shouldShowAction('add_fault_note', triggerContext);
+  const showAddPhotoButton = shouldShowAction('add_fault_photo', triggerContext);
+  const showCreateWOButton = shouldShowAction('create_work_order_from_fault', triggerContext);
+
+  // Auto-run diagnose_fault when card mounts (if it should auto-run)
+  useEffect(() => {
+    if (!hasAutoRun.current && shouldAutoRun('diagnose_fault') && showDiagnoseButton) {
+      hasAutoRun.current = true;
+      // Open diagnose modal automatically
+      setShowDiagnose(true);
+    }
+  }, [showDiagnoseButton]);
 
   // Get severity styling (Apple-style: subtle background, muted colors)
   const getSeverityStyles = (severity: string) => {
@@ -119,75 +169,91 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
               })}
             </p>
 
-            {/* Actions - Apple-style buttons */}
+            {/* Actions - Apple-style buttons with conditional visibility */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Diagnose Action */}
-              <button
-                onClick={() => setShowDiagnose(true)}
-                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
-              >
-                <Stethoscope className="h-3.5 w-3.5" />
-                Diagnose
-              </button>
+              {/* Diagnose Action - shows if trigger conditions met */}
+              {showDiagnoseButton && (
+                <button
+                  onClick={() => setShowDiagnose(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="diagnose-fault-button"
+                >
+                  <Stethoscope className="h-3.5 w-3.5" />
+                  Diagnose
+                </button>
+              )}
 
-              {/* View Manual Action */}
-              <button
-                onClick={() => setShowManual(true)}
-                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
-                data-testid="view-manual-button"
-              >
-                <Book className="h-3.5 w-3.5" />
-                View Manual
-              </button>
+              {/* View Manual Action - shows if equipment has manual */}
+              {showManualButton && (
+                <button
+                  onClick={() => setShowManual(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="view-manual-button"
+                >
+                  <Book className="h-3.5 w-3.5" />
+                  View Manual
+                </button>
+              )}
 
-              {/* View History Action */}
-              <button
-                onClick={() => setShowHistory(true)}
-                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
-                data-testid="view-history-button"
-              >
-                <History className="h-3.5 w-3.5" />
-                History
-              </button>
+              {/* View History Action - always shows for faults */}
+              {showHistoryButton && (
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="view-history-button"
+                >
+                  <History className="h-3.5 w-3.5" />
+                  History
+                </button>
+              )}
 
-              {/* Suggest Parts Action */}
-              <button
-                onClick={() => setShowSuggestParts(true)}
-                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
-                data-testid="suggest-parts-button"
-              >
-                <Package className="h-3.5 w-3.5" />
-                Parts
-              </button>
+              {/* Suggest Parts Action - ONLY shows if fault.ai_diagnosis.is_known === true */}
+              {showSuggestPartsButton && (
+                <button
+                  onClick={() => setShowSuggestParts(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="suggest-parts-button"
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  Parts
+                </button>
+              )}
 
-              {/* Add Note Action */}
-              <button
-                onClick={() => setShowAddNote(true)}
-                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
-                data-testid="add-note-button"
-              >
-                <StickyNote className="h-3.5 w-3.5" />
-                Note
-              </button>
+              {/* Add Note Action - always shows */}
+              {showAddNoteButton && (
+                <button
+                  onClick={() => setShowAddNote(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="add-note-button"
+                >
+                  <StickyNote className="h-3.5 w-3.5" />
+                  Note
+                </button>
+              )}
 
-              {/* Add Photo Action */}
-              <button
-                onClick={() => setShowAddPhoto(true)}
-                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
-                data-testid="add-photo-button"
-              >
-                <Camera className="h-3.5 w-3.5" />
-                Photo
-              </button>
+              {/* Add Photo Action - always shows */}
+              {showAddPhotoButton && (
+                <button
+                  onClick={() => setShowAddPhoto(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="add-photo-button"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  Photo
+                </button>
+              )}
 
-              {/* Primary Action */}
-              <button
-                onClick={() => setShowCreateWO(true)}
-                className="celeste-button celeste-button-primary h-8 px-3 text-[13px]"
-              >
-                <Wrench className="h-3.5 w-3.5" />
-                Create Work Order
-              </button>
+              {/* Primary Action - Create Work Order (hides if WO already exists) */}
+              {showCreateWOButton && (
+                <button
+                  onClick={() => setShowCreateWO(true)}
+                  className="celeste-button celeste-button-primary h-8 px-3 text-[13px]"
+                  data-testid="create-work-order-button"
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  Create Work Order
+                </button>
+              )}
 
               {/* Secondary Actions */}
               {actions
