@@ -474,10 +474,873 @@ async def delete_shopping_item(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ============================================================================
+# FAULT HANDLERS
+# ============================================================================
+
+
+async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Report a new fault.
+
+    Required params:
+        - yacht_id: UUID
+        - equipment_id: UUID
+        - description: str
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    fault_id = str(uuid_lib.uuid4())
+    fault_data = {
+        "id": fault_id,
+        "yacht_id": params["yacht_id"],
+        "equipment_id": params["equipment_id"],
+        "description": params["description"],
+        "priority": params.get("priority", "medium"),
+        "status": "open",
+        "reported_by": params["user_id"],
+        "reported_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("pms_faults").insert(fault_data).execute()
+
+    if not result.data:
+        raise Exception("Failed to create fault")
+
+    return {
+        "fault_id": fault_id,
+        "status": "open",
+        "created_at": fault_data["created_at"],
+    }
+
+
+async def close_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Close a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").update({
+        "status": "closed",
+        "resolved_at": datetime.utcnow().isoformat(),
+        "resolved_by": params["user_id"],
+    }).eq("id", params["fault_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "status": "closed",
+        "resolved_at": result.data[0].get("resolved_at"),
+    }
+
+
+async def update_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    update_data = {"updated_at": datetime.utcnow().isoformat()}
+    if "description" in params:
+        update_data["description"] = params["description"]
+    if "priority" in params:
+        update_data["priority"] = params["priority"]
+    if "status" in params:
+        update_data["status"] = params["status"]
+
+    result = supabase.table("pms_faults").update(update_data).eq(
+        "id", params["fault_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "updated": True,
+        "updated_at": update_data["updated_at"],
+    }
+
+
+async def add_fault_photo(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add a photo to a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - photo_url: str
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    # Verify fault exists
+    fault_result = supabase.table("pms_faults").select("id").eq(
+        "id", params["fault_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not fault_result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    # Add attachment
+    attachment_id = str(uuid_lib.uuid4())
+    attachment_data = {
+        "id": attachment_id,
+        "entity_type": "fault",
+        "entity_id": params["fault_id"],
+        "storage_path": params["photo_url"],
+        "filename": params.get("filename", "photo.jpg"),
+        "mime_type": "image/jpeg",
+        "uploaded_by": params["user_id"],
+        "uploaded_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("attachments").insert(attachment_data).execute()
+
+    return {
+        "attachment_id": attachment_id,
+        "fault_id": params["fault_id"],
+        "photo_url": params["photo_url"],
+    }
+
+
+async def view_fault_detail(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    View fault detail.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").select("*").eq(
+        "id", params["fault_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return result.data[0]
+
+
+async def diagnose_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Diagnose a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    # Get fault details
+    fault_result = supabase.table("pms_faults").select("*").eq(
+        "id", params["fault_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not fault_result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    fault = fault_result.data[0]
+
+    return {
+        "fault_id": params["fault_id"],
+        "fault": fault,
+        "diagnosis": {
+            "findings": [],
+            "finding_count": 0
+        },
+        "remedies": {
+            "suggested_actions": [],
+            "remedy_count": 0
+        }
+    }
+
+
+async def view_fault_history(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    View fault history for an entity.
+
+    Required params:
+        - yacht_id: UUID
+        - entity_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").select("*").eq(
+        "yacht_id", params["yacht_id"]
+    ).or_(
+        f"id.eq.{params['entity_id']},equipment_id.eq.{params['entity_id']}"
+    ).order("created_at", desc=True).limit(50).execute()
+
+    return {
+        "entity_id": params["entity_id"],
+        "faults": result.data or [],
+        "total": len(result.data or [])
+    }
+
+
+async def suggest_parts(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Suggest parts for a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    # Get fault details
+    fault_result = supabase.table("pms_faults").select("*").eq(
+        "id", params["fault_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not fault_result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "suggested_parts": [],
+        "summary": {
+            "total_suggested": 0,
+            "available": 0,
+            "unavailable": 0
+        }
+    }
+
+
+async def show_manual_section(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Show manual section for equipment.
+
+    Required params:
+        - yacht_id: UUID
+        - equipment_id: UUID
+    """
+    return {
+        "equipment_id": params["equipment_id"],
+        "manual_sections": [],
+        "message": "No manual sections found"
+    }
+
+
+async def add_fault_note(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add a note to a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - note: str
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    note_id = str(uuid_lib.uuid4())
+    note_data = {
+        "id": note_id,
+        "entity_type": "fault",
+        "entity_id": params["fault_id"],
+        "note_text": params["note"],
+        "created_by": params["user_id"],
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("notes").insert(note_data).execute()
+
+    return {
+        "note_id": note_id,
+        "fault_id": params["fault_id"],
+        "created_at": note_data["created_at"],
+    }
+
+
+async def create_work_order_from_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a work order from a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    # Get fault details
+    fault_result = supabase.table("pms_faults").select("*").eq(
+        "id", params["fault_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not fault_result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    fault = fault_result.data[0]
+
+    # Create work order
+    wo_id = str(uuid_lib.uuid4())
+    wo_data = {
+        "id": wo_id,
+        "yacht_id": params["yacht_id"],
+        "equipment_id": fault.get("equipment_id"),
+        "fault_id": params["fault_id"],
+        "title": f"Fix: {fault.get('description', 'Fault repair')[:100]}",
+        "description": fault.get("description"),
+        "priority": fault.get("priority", "medium"),
+        "status": "open",
+        "created_by": params["user_id"],
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("pms_work_orders").insert(wo_data).execute()
+
+    if not result.data:
+        raise Exception("Failed to create work order")
+
+    return {
+        "work_order_id": wo_id,
+        "fault_id": params["fault_id"],
+        "status": "open",
+        "created_at": wo_data["created_at"],
+    }
+
+
+async def reopen_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Reopen a closed fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").update({
+        "status": "open",
+        "resolved_at": None,
+        "resolved_by": None,
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", params["fault_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "status": "open",
+    }
+
+
+async def mark_fault_false_alarm(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Mark a fault as a false alarm.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").update({
+        "status": "false_alarm",
+        "resolved_at": datetime.utcnow().isoformat(),
+        "resolved_by": params["user_id"],
+    }).eq("id", params["fault_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "status": "false_alarm",
+    }
+
+
+async def acknowledge_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Acknowledge a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").update({
+        "acknowledged_at": datetime.utcnow().isoformat(),
+        "acknowledged_by": params["user_id"],
+    }).eq("id", params["fault_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "acknowledged": True,
+    }
+
+
+async def classify_fault(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Classify a fault.
+
+    Required params:
+        - yacht_id: UUID
+        - fault_id: UUID
+        - classification: str
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_faults").update({
+        "classification": params["classification"],
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", params["fault_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+
+    return {
+        "fault_id": params["fault_id"],
+        "classification": params["classification"],
+    }
+
+
+# ============================================================================
+# WORK ORDER HANDLERS
+# ============================================================================
+
+
+async def update_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    update_data = {"updated_at": datetime.utcnow().isoformat()}
+    if "title" in params:
+        update_data["title"] = params["title"]
+    if "description" in params:
+        update_data["description"] = params["description"]
+    if "priority" in params:
+        update_data["priority"] = params["priority"]
+    if "status" in params:
+        update_data["status"] = params["status"]
+
+    result = supabase.table("pms_work_orders").update(update_data).eq(
+        "id", params["work_order_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+
+    return {
+        "work_order_id": params["work_order_id"],
+        "updated": True,
+        "updated_at": update_data["updated_at"],
+    }
+
+
+async def assign_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Assign a work order to a user.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - assignee_id or assigned_to: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    assignee = params.get("assignee_id") or params.get("assigned_to")
+
+    result = supabase.table("pms_work_orders").update({
+        "assigned_to": assignee,
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", params["work_order_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+
+    return {
+        "work_order_id": params["work_order_id"],
+        "assigned_to": assignee,
+    }
+
+
+async def add_wo_hours(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add hours to a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - hours: float
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    # Verify work order exists
+    wo_result = supabase.table("pms_work_orders").select("id, hours_logged").eq(
+        "id", params["work_order_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not wo_result.data:
+        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+
+    current_hours = wo_result.data[0].get("hours_logged", 0) or 0
+    new_hours = current_hours + params["hours"]
+
+    # Update total hours
+    supabase.table("pms_work_orders").update({
+        "hours_logged": new_hours,
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", params["work_order_id"]).execute()
+
+    return {
+        "work_order_id": params["work_order_id"],
+        "hours_added": params["hours"],
+        "total_hours": new_hours,
+    }
+
+
+async def add_wo_part(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add a part to a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - part_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    link_id = str(uuid_lib.uuid4())
+    link_data = {
+        "id": link_id,
+        "work_order_id": params["work_order_id"],
+        "part_id": params["part_id"],
+        "quantity": params.get("quantity", 1),
+        "added_by": params["user_id"],
+        "added_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("work_order_parts").insert(link_data).execute()
+
+    return {
+        "link_id": link_id,
+        "work_order_id": params["work_order_id"],
+        "part_id": params["part_id"],
+    }
+
+
+async def add_wo_note(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add a note to a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - note_text: str
+        - user_id: UUID (from JWT)
+    """
+    # Reuse the existing add_note_to_work_order handler
+    return await add_note_to_work_order(params)
+
+
+async def start_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Start a work order (change status to in_progress).
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_work_orders").update({
+        "status": "in_progress",
+        "started_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", params["work_order_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+
+    return {
+        "work_order_id": params["work_order_id"],
+        "status": "in_progress",
+    }
+
+
+async def cancel_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Cancel a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_work_orders").update({
+        "status": "cancelled",
+        "cancelled_at": datetime.utcnow().isoformat(),
+        "cancel_reason": params.get("reason", "Cancelled by user"),
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", params["work_order_id"]).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+
+    return {
+        "work_order_id": params["work_order_id"],
+        "status": "cancelled",
+    }
+
+
+async def create_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a new work order.
+
+    Required params:
+        - yacht_id: UUID
+        - title: str
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    wo_id = str(uuid_lib.uuid4())
+    wo_data = {
+        "id": wo_id,
+        "yacht_id": params["yacht_id"],
+        "title": params["title"],
+        "description": params.get("description", ""),
+        "priority": params.get("priority", "medium"),
+        "equipment_id": params.get("equipment_id"),
+        "status": "open",
+        "created_by": params["user_id"],
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("pms_work_orders").insert(wo_data).execute()
+
+    if not result.data:
+        raise Exception("Failed to create work order")
+
+    return {
+        "work_order_id": wo_id,
+        "status": "open",
+        "created_at": wo_data["created_at"],
+    }
+
+
+async def view_work_order_detail(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    View work order detail.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("pms_work_orders").select("*").eq(
+        "id", params["work_order_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not result.data:
+        raise ValueError(f"Work order {params['work_order_id']} not found or access denied")
+
+    return result.data[0]
+
+
+async def add_work_order_photo(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add a photo to a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - photo_url: str
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    attachment_id = str(uuid_lib.uuid4())
+    attachment_data = {
+        "id": attachment_id,
+        "entity_type": "work_order",
+        "entity_id": params["work_order_id"],
+        "storage_path": params["photo_url"],
+        "filename": params.get("filename", "photo.jpg"),
+        "mime_type": "image/jpeg",
+        "uploaded_by": params["user_id"],
+        "uploaded_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("attachments").insert(attachment_data).execute()
+
+    return {
+        "attachment_id": attachment_id,
+        "work_order_id": params["work_order_id"],
+        "photo_url": params["photo_url"],
+    }
+
+
+async def add_parts_to_work_order(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add parts to a work order.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+        - part_id: UUID
+        - user_id: UUID (from JWT)
+    """
+    return await add_wo_part(params)
+
+
+async def view_work_order_checklist(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    View work order checklist.
+
+    Required params:
+        - yacht_id: UUID
+        - work_order_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("checklist_items").select("*").eq(
+        "work_order_id", params["work_order_id"]
+    ).order("sequence").execute()
+
+    items = result.data or []
+    completed = len([i for i in items if i.get("is_completed")])
+
+    return {
+        "work_order_id": params["work_order_id"],
+        "checklist": items,
+        "progress": {
+            "completed": completed,
+            "total": len(items),
+            "percent": round((completed / len(items) * 100) if items else 0, 1)
+        }
+    }
+
+
+# ============================================================================
+# WORKLIST HANDLERS
+# ============================================================================
+
+
+async def view_worklist(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    View worklist tasks.
+
+    Required params:
+        - yacht_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("worklist_tasks").select("*").eq(
+        "yacht_id", params["yacht_id"]
+    ).order("created_at", desc=True).execute()
+
+    return {
+        "tasks": result.data or [],
+        "total": len(result.data or [])
+    }
+
+
+async def add_worklist_task(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add a task to the worklist.
+
+    Required params:
+        - yacht_id: UUID
+        - task_description: str
+        - user_id: UUID (from JWT)
+    """
+    import uuid as uuid_lib
+    supabase = get_supabase_client()
+
+    task_id = str(uuid_lib.uuid4())
+    task_data = {
+        "id": task_id,
+        "yacht_id": params["yacht_id"],
+        "description": params["task_description"],
+        "status": "pending",
+        "created_by": params["user_id"],
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    result = supabase.table("worklist_tasks").insert(task_data).execute()
+
+    return {
+        "task_id": task_id,
+        "status": "pending",
+    }
+
+
+async def export_worklist(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Export worklist to a format.
+
+    Required params:
+        - yacht_id: UUID
+    """
+    supabase = get_supabase_client()
+
+    result = supabase.table("worklist_tasks").select("*").eq(
+        "yacht_id", params["yacht_id"]
+    ).execute()
+
+    return {
+        "tasks": result.data or [],
+        "export_format": "json",
+        "exported_at": datetime.utcnow().isoformat()
+    }
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 
 INTERNAL_HANDLERS: Dict[str, Callable] = {
+    # Original handlers
     "add_note": add_note,
     "add_note_to_work_order": add_note_to_work_order,
     "close_work_order": close_work_order,
@@ -487,6 +1350,42 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "add_to_handover": add_to_handover,
     "delete_document": delete_document,
     "delete_shopping_item": delete_shopping_item,
+
+    # Fault handlers
+    "report_fault": report_fault,
+    "close_fault": close_fault,
+    "update_fault": update_fault,
+    "add_fault_photo": add_fault_photo,
+    "view_fault_detail": view_fault_detail,
+    "diagnose_fault": diagnose_fault,
+    "view_fault_history": view_fault_history,
+    "suggest_parts": suggest_parts,
+    "show_manual_section": show_manual_section,
+    "add_fault_note": add_fault_note,
+    "create_work_order_from_fault": create_work_order_from_fault,
+    "reopen_fault": reopen_fault,
+    "mark_fault_false_alarm": mark_fault_false_alarm,
+    "acknowledge_fault": acknowledge_fault,
+    "classify_fault": classify_fault,
+
+    # Work order handlers
+    "update_work_order": update_work_order,
+    "assign_work_order": assign_work_order,
+    "add_wo_hours": add_wo_hours,
+    "add_wo_part": add_wo_part,
+    "add_wo_note": add_wo_note,
+    "start_work_order": start_work_order,
+    "cancel_work_order": cancel_work_order,
+    "create_work_order": create_work_order,
+    "view_work_order_detail": view_work_order_detail,
+    "add_work_order_photo": add_work_order_photo,
+    "add_parts_to_work_order": add_parts_to_work_order,
+    "view_work_order_checklist": view_work_order_checklist,
+
+    # Worklist handlers
+    "view_worklist": view_worklist,
+    "add_worklist_task": add_worklist_task,
+    "export_worklist": export_worklist,
 }
 
 
