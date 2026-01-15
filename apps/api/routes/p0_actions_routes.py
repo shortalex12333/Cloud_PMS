@@ -414,6 +414,58 @@ async def execute_action(
     user_id = user_context["user_id"]
     payload = request.payload
 
+    # ========================================================================
+    # REQUIRED FIELD VALIDATION - Return 400 instead of 500 for missing fields
+    # ========================================================================
+    REQUIRED_FIELDS = {
+        "report_fault": ["equipment_id", "description"],
+        "close_fault": ["fault_id"],
+        "update_fault": ["fault_id"],
+        "add_fault_photo": ["fault_id", "photo_url"],
+        "view_fault_detail": ["fault_id"],
+        "acknowledge_fault": ["fault_id"],
+        "resolve_fault": ["fault_id"],
+        "reopen_fault": ["fault_id"],
+        "mark_fault_false_alarm": ["fault_id"],
+        "create_work_order_from_fault": ["fault_id"],
+        "add_note_to_work_order": ["work_order_id", "note_text"],
+        "add_part_to_work_order": ["work_order_id", "part_id", "quantity"],
+        "mark_work_order_complete": ["work_order_id", "completion_notes", "signature"],
+        "update_work_order": ["work_order_id"],
+        "assign_work_order": ["work_order_id", "assigned_to"],
+        "close_work_order": ["work_order_id"],
+        "start_work_order": ["work_order_id"],
+        "cancel_work_order": ["work_order_id"],
+        "create_work_order": ["title"],
+        "view_work_order_detail": ["work_order_id"],
+        "add_work_order_photo": ["work_order_id", "photo_url"],
+        "add_parts_to_work_order": ["work_order_id", "part_id"],
+        "view_work_order_checklist": ["work_order_id"],
+        "add_worklist_task": ["task_description"],
+        "check_stock_level": ["part_id"],
+        "log_part_usage": ["part_id", "quantity", "usage_reason"],
+        "add_to_handover": ["title"],
+        "show_manual_section": ["equipment_id"],
+        "update_equipment_status": ["equipment_id", "new_status"],
+        "delete_document": ["document_id"],
+        "delete_shopping_item": ["item_id"],
+        # Add_wo_* variants
+        "add_wo_hours": ["work_order_id", "hours"],
+        "add_wo_part": ["work_order_id", "part_id"],
+        "add_wo_note": ["work_order_id", "note_text"],
+    }
+
+    if action in REQUIRED_FIELDS:
+        missing = [f for f in REQUIRED_FIELDS[action] if not payload.get(f)]
+        # Allow task_description OR description for add_worklist_task
+        if action == "add_worklist_task" and not payload.get("task_description") and payload.get("description"):
+            missing = [f for f in missing if f != "task_description"]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required field(s): {', '.join(missing)}"
+            )
+
     # Route to handler based on action name
     try:
         # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
