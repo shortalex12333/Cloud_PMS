@@ -21,6 +21,7 @@ export { equipmentHandlers } from './equipment';
 export { inventoryHandlers } from './inventory';
 export { handoverHandlers } from './handover';
 export { complianceHandlers } from './compliance';
+export { procurementHandlers } from './procurement';
 
 // Import individual handlers for registration
 import { faultHandlers } from './faults';
@@ -29,6 +30,7 @@ import { equipmentHandlers } from './equipment';
 import { inventoryHandlers } from './inventory';
 import { handoverHandlers } from './handover';
 import { complianceHandlers } from './compliance';
+import { procurementHandlers } from './procurement';
 
 /**
  * All handlers grouped by domain
@@ -40,6 +42,7 @@ export const allHandlers = {
   ...inventoryHandlers,
   ...handoverHandlers,
   ...complianceHandlers,
+  ...procurementHandlers,
 };
 
 /**
@@ -78,6 +81,11 @@ export function registerAllHandlers(): void {
   for (const [name, handler] of Object.entries(complianceHandlers)) {
     registerHandler(name, handler as HandlerFunction);
   }
+
+  // Procurement handlers
+  for (const [name, handler] of Object.entries(procurementHandlers)) {
+    registerHandler(name, handler as HandlerFunction);
+  }
 }
 
 /**
@@ -91,6 +99,7 @@ export function getHandlerStats(): Record<string, number> {
     inventory: Object.keys(inventoryHandlers).length,
     handover: Object.keys(handoverHandlers).length,
     compliance: Object.keys(complianceHandlers).length,
+    procurement: Object.keys(procurementHandlers).length,
     total: Object.keys(allHandlers).length,
   };
 }

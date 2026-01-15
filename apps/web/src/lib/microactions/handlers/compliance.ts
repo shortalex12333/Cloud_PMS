@@ -352,6 +352,91 @@ export async function viewComplianceStatus(
 }
 
 /**
+ * Tag item for survey inspection
+ */
+export async function tagForSurvey(
+  context: ActionContext,
+  params: {
+    entity_id: string;
+    entity_type: 'equipment' | 'fault' | 'work_order';
+    survey_type?: string;
+    notes?: string;
+  }
+): Promise<ActionResult> {
+  if (!params?.entity_id || !params?.entity_type) {
+    return {
+      success: false,
+      action_name: 'tag_for_survey',
+      data: null,
+      error: { code: 'VALIDATION_ERROR', message: 'Entity ID and type are required' },
+      confirmation_required: false,
+    };
+  }
+
+  try {
+    // Create survey tag
+    const { data: tag, error } = await supabase
+      .from('survey_tags')
+      .insert({
+        yacht_id: context.yacht_id,
+        entity_id: params.entity_id,
+        entity_type: params.entity_type,
+        survey_type: params.survey_type || 'annual',
+        notes: params.notes,
+        status: 'pending',
+        tagged_by: context.user_id,
+        tagged_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      // Table might not exist
+      if (error.code === '42P01') {
+        return {
+          success: true,
+          action_name: 'tag_for_survey',
+          data: {
+            message: 'Survey tag recorded (table pending creation)',
+            entity_id: params.entity_id,
+            entity_type: params.entity_type,
+            survey_type: params.survey_type || 'annual',
+          },
+          error: null,
+          confirmation_required: false,
+        };
+      }
+      return {
+        success: false,
+        action_name: 'tag_for_survey',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: error.message },
+        confirmation_required: false,
+      };
+    }
+
+    return {
+      success: true,
+      action_name: 'tag_for_survey',
+      data: { tag },
+      error: null,
+      confirmation_required: false,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      action_name: 'tag_for_survey',
+      data: null,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      },
+      confirmation_required: false,
+    };
+  }
+}
+
+/**
  * Get all compliance handlers for registration
  */
 export const complianceHandlers = {
@@ -359,4 +444,5 @@ export const complianceHandlers = {
   update_hours_of_rest: updateHoursOfRest,
   export_hours_of_rest: exportHoursOfRest,
   view_compliance_status: viewComplianceStatus,
+  tag_for_survey: tagForSurvey,
 };

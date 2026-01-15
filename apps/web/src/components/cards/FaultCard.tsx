@@ -11,8 +11,14 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Wrench, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Wrench, ChevronRight, Stethoscope, Book, History, Package, StickyNote, Camera } from 'lucide-react';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
+import { DiagnoseFaultModal } from '@/components/modals/DiagnoseFaultModal';
+import { ShowManualSectionModal } from '@/components/modals/ShowManualSectionModal';
+import { FaultHistoryModal } from '@/components/modals/FaultHistoryModal';
+import { SuggestPartsModal } from '@/components/modals/SuggestPartsModal';
+import { AddNoteModal } from '@/components/modals/AddNoteModal';
+import { AddPhotoModal } from '@/components/modals/AddPhotoModal';
 import { ActionButton } from '@/components/actions/ActionButton';
 import { cn } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
@@ -33,6 +39,12 @@ interface FaultCardProps {
 
 export function FaultCard({ fault, actions = [] }: FaultCardProps) {
   const [showCreateWO, setShowCreateWO] = useState(false);
+  const [showDiagnose, setShowDiagnose] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSuggestParts, setShowSuggestParts] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [showAddPhoto, setShowAddPhoto] = useState(false);
 
   // Get severity styling (Apple-style: subtle background, muted colors)
   const getSeverityStyles = (severity: string) => {
@@ -109,6 +121,65 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
 
             {/* Actions - Apple-style buttons */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Diagnose Action */}
+              <button
+                onClick={() => setShowDiagnose(true)}
+                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+              >
+                <Stethoscope className="h-3.5 w-3.5" />
+                Diagnose
+              </button>
+
+              {/* View Manual Action */}
+              <button
+                onClick={() => setShowManual(true)}
+                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                data-testid="view-manual-button"
+              >
+                <Book className="h-3.5 w-3.5" />
+                View Manual
+              </button>
+
+              {/* View History Action */}
+              <button
+                onClick={() => setShowHistory(true)}
+                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                data-testid="view-history-button"
+              >
+                <History className="h-3.5 w-3.5" />
+                History
+              </button>
+
+              {/* Suggest Parts Action */}
+              <button
+                onClick={() => setShowSuggestParts(true)}
+                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                data-testid="suggest-parts-button"
+              >
+                <Package className="h-3.5 w-3.5" />
+                Parts
+              </button>
+
+              {/* Add Note Action */}
+              <button
+                onClick={() => setShowAddNote(true)}
+                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                data-testid="add-note-button"
+              >
+                <StickyNote className="h-3.5 w-3.5" />
+                Note
+              </button>
+
+              {/* Add Photo Action */}
+              <button
+                onClick={() => setShowAddPhoto(true)}
+                className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                data-testid="add-photo-button"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                Photo
+              </button>
+
               {/* Primary Action */}
               <button
                 onClick={() => setShowCreateWO(true)}
@@ -160,6 +231,74 @@ export function FaultCard({ fault, actions = [] }: FaultCardProps) {
         }}
         onSuccess={(workOrderId) => {
           console.log('Work order created:', workOrderId);
+        }}
+      />
+
+      {/* Diagnose Fault Modal */}
+      <DiagnoseFaultModal
+        open={showDiagnose}
+        onOpenChange={setShowDiagnose}
+        context={{
+          fault_id: fault.id,
+          fault_title: fault.title,
+          fault_description: fault.description,
+          severity: fault.severity,
+          equipment_name: fault.equipment_name,
+        }}
+      />
+
+      {/* Show Manual Section Modal */}
+      <ShowManualSectionModal
+        open={showManual}
+        onOpenChange={setShowManual}
+        context={{
+          equipment_id: fault.equipment_id,
+          equipment_name: fault.equipment_name,
+        }}
+      />
+
+      {/* Fault History Modal */}
+      <FaultHistoryModal
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        context={{
+          entity_id: fault.equipment_id,
+          entity_type: 'equipment',
+          entity_name: fault.equipment_name,
+        }}
+      />
+
+      {/* Suggest Parts Modal */}
+      <SuggestPartsModal
+        open={showSuggestParts}
+        onOpenChange={setShowSuggestParts}
+        context={{
+          fault_id: fault.id,
+          fault_title: fault.title,
+        }}
+      />
+
+      {/* Add Note Modal */}
+      <AddNoteModal
+        open={showAddNote}
+        onOpenChange={setShowAddNote}
+        context={{
+          entity_type: 'fault',
+          entity_id: fault.id,
+          entity_title: fault.title,
+          entity_subtitle: fault.equipment_name,
+        }}
+      />
+
+      {/* Add Photo Modal */}
+      <AddPhotoModal
+        open={showAddPhoto}
+        onOpenChange={setShowAddPhoto}
+        context={{
+          entity_type: 'fault',
+          entity_id: fault.id,
+          entity_title: fault.title,
+          entity_subtitle: fault.equipment_name,
         }}
       />
     </>
