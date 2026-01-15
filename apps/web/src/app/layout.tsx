@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { MicroactionsProvider } from '@/providers/MicroactionsProvider';
 import AuthDebug from '@/components/AuthDebug';
 
 export const metadata: Metadata = {
@@ -19,8 +20,10 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <QueryProvider>
           <AuthProvider>
-            {children}
-            <AuthDebug />
+            <MicroactionsProvider>
+              {children}
+              <AuthDebug />
+            </MicroactionsProvider>
           </AuthProvider>
         </QueryProvider>
       </body>
