@@ -241,6 +241,315 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "part_id", "qty"],
         schema_file="order_part.json",
     ),
+
+    # ========================================================================
+    # FAULT ACTIONS
+    # ========================================================================
+    "report_fault": ActionDefinition(
+        action_id="report_fault",
+        label="Report Fault",
+        endpoint="/v1/faults/create",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "equipment_id", "description"],
+    ),
+
+    "classify_fault": ActionDefinition(
+        action_id="classify_fault",
+        label="Classify Fault",
+        endpoint="/v1/faults/classify",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id", "classification"],
+    ),
+
+    "acknowledge_fault": ActionDefinition(
+        action_id="acknowledge_fault",
+        label="Acknowledge Fault",
+        endpoint="/v1/faults/acknowledge",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "close_fault": ActionDefinition(
+        action_id="close_fault",
+        label="Close Fault",
+        endpoint="/v1/faults/close",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "update_fault": ActionDefinition(
+        action_id="update_fault",
+        label="Update Fault",
+        endpoint="/v1/faults/update",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "add_fault_photo": ActionDefinition(
+        action_id="add_fault_photo",
+        label="Add Fault Photo",
+        endpoint="/v1/faults/add-photo",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id", "photo_url"],
+    ),
+
+    "view_fault_detail": ActionDefinition(
+        action_id="view_fault_detail",
+        label="View Fault Detail",
+        endpoint="/v1/faults/view",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "diagnose_fault": ActionDefinition(
+        action_id="diagnose_fault",
+        label="Diagnose Fault",
+        endpoint="/v1/faults/diagnose",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "reopen_fault": ActionDefinition(
+        action_id="reopen_fault",
+        label="Reopen Fault",
+        endpoint="/v1/faults/reopen",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "mark_fault_false_alarm": ActionDefinition(
+        action_id="mark_fault_false_alarm",
+        label="Mark Fault as False Alarm",
+        endpoint="/v1/faults/mark-false-alarm",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "view_fault_history": ActionDefinition(
+        action_id="view_fault_history",
+        label="View Fault History",
+        endpoint="/v1/faults/history",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "entity_id"],
+    ),
+
+    "suggest_parts": ActionDefinition(
+        action_id="suggest_parts",
+        label="Suggest Parts",
+        endpoint="/v1/faults/suggest-parts",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    "show_manual_section": ActionDefinition(
+        action_id="show_manual_section",
+        label="Show Manual Section",
+        endpoint="/v1/documents/manual-section",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "equipment_id"],
+    ),
+
+    "add_fault_note": ActionDefinition(
+        action_id="add_fault_note",
+        label="Add Fault Note",
+        endpoint="/v1/faults/add-note",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id", "note"],
+    ),
+
+    "create_work_order_from_fault": ActionDefinition(
+        action_id="create_work_order_from_fault",
+        label="Create Work Order from Fault",
+        endpoint="/v1/work-orders/create-from-fault",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
+    # ========================================================================
+    # ADDITIONAL WORK ORDER ACTIONS
+    # ========================================================================
+    "add_work_order_photo": ActionDefinition(
+        action_id="add_work_order_photo",
+        label="Add Work Order Photo",
+        endpoint="/v1/work-orders/add-photo",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "photo_url"],
+    ),
+
+    "add_parts_to_work_order": ActionDefinition(
+        action_id="add_parts_to_work_order",
+        label="Add Parts to Work Order",
+        endpoint="/v1/work-orders/add-parts",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "part_id"],
+    ),
+
+    "view_work_order_checklist": ActionDefinition(
+        action_id="view_work_order_checklist",
+        label="View Work Order Checklist",
+        endpoint="/v1/work-orders/checklist",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "assign_work_order": ActionDefinition(
+        action_id="assign_work_order",
+        label="Assign Work Order",
+        endpoint="/v1/work-orders/assign",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "assignee_id"],
+    ),
+
+    "update_work_order": ActionDefinition(
+        action_id="update_work_order",
+        label="Update Work Order",
+        endpoint="/v1/work-orders/update",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "add_wo_hours": ActionDefinition(
+        action_id="add_wo_hours",
+        label="Add Work Order Hours",
+        endpoint="/v1/work-orders/add-hours",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "hours"],
+    ),
+
+    "add_wo_part": ActionDefinition(
+        action_id="add_wo_part",
+        label="Add Part to Work Order",
+        endpoint="/v1/work-orders/add-part",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "part_id"],
+    ),
+
+    "add_wo_note": ActionDefinition(
+        action_id="add_wo_note",
+        label="Add Work Order Note",
+        endpoint="/v1/work-orders/add-note",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "note"],
+    ),
+
+    "start_work_order": ActionDefinition(
+        action_id="start_work_order",
+        label="Start Work Order",
+        endpoint="/v1/work-orders/start",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "cancel_work_order": ActionDefinition(
+        action_id="cancel_work_order",
+        label="Cancel Work Order",
+        endpoint="/v1/work-orders/cancel",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "view_work_order_detail": ActionDefinition(
+        action_id="view_work_order_detail",
+        label="View Work Order Detail",
+        endpoint="/v1/work-orders/view",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    # ========================================================================
+    # WORKLIST ACTIONS (SHIPYARD)
+    # ========================================================================
+    "view_worklist": ActionDefinition(
+        action_id="view_worklist",
+        label="View Worklist",
+        endpoint="/v1/worklist/view",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id"],
+    ),
+
+    "add_worklist_task": ActionDefinition(
+        action_id="add_worklist_task",
+        label="Add Worklist Task",
+        endpoint="/v1/worklist/add-task",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "task_description"],
+    ),
+
+    "update_worklist_progress": ActionDefinition(
+        action_id="update_worklist_progress",
+        label="Update Worklist Progress",
+        endpoint="/v1/worklist/update-progress",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "task_id", "progress"],
+    ),
+
+    "export_worklist": ActionDefinition(
+        action_id="export_worklist",
+        label="Export Worklist",
+        endpoint="/v1/worklist/export",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=["yacht_id"],
+    ),
 }
 
 
