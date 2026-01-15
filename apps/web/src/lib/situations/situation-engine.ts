@@ -10,7 +10,7 @@
  * - HIGH_RISK_EQUIPMENT: Equipment with risk_score > 0.7 mentioned
  */
 
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import type {
   Situation,
   Recommendation,
@@ -88,7 +88,7 @@ export class SituationEngine {
       return null;
     }
 
-    const supabase = createClient();
+    
 
     try {
       // Call DB function to check recurrence
@@ -163,7 +163,7 @@ export class SituationEngine {
       return null;
     }
 
-    const supabase = createClient();
+    
 
     try {
       const { data, error } = await supabase
@@ -396,7 +396,7 @@ export class SituationEngine {
     yachtId: string,
     equipmentLabel: string
   ): Promise<WorkOrderSummary | null> {
-    const supabase = createClient();
+    
 
     try {
       // Query work_orders by equipment label
@@ -446,7 +446,7 @@ export class SituationEngine {
     recommendations: Recommendation[],
     searchQueryId?: string
   ): Promise<string | null> {
-    const supabase = createClient();
+    
 
     try {
       const { data, error } = await supabase
@@ -493,7 +493,7 @@ export class SituationEngine {
     userId?: string,
     searchQueryId?: string
   ): Promise<string | null> {
-    const supabase = createClient();
+    
 
     try {
       const { data, error } = await supabase

@@ -6,6 +6,13 @@
  */
 
 import { registerHandler } from '../executor';
+import type { ActionContext, ActionResult } from '../types';
+
+// Handler function type (matches executor's HandlerFunction)
+type HandlerFunction = (
+  context: ActionContext,
+  params?: Record<string, unknown>
+) => Promise<ActionResult>;
 
 // Import all handler modules
 export { faultHandlers } from './faults';
@@ -44,32 +51,32 @@ export const allHandlers = {
 export function registerAllHandlers(): void {
   // Fault handlers
   for (const [name, handler] of Object.entries(faultHandlers)) {
-    registerHandler(name, handler);
+    registerHandler(name, handler as HandlerFunction);
   }
 
   // Work order handlers
   for (const [name, handler] of Object.entries(workOrderHandlers)) {
-    registerHandler(name, handler);
+    registerHandler(name, handler as HandlerFunction);
   }
 
   // Equipment handlers
   for (const [name, handler] of Object.entries(equipmentHandlers)) {
-    registerHandler(name, handler);
+    registerHandler(name, handler as HandlerFunction);
   }
 
   // Inventory handlers
   for (const [name, handler] of Object.entries(inventoryHandlers)) {
-    registerHandler(name, handler);
+    registerHandler(name, handler as HandlerFunction);
   }
 
   // Handover handlers
   for (const [name, handler] of Object.entries(handoverHandlers)) {
-    registerHandler(name, handler);
+    registerHandler(name, handler as HandlerFunction);
   }
 
   // Compliance handlers
   for (const [name, handler] of Object.entries(complianceHandlers)) {
-    registerHandler(name, handler);
+    registerHandler(name, handler as HandlerFunction);
   }
 }
 

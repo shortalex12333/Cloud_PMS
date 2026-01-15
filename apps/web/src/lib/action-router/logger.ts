@@ -4,7 +4,7 @@
  * Log all action executions to the database for audit trail.
  */
 
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import type { ActionLogEntry, ActionStatus } from './types';
 
 // ============================================================================
@@ -76,8 +76,6 @@ export async function logAction(entry: {
   durationMs?: number;
 }): Promise<string | null> {
   try {
-    const supabase = createClient();
-
     // Sanitize payload and result
     const sanitizedPayload = sanitizePayload(entry.payload);
     const sanitizedResult = entry.result
@@ -136,8 +134,6 @@ export async function getActionStats(
   avgDurationMs: number;
 }> {
   try {
-    const supabase = createClient();
-
     const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supabase
@@ -218,8 +214,6 @@ export async function getRecentActions(
   limit: number = 50
 ): Promise<ActionLogEntry[]> {
   try {
-    const supabase = createClient();
-
     const { data, error } = await supabase
       .from('action_executions')
       .select('*')
@@ -258,8 +252,6 @@ export async function getEntityActionHistory(
   limit: number = 20
 ): Promise<ActionLogEntry[]> {
   try {
-    const supabase = createClient();
-
     // Query for actions where payload contains the entity
     const { data, error } = await supabase
       .from('action_executions')

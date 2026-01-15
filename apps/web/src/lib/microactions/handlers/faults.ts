@@ -6,7 +6,7 @@
  */
 
 import type { ActionContext, ActionResult } from '../types';
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 interface FaultData {
   id: string;
@@ -72,7 +72,7 @@ export async function viewFault(
   context: ActionContext,
   params?: { fault_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const faultId = params?.fault_id || context.entity_id;
 
   if (!faultId) {
@@ -147,7 +147,7 @@ export async function diagnoseFault(
   context: ActionContext,
   params?: { fault_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const faultId = params?.fault_id || context.entity_id;
 
   if (!faultId) {
@@ -272,7 +272,7 @@ export async function viewFaultHistory(
   context: ActionContext,
   params?: { offset?: number; limit?: number }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const entityId = context.entity_id;
   const offset = params?.offset || 0;
   const limit = params?.limit || 20;
@@ -349,7 +349,7 @@ export async function suggestParts(
   context: ActionContext,
   params?: { fault_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const faultId = params?.fault_id || context.entity_id;
 
   if (!faultId) {
@@ -465,7 +465,7 @@ export async function addFaultNote(
   context: ActionContext,
   params: { fault_id: string; note_text: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.fault_id || !params?.note_text) {
     return {
@@ -534,7 +534,7 @@ export async function createWorkOrderFromFault(
     assignee_id?: string;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.fault_id) {
     return {

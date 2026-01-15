@@ -5,7 +5,7 @@
  */
 
 import type { ActionContext, ActionResult } from '../types';
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * View hours of rest for a crew member
@@ -14,7 +14,7 @@ export async function viewHoursOfRest(
   context: ActionContext,
   params?: { user_id?: string; date?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const userId = params?.user_id || context.user_id;
   const date = params?.date || new Date().toISOString().split('T')[0];
 
@@ -100,7 +100,7 @@ export async function updateHoursOfRest(
     }>;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.user_id || !params?.date || !params?.hours) {
     return {
@@ -170,7 +170,7 @@ export async function exportHoursOfRest(
     format?: 'pdf' | 'csv' | 'xlsx';
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const userId = params?.user_id || context.user_id;
   const format = params?.format || 'pdf';
 
@@ -264,7 +264,7 @@ export async function viewComplianceStatus(
   context: ActionContext,
   params?: { days?: number }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const days = params?.days || 30;
 
   try {

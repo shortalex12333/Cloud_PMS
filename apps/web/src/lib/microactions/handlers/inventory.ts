@@ -5,7 +5,7 @@
  */
 
 import type { ActionContext, ActionResult } from '../types';
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * View part stock details
@@ -14,7 +14,7 @@ export async function viewPartStock(
   context: ActionContext,
   params?: { part_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const partId = params?.part_id || context.entity_id;
 
   if (!partId) {
@@ -86,7 +86,7 @@ export async function viewPartLocation(
   context: ActionContext,
   params?: { part_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const partId = params?.part_id || context.entity_id;
 
   if (!partId) {
@@ -155,7 +155,7 @@ export async function orderPart(
     notes?: string;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.part_id || !params?.quantity) {
     return {
@@ -245,7 +245,7 @@ export async function logPartUsage(
     quantity: number;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.part_id || !params?.work_order_id || !params?.quantity) {
     return {
