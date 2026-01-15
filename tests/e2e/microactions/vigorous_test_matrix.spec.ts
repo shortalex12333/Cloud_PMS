@@ -25,6 +25,10 @@
 import { test, expect } from '@playwright/test';
 import { saveArtifact, saveRequest, saveResponse, createEvidenceBundle } from '../../helpers/artifacts';
 import { ApiClient } from '../../helpers/api-client';
+import { getAllRealTestIds, RealTestIds } from '../../helpers/supabase_tenant';
+
+// Real IDs loaded from database - populated in beforeAll
+let realIds: RealTestIds | null = null;
 
 // ============================================================================
 // ACTION DEFINITIONS - All 67 actions with their metadata
@@ -64,7 +68,7 @@ const ACTIONS: ActionDef[] = [
   { id: '9.2', cluster: 2, name: 'assign_work_order', requiredFields: ['work_order_id', 'assigned_to'], optionalFields: [], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1', assigned_to: 'a35cad0b-02ff-4287-b6e4-17c96fa6a424' } },
   { id: '9.3', cluster: 2, name: 'close_work_order', requiredFields: ['work_order_id'], optionalFields: ['completion_notes'], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1' } },
   { id: '9.4', cluster: 2, name: 'add_wo_hours', requiredFields: ['work_order_id', 'hours'], optionalFields: ['description'], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1', hours: 2.5 } },
-  { id: '9.5', cluster: 2, name: 'add_wo_part', requiredFields: ['work_order_id', 'part_id'], optionalFields: ['quantity'], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1', part_id: 'part-id', quantity: 1 } },
+  { id: '9.5', cluster: 2, name: 'add_wo_part', requiredFields: ['work_order_id', 'part_id'], optionalFields: ['quantity'], expectedStatus: 200, samplePayload: { work_order_id: 'REAL_WORK_ORDER_ID', part_id: 'REAL_PART_ID', quantity: 1 } },
   { id: '9.6', cluster: 2, name: 'add_wo_note', requiredFields: ['work_order_id', 'note_text'], optionalFields: ['note_type'], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1', note_text: 'Test note' } },
   { id: '9.7', cluster: 2, name: 'start_work_order', requiredFields: ['work_order_id'], optionalFields: [], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1' } },
   { id: '9.8', cluster: 2, name: 'cancel_work_order', requiredFields: ['work_order_id'], optionalFields: ['reason'], expectedStatus: 200, samplePayload: { work_order_id: '498b0d89-ab07-4f57-a350-4c2b3df25aa1', reason: 'No longer needed' } },
@@ -104,7 +108,7 @@ const ACTIONS: ActionDef[] = [
   // Cluster 07: DOCUMENTS (not implemented)
   { id: '7.1', cluster: 7, name: 'upload_document', requiredFields: ['file_name'], optionalFields: ['category', 'description'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { file_name: 'test.pdf', category: 'manual' } },
   { id: '7.2', cluster: 7, name: 'semantic_search', requiredFields: ['query'], optionalFields: ['limit', 'category'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { query: 'engine maintenance' } },
-  { id: '7.3', cluster: 7, name: 'delete_document', requiredFields: ['document_id'], optionalFields: [], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { document_id: '98afe6f2-bdda-44e8-ad32-0b412816b860' } },
+  { id: '7.3', cluster: 7, name: 'delete_document', requiredFields: ['document_id'], optionalFields: [], expectedStatus: 200, samplePayload: { document_id: 'REAL_DOCUMENT_ID' } },
   { id: '7.4', cluster: 7, name: 'update_document_metadata', requiredFields: ['document_id'], optionalFields: ['title', 'category', 'tags'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { document_id: '98afe6f2-bdda-44e8-ad32-0b412816b860', category: 'manual' } },
   { id: '7.5', cluster: 7, name: 'process_document_chunks', requiredFields: ['document_id'], optionalFields: [], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { document_id: '98afe6f2-bdda-44e8-ad32-0b412816b860' } },
 
@@ -118,7 +122,7 @@ const ACTIONS: ActionDef[] = [
   { id: '8.7', cluster: 8, name: 'upload_discrepancy_photo', requiredFields: ['session_id', 'photo_url'], optionalFields: ['notes'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { session_id: 'test', photo_url: 'https://example.com/photo.jpg' } },
   { id: '8.8', cluster: 8, name: 'add_receiving_notes', requiredFields: ['session_id', 'notes'], optionalFields: [], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { session_id: 'test', notes: 'Test notes' } },
   { id: '8.9', cluster: 8, name: 'update_shopping_list', requiredFields: ['item_id'], optionalFields: ['quantity', 'priority'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { item_id: '40378581-f45b-4644-98c5-c368b2050285', quantity: 5 } },
-  { id: '8.10', cluster: 8, name: 'delete_shopping_item', requiredFields: ['item_id'], optionalFields: [], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { item_id: '40378581-f45b-4644-98c5-c368b2050285' } },
+  { id: '8.10', cluster: 8, name: 'delete_shopping_item', requiredFields: ['item_id'], optionalFields: [], expectedStatus: 200, samplePayload: { item_id: 'REAL_SHOPPING_ITEM_ID' } },
   { id: '8.11', cluster: 8, name: 'update_purchase_order', requiredFields: ['purchase_order_id'], optionalFields: ['status', 'notes'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { purchase_order_id: 'a0000001-0001-4001-8001-000000000001' } },
   { id: '8.12', cluster: 8, name: 'close_purchase_order', requiredFields: ['purchase_order_id'], optionalFields: ['notes'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { purchase_order_id: 'a0000001-0001-4001-8001-000000000001' } },
   { id: '8.13', cluster: 8, name: 'reject_shopping_item', requiredFields: ['item_id'], optionalFields: ['reason'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { item_id: '40378581-f45b-4644-98c5-c368b2050285' } },
@@ -147,6 +151,33 @@ const otherYachtId = '00000000-0000-0000-0000-000000000000'; // For isolation te
 // TEST MATRIX GENERATOR
 // ============================================================================
 
+/**
+ * Replace placeholder IDs in payload with real IDs from database
+ */
+function resolvePayload(payload: Record<string, any>): Record<string, any> {
+  if (!realIds) return payload;
+
+  const resolved = { ...payload };
+  for (const [key, value] of Object.entries(resolved)) {
+    if (typeof value === 'string') {
+      if (value === 'REAL_WORK_ORDER_ID' && realIds.workOrderId) {
+        resolved[key] = realIds.workOrderId;
+      } else if (value === 'REAL_PART_ID' && realIds.partId) {
+        resolved[key] = realIds.partId;
+      } else if (value === 'REAL_EQUIPMENT_ID' && realIds.equipmentId) {
+        resolved[key] = realIds.equipmentId;
+      } else if (value === 'REAL_FAULT_ID' && realIds.faultId) {
+        resolved[key] = realIds.faultId;
+      } else if (value === 'REAL_DOCUMENT_ID' && realIds.documentId) {
+        resolved[key] = realIds.documentId;
+      } else if (value === 'REAL_SHOPPING_ITEM_ID' && realIds.shoppingItemId) {
+        resolved[key] = realIds.shoppingItemId;
+      }
+    }
+  }
+  return resolved;
+}
+
 test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
   let apiClient: ApiClient;
   let unauthClient: ApiClient;
@@ -157,6 +188,15 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
 
     // Create unauthenticated client for T02 tests
     unauthClient = new ApiClient();
+
+    // Load real IDs from database for tests that need actual data
+    const testYachtId = process.env.TEST_USER_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
+    try {
+      realIds = await getAllRealTestIds(testYachtId);
+      console.log('[VIGOROUS] Loaded real test IDs:', realIds);
+    } catch (error) {
+      console.warn('[VIGOROUS] Failed to load real IDs, some tests may fail:', error);
+    }
   });
 
   // Generate tests for each action
@@ -168,7 +208,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const testName = `matrix/${action.id}_${action.name}/T01_happy_path`;
         const startTime = Date.now();
 
-        const response = await apiClient.executeAction(action.name, action.samplePayload);
+        const response = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
 
         const duration = Date.now() - startTime;
         saveRequest(testName, response.request);
@@ -194,7 +234,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const response = await unauthClient.post('/v1/actions/execute', {
           action: action.name,
           context: { yacht_id: yachtId },
-          payload: action.samplePayload,
+          payload: resolvePayload(action.samplePayload),
         }, { skipAuth: true });
 
         saveRequest(testName, response.request);
@@ -279,7 +319,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const idFieldPattern = /_id$/;
 
         // Test with extreme values, but preserve UUID fields
-        const boundaryPayload = { ...action.samplePayload };
+        const boundaryPayload = { ...resolvePayload(action.samplePayload) };
         for (const key of Object.keys(boundaryPayload)) {
           const value = boundaryPayload[key];
           // Skip ID fields (preserve UUIDs) - they need valid format
@@ -319,8 +359,8 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const testName = `matrix/${action.id}_${action.name}/T06_duplicate`;
 
         // Send same request twice
-        const response1 = await apiClient.executeAction(action.name, action.samplePayload);
-        const response2 = await apiClient.executeAction(action.name, action.samplePayload);
+        const response1 = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
+        const response2 = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
 
         saveRequest(testName, response2.request);
         saveResponse(testName, {
@@ -351,7 +391,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
 
         // Send multiple requests concurrently
         const promises = Array(3).fill(null).map(() =>
-          apiClient.executeAction(action.name, action.samplePayload)
+          apiClient.executeAction(action.name, resolvePayload(action.samplePayload))
         );
 
         const responses = await Promise.all(promises);
@@ -379,7 +419,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         // Send many requests rapidly
         const responses = [];
         for (let i = 0; i < 10; i++) {
-          responses.push(await apiClient.executeAction(action.name, action.samplePayload));
+          responses.push(await apiClient.executeAction(action.name, resolvePayload(action.samplePayload)));
         }
 
         const hasRateLimit = responses.some(r => r.status === 429);
@@ -404,8 +444,8 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
       test(`T09: Idempotency - ${action.name}`, async () => {
         const testName = `matrix/${action.id}_${action.name}/T09_idempotency`;
 
-        const response1 = await apiClient.executeAction(action.name, action.samplePayload);
-        const response2 = await apiClient.executeAction(action.name, action.samplePayload);
+        const response1 = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
+        const response2 = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
 
         const sameResult = response1.status === response2.status;
 
@@ -430,7 +470,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const testName = `matrix/${action.id}_${action.name}/T10_rollback`;
 
         // This is hard to test generically - we record the response
-        const response = await apiClient.executeAction(action.name, action.samplePayload);
+        const response = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
 
         saveResponse(testName, { status: response.status, body: response.data });
 
@@ -448,7 +488,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
       test(`T11: Audit trail - ${action.name}`, async () => {
         const testName = `matrix/${action.id}_${action.name}/T11_audit`;
 
-        const response = await apiClient.executeAction(action.name, action.samplePayload);
+        const response = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
 
         saveResponse(testName, { status: response.status, body: response.data });
 
@@ -466,7 +506,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
       test(`T12: Permission levels - ${action.name}`, async () => {
         const testName = `matrix/${action.id}_${action.name}/T12_permissions`;
 
-        const response = await apiClient.executeAction(action.name, action.samplePayload);
+        const response = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
 
         saveResponse(testName, { status: response.status, body: response.data });
 
@@ -486,7 +526,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
 
         // Try to access with wrong yacht_id (should fail or return empty)
         const isolatedPayload = {
-          ...action.samplePayload,
+          ...resolvePayload(action.samplePayload),
           yacht_id: otherYachtId,
         };
 
@@ -510,7 +550,7 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const testName = `matrix/${action.id}_${action.name}/T14_response_time`;
 
         const startTime = Date.now();
-        const response = await apiClient.executeAction(action.name, action.samplePayload);
+        const response = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
         const duration = Date.now() - startTime;
 
         saveResponse(testName, {

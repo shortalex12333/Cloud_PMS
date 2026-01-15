@@ -1005,11 +1005,7 @@ test.describe('Cluster 01: FIX_SOMETHING - Fault Management', () => {
 
     const response = await apiClient.executeAction('add_fault_photo', {
       fault_id: testFaultId,
-      entity_type: 'fault',
-      entity_id: testFaultId,
-      file_name: 'test-photo.jpg',
-      file_size: 1024,
-      file_type: 'image/jpeg',
+      photo_url: 'https://storage.example.com/test-photo.jpg',
       caption: `E2E test photo - ${new Date().toISOString()}`,
     });
 
