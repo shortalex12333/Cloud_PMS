@@ -1127,6 +1127,23 @@ async def execute_action(
             part_id = payload.get("part_id")
             quantity = payload.get("quantity", 1)
 
+            # Validate required fields
+            if not work_order_id:
+                raise HTTPException(status_code=400, detail="work_order_id is required")
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            # Validate quantity bounds (PostgreSQL integer max is 2147483647)
+            try:
+                quantity = int(quantity)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="quantity must be a valid integer")
+
+            if quantity < 0:
+                raise HTTPException(status_code=400, detail="quantity cannot be negative")
+            if quantity > 1000000:
+                raise HTTPException(status_code=400, detail="quantity exceeds maximum allowed (1000000)")
+
             # Use upsert to handle duplicate key (work_order_id, part_id)
             part_data = {
                 "work_order_id": work_order_id,
@@ -1328,23 +1345,39 @@ async def execute_action(
             if not document_id:
                 raise HTTPException(status_code=400, detail="document_id is required")
 
-            # Check if document exists
-            check = db_client.table("documents").select("id").eq("id", document_id).eq("yacht_id", yacht_id).single().execute()
-            if not check.data:
-                raise HTTPException(status_code=404, detail="Document not found")
+            try:
+                # Check if document exists
+                check = db_client.table("documents").select("id").eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                if not check.data:
+                    raise HTTPException(status_code=404, detail="Document not found")
 
-            # Delete document
-            db_client.table("documents").delete().eq("id", document_id).eq("yacht_id", yacht_id).execute()
+                # Delete document
+                db_client.table("documents").delete().eq("id", document_id).eq("yacht_id", yacht_id).execute()
 
-            result = {
-                "status": "success",
-                "success": True,
-                "document_id": document_id,
-                "message": "Document deleted successfully"
-            }
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "document_id": document_id,
+                    "message": "Document deleted successfully"
+                }
+            except HTTPException:
+                raise  # Re-raise our own 404
+            except Exception as e:
+                error_str = str(e)
+                # If row not found during delete (race condition), treat as success (idempotent)
+                if "0 rows" in error_str.lower() or "no rows" in error_str.lower():
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "document_id": document_id,
+                        "message": "Document already deleted"
+                    }
+                else:
+                    raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
 
         # ===== SHOPPING ITEM DELETE ACTION (Cluster 08) =====
         elif action == "delete_shopping_item":
+            import re
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
 
@@ -1352,20 +1385,34 @@ async def execute_action(
             if not item_id:
                 raise HTTPException(status_code=400, detail="item_id is required")
 
-            # Check if item exists
-            check = db_client.table("pms_shopping_list_items").select("id").eq("id", item_id).eq("yacht_id", yacht_id).single().execute()
-            if not check.data:
-                raise HTTPException(status_code=404, detail="Shopping list item not found")
+            # Validate UUID format to catch placeholder strings like 'REAL_SHOPPING_ITEM_ID'
+            uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            if not re.match(uuid_pattern, str(item_id), re.IGNORECASE):
+                raise HTTPException(status_code=400, detail="item_id must be a valid UUID")
 
-            # Delete item
-            db_client.table("pms_shopping_list_items").delete().eq("id", item_id).eq("yacht_id", yacht_id).execute()
+            try:
+                # Check if item exists
+                check = db_client.table("pms_shopping_list_items").select("id").eq("id", item_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                if not check.data:
+                    raise HTTPException(status_code=404, detail="Shopping list item not found")
 
-            result = {
-                "status": "success",
-                "success": True,
-                "item_id": item_id,
-                "message": "Shopping list item deleted successfully"
-            }
+                # Delete item
+                db_client.table("pms_shopping_list_items").delete().eq("id", item_id).eq("yacht_id", yacht_id).execute()
+
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "item_id": item_id,
+                    "message": "Shopping list item deleted successfully"
+                }
+            except HTTPException:
+                raise  # Re-raise our own exceptions
+            except Exception as e:
+                error_str = str(e)
+                # Handle table not existing
+                if "does not exist" in error_str.lower() or "42P01" in error_str:
+                    raise HTTPException(status_code=404, detail="Shopping list feature not available")
+                raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
 
         # ===== WORK ORDER PHOTO ACTION (Cluster 02) =====
         elif action == "add_work_order_photo":

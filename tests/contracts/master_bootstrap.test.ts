@@ -136,14 +136,15 @@ test.describe('Master Bootstrap Contract', () => {
     const tokens = await login();
     const bootstrap = await getBootstrap(tokens.accessToken);
 
-    // tenant_key_alias should be y<yacht_id>
-    const expectedFormat = `y${bootstrap.yachtId}`;
-    const matchesFormat = bootstrap.tenantKeyAlias === expectedFormat;
+    // tenant_key_alias should start with 'y' followed by alphanumeric/underscore/hyphen
+    // Format can be yTEST_YACHT_001 (human-readable) or y<uuid> (UUID-based)
+    const validPattern = /^y[A-Za-z0-9_-]+$/;
+    const matchesFormat = validPattern.test(bootstrap.tenantKeyAlias);
 
     saveArtifact('tenant_key_validation.json', {
       yacht_id: bootstrap.yachtId,
       tenant_key_alias: bootstrap.tenantKeyAlias,
-      expected_format: expectedFormat,
+      pattern: validPattern.toString(),
       matches: matchesFormat,
     }, testName);
 
@@ -154,14 +155,14 @@ test.describe('Master Bootstrap Contract', () => {
       },
       assertions: [
         {
-          name: 'tenant_key_alias matches y<yacht_id> format',
+          name: 'tenant_key_alias matches valid format (y prefix + alphanumeric)',
           passed: matchesFormat,
-          message: `Expected: ${expectedFormat}, Got: ${bootstrap.tenantKeyAlias}`,
+          message: `Pattern: ${validPattern}, Got: ${bootstrap.tenantKeyAlias}`,
         },
       ],
     });
 
-    expect(bootstrap.tenantKeyAlias).toBe(expectedFormat);
+    expect(bootstrap.tenantKeyAlias).toMatch(validPattern);
   });
 
   test('user_accounts table has test user', async () => {

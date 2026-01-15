@@ -275,3 +275,161 @@ export async function cleanupTestData(yachtId: string): Promise<void> {
     .eq('yacht_id', yachtId)
     .like('name', 'Test Equipment%');
 }
+
+// =============================================================================
+// TEST FIXTURES - Get real IDs for E2E tests
+// =============================================================================
+
+/**
+ * Get a real work order ID from the test yacht
+ */
+export async function getRealWorkOrderId(yachtId: string): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_work_orders')
+    .select('id')
+    .eq('yacht_id', yachtId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No work orders found for yacht ${yachtId}. Create test data first.`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Get a real part ID from the test yacht
+ */
+export async function getRealPartId(yachtId: string): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_parts')
+    .select('id')
+    .eq('yacht_id', yachtId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No parts found for yacht ${yachtId}. Create test data first.`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Get a real equipment ID from the test yacht
+ */
+export async function getRealEquipmentId(yachtId: string): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_equipment')
+    .select('id')
+    .eq('yacht_id', yachtId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No equipment found for yacht ${yachtId}. Create test data first.`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Get a real fault ID from the test yacht
+ */
+export async function getRealFaultId(yachtId: string): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_faults')
+    .select('id')
+    .eq('yacht_id', yachtId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No faults found for yacht ${yachtId}. Create test data first.`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Get a real document ID from the test yacht
+ */
+export async function getRealDocumentId(yachtId: string): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('documents')
+    .select('id')
+    .eq('yacht_id', yachtId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No documents found for yacht ${yachtId}. Create test data first.`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Get a real shopping list item ID from the test yacht
+ */
+export async function getRealShoppingItemId(yachtId: string): Promise<string> {
+  const client = getTenantClient();
+
+  const { data, error } = await client
+    .from('pms_shopping_list_items')
+    .select('id')
+    .eq('yacht_id', yachtId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No shopping list items found for yacht ${yachtId}. Create test data first.`);
+  }
+
+  return data.id;
+}
+
+/**
+ * Get all real test IDs at once for a yacht
+ */
+export interface RealTestIds {
+  workOrderId: string | null;
+  partId: string | null;
+  equipmentId: string | null;
+  faultId: string | null;
+  documentId: string | null;
+  shoppingItemId: string | null;
+}
+
+export async function getAllRealTestIds(yachtId: string): Promise<RealTestIds> {
+  const client = getTenantClient();
+
+  const [woResult, partResult, eqResult, faultResult, docResult, shopResult] = await Promise.all([
+    client.from('pms_work_orders').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+    client.from('pms_parts').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+    client.from('pms_equipment').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+    client.from('pms_faults').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+    client.from('documents').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+    client.from('pms_shopping_list_items').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+  ]);
+
+  return {
+    workOrderId: woResult.data?.id || null,
+    partId: partResult.data?.id || null,
+    equipmentId: eqResult.data?.id || null,
+    faultId: faultResult.data?.id || null,
+    documentId: docResult.data?.id || null,
+    shoppingItemId: shopResult.data?.id || null,
+  };
+}
