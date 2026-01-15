@@ -96,19 +96,19 @@ ALTER TABLE predictive_state ENABLE ROW LEVEL SECURITY;
 
 -- Vessel isolation policies (allow access only to user's yacht data)
 CREATE POLICY "vessel_isolation_action_executions" ON action_executions
-  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM user_profiles WHERE id = auth.uid()));
+  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM auth_users_profiles WHERE id = auth.uid()));
 
 CREATE POLICY "vessel_isolation_symptom_reports" ON symptom_reports
-  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM user_profiles WHERE id = auth.uid()));
+  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM auth_users_profiles WHERE id = auth.uid()));
 
 CREATE POLICY "vessel_isolation_situation_detections" ON situation_detections
-  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM user_profiles WHERE id = auth.uid()));
+  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM auth_users_profiles WHERE id = auth.uid()));
 
 CREATE POLICY "vessel_isolation_suggestion_log" ON suggestion_log
-  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM user_profiles WHERE id = auth.uid()));
+  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM auth_users_profiles WHERE id = auth.uid()));
 
 CREATE POLICY "vessel_isolation_predictive_state" ON predictive_state
-  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM user_profiles WHERE id = auth.uid()));
+  FOR ALL USING (yacht_id IN (SELECT yacht_id FROM auth_users_profiles WHERE id = auth.uid()));
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_action_executions_yacht ON action_executions(yacht_id, created_at DESC);
