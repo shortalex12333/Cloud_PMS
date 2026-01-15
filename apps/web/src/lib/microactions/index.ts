@@ -70,3 +70,16 @@ export type { ConfirmationState } from './confirmation';
 
 // Hooks
 export { useAction, useActionState, useAvailableActions } from './hooks';
+
+// Handlers
+export {
+  faultHandlers,
+  workOrderHandlers,
+  equipmentHandlers,
+  inventoryHandlers,
+  handoverHandlers,
+  complianceHandlers,
+  allHandlers,
+  registerAllHandlers,
+  getHandlerStats,
+} from './handlers';

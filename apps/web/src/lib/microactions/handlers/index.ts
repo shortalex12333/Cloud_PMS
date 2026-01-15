@@ -1,0 +1,89 @@
+/**
+ * Microaction Handlers Index
+ *
+ * Exports all domain handlers and provides a registration function
+ * to wire them into the executor.
+ */
+
+import { registerHandler } from '../executor';
+
+// Import all handler modules
+export { faultHandlers } from './faults';
+export { workOrderHandlers } from './workOrders';
+export { equipmentHandlers } from './equipment';
+export { inventoryHandlers } from './inventory';
+export { handoverHandlers } from './handover';
+export { complianceHandlers } from './compliance';
+
+// Import individual handlers for registration
+import { faultHandlers } from './faults';
+import { workOrderHandlers } from './workOrders';
+import { equipmentHandlers } from './equipment';
+import { inventoryHandlers } from './inventory';
+import { handoverHandlers } from './handover';
+import { complianceHandlers } from './compliance';
+
+/**
+ * All handlers grouped by domain
+ */
+export const allHandlers = {
+  ...faultHandlers,
+  ...workOrderHandlers,
+  ...equipmentHandlers,
+  ...inventoryHandlers,
+  ...handoverHandlers,
+  ...complianceHandlers,
+};
+
+/**
+ * Register all handlers with the executor
+ *
+ * Call this function once during app initialization to wire up
+ * all microaction handlers.
+ */
+export function registerAllHandlers(): void {
+  // Fault handlers
+  for (const [name, handler] of Object.entries(faultHandlers)) {
+    registerHandler(name, handler);
+  }
+
+  // Work order handlers
+  for (const [name, handler] of Object.entries(workOrderHandlers)) {
+    registerHandler(name, handler);
+  }
+
+  // Equipment handlers
+  for (const [name, handler] of Object.entries(equipmentHandlers)) {
+    registerHandler(name, handler);
+  }
+
+  // Inventory handlers
+  for (const [name, handler] of Object.entries(inventoryHandlers)) {
+    registerHandler(name, handler);
+  }
+
+  // Handover handlers
+  for (const [name, handler] of Object.entries(handoverHandlers)) {
+    registerHandler(name, handler);
+  }
+
+  // Compliance handlers
+  for (const [name, handler] of Object.entries(complianceHandlers)) {
+    registerHandler(name, handler);
+  }
+}
+
+/**
+ * Get count of registered handlers by domain
+ */
+export function getHandlerStats(): Record<string, number> {
+  return {
+    faults: Object.keys(faultHandlers).length,
+    workOrders: Object.keys(workOrderHandlers).length,
+    equipment: Object.keys(equipmentHandlers).length,
+    inventory: Object.keys(inventoryHandlers).length,
+    handover: Object.keys(handoverHandlers).length,
+    compliance: Object.keys(complianceHandlers).length,
+    total: Object.keys(allHandlers).length,
+  };
+}
