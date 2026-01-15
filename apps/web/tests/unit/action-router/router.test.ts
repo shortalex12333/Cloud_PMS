@@ -15,7 +15,7 @@ import type { ActionRequest, UserContext } from '@/lib/action-router/types';
 
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
-  createClient: () => ({
+  supabase: {
     from: vi.fn().mockReturnValue({
       insert: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
@@ -56,7 +56,7 @@ vi.mock('@/lib/supabaseClient', () => ({
         }),
       }),
     },
-  }),
+  },
 }));
 
 describe('Action Router', () => {

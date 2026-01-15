@@ -5,7 +5,7 @@
  */
 
 import type { ActionContext, ActionResult } from '../types';
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Add entity to handover
@@ -19,7 +19,7 @@ export async function addToHandover(
     summary?: string;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.entity_id || !params?.entity_type) {
     return {
@@ -54,23 +54,23 @@ export async function addToHandover(
         .select()
         .single();
 
-      if (createError) {
+      if (createError || !newHandover) {
         return {
           success: false,
           action_name: 'add_to_handover',
           data: null,
-          error: { code: 'INTERNAL_ERROR', message: createError.message },
+          error: { code: 'INTERNAL_ERROR', message: createError?.message || 'Failed to create handover' },
           confirmation_required: false,
         };
       }
       handover = newHandover;
     }
 
-    // Add item to handover
+    // Add item to handover - handover is guaranteed non-null at this point
     const { data: item, error: itemError } = await supabase
       .from('handover_items')
       .insert({
-        handover_id: handover.id,
+        handover_id: handover!.id,
         entity_id: params.entity_id,
         entity_type: params.entity_type,
         section: params.section,
@@ -94,7 +94,7 @@ export async function addToHandover(
       success: true,
       action_name: 'add_to_handover',
       data: {
-        handover_id: handover.id,
+        handover_id: handover!.id,
         item,
       },
       error: null,
@@ -121,7 +121,7 @@ export async function exportHandover(
   context: ActionContext,
   params?: { handover_id?: string; format?: 'pdf' | 'docx' }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const handoverId = params?.handover_id || context.entity_id;
   const format = params?.format || 'pdf';
 
@@ -195,7 +195,7 @@ export async function editHandoverSection(
     content: string;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.handover_id || !params?.section_id || !params?.content) {
     return {
@@ -258,7 +258,7 @@ export async function viewDocument(
   context: ActionContext,
   params?: { document_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const documentId = params?.document_id || context.entity_id;
 
   if (!documentId) {

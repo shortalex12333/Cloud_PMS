@@ -5,7 +5,7 @@
  */
 
 import type { ActionContext, ActionResult } from '../types';
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 interface EquipmentData {
   id: string;
@@ -28,7 +28,7 @@ export async function viewEquipmentDetails(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const equipmentId = params?.equipment_id || context.entity_id;
 
   if (!equipmentId) {
@@ -105,7 +105,7 @@ export async function viewEquipmentHistory(
   context: ActionContext,
   params?: { equipment_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const equipmentId = params?.equipment_id || context.entity_id;
   const offset = params?.offset || 0;
   const limit = params?.limit || 20;
@@ -182,7 +182,7 @@ export async function viewEquipmentParts(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const equipmentId = params?.equipment_id || context.entity_id;
 
   if (!equipmentId) {
@@ -270,7 +270,7 @@ export async function viewLinkedFaults(
   context: ActionContext,
   params?: { equipment_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const equipmentId = params?.equipment_id || context.entity_id;
   const offset = params?.offset || 0;
   const limit = params?.limit || 20;
@@ -361,7 +361,7 @@ export async function viewEquipmentManual(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const equipmentId = params?.equipment_id || context.entity_id;
 
   if (!equipmentId) {
@@ -443,7 +443,7 @@ export async function runDiagnostic(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const equipmentId = params?.equipment_id || context.entity_id;
 
   if (!equipmentId) {

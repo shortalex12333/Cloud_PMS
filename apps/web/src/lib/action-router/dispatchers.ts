@@ -6,7 +6,7 @@
  * - n8n: External workflow automation
  */
 
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import type { DispatchParams, DispatchResult, HandlerType } from './types';
 
 // ============================================================================
@@ -17,8 +17,6 @@ import type { DispatchParams, DispatchResult, HandlerType } from './types';
  * Add a note to equipment
  */
 async function addNote(params: DispatchParams): Promise<DispatchResult> {
-  const supabase = createClient();
-
   const { data, error } = await supabase
     .from('pms_equipment_notes')
     .insert({
@@ -42,8 +40,6 @@ async function addNote(params: DispatchParams): Promise<DispatchResult> {
  * Add a note to a work order
  */
 async function addNoteToWorkOrder(params: DispatchParams): Promise<DispatchResult> {
-  const supabase = createClient();
-
   // Verify work order exists and belongs to yacht
   const { data: woData, error: woError } = await supabase
     .from('pms_work_orders')
@@ -81,8 +77,6 @@ async function addNoteToWorkOrder(params: DispatchParams): Promise<DispatchResul
  * Close a work order
  */
 async function closeWorkOrder(params: DispatchParams): Promise<DispatchResult> {
-  const supabase = createClient();
-
   const { data, error } = await supabase
     .from('pms_work_orders')
     .update({
@@ -112,8 +106,6 @@ async function closeWorkOrder(params: DispatchParams): Promise<DispatchResult> {
  * Open a document (get signed URL)
  */
 async function openDocument(params: DispatchParams): Promise<DispatchResult> {
-  const supabase = createClient();
-
   const { data, error } = await supabase.storage
     .from('documents')
     .createSignedUrl(params.storage_path as string, 3600);
@@ -132,8 +124,6 @@ async function openDocument(params: DispatchParams): Promise<DispatchResult> {
  * Edit a handover section
  */
 async function editHandoverSection(params: DispatchParams): Promise<DispatchResult> {
-  const supabase = createClient();
-
   // Get current handover
   const { data: handoverData, error: handoverError } = await supabase
     .from('handovers')

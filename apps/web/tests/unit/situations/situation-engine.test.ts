@@ -10,7 +10,7 @@ import type { ResolvedEntity, VesselContext, Situation } from '@/lib/situations/
 
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
-  createClient: () => ({
+  supabase: {
     rpc: vi.fn().mockImplementation((fnName, params) => {
       if (fnName === 'check_symptom_recurrence') {
         // Return recurrent symptom data
@@ -54,7 +54,7 @@ vi.mock('@/lib/supabaseClient', () => ({
         }),
       }),
     }),
-  }),
+  },
 }));
 
 describe('SituationEngine', () => {

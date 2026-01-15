@@ -5,7 +5,7 @@
  */
 
 import type { ActionContext, ActionResult } from '../types';
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 interface WorkOrderData {
   id: string;
@@ -75,7 +75,7 @@ export async function viewWorkOrder(
   context: ActionContext,
   params?: { work_order_id?: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const workOrderId = params?.work_order_id || context.entity_id;
 
   if (!workOrderId) {
@@ -178,7 +178,7 @@ export async function viewWorkOrderHistory(
   context: ActionContext,
   params?: { work_order_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
   const workOrderId = params?.work_order_id || context.entity_id;
   const offset = params?.offset || 0;
   const limit = params?.limit || 50;
@@ -290,7 +290,7 @@ export async function createWorkOrder(
     assignee_id?: string;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.title) {
     return {
@@ -361,7 +361,7 @@ export async function markWorkOrderComplete(
     parts_used?: Array<{ part_id: string; quantity: number }>;
   }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.work_order_id) {
     return {
@@ -455,7 +455,7 @@ export async function addWorkOrderNote(
   context: ActionContext,
   params: { work_order_id: string; note_text: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.work_order_id || !params?.note_text) {
     return {
@@ -518,7 +518,7 @@ export async function assignWorkOrder(
   context: ActionContext,
   params: { work_order_id: string; assignee_id: string }
 ): Promise<ActionResult> {
-  const supabase = createClient();
+  
 
   if (!params?.work_order_id || !params?.assignee_id) {
     return {

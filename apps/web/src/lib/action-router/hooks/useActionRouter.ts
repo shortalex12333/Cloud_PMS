@@ -105,7 +105,7 @@ export function useActionRouter(userContext: UserContext): UseActionRouterReturn
         const historyEntry: ActionHistory = {
           actionId,
           timestamp: new Date(),
-          status: response.status,
+          status: response.status === 'success' ? 'success' : 'error',
           result: response.status === 'success' ? response.result : undefined,
           error: response.status === 'error' ? response : undefined,
         };
@@ -127,19 +127,18 @@ export function useActionRouter(userContext: UserContext): UseActionRouterReturn
           message: error instanceof Error ? error.message : String(error),
         };
 
+        const errorEntry: ActionHistory = {
+          actionId,
+          timestamp: new Date(),
+          status: 'error',
+          error: errorResponse,
+        };
+
         setState((prev) => ({
           ...prev,
           isExecuting: prev.pendingActions.length > 1,
           lastResult: errorResponse,
-          history: [
-            {
-              actionId,
-              timestamp: new Date(),
-              status: 'error',
-              error: errorResponse,
-            },
-            ...prev.history,
-          ].slice(0, 50),
+          history: [errorEntry, ...prev.history].slice(0, 50),
           pendingActions: prev.pendingActions.filter((id) => id !== actionId),
         }));
 
