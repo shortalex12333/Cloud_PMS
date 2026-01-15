@@ -147,14 +147,15 @@ BEGIN
       AND sr.symptom_code = p_symptom_code
       AND sr.created_at > NOW() - (p_threshold_days || ' days')::INTERVAL
     UNION ALL
-    -- Also check pms_faults table for historical data
+    -- Also check pms_faults table (joining with equipment for name)
     SELECT
       f.id,
       f.detected_at AS created_at,
       (f.resolved_at IS NOT NULL) AS resolved
     FROM pms_faults f
+    LEFT JOIN pms_equipment e ON f.equipment_id = e.id
     WHERE f.yacht_id = p_yacht_id
-      AND (f.equipment_label ILIKE '%' || p_equipment_label || '%' OR f.title ILIKE '%' || p_equipment_label || '%')
+      AND (e.name ILIKE '%' || p_equipment_label || '%' OR f.title ILIKE '%' || p_equipment_label || '%')
       AND (f.fault_code = p_symptom_code OR f.title ILIKE '%' || p_symptom_code || '%')
       AND f.detected_at > NOW() - (p_threshold_days || ' days')::INTERVAL
   )
