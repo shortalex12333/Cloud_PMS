@@ -1315,6 +1315,287 @@ async def execute_action(
                 "message": "Shopping list item deleted successfully"
             }
 
+        # ===== WORK ORDER PHOTO ACTION (Cluster 02) =====
+        elif action == "add_work_order_photo":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            photo_url = payload.get("photo_url")
+
+            if not work_order_id:
+                raise HTTPException(status_code=400, detail="work_order_id is required")
+            if not photo_url:
+                raise HTTPException(status_code=400, detail="photo_url is required")
+
+            # Check if work order exists
+            check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Work order not found")
+
+            # Store photo URL in metadata (work orders don't have a dedicated photos table)
+            wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
+            metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
+            if not metadata:
+                metadata = {}
+            photos = metadata.get("photos", [])
+            photos.append({
+                "url": photo_url,
+                "caption": payload.get("caption", ""),
+                "added_by": user_id,
+                "added_at": datetime.now(timezone.utc).isoformat()
+            })
+            metadata["photos"] = photos
+
+            db_client.table("pms_work_orders").update({
+                "metadata": metadata,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "work_order_id": work_order_id,
+                "message": "Photo added to work order"
+            }
+
+        # ===== ADD PARTS TO WORK ORDER (Cluster 02) =====
+        elif action == "add_parts_to_work_order":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            part_id = payload.get("part_id")
+
+            if not work_order_id:
+                raise HTTPException(status_code=400, detail="work_order_id is required")
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            # Check if work order exists
+            check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Work order not found")
+
+            # Store part link in metadata
+            wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
+            metadata = wo_data.data.get("metadata", {}) if wo_data.data else {}
+            if not metadata:
+                metadata = {}
+            parts = metadata.get("parts", [])
+            parts.append({
+                "part_id": part_id,
+                "quantity": payload.get("quantity", 1),
+                "added_by": user_id,
+                "added_at": datetime.now(timezone.utc).isoformat()
+            })
+            metadata["parts"] = parts
+
+            db_client.table("pms_work_orders").update({
+                "metadata": metadata,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "work_order_id": work_order_id,
+                "part_id": part_id,
+                "message": "Part added to work order"
+            }
+
+        # ===== VIEW WORK ORDER CHECKLIST (Cluster 02) =====
+        elif action == "view_work_order_checklist":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+
+            # Check if work order exists and get its metadata
+            wo_data = db_client.table("pms_work_orders").select("id, metadata").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+            if not wo_data.data:
+                raise HTTPException(status_code=404, detail="Work order not found")
+
+            metadata = wo_data.data.get("metadata", {}) or {}
+            checklist = metadata.get("checklist", [])
+
+            # Calculate progress
+            total = len(checklist)
+            completed = len([item for item in checklist if item.get("completed")])
+
+            result = {
+                "status": "success",
+                "success": True,
+                "work_order_id": work_order_id,
+                "checklist": checklist,
+                "progress": {
+                    "completed": completed,
+                    "total": total,
+                    "percent": round((completed / total * 100) if total > 0 else 0, 1)
+                }
+            }
+
+        # ===== WORKLIST ACTIONS (Cluster 02) =====
+        elif action == "view_worklist":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            # Get open work orders as worklist items
+            wo_result = db_client.table("pms_work_orders").select(
+                "id, title, description, priority, status, created_at"
+            ).eq("yacht_id", yacht_id).in_("status", ["planned", "in_progress"]).order("priority", desc=True).limit(50).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "worklist": wo_result.data or [],
+                "total": len(wo_result.data or [])
+            }
+
+        elif action == "add_worklist_task":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            task_description = payload.get("task_description") or payload.get("description")
+            if not task_description:
+                raise HTTPException(status_code=400, detail="task_description is required")
+
+            # Create a work order as a worklist task
+            # Map priority
+            raw_priority = payload.get("priority", "routine")
+            priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
+            priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
+
+            task_data = {
+                "yacht_id": yacht_id,
+                "title": task_description[:100] if len(task_description) > 100 else task_description,
+                "description": task_description,
+                "priority": priority,
+                "status": "planned",
+                "work_order_type": "task",
+                "created_by": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            task_result = db_client.table("pms_work_orders").insert(task_data).execute()
+
+            if task_result.data:
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "task_id": task_result.data[0]["id"],
+                    "message": "Worklist task added"
+                }
+            else:
+                result = {
+                    "status": "error",
+                    "error_code": "INSERT_FAILED",
+                    "message": "Failed to add worklist task"
+                }
+
+        elif action == "export_worklist":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            # Get all work orders for export
+            wo_result = db_client.table("pms_work_orders").select("*").eq("yacht_id", yacht_id).order("created_at", desc=True).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "data": wo_result.data or [],
+                "total": len(wo_result.data or []),
+                "export_format": "json",
+                "exported_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        # ===== CLOSE FAULT ACTION (Cluster 01) =====
+        elif action == "close_fault":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_id = payload.get("fault_id")
+
+            if not fault_id:
+                raise HTTPException(status_code=400, detail="fault_id is required")
+
+            # Check if fault exists
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            update_data = {
+                "status": "closed",
+                "severity": "medium",  # Always set valid severity
+                "resolved_by": user_id,
+                "resolved_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "success": True, "message": "Fault closed"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to close fault"}
+
+        # ===== UPDATE FAULT ACTION (Cluster 01) =====
+        elif action == "update_fault":
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_id = payload.get("fault_id")
+
+            if not fault_id:
+                raise HTTPException(status_code=400, detail="fault_id is required")
+
+            # Check if fault exists
+            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            if not check.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            update_data = {
+                "severity": "medium",  # Always set valid severity
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            if payload.get("description"):
+                update_data["description"] = payload["description"]
+            if payload.get("priority"):
+                update_data["priority"] = payload["priority"]
+            if payload.get("status"):
+                update_data["status"] = payload["status"]
+
+            fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+            if fault_result.data:
+                result = {"status": "success", "success": True, "message": "Fault updated"}
+            else:
+                result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to update fault"}
+
+        # ===== LIST FAULTS ACTION (Cluster 01) =====
+        elif action == "list_faults":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            # Get faults for yacht
+            query = db_client.table("pms_faults").select("*").eq("yacht_id", yacht_id)
+
+            # Apply filters
+            if payload.get("status"):
+                query = query.eq("status", payload["status"])
+            if payload.get("priority"):
+                query = query.eq("severity", payload["priority"])
+
+            limit = payload.get("limit", 50)
+            faults_result = query.order("detected_at", desc=True).limit(limit).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "faults": faults_result.data or [],
+                "total": len(faults_result.data or [])
+            }
+
         else:
             raise HTTPException(
                 status_code=404,
