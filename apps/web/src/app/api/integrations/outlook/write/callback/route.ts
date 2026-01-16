@@ -63,24 +63,68 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl.toString());
     }
 
-    console.log('[Outlook Callback WRITE] Forwarding to Render for token exchange');
-
-    // Call Render backend to exchange code and store tokens
-    const renderResponse = await fetch(`${RENDER_API_URL}/auth/outlook/exchange`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        code,
-        state,
-        redirect_uri: REDIRECT_URI,
-      }),
+    console.log('[Outlook Callback WRITE] OAUTH_CALLBACK_START', {
+      hasCode: !!code,
+      codeLength: code?.length,
+      hasState: !!state,
+      stateLength: state?.length,
+      redirectUri: REDIRECT_URI,
+      renderUrl: `${RENDER_API_URL}/auth/outlook/exchange`,
     });
 
-    const result = await renderResponse.json();
+    // Call Render backend to exchange code and store tokens
+    let renderResponse: Response;
+    try {
+      renderResponse = await fetch(`${RENDER_API_URL}/auth/outlook/exchange`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code,
+          state,
+          redirect_uri: REDIRECT_URI,
+        }),
+      });
+    } catch (fetchError) {
+      console.error('[Outlook Callback WRITE] FETCH_FAILED - Network error calling Render:', fetchError);
+      const redirectUrl = new URL('/settings', APP_URL);
+      redirectUrl.searchParams.set('error', 'render_unreachable');
+      redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
+      return NextResponse.redirect(redirectUrl.toString());
+    }
 
-    console.log('[Outlook Callback WRITE] Render response:', {
+    console.log('[Outlook Callback WRITE] Render HTTP status:', renderResponse.status);
+
+    // Handle non-200 responses
+    if (!renderResponse.ok) {
+      const errorText = await renderResponse.text();
+      console.error('[Outlook Callback WRITE] RENDER_HTTP_ERROR:', {
+        status: renderResponse.status,
+        statusText: renderResponse.statusText,
+        body: errorText.substring(0, 500),
+      });
+      const redirectUrl = new URL('/settings', APP_URL);
+      redirectUrl.searchParams.set('error', `render_${renderResponse.status}`);
+      redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
+      return NextResponse.redirect(redirectUrl.toString());
+    }
+
+    let result: any;
+    try {
+      result = await renderResponse.json();
+    } catch (jsonError) {
+      console.error('[Outlook Callback WRITE] JSON_PARSE_FAILED:', jsonError);
+      const redirectUrl = new URL('/settings', APP_URL);
+      redirectUrl.searchParams.set('error', 'render_invalid_response');
+      redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
+      return NextResponse.redirect(redirectUrl.toString());
+    }
+
+    console.log('[Outlook Callback WRITE] OAUTH_CALLBACK_RENDER_RESPONSE:', {
       success: result.success,
       error: result.error,
       error_code: result.error_code,
