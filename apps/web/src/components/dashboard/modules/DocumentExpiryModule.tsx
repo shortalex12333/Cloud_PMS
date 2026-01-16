@@ -10,7 +10,7 @@ import React from 'react';
 import { FileText, AlertTriangle, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { useDocumentExpiryData, ExpiringDocument, DocumentStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -98,13 +98,11 @@ export default function DocumentExpiryModule({
                   value={doc.daysUntil <= 7 ? `${doc.daysUntil}d` : `${doc.daysUntil} days`}
                   onClick={() => console.log('View doc:', doc.id)}
                   actions={
-                    <MicroactionButton
+                    <ActionButton
                       action="view_document"
+                      context={{ document_id: doc.id }}
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('View:', doc.id);
-                      }}
+                      iconOnly
                     />
                   }
                 />
@@ -123,11 +121,9 @@ export default function DocumentExpiryModule({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="view_document"
-              size="md"
-              showLabel
-              onClick={() => console.log('View documents')}
+              size="sm"
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',

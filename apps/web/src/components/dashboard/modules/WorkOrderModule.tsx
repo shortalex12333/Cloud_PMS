@@ -10,7 +10,7 @@ import React from 'react';
 import { Wrench, Clock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem, StatCard, ProgressBar } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { useWorkOrderData, WorkOrderSummary, WorkOrderStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -109,11 +109,10 @@ export default function WorkOrderModule({
 
           {/* Module actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="create_work_order"
-              size="md"
-              showLabel
-              onClick={() => console.log('Create work order')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
