@@ -64,7 +64,7 @@ export default function HandoverStatusModule({
       isExpanded={isExpanded}
       onToggle={onToggle}
       status={isComplete ? 'healthy' : 'warning'}
-      statusLabel={isComplete ? 'Ready for handover' : `${progress}% complete`}
+      statusLabel={isComplete ? 'Ready for handover' : `${progress}% done`}
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={progress} status={isComplete ? 'healthy' : 'warning'} />
