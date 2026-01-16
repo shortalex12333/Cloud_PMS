@@ -67,12 +67,29 @@ class TokenExchangeResponse(BaseModel):
 # ============================================================================
 
 def parse_state(state: str) -> Optional[dict]:
-    """Parse OAuth state parameter (base64 encoded JSON)."""
+    """Parse OAuth state parameter.
+
+    Supports two formats:
+    1. Colon-separated: userId:purpose:random (from Vercel oauth-utils.ts)
+    2. Base64 JSON: {"user_id": "...", "purpose": "..."} (legacy)
+    """
     try:
+        # Try colon-separated format first (Vercel frontend)
+        parts = state.split(':')
+        if len(parts) >= 2:
+            user_id = parts[0]
+            purpose = parts[1]
+            if user_id and purpose in ('read', 'write'):
+                logger.info(f"[Auth] Parsed state (colon format): user_id={user_id[:8]}..., purpose={purpose}")
+                return {'user_id': user_id, 'purpose': purpose}
+
+        # Fallback to base64 JSON format (legacy)
         decoded = base64.urlsafe_b64decode(state + '==').decode('utf-8')
-        return json.loads(decoded)
+        data = json.loads(decoded)
+        logger.info(f"[Auth] Parsed state (base64 format): user_id={data.get('user_id', '')[:8]}...")
+        return data
     except Exception as e:
-        logger.error(f"[Auth] Failed to parse state: {e}")
+        logger.error(f"[Auth] Failed to parse state: {e}, state={state[:20]}...")
         return None
 
 
