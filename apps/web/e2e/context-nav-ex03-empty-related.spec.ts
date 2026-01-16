@@ -97,7 +97,8 @@ test.describe('Context Nav: Empty Related Flow', () => {
     } else {
       // Related items are shown (seeded relation exists)
       await expect(page.locator('.related-panel')).toBeVisible();
-      await expect(page.locator('.related-item')).toHaveCount({ min: 1 });
+      const itemCount = await page.locator('.related-item').count();
+      expect(itemCount).toBeGreaterThan(0);
     }
 
     // INVARIANT: Back button is now enabled (we have 2 views in stack: viewer + related)
