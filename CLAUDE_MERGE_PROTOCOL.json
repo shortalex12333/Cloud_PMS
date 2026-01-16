@@ -1,0 +1,206 @@
+{
+  "protocol_name": "SAFE_MERGE_PROTOCOL",
+  "version": "1.0.0",
+  "created": "2026-01-16",
+  "purpose": "Ensure safe merges to main branch with multiple engineers working concurrently",
+
+  "critical_warnings": {
+    "READ_FIRST": [
+      "OTHER ENGINEERS ARE ACTIVELY WORKING ON THIS REPO",
+      "YOUR CHANGES MUST NOT OVERWRITE THEIR WORK",
+      "WHEN IN DOUBT, KEEP THEIR CODE",
+      "ASK USER BEFORE RESOLVING AMBIGUOUS CONFLICTS"
+    ]
+  },
+
+  "pre_merge_checklist": {
+    "step_1_sync": {
+      "description": "Sync with remote before any merge attempt",
+      "commands": [
+        "git fetch origin main",
+        "git fetch origin --tags",
+        "git log origin/main --oneline -10"
+      ],
+      "verify": "Review last 10 commits - identify other engineers' recent work"
+    },
+
+    "step_2_check_conflicts": {
+      "description": "Preview conflicts BEFORE merging",
+      "commands": [
+        "git diff origin/main --stat",
+        "git diff origin/main --name-only"
+      ],
+      "verify": "List ALL files that differ from main"
+    },
+
+    "step_3_identify_owners": {
+      "description": "Check who owns conflicting files",
+      "commands": [
+        "git log origin/main --oneline -5 -- <conflicting_file>",
+        "git blame origin/main -- <conflicting_file> | head -20"
+      ],
+      "verify": "Know who last touched each conflicting file"
+    },
+
+    "step_4_backup_branch": {
+      "description": "Create backup before merge attempt",
+      "commands": [
+        "git branch backup/phase-{N}-pre-merge-$(date +%Y%m%d-%H%M%S)"
+      ],
+      "verify": "Backup branch exists"
+    }
+  },
+
+  "merge_execution": {
+    "step_1_merge": {
+      "description": "Merge main into feature branch FIRST (not the other way)",
+      "commands": [
+        "git checkout claude/phase-{N}-{description}",
+        "git merge origin/main --no-commit"
+      ],
+      "rationale": "Merge main INTO your branch first, resolve conflicts there, THEN merge to main"
+    },
+
+    "step_2_conflict_resolution": {
+      "rules": {
+        "rule_1": "If conflict is in file YOU created: keep your version",
+        "rule_2": "If conflict is in file THEY modified recently: KEEP THEIR VERSION",
+        "rule_3": "If conflict is in shared file: COMBINE BOTH carefully",
+        "rule_4": "If unsure: ASK USER before resolving",
+        "rule_5": "NEVER delete code you don't understand"
+      },
+      "resolution_template": {
+        "comment_format": "# Merge resolution: kept {their/our/combined} version - {reason}",
+        "example": "# Merge resolution: kept their version - recent auth changes by engineer"
+      }
+    },
+
+    "step_3_verify_resolution": {
+      "description": "Verify merge didn't break anything",
+      "commands": [
+        "npm run build",
+        "npm run test",
+        "npx playwright test --grep @smoke",
+        "pytest apps/api/tests/ -v"
+      ],
+      "verify": "ALL tests pass after merge"
+    },
+
+    "step_4_commit_merge": {
+      "description": "Commit the merge with detailed message",
+      "command": "git commit -m \"$(cat <<'EOF'\nMerge main into claude/phase-{N}-{description}\n\nResolved conflicts:\n- {file1}: kept their version (recent changes)\n- {file2}: combined both versions\n- {file3}: kept our version (new file)\n\nVerification:\n- Build: PASS\n- Tests: PASS\n- No regressions detected\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\""
+    },
+
+    "step_5_final_merge_to_main": {
+      "description": "Now merge feature branch to main",
+      "commands": [
+        "git checkout main",
+        "git pull origin main",
+        "git merge claude/phase-{N}-{description} --no-ff -m \"$(cat <<'EOF'\nMerge phase-{N}: {description}\n\n## Changes\n- {change1}\n- {change2}\n- {change3}\n\n## Files Added\n- {file1}\n- {file2}\n\n## Files Modified\n- {file3}\n- {file4}\n\n## Verification\n- Build: PASS\n- Unit Tests: PASS\n- E2E Tests: PASS\n- No conflicts with other engineers' work\n\n## Handover Notes\nSee: handover/phase-{N}-handover.md\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\""
+      ]
+    },
+
+    "step_6_push": {
+      "description": "Push to remote",
+      "commands": [
+        "git push origin main"
+      ],
+      "verify": "Push successful, no force required"
+    }
+  },
+
+  "handover_document": {
+    "required": true,
+    "location": "handover/phase-{N}-handover.md",
+    "template": {
+      "content": "# Phase {N} Handover Document\n\n**Date:** {DATE}\n**Completed By:** Claude Opus 4.5\n**Branch:** claude/phase-{N}-{description}\n**Merged To:** main\n\n---\n\n## Summary\n\n{Brief description of what was done}\n\n---\n\n## Files Created\n\n| File | Lines | Purpose |\n|------|-------|--------|\n| {path1} | {lines} | {purpose} |\n| {path2} | {lines} | {purpose} |\n\n---\n\n## Files Modified\n\n| File | Changes | Reason |\n|------|---------|--------|\n| {path1} | {description} | {reason} |\n| {path2} | {description} | {reason} |\n\n---\n\n## Dependencies Added\n\n| Package | Version | Reason |\n|---------|---------|--------|\n| {pkg} | {ver} | {reason} |\n\n---\n\n## Database Changes\n\n| Table | Change | Migration |\n|-------|--------|----------|\n| {table} | {change} | {migration_file} |\n\n---\n\n## Environment Variables\n\n| Variable | Required | Description |\n|----------|----------|-------------|\n| {var} | {yes/no} | {desc} |\n\n---\n\n## Testing\n\n### Tests Added\n- {test1}\n- {test2}\n\n### Test Results\n```\n{paste test output}\n```\n\n---\n\n## Known Issues\n\n| Issue | Severity | Workaround |\n|-------|----------|------------|\n| {issue} | {low/medium/high} | {workaround} |\n\n---\n\n## Next Steps\n\n1. {next_step_1}\n2. {next_step_2}\n3. {next_step_3}\n\n---\n\n## Rollback Instructions\n\nIf issues arise, rollback with:\n```bash\ngit revert {merge_commit_hash}\ngit push origin main\n```\n\n---\n\n## Contact\n\nFor questions about this phase:\n- Review commit history: `git log --oneline -20`\n- Check test files for usage examples\n- Read inline code comments\n\n---\n\n**Sign-off:** Phase {N} complete and merged to main.\n"
+    },
+    "commit_handover": {
+      "commands": [
+        "mkdir -p handover",
+        "# Write handover document",
+        "git add handover/phase-{N}-handover.md",
+        "git commit -m \"docs(handover): Add phase {N} handover document\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\""
+      ]
+    }
+  },
+
+  "post_merge_verification": {
+    "step_1_verify_ci": {
+      "description": "Verify CI passes after push",
+      "commands": [
+        "gh run list --limit 1",
+        "gh run watch"
+      ],
+      "verify": "CI pipeline is GREEN"
+    },
+
+    "step_2_verify_deployment": {
+      "description": "Verify Render deployment succeeds",
+      "commands": [
+        "curl -s https://pipeline-core.int.celeste7.ai/health | jq ."
+      ],
+      "verify": "Health check returns OK"
+    },
+
+    "step_3_notify_team": {
+      "description": "Report merge completion",
+      "output_format": {
+        "template": "## Phase {N} Merged to Main\n\n**Branch:** claude/phase-{N}-{description}\n**Commit:** {commit_hash}\n**CI Status:** {PASS/FAIL}\n**Deployment:** {SUCCESS/PENDING}\n\n### Changes\n{summary}\n\n### Handover Doc\n`handover/phase-{N}-handover.md`\n\n### Verification\n- [ ] CI Green\n- [ ] Deployment Success\n- [ ] No Regressions\n- [ ] Handover Document Committed"
+      }
+    }
+  },
+
+  "conflict_scenarios": {
+    "scenario_1_same_file_different_sections": {
+      "description": "You and another engineer both modified same file, different parts",
+      "action": "COMBINE both changes - their section + your section",
+      "example": "They added function A at line 50, you added function B at line 100 - keep both"
+    },
+
+    "scenario_2_same_file_same_section": {
+      "description": "You and another engineer modified the exact same lines",
+      "action": "KEEP THEIRS unless your change is critical fix",
+      "rationale": "Their change is in main, so it's been reviewed/approved"
+    },
+
+    "scenario_3_they_deleted_file_you_modified": {
+      "description": "They deleted a file, you modified it",
+      "action": "ASK USER - they may have moved/refactored it",
+      "command": "git log origin/main --oneline --all -- {deleted_file}"
+    },
+
+    "scenario_4_dependency_conflict": {
+      "description": "package.json or requirements.txt conflicts",
+      "action": "COMBINE dependencies, use HIGHER version numbers",
+      "verify": "npm install && npm run build (or pip install)"
+    },
+
+    "scenario_5_migration_conflict": {
+      "description": "Database migration conflicts",
+      "action": "NEVER auto-resolve - ASK USER IMMEDIATELY",
+      "rationale": "Migration order matters, wrong order = data loss"
+    }
+  },
+
+  "forbidden_actions": [
+    "git push --force origin main",
+    "git reset --hard on main branch",
+    "Deleting other engineers' commits",
+    "Resolving migration conflicts without asking",
+    "Skipping tests after merge",
+    "Pushing without CI verification",
+    "Overwriting package-lock.json completely",
+    "Removing dependencies others added"
+  ],
+
+  "emergency_rollback": {
+    "if_merge_breaks_main": {
+      "step_1": "git revert HEAD --no-commit",
+      "step_2": "git status (verify revert is correct)",
+      "step_3": "git commit -m 'Revert: phase {N} merge broke main'",
+      "step_4": "git push origin main",
+      "step_5": "NOTIFY USER IMMEDIATELY"
+    }
+  }
+}
