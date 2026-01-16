@@ -9,7 +9,7 @@ import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MicroAction, ACTION_REGISTRY, CardType } from '@/types/actions';
-import MicroactionButton, { MicroactionGroup } from './MicroactionButton';
+import { ActionButton } from '@/components/actions/ActionButton';
 
 // ============================================================================
 // TYPES
@@ -179,12 +179,11 @@ export default function SpotlightPreviewPane({
                 </span>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {actions.map((action) => (
-                    <MicroactionButton
+                    <ActionButton
                       key={action}
                       action={action}
-                      size="md"
-                      showLabel
-                      onClick={() => console.log('Execute:', action)}
+                      context={{ entity_id: result.id, entity_type: result.type }}
+                      size="sm"
                     />
                   ))}
                 </div>

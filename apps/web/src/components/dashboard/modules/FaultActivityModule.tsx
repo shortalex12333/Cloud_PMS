@@ -6,11 +6,12 @@
  * Connected to real dashboard data via useDashboardData hook
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, AlertCircle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem, StatCard } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
+import { DiagnoseFaultModal, ReportFaultModal } from '@/components/modals';
 import { useFaultData, FaultSummary, FaultStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -37,6 +38,10 @@ export default function FaultActivityModule({
   faults: propFaults,
   stats: propStats,
 }: FaultActivityModuleProps) {
+  // Modal state
+  const [diagnoseFaultId, setDiagnoseFaultId] = useState<string | null>(null);
+  const [showReportFault, setShowReportFault] = useState(false);
+
   // Use hook data unless props are provided
   const hookData = useFaultData();
 
@@ -122,13 +127,12 @@ export default function FaultActivityModule({
                   onClick={() => console.log('Open fault:', fault.id)}
                   actions={
                     fault.status !== 'resolved' && (
-                      <MicroactionButton
+                      <ActionButton
                         action="diagnose_fault"
+                        context={{ fault_id: fault.id }}
                         size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          console.log('Diagnose:', fault.id);
-                        }}
+                        iconOnly
+                        onSuccess={() => hookData.refresh?.()}
                       />
                     )
                   }
@@ -139,11 +143,10 @@ export default function FaultActivityModule({
 
           {/* Module actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="report_fault"
-              size="md"
-              showLabel
-              onClick={() => console.log('Report fault')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',

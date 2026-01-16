@@ -10,7 +10,7 @@ import React from 'react';
 import { Package, AlertTriangle, TrendingDown, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem, StatCard, ProgressBar } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { useInventoryData, InventoryItem, InventoryStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -101,13 +101,12 @@ export default function InventoryStatusModule({
                 value={`${item.quantity}/${item.minStock}`}
                 onClick={() => console.log('View part:', item.id)}
                 actions={
-                  <MicroactionButton
+                  <ActionButton
                     action="order_part"
+                    context={{ part_id: item.id }}
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('Order:', item.id);
-                    }}
+                    iconOnly
+                    onSuccess={() => hookData.refresh?.()}
                   />
                 }
               />
@@ -127,11 +126,10 @@ export default function InventoryStatusModule({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="add_part"
-              size="md"
-              showLabel
-              onClick={() => console.log('Add part')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',

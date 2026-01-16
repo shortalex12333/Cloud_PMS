@@ -11,7 +11,7 @@ import React from 'react';
 import { TrendingUp, AlertTriangle, Clock, Zap, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ProgressBar } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { usePredictiveRiskData, PredictiveRisk } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -172,17 +172,15 @@ export default function PredictiveRiskModule({
 
           {/* Module actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="request_predictive_insight"
-              size="md"
-              showLabel
-              onClick={() => console.log('Request insight')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
-            <MicroactionButton
+            <ActionButton
               action="add_to_handover"
-              size="md"
-              showLabel
-              onClick={() => console.log('Add to handover')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
             <button className={cn(
               'ml-auto px-3 py-1.5 rounded-lg',

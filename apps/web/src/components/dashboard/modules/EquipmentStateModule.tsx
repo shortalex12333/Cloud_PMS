@@ -10,7 +10,7 @@ import React, { useMemo } from 'react';
 import { Cog, CheckCircle, AlertCircle, XCircle, Pause, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem, ProgressBar } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { useEquipmentData, EquipmentStatus, EquipmentStats } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -157,13 +157,11 @@ export default function EquipmentStateModule({
                   status={system.status}
                   onClick={() => console.log('View system:', system.id)}
                   actions={
-                    <MicroactionButton
+                    <ActionButton
                       action="view_equipment_details"
+                      context={{ equipment_id: system.id }}
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('View details:', system.id);
-                      }}
+                      iconOnly
                     />
                   }
                 />

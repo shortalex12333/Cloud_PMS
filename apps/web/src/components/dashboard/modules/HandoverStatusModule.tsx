@@ -10,7 +10,7 @@ import React from 'react';
 import { Users, FileText, CheckCircle, Clock, Edit, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem, ProgressBar } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { useHandoverData, HandoverStatus } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -112,13 +112,12 @@ export default function HandoverStatusModule({
                 status={section.complete ? 'healthy' : 'warning'}
                 onClick={() => console.log('Edit section:', section.name)}
                 actions={
-                  <MicroactionButton
+                  <ActionButton
                     action="edit_handover_section"
+                    context={{ section_name: section.name }}
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('Edit:', section.name);
-                    }}
+                    iconOnly
+                    onSuccess={() => hookData.refresh?.()}
                   />
                 }
               />
@@ -148,23 +147,19 @@ export default function HandoverStatusModule({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="add_to_handover"
-              size="md"
-              showLabel
-              onClick={() => console.log('Add to handover')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
-            <MicroactionButton
+            <ActionButton
               action="regenerate_handover_summary"
-              size="md"
-              showLabel
-              onClick={() => console.log('Regenerate')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
-            <MicroactionButton
+            <ActionButton
               action="export_handover"
-              size="md"
-              showLabel
-              onClick={() => console.log('Export')}
+              size="sm"
             />
           </div>
         </>

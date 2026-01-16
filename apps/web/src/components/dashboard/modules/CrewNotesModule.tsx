@@ -10,7 +10,7 @@ import React from 'react';
 import { MessageSquare, User, Clock, Pin, AlertCircle, Lightbulb, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleContainer, { ModuleItem } from './ModuleContainer';
-import { MicroactionButton } from '@/components/spotlight';
+import { ActionButton } from '@/components/actions/ActionButton';
 import { useCrewNotesData, CrewNote } from '@/hooks/useDashboardData';
 
 // ============================================================================
@@ -135,10 +135,12 @@ export default function CrewNotesModule({
                     )}>
                       {note.status}
                     </span>
-                    <MicroactionButton
+                    <ActionButton
                       action="add_to_handover"
+                      context={{ note_id: note.id, source_type: 'note' }}
                       size="sm"
-                      onClick={() => console.log('Add to handover:', note.id)}
+                      iconOnly
+                      onSuccess={() => hookData.refresh?.()}
                     />
                   </div>
                 </div>
@@ -148,11 +150,10 @@ export default function CrewNotesModule({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-4">
-            <MicroactionButton
+            <ActionButton
               action="add_work_order_note"
-              size="md"
-              showLabel
-              onClick={() => console.log('Add note')}
+              size="sm"
+              onSuccess={() => hookData.refresh?.()}
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
