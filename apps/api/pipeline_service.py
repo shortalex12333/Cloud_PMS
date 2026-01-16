@@ -148,6 +148,30 @@ except Exception as e:
     logger.error("P0 Actions will not be available via API")
 
 # ============================================================================
+# EMAIL TRANSPORT LAYER ROUTES
+# ============================================================================
+
+try:
+    from routes.email import router as email_router
+    app.include_router(email_router)
+    logger.info("✅ Email Transport Layer routes registered at /email/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Email routes: {e}")
+    logger.error("Email endpoints will not be available")
+
+# ============================================================================
+# CONTEXT NAVIGATION ROUTES (Situational Continuity Layer)
+# ============================================================================
+
+try:
+    from routes.context_navigation_routes import router as context_nav_router
+    app.include_router(context_nav_router, prefix="/api/context", tags=["context-nav"])
+    logger.info("✅ Context Navigation routes registered at /api/context/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Context Navigation routes: {e}")
+    logger.error("Context Navigation endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
