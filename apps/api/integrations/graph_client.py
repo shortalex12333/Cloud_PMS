@@ -6,18 +6,32 @@ Strict read/write separation per doctrine:
 - graph_write_client: ONLY for sending emails (Mail.Send)
 
 HARD ERRORS if called with wrong token type.
+
+Refresh-on-demand:
+- Tokens are automatically refreshed when expired
+- Refresh failures mark watcher as degraded
 """
 
 import httpx
 import logging
+import os
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from supabase import Client
 
 logger = logging.getLogger(__name__)
 
 # Graph API base URL
 GRAPH_API_BASE = "https://graph.microsoft.com/v1.0"
+TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+
+# Azure app config (READ app)
+AZURE_READ_APP_ID = os.getenv('AZURE_READ_APP_ID', os.getenv('AZURE_APP_ID', '41f6dc82-8127-4330-97e0-c6b26e6aa967'))
+AZURE_READ_CLIENT_SECRET = os.getenv('AZURE_READ_CLIENT_SECRET', os.getenv('AZURE_CLIENT_SECRET', ''))
+
+# Azure app config (WRITE app)
+AZURE_WRITE_APP_ID = os.getenv('AZURE_WRITE_APP_ID', 'f0b8944b-8127-4f0f-8ed5-5487462df50c')
+AZURE_WRITE_CLIENT_SECRET = os.getenv('AZURE_WRITE_CLIENT_SECRET', '')
 
 
 class GraphClientError(Exception):
@@ -45,26 +59,139 @@ class TokenRevokedError(GraphClientError):
     pass
 
 
+class TokenRefreshError(GraphClientError):
+    """Raised when token refresh fails."""
+    pass
+
+
+class GraphApiError(GraphClientError):
+    """Raised when Graph API returns an error."""
+    def __init__(self, message: str, status_code: int = 0):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 # ============================================================================
-# TOKEN RETRIEVAL
+# TOKEN REFRESH
+# ============================================================================
+
+async def refresh_access_token(
+    supabase: Client,
+    user_id: str,
+    yacht_id: str,
+    purpose: str  # 'read' or 'write'
+) -> str:
+    """
+    Refresh access token using stored refresh token.
+
+    Returns: new access token
+    Raises: TokenRefreshError on failure
+
+    NEVER logs token values.
+    """
+    # Get current token record with refresh_token
+    result = supabase.table('auth_microsoft_tokens').select(
+        'id, microsoft_refresh_token, scopes'
+    ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
+        'provider', 'microsoft_graph'
+    ).eq('token_purpose', purpose).eq('is_revoked', False).single().execute()
+
+    if not result.data:
+        raise TokenRefreshError(f"No {purpose} token record found for refresh")
+
+    refresh_token = result.data.get('microsoft_refresh_token')
+    if not refresh_token:
+        raise TokenRefreshError("No refresh token available")
+
+    token_id = result.data['id']
+
+    # Get app credentials based on purpose
+    if purpose == 'read':
+        client_id = AZURE_READ_APP_ID
+        client_secret = AZURE_READ_CLIENT_SECRET
+    else:
+        client_id = AZURE_WRITE_APP_ID
+        client_secret = AZURE_WRITE_CLIENT_SECRET
+
+    if not client_secret:
+        raise TokenRefreshError(f"Missing client secret for {purpose} app")
+
+    # Call Microsoft token endpoint
+    logger.info(f"[TokenRefresh] Refreshing {purpose} token for user (id redacted)")
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            TOKEN_URL,
+            data={
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'refresh_token': refresh_token,
+                'grant_type': 'refresh_token',
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            timeout=30.0
+        )
+
+    if not response.is_success:
+        error_data = response.json() if response.content else {}
+        error_msg = error_data.get('error_description', error_data.get('error', 'Unknown error'))
+        logger.error(f"[TokenRefresh] Failed with status {response.status_code}: {error_msg}")
+        raise TokenRefreshError(f"Refresh failed: {error_msg}")
+
+    data = response.json()
+    new_access_token = data.get('access_token')
+    new_refresh_token = data.get('refresh_token')  # Microsoft may issue a new one
+    expires_in = data.get('expires_in', 3600)
+
+    if not new_access_token:
+        raise TokenRefreshError("No access token in refresh response")
+
+    # Calculate new expiry
+    new_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+
+    # Update token in database
+    update_data = {
+        'microsoft_access_token': new_access_token,
+        'token_expires_at': new_expires_at.isoformat(),
+        'updated_at': datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Update refresh token if a new one was issued
+    if new_refresh_token:
+        update_data['microsoft_refresh_token'] = new_refresh_token
+
+    supabase.table('auth_microsoft_tokens').update(update_data).eq('id', token_id).execute()
+
+    logger.info(f"[TokenRefresh] Successfully refreshed {purpose} token, expires in {expires_in}s")
+
+    return new_access_token
+
+
+# ============================================================================
+# TOKEN RETRIEVAL (with auto-refresh)
 # ============================================================================
 
 def get_user_token(
     supabase: Client,
     user_id: str,
     yacht_id: str,
-    purpose: str  # 'read' or 'write'
+    purpose: str,  # 'read' or 'write'
+    check_expiry: bool = True
 ) -> Dict[str, Any]:
     """
     Get Microsoft token for user with specific purpose.
 
+    Args:
+        check_expiry: If True, raises TokenExpiredError when expired.
+                      If False, returns token data even if expired (for refresh flow).
+
     Raises:
         TokenNotFoundError: No token found
-        TokenExpiredError: Token is expired
+        TokenExpiredError: Token is expired (only if check_expiry=True)
         TokenRevokedError: Token has been revoked
     """
     result = supabase.table('auth_microsoft_tokens').select(
-        'microsoft_access_token, microsoft_refresh_token, token_expires_at, is_revoked, scopes'
+        'id, microsoft_access_token, microsoft_refresh_token, token_expires_at, is_revoked, scopes'
     ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
         'provider', 'microsoft_graph'
     ).eq('token_purpose', purpose).single().execute()
@@ -77,11 +204,46 @@ def get_user_token(
     if token_data.get('is_revoked'):
         raise TokenRevokedError(f"Token has been revoked")
 
-    expires_at = datetime.fromisoformat(token_data['token_expires_at'].replace('Z', '+00:00'))
-    if expires_at < datetime.now(expires_at.tzinfo):
+    # Parse expiry
+    expires_at_str = token_data['token_expires_at']
+    if expires_at_str.endswith('Z'):
+        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+    elif '+' in expires_at_str or expires_at_str.endswith('00:00'):
+        expires_at = datetime.fromisoformat(expires_at_str)
+    else:
+        expires_at = datetime.fromisoformat(expires_at_str).replace(tzinfo=timezone.utc)
+
+    token_data['is_expired'] = expires_at < datetime.now(timezone.utc)
+
+    if check_expiry and token_data['is_expired']:
         raise TokenExpiredError(f"Token expired at {expires_at}")
 
     return token_data
+
+
+async def get_valid_token(
+    supabase: Client,
+    user_id: str,
+    yacht_id: str,
+    purpose: str  # 'read' or 'write'
+) -> str:
+    """
+    Get a valid (non-expired) access token, refreshing if necessary.
+
+    This is the main entry point for getting tokens with auto-refresh.
+
+    Returns: valid access token
+    Raises: TokenNotFoundError, TokenRevokedError, TokenRefreshError
+    """
+    # Get token without expiry check
+    token_data = get_user_token(supabase, user_id, yacht_id, purpose, check_expiry=False)
+
+    if token_data.get('is_expired'):
+        logger.info(f"[GetToken] Token expired, attempting refresh for {purpose}")
+        # Refresh and return new token
+        return await refresh_access_token(supabase, user_id, yacht_id, purpose)
+
+    return token_data['microsoft_access_token']
 
 
 # ============================================================================
@@ -104,6 +266,10 @@ class GraphReadClient:
     - create_draft
     - delete_message
     - move_message
+
+    Auto-refresh:
+    - Automatically refreshes expired tokens before API calls
+    - On 401 from Graph, attempts one refresh and retry
     """
 
     def __init__(self, supabase: Client, user_id: str, yacht_id: str):
@@ -111,24 +277,64 @@ class GraphReadClient:
         self.user_id = user_id
         self.yacht_id = yacht_id
         self._token: Optional[str] = None
+        self._refresh_attempted: bool = False
 
-    def _get_token(self) -> str:
-        """Get and cache read token."""
-        if self._token:
+    async def _get_token(self) -> str:
+        """Get valid read token with auto-refresh."""
+        if self._token and not self._refresh_attempted:
             return self._token
 
-        token_data = get_user_token(
+        # Use get_valid_token which handles refresh
+        self._token = await get_valid_token(
             self.supabase, self.user_id, self.yacht_id, 'read'
         )
-        self._token = token_data['microsoft_access_token']
+        self._refresh_attempted = False
         return self._token
 
-    def _headers(self) -> Dict[str, str]:
+    async def _headers(self) -> Dict[str, str]:
         """Get headers with authorization."""
         return {
-            'Authorization': f'Bearer {self._get_token()}',
+            'Authorization': f'Bearer {await self._get_token()}',
             'Content-Type': 'application/json',
         }
+
+    async def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        **kwargs
+    ) -> httpx.Response:
+        """
+        Make HTTP request with automatic retry on 401.
+
+        On 401:
+        1. Clear cached token
+        2. Refresh token
+        3. Retry request once
+        4. If still 401, raise GraphApiError
+        """
+        async with httpx.AsyncClient() as client:
+            headers = await self._headers()
+            response = await client.request(method, url, headers=headers, timeout=30.0, **kwargs)
+
+            # If 401 and haven't retried yet, attempt refresh and retry
+            if response.status_code == 401 and not self._refresh_attempted:
+                logger.info("[GraphRead] Got 401, attempting token refresh and retry")
+                self._refresh_attempted = True
+                self._token = None
+
+                try:
+                    # Get fresh token (will trigger refresh)
+                    headers = await self._headers()
+                    response = await client.request(method, url, headers=headers, timeout=30.0, **kwargs)
+                except TokenRefreshError as e:
+                    raise GraphApiError(f"Token refresh failed: {e}", 401)
+
+            # Reset refresh flag on success
+            if response.is_success:
+                self._refresh_attempted = False
+
+            return response
 
     async def list_messages(
         self,
@@ -174,10 +380,9 @@ class GraphReadClient:
             if params:
                 url = f"{url}?{'&'.join(params)}"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self._headers(), timeout=30.0)
-            response.raise_for_status()
-            data = response.json()
+        response = await self._request_with_retry('GET', url)
+        response.raise_for_status()
+        data = response.json()
 
         return {
             'messages': data.get('value', []),
@@ -188,11 +393,9 @@ class GraphReadClient:
     async def get_message(self, message_id: str) -> Dict[str, Any]:
         """Get message metadata by ID."""
         url = f"{GRAPH_API_BASE}/me/messages/{message_id}"
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self._headers(), timeout=30.0)
-            response.raise_for_status()
-            return response.json()
+        response = await self._request_with_retry('GET', url)
+        response.raise_for_status()
+        return response.json()
 
     async def get_message_content(self, message_id: str) -> Dict[str, Any]:
         """
@@ -203,28 +406,23 @@ class GraphReadClient:
         params = "$select=id,subject,body,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,hasAttachments,attachments"
         url = f"{url}?{params}&$expand=attachments($select=id,name,contentType,size)"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self._headers(), timeout=30.0)
-            response.raise_for_status()
-            return response.json()
+        response = await self._request_with_retry('GET', url)
+        response.raise_for_status()
+        return response.json()
 
     async def get_attachment(self, message_id: str, attachment_id: str) -> Dict[str, Any]:
         """Get attachment content."""
         url = f"{GRAPH_API_BASE}/me/messages/{message_id}/attachments/{attachment_id}"
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self._headers(), timeout=30.0)
-            response.raise_for_status()
-            return response.json()
+        response = await self._request_with_retry('GET', url)
+        response.raise_for_status()
+        return response.json()
 
     async def get_user_profile(self) -> Dict[str, Any]:
         """Get user profile."""
         url = f"{GRAPH_API_BASE}/me"
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self._headers(), timeout=30.0)
-            response.raise_for_status()
-            return response.json()
+        response = await self._request_with_retry('GET', url)
+        response.raise_for_status()
+        return response.json()
 
     # FORBIDDEN OPERATIONS - raise hard errors
 
@@ -399,9 +597,13 @@ __all__ = [
     'TokenNotFoundError',
     'TokenExpiredError',
     'TokenRevokedError',
+    'TokenRefreshError',
+    'GraphApiError',
     'GraphReadClient',
     'GraphWriteClient',
     'create_read_client',
     'create_write_client',
     'get_user_token',
+    'get_valid_token',
+    'refresh_access_token',
 ]

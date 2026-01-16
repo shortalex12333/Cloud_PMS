@@ -38,6 +38,8 @@ from integrations.graph_client import (
     TokenExpiredError,
     TokenRevokedError,
     TokenPurposeMismatchError,
+    TokenRefreshError,
+    GraphApiError,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,6 +111,31 @@ def require_feature(feature_name: str):
     enabled, error_msg = check_email_feature(feature_name)
     if not enabled:
         raise HTTPException(status_code=503, detail=error_msg)
+
+
+# ============================================================================
+# HELPER: MARK WATCHER DEGRADED
+# ============================================================================
+
+async def mark_watcher_degraded(
+    supabase,
+    user_id: str,
+    yacht_id: str,
+    error_message: str,
+):
+    """Mark email watcher as degraded with error message."""
+    try:
+        supabase.table('email_watchers').update({
+            'sync_status': 'degraded',
+            'last_sync_error': error_message[:500],  # Truncate for DB
+            'last_sync_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
+        }).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
+            'provider', 'microsoft_graph'
+        ).execute()
+        logger.info(f"[email] Marked watcher degraded: {error_message[:100]}")
+    except Exception as e:
+        logger.error(f"[email] Failed to mark watcher degraded: {e}")
 
 
 # ============================================================================
@@ -290,7 +317,7 @@ async def render_message(
         raise HTTPException(status_code=404, detail="Message not found")
 
     try:
-        # Use READ client (enforces read token)
+        # Use READ client (enforces read token, auto-refreshes if needed)
         read_client = create_read_client(supabase, user_id, yacht_id)
         content = await read_client.get_message_content(provider_message_id)
 
@@ -310,15 +337,47 @@ async def render_message(
 
     except TokenNotFoundError:
         raise HTTPException(status_code=401, detail="Email not connected. Please connect your Outlook account.")
+
     except TokenExpiredError:
+        # This shouldn't happen with auto-refresh, but handle gracefully
         raise HTTPException(status_code=401, detail="Email connection expired. Please reconnect.")
+
     except TokenRevokedError:
+        await mark_watcher_degraded(supabase, user_id, yacht_id, "Token revoked")
         raise HTTPException(status_code=401, detail="Email connection revoked. Please reconnect.")
+
+    except TokenRefreshError as e:
+        # Refresh failed - mark watcher degraded
+        error_msg = str(e)
+        await mark_watcher_degraded(supabase, user_id, yacht_id, f"Token refresh failed: {error_msg}")
+        logger.error(f"[email/render] Token refresh failed: {error_msg}")
+        raise HTTPException(status_code=401, detail="Email connection expired and refresh failed. Please reconnect.")
+
+    except GraphApiError as e:
+        # Graph API returned an error after retry
+        error_msg = str(e)
+        if e.status_code == 401:
+            await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph API 401: {error_msg}")
+            raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect your Outlook account.")
+        elif e.status_code == 404:
+            raise HTTPException(status_code=404, detail="Message not found in Outlook")
+        else:
+            logger.error(f"[email/render] Graph API error {e.status_code}: {error_msg}")
+            raise HTTPException(status_code=502, detail=f"Microsoft Graph error: {error_msg}")
+
     except TokenPurposeMismatchError as e:
         logger.error(f"[email/render] Token purpose mismatch: {e}")
         raise HTTPException(status_code=500, detail="Internal configuration error")
+
     except Exception as e:
-        logger.error(f"[email/render] Error: {e}")
+        error_msg = str(e)
+        # Check if it's an HTTP error from httpx
+        if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
+            status = e.response.status_code
+            if status == 401:
+                await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph 401: {error_msg}")
+                raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect.")
+        logger.error(f"[email/render] Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch message content")
 
 
