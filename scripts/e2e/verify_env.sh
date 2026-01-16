@@ -146,7 +146,7 @@ check_endpoint() {
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$url" 2>/dev/null || echo "000")
     fi
 
-    if [ "$HTTP_CODE" == "$expected_status" ] || [ "$HTTP_CODE" == "200" ] || [ "$HTTP_CODE" == "301" ] || [ "$HTTP_CODE" == "302" ]; then
+    if [ "$HTTP_CODE" == "$expected_status" ] || [ "$HTTP_CODE" == "200" ] || [ "$HTTP_CODE" == "301" ] || [ "$HTTP_CODE" == "302" ] || [ "$HTTP_CODE" == "307" ] || [ "$HTTP_CODE" == "308" ]; then
         echo -e "${GREEN}OK (HTTP $HTTP_CODE)${NC}"
         return 0
     else
