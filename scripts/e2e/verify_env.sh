@@ -136,10 +136,15 @@ check_endpoint() {
     local name=$1
     local url=$2
     local expected_status=${3:-200}
+    local extra_headers=${4:-""}
 
     echo -n "Checking $name... "
 
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$url" 2>/dev/null || echo "000")
+    if [ -n "$extra_headers" ]; then
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 -H "$extra_headers" "$url" 2>/dev/null || echo "000")
+    else
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$url" 2>/dev/null || echo "000")
+    fi
 
     if [ "$HTTP_CODE" == "$expected_status" ] || [ "$HTTP_CODE" == "200" ] || [ "$HTTP_CODE" == "301" ] || [ "$HTTP_CODE" == "302" ]; then
         echo -e "${GREEN}OK (HTTP $HTTP_CODE)${NC}"
@@ -151,11 +156,11 @@ check_endpoint() {
     fi
 }
 
-# Check Master Supabase health
-check_endpoint "Master Supabase" "$MASTER_SUPABASE_URL/rest/v1/"
+# Check Master Supabase health (requires apikey header)
+check_endpoint "Master Supabase" "$MASTER_SUPABASE_URL/rest/v1/" "200" "apikey: $MASTER_SUPABASE_ANON_KEY"
 
-# Check Tenant Supabase health
-check_endpoint "Tenant Supabase" "$TENANT_SUPABASE_URL/rest/v1/"
+# Check Tenant Supabase health (requires apikey header)
+check_endpoint "Tenant Supabase" "$TENANT_SUPABASE_URL/rest/v1/" "200" "apikey: $TENANT_SUPABASE_SERVICE_ROLE_KEY"
 
 # Check Render backend health
 check_endpoint "Render Backend" "$RENDER_API_URL/health"
