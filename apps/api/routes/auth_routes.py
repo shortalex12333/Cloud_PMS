@@ -366,7 +366,8 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
         watcher_record = {
             'user_id': user_id,
             'yacht_id': yacht_id,
-            'provider_email_hash': email_hash,
+            'provider': 'microsoft_graph',
+            'mailbox_address_hash': email_hash,  # NOTE: Column is mailbox_address_hash, not provider_email_hash
             'sync_status': watcher_status,
             'updated_at': datetime.utcnow().isoformat(),
         }
