@@ -477,7 +477,7 @@ export default function SpotlightSearch({
             <div className="flex-1 h-full relative">
               <input
                 ref={inputRef}
-                type="text"
+                type="search"
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}

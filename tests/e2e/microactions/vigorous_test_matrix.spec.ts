@@ -152,6 +152,18 @@ const otherYachtId = '00000000-0000-0000-0000-000000000000'; // For isolation te
 // ============================================================================
 
 /**
+ * Check if payload contains unresolved REAL_*_ID placeholders
+ */
+function hasUnresolvedPlaceholders(payload: Record<string, any>): string | null {
+  for (const [key, value] of Object.entries(payload)) {
+    if (typeof value === 'string' && value.startsWith('REAL_') && value.endsWith('_ID')) {
+      return `${key}: ${value}`;
+    }
+  }
+  return null;
+}
+
+/**
  * Replace placeholder IDs in payload with real IDs from database
  */
 function resolvePayload(payload: Record<string, any>): Record<string, any> {
@@ -208,7 +220,17 @@ test.describe('VIGOROUS TEST MATRIX - 15 Tests Per Action', () => {
         const testName = `matrix/${action.id}_${action.name}/T01_happy_path`;
         const startTime = Date.now();
 
-        const response = await apiClient.executeAction(action.name, resolvePayload(action.samplePayload));
+        const resolvedPayload = resolvePayload(action.samplePayload);
+
+        // Skip if payload has unresolved placeholders (no real data in DB)
+        const unresolved = hasUnresolvedPlaceholders(resolvedPayload);
+        if (unresolved && action.expectedStatus === 200) {
+          console.log(`[SKIP] No real data for placeholder: ${unresolved}`);
+          test.skip();
+          return;
+        }
+
+        const response = await apiClient.executeAction(action.name, resolvedPayload);
 
         const duration = Date.now() - startTime;
         saveRequest(testName, response.request);
