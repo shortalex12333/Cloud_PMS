@@ -13,8 +13,9 @@ supabase==2.12.0
 pyjwt==2.10.1
 cryptography==44.0.0
 
-# HTTP Client for n8n integration
+# HTTP Clients
 httpx==0.28.1
+requests==2.32.3  # Used by CORS verification tests
 
 # JSON Schema Validation
 jsonschema==4.23.0
