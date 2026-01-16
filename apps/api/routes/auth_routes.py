@@ -274,18 +274,14 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
             )
 
         # Get user's yacht_id from their profile
+        # NOTE: auth_users_profiles uses 'id' column (not 'user_id') to store the user's auth ID
         try:
-            user_result = supabase.table('auth_users_profiles').select('yacht_id').eq('user_id', user_id).maybe_single().execute()
+            user_result = supabase.table('auth_users_profiles').select('yacht_id').eq('id', user_id).maybe_single().execute()
             yacht_id = user_result.data.get('yacht_id') if user_result.data and isinstance(user_result.data, dict) else None
             logger.info(f"[Auth] User profile lookup: user_id={user_id}, yacht_id={yacht_id}, data={user_result.data}")
         except Exception as e:
             logger.error(f"[Auth] Failed to lookup user profile: {e}")
             yacht_id = None
-
-        if not yacht_id:
-            # Try auth_users_yacht table
-            yacht_result = supabase.table('auth_users_yacht').select('yacht_id').eq('user_id', user_id).maybe_single().execute()
-            yacht_id = yacht_result.data.get('yacht_id') if yacht_result.data else None
 
         if not yacht_id:
             return TokenExchangeResponse(
