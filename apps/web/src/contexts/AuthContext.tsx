@@ -81,13 +81,27 @@ function buildUserFromSession(session: Session): CelesteUser {
 }
 
 /**
- * Fetch bootstrap data from master DB with exponential backoff
+ * Render API URL for bootstrap endpoint
+ * Bootstrap MUST go through Render because:
+ * - Frontend only has TENANT Supabase credentials
+ * - get_my_bootstrap() RPC only exists on MASTER DB
+ * - Render has MASTER DB credentials
+ */
+const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+/**
+ * Fetch bootstrap data from Render API with exponential backoff
  * Returns enriched user with yacht context
+ *
+ * Architecture (2026-01-16):
+ * - Frontend calls Render: POST /v1/bootstrap with JWT
+ * - Render looks up tenant from MASTER DB
+ * - Returns yacht_id, tenant_key_alias, role, status
  *
  * Retry strategy: 2s, 4s, 8s, 16s timeouts (30s total before giving up)
  * This prevents tab-resume logout on slow connections
  */
-async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
+async function fetchBootstrap(baseUser: CelesteUser, accessToken: string): Promise<CelesteUser> {
   const RETRY_TIMEOUTS = [2000, 4000, 8000, 16000]; // Exponential backoff
   let lastError: Error | null = null;
 
@@ -97,25 +111,52 @@ async function fetchBootstrap(baseUser: CelesteUser): Promise<CelesteUser> {
     try {
       console.log(`[AuthContext] Bootstrap attempt ${attempt + 1}/${RETRY_TIMEOUTS.length} (timeout: ${timeout}ms)`);
 
-      const rpcPromise = supabase.rpc('get_my_bootstrap');
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Bootstrap timeout after ${timeout}ms`)), timeout);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const response = await fetch(`${RENDER_API_URL}/v1/bootstrap`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
       });
 
-      const result = await Promise.race([rpcPromise, timeoutPromise]);
-      const { data, error } = result;
+      clearTimeout(timeoutId);
 
-      if (error) {
-        console.warn(`[AuthContext] Bootstrap RPC error (attempt ${attempt + 1}):`, error.message);
-        lastError = new Error(error.message);
-        continue; // Retry on RPC error
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`[AuthContext] Bootstrap API error (attempt ${attempt + 1}): ${response.status} - ${errorText}`);
+
+        // 403 = user not assigned to tenant or inactive - don't retry
+        if (response.status === 403) {
+          console.log('[AuthContext] User not assigned to tenant or inactive');
+          return { ...baseUser, bootstrapStatus: 'pending', yachtId: null };
+        }
+
+        // 401 = invalid/expired token - don't retry
+        if (response.status === 401) {
+          console.log('[AuthContext] Token invalid or expired');
+          return { ...baseUser, bootstrapStatus: 'error', yachtId: null };
+        }
+
+        lastError = new Error(`API error: ${response.status}`);
+        continue; // Retry on other errors
       }
+
+      const data = await response.json();
+      console.log('[AuthContext] Bootstrap API success:', data.yacht_id, data.role);
 
       // Success - process the data
       return processBootstrapData(baseUser, data);
 
     } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
+      if (err instanceof Error && err.name === 'AbortError') {
+        lastError = new Error(`Bootstrap timeout after ${timeout}ms`);
+      } else {
+        lastError = err instanceof Error ? err : new Error(String(err));
+      }
       console.warn(`[AuthContext] Bootstrap attempt ${attempt + 1} failed:`, lastError.message);
 
       // Don't retry on last attempt
@@ -202,10 +243,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Refresh bootstrap data (can be called manually to retry after error)
    */
   const refreshBootstrap = useCallback(async () => {
-    if (!user) return;
+    if (!user || !session) return;
 
     setBootstrapping(true);
-    const enrichedUser = await fetchBootstrap(user);
+    const enrichedUser = await fetchBootstrap(user, session.access_token);
     setUser(enrichedUser);
     setBootstrapping(false);
 
@@ -216,7 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshBootstrap();
       }, 10000); // Retry in 10s
     }
-  }, [user]);
+  }, [user, session]);
 
   /**
    * Handle session changes - fast path, sets user immediately from session
@@ -237,9 +278,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(baseUser);
     setLoading(false);
 
-    // BACKGROUND: Fetch bootstrap data (yacht context)
+    // BACKGROUND: Fetch bootstrap data (yacht context) via Render API
     setBootstrapping(true);
-    const enrichedUser = await fetchBootstrap(baseUser);
+    const enrichedUser = await fetchBootstrap(baseUser, newSession.access_token);
     setUser(enrichedUser);
     setBootstrapping(false);
 
@@ -342,7 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (user && (user.bootstrapStatus === 'error' || user.bootstrapStatus === 'loading')) {
           console.log('[AuthContext] Tab resume: retrying bootstrap...');
           setBootstrapping(true);
-          const enrichedUser = await fetchBootstrap(user);
+          const enrichedUser = await fetchBootstrap(user, currentSession.access_token);
           setUser(enrichedUser);
           setBootstrapping(false);
         } else if (!user && currentSession) {
