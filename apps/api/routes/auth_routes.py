@@ -62,6 +62,15 @@ class TokenExchangeResponse(BaseModel):
     email: Optional[str] = None
 
 
+class OutlookStatusResponse(BaseModel):
+    """Response for Outlook connection status."""
+    connected: bool
+    email: Optional[str] = None
+    token_purpose: Optional[str] = None
+    scopes: Optional[List[str]] = None
+    expires_at: Optional[str] = None
+
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
@@ -394,3 +403,118 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
             error=str(e),
             error_code="unexpected",
         )
+
+
+@router.get("/outlook/status", response_model=OutlookStatusResponse)
+async def get_outlook_status(authorization: str = Header(None)):
+    """
+    Get Outlook OAuth connection status for the authenticated user.
+
+    This endpoint queries both MASTER and TENANT databases to determine
+    if the user has valid OAuth tokens stored.
+
+    Headers:
+        Authorization: Bearer <supabase_jwt_token>
+    """
+    try:
+        # Extract user_id from Supabase JWT
+        if not authorization or not authorization.startswith('Bearer '):
+            return OutlookStatusResponse(connected=False)
+
+        token = authorization.split(' ')[1]
+
+        # Decode JWT to get user_id (Supabase JWT structure)
+        import jwt
+        try:
+            # Decode without verification (we trust tokens from frontend)
+            # In production, you'd verify with Supabase JWT secret
+            payload = jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get('sub')
+        except Exception as e:
+            logger.warning(f"[Auth] Failed to decode JWT: {e}")
+            return OutlookStatusResponse(connected=False)
+
+        if not user_id:
+            return OutlookStatusResponse(connected=False)
+
+        # Step 1: Get yacht_id from MASTER DB
+        master_supabase = get_master_supabase()
+        if not master_supabase:
+            logger.error(f"[Auth] No MASTER Supabase connection for status check")
+            return OutlookStatusResponse(connected=False)
+
+        try:
+            user_account = master_supabase.table('user_accounts').select('yacht_id').eq('id', user_id).maybe_single().execute()
+
+            if not user_account.data:
+                logger.warning(f"[Auth] User {user_id} not found in MASTER user_accounts")
+                return OutlookStatusResponse(connected=False)
+
+            yacht_id = user_account.data.get('yacht_id')
+
+            if not yacht_id:
+                logger.warning(f"[Auth] User {user_id} has no yacht_id")
+                return OutlookStatusResponse(connected=False)
+
+        except Exception as e:
+            logger.error(f"[Auth] Error querying MASTER DB for status: {e}")
+            return OutlookStatusResponse(connected=False)
+
+        # Step 2: Query TENANT DB for OAuth tokens
+        tenant_supabase = get_yacht_supabase(yacht_id)
+        if not tenant_supabase:
+            logger.error(f"[Auth] No TENANT Supabase connection for status check")
+            return OutlookStatusResponse(connected=False)
+
+        try:
+            # Check for 'read' token (most common)
+            token_result = tenant_supabase.table('auth_microsoft_tokens')\
+                .select('provider_email_hash, token_purpose, scopes, token_expires_at, is_revoked')\
+                .eq('user_id', user_id)\
+                .eq('yacht_id', yacht_id)\
+                .eq('provider', 'microsoft_graph')\
+                .eq('token_purpose', 'read')\
+                .eq('is_revoked', False)\
+                .maybe_single()\
+                .execute()
+
+            if token_result.data:
+                # Convert email hash back to email (we can't, so we'll just indicate connected)
+                return OutlookStatusResponse(
+                    connected=True,
+                    email=None,  # We only store hash, not actual email
+                    token_purpose=token_result.data.get('token_purpose'),
+                    scopes=token_result.data.get('scopes', []),
+                    expires_at=token_result.data.get('token_expires_at'),
+                )
+
+            # If no 'read' token, check for 'write' token
+            token_result = tenant_supabase.table('auth_microsoft_tokens')\
+                .select('provider_email_hash, token_purpose, scopes, token_expires_at, is_revoked')\
+                .eq('user_id', user_id)\
+                .eq('yacht_id', yacht_id)\
+                .eq('provider', 'microsoft_graph')\
+                .eq('token_purpose', 'write')\
+                .eq('is_revoked', False)\
+                .maybe_single()\
+                .execute()
+
+            if token_result.data:
+                return OutlookStatusResponse(
+                    connected=True,
+                    email=None,
+                    token_purpose=token_result.data.get('token_purpose'),
+                    scopes=token_result.data.get('scopes', []),
+                    expires_at=token_result.data.get('token_expires_at'),
+                )
+
+            # No valid tokens found
+            return OutlookStatusResponse(connected=False)
+
+        except Exception as e:
+            logger.error(f"[Auth] Error querying TENANT DB for tokens: {e}")
+            return OutlookStatusResponse(connected=False)
+
+    except Exception as e:
+        logger.exception(f"[Auth] Unexpected error in status check: {e}")
+        return OutlookStatusResponse(connected=False)

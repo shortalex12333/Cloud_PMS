@@ -1,8 +1,8 @@
 /**
  * Microsoft OAuth - Connection Status
  *
- * Returns detailed status for both READ and WRITE connections,
- * plus email_watchers sync state.
+ * Proxies to Render backend which has access to both MASTER and TENANT databases.
+ * This fixes the issue where frontend can't directly query TENANT DB for tokens.
  *
  * Response shape:
  * {
@@ -14,23 +14,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import {
-  getServiceClient,
-  getUserYachtId,
-  getToken,
-  getWatcher,
-  ConnectionStatus,
-} from '@/lib/email/oauth-utils';
 
 export async function GET(request: NextRequest) {
   try {
     // Check required env vars
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const renderBackendUrl = process.env.NEXT_PUBLIC_RENDER_BACKEND_URL || 'https://pipeline-core.int.celeste7.ai';
 
     if (!supabaseUrl || !anonKey) {
-      console.error('[Outlook Status] Missing env vars');
+      console.error('[Outlook Status] Missing Supabase env vars');
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
@@ -48,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify JWT using anon client (doesn't need service key)
+    // Verify JWT using anon client
     const authClient = createClient(supabaseUrl, anonKey);
     const { data: { user }, error } = await authClient.auth.getUser(token);
 
@@ -60,57 +53,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // For DB queries, prefer service client if available (bypasses RLS)
-    // Fall back to auth client with user's JWT if no service key
-    let dbClient;
-    if (serviceKey) {
-      dbClient = getServiceClient();
-    } else {
-      dbClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: `Bearer ${token}` } }
-      });
+    // Proxy to Render backend which has access to both MASTER and TENANT DBs
+    const backendResponse = await fetch(`${renderBackendUrl}/auth/outlook/status`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!backendResponse.ok) {
+      console.error('[Outlook Status] Backend error:', backendResponse.status);
+      return NextResponse.json(
+        { error: 'Backend request failed' },
+        { status: backendResponse.status }
+      );
     }
 
-    // Get user's yacht_id
-    const yachtId = await getUserYachtId(dbClient, user.id);
-    if (!yachtId) {
-      return NextResponse.json<ConnectionStatus>({
-        read: { connected: false, expires_at: null, scopes: [] },
-        write: { connected: false, expires_at: null, scopes: [] },
-        watcher: null,
-      });
-    }
+    const backendData = await backendResponse.json();
 
-    // Get read token
-    const readToken = await getToken(dbClient, user.id, yachtId, 'read');
-    const readConnected = readToken !== null &&
-      !readToken.is_revoked &&
-      new Date(readToken.token_expires_at) > new Date();
+    // Transform backend response to match expected frontend format
+    // Backend returns: { connected, email, token_purpose, scopes, expires_at }
+    // Frontend expects: { read: {...}, write: {...}, watcher: {...} }
 
-    // Get write token
-    const writeToken = await getToken(dbClient, user.id, yachtId, 'write');
-    const writeConnected = writeToken !== null &&
-      !writeToken.is_revoked &&
-      new Date(writeToken.token_expires_at) > new Date();
-
-    // Get watcher status
-    const watcher = await getWatcher(dbClient, user.id, yachtId);
-
-    // Build response
-    const status: ConnectionStatus = {
+    const status = {
       read: {
-        connected: readConnected,
-        expires_at: readToken?.token_expires_at || null,
-        scopes: readToken?.scopes || [],
-        email: readToken?.provider_display_name || undefined,
+        connected: backendData.connected && backendData.token_purpose === 'read',
+        expires_at: backendData.expires_at || null,
+        scopes: backendData.scopes || [],
+        email: backendData.email || undefined,
       },
       write: {
-        connected: writeConnected,
-        expires_at: writeToken?.token_expires_at || null,
-        scopes: writeToken?.scopes || [],
-        email: writeToken?.provider_display_name || undefined,
+        connected: backendData.connected && backendData.token_purpose === 'write',
+        expires_at: backendData.expires_at || null,
+        scopes: backendData.scopes || [],
+        email: backendData.email || undefined,
       },
-      watcher: watcher,
+      watcher: null, // TODO: Add watcher status to backend endpoint
     };
 
     return NextResponse.json(status);
