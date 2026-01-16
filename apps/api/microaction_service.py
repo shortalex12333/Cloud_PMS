@@ -173,6 +173,17 @@ except Exception as e:
     logger.warning(f"⚠ P0 Actions routes not loaded: {e}")
 
 # ========================================================================
+# TRIGGER ROUTES
+# ========================================================================
+# Include trigger routes for business rule checks
+try:
+    from routes.triggers_routes import router as triggers_router
+    app.include_router(triggers_router)
+    logger.info("✅ Trigger routes loaded")
+except Exception as e:
+    logger.warning(f"⚠ Trigger routes not loaded: {e}")
+
+# ========================================================================
 # PIPELINE GATEWAY (Prod-Parity Harness)
 # ========================================================================
 # Routes pipeline calls through LOCAL/REMOTE/REPLAY modes
