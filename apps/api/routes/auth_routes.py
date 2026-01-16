@@ -123,14 +123,19 @@ async def exchange_code_for_tokens(
 ) -> dict:
     """Exchange authorization code for access/refresh tokens."""
 
+    # Read env vars at request time (not module load time) to pick up
+    # env vars added after process start
     if purpose == 'read':
-        client_id = AZURE_READ_APP_ID
-        client_secret = AZURE_READ_CLIENT_SECRET
+        client_id = os.getenv('AZURE_READ_APP_ID', '')
+        client_secret = os.getenv('AZURE_READ_CLIENT_SECRET', '')
     else:
-        client_id = AZURE_WRITE_APP_ID
-        client_secret = AZURE_WRITE_CLIENT_SECRET
+        client_id = os.getenv('AZURE_WRITE_APP_ID', '')
+        client_secret = os.getenv('AZURE_WRITE_CLIENT_SECRET', '')
 
     if not client_id or not client_secret:
+        logger.error(f"[Auth] Missing Azure credentials for {purpose} app. "
+                     f"AZURE_{purpose.upper()}_APP_ID set: {bool(client_id)}, "
+                     f"AZURE_{purpose.upper()}_CLIENT_SECRET set: {bool(client_secret)}")
         return {'success': False, 'error': f'Missing Azure credentials for {purpose} app'}
 
     async with httpx.AsyncClient() as client:
