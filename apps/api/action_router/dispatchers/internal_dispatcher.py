@@ -11,6 +11,44 @@ import os
 from datetime import datetime
 from supabase import create_client, Client
 
+# Import handler classes for P1/P3 handlers
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "handlers"))
+
+from handlers.p3_read_only_handlers import P3ReadOnlyHandlers
+from handlers.p1_compliance_handlers import P1ComplianceHandlers
+from handlers.p1_purchasing_handlers import P1PurchasingHandlers
+
+# Lazy-initialized handler instances
+_p3_handlers = None
+_p1_compliance_handlers = None
+_p1_purchasing_handlers = None
+
+
+def _get_p3_handlers():
+    """Get lazy-initialized P3 read-only handlers."""
+    global _p3_handlers
+    if _p3_handlers is None:
+        _p3_handlers = P3ReadOnlyHandlers(get_supabase_client())
+    return _p3_handlers
+
+
+def _get_p1_compliance_handlers():
+    """Get lazy-initialized P1 compliance handlers."""
+    global _p1_compliance_handlers
+    if _p1_compliance_handlers is None:
+        _p1_compliance_handlers = P1ComplianceHandlers(get_supabase_client())
+    return _p1_compliance_handlers
+
+
+def _get_p1_purchasing_handlers():
+    """Get lazy-initialized P1 purchasing handlers."""
+    global _p1_purchasing_handlers
+    if _p1_purchasing_handlers is None:
+        _p1_purchasing_handlers = P1PurchasingHandlers(get_supabase_client())
+    return _p1_purchasing_handlers
+
 
 def get_supabase_client() -> Client:
     """Get initialized Supabase client."""
@@ -1336,6 +1374,312 @@ async def export_worklist(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ============================================================================
+# P3 READ-ONLY WRAPPER FUNCTIONS
+# ============================================================================
+
+
+async def _view_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_document handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_document_execute(
+        document_id=params.get("document_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_related_documents(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_related_documents handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_related_documents_execute(
+        entity_id=params.get("entity_id"),
+        entity_type=params.get("entity_type"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_document_section(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_document_section handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_document_section_execute(
+        document_id=params.get("document_id"),
+        section_id=params.get("section_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_work_order_history(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_work_order_history handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_work_order_history_execute(
+        work_order_id=params.get("work_order_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_checklist(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_checklist handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_checklist_execute(
+        checklist_id=params.get("checklist_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_equipment_details(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_equipment_details handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_equipment_details_execute(
+        equipment_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_equipment_history(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_equipment_history handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_equipment_history_execute(
+        equipment_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_equipment_parts(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_equipment_parts handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_equipment_parts_execute(
+        equipment_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_linked_faults(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_linked_faults handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_linked_faults_execute(
+        equipment_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_equipment_manual(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_equipment_manual handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_equipment_manual_execute(
+        equipment_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_fleet_summary(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_fleet_summary handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_fleet_summary_execute(
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _open_vessel(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 open_vessel handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.open_vessel_execute(
+        vessel_id=params.get("vessel_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _export_fleet_summary(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 export_fleet_summary handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.export_fleet_summary_execute(
+        yacht_id=params["yacht_id"],
+        format=params.get("format", "pdf")
+    )
+
+
+async def _request_predictive_insight(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 request_predictive_insight handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.request_predictive_insight_execute(
+        equipment_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_part_stock(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_part_stock handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_part_stock_execute(
+        part_id=params.get("part_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_part_location(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_part_location handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_part_location_execute(
+        part_id=params.get("part_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_part_usage(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_part_usage handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_part_usage_execute(
+        part_id=params.get("part_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _scan_part_barcode(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 scan_part_barcode handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.scan_part_barcode_execute(
+        barcode=params.get("barcode"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _view_linked_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_linked_equipment handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_linked_equipment_execute(
+        part_id=params.get("part_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _export_handover(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 export_handover handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.export_handover_execute(
+        handover_id=params.get("handover_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        format=params.get("format", "pdf")
+    )
+
+
+async def _view_smart_summary(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_smart_summary handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_smart_summary_execute(
+        yacht_id=params["yacht_id"],
+        period=params.get("period", "today")
+    )
+
+
+async def _view_hours_of_rest(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_hours_of_rest handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_hours_of_rest_execute(
+        crew_id=params.get("crew_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        date_from=params.get("date_from"),
+        date_to=params.get("date_to")
+    )
+
+
+async def _export_hours_of_rest(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 export_hours_of_rest handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.export_hours_of_rest_execute(
+        crew_id=params.get("crew_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        format=params.get("format", "pdf")
+    )
+
+
+async def _view_compliance_status(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 view_compliance_status handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.view_compliance_status_execute(
+        yacht_id=params["yacht_id"]
+    )
+
+
+async def _track_delivery(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P3 track_delivery handler."""
+    handlers = _get_p3_handlers()
+    return await handlers.track_delivery_execute(
+        order_id=params.get("order_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"]
+    )
+
+
+# ============================================================================
+# P1 COMPLIANCE WRAPPER FUNCTIONS
+# ============================================================================
+
+
+async def _update_hours_of_rest(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P1 update_hours_of_rest handler."""
+    handlers = _get_p1_compliance_handlers()
+    return await handlers.update_hours_of_rest_execute(
+        crew_id=params.get("crew_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        date=params.get("date"),
+        rest_hours=params.get("rest_hours"),
+        work_hours=params.get("work_hours"),
+        notes=params.get("notes")
+    )
+
+
+async def _log_delivery_received(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P1 log_delivery_received handler."""
+    handlers = _get_p1_compliance_handlers()
+    return await handlers.log_delivery_received_execute(
+        order_id=params.get("order_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        received_by=params.get("received_by") or params.get("user_id"),
+        received_items=params.get("received_items"),
+        notes=params.get("notes")
+    )
+
+
+# ============================================================================
+# P1 PURCHASING WRAPPER FUNCTIONS
+# ============================================================================
+
+
+async def _create_purchase_request(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P1 create_purchase_request handler."""
+    handlers = _get_p1_purchasing_handlers()
+    return await handlers.create_purchase_request_execute(
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id"),
+        items=params.get("items", []),
+        supplier_id=params.get("supplier_id"),
+        notes=params.get("notes"),
+        priority=params.get("priority", "normal")
+    )
+
+
+async def _order_part(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P1 order_part handler."""
+    handlers = _get_p1_purchasing_handlers()
+    return await handlers.order_part_execute(
+        part_id=params.get("part_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id"),
+        quantity=params.get("quantity", 1),
+        supplier_id=params.get("supplier_id"),
+        notes=params.get("notes")
+    )
+
+
+async def _approve_purchase(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for P1 approve_purchase handler."""
+    handlers = _get_p1_purchasing_handlers()
+    return await handlers.approve_purchase_execute(
+        purchase_order_id=params.get("purchase_order_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        user_id=params.get("user_id"),
+        approval_notes=params.get("approval_notes")
+    )
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 
@@ -1386,6 +1730,48 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "view_worklist": view_worklist,
     "add_worklist_task": add_worklist_task,
     "export_worklist": export_worklist,
+
+    # =========================================================================
+    # P3 Read-Only Handlers (from p3_read_only_handlers.py)
+    # =========================================================================
+    "view_document": _view_document,
+    "view_related_documents": _view_related_documents,
+    "view_document_section": _view_document_section,
+    "view_work_order_history": _view_work_order_history,
+    "view_checklist": _view_checklist,
+    "view_equipment_details": _view_equipment_details,
+    "view_equipment_history": _view_equipment_history,
+    "view_equipment_parts": _view_equipment_parts,
+    "view_linked_faults": _view_linked_faults,
+    "view_equipment_manual": _view_equipment_manual,
+    "view_fleet_summary": _view_fleet_summary,
+    "open_vessel": _open_vessel,
+    "export_fleet_summary": _export_fleet_summary,
+    "request_predictive_insight": _request_predictive_insight,
+    "view_part_stock": _view_part_stock,
+    "view_part_location": _view_part_location,
+    "view_part_usage": _view_part_usage,
+    "scan_part_barcode": _scan_part_barcode,
+    "view_linked_equipment": _view_linked_equipment,
+    "export_handover": _export_handover,
+    "view_smart_summary": _view_smart_summary,
+    "view_hours_of_rest": _view_hours_of_rest,
+    "export_hours_of_rest": _export_hours_of_rest,
+    "view_compliance_status": _view_compliance_status,
+    "track_delivery": _track_delivery,
+
+    # =========================================================================
+    # P1 Compliance Handlers (from p1_compliance_handlers.py)
+    # =========================================================================
+    "update_hours_of_rest": _update_hours_of_rest,
+    "log_delivery_received": _log_delivery_received,
+
+    # =========================================================================
+    # P1 Purchasing Handlers (from p1_purchasing_handlers.py)
+    # =========================================================================
+    "create_purchase_request": _create_purchase_request,
+    "order_part": _order_part,
+    "approve_purchase": _approve_purchase,
 }
 
 
