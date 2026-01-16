@@ -7,8 +7,9 @@
 
 'use client';
 
-import React from 'react';
-// import type { RelatedGroup } from '@/lib/context-nav/types';
+import React, { useState } from 'react';
+import { useNavigationContext } from '@/contexts/NavigationContext';
+import { AddRelatedModal } from './AddRelatedModal';
 
 interface RelatedPanelProps {
   /** Current anchor artifact type */
@@ -20,36 +21,64 @@ interface RelatedPanelProps {
 }
 
 export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelProps) {
-  // TODO: Implement in Phase 4
-  // const { groups, loading, error } = useRelated(contextId, anchorType, anchorId);
+  const { relatedGroups, relatedLoading, relatedError, pushViewer } = useNavigationContext();
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const groups: any[] = []; // Placeholder
-  const loading = false;
-
-  if (loading) {
-    return <div className="related-panel-loading">Loading related artifacts...</div>;
+  if (relatedLoading) {
+    return (
+      <div className="related-panel-loading p-8 text-center">
+        <p className="text-gray-500">Loading related artifacts...</p>
+      </div>
+    );
   }
 
-  if (groups.length === 0) {
+  if (relatedError) {
+    return (
+      <div className="related-panel-error p-8 text-center">
+        <p className="text-red-600">Error loading related: {relatedError}</p>
+      </div>
+    );
+  }
+
+  if (!relatedGroups || relatedGroups.length === 0) {
     return (
       <div className="related-panel-empty p-8 text-center">
-        <p className="text-gray-500">No related artifacts found.</p>
-        <button className="btn-secondary mt-4">
+        <p className="text-gray-500 mb-4">No related artifacts found.</p>
+        <button className="btn-secondary" onClick={() => setShowAddModal(true)}>
           + Add Related
         </button>
+        {showAddModal && (
+          <AddRelatedModal
+            anchorType={anchorType}
+            anchorId={anchorId}
+            onClose={() => setShowAddModal(false)}
+          />
+        )}
       </div>
     );
   }
 
   return (
-    <div className="related-panel">
-      <h2 className="text-xl font-semibold mb-4">Related</h2>
-      {groups.map((group) => (
+    <div className="related-panel p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold">Related Artifacts</h2>
+        <button className="btn-secondary text-sm" onClick={() => setShowAddModal(true)}>
+          + Add Related
+        </button>
+      </div>
+
+      {relatedGroups.map((group) => (
         <section key={group.domain} className="domain-group mb-6">
-          <h3 className="text-lg font-medium mb-2 capitalize">{group.domain}</h3>
+          <h3 className="text-lg font-medium mb-3 capitalize text-gray-700">
+            {group.domain.replace('_', ' ')}
+          </h3>
           <ul className="space-y-2">
-            {group.items.map((item: any) => (
-              <li key={item.artefact_id} className="related-item p-3 border rounded hover:bg-gray-50">
+            {group.items.map((item) => (
+              <li
+                key={item.artefact_id}
+                className="related-item p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => pushViewer(item.artefact_type, item.artefact_id)}
+              >
                 <div className="font-medium">{item.title}</div>
                 {item.subtitle && <div className="text-sm text-gray-600">{item.subtitle}</div>}
               </li>
@@ -57,12 +86,14 @@ export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelPr
           </ul>
         </section>
       ))}
+
+      {showAddModal && (
+        <AddRelatedModal
+          anchorType={anchorType}
+          anchorId={anchorId}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
     </div>
   );
 }
-
-// TODO: Implement full functionality in Phase 4
-// - Connect to useRelated hook
-// - Handle item click → updateAnchor()
-// - Add loading/error states
-// - Add "Add Related" modal
