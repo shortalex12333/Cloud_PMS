@@ -1348,7 +1348,7 @@ async def execute_action(
             try:
                 # Check if document exists
                 check = db_client.table("documents").select("id").eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                if not check.data:
+                if not check or not check.data:
                     raise HTTPException(status_code=404, detail="Document not found")
 
                 # Delete document
@@ -1393,7 +1393,7 @@ async def execute_action(
             try:
                 # Check if item exists
                 check = db_client.table("pms_shopping_list_items").select("id").eq("id", item_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                if not check.data:
+                if not check or not check.data:
                     raise HTTPException(status_code=404, detail="Shopping list item not found")
 
                 # Delete item
