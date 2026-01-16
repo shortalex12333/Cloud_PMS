@@ -103,8 +103,8 @@ jobs:
 
           curl -f http://127.0.0.1:3000 || (cat /tmp/web.log && exit 1)
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TENANT_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
 
       - name: Run E2E tests
