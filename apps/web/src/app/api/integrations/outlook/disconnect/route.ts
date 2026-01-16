@@ -1,14 +1,23 @@
 /**
  * Microsoft OAuth - Disconnect Account
  *
- * Removes stored Microsoft tokens for the user.
+ * Revokes BOTH read and write tokens (soft delete).
+ * Marks email_watchers as disconnected.
+ * Does NOT delete email_threads/messages/links (preserves history).
+ *
+ * Per doctrine:
+ * - Soft delete only - set is_revoked=true
+ * - Historical email data preserved
+ * - Separate "Delete all email data" endpoint for hard delete (future)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+import {
+  getServiceClient,
+  getUserYachtId,
+  revokeAllTokens,
+  disconnectWatcher,
+} from '@/lib/email/oauth-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +33,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader.split(' ')[1];
 
     // Verify JWT and get user_id
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getServiceClient();
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
@@ -34,32 +43,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Outlook Disconnect] Removing tokens for user:', user.id);
+    console.log('[Outlook Disconnect] Revoking tokens for user:', user.id);
 
-    // Revoke Microsoft OAuth token (soft delete)
-    const { error: revokeError } = await supabase
-      .from('auth_microsoft_tokens')
-      .update({
-        is_revoked: true,
-        revoked_at: new Date().toISOString(),
-        revoked_by: user.id,
-      })
-      .eq('user_id', user.id)
-      .eq('token_type', 'oauth')
-      .eq('token_name', 'microsoft_outlook');
-
-    if (revokeError) {
-      console.error('[Outlook Disconnect] Failed to revoke tokens:', revokeError);
+    // Get user's yacht_id
+    const yachtId = await getUserYachtId(supabase, user.id);
+    if (!yachtId) {
       return NextResponse.json(
-        { success: false, error: 'Failed to disconnect' },
+        { success: false, error: 'No yacht found for user' },
+        { status: 400 }
+      );
+    }
+
+    // Revoke all Microsoft tokens (both read and write)
+    const revokeResult = await revokeAllTokens(supabase, user.id, yachtId, user.id);
+    if (!revokeResult.success) {
+      console.error('[Outlook Disconnect] Failed to revoke tokens:', revokeResult.error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to revoke tokens' },
         { status: 500 }
       );
+    }
+
+    // Mark watcher as disconnected
+    const watcherResult = await disconnectWatcher(supabase, user.id, yachtId);
+    if (!watcherResult.success) {
+      console.warn('[Outlook Disconnect] Failed to update watcher:', watcherResult.error);
+      // Non-fatal - tokens are revoked
     }
 
     console.log('[Outlook Disconnect] Successfully disconnected');
 
     return NextResponse.json({
       success: true,
+      message: 'Disconnected successfully. Email history preserved.',
     });
 
   } catch (error) {

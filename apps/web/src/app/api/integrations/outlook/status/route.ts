@@ -1,14 +1,25 @@
 /**
  * Microsoft OAuth - Connection Status
  *
- * Returns whether user has connected their Outlook account.
+ * Returns detailed status for both READ and WRITE connections,
+ * plus email_watchers sync state.
+ *
+ * Response shape:
+ * {
+ *   read: { connected, expires_at, scopes, email },
+ *   write: { connected, expires_at, scopes, email },
+ *   watcher: { sync_status, last_sync_at, subscription_expires_at, last_sync_error }
+ * }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+import {
+  getServiceClient,
+  getUserYachtId,
+  getToken,
+  getWatcher,
+  ConnectionStatus,
+} from '@/lib/email/oauth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +27,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
-        { connected: false, error: 'Unauthorized' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -24,50 +35,64 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1];
 
     // Verify JWT and get user_id
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getServiceClient();
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
       return NextResponse.json(
-        { connected: false, error: 'Invalid token' },
+        { error: 'Invalid token' },
         { status: 401 }
       );
     }
 
-    // Check for existing Microsoft OAuth token
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('auth_microsoft_tokens')
-      .select('metadata, issued_at, expires_at, is_revoked')
-      .eq('user_id', user.id)
-      .eq('token_type', 'oauth')
-      .eq('token_name', 'microsoft_outlook')
-      .single();
-
-    if (tokenError || !tokenData) {
-      return NextResponse.json({
-        connected: false,
+    // Get user's yacht_id
+    const yachtId = await getUserYachtId(supabase, user.id);
+    if (!yachtId) {
+      return NextResponse.json<ConnectionStatus>({
+        read: { connected: false, expires_at: null, scopes: [] },
+        write: { connected: false, expires_at: null, scopes: [] },
+        watcher: null,
       });
     }
 
-    // Check if token is expired or revoked
-    const isExpired = new Date(tokenData.expires_at) < new Date();
-    const isRevoked = tokenData.is_revoked;
+    // Get read token
+    const readToken = await getToken(supabase, user.id, yachtId, 'read');
+    const readConnected = readToken !== null &&
+      !readToken.is_revoked &&
+      new Date(readToken.token_expires_at) > new Date();
 
-    // Extract email from metadata
-    const metadata = tokenData.metadata as { email?: string; display_name?: string } || {};
+    // Get write token
+    const writeToken = await getToken(supabase, user.id, yachtId, 'write');
+    const writeConnected = writeToken !== null &&
+      !writeToken.is_revoked &&
+      new Date(writeToken.token_expires_at) > new Date();
 
-    return NextResponse.json({
-      connected: !isExpired && !isRevoked,
-      email: metadata.email || '',
-      displayName: metadata.display_name || '',
-      connectedAt: tokenData.issued_at,
-      expiresAt: tokenData.expires_at,
-    });
+    // Get watcher status
+    const watcher = await getWatcher(supabase, user.id, yachtId);
+
+    // Build response
+    const status: ConnectionStatus = {
+      read: {
+        connected: readConnected,
+        expires_at: readToken?.token_expires_at || null,
+        scopes: readToken?.scopes || [],
+        email: readToken?.provider_display_name || undefined,
+      },
+      write: {
+        connected: writeConnected,
+        expires_at: writeToken?.token_expires_at || null,
+        scopes: writeToken?.scopes || [],
+        email: writeToken?.provider_display_name || undefined,
+      },
+      watcher: watcher,
+    };
+
+    return NextResponse.json(status);
 
   } catch (error) {
     console.error('[Outlook Status] Error:', error);
     return NextResponse.json(
-      { connected: false, error: 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -47,7 +47,8 @@ jobs:
         run: |
           cd apps/api
           if [ -d "tests" ] && [ "$(ls -A tests)" ]; then
-            pytest -v
+            # Skip integration tests in CI (they require local Supabase)
+            pytest -v -m "not integration"
           else
             echo "No tests directory found - skipping pytest"
           fi
