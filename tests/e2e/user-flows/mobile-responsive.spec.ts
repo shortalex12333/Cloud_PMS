@@ -10,7 +10,7 @@
  * - iPad Mini (768x1024)
  */
 
-import { test, expect, devices } from '@playwright/test';
+import { test, expect, devices, Page } from '@playwright/test';
 import {
   saveArtifact,
   createEvidenceBundle,
@@ -27,153 +27,128 @@ const DEVICES = [
 // Test URL (adjust as needed)
 const BASE_URL = process.env.VERCEL_PROD_URL || 'https://app.celeste7.ai';
 
+// Helper to test a page with device emulation
+async function testPageWithDevice(
+  page: Page,
+  device: typeof DEVICES[0],
+  pagePath: string,
+  pageName: string
+) {
+  // Set viewport for device
+  await page.setViewportSize(device.config.viewport);
+
+  // Navigate to page
+  await page.goto(`${BASE_URL}${pagePath}`);
+  await page.waitForLoadState('networkidle');
+
+  // Take screenshot
+  const screenshot = await page.screenshot({ fullPage: true });
+  await saveArtifact(
+    `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
+    `${pageName}_page.png`,
+    screenshot
+  );
+
+  // Verify viewport
+  const viewport = page.viewportSize();
+  expect(viewport?.width).toBe(device.config.viewport.width);
+
+  await createEvidenceBundle(
+    `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}/${pageName}`,
+    {
+      device: device.name,
+      viewport: viewport,
+      page: pageName,
+      timestamp: new Date().toISOString(),
+    }
+  );
+
+  // Verify page loaded
+  expect(page.url()).toContain(BASE_URL);
+}
+
 test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
-  for (const device of DEVICES) {
-    test.describe(`${device.name}`, () => {
-      test.use({ ...device.config });
+  // iPhone 13 Tests
+  test('iPhone 13: Login page renders correctly', async ({ page }) => {
+    const device = DEVICES[0];
+    await page.setViewportSize(device.config.viewport);
+    await page.goto(`${BASE_URL}/login`);
+    await page.waitForLoadState('networkidle');
 
-      test('Login page renders correctly', async ({ page }) => {
-        await page.goto(`${BASE_URL}/login`);
-        await page.waitForLoadState('networkidle');
+    const screenshot = await page.screenshot({ fullPage: true });
+    await saveArtifact('mobile-responsive/iphone-13', 'login_page.png', screenshot);
 
-        // Take screenshot
-        const screenshot = await page.screenshot({ fullPage: true });
-        await saveArtifact(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
-          'login_page.png',
-          screenshot
-        );
+    const loginForm = await page.locator('form').first();
+    await expect(loginForm).toBeVisible();
 
-        // Verify key elements are visible
-        const loginForm = await page.locator('form').first();
-        await expect(loginForm).toBeVisible();
+    const viewport = page.viewportSize();
+    expect(viewport?.width).toBe(device.config.viewport.width);
+  });
 
-        // Check viewport matches device
-        const viewport = page.viewportSize();
-        expect(viewport?.width).toBe(device.config.viewport.width);
+  test('iPhone 13: Dashboard renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[0], '/dashboard', 'dashboard');
+  });
 
-        await createEvidenceBundle(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}/login`,
-          {
-            device: device.name,
-            viewport: viewport,
-            page: 'login',
-            elements_visible: true,
-            timestamp: new Date().toISOString(),
-          }
-        );
-      });
+  test('iPhone 13: Search page renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[0], '/search', 'search');
+  });
 
-      test('Dashboard renders correctly', async ({ page }) => {
-        // Navigate to dashboard (will redirect to login if not auth'd)
-        await page.goto(`${BASE_URL}/dashboard`);
-        await page.waitForLoadState('networkidle');
+  // iPhone SE Tests
+  test('iPhone SE: Login page renders correctly', async ({ page }) => {
+    const device = DEVICES[1];
+    await page.setViewportSize(device.config.viewport);
+    await page.goto(`${BASE_URL}/login`);
+    await page.waitForLoadState('networkidle');
 
-        // Take screenshot
-        const screenshot = await page.screenshot({ fullPage: true });
-        await saveArtifact(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
-          'dashboard_page.png',
-          screenshot
-        );
+    const loginForm = await page.locator('form').first();
+    await expect(loginForm).toBeVisible();
+  });
 
-        // Document viewport
-        const viewport = page.viewportSize();
+  test('iPhone SE: Dashboard renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[1], '/dashboard', 'dashboard');
+  });
 
-        await createEvidenceBundle(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}/dashboard`,
-          {
-            device: device.name,
-            viewport: viewport,
-            page: 'dashboard',
-            timestamp: new Date().toISOString(),
-          }
-        );
+  test('iPhone SE: Work Orders page renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[1], '/work-orders', 'work-orders');
+  });
 
-        // Just verify page loaded (might redirect to login)
-        expect(page.url()).toContain(BASE_URL);
-      });
+  // Pixel 5 Tests
+  test('Pixel 5: Login page renders correctly', async ({ page }) => {
+    const device = DEVICES[2];
+    await page.setViewportSize(device.config.viewport);
+    await page.goto(`${BASE_URL}/login`);
+    await page.waitForLoadState('networkidle');
 
-      test('Search page renders correctly', async ({ page }) => {
-        await page.goto(`${BASE_URL}/search`);
-        await page.waitForLoadState('networkidle');
+    const loginForm = await page.locator('form').first();
+    await expect(loginForm).toBeVisible();
+  });
 
-        // Take screenshot
-        const screenshot = await page.screenshot({ fullPage: true });
-        await saveArtifact(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
-          'search_page.png',
-          screenshot
-        );
+  test('Pixel 5: Dashboard renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[2], '/dashboard', 'dashboard');
+  });
 
-        const viewport = page.viewportSize();
+  test('Pixel 5: Faults page renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[2], '/faults', 'faults');
+  });
 
-        await createEvidenceBundle(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}/search`,
-          {
-            device: device.name,
-            viewport: viewport,
-            page: 'search',
-            timestamp: new Date().toISOString(),
-          }
-        );
+  // iPad Mini Tests
+  test('iPad Mini: Login page renders correctly', async ({ page }) => {
+    const device = DEVICES[3];
+    await page.setViewportSize(device.config.viewport);
+    await page.goto(`${BASE_URL}/login`);
+    await page.waitForLoadState('networkidle');
 
-        expect(page.url()).toContain(BASE_URL);
-      });
+    const loginForm = await page.locator('form').first();
+    await expect(loginForm).toBeVisible();
+  });
 
-      test('Work Orders page renders correctly', async ({ page }) => {
-        await page.goto(`${BASE_URL}/work-orders`);
-        await page.waitForLoadState('networkidle');
+  test('iPad Mini: Dashboard renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[3], '/dashboard', 'dashboard');
+  });
 
-        const screenshot = await page.screenshot({ fullPage: true });
-        await saveArtifact(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
-          'work_orders_page.png',
-          screenshot
-        );
-
-        const viewport = page.viewportSize();
-
-        await createEvidenceBundle(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}/work-orders`,
-          {
-            device: device.name,
-            viewport: viewport,
-            page: 'work-orders',
-            timestamp: new Date().toISOString(),
-          }
-        );
-
-        expect(page.url()).toContain(BASE_URL);
-      });
-
-      test('Faults page renders correctly', async ({ page }) => {
-        await page.goto(`${BASE_URL}/faults`);
-        await page.waitForLoadState('networkidle');
-
-        const screenshot = await page.screenshot({ fullPage: true });
-        await saveArtifact(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
-          'faults_page.png',
-          screenshot
-        );
-
-        const viewport = page.viewportSize();
-
-        await createEvidenceBundle(
-          `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}/faults`,
-          {
-            device: device.name,
-            viewport: viewport,
-            page: 'faults',
-            timestamp: new Date().toISOString(),
-          }
-        );
-
-        expect(page.url()).toContain(BASE_URL);
-      });
-    });
-  }
+  test('iPad Mini: Search page renders correctly', async ({ page }) => {
+    await testPageWithDevice(page, DEVICES[3], '/search', 'search');
+  });
 
   // =========================================================================
   // SUMMARY
@@ -188,7 +163,7 @@ test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
         userAgent: d.config.userAgent?.substring(0, 50) + '...',
       })),
       pages_tested: ['login', 'dashboard', 'search', 'work-orders', 'faults'],
-      total_tests: DEVICES.length * 5,
+      total_tests: 13,
       timestamp: new Date().toISOString(),
     });
 

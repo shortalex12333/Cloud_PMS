@@ -61,12 +61,18 @@ def _get_p2_handlers():
 
 
 def get_supabase_client() -> Client:
-    """Get initialized Supabase client."""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY")
+    """Get TENANT Supabase client for action dispatch.
+
+    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
+    Actions work with pms_* tables which are in TENANT.
+    """
+    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
+
+    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 
     if not url or not key:
-        raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
+        raise ValueError(f"{default_yacht}_SUPABASE_URL and {default_yacht}_SUPABASE_SERVICE_KEY must be set")
 
     return create_client(url, key)
 
