@@ -172,6 +172,18 @@ except Exception as e:
     logger.error("Context Navigation endpoints will not be available")
 
 # ============================================================================
+# OAUTH AUTHENTICATION ROUTES
+# ============================================================================
+
+try:
+    from routes.auth_routes import router as auth_router
+    app.include_router(auth_router)
+    logger.info("✅ OAuth Auth routes registered at /auth/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Auth routes: {e}")
+    logger.error("OAuth endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
