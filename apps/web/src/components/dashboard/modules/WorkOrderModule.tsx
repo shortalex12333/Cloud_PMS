@@ -100,16 +100,8 @@ export default function WorkOrderModule({
                   status={itemStatus}
                   value={wo.dueDate}
                   onClick={() => console.log('Open WO:', wo.id)}
-                  actions={
-                    <MicroactionButton
-                      action="complete_work_order"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Complete:', wo.id);
-                      }}
-                    />
-                  }
+                  // NO execution buttons in list view (per situation UX spec)
+                  // Execution buttons only appear in detail/expanded view
                 />
               );
             })}
