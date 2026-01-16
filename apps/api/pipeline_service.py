@@ -355,6 +355,67 @@ async def version():
         "api": "pipeline_v1"
     }
 
+
+# ============================================================================
+# BOOTSTRAP ENDPOINT (Frontend Auth Context)
+# ============================================================================
+
+class BootstrapResponse(BaseModel):
+    """Response from /v1/bootstrap endpoint."""
+    yacht_id: Optional[str] = None
+    yacht_name: Optional[str] = None
+    tenant_key_alias: Optional[str] = None
+    role: str = "member"
+    status: str = "PENDING"
+    user_id: Optional[str] = None
+    email: Optional[str] = None
+
+
+@app.post("/v1/bootstrap", response_model=BootstrapResponse)
+@app.get("/v1/bootstrap", response_model=BootstrapResponse)
+async def bootstrap(
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Bootstrap endpoint for frontend auth context.
+
+    This endpoint replaces direct Supabase RPC calls to get_my_bootstrap().
+    The frontend (Vercel) cannot call MASTER DB directly - it only has
+    TENANT credentials. This endpoint runs on Render which HAS MASTER credentials.
+
+    Flow:
+    1. Frontend sends JWT to Render
+    2. Render validates JWT using MASTER_SUPABASE_JWT_SECRET
+    3. Render looks up user's tenant from MASTER DB (via get_authenticated_user)
+    4. Returns bootstrap data to frontend
+
+    Returns:
+        {
+            "yacht_id": "uuid",
+            "yacht_name": "M/Y Vessel Name",
+            "tenant_key_alias": "y85fe1119...",
+            "role": "chief_engineer",
+            "status": "ACTIVE",
+            "user_id": "uuid",
+            "email": "user@example.com"
+        }
+
+    Note: get_authenticated_user() already does the tenant lookup from MASTER DB.
+    If it succeeds, user is active and has a yacht assignment.
+    """
+    logger.info(f"[bootstrap] user={auth['user_id'][:8]}..., yacht={auth['yacht_id']}")
+
+    return BootstrapResponse(
+        yacht_id=auth['yacht_id'],
+        yacht_name=auth.get('yacht_name'),
+        tenant_key_alias=auth['tenant_key_alias'],
+        role=auth.get('role', 'member'),
+        status='ACTIVE',  # get_authenticated_user only returns active users
+        user_id=auth['user_id'],
+        email=auth.get('email'),
+    )
+
+
 @app.post("/search", response_model=SearchResponse)
 async def search(
     request: SearchRequest,
