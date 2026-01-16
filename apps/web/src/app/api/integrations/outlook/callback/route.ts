@@ -151,10 +151,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectUrl.toString());
 
   } catch (error) {
-    console.error('[Outlook Callback READ] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[Outlook Callback READ] UNEXPECTED_ERROR:', {
+      message: errorMessage,
+      stack: errorStack,
+      type: typeof error,
+    });
     const redirectUrl = new URL('/settings', APP_URL);
     redirectUrl.searchParams.set('error', 'unexpected');
+    redirectUrl.searchParams.set('detail', errorMessage.substring(0, 100));
     redirectUrl.searchParams.set('provider', 'outlook');
+    redirectUrl.searchParams.set('purpose', 'read');
     return NextResponse.redirect(redirectUrl.toString());
   }
 }
