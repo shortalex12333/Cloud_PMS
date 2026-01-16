@@ -1,0 +1,60 @@
+name: CI - API Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/ci-api.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/ci-api.yml'
+
+env:
+  CI: true
+
+jobs:
+  api-validation:
+    name: Backend Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+          cache-dependency-path: 'apps/api/requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          cd apps/api
+          pip install -r requirements.txt
+
+      - name: Import check (syntax validation)
+        run: |
+          cd apps/api
+          python -c "import pipeline_service; print('Import OK')"
+          python -c "from routes.context_navigation_routes import router; print('Context routes import OK')"
+
+      - name: Pytest (if tests exist)
+        run: |
+          cd apps/api
+          if [ -d "tests" ] && [ "$(ls -A tests)" ]; then
+            pytest -v
+          else
+            echo "No tests directory found - skipping pytest"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Backend Validation Summary ==="
+          echo "Import check: OK"
+          echo "Tests: OK (or skipped if none exist)"

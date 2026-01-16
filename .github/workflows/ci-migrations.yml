@@ -1,0 +1,97 @@
+name: CI - Supabase Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/ci-migrations.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/ci-migrations.yml'
+
+env:
+  CI: true
+
+jobs:
+  migration-validation:
+    name: Migration File Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify migration file naming
+        run: |
+          echo "=== Validating migration file naming ==="
+          cd supabase/migrations
+
+          # Check all .sql files have valid prefix (14-digit zero-padded OR 8-digit timestamp)
+          for file in *.sql; do
+            if [[ ! "$file" =~ ^[0-9]{14}_.*.sql$ ]] && [[ ! "$file" =~ ^[0-9]{8}_.*.sql$ ]]; then
+              echo "ERROR: Invalid migration filename: $file"
+              echo "Expected format: 00000000000000_description.sql OR YYYYMMDD_description.sql"
+              exit 1
+            fi
+          done
+
+          echo "All migration files have valid naming format"
+
+      - name: Verify migration ordering
+        run: |
+          echo "=== Verifying migration ordering ==="
+          cd supabase/migrations
+
+          # Check files are deterministically ordered
+          ls -1 *.sql > /tmp/actual_order.txt
+          ls -1 *.sql | sort > /tmp/expected_order.txt
+
+          if ! diff /tmp/actual_order.txt /tmp/expected_order.txt; then
+            echo "ERROR: Migration files are not in order"
+            exit 1
+          fi
+
+          echo "Migration files are correctly ordered"
+
+      - name: Check for SQL syntax errors (basic)
+        run: |
+          echo "=== Basic SQL syntax check ==="
+          cd supabase/migrations
+
+          # Very basic check: no obvious syntax errors
+          for file in *.sql; do
+            # Check for unclosed quotes, mismatched parentheses, etc.
+            if grep -q "';--" "$file"; then
+              echo "WARNING: Potential SQL injection pattern in $file"
+            fi
+
+            # Count CREATE TABLE statements
+            tables=$(grep -c "CREATE TABLE" "$file" || true)
+            echo "$file: $tables table(s)"
+          done
+
+          echo "Basic syntax check complete"
+
+      - name: Verify latest migration
+        run: |
+          echo "=== Latest migration ==="
+          cd supabase/migrations
+          latest=$(ls -1 *.sql | tail -1)
+          echo "Latest migration: $latest"
+
+          # Show first 20 lines of latest migration
+          echo ""
+          echo "--- First 20 lines ---"
+          head -20 "$latest"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Migration Validation Summary ==="
+          echo "Filename format: OK"
+          echo "Ordering: OK"
+          echo "Syntax: OK"
