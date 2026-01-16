@@ -58,8 +58,17 @@ function getSupabaseClient(): SupabaseClient {
   return supabaseInstance;
 }
 
-// Export a getter that ensures client-side only usage for auth
-export const supabase = getSupabaseClient();
+// CRITICAL FIX: Export Proxy to defer client creation until first access
+// This prevents SSR from creating a client with persistSession: false
+// which would break session persistence and cause auth to hang.
+// See: https://github.com/supabase/supabase-js/issues/1043
+const handler: ProxyHandler<any> = {
+  get(_target, prop) {
+    const client = getSupabaseClient();
+    return Reflect.get(client, prop);
+  },
+};
+export const supabase: SupabaseClient = new Proxy({}, handler) as SupabaseClient;
 
 // Helper function to get current user (placeholder)
 export async function getCurrentUser() {
