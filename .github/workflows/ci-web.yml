@@ -2,7 +2,9 @@ name: CI - Web Frontend
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'feature/**'
     paths:
       - 'apps/web/**'
       - '.github/workflows/ci-web.yml'
