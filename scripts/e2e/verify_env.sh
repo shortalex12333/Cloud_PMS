@@ -71,8 +71,8 @@ check_var "TENANT_SUPABASE_SERVICE_ROLE_KEY"
 # Backend API
 check_var "RENDER_API_URL"
 
-# Frontend
-check_var "VERCEL_PROD_URL"
+# Frontend (optional in CI - we run localhost)
+# check_var "VERCEL_PROD_URL"
 
 # Test User
 check_var "TEST_USER_EMAIL"
@@ -121,7 +121,7 @@ validate_url() {
 validate_url "MASTER_SUPABASE_URL"
 validate_url "TENANT_SUPABASE_URL"
 validate_url "RENDER_API_URL"
-validate_url "VERCEL_PROD_URL"
+# validate_url "VERCEL_PROD_URL"  # Optional - not needed for localhost tests
 
 echo ""
 
@@ -165,8 +165,8 @@ check_endpoint "Tenant Supabase" "$TENANT_SUPABASE_URL/rest/v1/" "200" "apikey: 
 # Check Render backend health
 check_endpoint "Render Backend" "$RENDER_API_URL/health"
 
-# Check Vercel frontend
-check_endpoint "Vercel Frontend" "$VERCEL_PROD_URL"
+# Skip Vercel frontend check - we'll start localhost in CI
+# check_endpoint "Vercel Frontend" "$VERCEL_PROD_URL"
 
 echo ""
 
