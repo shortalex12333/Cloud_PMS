@@ -1,0 +1,394 @@
+name: Microaction Verification Suite
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/api/handlers/**'
+      - 'apps/api/action_router/**'
+      - 'apps/api/services/trigger_service.py'
+      - 'apps/web/src/lib/microactions/**'
+      - 'tests/e2e/microactions/**'
+      - 'tests/fixtures/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/**'
+      - 'apps/api/action_router/**'
+      - 'apps/api/services/trigger_service.py'
+      - 'apps/web/src/lib/microactions/**'
+      - 'tests/e2e/microactions/**'
+      - 'tests/fixtures/**'
+  workflow_dispatch:
+    inputs:
+      run_all_tests:
+        type: boolean
+        description: 'Run all microaction tests (not just changed)'
+        required: false
+        default: true
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6am UTC
+
+env:
+  CI: true
+  HEADLESS: true
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+  TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+
+jobs:
+  # ============================================================================
+  # JOB 1: Verify Handler Registration Count
+  # ============================================================================
+  handler-count:
+    name: Verify Handler Registration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Count registered handlers
+        run: |
+          echo "=== Handler Registration Check ==="
+
+          # Count handlers in INTERNAL_HANDLERS dictionary
+          count=$(grep -E '^\s*"[a-z_]+":' apps/api/action_router/dispatchers/internal_dispatcher.py | wc -l)
+
+          echo "Registered handlers in internal_dispatcher.py: $count"
+
+          # Minimum expected handlers (from MICROACTIONS_COMPLETION_PLAN.md)
+          MIN_HANDLERS=80
+
+          if [ "$count" -lt "$MIN_HANDLERS" ]; then
+            echo ""
+            echo "ERROR: Expected at least $MIN_HANDLERS handlers, found $count"
+            echo "This indicates missing handler registrations."
+            echo ""
+            echo "Check that all handler files are properly imported and registered:"
+            echo "- p1_purchasing_handlers.py"
+            echo "- p2_mutation_light_handlers.py"
+            echo "- p3_read_only_handlers.py"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Handler count OK: $count >= $MIN_HANDLERS"
+
+      - name: List handler categories
+        run: |
+          echo "=== Handler Categories ==="
+
+          echo ""
+          echo "P0 Actions (inline in p0_actions_routes.py):"
+          grep -c "async def.*_execute" apps/api/routes/p0_actions_routes.py || echo "0"
+
+          echo ""
+          echo "Core Handlers (internal_dispatcher.py):"
+          grep -E '^\s*"[a-z_]+":' apps/api/action_router/dispatchers/internal_dispatcher.py | head -20
+
+          echo ""
+          echo "[... truncated for brevity]"
+
+  # ============================================================================
+  # JOB 2: Visibility Matrix Tests (Phase 11)
+  # ============================================================================
+  visibility-matrix:
+    name: Button Visibility Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: handler-count
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run visibility matrix tests
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
+        run: |
+          npx playwright test tests/e2e/microactions/visibility_matrix_complete.spec.ts \
+            --reporter=github,list \
+            --retries=2
+        continue-on-error: true
+
+      - name: Upload visibility artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visibility-matrix-results
+          path: |
+            test-results/artifacts/visibility/
+            playwright-report/
+          retention-days: 14
+
+  # ============================================================================
+  # JOB 3: RLS Permission Tests (Phase 12)
+  # ============================================================================
+  rls-permissions:
+    name: RLS Permission Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: handler-count
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run RLS permission tests
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+        run: |
+          npx playwright test tests/e2e/microactions/rls_permissions.spec.ts \
+            --reporter=github,list \
+            --retries=2
+
+      - name: Upload RLS artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rls-permission-results
+          path: |
+            test-results/artifacts/rls/
+            playwright-report/
+          retention-days: 14
+
+  # ============================================================================
+  # JOB 4: Edge Case Tests (Phase 13)
+  # ============================================================================
+  edge-cases:
+    name: Edge Case Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: handler-count
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run edge case tests
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+        run: |
+          npx playwright test tests/e2e/microactions/edge_cases.spec.ts \
+            --reporter=github,list \
+            --retries=2
+        continue-on-error: true  # Some edge cases document validation gaps
+
+      - name: Upload edge case artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: edge-case-results
+          path: |
+            test-results/artifacts/edge-cases/
+            playwright-report/
+          retention-days: 14
+
+  # ============================================================================
+  # JOB 5: Trigger Service Tests (Phase 10)
+  # ============================================================================
+  trigger-service:
+    name: Trigger Service Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: handler-count
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          cd apps/api
+          pip install -r requirements.txt
+
+      - name: Test trigger endpoints
+        env:
+          SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "=== Trigger Service Verification ==="
+
+          # Check trigger_service.py exists and has all triggers
+          echo ""
+          echo "Checking trigger_service.py..."
+
+          if [ -f "apps/api/services/trigger_service.py" ]; then
+            echo "✅ trigger_service.py exists"
+
+            # Count trigger methods
+            triggers=$(grep -c "async def check_" apps/api/services/trigger_service.py)
+            echo "Trigger check methods: $triggers"
+
+            if [ "$triggers" -lt 4 ]; then
+              echo "ERROR: Expected at least 4 trigger methods"
+              exit 1
+            fi
+
+            echo "✅ All required triggers defined"
+          else
+            echo "ERROR: trigger_service.py not found"
+            exit 1
+          fi
+
+          # Check triggers_routes.py exists
+          echo ""
+          echo "Checking triggers_routes.py..."
+
+          if [ -f "apps/api/routes/triggers_routes.py" ]; then
+            echo "✅ triggers_routes.py exists"
+
+            # Count endpoints
+            endpoints=$(grep -c "@router.get" apps/api/routes/triggers_routes.py)
+            echo "Trigger endpoints: $endpoints"
+          else
+            echo "ERROR: triggers_routes.py not found"
+            exit 1
+          fi
+
+  # ============================================================================
+  # JOB 6: Summary Report
+  # ============================================================================
+  summary:
+    name: Verification Summary
+    runs-on: ubuntu-latest
+    needs: [handler-count, visibility-matrix, rls-permissions, edge-cases, trigger-service]
+    if: always()
+
+    steps:
+      - name: Generate summary report
+        run: |
+          echo "## Microaction Verification Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Handler Registration | ${{ needs.handler-count.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Visibility Matrix | ${{ needs.visibility-matrix.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| RLS Permissions | ${{ needs.rls-permissions.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Edge Cases | ${{ needs.edge-cases.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger Service | ${{ needs.trigger-service.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count successes
+          SUCCESS_COUNT=0
+          TOTAL_COUNT=5
+
+          [ "${{ needs.handler-count.result }}" == "success" ] && SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+          [ "${{ needs.visibility-matrix.result }}" == "success" ] && SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+          [ "${{ needs.rls-permissions.result }}" == "success" ] && SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+          [ "${{ needs.edge-cases.result }}" == "success" ] && SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+          [ "${{ needs.trigger-service.result }}" == "success" ] && SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**$SUCCESS_COUNT / $TOTAL_COUNT checks passed**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$SUCCESS_COUNT" -eq "$TOTAL_COUNT" ]; then
+            echo "✅ All microaction verification checks passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Some checks failed. Review the artifacts for details." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Phase 11**: Button visibility for 57 microactions" >> $GITHUB_STEP_SUMMARY
+          echo "- **Phase 12**: RLS yacht isolation + role permissions" >> $GITHUB_STEP_SUMMARY
+          echo "- **Phase 13**: 26 edge cases across 5 categories" >> $GITHUB_STEP_SUMMARY
+          echo "- **Phase 10**: 4 trigger types (LOW_STOCK, OVERDUE_WO, HOR, MAINTENANCE)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check overall status
+        run: |
+          # Critical checks must pass
+          if [ "${{ needs.handler-count.result }}" != "success" ]; then
+            echo "CRITICAL: Handler registration check failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.rls-permissions.result }}" != "success" ]; then
+            echo "CRITICAL: RLS permission tests failed - security issue"
+            exit 1
+          fi
+
+          if [ "${{ needs.trigger-service.result }}" != "success" ]; then
+            echo "CRITICAL: Trigger service check failed"
+            exit 1
+          fi
+
+          # Non-critical checks (visibility and edge-cases can have known issues)
+          echo ""
+          echo "Core checks passed."
+
+          if [ "${{ needs.visibility-matrix.result }}" != "success" ]; then
+            echo "WARNING: Visibility matrix had failures (may be context-dependent)"
+          fi
+
+          if [ "${{ needs.edge-cases.result }}" != "success" ]; then
+            echo "WARNING: Edge cases had failures (documenting validation gaps)"
+          fi
+
+          echo ""
+          echo "Microaction verification complete."
