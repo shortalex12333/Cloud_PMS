@@ -38,12 +38,17 @@ router = APIRouter()
 # ============================================================================
 
 def get_supabase_client() -> Client:
-    """Get Supabase client instance."""
-    url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    """Get TENANT Supabase client for yacht context navigation.
+
+    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
+    """
+    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
+
+    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 
     if not url or not key:
-        raise HTTPException(status_code=500, detail="Supabase configuration missing")
+        raise HTTPException(status_code=500, detail=f"TENANT Supabase config missing for {default_yacht}")
 
     return create_client(url, key)
 

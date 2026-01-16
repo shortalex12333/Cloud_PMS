@@ -42,13 +42,24 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 def get_supabase_client() -> Client:
-    """Get Supabase client instance."""
-    # Support both naming conventions (Render uses SUPABASE_URL, frontend uses NEXT_PUBLIC_*)
-    url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    """Get TENANT Supabase client for yacht operations data.
+
+    Architecture:
+    - MASTER DB: User authentication, fleet_registry (read-heavy)
+    - TENANT DB: pms_faults, pms_work_orders, pms_equipment, pms_parts (read/write)
+
+    P0 handlers work with TENANT tables, so this returns the default tenant client.
+    Uses DEFAULT_YACHT_CODE env var (e.g., 'yTEST_YACHT_001') to construct env var names.
+    """
+    # Get default yacht code for tenant routing
+    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
+
+    # Try tenant-specific env vars first, then fall back to generic names
+    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 
     if not url or not key:
-        raise ValueError("Missing Supabase credentials")
+        raise ValueError(f"Missing TENANT Supabase credentials. Set {default_yacht}_SUPABASE_URL and {default_yacht}_SUPABASE_SERVICE_KEY")
 
     return create_client(url, key)
 
