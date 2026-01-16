@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Azure OAuth (READ app)
+      - AZURE_READ_APP_ID=41f6dc82-8127-4330-97e0-c6b26e6aa967
+      - AZURE_READ_CLIENT_SECRET=${AZURE_READ_CLIENT_SECRET}
+      # Azure OAuth (WRITE app)
+      - AZURE_WRITE_APP_ID=f0b8944b-8127-4f0f-8ed5-5487462df50c
+      - AZURE_WRITE_CLIENT_SECRET=${AZURE_WRITE_CLIENT_SECRET}
+      # Supabase (test yacht)
+      - yTEST_YACHT_001_SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+      - yTEST_YACHT_001_SUPABASE_SERVICE_KEY=${yTEST_YACHT_001_SUPABASE_SERVICE_KEY}
+      - DEFAULT_YACHT_CODE=yTEST_YACHT_001
+      # Logging
+      - LOG_LEVEL=DEBUG
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./apps/api:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_API_URL=http://api:8000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    depends_on:
+      - api
