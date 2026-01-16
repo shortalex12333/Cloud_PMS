@@ -59,7 +59,7 @@ export default function WorkOrderModule({
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={completionRate} status="healthy" />
-          <span className="text-[11px] text-zinc-500">{completionRate}% complete</span>
+          <span className="text-[11px] text-zinc-500">{completionRate}% done</span>
         </div>
       }
       className={className}
