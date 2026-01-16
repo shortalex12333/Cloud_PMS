@@ -12,6 +12,8 @@ Tests run against REAL Supabase DB with RLS policies.
 """
 
 import pytest
+
+pytestmark = pytest.mark.integration  # Mark ALL tests in this module as integration
 import os
 import uuid
 from datetime import datetime

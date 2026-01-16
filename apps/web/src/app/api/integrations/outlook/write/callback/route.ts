@@ -1,13 +1,13 @@
 /**
- * Microsoft OAuth - Token Exchange Callback (READ App)
+ * Microsoft OAuth - Token Exchange Callback (WRITE App)
  *
- * Exchanges authorization code for tokens and stores with token_purpose='read'.
- * Creates/updates email_watchers record.
+ * Exchanges authorization code for tokens and stores with token_purpose='write'.
+ * Updates email_watchers record.
  *
  * Per doctrine:
- * - READ tokens stored separately from WRITE tokens
+ * - WRITE tokens stored separately from READ tokens
+ * - WRITE app only has Mail.Send (NO Mail.ReadWrite!)
  * - Forbidden scopes result in degraded status
- * - No email bodies stored
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -38,11 +38,12 @@ export async function GET(request: NextRequest) {
 
     // Handle OAuth errors from Microsoft
     if (error) {
-      console.error('[Outlook Callback READ] OAuth error:', error, errorDescription);
+      console.error('[Outlook Callback WRITE] OAuth error:', error, errorDescription);
       // Redirect to settings with error
       const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', error);
       redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
       return NextResponse.redirect(redirectUrl.toString());
     }
 
@@ -55,8 +56,8 @@ export async function GET(request: NextRequest) {
 
     // Parse state to get user_id and purpose
     const stateData = parseOAuthState(state || '');
-    if (!stateData || stateData.purpose !== 'read') {
-      console.error('[Outlook Callback READ] Invalid state or wrong purpose:', state);
+    if (!stateData || stateData.purpose !== 'write') {
+      console.error('[Outlook Callback WRITE] Invalid state or wrong purpose:', state);
       return NextResponse.json(
         { error: 'Invalid state parameter' },
         { status: 400 }
@@ -64,15 +65,16 @@ export async function GET(request: NextRequest) {
     }
 
     const { userId } = stateData;
-    console.log('[Outlook Callback READ] Processing callback for user:', userId);
+    console.log('[Outlook Callback WRITE] Processing callback for user:', userId);
 
     // Exchange code for tokens
-    const tokenResult = await exchangeCodeForTokens(code, 'read');
+    const tokenResult = await exchangeCodeForTokens(code, 'write');
     if (!tokenResult.success || !tokenResult.data) {
-      console.error('[Outlook Callback READ] Token exchange failed:', tokenResult.error);
+      console.error('[Outlook Callback WRITE] Token exchange failed:', tokenResult.error);
       const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', 'token_exchange_failed');
       redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
       return NextResponse.redirect(redirectUrl.toString());
     }
 
@@ -80,9 +82,10 @@ export async function GET(request: NextRequest) {
     const grantedScopes = scope.split(' ');
 
     // Check for forbidden scopes (doctrine enforcement)
+    // CRITICAL: Mail.ReadWrite is forbidden for WRITE app
     const scopeCheck = checkScopes(grantedScopes);
     if (!scopeCheck.valid) {
-      console.warn('[Outlook Callback READ] Forbidden scopes detected:', scopeCheck.forbidden);
+      console.warn('[Outlook Callback WRITE] Forbidden scopes detected:', scopeCheck.forbidden);
     }
 
     // Fetch user profile from Graph
@@ -91,17 +94,18 @@ export async function GET(request: NextRequest) {
     const displayName = profile?.displayName || '';
     const emailHash = email ? hashEmail(email) : '';
 
-    console.log('[Outlook Callback READ] Got profile:', email);
+    console.log('[Outlook Callback WRITE] Got profile:', email);
 
     // Get Supabase client and user's yacht_id
     const supabase = getServiceClient();
     const yachtId = await getUserYachtId(supabase, userId);
 
     if (!yachtId) {
-      console.error('[Outlook Callback READ] No yacht_id found for user:', userId);
+      console.error('[Outlook Callback WRITE] No yacht_id found for user:', userId);
       const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', 'no_yacht');
       redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
       return NextResponse.redirect(redirectUrl.toString());
     }
 
@@ -110,7 +114,7 @@ export async function GET(request: NextRequest) {
       user_id: userId,
       yacht_id: yachtId,
       provider: 'microsoft_graph',
-      token_purpose: 'read',
+      token_purpose: 'write',
       microsoft_access_token: access_token,
       microsoft_refresh_token: refresh_token || '',
       token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
@@ -123,20 +127,21 @@ export async function GET(request: NextRequest) {
     // Upsert token
     const upsertResult = await upsertToken(supabase, tokenRecord);
     if (!upsertResult.success) {
-      console.error('[Outlook Callback READ] Failed to store token:', upsertResult.error);
+      console.error('[Outlook Callback WRITE] Failed to store token:', upsertResult.error);
       const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', 'storage_failed');
       redirectUrl.searchParams.set('provider', 'outlook');
+      redirectUrl.searchParams.set('purpose', 'write');
       return NextResponse.redirect(redirectUrl.toString());
     }
 
-    console.log('[Outlook Callback READ] Token stored successfully');
+    console.log('[Outlook Callback WRITE] Token stored successfully');
 
-    // Check if write token exists to determine watcher status
-    const writeToken = await getToken(supabase, userId, yachtId, 'write');
+    // Check if read token exists to determine watcher status
+    const readToken = await getToken(supabase, userId, yachtId, 'read');
     const watcherStatus = determineWatcherStatus(
+      readToken,
       tokenRecord,
-      writeToken,
       !scopeCheck.valid
     );
 
@@ -150,17 +155,17 @@ export async function GET(request: NextRequest) {
     );
 
     if (!watcherResult.success) {
-      console.warn('[Outlook Callback READ] Failed to update watcher:', watcherResult.error);
+      console.warn('[Outlook Callback WRITE] Failed to update watcher:', watcherResult.error);
       // Non-fatal - token is stored, continue
     }
 
-    console.log('[Outlook Callback READ] Watcher status:', watcherStatus);
+    console.log('[Outlook Callback WRITE] Watcher status:', watcherStatus);
 
     // Redirect to settings with success
     const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
     redirectUrl.searchParams.set('success', 'true');
     redirectUrl.searchParams.set('provider', 'outlook');
-    redirectUrl.searchParams.set('purpose', 'read');
+    redirectUrl.searchParams.set('purpose', 'write');
     if (scopeCheck.warning) {
       redirectUrl.searchParams.set('warning', 'forbidden_scopes');
     }
@@ -168,10 +173,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectUrl.toString());
 
   } catch (error) {
-    console.error('[Outlook Callback READ] Unexpected error:', error);
+    console.error('[Outlook Callback WRITE] Unexpected error:', error);
     const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
     redirectUrl.searchParams.set('error', 'unexpected');
     redirectUrl.searchParams.set('provider', 'outlook');
+    redirectUrl.searchParams.set('purpose', 'write');
     return NextResponse.redirect(redirectUrl.toString());
   }
 }
