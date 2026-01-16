@@ -21,7 +21,7 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
 
@@ -48,7 +48,6 @@ jobs:
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
           TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
           RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
-          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
@@ -65,12 +64,48 @@ jobs:
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
           TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
           RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
-          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
           TEST_USER_TENANT_KEY: ${{ secrets.TEST_USER_TENANT_KEY }}
         run: npx playwright test --project=contracts
+
+      - name: Start API server
+        run: |
+          cd apps/api
+          pip install -r requirements.txt
+          nohup uvicorn pipeline_service:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+          echo "API server started (PID: $(cat /tmp/api.pid))"
+          sleep 5
+          curl -f http://127.0.0.1:8000/health || (cat /tmp/api.log && exit 1)
+        env:
+          SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.TENANT_SUPABASE_JWT_SECRET }}
+
+      - name: Start Next.js dev server
+        run: |
+          cd apps/web
+          npm ci
+          nohup npm run dev > /tmp/web.log 2>&1 &
+          echo $! > /tmp/web.pid
+          echo "Next.js server started (PID: $(cat /tmp/web.pid))"
+
+          # Wait for server to be ready (max 60s)
+          for i in {1..30}; do
+            if curl -f http://127.0.0.1:3000 >/dev/null 2>&1; then
+              echo "Next.js server ready after ${i}s"
+              break
+            fi
+            sleep 2
+          done
+
+          curl -f http://127.0.0.1:3000 || (cat /tmp/web.log && exit 1)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TENANT_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
 
       - name: Run E2E tests
         env:
@@ -79,15 +114,29 @@ jobs:
           MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
           TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
-          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
-          VERCEL_PROD_URL: ${{ secrets.VERCEL_PROD_URL }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
           TEST_USER_TENANT_KEY: ${{ secrets.TEST_USER_TENANT_KEY }}
           TEST_WORK_ORDER_ID: ${{ secrets.TEST_WORK_ORDER_ID }}
           TEST_EQUIPMENT_ID: ${{ secrets.TEST_EQUIPMENT_ID }}
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
         run: npx playwright test --project=e2e-chromium
+
+      - name: Show server logs on failure
+        if: failure()
+        run: |
+          echo "=== API Server Logs ==="
+          cat /tmp/api.log || echo "No API logs"
+          echo ""
+          echo "=== Next.js Server Logs ==="
+          cat /tmp/web.log || echo "No Web logs"
+
+      - name: Stop servers
+        if: always()
+        run: |
+          kill $(cat /tmp/api.pid 2>/dev/null) 2>/dev/null || true
+          kill $(cat /tmp/web.pid 2>/dev/null) || true
 
       - name: Verify artifacts exist
         if: always()
