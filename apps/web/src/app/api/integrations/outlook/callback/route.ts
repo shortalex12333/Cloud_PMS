@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('[Outlook Callback READ] OAuth error:', error, errorDescription);
       // Redirect to settings with error
-      const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
+      const redirectUrl = new URL('/settings', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', error);
       redirectUrl.searchParams.set('provider', 'outlook');
       return NextResponse.redirect(redirectUrl.toString());
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const tokenResult = await exchangeCodeForTokens(code, 'read');
     if (!tokenResult.success || !tokenResult.data) {
       console.error('[Outlook Callback READ] Token exchange failed:', tokenResult.error);
-      const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
+      const redirectUrl = new URL('/settings', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', 'token_exchange_failed');
       redirectUrl.searchParams.set('provider', 'outlook');
       return NextResponse.redirect(redirectUrl.toString());
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     if (!yachtId) {
       console.error('[Outlook Callback READ] No yacht_id found for user:', userId);
-      const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
+      const redirectUrl = new URL('/settings', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', 'no_yacht');
       redirectUrl.searchParams.set('provider', 'outlook');
       return NextResponse.redirect(redirectUrl.toString());
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     const upsertResult = await upsertToken(supabase, tokenRecord);
     if (!upsertResult.success) {
       console.error('[Outlook Callback READ] Failed to store token:', upsertResult.error);
-      const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
+      const redirectUrl = new URL('/settings', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
       redirectUrl.searchParams.set('error', 'storage_failed');
       redirectUrl.searchParams.set('provider', 'outlook');
       return NextResponse.redirect(redirectUrl.toString());
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
     console.log('[Outlook Callback READ] Watcher status:', watcherStatus);
 
     // Redirect to settings with success
-    const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
+    const redirectUrl = new URL('/settings', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
     redirectUrl.searchParams.set('success', 'true');
     redirectUrl.searchParams.set('provider', 'outlook');
     redirectUrl.searchParams.set('purpose', 'read');
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[Outlook Callback READ] Unexpected error:', error);
-    const redirectUrl = new URL('/settings/integrations', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
+    const redirectUrl = new URL('/settings', process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai');
     redirectUrl.searchParams.set('error', 'unexpected');
     redirectUrl.searchParams.set('provider', 'outlook');
     return NextResponse.redirect(redirectUrl.toString());
