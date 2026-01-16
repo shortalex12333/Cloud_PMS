@@ -111,8 +111,9 @@ test.describe('Auth Resume & Session Persistence', () => {
     await page.goto('about:blank');
     await page.waitForTimeout(1000);
 
-    // Navigate back to app
-    await page.goto('/');
+    // Navigate back to app - use /dashboard, not /
+    // Note: / always server-side redirects to /login regardless of auth state
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000); // Allow auth context to re-initialize
 
