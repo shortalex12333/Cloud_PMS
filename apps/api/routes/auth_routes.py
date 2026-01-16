@@ -98,6 +98,20 @@ def hash_email(email: str) -> str:
     return hashlib.sha256(email.lower().encode()).hexdigest()
 
 
+def get_master_supabase():
+    """Get Supabase client for MASTER database (authentication only)."""
+    from supabase import create_client
+
+    url = os.getenv('MASTER_SUPABASE_URL', '')
+    key = os.getenv('MASTER_SUPABASE_SERVICE_KEY', '')
+
+    if not url or not key:
+        logger.error(f"[Auth] No MASTER Supabase credentials")
+        return None
+
+    return create_client(url, key)
+
+
 def get_yacht_supabase(yacht_id: str):
     """Get Supabase client for a specific yacht."""
     from supabase import create_client
@@ -264,33 +278,54 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
 
         logger.info(f"[Auth] Got profile: {email}")
 
-        # Get Supabase client for the yacht
-        supabase = get_yacht_supabase(user_id)
-        if not supabase:
+        # Step 1: Query MASTER DB to find which yacht this user belongs to
+        master_supabase = get_master_supabase()
+        if not master_supabase:
             return TokenExchangeResponse(
                 success=False,
-                error="Failed to get database connection",
-                error_code="db_connection_failed",
+                error="Failed to connect to authentication database",
+                error_code="master_db_connection_failed",
             )
 
-        # Get user's yacht_id from their profile
-        # NOTE: auth_users_profiles uses 'id' column (not 'user_id') to store the user's auth ID
         try:
-            logger.info(f"[Auth] ABOUT TO QUERY auth_users_profiles with user_id={user_id} (length={len(user_id)})")
-            user_result = supabase.table('auth_users_profiles').select('yacht_id').eq('id', user_id).maybe_single().execute()
-            yacht_id = user_result.data.get('yacht_id') if user_result.data and isinstance(user_result.data, dict) else None
-            logger.info(f"[Auth] User profile lookup: user_id={user_id}, yacht_id={yacht_id}, data={user_result.data}")
-        except Exception as e:
-            logger.error(f"[Auth] Failed to lookup user profile: {e}")
-            yacht_id = None
+            logger.info(f"[Auth] Querying MASTER DB user_accounts for user_id={user_id}")
+            user_account = master_supabase.table('user_accounts').select('yacht_id, role, email').eq('id', user_id).maybe_single().execute()
 
-        if not yacht_id:
-            # Enhanced error message for debugging
-            logger.error(f"[Auth] no_yacht error: searched for user_id={user_id}, found data={user_result.data}")
+            if not user_account.data:
+                logger.error(f"[Auth] User {user_id} not found in MASTER user_accounts table")
+                return TokenExchangeResponse(
+                    success=False,
+                    error="User account not found",
+                    error_code="no_user_account",
+                )
+
+            yacht_id = user_account.data.get('yacht_id')
+            user_role = user_account.data.get('role')
+            logger.info(f"[Auth] Found user in MASTER DB: yacht_id={yacht_id}, role={user_role}")
+
+        except Exception as e:
+            logger.error(f"[Auth] Failed to lookup user in MASTER DB: {e}")
             return TokenExchangeResponse(
                 success=False,
-                error=f"User has no yacht assigned (searched user_id={user_id[:8]}...)",
+                error="Failed to lookup user account",
+                error_code="user_lookup_failed",
+            )
+
+        if not yacht_id:
+            logger.error(f"[Auth] User {user_id} has no yacht_id assigned in MASTER DB")
+            return TokenExchangeResponse(
+                success=False,
+                error="User has no yacht assigned",
                 error_code="no_yacht",
+            )
+
+        # Step 2: Get TENANT DB client for this yacht
+        tenant_supabase = get_yacht_supabase(yacht_id)
+        if not tenant_supabase:
+            return TokenExchangeResponse(
+                success=False,
+                error="Failed to connect to yacht database",
+                error_code="tenant_db_connection_failed",
             )
 
         # Store token
@@ -309,23 +344,23 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
             'updated_at': datetime.utcnow().isoformat(),
         }
 
-        # Upsert token (update if exists, insert if not)
-        upsert_result = supabase.table('auth_microsoft_tokens').upsert(
+        # Step 3: Store token in TENANT DB
+        upsert_result = tenant_supabase.table('auth_microsoft_tokens').upsert(
             token_record,
             on_conflict='user_id,yacht_id,provider,token_purpose',
         ).execute()
 
         if not upsert_result.data:
-            logger.error(f"[Auth] Failed to store token")
+            logger.error(f"[Auth] Failed to store token in TENANT DB")
             return TokenExchangeResponse(
                 success=False,
                 error="Failed to store token",
                 error_code="storage_failed",
             )
 
-        logger.info(f"[Auth] Token stored successfully for user {user_id}")
+        logger.info(f"[Auth] Token stored successfully in TENANT DB for user {user_id}, yacht {yacht_id}")
 
-        # Create/update watcher record
+        # Create/update watcher record in TENANT DB
         watcher_status = 'active' if purpose == 'read' and scope_check['valid'] else 'degraded'
 
         watcher_record = {
@@ -337,11 +372,11 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
         }
 
         try:
-            supabase.table('email_watchers').upsert(
+            tenant_supabase.table('email_watchers').upsert(
                 watcher_record,
                 on_conflict='user_id,yacht_id',
             ).execute()
-            logger.info(f"[Auth] Watcher updated: {watcher_status}")
+            logger.info(f"[Auth] Watcher updated in TENANT DB: {watcher_status}")
         except Exception as e:
             logger.warning(f"[Auth] Failed to update watcher (non-fatal): {e}")
 
