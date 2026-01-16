@@ -421,7 +421,8 @@ export async function getAllRealTestIds(yachtId: string): Promise<RealTestIds> {
     client.from('pms_equipment').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
     client.from('pms_faults').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
     client.from('documents').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
-    client.from('pms_shopping_list_items').select('id').eq('yacht_id', yachtId).limit(1).maybeSingle(),
+    // Find a shopping item NOT linked to an order (deletable without finance constraint)
+    client.from('pms_shopping_list_items').select('id').eq('yacht_id', yachtId).is('order_id', null).limit(1).maybeSingle(),
   ]);
 
   return {
