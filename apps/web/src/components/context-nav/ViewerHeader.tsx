@@ -8,6 +8,7 @@
 'use client';
 
 import React from 'react';
+import { useNavigationContext } from '@/contexts/NavigationContext';
 
 interface ViewerHeaderProps {
   /** Current artifact type (for context) */
@@ -19,43 +20,35 @@ interface ViewerHeaderProps {
 }
 
 export function ViewerHeader({ artefactType, artefactId, actions }: ViewerHeaderProps) {
-  // TODO: Implement in Phase 4
-  // const { canGoBack, canGoForward, goBack, goForward } = useViewStack();
-  // const { showRelated } = useRelatedPanel();
+  const { canGoBack, canGoForward, back, forward, pushRelated } = useNavigationContext();
 
   return (
     <header className="viewer-header flex items-center justify-between p-4 border-b">
       <div className="navigation-controls flex gap-2">
         <button
-          disabled={true} // TODO: Connect to useViewStack
-          className="btn-secondary"
+          disabled={!canGoBack}
+          className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Go back"
+          onClick={back}
         >
           ← Back
         </button>
         <button
-          disabled={true} // TODO: Connect to useViewStack
-          className="btn-secondary"
+          disabled={!canGoForward}
+          className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Go forward"
+          onClick={forward}
         >
           Forward →
         </button>
       </div>
 
       <div className="viewer-actions flex gap-2">
-        <button
-          className="btn-primary"
-          onClick={() => {
-            // TODO: Open RelatedPanel
-            console.log('Show Related - Not implemented yet');
-          }}
-        >
-          Show Related
+        <button className="btn-primary" onClick={pushRelated}>
+          Show Related ▸
         </button>
         {actions}
       </div>
     </header>
   );
 }
-
-// TODO: Implement full functionality in Phase 4
