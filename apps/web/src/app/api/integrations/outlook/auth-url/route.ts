@@ -8,8 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import {
-  getServiceClient,
   generateOAuthState,
   buildAuthUrl,
   READ_APP,
@@ -17,6 +17,21 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check required env vars
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !anonKey) {
+      console.error('[Outlook Auth READ] Missing env vars:', {
+        hasUrl: !!supabaseUrl,
+        hasAnonKey: !!anonKey,
+      });
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     // Get JWT from Authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -28,11 +43,19 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify JWT and get user_id
-    const supabase = getServiceClient();
+    // Create Supabase client with the user's JWT to verify it
+    // This uses the anon key but will only succeed if the JWT is valid
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    });
+
+    // Verify JWT by calling getUser - this validates the token
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
+      console.error('[Outlook Auth READ] Auth error:', error?.message);
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
