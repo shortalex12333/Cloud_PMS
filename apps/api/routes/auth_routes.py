@@ -276,6 +276,7 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
         # Get user's yacht_id from their profile
         # NOTE: auth_users_profiles uses 'id' column (not 'user_id') to store the user's auth ID
         try:
+            logger.info(f"[Auth] ABOUT TO QUERY auth_users_profiles with user_id={user_id} (length={len(user_id)})")
             user_result = supabase.table('auth_users_profiles').select('yacht_id').eq('id', user_id).maybe_single().execute()
             yacht_id = user_result.data.get('yacht_id') if user_result.data and isinstance(user_result.data, dict) else None
             logger.info(f"[Auth] User profile lookup: user_id={user_id}, yacht_id={yacht_id}, data={user_result.data}")
@@ -284,9 +285,11 @@ async def exchange_outlook_tokens(request: TokenExchangeRequest):
             yacht_id = None
 
         if not yacht_id:
+            # Enhanced error message for debugging
+            logger.error(f"[Auth] no_yacht error: searched for user_id={user_id}, found data={user_result.data}")
             return TokenExchangeResponse(
                 success=False,
-                error="User has no yacht assigned",
+                error=f"User has no yacht assigned (searched user_id={user_id[:8]}...)",
                 error_code="no_yacht",
             )
 
