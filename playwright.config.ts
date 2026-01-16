@@ -17,10 +17,10 @@ dotenv.config({ path: '.env.e2e' });
 export default defineConfig({
   testDir: './tests',
 
-  // Maximum time one test can run
-  timeout: parseInt(process.env.TEST_TIMEOUT || '60000'),
+  // Maximum time one test can run (fail fast)
+  timeout: parseInt(process.env.TEST_TIMEOUT || '30000'),
 
-  // Expect timeout
+  // Expect timeout (fail fast on element not found)
   expect: {
     timeout: 10000,
   },
@@ -47,7 +47,9 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL for relative paths
-    baseURL: process.env.VERCEL_PROD_URL || 'https://app.celeste7.ai',
+    // CI sets PLAYWRIGHT_BASE_URL to http://127.0.0.1:3000
+    // Production uses VERCEL_PROD_URL (https://app.celeste7.ai)
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || process.env.VERCEL_PROD_URL || 'https://app.celeste7.ai',
 
     // Collect trace on failure
     trace: 'on-first-retry',
