@@ -1412,6 +1412,9 @@ async def execute_action(
                 # Handle table not existing
                 if "does not exist" in error_str.lower() or "42P01" in error_str:
                     raise HTTPException(status_code=404, detail="Shopping list feature not available")
+                # Handle finance immutability constraint
+                if "immutable" in error_str.lower() or "finance transactions" in error_str.lower():
+                    raise HTTPException(status_code=409, detail="Cannot delete: item is linked to a finance transaction. Use reversal instead.")
                 raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
 
         # ===== WORK ORDER PHOTO ACTION (Cluster 02) =====
