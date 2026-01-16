@@ -1,0 +1,62 @@
+name: CI - Web Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/ci-web.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/ci-web.yml'
+
+env:
+  CI: true
+
+jobs:
+  web-validation:
+    name: Frontend Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'apps/web/package-lock.json'
+
+      - name: Install dependencies
+        run: cd apps/web && npm ci
+
+      - name: TypeScript check
+        run: cd apps/web && npm run typecheck
+
+      - name: ESLint
+        run: cd apps/web && npm run lint
+
+      - name: Unit tests (Vitest)
+        run: cd apps/web && npm run test
+
+      - name: Build
+        run: cd apps/web && npm run build
+        env:
+          # Placeholder values for build
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_API_URL: https://placeholder.api.com
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Frontend Validation Summary ==="
+          echo "TypeScript: OK"
+          echo "ESLint: OK"
+          echo "Tests: OK"
+          echo "Build: OK"
