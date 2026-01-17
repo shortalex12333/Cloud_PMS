@@ -234,10 +234,12 @@ _supabase_client_errors = 0
 
 def get_supabase_client(force_new: bool = False):
     """
-    Lazy-load Supabase client with connection recovery.
+    Lazy-load TENANT Supabase client with connection recovery.
 
     If the client is stale (>3 consecutive errors), recreate it.
     This handles connection pool exhaustion and timeout issues.
+
+    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
     """
     global _supabase_client, _supabase_client_errors
 
@@ -251,14 +253,16 @@ def get_supabase_client(force_new: bool = False):
     if _supabase_client is None or force_new:
         try:
             from supabase import create_client
-            url = os.environ.get("SUPABASE_URL", "https://vzsohavtuotocgrfkfyd.supabase.co")
-            key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-            if not key:
-                logger.warning("SUPABASE_SERVICE_KEY not set")
+            # Use tenant-specific env vars (e.g., yTEST_YACHT_001_SUPABASE_URL)
+            default_yacht = os.environ.get("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
+            url = os.environ.get(f"{default_yacht}_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
+            key = os.environ.get(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
+            if not url or not key:
+                logger.warning(f"TENANT Supabase credentials not set for {default_yacht}")
                 return None
             _supabase_client = create_client(url, key)
             _supabase_client_errors = 0  # Reset error count on successful creation
-            logger.info("[Supabase] Client created/recreated successfully")
+            logger.info(f"[Supabase] TENANT client created for {default_yacht}")
         except Exception as e:
             logger.error(f"Failed to create Supabase client: {e}")
             return None
