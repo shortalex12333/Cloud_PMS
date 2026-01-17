@@ -6,7 +6,14 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Settings } from 'lucide-react';
+import { Search, X, Settings, BookOpen, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import { useSituationState } from '@/hooks/useSituationState';
@@ -158,6 +165,7 @@ export default function SpotlightSearch({
 
   // Get user context from auth (yacht_id comes from bootstrap, not DB query)
   const { user } = useAuth();
+  const router = useRouter();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -211,6 +219,7 @@ export default function SpotlightSearch({
     if (type.includes('work_order')) return 'work_order';
     if (type.includes('fault')) return 'fault';
     if (type.includes('inventory') || type === 'v_inventory') return 'inventory';
+    if (type.includes('email') || type === 'email_thread' || type === 'email_threads') return 'email_thread';
     return 'document'; // Default fallback
   }, []);
 
@@ -221,6 +230,7 @@ export default function SpotlightSearch({
     if (entityType === 'document') return 'manuals';
     if (entityType === 'equipment' || entityType === 'work_order' || entityType === 'fault') return 'maintenance';
     if (entityType === 'part' || entityType === 'inventory') return 'inventory';
+    if (entityType === 'email_thread') return 'email';
     return 'manuals'; // Default fallback
   }, []);
 
@@ -587,8 +597,36 @@ export default function SpotlightSearch({
           )}
         </div>
 
-        {/* Settings Button - below panel, centered */}
-        <div className="flex justify-center mt-4">
+        {/* Action Buttons - below panel, centered */}
+        <div className="flex justify-center items-center gap-2 mt-4">
+          {/* Ledger Dropdown - Email and other record access */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+                aria-label="Ledger"
+              >
+                <BookOpen className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="center"
+              className="min-w-[140px] bg-[#2c2c2e] border-[#3d3d3f] text-white"
+            >
+              <DropdownMenuItem
+                onClick={() => {
+                  onClose?.();
+                  router.push('/email/search');
+                }}
+                className="flex items-center gap-2 cursor-pointer focus:bg-[#3d3d3f] focus:text-white"
+              >
+                <Mail className="w-4 h-4" />
+                <span>Email</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Settings Button */}
           <button
             onClick={() => setShowSettings(true)}
             className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"

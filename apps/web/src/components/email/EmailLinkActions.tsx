@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils';
 
 interface EmailLinkActionsProps {
   linkId: string;
+  threadId: string;
+  threadSubject?: string;
   confidence?: LinkConfidence;
   objectType: string;
   objectId: string;
@@ -35,6 +37,8 @@ interface EmailLinkActionsProps {
 
 export function EmailLinkActions({
   linkId,
+  threadId,
+  threadSubject,
   confidence,
   objectType,
   objectId,
@@ -118,8 +122,8 @@ export function EmailLinkActions({
       <LinkEmailModal
         open={showChangeModal}
         onOpenChange={setShowChangeModal}
-        objectType={objectType}
-        objectId={objectId}
+        threadId={threadId}
+        threadSubject={threadSubject}
         existingLinkId={linkId}
       />
 

@@ -12,6 +12,7 @@
 
 import { Wrench, Clock, User, CheckCircle2, ChevronRight } from 'lucide-react';
 import { ActionButton } from '@/components/actions/ActionButton';
+import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
@@ -170,6 +171,13 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
               </button>
             )}
           </div>
+
+          {/* Related Emails - Evidence panel */}
+          <RelatedEmailsPanel
+            objectType="work_order"
+            objectId={workOrder.id}
+            className="mt-4"
+          />
         </div>
       </div>
     </div>

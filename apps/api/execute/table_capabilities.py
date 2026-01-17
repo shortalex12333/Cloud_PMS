@@ -386,6 +386,38 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
             ),
         ],
     ),
+
+    # =========================================================================
+    # EMAIL TRANSPORT LAYER - Evidence Search
+    # =========================================================================
+
+    "email_threads_search": Capability(
+        name="email_threads_search",
+        description="Search email threads by subject (supporting evidence for operational objects)",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
+        entity_triggers=["EMAIL_SUBJECT", "EMAIL_SEARCH"],
+        available_actions=["view_thread", "link_to_object"],
+        tables=[
+            TableSpec(
+                name="email_threads",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="latest_subject",
+                        match_types=[MatchType.ILIKE, MatchType.TRIGRAM],
+                        description="Email thread subject line",
+                        is_primary=True,
+                    ),
+                ],
+                response_columns=[
+                    "id", "latest_subject", "message_count", "has_attachments",
+                    "source", "first_message_at", "last_activity_at"
+                ],
+            ),
+        ],
+    ),
 }
 
 

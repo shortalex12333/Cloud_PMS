@@ -131,6 +131,9 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "WO_NUMBER": ("work_order_by_id", "wo_number"),
     "EQUIPMENT_NAME": ("equipment_by_name_or_model", "name"),
     "MODEL_NUMBER": ("equipment_by_name_or_model", "model"),
+    # Email transport layer (evidence search)
+    "EMAIL_SUBJECT": ("email_threads_search", "latest_subject"),
+    "EMAIL_SEARCH": ("email_threads_search", "latest_subject"),
 }
 
 

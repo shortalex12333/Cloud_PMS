@@ -41,6 +41,7 @@ from integrations.graph_client import (
     TokenRefreshError,
     GraphApiError,
 )
+from services.email_suggestion_service import generate_suggestions_for_thread
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,16 @@ class LinkChangeRequest(BaseModel):
 
 class LinkRemoveRequest(BaseModel):
     link_id: str = Field(..., description="UUID of the link to remove")
+
+
+class LinkRejectRequest(BaseModel):
+    link_id: str = Field(..., description="UUID of the link to reject")
+
+
+class LinkCreateRequest(BaseModel):
+    thread_id: str = Field(..., description="UUID of the email thread to link")
+    object_type: str = Field(..., description="Type: work_order, equipment, part, fault, purchase_order, supplier")
+    object_id: str = Field(..., description="UUID of the object to link to")
 
 
 class SaveAttachmentRequest(BaseModel):
@@ -576,6 +587,406 @@ async def remove_link(
 
 
 # ============================================================================
+# POST /email/link/reject
+# ============================================================================
+
+@router.post("/link/reject")
+async def reject_link(
+    request: LinkRejectRequest,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Reject a suggested email link.
+
+    Changes confidence from 'suggested' to 'rejected'.
+    Audited to pms_audit_log.
+    """
+    enabled, error_msg = check_email_feature('link')
+    if not enabled:
+        raise HTTPException(status_code=503, detail=error_msg)
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_supabase_client()
+
+    try:
+        # Get current link state (yacht_id enforced)
+        link_result = supabase.table('email_links').select('*').eq(
+            'id', request.link_id
+        ).eq('yacht_id', yacht_id).eq('is_active', True).single().execute()
+
+        if not link_result.data:
+            raise HTTPException(status_code=404, detail="Link not found")
+
+        link = link_result.data
+
+        if link['confidence'] != 'suggested':
+            raise HTTPException(status_code=400, detail="Only suggested links can be rejected")
+
+        # Update link to rejected
+        update_result = supabase.table('email_links').update({
+            'confidence': 'rejected',
+            'rejected_at': datetime.utcnow().isoformat(),
+            'rejected_by': user_id,
+            'updated_at': datetime.utcnow().isoformat(),
+        }).eq('id', request.link_id).eq('yacht_id', yacht_id).execute()
+
+        # Audit the action
+        await audit_link_action(
+            supabase, yacht_id, user_id, 'EMAIL_LINK_REJECT', request.link_id,
+            old_values={'confidence': 'suggested'},
+            new_values={'confidence': 'rejected'},
+        )
+
+        return {'success': True, 'link_id': request.link_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/link/reject] Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reject link")
+
+
+# ============================================================================
+# POST /email/link/create
+# ============================================================================
+
+@router.post("/link/create")
+async def create_link(
+    request: LinkCreateRequest,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Create a new email-object link manually.
+
+    Allows users to link any thread to WO, equipment, part, fault, PO, or supplier.
+    Audited to pms_audit_log.
+    """
+    enabled, error_msg = check_email_feature('link')
+    if not enabled:
+        raise HTTPException(status_code=503, detail=error_msg)
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_supabase_client()
+
+    # Validate object_type
+    valid_types = ['work_order', 'equipment', 'part', 'fault', 'purchase_order', 'supplier']
+    if request.object_type not in valid_types:
+        raise HTTPException(status_code=400, detail=f"Invalid object_type. Must be one of: {valid_types}")
+
+    try:
+        # Verify thread exists and belongs to this yacht
+        thread_result = supabase.table('email_threads').select('id').eq(
+            'id', request.thread_id
+        ).eq('yacht_id', yacht_id).single().execute()
+
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        # Check if link already exists
+        existing = supabase.table('email_links').select('id').eq(
+            'thread_id', request.thread_id
+        ).eq('object_type', request.object_type).eq(
+            'object_id', request.object_id
+        ).eq('is_active', True).single().execute()
+
+        if existing.data:
+            raise HTTPException(status_code=400, detail="Link already exists")
+
+        # Verify target object exists (based on type)
+        table_map = {
+            'work_order': 'pms_work_orders',
+            'equipment': 'pms_equipment',
+            'part': 'pms_parts',
+            'fault': 'pms_faults',
+            'purchase_order': 'pms_purchase_orders',
+            'supplier': 'pms_suppliers',
+        }
+        target_table = table_map.get(request.object_type)
+        if target_table:
+            target_result = supabase.table(target_table).select('id').eq(
+                'id', request.object_id
+            ).eq('yacht_id', yacht_id).single().execute()
+
+            if not target_result.data:
+                raise HTTPException(status_code=404, detail=f"{request.object_type} not found")
+
+        # Create the link
+        new_link = supabase.table('email_links').insert({
+            'yacht_id': yacht_id,
+            'thread_id': request.thread_id,
+            'object_type': request.object_type,
+            'object_id': request.object_id,
+            'confidence': 'user_confirmed',
+            'suggested_reason': 'user_created',
+            'is_active': True,
+            'accepted_at': datetime.utcnow().isoformat(),
+            'accepted_by': user_id,
+        }).execute()
+
+        link_id = new_link.data[0]['id'] if new_link.data else None
+
+        # Audit the action
+        await audit_link_action(
+            supabase, yacht_id, user_id, 'EMAIL_LINK_CREATE', link_id or '',
+            old_values=None,
+            new_values={
+                'thread_id': request.thread_id,
+                'object_type': request.object_type,
+                'object_id': request.object_id,
+            },
+        )
+
+        return {'success': True, 'link_id': link_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/link/create] Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create link")
+
+
+# ============================================================================
+# GET /email/inbox - Get unlinked threads for linking
+# ============================================================================
+
+@router.get("/inbox")
+async def get_inbox_threads(
+    page: int = 1,
+    page_size: int = 20,
+    linked: bool = False,
+    q: str = None,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Get email threads for the inbox view.
+
+    By default returns unlinked threads (for manual linking).
+    Set linked=true to include all threads.
+    Set q to filter by subject (searches latest_subject).
+    """
+    enabled, error_msg = check_email_feature('related')
+    if not enabled:
+        raise HTTPException(status_code=503, detail=error_msg)
+
+    yacht_id = auth['yacht_id']
+    supabase = get_supabase_client()
+
+    try:
+        offset = (page - 1) * page_size
+
+        # Build base query
+        base_query = supabase.table('email_threads').select(
+            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at',
+            count='exact'
+        ).eq('yacht_id', yacht_id)
+
+        # Add search filter if provided
+        if q and len(q) >= 2:
+            base_query = base_query.ilike('latest_subject', f'%{q}%')
+
+        if linked:
+            # All threads (with optional search)
+            result = base_query.order(
+                'last_activity_at', desc=True
+            ).range(offset, offset + page_size - 1).execute()
+        else:
+            # Only unlinked threads (no active link)
+            # Use a subquery approach: get threads where no active link exists
+            result = supabase.rpc('get_unlinked_email_threads', {
+                'p_yacht_id': yacht_id,
+                'p_limit': page_size,
+                'p_offset': offset,
+                'p_search': q if q else ''
+            }).execute()
+
+            # Fallback if RPC doesn't exist: get all threads, filter client-side
+            if not result.data:
+                fallback_query = supabase.table('email_threads').select(
+                    'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at'
+                ).eq('yacht_id', yacht_id)
+
+                # Add search filter to fallback
+                if q and len(q) >= 2:
+                    fallback_query = fallback_query.ilike('latest_subject', f'%{q}%')
+
+                all_threads = fallback_query.order(
+                    'last_activity_at', desc=True
+                ).limit(100).execute()
+
+                # Get linked thread IDs
+                linked_result = supabase.table('email_links').select(
+                    'thread_id'
+                ).eq('yacht_id', yacht_id).eq('is_active', True).execute()
+
+                linked_ids = {l['thread_id'] for l in (linked_result.data or [])}
+
+                # Filter out linked threads
+                unlinked = [t for t in (all_threads.data or []) if t['id'] not in linked_ids]
+                result.data = unlinked[offset:offset + page_size]
+
+        threads = result.data or []
+        total = result.count if hasattr(result, 'count') and result.count else len(threads)
+
+        return {
+            'threads': threads,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'has_more': offset + len(threads) < total,
+        }
+
+    except Exception as e:
+        logger.error(f"[email/inbox] Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch inbox")
+
+
+# ============================================================================
+# GET /email/search-objects - Search linkable objects
+# ============================================================================
+
+@router.get("/search-objects")
+async def search_linkable_objects(
+    q: str,
+    types: str = "work_order,equipment,part",
+    limit: int = 10,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Search for objects that can be linked to emails.
+
+    Args:
+        q: Search query (min 2 chars)
+        types: Comma-separated list of types to search
+        limit: Max results per type
+
+    Returns objects from work_orders, equipment, parts, faults, purchase_orders, suppliers.
+    """
+    enabled, error_msg = check_email_feature('link')
+    if not enabled:
+        raise HTTPException(status_code=503, detail=error_msg)
+
+    if len(q) < 2:
+        return {'results': []}
+
+    yacht_id = auth['yacht_id']
+    supabase = get_supabase_client()
+
+    type_list = [t.strip() for t in types.split(',')]
+    results = []
+
+    try:
+        # Search work orders
+        if 'work_order' in type_list:
+            wo_result = supabase.table('pms_work_orders').select(
+                'id, title, status, wo_number'
+            ).eq('yacht_id', yacht_id).or_(
+                f"title.ilike.%{q}%,wo_number.ilike.%{q}%"
+            ).limit(limit).execute()
+
+            for wo in (wo_result.data or []):
+                results.append({
+                    'type': 'work_order',
+                    'id': wo['id'],
+                    'label': f"WO-{wo.get('wo_number', '')}: {wo.get('title', 'Untitled')}",
+                    'status': wo.get('status'),
+                })
+
+        # Search equipment
+        if 'equipment' in type_list:
+            eq_result = supabase.table('pms_equipment').select(
+                'id, name, serial_number, model'
+            ).eq('yacht_id', yacht_id).or_(
+                f"name.ilike.%{q}%,serial_number.ilike.%{q}%,model.ilike.%{q}%"
+            ).limit(limit).execute()
+
+            for eq in (eq_result.data or []):
+                label = eq.get('name', 'Unknown')
+                if eq.get('serial_number'):
+                    label += f" (S/N: {eq['serial_number']})"
+                results.append({
+                    'type': 'equipment',
+                    'id': eq['id'],
+                    'label': label,
+                })
+
+        # Search parts
+        if 'part' in type_list:
+            parts_result = supabase.table('pms_parts').select(
+                'id, name, part_number'
+            ).eq('yacht_id', yacht_id).or_(
+                f"name.ilike.%{q}%,part_number.ilike.%{q}%"
+            ).limit(limit).execute()
+
+            for part in (parts_result.data or []):
+                label = part.get('name', 'Unknown')
+                if part.get('part_number'):
+                    label += f" (P/N: {part['part_number']})"
+                results.append({
+                    'type': 'part',
+                    'id': part['id'],
+                    'label': label,
+                })
+
+        # Search faults
+        if 'fault' in type_list:
+            fault_result = supabase.table('pms_faults').select(
+                'id, title, status'
+            ).eq('yacht_id', yacht_id).ilike(
+                'title', f'%{q}%'
+            ).limit(limit).execute()
+
+            for fault in (fault_result.data or []):
+                results.append({
+                    'type': 'fault',
+                    'id': fault['id'],
+                    'label': fault.get('title', 'Untitled'),
+                    'status': fault.get('status'),
+                })
+
+        # Search purchase orders
+        if 'purchase_order' in type_list:
+            po_result = supabase.table('pms_purchase_orders').select(
+                'id, po_number, description, status'
+            ).eq('yacht_id', yacht_id).or_(
+                f"po_number.ilike.%{q}%,description.ilike.%{q}%"
+            ).limit(limit).execute()
+
+            for po in (po_result.data or []):
+                results.append({
+                    'type': 'purchase_order',
+                    'id': po['id'],
+                    'label': f"PO-{po.get('po_number', '')}: {po.get('description', '')}",
+                    'status': po.get('status'),
+                })
+
+        # Search suppliers
+        if 'supplier' in type_list:
+            supplier_result = supabase.table('pms_suppliers').select(
+                'id, name, category'
+            ).eq('yacht_id', yacht_id).ilike(
+                'name', f'%{q}%'
+            ).limit(limit).execute()
+
+            for supplier in (supplier_result.data or []):
+                label = supplier.get('name', 'Unknown')
+                if supplier.get('category'):
+                    label += f" ({supplier['category']})"
+                results.append({
+                    'type': 'supplier',
+                    'id': supplier['id'],
+                    'label': label,
+                })
+
+        return {'results': results}
+
+    except Exception as e:
+        logger.error(f"[email/search-objects] Error: {e}")
+        raise HTTPException(status_code=500, detail="Search failed")
+
+
+# ============================================================================
 # POST /email/evidence/save-attachment
 # ============================================================================
 
@@ -849,6 +1260,13 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
         'p_subject': msg.get('subject'),
         'p_has_attachments': msg.get('hasAttachments', False),
     }).execute()
+
+    # Generate link suggestions for new threads
+    try:
+        await generate_suggestions_for_thread(supabase, thread_id, yacht_id)
+    except Exception as e:
+        # Suggestion generation should not fail message processing
+        logger.warning(f"Failed to generate suggestions for thread {thread_id}: {e}")
 
 
 # ============================================================================

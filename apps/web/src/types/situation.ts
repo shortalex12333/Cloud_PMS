@@ -36,7 +36,8 @@ export type EntityType =
   | 'fault'
   | 'location'
   | 'person'
-  | 'inventory';
+  | 'inventory'
+  | 'email_thread';
 
 /**
  * Domain classification for different operational areas
@@ -47,7 +48,8 @@ export type SituationDomain =
   | 'inventory'    // Parts, stock, locations
   | 'hor'          // Hours of Rest compliance
   | 'purchasing'   // Ordering, procurement
-  | 'people';      // Crew management, assignments
+  | 'people'       // Crew management, assignments
+  | 'email';       // Email threads as evidence
 
 /**
  * Action bracket types (per active situation state.md)

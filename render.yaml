@@ -19,3 +19,31 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+
+  # Email Watcher Background Worker
+  - type: worker
+    name: celeste-email-watcher
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: cd apps/api && pip install -r requirements.txt
+    startCommand: cd apps/api && python -m workers.email_watcher_worker
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+      - key: EMAIL_WATCHER_ENABLED
+        value: "true"
+      - key: EMAIL_WATCHER_POLL_INTERVAL
+        value: "60"
+      - key: EMAIL_WATCHER_BATCH_SIZE
+        value: "10"
+      - key: SUPABASE_URL
+        value: "https://vzsohavtuotocgrfkfyd.supabase.co"
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: MICROSOFT_CLIENT_ID_READ
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET_READ
+        sync: false

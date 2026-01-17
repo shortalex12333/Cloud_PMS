@@ -248,6 +248,7 @@ class RegexExtractor:
         'document_id',
         'identifier',
         'document_type',
+        'email_search',
         'time_ref',
         'duration',
         'time_range'
@@ -634,6 +635,16 @@ class RegexExtractor:
                 re.compile(r'\b(installation\s+(?:manual|guide))\b', re.IGNORECASE),
                 re.compile(r'\b(operating\s+(?:manual|instructions))\b', re.IGNORECASE),
                 re.compile(r'\b(technical\s+(?:manual|specification|data))\b', re.IGNORECASE),
+            ],
+
+            # Email search patterns (evidence transport layer)
+            'email_search': [
+                re.compile(r'\b(emails?|e-?mails?)\b', re.IGNORECASE),
+                re.compile(r'\b(email\s+(?:thread|threads|chain|chains|conversation|conversations))\b', re.IGNORECASE),
+                re.compile(r'\b(correspondence|messages?)\b', re.IGNORECASE),
+                re.compile(r'\b(inbox|sent\s+items?|mailbox)\b', re.IGNORECASE),
+                re.compile(r'\b(email\s+(?:from|to|about|regarding))\b', re.IGNORECASE),
+                re.compile(r'\b(vendor\s+email|supplier\s+email)\b', re.IGNORECASE),
             ],
 
             # Phase 1 additions: Temporal extensions
