@@ -3,6 +3,8 @@ CelesteOS Backend - Feature Flags
 
 Feature flags for gradual rollout and fail-closed behavior.
 All email transport layer features default to OFF.
+
+Updated: 2026-01-17 - Force rebuild for env var refresh
 """
 
 import os
