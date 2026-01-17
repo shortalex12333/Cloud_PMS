@@ -20,11 +20,26 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ============================================================================
 
-SUPABASE_URL = os.getenv('SUPABASE_URL', '')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', '')  # Service role key for backend
+# TENANT DB configuration - check multiple naming conventions
+# Priority: SUPABASE_* > yTEST_YACHT_001_* (Render convention)
+SUPABASE_URL = (
+    os.getenv('SUPABASE_URL') or
+    os.getenv('yTEST_YACHT_001_SUPABASE_URL') or
+    ''
+)
+SUPABASE_SERVICE_KEY = (
+    os.getenv('SUPABASE_SERVICE_KEY') or
+    os.getenv('yTEST_YACHT_001_SUPABASE_SERVICE_KEY') or
+    ''
+)
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    raise ValueError('Missing Supabase configuration')
+    # Don't raise at import time - allow partial startup for health checks
+    import logging
+    logging.getLogger(__name__).warning(
+        'Missing Supabase configuration (SUPABASE_URL/SUPABASE_SERVICE_KEY or '
+        'yTEST_YACHT_001_SUPABASE_URL/yTEST_YACHT_001_SUPABASE_SERVICE_KEY)'
+    )
 
 # ============================================================================
 # SUPABASE CLIENT
