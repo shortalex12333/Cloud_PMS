@@ -33,6 +33,21 @@ logger = logging.getLogger(__name__)
 MASTER_SUPABASE_JWT_SECRET = os.getenv('MASTER_SUPABASE_JWT_SECRET', '')
 # Legacy - keep for backwards compatibility during transition
 SUPABASE_JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET', '') or MASTER_SUPABASE_JWT_SECRET
+
+# TODO: AGENT_TOKEN_SECRET - Configure in Render when Local Agent is deployed
+# ============================================================================
+# The Local Agent is an on-premise daemon running on each yacht that:
+#   - Syncs equipment telemetry, fault logs, sensor readings to cloud
+#   - Uses separate auth (not user JWT) via X-Agent-Token header
+#   - Requires AGENT_TOKEN_SECRET env var for JWT validation
+#
+# To enable:
+#   1. Generate secret: openssl rand -base64 32
+#   2. Add to Render env vars: AGENT_TOKEN_SECRET=<generated_secret>
+#   3. Provision agent token via create_agent_token() for each yacht
+#
+# Not needed until Local Agent feature is built (Phase TBD)
+# ============================================================================
 AGENT_TOKEN_SECRET = os.getenv('AGENT_TOKEN_SECRET', '')
 
 # MASTER DB connection for tenant lookup
