@@ -184,6 +184,18 @@ except Exception as e:
     logger.error("OAuth endpoints will not be available")
 
 # ============================================================================
+# ORCHESTRATED SEARCH ROUTES (Search Orchestration Layer)
+# ============================================================================
+
+try:
+    from routes.orchestrated_search_routes import router as orchestrated_search_router
+    app.include_router(orchestrated_search_router)
+    logger.info("✅ Orchestrated Search routes registered at /v2/search/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Orchestrated Search routes: {e}")
+    logger.error("V2 Search endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
