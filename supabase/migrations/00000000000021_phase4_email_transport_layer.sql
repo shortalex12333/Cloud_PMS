@@ -20,6 +20,18 @@
 -- PART 1: EXTEND auth_microsoft_tokens FOR READ/WRITE SEPARATION
 -- =============================================================================
 
+-- First, create the table if it doesn't exist (backwards compatibility)
+CREATE TABLE IF NOT EXISTS public.auth_microsoft_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
+    access_token TEXT,
+    refresh_token TEXT,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Add provider column
 ALTER TABLE public.auth_microsoft_tokens
 ADD COLUMN IF NOT EXISTS provider TEXT DEFAULT 'microsoft_graph';
@@ -94,7 +106,7 @@ CREATE TABLE IF NOT EXISTS public.email_watchers (
 
     -- Ownership
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    yacht_id UUID NOT NULL REFERENCES public.yacht_registry(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
 
     -- Provider
     provider TEXT NOT NULL DEFAULT 'microsoft_graph',
@@ -172,7 +184,7 @@ CREATE TABLE IF NOT EXISTS public.email_threads (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Tenant isolation
-    yacht_id UUID NOT NULL REFERENCES public.yacht_registry(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
 
     -- Provider identity
     provider_conversation_id TEXT NOT NULL,
@@ -238,7 +250,7 @@ CREATE TABLE IF NOT EXISTS public.email_messages (
 
     -- Relationships
     thread_id UUID NOT NULL REFERENCES public.email_threads(id) ON DELETE CASCADE,
-    yacht_id UUID NOT NULL REFERENCES public.yacht_registry(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
 
     -- Provider identity
     provider_message_id TEXT NOT NULL,
@@ -304,7 +316,7 @@ CREATE TABLE IF NOT EXISTS public.email_links (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Tenant
-    yacht_id UUID NOT NULL REFERENCES public.yacht_registry(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
 
     -- Link endpoints
     thread_id UUID NOT NULL REFERENCES public.email_threads(id) ON DELETE CASCADE,

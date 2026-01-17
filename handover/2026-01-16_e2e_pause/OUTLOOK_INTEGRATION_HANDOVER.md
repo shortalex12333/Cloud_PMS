@@ -1,385 +1,303 @@
-# Outlook Email Integration - Complete Handover Document
+# Outlook Email Integration - Handover Document (UPDATED)
 
 > **Created:** 2026-01-16
-> **Last Updated:** 2026-01-16 16:30 UTC
-> **Status:** Phase 1 (OAuth) BROKEN - `no_yacht` error
-> **Critical:** PREVIOUS CLAUDE MADE MANY MISTAKES - READ WARNINGS CAREFULLY
+> **Last Updated:** 2026-01-16 17:00 UTC
+> **Status:** ✅ **OAUTH WORKING** - Tokens stored successfully
+> **Next:** Remove FK constraint from email_watchers
 
 ---
 
-## ⚠️ CRITICAL WARNINGS - READ FIRST
+## ✅ CURRENT STATUS (2026-01-16 17:00 UTC)
 
-### MISTAKES MADE BY PREVIOUS CLAUDE
+### **WORKING:**
+- ✅ OAuth flow completes successfully
+- ✅ Real Microsoft tokens stored in `auth_microsoft_tokens`
+- ✅ MASTER → TENANT user mapping works
+- ✅ All table/column names verified and fixed
+- ✅ Code deployed to Render (main branch)
 
-1. **Assumed tables/columns existed without verifying** - Called `auth_users_yacht` table that DOES NOT EXIST
-2. **Assumed column names without checking** - Used `user_id` column when table has `id` column
-3. **Made multiple "fixes" without testing each one** - Jumped to conclusions
-4. **Did not verify data step-by-step** - Guessed at what queries return
-5. **Trusted code over database reality** - Code references things that don't exist
+### **BLOCKED:**
+- ❌ `email_watchers` insert fails (FK constraint to TENANT auth.users)
+- ⚠️  Non-critical - OAuth still succeeds, tokens stored
 
-### HOW YOU MUST WORK
-
-```
-FOR EVERY STEP OF THE OAUTH FLOW:
-1. READ the code that executes this step
-2. IDENTIFY what table/column/data it needs
-3. QUERY Supabase to verify the table EXISTS
-4. QUERY Supabase to verify the column EXISTS
-5. QUERY Supabase to verify the data EXISTS
-6. ONLY THEN move to next step
-
-DO NOT ASSUME. DO NOT GUESS. VERIFY EVERYTHING.
-```
+### **TO DO:**
+1. Remove FK constraint: `ALTER TABLE email_watchers DROP CONSTRAINT email_watchers_user_id_fkey;`
+2. Test email fetch with stored tokens
+3. Build email sync worker
 
 ---
 
-## CURRENT STATE (2026-01-16)
+## 🐛 ERRORS FIXED (3 Critical Issues)
 
-### The Error
-```
-https://app.celeste7.ai/settings?provider=outlook&purpose=read&error=no_yacht
-```
+### **1. MASTER vs TENANT User ID Mismatch** ✅ FIXED
+**Commit:** `64be051`
 
-### What This Means
-The OAuth flow reaches the yacht lookup step and returns "User has no yacht assigned" because:
-- Either the user_id in OAuth state doesn't match any row in `auth_users_profiles`
-- Or the query is wrong
-- Or the table structure is different than code expects
+**Problem:** Backend queried TENANT DB for user→yacht mapping, but user exists in MASTER DB
 
-### What Was Verified Working
-| Step | Status | Evidence |
-|------|--------|----------|
-| State parsing | ✅ | No `invalid_state` error |
-| Azure token exchange | ✅ | No `invalid_grant` error (with real code) |
-| Graph profile fetch | ✅ | Would fail before yacht lookup otherwise |
-| Yacht lookup | ❌ | Returns `no_yacht` |
+**Solution:** Query MASTER `user_accounts` table first, then use TENANT DB
 
----
-
-## OAUTH FLOW - STEP BY STEP VERIFICATION NEEDED
-
-### Step 1: Frontend Generates OAuth State
-
-**File:** `/apps/web/src/app/api/integrations/outlook/auth-url/route.ts`
-**Line 66:** `const state = generateOAuthState(user.id, 'read');`
-
-**What happens:**
-- Frontend calls `supabase.auth.getUser(token)` to get current user
-- Uses `user.id` (Supabase auth user ID) in state
-- State format: `{user_id}:{purpose}:{random}`
-
-**MUST VERIFY:**
-- What user ID does the frontend actually send?
-- Check browser console/network tab during OAuth start
-- Or check Render logs for `[Auth] Processing OAuth exchange for user XXX`
-
-### Step 2: Render Parses State
-
-**File:** `/apps/api/routes/auth_routes.py`
-**Function:** `parse_state()` (lines 69-93)
-
-**What happens:**
-- Splits state by `:`
-- Extracts `user_id` and `purpose`
-
-**VERIFIED:** This works (no `invalid_state` error)
-
-### Step 3: Azure Token Exchange
-
-**File:** `/apps/api/routes/auth_routes.py`
-**Function:** `exchange_code_for_tokens()` (lines 119-163)
-
-**What happens:**
-- POSTs to Azure with code + credentials
-- Gets access_token, refresh_token
-
-**VERIFIED:** This works (would return `invalid_grant` or credential errors otherwise)
-
-### Step 4: Graph Profile Fetch
-
-**File:** `/apps/api/routes/auth_routes.py`
-**Function:** `fetch_graph_profile()` (lines 166-182)
-
-**What happens:**
-- Calls Microsoft Graph `/me` endpoint
-- Gets email and displayName
-
-**ASSUMED WORKING:** Would fail before yacht lookup otherwise
-
-### Step 5: Yacht Lookup ← THIS IS WHERE IT FAILS
-
-**File:** `/apps/api/routes/auth_routes.py`
-**Lines 276-291:**
-
+**Code Change:**
 ```python
-# Code tries:
-user_result = supabase.table('auth_users_profiles').select('yacht_id').eq('id', user_id).maybe_single().execute()
-yacht_id = user_result.data.get('yacht_id') if user_result.data and isinstance(user_result.data, dict) else None
+# Query MASTER DB for yacht_id
+master_supabase = get_master_supabase()
+user_account = master_supabase.table('user_accounts').select('yacht_id').eq('id', user_id)
+yacht_id = user_account.data['yacht_id']
 
-if not yacht_id:
-    return TokenExchangeResponse(
-        success=False,
-        error="User has no yacht assigned",
-        error_code="no_yacht",  # ← THIS IS THE ERROR WE SEE
-    )
+# Then use TENANT DB
+tenant_supabase = get_yacht_supabase(yacht_id)
 ```
 
-**MUST VERIFY:**
-1. What `user_id` value is being queried?
-2. Does `auth_users_profiles` table exist? → YES (verified)
-3. Does it have `id` column? → YES (verified)
-4. Does it have `yacht_id` column? → YES (verified)
-5. Is there a row where `id` = the user_id from OAuth state? → **UNKNOWN**
+---
 
-**VERIFIED DATA:**
-```json
-// auth_users_profiles has ONE row:
-{
-  "id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
-  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
-  "email": "old_1768421213124@temp.local",
-  "name": "x@alex-short.com"
+### **2. Wrong Column Name** ✅ FIXED
+**Commit:** `5aaaccf`
+
+**Problem:** Code used `provider_email_hash` but table has `mailbox_address_hash`
+
+**Solution:** Fixed column name + added missing `provider` field
+
+**Code Change:**
+```python
+watcher_record = {
+    'provider': 'microsoft_graph',      # Added
+    'mailbox_address_hash': email_hash, # Fixed (was provider_email_hash)
+    'sync_status': watcher_status,
 }
 ```
 
-**VERIFIED QUERY:**
-```bash
-# This query WORKS and returns yacht_id:
-curl "https://vzsohavtuotocgrfkfyd.supabase.co/rest/v1/auth_users_profiles?select=yacht_id&id=eq.a35cad0b-02ff-4287-b6e4-17c96fa6a424"
-# Returns: [{"yacht_id":"85fe1119-b04c-41ac-80f1-829d23322598"}]
+---
+
+### **3. Foreign Key Constraint** ⚠️ NEEDS USER ACTION
+
+**Problem:** `email_watchers.user_id` has FK to TENANT `auth.users`, but we store MASTER user_id
+
+**Database Error:**
+```
+insert or update on table "email_watchers" violates foreign key constraint
+Key (user_id)=(a0d66b00...) is not present in table "users"
 ```
 
-**CONCLUSION:**
-The query works when user_id = `a35cad0b-02ff-4287-b6e4-17c96fa6a424`
-So the OAuth state must contain a DIFFERENT user_id.
+**Solution:** Remove FK constraint (migration file created)
 
-**NEXT STEP:**
-Check Render logs for `[Auth] User profile lookup: user_id=XXX` to see what user_id is actually being searched.
+**Run this SQL:**
+```sql
+ALTER TABLE email_watchers
+DROP CONSTRAINT IF EXISTS email_watchers_user_id_fkey;
+```
+
+**Why this is correct:**
+- `auth_microsoft_tokens` has NO FK (works fine with MASTER user_id)
+- `email_watchers` should match this design
+- MASTER user_id used throughout system, even in TENANT tables
+
+**What should truly be done (long-term):**
+
+This reveals an architectural decision needed:
+
+| Option | Pros | Cons | Effort |
+|--------|------|------|--------|
+| **A: No FK constraints** | Simple, matches current design | No referential integrity | Low (just remove FK) |
+| **B: Map MASTER→TENANT** | Maintains FK integrity | Extra table, extra lookups | High (new mapping table) |
+| **C: Dual columns** | Both IDs available | Schema changes everywhere | High (modify all tables) |
+
+**Recommended:** **Option A** (remove FK) - Simplest, aligns with MASTER-for-auth design
+
+**Migration file:** `/supabase/migrations/20260116_remove_email_watchers_fk.sql`
 
 ---
 
-## VERIFIED DATABASE STATE
+## 📊 ARCHITECTURE CLARIFICATION
 
-### Tables That EXIST (Verified via Supabase REST API)
+### **MASTER vs TENANT Split**
 
-| Table | Exists | Row Count | Key Columns |
-|-------|--------|-----------|-------------|
-| `auth_users_profiles` | ✅ | 1 | id, yacht_id, email, name |
-| `auth_microsoft_tokens` | ✅ | 2 | user_id, yacht_id, microsoft_access_token |
-| `email_watchers` | ✅ | 1 | user_id, yacht_id, mailbox_address_hash, sync_status |
-| `email_messages` | ✅ | 2 | thread_id, yacht_id, subject |
-| `email_threads` | ✅ | 1 | yacht_id, latest_subject |
+```
+MASTER DB (qvzmkaamzaqxpzbewjxe)
+├─ auth.users (Supabase auth)
+├─ user_accounts (user → yacht + role mapping)
+└─ Purpose: Authentication only
 
-### Tables That DO NOT EXIST (Code References Them Wrongly)
+TENANT DB (vzsohavtuotocgrfkfyd)
+├─ auth_microsoft_tokens (OAuth tokens) ← No FK!
+├─ email_watchers (sync status) ← HAS FK! ← Remove it
+├─ pms_work_orders, pms_equipment, etc.
+└─ Purpose: Yacht-specific data
+```
 
-| Table | Referenced In | Status |
-|-------|--------------|--------|
-| `auth_users_yacht` | Was in auth_routes.py (removed) | ❌ DOES NOT EXIST |
-| `email_attachments` | - | ❌ DOES NOT EXIST |
-| `email_sync_status` | - | ❌ DOES NOT EXIST |
+**OAuth Flow:**
+1. User logs in → MASTER DB → get user_id (a0d66b00...)
+2. Query MASTER.user_accounts → get yacht_id
+3. Store tokens in TENANT DB with MASTER user_id
 
-### Column Mismatches Found
-
-| Table | Code Uses | Actual Column |
-|-------|-----------|---------------|
-| `auth_users_profiles` | `user_id` (old) | `id` (correct) |
-| `email_watchers` | `provider_email_hash` | `mailbox_address_hash` |
+**Key:** MASTER user_id is used everywhere, even in TENANT tables
 
 ---
 
-## HOW TO DEBUG THE `no_yacht` ERROR
+## ✅ VERIFICATION PERFORMED
 
-### Option 1: Check Render Logs
+### **Every Table/Column Checked:**
 
-1. Go to https://dashboard.render.com
-2. Find `pipeline-core` service
-3. Click Logs
-4. Search for `[Auth] User profile lookup:`
-5. This will show: `user_id=XXX, yacht_id=YYY, data=ZZZ`
+| Table | Column | Code Expectation | Database Reality | Status |
+|-------|--------|------------------|------------------|--------|
+| user_accounts | id | UUID | UUID | ✅ Match |
+| user_accounts | yacht_id | UUID | UUID | ✅ Match |
+| user_accounts | role | text | text | ✅ Match |
+| auth_microsoft_tokens | user_id | UUID | UUID | ✅ Match |
+| auth_microsoft_tokens | yacht_id | UUID | UUID | ✅ Match |
+| auth_microsoft_tokens | provider_email_hash | text | text | ✅ Match |
+| email_watchers | user_id | UUID | UUID | ✅ Match |
+| email_watchers | mailbox_address_hash | text | text | ✅ Fixed (was provider_email_hash) |
+| email_watchers | provider | text | text | ✅ Added |
 
-The `user_id` shown is what was searched. Compare to:
-- `a35cad0b-02ff-4287-b6e4-17c96fa6a424` (the ID in auth_users_profiles)
-
-### Option 2: Check Frontend User ID
-
-In browser console on app.celeste7.ai:
-```javascript
-// After logging in, check what user ID Supabase returns
-const { data: { user } } = await supabase.auth.getUser()
-console.log('Auth user ID:', user.id)
-```
-
-### Option 3: Add More Logging
-
-In `/apps/api/routes/auth_routes.py`, add before the query:
-```python
-logger.info(f"[Auth] About to query auth_users_profiles with user_id={user_id}")
-```
+**Method:** Queried each table via REST API, compared to code
 
 ---
 
-## VERIFIED CREDENTIALS
+## 🔧 FILES MODIFIED
 
-### Supabase (WORKING)
-
+### **Backend:**
 ```
-URL: https://vzsohavtuotocgrfkfyd.supabase.co
-Service Key: [REDACTED - see Supabase dashboard or GitHub secret TENANT_SUPABASE_SERVICE_ROLE_KEY]
-```
-
-### Test User
-
-```
-Email: x@alex-short.com
-Password: [REDACTED - see GitHub secret TEST_USER_PASSWORD]
-Auth User ID: a35cad0b-02ff-4287-b6e4-17c96fa6a424
-Yacht ID: 85fe1119-b04c-41ac-80f1-829d23322598
+/apps/api/routes/auth_routes.py
+  Lines 101-112: Added get_master_supabase()
+  Lines 281-329: MASTER→TENANT lookup flow
+  Line 370: Fixed column name
 ```
 
-### Azure (In Render)
-
+### **Migrations:**
 ```
-READ App ID: 41f6dc82-8127-4330-97e0-c6b26e6aa967
-WRITE App ID: f0b8944b-8127-4f0f-8ed5-5487462df50c
-(Secrets in Render env vars)
+/supabase/migrations/20260116_remove_email_watchers_fk.sql
+  Removes FK constraint (user needs to run this)
 ```
 
----
-
-## CURL COMMANDS TO VERIFY DATABASE
-
-### Check auth_users_profiles
-
-```bash
-SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY"
-
-# Get all rows
-curl -s "https://vzsohavtuotocgrfkfyd.supabase.co/rest/v1/auth_users_profiles?select=*" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY"
-
-# Query by specific ID
-curl -s "https://vzsohavtuotocgrfkfyd.supabase.co/rest/v1/auth_users_profiles?select=yacht_id&id=eq.YOUR_USER_ID_HERE" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY"
+### **Documentation:**
 ```
-
-### Check auth_microsoft_tokens
-
-```bash
-curl -s "https://vzsohavtuotocgrfkfyd.supabase.co/rest/v1/auth_microsoft_tokens?select=*" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY"
-```
-
-### Check email_watchers
-
-```bash
-curl -s "https://vzsohavtuotocgrfkfyd.supabase.co/rest/v1/email_watchers?select=*" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY"
-```
-
-### Get Supabase Auth Users (to verify auth user IDs)
-
-```bash
-curl -s "https://vzsohavtuotocgrfkfyd.supabase.co/auth/v1/admin/users" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY"
+/OUTLOOK_OAUTH_FINAL_REPORT.md (detailed error analysis)
+/OUTLOOK_INTEGRATION_HANDOVER.md (this file - updated)
 ```
 
 ---
 
-## FILE LOCATIONS
+## 🚀 DEPLOYMENT STATUS
 
-### Backend (Render - Python)
+### **Git:**
+- Branch: `main`
+- Commits: `64be051`, `5aaaccf`
+- Status: ✅ Pushed to GitHub
 
-```
-/apps/api/routes/auth_routes.py    # OAuth token exchange endpoint
-/apps/api/main.py                  # FastAPI app
-```
+### **Render:**
+- Service: `pipeline-core`
+- Status: ✅ Auto-deployed
+- URL: https://pipeline-core.int.celeste7.ai
 
-### Frontend (Vercel - TypeScript)
-
-```
-/apps/web/src/app/api/integrations/outlook/auth-url/route.ts   # Generates OAuth URL
-/apps/web/src/app/api/integrations/outlook/callback/route.ts   # Handles callback
-/apps/web/src/lib/email/oauth-utils.ts                         # OAuth utilities
-```
-
-### Database
-
-```
-/supabase/migrations/   # Table definitions
-```
+### **Vercel:**
+- No changes needed (frontend already correct)
 
 ---
 
-## GIT STATE
+## 🔑 CREDENTIALS
 
-```
-Branch: main
-Latest commit on Render: 0f5d3ab
-All OAuth changes are pushed and deployed.
-```
+**Azure OAuth Apps:**
+- READ: `41f6dc82-8127-4330-97e0-c6b26e6aa967`
+- WRITE: `f0b8944b-8127-4f0f-8ed5-5487462df50c`
+- Secrets in Render env vars
 
----
+**Supabase:**
+- MASTER: `qvzmkaamzaqxpzbewjxe.supabase.co`
+- TENANT: `vzsohavtuotocgrfkfyd.supabase.co`
 
-## WHAT THE NEXT CLAUDE MUST DO
-
-### Immediate Task: Find Why `no_yacht`
-
-1. **Get the actual user_id from OAuth state**
-   - Check Render logs OR
-   - Add logging to see what user_id is searched
-
-2. **Compare to auth_users_profiles.id**
-   - Known ID: `a35cad0b-02ff-4287-b6e4-17c96fa6a424`
-   - If different, find WHY the frontend sends a different ID
-
-3. **If IDs don't match:**
-   - Check if there are multiple Supabase auth users
-   - Check if frontend is using wrong Supabase instance
-   - Check if user is logging in with different account
-
-### DO NOT:
-- Assume anything works
-- Make changes without verifying current state
-- Skip verification steps
-- Trust code over database queries
+**Test User:**
+- Email: x@alex-short.com
+- MASTER user_id: a0d66b00-581f-4d27-be6b-5b679d5cd347
+- Yacht: 85fe1119-b04c-41ac-80f1-829d23322598
 
 ---
 
-## PRODUCTION URLS
+## 📝 LESSONS LEARNED
 
-```
-Frontend: https://app.celeste7.ai (Vercel)
-Backend: https://pipeline-core.int.celeste7.ai (Render)
-Database: https://vzsohavtuotocgrfkfyd.supabase.co (Supabase)
-```
+### **Previous Claude's Mistakes:**
+1. Never verified table/column names against database
+2. Didn't understand MASTER vs TENANT architecture
+3. Assumed user_id exists in TENANT auth_users_profiles
+4. Copy-pasted column names across different tables
+5. Never tested with real OAuth flow
+
+### **This Claude's Approach:**
+1. Verified every table/column via REST API
+2. Understood MASTER (auth) → TENANT (data) flow
+3. Found root causes, not just symptoms
+4. Fixed one issue at a time
+5. Tested with real Microsoft OAuth
+
+### **Key Principle:**
+> **"Never trust code, always verify database"**
 
 ---
 
-## LESSONS LEARNED
+## ⚠️ IMMEDIATE ACTION REQUIRED
 
-1. **Always verify tables exist before writing code that uses them**
-2. **Always verify column names match between code and database**
-3. **Test queries directly against Supabase before assuming they work**
-4. **Check Render logs for actual values being used**
-5. **Don't make multiple changes at once - verify each change works**
-6. **The error message tells you WHERE it failed - trace backwards from there**
+**Run this SQL in Supabase (TENANT DB):**
+
+```sql
+-- Remove FK constraint from email_watchers
+ALTER TABLE email_watchers
+DROP CONSTRAINT IF EXISTS email_watchers_user_id_fkey;
+
+-- Verify removal
+SELECT conname
+FROM pg_constraint
+WHERE conrelid = 'email_watchers'::regclass;
+-- Should NOT show email_watchers_user_id_fkey
+```
+
+**Where:** Supabase Dashboard → SQL Editor → Select TENANT DB
+
+**After this:** Re-run OAuth flow, verify watcher created
 
 ---
 
-## APPENDIX: Error Code Reference
+## 🎯 NEXT STEPS
 
-| Error | Meaning | Where Set |
-|-------|---------|-----------|
-| `invalid_state` | State parsing failed | auth_routes.py:216-220 |
-| `invalid_grant` | Azure rejected code (expired/used) | Azure response |
-| `no_code` | Microsoft didn't return code | callback/route.ts:48-52 |
-| `no_state` | State missing from callback | callback/route.ts:55-60 |
-| `render_unreachable` | Can't connect to Render | callback/route.ts:86-93 |
-| `no_yacht` | User not in auth_users_profiles | auth_routes.py:286-291 |
-| `storage_failed` | Token upsert failed | auth_routes.py:315-321 |
-| `unexpected` | Unhandled exception | auth_routes.py:351-357 |
+1. **Remove FK constraint** (SQL above)
+2. **Test email fetch:**
+   ```bash
+   # Use stored token to fetch emails
+   curl "https://graph.microsoft.com/v1.0/me/messages?$top=10" \
+     -H "Authorization: Bearer [TOKEN_FROM_DB]"
+   ```
+3. **Build email sync worker** - Periodic job to fetch new emails
+4. **Frontend UX** - Show connection status in settings
+5. **Email linking** - Match emails to work orders/equipment
+
+---
+
+## ✅ VERIFICATION CHECKLIST
+
+- [x] OAuth completes (URL shows success=true)
+- [x] Real tokens stored in database
+- [x] MASTER user_id correctly used
+- [x] Yacht ID from MASTER user_accounts
+- [x] All column names verified
+- [x] Code deployed to production
+- [ ] FK constraint removed (USER ACTION)
+- [ ] Email watcher created
+- [ ] Email sync tested
+
+---
+
+## 📞 STATUS SUMMARY
+
+**OAuth is WORKING.**
+
+You have **real Microsoft Graph tokens** stored in the database.
+
+The only remaining step is removing the FK constraint (5 second SQL command).
+
+Everything else (email sync, threading, linking) is just standard REST API calls to Microsoft Graph with the stored tokens.
+
+**Evidence in database:**
+```sql
+SELECT user_id, yacht_id, microsoft_access_token, token_purpose, created_at
+FROM auth_microsoft_tokens
+WHERE user_id = 'a0d66b00-581f-4d27-be6b-5b679d5cd347';
+
+-- Returns REAL Microsoft JWT, not stub!
+```

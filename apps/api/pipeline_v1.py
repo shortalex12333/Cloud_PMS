@@ -322,6 +322,10 @@ class Pipeline:
             'component': 'COMPONENT_NAME',
             'component_name': 'COMPONENT_NAME',
             'subcomponent': 'PART_NAME',  # Subcomponents are searchable as parts
+            # Email types
+            'email_search': 'EMAIL_SEARCH',
+            'email': 'EMAIL_SEARCH',
+            'email_subject': 'EMAIL_SUBJECT',
             # Other
             'date': 'DATE',
             'date_range': 'DATE_RANGE',
@@ -621,7 +625,8 @@ class Pipeline:
             'equipment_by_name_or_model': 'equipment',
             'work_order_by_id': 'work_orders',
             'documents_search': 'documents',
-            'graph_node_search': 'systems'
+            'graph_node_search': 'systems',
+            'email_threads_search': 'emails'
         }
 
         grouped = defaultdict(lambda: {

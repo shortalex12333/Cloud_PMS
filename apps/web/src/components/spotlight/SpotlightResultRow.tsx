@@ -10,7 +10,7 @@
 import React from 'react';
 import {
   AlertTriangle, Wrench, Cog, Package, FileText,
-  ClipboardList, Ship, Sparkles, Users, Clock, DollarSign
+  ClipboardList, Ship, Sparkles, Users, Clock, DollarSign, Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -59,6 +59,9 @@ const TYPE_CONFIG: Record<string, { icon: React.ElementType; bg: string }> = {
   // Time-sensitive: restricted orange/yellow
   handover: { icon: Users, bg: '#FF9500' },
   purchase: { icon: DollarSign, bg: '#FF9500' },
+
+  // Email: purple (evidence/communication)
+  email_thread: { icon: Mail, bg: '#AF52DE' },
 
   // Predictive/AI: celeste blue-soft
   worklist: { icon: ClipboardList, bg: '#BADDE9' },

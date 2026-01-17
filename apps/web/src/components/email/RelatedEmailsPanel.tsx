@@ -30,6 +30,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [selectedThreadForLinking, setSelectedThreadForLinking] = useState<{id: string; subject: string} | null>(null);
 
   const { enabled: featureEnabled } = useEmailFeatureEnabled();
   const { data: watcherStatus } = useWatcherStatus();
@@ -164,13 +165,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
               <p className="text-[13px] text-zinc-500 mb-3">
                 No related email threads yet.
               </p>
-              <button
-                onClick={() => setIsLinkModalOpen(true)}
+              <a
+                href="/email/inbox"
                 className="inline-flex items-center gap-1.5 text-[13px] text-blue-500 hover:text-blue-600"
               >
                 <Link2 className="h-3.5 w-3.5" />
-                Link an email thread
-              </button>
+                Link emails from Inbox
+              </a>
             </div>
           )}
 
@@ -192,13 +193,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
 
               {/* Link More CTA */}
               <div className="p-2">
-                <button
-                  onClick={() => setIsLinkModalOpen(true)}
+                <a
+                  href="/email/inbox"
                   className="w-full flex items-center justify-center gap-1.5 p-2 text-[13px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors"
                 >
                   <Link2 className="h-3.5 w-3.5" />
-                  Link another thread
-                </button>
+                  Link more from Inbox
+                </a>
               </div>
             </div>
           )}
@@ -215,13 +216,17 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
         </div>
       )}
 
-      {/* Link Modal */}
-      <LinkEmailModal
-        open={isLinkModalOpen}
-        onOpenChange={setIsLinkModalOpen}
-        objectType={objectType}
-        objectId={objectId}
-      />
+      {/* Link Modal - Note: This modal now expects a threadId.
+          For "link another thread", users should use the Email Inbox view
+          where they can select an unlinked thread and link it. */}
+      {selectedThreadForLinking && (
+        <LinkEmailModal
+          open={isLinkModalOpen}
+          onOpenChange={setIsLinkModalOpen}
+          threadId={selectedThreadForLinking.id}
+          threadSubject={selectedThreadForLinking.subject}
+        />
+      )}
     </div>
   );
 }
@@ -275,6 +280,8 @@ function ThreadItem({ thread, isSelected, onClick, objectType, objectId }: Threa
         <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
           <EmailLinkActions
             linkId={thread.link_id}
+            threadId={thread.id}
+            threadSubject={thread.latest_subject || undefined}
             confidence={thread.confidence}
             objectType={objectType}
             objectId={objectId}

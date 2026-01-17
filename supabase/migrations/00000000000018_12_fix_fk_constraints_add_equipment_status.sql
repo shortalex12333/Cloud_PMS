@@ -4,9 +4,20 @@
 --          and add status column to pms_equipment
 -- ================================================================================
 
--- 1. Add status column to pms_equipment if it doesn't exist
+-- 1. Add status column to pms_equipment if table and column don't exist
 DO $$
 BEGIN
+    -- First check if the table exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'pms_equipment'
+    ) THEN
+        RAISE NOTICE 'pms_equipment table does not exist - skipping status column addition';
+        RETURN;
+    END IF;
+
+    -- Table exists, now check if column exists
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public'
@@ -82,9 +93,21 @@ EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'Error updating pms_work_order_notes FK: %', SQLERRM;
 END $$;
 
--- 4. Create index on pms_equipment.status for query performance
-CREATE INDEX IF NOT EXISTS idx_pms_equipment_status
-ON public.pms_equipment(yacht_id, status)
-WHERE status IS NOT NULL;
+-- 4. Create index on pms_equipment.status for query performance (if table exists)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'pms_equipment'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_pms_equipment_status
+        ON public.pms_equipment(yacht_id, status)
+        WHERE status IS NOT NULL;
 
-COMMENT ON INDEX idx_pms_equipment_status IS 'Index for equipment status queries';
+        COMMENT ON INDEX idx_pms_equipment_status IS 'Index for equipment status queries';
+        RAISE NOTICE 'Created idx_pms_equipment_status index';
+    ELSE
+        RAISE NOTICE 'pms_equipment table does not exist - skipping index creation';
+    END IF;
+END $$;

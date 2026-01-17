@@ -306,6 +306,131 @@ export function useRemoveLink() {
   });
 }
 
+/**
+ * Create a new email-object link
+ */
+export function useCreateLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ threadId, objectType, objectId }: {
+      threadId: string;
+      objectType: string;
+      objectId: string;
+    }) => {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE}/email/link/create`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          thread_id: threadId,
+          object_type: objectType,
+          object_id: objectId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(error.detail || 'Failed to create link');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email', 'related'] });
+      queryClient.invalidateQueries({ queryKey: ['email', 'inbox'] });
+    },
+  });
+}
+
+// ============================================================================
+// INBOX THREADS HOOK
+// ============================================================================
+
+export type InboxResponse = {
+  threads: EmailThread[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+};
+
+/**
+ * Fetch inbox threads (optionally unlinked only)
+ */
+export function useInboxThreads(page: number = 1, linked: boolean = false, searchQuery: string = '') {
+  return useQuery<InboxResponse>({
+    queryKey: ['email', 'inbox', page, linked, searchQuery],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams({
+        page: String(page),
+        linked: String(linked),
+      });
+      if (searchQuery && searchQuery.length >= 2) {
+        params.set('q', searchQuery);
+      }
+      const response = await fetch(
+        `${API_BASE}/email/inbox?${params.toString()}`,
+        { headers }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(error.detail || 'Failed to fetch inbox');
+      }
+
+      return response.json();
+    },
+    staleTime: 30000,
+    retry: 1,
+  });
+}
+
+// ============================================================================
+// OBJECT SEARCH HOOK
+// ============================================================================
+
+export type SearchResult = {
+  type: string;
+  id: string;
+  label: string;
+  status?: string;
+};
+
+export type SearchResponse = {
+  results: SearchResult[];
+};
+
+/**
+ * Search for linkable objects (work orders, equipment, parts, etc.)
+ */
+export function useObjectSearch(
+  query: string,
+  types: string[] = ['work_order', 'equipment', 'part']
+) {
+  return useQuery<SearchResponse>({
+    queryKey: ['email', 'search-objects', query, types],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const response = await fetch(
+        `${API_BASE}/email/search-objects?q=${encodeURIComponent(query)}&types=${types.join(',')}`,
+        { headers }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(error.detail || 'Search failed');
+      }
+
+      return response.json();
+    },
+    enabled: query.length >= 2,
+    staleTime: 10000,
+    retry: 1,
+  });
+}
+
 // ============================================================================
 // FEATURE FLAG CHECK
 // ============================================================================

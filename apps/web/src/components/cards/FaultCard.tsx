@@ -20,6 +20,7 @@ import { SuggestPartsModal } from '@/components/modals/SuggestPartsModal';
 import { AddNoteModal } from '@/components/modals/AddNoteModal';
 import { AddPhotoModal } from '@/components/modals/AddPhotoModal';
 import { ActionButton } from '@/components/actions/ActionButton';
+import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
 import { shouldShowAction, shouldAutoRun } from '@/lib/microactions/triggers';
 import type { TriggerContext } from '@/lib/microactions/types';
@@ -280,6 +281,13 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
             </div>
+
+            {/* Related Emails - Evidence panel */}
+            <RelatedEmailsPanel
+              objectType="fault"
+              objectId={fault.id}
+              className="mt-4"
+            />
           </div>
         </div>
       </div>

@@ -23,6 +23,7 @@
 import React, { useEffect } from 'react';
 import type { SituationContext, EntityType } from '@/types/situation';
 import DocumentViewer from './DocumentSituationView';
+import EmailSituationView from './EmailSituationView';
 import { NavigationProvider, useNavigationContext } from '@/contexts/NavigationContext';
 import { ViewerHeader } from '@/components/context-nav/ViewerHeader';
 import { RelatedPanel } from '@/components/context-nav/RelatedPanel';
@@ -164,6 +165,15 @@ function renderViewer(
       // TODO: Implement FaultSituationView
       console.log('[SituationRouter] Fault viewer not yet implemented');
       return null;
+
+    case 'email_thread':
+      return (
+        <EmailSituationView
+          situation={situation}
+          onClose={onClose}
+          onAction={onAction}
+        />
+      );
 
     default:
       console.warn('[SituationRouter] Unknown entity type:', situation.primary_entity_type);
