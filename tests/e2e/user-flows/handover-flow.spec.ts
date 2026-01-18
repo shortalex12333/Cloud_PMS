@@ -37,8 +37,8 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
     }
   });
 
-  test.beforeEach(async ({ page }) => {
-    apiClient = new ApiClient(page, 'handover-flow');
+  test.beforeEach(async () => {
+    apiClient = new ApiClient();
   });
 
   test('Step 1: Add item to handover', async ({ page }) => {
@@ -52,11 +52,10 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
       priority: 'normal',
     });
 
-    await saveResponse('handover-flow/step1', 'add_to_handover_response.json', response);
+    saveResponse('handover-flow/step1', response);
 
     if (response.status === 200 || response.status === 201) {
-      const body = await response.json();
-      testHandoverId = body.handover_id || body.id || testHandoverId;
+      testHandoverId = response.data.handover_id || response.data.id || testHandoverId;
     }
 
     await createEvidenceBundle('handover-flow/step1', {
@@ -80,7 +79,7 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
       content: 'E2E test - updated engineering section with additional notes',
     });
 
-    await saveResponse('handover-flow/step2', 'edit_handover_section_response.json', response);
+    saveResponse('handover-flow/step2', response);
     await createEvidenceBundle('handover-flow/step2', {
       test: 'edit_handover_section',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',
@@ -100,7 +99,7 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
       handover_id: testHandoverId,
     });
 
-    await saveResponse('handover-flow/step3', 'regenerate_handover_summary_response.json', response);
+    saveResponse('handover-flow/step3', response);
     await createEvidenceBundle('handover-flow/step3', {
       test: 'regenerate_handover_summary',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',
@@ -121,7 +120,7 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
       format: 'pdf',
     });
 
-    await saveResponse('handover-flow/step4', 'export_handover_response.json', response);
+    saveResponse('handover-flow/step4', response);
     await createEvidenceBundle('handover-flow/step4', {
       test: 'export_handover',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',

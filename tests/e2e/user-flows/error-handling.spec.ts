@@ -27,8 +27,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
     supabase = getTenantClient();
   });
 
-  test.beforeEach(async ({ page }) => {
-    apiClient = new ApiClient(page, 'error-handling');
+  test.beforeEach(async () => {
+    apiClient = new ApiClient();
   });
 
   // =========================================================================
@@ -45,8 +45,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       description: 'Test without title',
     });
 
-    await saveResponse('error-handling/validation', 'missing_field_response.json', response);
-    await createEvidenceBundle('error-handling/validation/missing_field', {
+    saveResponse('error-handling/validation-missing', response);
+    createEvidenceBundle('error-handling/validation/missing_field', {
       test: 'missing_required_field',
       expected_status: 400,
       actual_status: response.status,
@@ -65,8 +65,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       work_order_id: 'not-a-valid-uuid',
     });
 
-    await saveResponse('error-handling/validation', 'invalid_uuid_response.json', response);
-    await createEvidenceBundle('error-handling/validation/invalid_uuid', {
+    saveResponse('error-handling/validation-uuid', response);
+    createEvidenceBundle('error-handling/validation/invalid_uuid', {
       test: 'invalid_uuid_format',
       expected_status: [400, 404],
       actual_status: response.status,
@@ -86,8 +86,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       description: 'Test with empty title',
     });
 
-    await saveResponse('error-handling/validation', 'empty_string_response.json', response);
-    await createEvidenceBundle('error-handling/validation/empty_string', {
+    saveResponse('error-handling/validation-empty', response);
+    createEvidenceBundle('error-handling/validation/empty_string', {
       test: 'empty_string_value',
       expected_status: 400,
       actual_status: response.status,
@@ -109,8 +109,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       equipment_id: '00000000-0000-0000-0000-000000000000',
     });
 
-    await saveResponse('error-handling/permission', 'role_denied_response.json', response);
-    await createEvidenceBundle('error-handling/permission/role_denied', {
+    saveResponse('error-handling/permission-role', response);
+    createEvidenceBundle('error-handling/permission/role_denied', {
       test: 'role_access_denied',
       expected_status: [403, 404],
       actual_status: response.status,
@@ -129,8 +129,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       yacht_id: OTHER_YACHT_ID,
     });
 
-    await saveResponse('error-handling/permission', 'cross_yacht_response.json', response);
-    await createEvidenceBundle('error-handling/permission/cross_yacht', {
+    saveResponse('error-handling/permission-cross-yacht', response);
+    createEvidenceBundle('error-handling/permission/cross_yacht', {
       test: 'cross_yacht_access',
       expected_status: [403, 404],
       actual_status: response.status,
@@ -153,8 +153,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       work_order_id: '00000000-0000-0000-0000-999999999999',
     });
 
-    await saveResponse('error-handling/not-found', 'non_existent_response.json', response);
-    await createEvidenceBundle('error-handling/not-found/non_existent', {
+    saveResponse('error-handling/not-found', response);
+    createEvidenceBundle('error-handling/not-found/non_existent', {
       test: 'non_existent_entity',
       expected_status: 404,
       actual_status: response.status,
@@ -175,8 +175,8 @@ test.describe('ERROR HANDLING: Error Scenario Tests', () => {
       title: 'Test without auth',
     });
 
-    await saveResponse('error-handling/auth', 'no_auth_response.json', response);
-    await createEvidenceBundle('error-handling/auth/no_token', {
+    saveResponse('error-handling/no-auth', response);
+    createEvidenceBundle('error-handling/auth/no_token', {
       test: 'no_auth_token',
       expected_status: 401,
       actual_status: response.status,

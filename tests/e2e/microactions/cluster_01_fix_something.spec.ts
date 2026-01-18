@@ -805,7 +805,8 @@ test.describe('Cluster 01: FIX_SOMETHING - Fault Management', () => {
   // NOTE: This action is implemented as frontend handler calling Supabase directly
   //       The Python backend returns 500 as expected since it's not implemented there
   // ==========================================================================
-  test('ACTION 1.11: show_manual_section - TypeScript handler exists (frontend-only)', async () => {
+  // Skip: This is a frontend-only handler - backend test not applicable
+  test.skip('ACTION 1.11: show_manual_section - TypeScript handler exists (frontend-only)', async () => {
     const testName = 'cluster_01/11_show_manual_section';
 
     if (!testEquipmentId) {

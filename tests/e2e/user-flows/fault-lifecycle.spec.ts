@@ -34,8 +34,8 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
     supabase = getTenantClient();
   });
 
-  test.beforeEach(async ({ page }) => {
-    apiClient = new ApiClient(page, 'fault-lifecycle');
+  test.beforeEach(async () => {
+    apiClient = new ApiClient();
   });
 
   test.afterAll(async () => {
@@ -76,12 +76,11 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
     });
 
     // Save evidence
-    await saveResponse('fault-lifecycle/step1', 'report_fault_response.json', response);
+    saveResponse('fault-lifecycle/step1', response);
 
     // Verify fault was created
     if (response.status === 200 || response.status === 201) {
-      const body = await response.json();
-      testFaultId = body.fault_id || body.id;
+      testFaultId = response.data.fault_id || response.data.id;
       expect(testFaultId).toBeTruthy();
 
       await createEvidenceBundle('fault-lifecycle/step1', {
@@ -137,7 +136,7 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
       recommended_action: 'create_work_order',
     });
 
-    await saveResponse('fault-lifecycle/step2', 'diagnose_fault_response.json', response);
+    saveResponse('fault-lifecycle/step2', response);
 
     // Document result
     await createEvidenceBundle('fault-lifecycle/step2', {
@@ -172,11 +171,10 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
       type: 'corrective',
     });
 
-    await saveResponse('fault-lifecycle/step3', 'create_work_order_response.json', response);
+    saveResponse('fault-lifecycle/step3', response);
 
     if (response.status === 200 || response.status === 201) {
-      const body = await response.json();
-      testWorkOrderId = body.work_order_id || body.id;
+      testWorkOrderId = response.data.work_order_id || response.data.id;
     }
 
     await createEvidenceBundle('fault-lifecycle/step3', {
@@ -219,7 +217,7 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
       work_order_id: testWorkOrderId,
     });
 
-    await saveResponse('fault-lifecycle/step4', 'start_work_order_response.json', response);
+    saveResponse('fault-lifecycle/step4', response);
 
     await createEvidenceBundle('fault-lifecycle/step4', {
       test: 'start_work_order',
@@ -249,7 +247,7 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
       hours_worked: 2,
     });
 
-    await saveResponse('fault-lifecycle/step5', 'complete_work_order_response.json', response);
+    saveResponse('fault-lifecycle/step5', response);
 
     await createEvidenceBundle('fault-lifecycle/step5', {
       test: 'complete_work_order',
@@ -278,7 +276,7 @@ test.describe('FAULT LIFECYCLE: Complete User Journey', () => {
       resolution: 'Fault resolved through work order completion - E2E test',
     });
 
-    await saveResponse('fault-lifecycle/step6', 'close_fault_response.json', response);
+    saveResponse('fault-lifecycle/step6', response);
 
     await createEvidenceBundle('fault-lifecycle/step6', {
       test: 'close_fault',

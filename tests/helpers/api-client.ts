@@ -41,6 +41,16 @@ export class ApiClient {
   }
 
   /**
+   * Authenticate with email and password
+   */
+  async authenticate(email: string, password: string): Promise<string> {
+    const { login } = await import('./auth');
+    const { accessToken } = await login(email, password);
+    this.accessToken = accessToken;
+    return accessToken;
+  }
+
+  /**
    * Get access token (from cache or fresh login)
    */
   async ensureAuth(): Promise<string> {
@@ -179,6 +189,30 @@ export class ApiClient {
     expires_at: string;
   }>> {
     return this.post(`/v1/documents/${docId}/sign`);
+  }
+
+  /**
+   * Execute microaction without authentication (for testing auth errors)
+   */
+  async executeActionWithoutAuth(
+    actionName: string,
+    payload: Record<string, any>,
+    context?: Record<string, any>
+  ): Promise<ApiResponse<{
+    success: boolean;
+    status?: string;
+    result?: any;
+    [key: string]: any;
+  }>> {
+    const yacht_id = payload.yacht_id || process.env.TEST_USER_YACHT_ID;
+    return this.request('POST', '/v1/actions/execute', {
+      action: actionName,
+      context: {
+        yacht_id,
+        ...context,
+      },
+      payload,
+    }, { skipAuth: true });
   }
 }
 

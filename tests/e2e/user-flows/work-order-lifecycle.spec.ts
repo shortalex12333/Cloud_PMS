@@ -43,8 +43,8 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
     }
   });
 
-  test.beforeEach(async ({ page }) => {
-    apiClient = new ApiClient(page, 'work-order-lifecycle');
+  test.beforeEach(async () => {
+    apiClient = new ApiClient();
   });
 
   test.afterAll(async () => {
@@ -79,11 +79,10 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
       estimated_hours: 4,
     });
 
-    await saveResponse('work-order-lifecycle/step1', 'create_work_order_response.json', response);
+    saveResponse('work-order-lifecycle/step1', response);
 
     if (response.status === 200 || response.status === 201) {
-      const body = await response.json();
-      testWorkOrderId = body.work_order_id || body.id;
+      testWorkOrderId = response.data.work_order_id || response.data.id;
     }
 
     await createEvidenceBundle('work-order-lifecycle/step1', {
@@ -132,7 +131,7 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
       quantity: 2,
     });
 
-    await saveResponse('work-order-lifecycle/step2', 'add_wo_part_response.json', response);
+    saveResponse('work-order-lifecycle/step2', response);
 
     await createEvidenceBundle('work-order-lifecycle/step2', {
       test: 'add_wo_part',
@@ -170,7 +169,7 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
       assignee_id: assignee?.user_id || user.userId,
     });
 
-    await saveResponse('work-order-lifecycle/step3', 'assign_work_order_response.json', response);
+    saveResponse('work-order-lifecycle/step3', response);
 
     await createEvidenceBundle('work-order-lifecycle/step3', {
       test: 'assign_work_order',
@@ -198,7 +197,7 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
       work_order_id: testWorkOrderId,
     });
 
-    await saveResponse('work-order-lifecycle/step4', 'start_work_order_response.json', response);
+    saveResponse('work-order-lifecycle/step4', response);
 
     await createEvidenceBundle('work-order-lifecycle/step4', {
       test: 'start_work_order',
@@ -229,7 +228,7 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
       notes: 'E2E test - logged 2.5 hours of work',
     });
 
-    await saveResponse('work-order-lifecycle/step5', 'log_hours_worked_response.json', response);
+    saveResponse('work-order-lifecycle/step5', response);
 
     await createEvidenceBundle('work-order-lifecycle/step5', {
       test: 'log_hours_worked',
@@ -259,7 +258,7 @@ test.describe('WORK ORDER LIFECYCLE: Complete User Journey', () => {
       hours_worked: 4,
     });
 
-    await saveResponse('work-order-lifecycle/step6', 'complete_work_order_response.json', response);
+    saveResponse('work-order-lifecycle/step6', response);
 
     await createEvidenceBundle('work-order-lifecycle/step6', {
       test: 'complete_work_order',
