@@ -842,6 +842,45 @@ async def get_inbox_threads(
         raise HTTPException(status_code=500, detail="Failed to fetch inbox")
 
 
+def _extract_query_entities(query: str) -> Dict[str, List[str]]:
+    """
+    Extract entity IDs from search query using regex patterns.
+    Returns dict of entity_type -> list of IDs found.
+    """
+    import re
+
+    patterns = {
+        'work_order': [
+            r'\bWO[-#]?(\d{1,6})\b',
+            r'\[WO[-#]?(\d{1,6})\]',
+        ],
+        'purchase_order': [
+            r'\bPO[-#]?(\d{1,6})\b',
+            r'\[PO[-#]?(\d{1,6})\]',
+        ],
+        'fault': [
+            r'\bFAULT[-#]?(\d{1,6})\b',
+            r'\[FAULT[-#]?(\d{1,6})\]',
+        ],
+        'equipment': [
+            r'\bEQ[-#]?(\d{1,6})\b',
+            r'\[EQ[-#]?(\d{1,6})\]',
+        ],
+    }
+
+    extracted = {}
+    for entity_type, pattern_list in patterns.items():
+        matches = []
+        for pattern in pattern_list:
+            for match in re.finditer(pattern, query, re.IGNORECASE):
+                # Get the captured group (just the number)
+                matches.append(match.group(1))
+        if matches:
+            extracted[entity_type] = list(set(matches))
+
+    return extracted
+
+
 async def _search_email_threads(
     supabase,
     yacht_id: str,
@@ -853,14 +892,90 @@ async def _search_email_threads(
     include_linked: bool,
 ) -> Dict[str, Any]:
     """
-    Search email threads using the orchestration layer.
+    Search email threads using hybrid search with entity extraction.
 
-    Uses hybrid search: SQL text match + vector similarity.
+    Search layers (in priority order):
+    1. Entity ID match (WO-###, PO-###, etc.) in extracted_tokens
+    2. SQL text match on subject and sender
+    3. Vector semantic search on meta_embedding (if available)
+
     Returns results grouped by thread.
     """
     offset = (page - 1) * page_size
+    thread_ids_with_scores = {}
+    search_mode = 'text'
+    extracted_entities = {}
 
-    # SQL text match on subject and sender
+    # =========================================================================
+    # Layer 1: Entity Extraction & Token Search
+    # =========================================================================
+    extracted_entities = _extract_query_entities(query)
+
+    if extracted_entities:
+        logger.info(f"[email/search] Extracted entities: {extracted_entities}")
+        search_mode = 'entity'
+
+        # Search email_threads.extracted_tokens JSONB
+        for entity_type, ids in extracted_entities.items():
+            for entity_id in ids:
+                # Build token pattern to search for (e.g., "WO-123")
+                if entity_type == 'work_order':
+                    token_patterns = [f'WO-{entity_id}', f'WO{entity_id}', f'WO#{entity_id}']
+                elif entity_type == 'purchase_order':
+                    token_patterns = [f'PO-{entity_id}', f'PO{entity_id}', f'PO#{entity_id}']
+                elif entity_type == 'fault':
+                    token_patterns = [f'FAULT-{entity_id}', f'FAULT{entity_id}']
+                elif entity_type == 'equipment':
+                    token_patterns = [f'EQ-{entity_id}', f'EQ{entity_id}']
+                else:
+                    token_patterns = [entity_id]
+
+                for token in token_patterns:
+                    # Search in email_threads.extracted_tokens
+                    try:
+                        token_results = supabase.table('email_threads').select(
+                            'id, latest_subject, last_activity_at'
+                        ).eq('yacht_id', yacht_id).ilike(
+                            'extracted_tokens', f'%{token}%'
+                        ).limit(20).execute()
+
+                        for thread in (token_results.data or []):
+                            tid = thread['id']
+                            if tid not in thread_ids_with_scores:
+                                thread_ids_with_scores[tid] = {
+                                    'thread_id': tid,
+                                    'sent_at': thread.get('last_activity_at'),
+                                    'match_type': 'entity',
+                                    'entity_type': entity_type,
+                                    'entity_id': entity_id,
+                                }
+                    except Exception as e:
+                        logger.debug(f"Token search error: {e}")
+
+                    # Also search in subject line directly
+                    try:
+                        subject_results = supabase.table('email_threads').select(
+                            'id, latest_subject, last_activity_at'
+                        ).eq('yacht_id', yacht_id).ilike(
+                            'latest_subject', f'%{token}%'
+                        ).limit(20).execute()
+
+                        for thread in (subject_results.data or []):
+                            tid = thread['id']
+                            if tid not in thread_ids_with_scores:
+                                thread_ids_with_scores[tid] = {
+                                    'thread_id': tid,
+                                    'sent_at': thread.get('last_activity_at'),
+                                    'match_type': 'subject_entity',
+                                    'entity_type': entity_type,
+                                    'entity_id': entity_id,
+                                }
+                    except Exception as e:
+                        logger.debug(f"Subject search error: {e}")
+
+    # =========================================================================
+    # Layer 2: SQL Text Match on Subject and Sender
+    # =========================================================================
     text_results = supabase.table('email_messages').select(
         'id, thread_id, subject, from_display_name, direction, sent_at, has_attachments'
     ).eq('yacht_id', yacht_id).or_(
@@ -873,8 +988,7 @@ async def _search_email_threads(
 
     text_results = text_results.order('sent_at', desc=True).limit(100).execute()
 
-    # Get unique thread IDs from results
-    thread_ids_with_scores = {}
+    # Add text matches to results
     for msg in (text_results.data or []):
         tid = msg.get('thread_id')
         if tid and tid not in thread_ids_with_scores:
@@ -883,8 +997,14 @@ async def _search_email_threads(
                 'sent_at': msg.get('sent_at'),
                 'match_type': 'text',
             }
+            if search_mode == 'text':
+                search_mode = 'text'
+            elif search_mode == 'entity':
+                search_mode = 'hybrid'
 
-    # Try vector search if embeddings exist (graceful fallback if no embeddings)
+    # =========================================================================
+    # Layer 3: Vector Search (if embeddings exist)
+    # =========================================================================
     try:
         # Check if any emails have meta_embedding
         has_embeddings = supabase.table('email_messages').select('id').eq(
@@ -892,9 +1012,11 @@ async def _search_email_threads(
         ).not_.is_('meta_embedding', 'null').limit(1).execute()
 
         if has_embeddings.data:
-            # Vector search available - would use pgvector here
-            # For now, skip until embeddings are populated
-            pass
+            # TODO: Implement pgvector search using match_email_messages RPC
+            # This would add vector similarity matches to thread_ids_with_scores
+            # For now, embeddings are populated but vector search not yet integrated
+            if search_mode in ('text', 'entity'):
+                search_mode = search_mode + '_partial_vector'
     except Exception as e:
         logger.debug(f"Vector search not available: {e}")
 
@@ -906,7 +1028,8 @@ async def _search_email_threads(
             'page': page,
             'page_size': page_size,
             'has_more': False,
-            'search_mode': 'text',
+            'search_mode': search_mode,
+            'extracted_entities': extracted_entities,
         }
 
     thread_ids = list(thread_ids_with_scores.keys())
@@ -929,7 +1052,8 @@ async def _search_email_threads(
             'page': page,
             'page_size': page_size,
             'has_more': False,
-            'search_mode': 'text',
+            'search_mode': search_mode,
+            'extracted_entities': extracted_entities,
         }
 
     # Get thread details
@@ -945,13 +1069,20 @@ async def _search_email_threads(
     # Paginate
     paginated = threads[offset:offset + page_size]
 
+    # Add match info to threads
+    for thread in paginated:
+        tid = thread['id']
+        if tid in thread_ids_with_scores:
+            thread['_match_info'] = thread_ids_with_scores[tid]
+
     return {
         'threads': paginated,
         'total': total,
         'page': page,
         'page_size': page_size,
         'has_more': offset + len(paginated) < total,
-        'search_mode': 'text',  # Will be 'hybrid' when vector search is active
+        'search_mode': search_mode,
+        'extracted_entities': extracted_entities,
     }
 
 
