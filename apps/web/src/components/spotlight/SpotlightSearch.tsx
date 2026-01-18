@@ -60,6 +60,7 @@ interface SpotlightSearchProps {
   onClose?: () => void;
   isModal?: boolean;
   className?: string;
+  onEmailClick?: () => void;
 }
 
 // ============================================================================
@@ -142,7 +143,8 @@ function mapAPIResult(result: APISearchResult): SpotlightResult {
 export default function SpotlightSearch({
   onClose,
   isModal = false,
-  className
+  className,
+  onEmailClick
 }: SpotlightSearchProps) {
   const {
     query,
@@ -616,7 +618,9 @@ export default function SpotlightSearch({
               <DropdownMenuItem
                 onClick={() => {
                   onClose?.();
-                  router.push('/email/search');
+                  if (onEmailClick) {
+                    onEmailClick();
+                  }
                 }}
                 className="flex items-center gap-2 cursor-pointer focus:bg-[#3d3d3f] focus:text-white"
               >

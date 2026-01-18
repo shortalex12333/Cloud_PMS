@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
  * 1. User logs in on auth.celeste7.ai
  * 2. Auth domain redirects to app.celeste7.ai/auth/callback?access_token=...&refresh_token=...
  * 3. This page extracts tokens and sets session in app domain
- * 4. Redirects to /search (or intended destination)
+ * 4. Redirects to /app (or intended destination)
  *
  * Alternative: Can also handle Supabase OAuth callbacks
  */
@@ -25,7 +25,7 @@ export default function AuthCallbackClient() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [sessionSet, setSessionSet] = useState(false);
-  const [redirectTo, setRedirectTo] = useState('/search');
+  const [redirectTo, setRedirectTo] = useState('/app');
 
   // Wait for user validation after session is set
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function AuthCallbackClient() {
           console.log('[AuthCallback] Session set successfully:', data.session?.user?.email);
 
           // Get intended destination or default to search
-          const destination = searchParams.get('redirect') || '/search';
+          const destination = searchParams.get('redirect') || '/app';
           setRedirectTo(destination);
           setSessionSet(true);
           console.log('[AuthCallback] Waiting for AuthContext validation...');

@@ -34,11 +34,10 @@ export default function LoginContent() {
         return;
       }
 
-      // If fully activated, redirect to app
+      // If fully activated, redirect to the single surface app
       if (isFullyActivated(user)) {
-        console.log('[LoginPage] User fully activated, redirecting...');
-        const destination = isHOD(user) ? '/dashboard' : '/search';
-        router.replace(destination);
+        console.log('[LoginPage] User fully activated, redirecting to /app');
+        router.replace('/app');
         return;
       }
 
