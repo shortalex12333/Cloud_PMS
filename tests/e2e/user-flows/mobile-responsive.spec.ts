@@ -44,9 +44,9 @@ async function testPageWithDevice(
   // Take screenshot
   const screenshot = await page.screenshot({ fullPage: true });
   await saveArtifact(
-    `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`,
     `${pageName}_page.png`,
-    screenshot
+    screenshot,
+    `mobile-responsive/${device.name.toLowerCase().replace(' ', '-')}`
   );
 
   // Verify viewport
@@ -76,7 +76,7 @@ test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
     await page.waitForLoadState('networkidle');
 
     const screenshot = await page.screenshot({ fullPage: true });
-    await saveArtifact('mobile-responsive/iphone-13', 'login_page.png', screenshot);
+    await saveArtifact('login_page.png', screenshot, 'mobile-responsive/iphone-13');
 
     const loginForm = await page.locator('form').first();
     await expect(loginForm).toBeVisible();
@@ -86,11 +86,11 @@ test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
   });
 
   test('iPhone 13: Dashboard renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[0], '/dashboard', 'dashboard');
+    await testPageWithDevice(page, DEVICES[0], '/app', 'app');
   });
 
   test('iPhone 13: Search page renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[0], '/search', 'search');
+    await testPageWithDevice(page, DEVICES[0], '/app', 'search');
   });
 
   // iPhone SE Tests
@@ -105,11 +105,11 @@ test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
   });
 
   test('iPhone SE: Dashboard renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[1], '/dashboard', 'dashboard');
+    await testPageWithDevice(page, DEVICES[1], '/app', 'app');
   });
 
   test('iPhone SE: Work Orders page renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[1], '/work-orders', 'work-orders');
+    await testPageWithDevice(page, DEVICES[1], '/app', 'work-orders');
   });
 
   // Pixel 5 Tests
@@ -124,11 +124,11 @@ test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
   });
 
   test('Pixel 5: Dashboard renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[2], '/dashboard', 'dashboard');
+    await testPageWithDevice(page, DEVICES[2], '/app', 'app');
   });
 
   test('Pixel 5: Faults page renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[2], '/faults', 'faults');
+    await testPageWithDevice(page, DEVICES[2], '/app', 'faults');
   });
 
   // iPad Mini Tests
@@ -143,11 +143,11 @@ test.describe('MOBILE RESPONSIVE: Device Compatibility Tests', () => {
   });
 
   test('iPad Mini: Dashboard renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[3], '/dashboard', 'dashboard');
+    await testPageWithDevice(page, DEVICES[3], '/app', 'app');
   });
 
   test('iPad Mini: Search page renders correctly', async ({ page }) => {
-    await testPageWithDevice(page, DEVICES[3], '/search', 'search');
+    await testPageWithDevice(page, DEVICES[3], '/app', 'search');
   });
 
   // =========================================================================

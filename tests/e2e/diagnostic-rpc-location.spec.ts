@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
-test.describe('Diagnostic: RPC Function Location', () => {
+// Skip: Requires real TENANT credentials (currently placeholder)
+test.describe.skip('Diagnostic: RPC Function Location', () => {
   test('Check if get_my_bootstrap exists in TENANT Supabase', async () => {
     const TENANT_SUPABASE_URL = process.env.TENANT_SUPABASE_URL;
     const TENANT_SUPABASE_SERVICE_ROLE_KEY = process.env.TENANT_SUPABASE_SERVICE_ROLE_KEY;

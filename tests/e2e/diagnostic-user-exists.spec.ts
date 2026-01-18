@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
-test.describe('Diagnostic: Test User Exists in TENANT Supabase', () => {
+// Skip: Requires real TENANT_SUPABASE_ANON_KEY (currently placeholder)
+test.describe.skip('Diagnostic: Test User Exists in TENANT Supabase', () => {
   test('Check if x@alex-short.com exists in TENANT auth.users', async () => {
     const TENANT_SUPABASE_URL = process.env.TENANT_SUPABASE_URL;
     const TENANT_SUPABASE_SERVICE_ROLE_KEY = process.env.TENANT_SUPABASE_SERVICE_ROLE_KEY;
