@@ -1,0 +1,185 @@
+name: RLS Proof Suite
+
+on:
+  push:
+    branches: [main, feature/*]
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/e2e/rls-proof/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/e2e/rls-proof/**'
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Run with debug logging'
+        required: false
+        default: 'false'
+
+jobs:
+  rls-proof:
+    name: RLS Isolation Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run RLS Proof Tests
+        run: |
+          echo "=========================================="
+          echo "RLS PROOF SUITE - EVIDENCE COLLECTION"
+          echo "=========================================="
+          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "=========================================="
+
+          npx playwright test tests/e2e/rls-proof/ \
+            --project=contracts \
+            --reporter=list,html \
+            2>&1 | tee rls-proof-output.txt
+
+          echo ""
+          echo "=========================================="
+          echo "RLS PROOF SUITE COMPLETE"
+          echo "=========================================="
+
+      - name: Generate Proof Report
+        if: always()
+        run: |
+          echo "# RLS Proof Report" > rls-proof-report.md
+          echo "" >> rls-proof-report.md
+          echo "**Run Date:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> rls-proof-report.md
+          echo "**Commit:** ${{ github.sha }}" >> rls-proof-report.md
+          echo "**Branch:** ${{ github.ref_name }}" >> rls-proof-report.md
+          echo "" >> rls-proof-report.md
+          echo "## Test Output" >> rls-proof-report.md
+          echo "\`\`\`" >> rls-proof-report.md
+          grep -E "^\[PROOF\]" rls-proof-output.txt >> rls-proof-report.md || echo "No proof markers found" >> rls-proof-report.md
+          echo "\`\`\`" >> rls-proof-report.md
+          echo "" >> rls-proof-report.md
+          echo "## Summary" >> rls-proof-report.md
+          echo "" >> rls-proof-report.md
+          echo "| Check | Status |" >> rls-proof-report.md
+          echo "|-------|--------|" >> rls-proof-report.md
+
+          if grep -q "YACHT_ISOLATED" rls-proof-output.txt; then
+            echo "| Yacht Isolation | :white_check_mark: PASS |" >> rls-proof-report.md
+          else
+            echo "| Yacht Isolation | :x: NEEDS REVIEW |" >> rls-proof-report.md
+          fi
+
+          if grep -q "USER_SCOPED" rls-proof-output.txt; then
+            echo "| Email Watchers | :white_check_mark: PASS |" >> rls-proof-report.md
+          else
+            echo "| Email Watchers | :x: NEEDS REVIEW |" >> rls-proof-report.md
+          fi
+
+          cat rls-proof-report.md
+
+      - name: Upload Proof Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rls-proof-report
+          path: |
+            rls-proof-report.md
+            rls-proof-output.txt
+            playwright-report/
+          retention-days: 30
+
+      - name: Comment PR with Proof Summary
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('rls-proof-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: report
+            });
+
+  migration-safety:
+    name: Migration Safety Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for dangerous patterns
+        run: |
+          echo "Scanning migrations for dangerous patterns..."
+
+          ISSUES=0
+
+          # Check for DROP TABLE without IF EXISTS
+          if grep -rn "DROP TABLE [^I]" supabase/migrations/*.sql 2>/dev/null; then
+            echo "::warning::Found DROP TABLE without IF EXISTS"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for references to non-existent user_accounts table
+          if grep -rn "user_accounts" supabase/migrations/*.sql 2>/dev/null | grep -v "-- " | grep -v "Fixed"; then
+            echo "::error::Found reference to non-existent user_accounts table"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for TRUNCATE statements
+          if grep -rn "TRUNCATE" supabase/migrations/*.sql 2>/dev/null; then
+            echo "::warning::Found TRUNCATE statement - verify this is intentional"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for ALTER TABLE without proper guards
+          if grep -rn "ALTER TABLE.*DROP COLUMN" supabase/migrations/*.sql 2>/dev/null; then
+            echo "::warning::Found DROP COLUMN - ensure data migration is handled"
+          fi
+
+          echo ""
+          echo "Migration safety check complete. Issues found: $ISSUES"
+
+          if [ $ISSUES -gt 0 ]; then
+            echo "::warning::Review the warnings above before merging"
+          fi
+
+      - name: Verify RLS policy table references
+        run: |
+          echo "Checking RLS policies reference correct tables..."
+
+          # Find all RLS policies that should use auth_users_profiles
+          WRONG_TABLE=$(grep -rn "FROM.*user_profiles" supabase/migrations/*.sql 2>/dev/null | grep -v "auth_users_profiles" | wc -l)
+
+          if [ "$WRONG_TABLE" -gt 0 ]; then
+            echo "::error::Found $WRONG_TABLE policies referencing 'user_profiles' instead of 'auth_users_profiles'"
+            grep -rn "FROM.*user_profiles" supabase/migrations/*.sql | grep -v "auth_users_profiles"
+            exit 1
+          fi
+
+          echo "All RLS policies use correct table references"
