@@ -1383,6 +1383,58 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
 
 
 # ============================================================================
+# POST /email/backfill-embeddings
+# ============================================================================
+
+@router.post("/backfill-embeddings")
+async def backfill_embeddings(
+    auth: dict = Depends(get_authenticated_user),
+    limit: int = 100,
+):
+    """
+    Backfill embeddings for emails missing them.
+
+    Generates embeddings for emails that don't have meta_embedding set.
+    Uses OpenAI text-embedding-3-small model.
+
+    Args:
+        limit: Maximum number of emails to process (default 100)
+
+    Returns:
+        Stats dict with processed/success/failed counts
+    """
+    from services.email_embedding_service import EmailEmbeddingUpdater
+
+    yacht_id = auth['yacht_id']
+    supabase = get_supabase_client()
+
+    try:
+        updater = EmailEmbeddingUpdater(supabase, yacht_id)
+
+        if not updater.embedding_service.is_available():
+            raise HTTPException(
+                status_code=503,
+                detail="Embedding service not available - check OPENAI_API_KEY"
+            )
+
+        stats = await updater.backfill_embeddings(limit=limit)
+
+        logger.info(f"[email/backfill-embeddings] yacht={yacht_id[:8]}... stats={stats}")
+
+        return {
+            'success': True,
+            'yacht_id': yacht_id,
+            'stats': stats,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/backfill-embeddings] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Backfill failed: {str(e)}")
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
