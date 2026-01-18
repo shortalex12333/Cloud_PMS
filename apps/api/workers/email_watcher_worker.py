@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from supabase import create_client
-from integrations.graph_client import get_read_token_for_user
+from integrations.graph_client import get_valid_token
 from services.email_sync_service import EmailSyncService
 from services.rate_limiter import MicrosoftRateLimiter
 
@@ -191,11 +191,12 @@ class EmailWatcherWorker:
         Refreshes token if needed.
         """
         try:
-            # Use the existing token refresh logic from graph_client
-            token = await get_read_token_for_user(
+            # Use get_valid_token which handles token refresh
+            token = await get_valid_token(
                 self.supabase,
                 user_id,
-                yacht_id
+                yacht_id,
+                'read'  # purpose: read token for email sync
             )
             return token
 
