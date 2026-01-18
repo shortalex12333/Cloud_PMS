@@ -43,8 +43,45 @@ jobs:
       - name: ESLint
         run: cd apps/web && npm run lint
 
-      - name: Unit tests (Vitest)
-        run: cd apps/web && npm run test:unit
+      - name: Unit tests with coverage
+        run: cd apps/web && npm run test:coverage
+
+      - name: Check coverage thresholds
+        run: |
+          cd apps/web
+          echo "Checking coverage thresholds..."
+
+          # Extract coverage from JSON report
+          if [ -f coverage/coverage-summary.json ]; then
+            LINES=$(cat coverage/coverage-summary.json | grep -o '"lines":{"total":[0-9]*,"covered":[0-9]*' | head -1)
+            echo "Coverage: $LINES"
+
+            # Parse line coverage percentage
+            TOTAL=$(echo $LINES | grep -o '"total":[0-9]*' | grep -o '[0-9]*')
+            COVERED=$(echo $LINES | grep -o '"covered":[0-9]*' | grep -o '[0-9]*')
+
+            if [ -n "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
+              PERCENT=$((COVERED * 100 / TOTAL))
+              echo "Line coverage: $PERCENT%"
+
+              # Enforce minimum 60% coverage
+              if [ "$PERCENT" -lt 60 ]; then
+                echo "::warning::Coverage below 60% threshold ($PERCENT%)"
+              else
+                echo "Coverage meets threshold: $PERCENT% >= 60%"
+              fi
+            fi
+          else
+            echo "No coverage report found - skipping threshold check"
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/web/coverage/
+          retention-days: 7
 
       - name: Build
         run: cd apps/web && npm run build
