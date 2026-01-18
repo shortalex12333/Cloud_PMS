@@ -13,6 +13,7 @@ import httpx
 
 from .rate_limiter import MicrosoftRateLimiter
 from .linking_ladder import LinkingLadder
+from .email_embedding_service import EmailEmbeddingUpdater
 
 logger = logging.getLogger(__name__)
 
@@ -389,14 +390,17 @@ class EmailSyncService:
         if msg.get('hasAttachments'):
             attachments = await self._fetch_attachment_metadata(provider_message_id)
 
+        subject = msg.get('subject', '')
+        from_display_name = msg.get('from', {}).get('emailAddress', {}).get('name', '')
+
         message_data = {
             'yacht_id': yacht_id,
             'thread_id': thread_id,
             'provider_message_id': provider_message_id,
             'internet_message_id': msg.get('internetMessageId'),
-            'subject': msg.get('subject', ''),
+            'subject': subject,
             'from_address_hash': from_hash,
-            'from_display_name': msg.get('from', {}).get('emailAddress', {}).get('name', ''),
+            'from_display_name': from_display_name,
             'to_addresses_hash': to_hashes,
             'cc_addresses_hash': cc_hashes,
             'folder': folder,
@@ -408,7 +412,34 @@ class EmailSyncService:
         }
 
         result = self.supabase.table('email_messages').insert(message_data).execute()
-        return result.data[0]['id'] if result.data else None
+        message_id = result.data[0]['id'] if result.data else None
+
+        # Generate embeddings for the new message
+        if message_id:
+            await self._embed_message(yacht_id, message_id, subject, from_display_name, attachments)
+
+        return message_id
+
+    async def _embed_message(
+        self,
+        yacht_id: str,
+        message_id: str,
+        subject: str,
+        from_display_name: str,
+        attachments: List[Dict[str, Any]],
+    ) -> None:
+        """Generate and store embeddings for an email message."""
+        try:
+            updater = EmailEmbeddingUpdater(self.supabase, yacht_id)
+            await updater.update_email_embeddings(
+                email_id=message_id,
+                subject=subject,
+                sender_name=from_display_name,
+                attachments=attachments,
+            )
+        except Exception as e:
+            # Log but don't fail the sync if embedding fails
+            logger.warning(f"[EmailSync] Embedding failed for message {message_id}: {e}")
 
     async def _fetch_attachment_metadata(
         self,
