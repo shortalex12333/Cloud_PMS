@@ -802,16 +802,21 @@ async def get_inbox_threads(
                 'last_activity_at', desc=True
             ).range(offset, offset + page_size - 1).execute()
         else:
-            # Only unlinked threads
-            result = supabase.rpc('get_unlinked_email_threads', {
-                'p_yacht_id': yacht_id,
-                'p_limit': page_size,
-                'p_offset': offset,
-                'p_search': ''
-            }).execute()
+            # Only unlinked threads - try RPC first, fallback to manual filter
+            result = None
+            try:
+                result = supabase.rpc('get_unlinked_email_threads', {
+                    'p_yacht_id': yacht_id,
+                    'p_limit': page_size,
+                    'p_offset': offset,
+                    'p_search': ''
+                }).execute()
+            except Exception as rpc_err:
+                logger.debug(f"[email/inbox] RPC not available, using fallback: {rpc_err}")
+                result = None
 
-            # Fallback if RPC doesn't exist
-            if not result.data:
+            # Fallback if RPC doesn't exist or returns no data
+            if not result or not result.data:
                 all_threads = supabase.table('email_threads').select(
                     'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at'
                 ).eq('yacht_id', yacht_id).order(
@@ -824,7 +829,17 @@ async def get_inbox_threads(
 
                 linked_ids = {l['thread_id'] for l in (linked_result.data or [])}
                 unlinked = [t for t in (all_threads.data or []) if t['id'] not in linked_ids]
-                result.data = unlinked[offset:offset + page_size]
+
+                # Create a simple result-like object
+                class FallbackResult:
+                    def __init__(self, data, count):
+                        self.data = data
+                        self.count = count
+
+                result = FallbackResult(
+                    data=unlinked[offset:offset + page_size],
+                    count=len(unlinked)
+                )
 
         threads = result.data or []
         total = result.count if hasattr(result, 'count') and result.count else len(threads)
