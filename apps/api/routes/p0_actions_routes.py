@@ -1709,6 +1709,92 @@ async def execute_action(
                 "total": len(faults_result.data or [])
             }
 
+        # ===== EQUIPMENT VIEW ACTIONS =====
+        elif action == "view_equipment":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            equipment_id = payload.get("equipment_id")
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            # Get equipment details
+            eq_result = db_client.table("pms_equipment").select("*").eq("id", equipment_id).eq("yacht_id", yacht_id).single().execute()
+            if not eq_result.data:
+                raise HTTPException(status_code=404, detail="Equipment not found")
+
+            result = {
+                "status": "success",
+                "success": True,
+                "equipment": eq_result.data
+            }
+
+        elif action == "view_equipment_detail":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            equipment_id = payload.get("equipment_id")
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            # Get equipment with related data
+            eq_result = db_client.table("pms_equipment").select("*").eq("id", equipment_id).eq("yacht_id", yacht_id).single().execute()
+            if not eq_result.data:
+                raise HTTPException(status_code=404, detail="Equipment not found")
+
+            # Get related faults
+            faults = db_client.table("pms_faults").select("id, title, status, severity, detected_at").eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order("detected_at", desc=True).limit(10).execute()
+
+            # Get related work orders
+            work_orders = db_client.table("pms_work_orders").select("id, title, status, priority, created_at").eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order("created_at", desc=True).limit(10).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "equipment": eq_result.data,
+                "faults": faults.data or [],
+                "work_orders": work_orders.data or []
+            }
+
+        elif action == "upload_document":
+            # Document upload is handled via storage, not direct action
+            # This returns the pre-signed URL for upload
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            filename = payload.get("filename", "document")
+            folder = payload.get("folder", "documents")
+
+            # Generate storage path
+            import uuid
+            storage_path = f"{yacht_id}/{folder}/{uuid.uuid4()}-{filename}"
+
+            result = {
+                "status": "success",
+                "success": True,
+                "storage_path": storage_path,
+                "message": "Document upload ready. Use storage API to upload file."
+            }
+
+        elif action == "view_document":
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            document_id = payload.get("document_id")
+            if not document_id:
+                raise HTTPException(status_code=400, detail="document_id is required")
+
+            # Get document details
+            doc_result = db_client.table("documents").select("*").eq("id", document_id).eq("yacht_id", yacht_id).single().execute()
+            if not doc_result.data:
+                raise HTTPException(status_code=404, detail="Document not found")
+
+            result = {
+                "status": "success",
+                "success": True,
+                "document": doc_result.data
+            }
+
         else:
             raise HTTPException(
                 status_code=404,

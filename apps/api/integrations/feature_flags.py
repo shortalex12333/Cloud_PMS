@@ -17,15 +17,16 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # Master kill switch - if False, ALL email endpoints return 503
-EMAIL_TRANSPORT_ENABLED = os.getenv('EMAIL_TRANSPORT_ENABLED', 'false').lower() == 'true'
+# Changed default to TRUE to enable email transport layer
+EMAIL_TRANSPORT_ENABLED = os.getenv('EMAIL_TRANSPORT_ENABLED', 'true').lower() == 'true'
 
-# Individual feature flags
-EMAIL_RELATED_ENABLED = os.getenv('EMAIL_RELATED_ENABLED', 'false').lower() == 'true'
-EMAIL_THREAD_ENABLED = os.getenv('EMAIL_THREAD_ENABLED', 'false').lower() == 'true'
-EMAIL_RENDER_ENABLED = os.getenv('EMAIL_RENDER_ENABLED', 'false').lower() == 'true'
-EMAIL_LINK_ENABLED = os.getenv('EMAIL_LINK_ENABLED', 'false').lower() == 'true'
-EMAIL_SYNC_ENABLED = os.getenv('EMAIL_SYNC_ENABLED', 'false').lower() == 'true'
-EMAIL_EVIDENCE_ENABLED = os.getenv('EMAIL_EVIDENCE_ENABLED', 'false').lower() == 'true'
+# Individual feature flags - all enabled by default
+EMAIL_RELATED_ENABLED = os.getenv('EMAIL_RELATED_ENABLED', 'true').lower() == 'true'
+EMAIL_THREAD_ENABLED = os.getenv('EMAIL_THREAD_ENABLED', 'true').lower() == 'true'
+EMAIL_RENDER_ENABLED = os.getenv('EMAIL_RENDER_ENABLED', 'true').lower() == 'true'
+EMAIL_LINK_ENABLED = os.getenv('EMAIL_LINK_ENABLED', 'true').lower() == 'true'
+EMAIL_SYNC_ENABLED = os.getenv('EMAIL_SYNC_ENABLED', 'true').lower() == 'true'
+EMAIL_EVIDENCE_ENABLED = os.getenv('EMAIL_EVIDENCE_ENABLED', 'true').lower() == 'true'
 
 # Log flag status on startup
 logger.info(f"[FeatureFlags] EMAIL_TRANSPORT_ENABLED={EMAIL_TRANSPORT_ENABLED}")
