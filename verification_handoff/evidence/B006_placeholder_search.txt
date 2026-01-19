@@ -1,0 +1,40 @@
+=== B006 Placeholder Pattern Search Results ===
+Date: 2026-01-19
+
+PATTERN 1: All-zero UUID (00000000-0000-0000-0000-000000000000)
+Result: NO MATCHES in apps/web/src/
+
+PATTERN 2: placeholder-yacht-id or placeholder-user-id
+Result: NO MATCHES in apps/web/src/
+
+PATTERN 3: Literal "placeholder" strings
+Result: FOUND - see below
+
+=== Placeholder Occurrences Found ===
+
+1. apps/web/src/lib/supabaseClient.ts:15
+   Context: SSR guard - creates dummy client during server-side rendering
+   Code: supabaseInstance = createClient('https://placeholder.supabase.co', 'placeholder-key', {
+   Risk: LOW - This is intentional SSR behavior, not data placeholder
+   Note: Client is recreated with real values on client-side (see line 57)
+
+2. apps/web/src/lib/supabaseClient.ts:83
+   Context: Comment only - "// Helper function to get current user (placeholder)"
+   Risk: NONE - Just a code comment
+
+3. apps/web/src/lib/supabaseClient.ts:106
+   Context: Comment only - "// Yacht signature validation (placeholder)"
+   Risk: NONE - Just a code comment
+
+4. apps/web/src/lib/microactions/confirmation.ts:44
+   Context: Template variable replacement comment
+   Code: "// Replace placeholders with context values"
+   Risk: NONE - This is about UI text templating, not data IDs
+
+5. apps/web/src/lib/supabase.ts:250
+   Context: Comment about function implementation
+   Risk: NONE - Just a code comment
+
+=== CONCLUSION ===
+No dangerous placeholder patterns found that would substitute fake yacht_id or user_id values.
+The SSR placeholder is expected behavior and does not affect authenticated requests.

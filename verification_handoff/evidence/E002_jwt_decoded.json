@@ -1,0 +1,30 @@
+{
+  "aal": "aal1",
+  "amr": [
+    {
+      "method": "password",
+      "timestamp": 1768854935
+    }
+  ],
+  "app_metadata": {
+    "provider": "email",
+    "providers": [
+      "email"
+    ]
+  },
+  "aud": "authenticated",
+  "email": "x@alex-short.com",
+  "exp": 1768858535,
+  "iat": 1768854935,
+  "is_anonymous": false,
+  "iss": "https://vzsohavtuotocgrfkfyd.supabase.co/auth/v1",
+  "phone": "",
+  "role": "authenticated",
+  "session_id": "3424fea8-057e-4986-afff-efd4fa782af4",
+  "sub": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+  "user_metadata": {
+    "email_verified": true
+  },
+  "user_role": "captain",
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
+}
