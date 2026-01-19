@@ -480,7 +480,7 @@ export async function addFaultNote(
   try {
     // Insert note into attachments or notes table
     const { data, error } = await supabase
-      .from('notes')
+      .from('pms_notes')
       .insert({
         entity_type: 'fault',
         entity_id: params.fault_id,
@@ -567,7 +567,7 @@ export async function addFaultPhoto(
 
     // Try to insert into attachments table
     const { data, error } = await supabase
-      .from('attachments')
+      .from('pms_attachments')
       .insert(photoRecord)
       .select()
       .single();

@@ -21,7 +21,7 @@ export async function viewHoursOfRest(
   try {
     // Get hours of rest record for the date
     const { data: horRecord, error } = await supabase
-      .from('hours_of_rest')
+      .from('pms_hours_of_rest')
       .select('*')
       .eq('yacht_id', context.yacht_id)
       .eq('user_id', userId)
@@ -115,7 +115,7 @@ export async function updateHoursOfRest(
   try {
     // Upsert hours of rest record
     const { data: record, error } = await supabase
-      .from('hours_of_rest')
+      .from('pms_hours_of_rest')
       .upsert({
         yacht_id: context.yacht_id,
         user_id: params.user_id,
@@ -183,7 +183,7 @@ export async function exportHoursOfRest(
   try {
     // Get hours of rest records for date range
     const { data: records, error } = await supabase
-      .from('hours_of_rest')
+      .from('pms_hours_of_rest')
       .select('*')
       .eq('yacht_id', context.yacht_id)
       .eq('user_id', userId)
@@ -273,7 +273,7 @@ export async function viewComplianceStatus(
 
     // Get all hours of rest records for the yacht
     const { data: records, error } = await supabase
-      .from('hours_of_rest')
+      .from('pms_hours_of_rest')
       .select('user_id, date, hours')
       .eq('yacht_id', context.yacht_id)
       .gte('date', startDate.toISOString().split('T')[0])

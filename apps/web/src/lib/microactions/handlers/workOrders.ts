@@ -118,7 +118,7 @@ export async function viewWorkOrder(
     let checklistProgress = { completed: 0, total: 0, percent: 0 };
     try {
       const { data: items } = await supabase
-        .from('checklist_items')
+        .from('pms_checklist_items')
         .select('is_completed')
         .eq('work_order_id', workOrderId);
 
@@ -138,7 +138,7 @@ export async function viewWorkOrder(
     let partsCount = 0;
     try {
       const { count } = await supabase
-        .from('work_order_parts')
+        .from('pms_work_order_parts')
         .select('id', { count: 'exact', head: true })
         .eq('work_order_id', workOrderId);
       partsCount = count || 0;
@@ -206,7 +206,7 @@ export async function viewWorkOrderHistory(
 
     try {
       const { data, count, error } = await supabase
-        .from('audit_log')
+        .from('pms_audit_log')
         .select('id, action, old_values, new_values, created_at, user_id', {
           count: 'exact',
         })
@@ -469,7 +469,7 @@ export async function addWorkOrderNote(
 
   try {
     const { data, error } = await supabase
-      .from('notes')
+      .from('pms_notes')
       .insert({
         entity_type: 'work_order',
         entity_id: params.work_order_id,
@@ -617,7 +617,7 @@ export async function addWorkOrderPhoto(
 
     // Add photo attachment
     const { data, error } = await supabase
-      .from('attachments')
+      .from('pms_attachments')
       .insert({
         entity_type: 'work_order',
         entity_id: params.work_order_id,
@@ -862,7 +862,7 @@ export async function viewWorkOrderChecklist(
 
     try {
       const { data } = await supabase
-        .from('checklist_items')
+        .from('pms_checklist_items')
         .select('id, description, is_completed, completed_at, completed_by, notes, sequence')
         .eq('work_order_id', workOrderId)
         .order('sequence');
@@ -924,7 +924,7 @@ export async function markChecklistItemComplete(
 
   try {
     const { data, error } = await supabase
-      .from('checklist_items')
+      .from('pms_checklist_items')
       .update({
         is_completed: true,
         completed_at: new Date().toISOString(),
@@ -985,7 +985,7 @@ export async function addChecklistNote(
 
   try {
     const { data, error } = await supabase
-      .from('notes')
+      .from('pms_notes')
       .insert({
         entity_type: 'checklist_item',
         entity_id: params.checklist_item_id,
@@ -1046,7 +1046,7 @@ export async function addChecklistPhoto(
 
   try {
     const { data, error } = await supabase
-      .from('attachments')
+      .from('pms_attachments')
       .insert({
         entity_type: 'checklist_item',
         entity_id: params.checklist_item_id,
@@ -1116,7 +1116,7 @@ export async function viewWorklist(
 
     try {
       let query = supabase
-        .from('worklist_items')
+        .from('pms_worklist_tasks')
         .select('*')
         .eq('yacht_id', context.yacht_id)
         .order('created_at', { ascending: false });
@@ -1191,7 +1191,7 @@ export async function addWorklistTask(
 
   try {
     const { data, error } = await supabase
-      .from('worklist_items')
+      .from('pms_worklist_tasks')
       .insert({
         yacht_id: context.yacht_id,
         worklist_id: params.worklist_id,
@@ -1290,7 +1290,7 @@ export async function updateWorklistProgress(
     }
 
     const { data, error } = await supabase
-      .from('worklist_items')
+      .from('pms_worklist_tasks')
       .update(updateData)
       .eq('id', params.worklist_item_id)
       .select()
@@ -1308,7 +1308,7 @@ export async function updateWorklistProgress(
 
     // Add note if provided
     if (params.notes) {
-      await supabase.from('notes').insert({
+      await supabase.from('pms_notes').insert({
         entity_type: 'worklist_item',
         entity_id: params.worklist_item_id,
         content: params.notes,
@@ -1354,7 +1354,7 @@ export async function exportWorklist(
 
     try {
       let query = supabase
-        .from('worklist_items')
+        .from('pms_worklist_tasks')
         .select('*')
         .eq('yacht_id', context.yacht_id)
         .order('created_at', { ascending: false });

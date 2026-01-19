@@ -623,7 +623,7 @@ export async function addEquipmentNote(
 
     // Add note
     const { data, error } = await supabase
-      .from('notes')
+      .from('pms_notes')
       .insert({
         entity_type: 'equipment',
         entity_id: params.equipment_id,
