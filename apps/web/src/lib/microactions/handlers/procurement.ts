@@ -34,7 +34,7 @@ export async function createPurchaseRequest(
     const prNumber = `PR-${Date.now().toString(36).toUpperCase()}`;
 
     const { data: pr, error } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .insert({
         yacht_id: context.yacht_id,
         pr_number: prNumber,
@@ -107,7 +107,7 @@ export async function addItemToPurchase(
   try {
     // Verify PR exists and is not approved
     const { data: pr, error: prError } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .select('id, status')
       .eq('id', params.purchase_request_id)
       .eq('yacht_id', context.yacht_id)
@@ -199,7 +199,7 @@ export async function approvePurchase(
   try {
     // Verify PR exists and is pending
     const { data: pr, error: prError } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .select('id, status')
       .eq('id', params.purchase_request_id)
       .eq('yacht_id', context.yacht_id)
@@ -227,7 +227,7 @@ export async function approvePurchase(
 
     // Update status to approved
     const { data: updatedPr, error } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .update({
         status: 'approved',
         approved_by: context.user_id,
@@ -323,7 +323,7 @@ export async function uploadInvoice(
 
     // Update purchase request status
     await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .update({
         status: 'invoiced',
         updated_at: new Date().toISOString(),
@@ -371,7 +371,7 @@ export async function trackDelivery(
   try {
     // Get purchase request with items and delivery info
     const { data: pr, error: prError } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .select(`
         *,
         purchase_request_items (*),
@@ -492,7 +492,7 @@ export async function logDeliveryReceived(
 
     // Update purchase request status
     await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .update({
         status: 'delivered',
         updated_at: new Date().toISOString(),
@@ -576,7 +576,7 @@ export async function updatePurchaseStatus(
     }
 
     const { data: pr, error } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .update(updateData)
       .eq('id', params.purchase_request_id)
       .eq('yacht_id', context.yacht_id)

@@ -187,7 +187,7 @@ export async function orderPart(
 
     // Create purchase request
     const { data: purchaseRequest, error: prError } = await supabase
-      .from('purchase_requests')
+      .from('pms_purchase_orders')
       .insert({
         yacht_id: context.yacht_id,
         part_id: params.part_id,
@@ -263,7 +263,7 @@ export async function logPartUsage(
   try {
     // Record usage in work_order_parts
     const { data: usage, error: usageError } = await supabase
-      .from('work_order_parts')
+      .from('pms_work_order_parts')
       .insert({
         work_order_id: params.work_order_id,
         part_id: params.part_id,
