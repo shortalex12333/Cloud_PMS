@@ -1664,6 +1664,105 @@ async def search(
 
 
 # ========================================================================
+# /v1/query - DIRECT TABLE QUERY ENDPOINT
+# ========================================================================
+
+class QueryRequest(BaseModel):
+    """Request body for direct table queries."""
+    table: str = Field(..., description="Table name to query")
+    select: str = Field("*", description="Columns to select")
+    filters: Optional[Dict[str, str]] = Field(None, description="Filter conditions")
+    limit: int = Field(50, description="Maximum rows to return")
+    offset: int = Field(0, description="Offset for pagination")
+    order_by: Optional[str] = Field(None, description="Column to order by")
+    order_desc: bool = Field(True, description="Order descending")
+
+
+# Allowed tables for direct query (security whitelist)
+QUERYABLE_TABLES = {
+    'pms_equipment', 'pms_faults', 'pms_work_orders', 'pms_parts',
+    'pms_notes', 'pms_attachments', 'pms_audit_log', 'pms_handover',
+    'pms_purchase_orders', 'pms_suppliers', 'pms_worklist_tasks',
+    'documents', 'email_threads', 'email_messages', 'email_links'
+}
+
+
+@app.post("/v1/query", tags=["Query"])
+@limiter.limit("100/minute")
+async def direct_query(
+    request: Request,
+    query_request: QueryRequest,
+    auth: Dict = Depends(verify_security)
+):
+    """
+    Direct table query endpoint for fetching data.
+
+    **Security:**
+    - Only whitelisted tables can be queried
+    - All queries are yacht_id scoped (RLS enforced)
+    - Rate limited to 100 requests/minute
+
+    **Example:**
+    ```json
+    {
+        "table": "pms_notes",
+        "select": "id, note_text, created_at",
+        "filters": {"entity_type": "work_order"},
+        "limit": 10
+    }
+    ```
+    """
+    if graphrag_query is None or graphrag_query.client is None:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        yacht_id = auth.get("yacht_id")
+        table = query_request.table
+
+        # Security: only allow whitelisted tables
+        if table not in QUERYABLE_TABLES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Table '{table}' is not queryable. Allowed: {', '.join(sorted(QUERYABLE_TABLES))}"
+            )
+
+        # Build query
+        query = graphrag_query.client.table(table).select(query_request.select)
+
+        # Apply yacht_id filter (mandatory for RLS)
+        query = query.eq('yacht_id', yacht_id)
+
+        # Apply additional filters
+        if query_request.filters:
+            for col, val in query_request.filters.items():
+                if col != 'yacht_id':  # Already applied
+                    query = query.eq(col, val)
+
+        # Apply ordering
+        if query_request.order_by:
+            query = query.order(query_request.order_by, desc=query_request.order_desc)
+
+        # Apply pagination
+        query = query.range(query_request.offset, query_request.offset + query_request.limit - 1)
+
+        # Execute
+        result = query.execute()
+
+        return {
+            "success": True,
+            "table": table,
+            "data": result.data or [],
+            "count": len(result.data or [])
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"/v1/query failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
+
+# ========================================================================
 # /v2/search - SITUATION-AWARE SEARCH ENDPOINT
 # ========================================================================
 
