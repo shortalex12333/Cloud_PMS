@@ -1,0 +1,38 @@
+
+> celesteos-frontend@1.0.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.0.17 [39m[90m/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/apps/web[39m
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ [32m✓[39m tests/unit/situations/intent-parser.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/microactions/executor.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/microactions/registry.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/unit/microactions/validator.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m tests/lib/email/oauth-utils.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/integration/situation-db.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 2695[2mms[22m[39m
+       [33m[2m✓[22m[39m should detect recurrent symptom when threshold met [33m 746[2mms[22m[39m
+       [33m[2m✓[22m[39m should not detect recurrence below threshold [33m 347[2mms[22m[39m
+       [33m[2m✓[22m[39m should count open symptoms correctly [33m 352[2mms[22m[39m
+       [33m[2m✓[22m[39m should isolate symptoms by yacht [33m 340[2mms[22m[39m
+ [32m✓[39m tests/integration/handler-db.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 2808[2mms[22m[39m
+       [33m[2m✓[22m[39m should log action execution to database [33m 344[2mms[22m[39m
+ [32m✓[39m tests/integration/router-db.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 3102[2mms[22m[39m
+       [33m[2m✓[22m[39m should log successful action execution [33m 346[2mms[22m[39m
+       [33m[2m✓[22m[39m should calculate action success rate [33m 491[2mms[22m[39m
+       [33m[2m✓[22m[39m should calculate average duration [33m 333[2mms[22m[39m
+       [33m[2m✓[22m[39m should maintain chronological order [33m 397[2mms[22m[39m
+ [32m✓[39m tests/unit/microactions/hooks.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/unit/microactions/triggers.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/action-router/action-registry.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/action-router/validators.test.ts [2m([22m[2m42 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/lib/context-nav/view-stack.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/situations/situation-engine.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m tests/unit/action-router/router.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+[2m      Tests [22m [1m[32m324 passed[39m[22m[90m (324)[39m
+[2m   Start at [22m 15:37:43
+[2m   Duration [22m 21.44s[2m (transform 4.47s, setup 0ms, import 25.61s, tests 8.70s, environment 135.70s)[22m
+
