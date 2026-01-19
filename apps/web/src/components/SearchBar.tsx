@@ -14,8 +14,12 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Search, X, Clock, Loader2 } from 'lucide-react';
 import ResultCard from './ResultCard';
 import { useCelesteSearch, type SearchSuggestion } from '@/hooks/useCelesteSearch';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function SearchBar() {
+  // Get yacht_id from AuthContext - the ONLY correct source
+  const { user } = useAuth();
+
   const {
     query,
     results,
@@ -28,7 +32,7 @@ export default function SearchBar() {
     clear,
     selectSuggestion,
     recentQueries,
-  } = useCelesteSearch();
+  } = useCelesteSearch(user?.yachtId ?? null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);

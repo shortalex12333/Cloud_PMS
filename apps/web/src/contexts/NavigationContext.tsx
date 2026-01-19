@@ -19,8 +19,9 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { NavigationContext as NavContextType, RelatedResponse } from '@/lib/context-nav/api-client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   createNavigationContext,
   updateActiveAnchor,
@@ -97,6 +98,9 @@ export function useNavigationContext() {
 // ============================================================================
 
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
+  // Get yacht_id and user_id from AuthContext - the ONLY source of truth
+  const { user } = useAuth();
+
   const [state, setState] = useState<NavigationContextState>({
     contextId: null,
     activeAnchorType: null,
@@ -110,6 +114,17 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
     userId: null,
   });
 
+  // Sync yachtId/userId from AuthContext when user changes
+  useEffect(() => {
+    if (user?.yachtId && user?.id) {
+      setState(prev => ({
+        ...prev,
+        yachtId: user.yachtId,
+        userId: user.id,
+      }));
+    }
+  }, [user?.yachtId, user?.id]);
+
   // ========================================================================
   // PUSH VIEWER
   // ========================================================================
@@ -119,9 +134,15 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
       try {
         // If initial viewer from search, create context
         if (isInitial && !state.contextId) {
-          // TODO: Get yacht_id and user_id from auth context
-          const yachtId = state.yachtId || 'placeholder-yacht-id';
-          const userId = state.userId || 'placeholder-user-id';
+          // Get yacht_id and user_id from state (synced from AuthContext)
+          // CRITICAL: Do NOT fall back to placeholders - fail visibly if auth not ready
+          const yachtId = state.yachtId || user?.yachtId;
+          const userId = state.userId || user?.id;
+
+          if (!yachtId || !userId) {
+            console.error('[NavigationContext] Cannot create context: missing yacht_id or user_id');
+            return;
+          }
 
           const context = await createNavigationContext({
             yacht_id: yachtId,
@@ -189,7 +210,7 @@ export function NavigationProvider({ children }: { children: React.ReactNode }) 
         console.error('[NavigationContext] Failed to push viewer:', error);
       }
     },
-    [state]
+    [state, user]
   );
 
   // ========================================================================

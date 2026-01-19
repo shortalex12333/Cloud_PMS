@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getYachtId } from '@/lib/authHelpers';
+// NOTE: getYachtId is DEPRECATED - yachtId should come from AuthContext via hook parameter
 import type {
   SituationContext,
   SituationState,
@@ -80,7 +80,11 @@ function createInitialEvidence(): SituationEvidence {
 // HOOK
 // ============================================================================
 
-export function useSituationState(): UseSituationStateReturn {
+/**
+ * @param yachtId - yacht_id from AuthContext. REQUIRED for proper situation tracking.
+ *                  Pass user?.yachtId from useAuth() hook.
+ */
+export function useSituationState(yachtId: string | null = null): UseSituationStateReturn {
   const [situation, setSituation] = useState<SituationContext | null>(null);
   const [transitions, setTransitions] = useState<SituationTransition[]>([]);
   const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -127,8 +131,7 @@ export function useSituationState(): UseSituationStateReturn {
    * Create a new situation
    *
    * Auth requirement: User must have valid session (JWT).
-   * yachtId is optional - may be null during bootstrap, but situation
-   * can still be created for local state management.
+   * yachtId comes from hook parameter (passed from AuthContext).
    */
   const createSituation = useCallback(async (payload: CreateSituationPayload) => {
     try {
@@ -139,21 +142,14 @@ export function useSituationState(): UseSituationStateReturn {
         return;
       }
 
-      // Try to get yachtId from multiple sources (fallback chain)
-      // 1. getYachtId() helper (deprecated but may have cached value)
-      // 2. User metadata yacht_id
-      // 3. Null (acceptable during bootstrap)
-      let yachtId = await getYachtId();
+      // Use yachtId from hook parameter (from AuthContext) - the ONLY correct source
+      // CRITICAL: Do NOT fall back to placeholders - fail visibly if auth not ready
       if (!yachtId) {
-        yachtId = session.user.user_metadata?.yacht_id || null;
+        console.warn('[useSituationState] Cannot create situation: yachtId not yet available from AuthContext');
+        return;
       }
 
-      // Log but don't fail if yachtId is missing - bootstrap may still be in progress
-      // Use placeholder that will be updated when bootstrap completes
-      const effectiveYachtId = yachtId || 'bootstrap-pending';
-      if (!yachtId) {
-        console.log('[useSituationState] Creating situation with placeholder yachtId (bootstrap may be in progress)');
-      }
+      const effectiveYachtId = yachtId;
 
       const now = Date.now();
       const newSituation: SituationContext = {
@@ -200,7 +196,7 @@ export function useSituationState(): UseSituationStateReturn {
     } catch (error) {
       console.error('[useSituationState] Failed to create situation:', error);
     }
-  }, [getSessionId, resetIdleTimeout]);
+  }, [yachtId, getSessionId, resetIdleTimeout]);
 
   /**
    * Update current situation
