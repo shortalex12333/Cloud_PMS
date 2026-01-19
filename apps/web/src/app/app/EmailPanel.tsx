@@ -10,6 +10,7 @@
 import { useSurface } from '@/contexts/SurfaceContext';
 import { X, Inbox, Send, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EmailInboxView } from '@/components/email/EmailInboxView';
 
 export default function EmailPanel() {
   const { emailPanel, hideEmail, showEmail } = useSurface();
@@ -17,6 +18,8 @@ export default function EmailPanel() {
 
   return (
     <div
+      data-testid="email-panel"
+      data-visible={visible}
       className={cn(
         'absolute inset-y-0 left-0 w-96 bg-gray-900/95 border-r border-gray-700/50',
         'transform transition-transform duration-300 ease-out z-20',
@@ -75,17 +78,19 @@ export default function EmailPanel() {
         </button>
       </div>
 
-      {/* Email list placeholder */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="text-center py-12">
-          <Inbox className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">
-            {folder === 'inbox' ? 'Inbox' : 'Sent'} will appear here
-          </p>
-          <p className="text-gray-500 text-xs mt-2">
-            Connect your email to see messages
-          </p>
-        </div>
+      {/* Email content */}
+      <div className="flex-1 overflow-y-auto">
+        {folder === 'inbox' ? (
+          <EmailInboxView className="p-4" />
+        ) : (
+          <div className="text-center py-12 px-4">
+            <Send className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 text-sm">Sent emails</p>
+            <p className="text-gray-500 text-xs mt-2">
+              Sent folder is not yet implemented
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
