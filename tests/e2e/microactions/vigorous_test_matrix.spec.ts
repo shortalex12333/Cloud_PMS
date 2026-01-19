@@ -80,7 +80,7 @@ const ACTIONS: ActionDef[] = [
   { id: '3.2', cluster: 3, name: 'update_equipment', requiredFields: ['equipment_id'], optionalFields: ['name', 'status', 'notes'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { equipment_id: 'e1000001-0001-4001-8001-000000000004', status: 'operational' } },
   { id: '3.3', cluster: 3, name: 'decommission_equipment', requiredFields: ['equipment_id'], optionalFields: ['reason'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { equipment_id: 'e1000001-0001-4001-8001-000000000004', reason: 'End of life' } },
   { id: '3.4', cluster: 3, name: 'update_running_hours', requiredFields: ['equipment_id', 'hours'], optionalFields: [], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { equipment_id: 'e1000001-0001-4001-8001-000000000004', hours: 1000 } },
-  { id: '3.5', cluster: 3, name: 'view_equipment_detail', requiredFields: ['equipment_id'], optionalFields: [], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { equipment_id: 'e1000001-0001-4001-8001-000000000004' } },
+  { id: '3.5', cluster: 3, name: 'view_equipment_detail', requiredFields: ['equipment_id'], optionalFields: [], expectedStatus: 200, blockedReason: null, samplePayload: { equipment_id: 'e1000001-0001-4001-8001-000000000004' } },
 
   // Cluster 04: INVENTORY (most actions not implemented)
   { id: '4.1', cluster: 4, name: 'add_part', requiredFields: ['name'], optionalFields: ['part_number', 'category', 'location'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { name: 'Test Part', part_number: 'TP-001' } },
@@ -106,7 +106,7 @@ const ACTIONS: ActionDef[] = [
   { id: '6.5', cluster: 6, name: 'record_contract_claim', requiredFields: ['contract_id', 'claim_type'], optionalFields: ['amount'], expectedStatus: 501, blockedReason: 'pms_service_contracts table does not exist', samplePayload: { contract_id: 'test', claim_type: 'warranty' } },
 
   // Cluster 07: DOCUMENTS (not implemented)
-  { id: '7.1', cluster: 7, name: 'upload_document', requiredFields: ['file_name'], optionalFields: ['category', 'description'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { file_name: 'test.pdf', category: 'manual' } },
+  { id: '7.1', cluster: 7, name: 'upload_document', requiredFields: ['filename'], optionalFields: ['folder'], expectedStatus: 200, blockedReason: null, samplePayload: { filename: 'test.pdf', folder: 'documents' } },
   { id: '7.2', cluster: 7, name: 'semantic_search', requiredFields: ['query'], optionalFields: ['limit', 'category'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { query: 'engine maintenance' } },
   { id: '7.3', cluster: 7, name: 'delete_document', requiredFields: ['document_id'], optionalFields: [], expectedStatus: 200, samplePayload: { document_id: 'REAL_DOCUMENT_ID' } },
   { id: '7.4', cluster: 7, name: 'update_document_metadata', requiredFields: ['document_id'], optionalFields: ['title', 'category', 'tags'], expectedStatus: 404, blockedReason: 'Action not implemented', samplePayload: { document_id: '98afe6f2-bdda-44e8-ad32-0b412816b860', category: 'manual' } },
