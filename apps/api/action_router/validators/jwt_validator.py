@@ -33,8 +33,12 @@ def validate_jwt(token: str) -> ValidationResult:
 
     try:
         # Get JWT secret from environment
-        # Use MASTER_SUPABASE_JWT_SECRET (preferred) with legacy fallback
-        jwt_secret = os.getenv("MASTER_SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
+        # Check multiple env var names for flexibility
+        jwt_secret = (
+            os.getenv("TENANT_SUPABASE_JWT_SECRET") or
+            os.getenv("MASTER_SUPABASE_JWT_SECRET") or
+            os.getenv("SUPABASE_JWT_SECRET")
+        )
         if not jwt_secret:
             return ValidationResult.failure(
                 error_code="server_config_error",

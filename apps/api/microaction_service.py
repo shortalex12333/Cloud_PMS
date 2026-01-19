@@ -292,7 +292,7 @@ async def verify_security(
 
     token = authorization.replace("Bearer ", "")
     try:
-        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        jwt_secret = os.getenv("TENANT_SUPABASE_JWT_SECRET") or os.getenv("MASTER_SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
         if jwt_secret:
             from datetime import timedelta
             # Decode JWT - skip audience verification to allow service_role/anon tokens
@@ -626,7 +626,7 @@ async def startup_event():
         logger.info(f"✓ Configuration: AI fallback threshold = {config.ai_fallback_threshold}")
 
         # Security status
-        jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        jwt_secret = os.getenv("TENANT_SUPABASE_JWT_SECRET") or os.getenv("MASTER_SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
         yacht_salt = os.getenv("YACHT_SALT")
         security_enabled = bool(jwt_secret and yacht_salt)
         logger.info(f"✓ Security: {'ENABLED (JWT + Yacht Signature)' if security_enabled else 'DISABLED (dev mode)'}")

@@ -29,9 +29,13 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ============================================================================
 
-# MASTER DB JWT secret - used to verify all JWTs
-MASTER_SUPABASE_JWT_SECRET = os.getenv('MASTER_SUPABASE_JWT_SECRET', '')
-# Legacy - keep for backwards compatibility during transition
+# JWT secret - used to verify all JWTs
+# Checks multiple env var names for flexibility:
+#   - TENANT_SUPABASE_JWT_SECRET (tenant DB secret - signs user JWTs)
+#   - MASTER_SUPABASE_JWT_SECRET (legacy name)
+#   - SUPABASE_JWT_SECRET (fallback)
+TENANT_SUPABASE_JWT_SECRET = os.getenv('TENANT_SUPABASE_JWT_SECRET', '')
+MASTER_SUPABASE_JWT_SECRET = os.getenv('MASTER_SUPABASE_JWT_SECRET', '') or TENANT_SUPABASE_JWT_SECRET
 SUPABASE_JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET', '') or MASTER_SUPABASE_JWT_SECRET
 
 # TODO: AGENT_TOKEN_SECRET - Configure in Render when Local Agent is deployed
