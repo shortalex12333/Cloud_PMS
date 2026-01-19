@@ -512,7 +512,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
         }
       }, 2000);
     }
-  }, [clearResultMap, mergeResults]);
+  }, [clearResultMap, mergeResults, yachtId]);  // CRITICAL: yachtId must be in deps
 
   /**
    * Handle input change with debouncing
