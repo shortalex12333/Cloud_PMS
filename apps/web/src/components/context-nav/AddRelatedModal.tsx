@@ -18,7 +18,7 @@ interface AddRelatedModalProps {
 }
 
 export function AddRelatedModal({ anchorType, anchorId, onClose }: AddRelatedModalProps) {
-  const { pushRelated } = useNavigationContext();
+  const { pushRelated, yachtId, userId } = useNavigationContext();
   const [toArtifactType, setToArtifactType] = useState('');
   const [toArtifactId, setToArtifactId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,13 +26,18 @@ export function AddRelatedModal({ anchorType, anchorId, onClose }: AddRelatedMod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // CRITICAL: Do NOT use placeholders - fail visibly if auth not ready
+    if (!yachtId || !userId) {
+      setError('Authentication required. Please log in.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // TODO: Get yacht_id and user_id from auth context
-      const yachtId = 'placeholder-yacht-id';
-      const userId = 'placeholder-user-id';
+      // Use yacht_id and user_id from NavigationContext (synced from AuthContext)
 
       await addUserRelation({
         yacht_id: yachtId,

@@ -146,6 +146,11 @@ export default function SpotlightSearch({
   className,
   onEmailClick
 }: SpotlightSearchProps) {
+  // Get user context from auth (yacht_id comes from bootstrap, not DB query)
+  // CRITICAL: Must get user FIRST before useCelesteSearch to pass yachtId
+  const { user } = useAuth();
+
+  // Pass yacht_id from AuthContext to hooks - this is the ONLY correct source
   const {
     query,
     results: apiResults,
@@ -155,18 +160,16 @@ export default function SpotlightSearch({
     handleQueryChange,
     search,
     clear,
-  } = useCelesteSearch();
+  } = useCelesteSearch(user?.yachtId ?? null);
 
+  // Pass yacht_id to situation state hook as well
   const {
     situation,
     createSituation,
     updateSituation,
     transitionTo,
     resetToIdle,
-  } = useSituationState();
-
-  // Get user context from auth (yacht_id comes from bootstrap, not DB query)
-  const { user } = useAuth();
+  } = useSituationState(user?.yachtId ?? null);
   const router = useRouter();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -493,6 +496,7 @@ export default function SpotlightSearch({
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
+                data-testid="search-input"
                 className={cn(
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
@@ -564,7 +568,7 @@ export default function SpotlightSearch({
               className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
             >
               {hasResults && (
-                <div className="py-1.5">
+                <div className="py-1.5" data-testid="search-results">
                   {results.map((result, index) => (
                     <SpotlightResultRow
                       key={result.id}
@@ -579,13 +583,13 @@ export default function SpotlightSearch({
               )}
 
               {showNoResults && (
-                <div className="py-10 text-center">
+                <div className="py-10 text-center" data-testid="no-results">
                   <p className="text-[15px] text-[#98989f]">No Results</p>
                 </div>
               )}
 
               {error && (
-                <div className="py-10 text-center">
+                <div className="py-10 text-center" data-testid="search-error">
                   <p className="text-[15px] text-[#98989f]">{error}</p>
                   <button
                     onClick={() => search(query)}

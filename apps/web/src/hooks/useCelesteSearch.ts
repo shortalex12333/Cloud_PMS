@@ -139,10 +139,11 @@ function findPrefixCachedResults(query: string): SearchResult[] {
 
 /**
  * Build search payload per search-engine-spec.md
+ * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  */
-async function buildSearchPayload(query: string, streamId: string) {
+async function buildSearchPayload(query: string, streamId: string, yachtId: string | null) {
   const { data: { session } } = await supabase.auth.getSession();
-  const yachtId = await getYachtId();
+  // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
   const rawRole = session?.user?.user_metadata?.role as string || 'crew';
@@ -172,23 +173,25 @@ async function buildSearchPayload(query: string, streamId: string) {
 
 /**
  * Abortable streaming fetch
+ * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  */
 async function* streamSearch(
   query: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  yachtId: string | null
 ): AsyncGenerator<SearchResult[], void, unknown> {
   console.log('[useCelesteSearch] 🎬 streamSearch STARTED');
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
 
-  console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL });
+  console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL, yachtId });
 
   // Get fresh token (auto-refreshes if expiring soon)
   const jwt = await ensureFreshToken();
-  const yachtId = await getYachtId();
+  // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
-  const payload = await buildSearchPayload(query, streamId);
+  const payload = await buildSearchPayload(query, streamId, yachtId);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -265,17 +268,18 @@ async function* streamSearch(
 
 /**
  * Non-streaming fallback fetch
+ * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  */
-async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchResult[]> {
+async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null): Promise<SearchResult[]> {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
 
   // Get fresh token (auto-refreshes if expiring soon)
   const jwt = await ensureFreshToken();
-  const yachtId = await getYachtId();
+  // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
-  const payload = await buildSearchPayload(query, streamId);
+  const payload = await buildSearchPayload(query, streamId, yachtId);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -306,8 +310,10 @@ async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchRe
 
 /**
  * Main search hook
+ * @param yachtId - yacht_id from AuthContext. REQUIRED for proper search scoping.
+ *                  Pass user?.yachtId from useAuth() hook.
  */
-export function useCelesteSearch() {
+export function useCelesteSearch(yachtId: string | null = null) {
   const [state, setState] = useState<SearchState>({
     query: '',
     results: [],
@@ -442,9 +448,9 @@ export function useCelesteSearch() {
       // Try streaming first
       let hasResults = false;
 
-      console.log('[useCelesteSearch] 📡 About to call streamSearch...');
+      console.log('[useCelesteSearch] 📡 About to call streamSearch with yachtId:', yachtId);
       try {
-        for await (const chunk of streamSearch(query, signal)) {
+        for await (const chunk of streamSearch(query, signal, yachtId)) {
           if (signal.aborted) break;
 
           hasResults = true;
@@ -460,7 +466,7 @@ export function useCelesteSearch() {
         // If streaming fails, fall back to regular fetch
         if (!signal.aborted) {
           console.warn('[useCelesteSearch] Streaming failed, using fallback:', streamError);
-          const results = await fetchSearch(query, signal);
+          const results = await fetchSearch(query, signal, yachtId);
           hasResults = results.length > 0;
 
           setState(prev => ({
