@@ -190,8 +190,9 @@ def decode_jwt(token: str) -> dict:
     """
     Decode and validate JWT token using Supabase JWT secret.
 
-    IMPORTANT: User JWTs are signed by TENANT Supabase, not MASTER.
-    Use TENANT secret first, fall back to others.
+    IMPORTANT: User JWTs are signed by MASTER Supabase (qvzmkaamzaqxpzbewjxe).
+    The frontend authenticates against MASTER, so use MASTER secret first.
+    Falls back to TENANT secret if MASTER verification fails (handles both cases).
 
     Returns decoded payload with:
     - sub (user_id)
@@ -199,24 +200,45 @@ def decode_jwt(token: str) -> dict:
     - role (from JWT, not authoritative - use tenant lookup)
     - exp (expiration)
     """
-    # TENANT secret first (user JWTs come from tenant Supabase)
-    secret = TENANT_SUPABASE_JWT_SECRET or MASTER_SUPABASE_JWT_SECRET or SUPABASE_JWT_SECRET
-    if not secret:
+    # Build list of secrets to try, in priority order
+    # MASTER first (frontend authenticates against MASTER Supabase)
+    secrets_to_try = []
+    if MASTER_SUPABASE_JWT_SECRET:
+        secrets_to_try.append(('MASTER', MASTER_SUPABASE_JWT_SECRET))
+    if TENANT_SUPABASE_JWT_SECRET and TENANT_SUPABASE_JWT_SECRET != MASTER_SUPABASE_JWT_SECRET:
+        secrets_to_try.append(('TENANT', TENANT_SUPABASE_JWT_SECRET))
+    if SUPABASE_JWT_SECRET and SUPABASE_JWT_SECRET not in [MASTER_SUPABASE_JWT_SECRET, TENANT_SUPABASE_JWT_SECRET]:
+        secrets_to_try.append(('SUPABASE', SUPABASE_JWT_SECRET))
+
+    if not secrets_to_try:
+        logger.error('[Auth] No JWT secrets configured')
         raise HTTPException(status_code=500, detail='JWT secret not configured')
 
-    try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=['HS256'],
-            audience='authenticated',
-            options={'verify_exp': True}
-        )
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail='Token expired')
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail=f'Invalid token: {str(e)}')
+    last_error = None
+    for secret_name, secret in secrets_to_try:
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=['HS256'],
+                audience='authenticated',
+                options={'verify_exp': True}
+            )
+            logger.debug(f'[Auth] JWT verified with {secret_name} secret')
+            return payload
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail='Token expired')
+        except jwt.InvalidSignatureError as e:
+            logger.debug(f'[Auth] JWT failed verification with {secret_name}: {e}')
+            last_error = e
+            continue  # Try next secret
+        except jwt.InvalidTokenError as e:
+            last_error = e
+            continue  # Try next secret
+
+    # All secrets failed
+    logger.warning(f'[Auth] JWT verification failed with all secrets. Last error: {last_error}')
+    raise HTTPException(status_code=401, detail=f'Invalid token: Signature verification failed')
 
 
 def extract_yacht_id(token: str) -> str:
