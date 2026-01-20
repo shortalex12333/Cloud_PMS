@@ -188,7 +188,10 @@ def clear_tenant_cache(user_id: str = None):
 
 def decode_jwt(token: str) -> dict:
     """
-    Decode and validate JWT token using MASTER Supabase JWT secret.
+    Decode and validate JWT token using Supabase JWT secret.
+
+    IMPORTANT: User JWTs are signed by TENANT Supabase, not MASTER.
+    Use TENANT secret first, fall back to others.
 
     Returns decoded payload with:
     - sub (user_id)
@@ -196,7 +199,8 @@ def decode_jwt(token: str) -> dict:
     - role (from JWT, not authoritative - use tenant lookup)
     - exp (expiration)
     """
-    secret = MASTER_SUPABASE_JWT_SECRET or SUPABASE_JWT_SECRET
+    # TENANT secret first (user JWTs come from tenant Supabase)
+    secret = TENANT_SUPABASE_JWT_SECRET or MASTER_SUPABASE_JWT_SECRET or SUPABASE_JWT_SECRET
     if not secret:
         raise HTTPException(status_code=500, detail='JWT secret not configured')
 
