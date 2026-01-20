@@ -62,6 +62,7 @@ async def log_action(
     result: Optional[Dict[str, Any]] = None,
     error_message: Optional[str] = None,
     duration_ms: Optional[int] = None,
+    execution_id: Optional[str] = None,
 ) -> None:
     """
     Log action execution to Supabase.
@@ -76,6 +77,7 @@ async def log_action(
         result: Result data (optional)
         error_message: Error message if status='error'
         duration_ms: Execution duration in milliseconds
+        execution_id: Unique ID for this execution
     """
     try:
         supabase = get_supabase_client()
@@ -93,6 +95,9 @@ async def log_action(
             "status": status,
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+        if execution_id:
+            log_entry["execution_id"] = execution_id
 
         # Add optional fields
         if result:
