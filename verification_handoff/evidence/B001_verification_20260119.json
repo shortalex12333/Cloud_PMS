@@ -1,0 +1,45 @@
+{
+  "test_date": "2026-01-19T20:56:00Z",
+  "blocker_id": "B001",
+  "blocker_name": "Pipeline JWT Signature Mismatch",
+  "status": "ACTIVE",
+
+  "login_test": {
+    "endpoint": "https://vzsohavtuotocgrfkfyd.supabase.co/auth/v1/token?grant_type=password",
+    "status": "PASSED",
+    "user_email": "x@alex-short.com",
+    "user_id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+    "jwt_obtained": true,
+    "jwt_contains_yacht_id": true,
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "user_role": "captain"
+  },
+
+  "bootstrap_test": {
+    "endpoint": "https://pipeline-core.int.celeste7.ai/v1/bootstrap",
+    "method": "POST",
+    "status": "FAILED",
+    "http_status": 401,
+    "response": {
+      "detail": "Invalid token: Signature verification failed"
+    }
+  },
+
+  "root_cause": "MASTER_SUPABASE_JWT_SECRET env var in Render does not match Supabase project JWT secret",
+
+  "fix_required": {
+    "step_1": "Get JWT Secret from Supabase Dashboard → Project Settings → API",
+    "step_2": "Set MASTER_SUPABASE_JWT_SECRET in Render → pipeline-core → Environment",
+    "step_3": "Redeploy Render service"
+  },
+
+  "blast_radius": [
+    "All semantic search broken",
+    "Bootstrap endpoint broken (users cannot get yacht context)",
+    "All microactions routed through pipeline fail",
+    "~80% of product functionality blocked"
+  ],
+
+  "requires_human": true,
+  "escalated": true
+}

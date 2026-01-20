@@ -1,0 +1,31 @@
+{
+  "phase": "Yacht ID Propagation - Part A",
+  "name": "JWT Content Proof",
+  "date": "2026-01-20T12:44:00Z",
+  "status": "PASSED",
+  "test_user": "x@alex-short.com",
+  "expected_yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "jwt_decoded_payload": {
+    "aal": "aal1",
+    "aud": "authenticated",
+    "email": "x@alex-short.com",
+    "exp": 1768916563,
+    "iat": 1768912963,
+    "iss": "https://vzsohavtuotocgrfkfyd.supabase.co/auth/v1",
+    "role": "authenticated",
+    "session_id": "e504bf1c-213c-445f-92fe-d6d9e57f1424",
+    "sub": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+    "user_role": "captain",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
+  },
+  "verification": {
+    "yacht_id_present": true,
+    "yacht_id_value": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "yacht_id_matches_expected": true,
+    "user_role_present": true,
+    "user_role_value": "captain",
+    "sub_present": true,
+    "sub_value": "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
+  },
+  "conclusion": "JWT from Supabase contains yacht_id claim. Part A: PASSED"
+}

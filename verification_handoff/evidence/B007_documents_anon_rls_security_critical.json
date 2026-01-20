@@ -1,0 +1,56 @@
+{
+  "blocker_id": "B007",
+  "name": "Documents Table Anonymous RLS Bypass",
+  "severity": "SECURITY-CRITICAL",
+  "date_discovered": "2026-01-19",
+  "date_confirmed": "2026-01-20T12:48:00Z",
+  "status": "CONFIRMED ACTIVE",
+  
+  "vulnerability": {
+    "description": "Documents table allows anonymous SELECT without authentication",
+    "affected_table": "public.documents",
+    "affected_records": "2760+ rows",
+    "attack_vector": "Unauthenticated API request to Supabase REST endpoint"
+  },
+  
+  "proof_of_concept": {
+    "curl_command": "curl -s 'https://vzsohavtuotocgrfkfyd.supabase.co/rest/v1/documents?select=*&limit=1' -H 'apikey: ANON_KEY'",
+    "expected_result": "Empty array [] or 403 Forbidden",
+    "actual_result": "Full document metadata returned"
+  },
+  
+  "exposed_data": {
+    "yacht_id": "Identifies which yacht owns the document",
+    "filename": "Document names (may contain sensitive info)",
+    "storage_path": "Full path in storage bucket",
+    "metadata": "Local paths, directories, upload timestamps",
+    "equipment_ids": "Array of equipment UUIDs linked to document"
+  },
+  
+  "risk_assessment": {
+    "confidentiality": "HIGH - Document metadata exposed",
+    "integrity": "LOW - Read-only access via SELECT",
+    "availability": "LOW - No impact",
+    "overall_risk": "HIGH",
+    "mitigating_factors": [
+      "Actual file content requires signed URL (storage is private)",
+      "No INSERT/UPDATE/DELETE access",
+      "yacht_id known doesn't enable further attacks without auth"
+    ],
+    "aggravating_factors": [
+      "Equipment inventory exposed",
+      "File organization structure revealed",
+      "Yacht identification possible"
+    ]
+  },
+  
+  "recommended_fix": {
+    "immediate": "Add RLS policy: CREATE POLICY documents_select_own ON documents FOR SELECT USING (auth.uid() IS NOT NULL AND auth.jwt()->>'yacht_id' = yacht_id::text)",
+    "verify": "Test with anon key - should return []",
+    "alternative": "If intentional for public docs, add 'is_public' boolean column and policy"
+  },
+  
+  "escalation_reason": "Anonymous access to document metadata is a security vulnerability. Even without file content access, metadata exposure violates confidentiality requirements for yacht management system.",
+  
+  "conclusion": "B007 CONFIRMED as SECURITY-CRITICAL. Requires immediate attention after B001 is resolved."
+}
