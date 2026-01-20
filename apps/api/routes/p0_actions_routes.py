@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import logging
 import os
+import uuid
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -398,6 +399,9 @@ async def execute_action(
     This is the unified endpoint for all P0 actions.
     Routes to appropriate handler based on action name.
     """
+    # Generate unique execution ID for tracing
+    execution_id = str(uuid.uuid4())
+
     # Validate JWT
     jwt_result = validate_jwt(authorization)
     if not jwt_result.valid:
@@ -1822,6 +1826,10 @@ async def execute_action(
 
         raise HTTPException(status_code=status_code, detail=result["message"])
 
+    # Add execution_id and action to response for tracing
+    if isinstance(result, dict):
+        result["execution_id"] = execution_id
+        result["action"] = request.action
     return result
 
 
