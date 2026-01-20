@@ -2,8 +2,8 @@
 Context Navigation Tests
 
 These tests prove:
-1. create -> context row inserted + audit_events artefact_opened written
-2. update-anchor -> anchor fields updated + audit_events artefact_opened written
+1. create -> context row inserted + ledger_events artefact_opened written
+2. update-anchor -> anchor fields updated + ledger_events artefact_opened written
 3. related -> returns groups in correct order; does not write audit event
 4. add-relation -> creates row + relation_added audit event
 5. end -> sets ended_at + situation_ended audit event
@@ -170,14 +170,14 @@ class TestCreateContext:
         context = create_navigation_context(supabase, data)
 
         # Verify audit event written
-        audit_events = supabase.table("audit_events").select("*").eq(
+        ledger_events = supabase.table("ledger_events").select("*").eq(
             "yacht_id", TEST_YACHT_ID
         ).eq("event_name", "artefact_opened").execute()
 
-        assert len(audit_events.data) > 0
+        assert len(ledger_events.data) > 0
         # Find event for this context
         context_event = [
-            e for e in audit_events.data
+            e for e in ledger_events.data
             if e["payload"].get("situation_id") == str(context.id)
         ]
         assert len(context_event) == 1
@@ -229,7 +229,7 @@ class TestUpdateAnchor:
         context = create_navigation_context(supabase, data)
 
         # Count audit events before update
-        before_count = len(supabase.table("audit_events").select("id").eq(
+        before_count = len(supabase.table("ledger_events").select("id").eq(
             "yacht_id", TEST_YACHT_ID
         ).eq("event_name", "artefact_opened").execute().data)
 
@@ -245,7 +245,7 @@ class TestUpdateAnchor:
         )
 
         # Count audit events after update
-        after_count = len(supabase.table("audit_events").select("id").eq(
+        after_count = len(supabase.table("ledger_events").select("id").eq(
             "yacht_id", TEST_YACHT_ID
         ).eq("event_name", "artefact_opened").execute().data)
 
@@ -261,9 +261,9 @@ class TestGetRelated:
     """Test related expansion does NOT write audit event."""
 
     def test_related_does_not_write_audit_event(self, supabase, test_yacht, test_user):
-        """Getting related artifacts does NOT write audit_events."""
+        """Getting related artifacts does NOT write ledger_events."""
         # Count audit events before
-        before_count = len(supabase.table("audit_events").select("id").eq(
+        before_count = len(supabase.table("ledger_events").select("id").eq(
             "yacht_id", TEST_YACHT_ID
         ).execute().data)
 
@@ -279,7 +279,7 @@ class TestGetRelated:
         get_related(supabase, data)
 
         # Count audit events after
-        after_count = len(supabase.table("audit_events").select("id").eq(
+        after_count = len(supabase.table("ledger_events").select("id").eq(
             "yacht_id", TEST_YACHT_ID
         ).execute().data)
 
@@ -355,13 +355,13 @@ class TestAddRelation:
         response = add_user_relation(supabase, data)
 
         # Verify audit event written
-        audit_events = supabase.table("audit_events").select("*").eq(
+        ledger_events = supabase.table("ledger_events").select("*").eq(
             "yacht_id", TEST_YACHT_ID
         ).eq("event_name", "relation_added").execute()
 
         # Find event for this relation
         relation_event = [
-            e for e in audit_events.data
+            e for e in ledger_events.data
             if e["payload"].get("relation_id") == str(response.relation_id)
         ]
         assert len(relation_event) == 1
@@ -420,13 +420,13 @@ class TestEndContext:
         )
 
         # Verify audit event written
-        audit_events = supabase.table("audit_events").select("*").eq(
+        ledger_events = supabase.table("ledger_events").select("*").eq(
             "yacht_id", TEST_YACHT_ID
         ).eq("event_name", "situation_ended").execute()
 
         # Find event for this context
         context_event = [
-            e for e in audit_events.data
+            e for e in ledger_events.data
             if e["payload"].get("situation_id") == str(context.id)
         ]
         assert len(context_event) == 1
