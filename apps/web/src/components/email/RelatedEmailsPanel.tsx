@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { Mail, ChevronDown, ChevronRight, Link2, AlertCircle, Loader2, Settings, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useRelatedThreads, useEmailFeatureEnabled, useWatcherStatus, type EmailThread, type LinkConfidence } from '@/hooks/useEmailData';
+import { useSurface } from '@/contexts/SurfaceContext';
 import { EmailThreadViewer } from './EmailThreadViewer';
 import { EmailLinkActions } from './EmailLinkActions';
 import { LinkEmailModal } from './LinkEmailModal';
@@ -32,6 +33,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [selectedThreadForLinking, setSelectedThreadForLinking] = useState<{id: string; subject: string} | null>(null);
 
+  const { showEmail } = useSurface();
   const { enabled: featureEnabled } = useEmailFeatureEnabled();
   const { data: watcherStatus } = useWatcherStatus();
   const { data, isLoading, error, refetch } = useRelatedThreads(objectType, objectId);
@@ -165,13 +167,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
               <p className="text-[13px] text-zinc-500 mb-3">
                 No related email threads yet.
               </p>
-              <a
-                href="/email/inbox"
+              <button
+                onClick={() => showEmail({ folder: 'inbox' })}
                 className="inline-flex items-center gap-1.5 text-[13px] text-blue-500 hover:text-blue-600"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 Link emails from Inbox
-              </a>
+              </button>
             </div>
           )}
 
@@ -193,13 +195,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
 
               {/* Link More CTA */}
               <div className="p-2">
-                <a
-                  href="/email/inbox"
+                <button
+                  onClick={() => showEmail({ folder: 'inbox' })}
                   className="w-full flex items-center justify-center gap-1.5 p-2 text-[13px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors"
                 >
                   <Link2 className="h-3.5 w-3.5" />
                   Link more from Inbox
-                </a>
+                </button>
               </div>
             </div>
           )}

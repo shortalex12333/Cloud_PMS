@@ -272,7 +272,7 @@ class CapabilityExecutor:
             # Use any provided search term
             search_text = next(iter(search_terms.values()), "")
 
-        # Build RPC params (specific to unified_search_v2)
+        # Build RPC params (compatible with unified_search_simple)
         rpc_params = {
             "search_query": str(search_text),
             "p_yacht_id": self.yacht_id,
