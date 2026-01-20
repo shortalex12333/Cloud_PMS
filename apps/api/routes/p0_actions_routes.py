@@ -1822,6 +1822,10 @@ async def execute_action(
 
         raise HTTPException(status_code=status_code, detail=result["message"])
 
+    # Add execution_id to response for E2E test tracing
+    import uuid
+    result["execution_id"] = str(uuid.uuid4())
+    result["action"] = request.action
     return result
 
 
