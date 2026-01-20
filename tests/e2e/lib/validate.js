@@ -49,10 +49,9 @@ function gateB(responseAction, expectedAction, executionId) {
 }
 
 function gateC(result) {
-  // Accept either: actual db_proof OR gate_c_state=true (from 200 response)
-  if (result.db_proof && result.db_proof.mutation_verified) return true;
-  if (result.gate_c_state === true) return true;
-  return false;
+  // STRICT: Require actual db_proof with mutation_verified=true
+  // No shortcuts - must have real DB verification
+  return result.db_proof && result.db_proof.mutation_verified === true;
 }
 
 function validateResult(result) {
