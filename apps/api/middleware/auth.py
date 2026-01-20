@@ -32,9 +32,13 @@ logger = logging.getLogger(__name__)
 # JWT secret - used to verify all JWTs
 # Checks multiple env var names for flexibility:
 #   - TENANT_SUPABASE_JWT_SECRET (tenant DB secret - signs user JWTs)
+#   - TENNANT_SUPABASE_JWT_SECRET (alternate spelling - typo tolerance)
 #   - MASTER_SUPABASE_JWT_SECRET (legacy name)
 #   - SUPABASE_JWT_SECRET (fallback)
-TENANT_SUPABASE_JWT_SECRET = os.getenv('TENANT_SUPABASE_JWT_SECRET', '')
+TENANT_SUPABASE_JWT_SECRET = (
+    os.getenv('TENANT_SUPABASE_JWT_SECRET', '') or
+    os.getenv('TENNANT_SUPABASE_JWT_SECRET', '')  # Typo tolerance
+)
 MASTER_SUPABASE_JWT_SECRET = os.getenv('MASTER_SUPABASE_JWT_SECRET', '') or TENANT_SUPABASE_JWT_SECRET
 SUPABASE_JWT_SECRET = os.getenv('SUPABASE_JWT_SECRET', '') or MASTER_SUPABASE_JWT_SECRET
 

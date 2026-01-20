@@ -33,9 +33,10 @@ def validate_jwt(token: str) -> ValidationResult:
 
     try:
         # Get JWT secret from environment
-        # Check multiple env var names for flexibility
+        # Check multiple env var names for flexibility (including typo tolerance)
         jwt_secret = (
             os.getenv("TENANT_SUPABASE_JWT_SECRET") or
+            os.getenv("TENNANT_SUPABASE_JWT_SECRET") or  # Typo tolerance
             os.getenv("MASTER_SUPABASE_JWT_SECRET") or
             os.getenv("SUPABASE_JWT_SECRET")
         )
