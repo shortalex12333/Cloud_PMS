@@ -22,6 +22,7 @@ import type { EntityType, SituationDomain } from '@/types/situation';
 import SpotlightResultRow from './SpotlightResultRow';
 import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
+import { EmailInboxView } from '@/components/email/EmailInboxView';
 import SituationRouter from '@/components/situations/SituationRouter';
 import { toast } from 'sonner';
 import { executeAction } from '@/lib/actionClient';
@@ -176,6 +177,7 @@ export default function SpotlightSearch({
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showEmailList, setShowEmailList] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -494,7 +496,10 @@ export default function SpotlightSearch({
                 ref={inputRef}
                 type="search"
                 value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
+                onChange={(e) => {
+                  handleQueryChange(e.target.value);
+                  if (e.target.value) setShowEmailList(false);
+                }}
                 onKeyDown={handleKeyDown}
                 data-testid="search-input"
                 className={cn(
@@ -561,6 +566,16 @@ export default function SpotlightSearch({
             />
           )}
 
+          {/* Email List (beneath search bar per UX doctrine) */}
+          {showEmailList && !hasQuery && (
+            <div
+              className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-[#1c1c1e] rounded-b-2xl"
+              data-testid="email-list-inline"
+            >
+              <EmailInboxView className="p-4" />
+            </div>
+          )}
+
           {/* Results */}
           {hasQuery && (
             <div
@@ -621,15 +636,14 @@ export default function SpotlightSearch({
             >
               <DropdownMenuItem
                 onClick={() => {
-                  onClose?.();
-                  if (onEmailClick) {
-                    onEmailClick();
-                  }
+                  // Show email list inline beneath search bar (per UX doctrine)
+                  setShowEmailList(!showEmailList);
+                  clear(); // Clear search to show email list
                 }}
                 className="flex items-center gap-2 cursor-pointer focus:bg-[#3d3d3f] focus:text-white"
               >
                 <Mail className="w-4 h-4" />
-                <span>Email</span>
+                <span>{showEmailList ? 'Hide Email' : 'Email'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

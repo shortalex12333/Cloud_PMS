@@ -1,0 +1,25 @@
+[
+  {
+    "id": "e2f2d6d6-f5f8-48cd-8e54-7960843c1097",
+    "user_id": "a0d66b00-581f-4d27-be6b-5b679d5cd347",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "provider": "microsoft_graph",
+    "mailbox_address_hash": "598dcc3d8c6cdd2354d828f0786935689b1117394bc8d570627b3f996616e7ee",
+    "delta_link_inbox": "https://graph.microsoft.com/v1.0/me/mailFolders('inbox')/messages/delta?$deltatoken=DPW3UfYDlEL-4cq5hepNjo_w0XHt2BaBsctLL55NQG4w5vUEDkBJ7Shaf96RiXVP26fixBWzoGvzprBdL9ubbHb0muOiMn2em8q-LHYAdiLf6nsFRW4YkxNNuvRoZSLuid2hbEoCi1pBB4iySdBACKMfJfxiycqM92vcpBb4VQ3qukc-goTxPHRsCV8Q6hl_UI1CTtOcYEEBCsTLZqNvCwfXOxAHHJ_ixiNmpf5BjU7vVEjc19hFSkwtxnbu0O8ZGaLhd3IzqF4V6LIr8AZiiGlIrEorlcZkkz3YjxJ5UDUXdHkKs3hcDzvJKHZkib3h.dfSEltZE6gluYapGclQbtqvFPHd-h6SnEo-9Y7S3jeo",
+    "delta_link_sent": "https://graph.microsoft.com/v1.0/me/mailFolders('sentItems')/messages/delta?$deltatoken=DPW3UfYDlEL-4cq5hepNjnIFn4vwM8AUr9xPevnHFFOXPZyVxXXj66t04Ybu0yN1FzpwOZU333M8GLty2JCcfJNiy13vouFpSqjIota001uvTfnShqYjUwD3MjVUzFIlBJUk_fkJTT2rDLLPA04NltFZC1ZbyqIIDazji_vATDsZFe7UmxiGT3NR00Gcbxl457fXL7shdPAFyetBJlxoAgp128QXjyiZLVBN5s7q2dPPPSNRlzoQ_5ctGam87ydBAkQr-QDfXoYyakUADtKz5d4jWDFryI6A717fZJawILKuHwC27pfHLMg5VIVCxZnA.LJHBpZJQl49vRKVaYEjAEsKESaO9iBSeV1sMR0DT3_0",
+    "subscription_id": null,
+    "subscription_expires_at": null,
+    "last_sync_at": "2026-01-20T17:46:35.716625+00:00",
+    "last_sync_error": null,
+    "sync_status": "active",
+    "backfill_days_inbox": 14,
+    "backfill_days_sent": 14,
+    "created_at": "2026-01-16T11:24:41.326924+00:00",
+    "updated_at": "2026-01-20T17:46:35.780067+00:00",
+    "api_calls_this_hour": 8,
+    "hour_window_start": "2026-01-20T17:01:08.791665+00:00",
+    "sync_interval_minutes": 15,
+    "is_paused": false,
+    "pause_reason": null
+  }
+]

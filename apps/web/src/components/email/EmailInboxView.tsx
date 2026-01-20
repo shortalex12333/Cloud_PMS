@@ -45,7 +45,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
   };
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn('space-y-4', className)} data-testid="email-inbox">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
       {/* Thread List */}
       {!isLoading && !error && threads.length > 0 && (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y divide-zinc-100 dark:divide-zinc-800">
+        <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y divide-zinc-100 dark:divide-zinc-800" data-testid="email-list">
           {threads.map((thread) => (
             <ThreadRow
               key={thread.id}
@@ -195,7 +195,7 @@ interface ThreadRowProps {
 
 function ThreadRow({ thread, onLinkClick }: ThreadRowProps) {
   return (
-    <div className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+    <div className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-testid="email-thread-item">
       {/* Email Icon */}
       <Mail className="h-5 w-5 text-zinc-400 flex-shrink-0" />
 
@@ -219,6 +219,7 @@ function ThreadRow({ thread, onLinkClick }: ThreadRowProps) {
         size="sm"
         onClick={onLinkClick}
         className="flex-shrink-0"
+        data-testid="link-email-button"
       >
         <Link2 className="h-4 w-4 mr-1.5" />
         Link to...

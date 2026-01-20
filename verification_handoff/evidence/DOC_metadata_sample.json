@@ -1,0 +1,205 @@
+[
+  {
+    "id": "0a75fa80-9435-41fb-b7ea-626cca9173a4",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "source": "nas",
+    "original_path": "/Users/celeste7/Documents/yacht-nas/ROOT/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_4.pdf",
+    "filename": "Generic_watermakers_Document_4.pdf",
+    "content_type": "application/pdf",
+    "size_bytes": 2105,
+    "sha256": null,
+    "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_4.pdf",
+    "equipment_ids": [
+      "0c636760-4e02-412b-bbca-7da20c0abb77",
+      "e1000001-0001-4001-8001-000000000009",
+      "c2f1e5e2-9080-4c99-83fd-4cf86ce5657f",
+      "261aa365-298b-4a48-8af4-4e5bb891700c",
+      "5e924f9a-ee32-436b-9426-7c49525b4185",
+      "e1000001-0001-4001-8001-000000000012",
+      "ac94d263-622e-4c5f-90eb-135927981f46",
+      "0d1b23be-91df-40da-b611-e6e3d28d72b7",
+      "c394f656-93f2-4798-ac27-d7b89a4f6645",
+      "b46198d3-ddfa-4093-a49d-23845e67c109",
+      "4c5e8940-02be-429d-ade0-3f1b239f56be",
+      "e1000001-0001-4001-8001-000000000010",
+      "a6eeed58-2ed1-464c-8757-135b47e77fce",
+      "e1000001-0001-4001-8001-000000000005",
+      "b2a9c2dd-645a-44f4-9a74-b4d2e149ca8c"
+    ],
+    "tags": [],
+    "indexed": true,
+    "indexed_at": "2026-01-05T02:08:06.460053+00:00",
+    "metadata": {
+      "department": "06_SYSTEMS",
+      "local_path": "/Users/celeste7/Documents/yacht-nas/ROOT/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_4.pdf",
+      "directories": [
+        "06_SYSTEMS",
+        "watermakers",
+        "schematics"
+      ],
+      "file_extension": "pdf",
+      "upload_timestamp": "2026-01-05T02:08:05.277Z"
+    },
+    "created_at": "2026-01-05T02:08:05.343517+00:00",
+    "updated_at": "2026-01-05T02:08:06.460053+00:00",
+    "system_path": "06_SYSTEMS/watermakers/schematics",
+    "doc_type": "general",
+    "oem": null,
+    "model": null,
+    "system_type": "water"
+  },
+  {
+    "id": "47973364-23fa-448b-ab6f-64364cce8462",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "source": "nas",
+    "original_path": "/Users/celeste7/Documents/yacht-nas/ROOT/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_5.pdf",
+    "filename": "Generic_watermakers_Document_5.pdf",
+    "content_type": "application/pdf",
+    "size_bytes": 2105,
+    "sha256": null,
+    "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_5.pdf",
+    "equipment_ids": [
+      "0c636760-4e02-412b-bbca-7da20c0abb77",
+      "e1000001-0001-4001-8001-000000000009",
+      "c2f1e5e2-9080-4c99-83fd-4cf86ce5657f",
+      "261aa365-298b-4a48-8af4-4e5bb891700c",
+      "5e924f9a-ee32-436b-9426-7c49525b4185",
+      "e1000001-0001-4001-8001-000000000012",
+      "ac94d263-622e-4c5f-90eb-135927981f46",
+      "0d1b23be-91df-40da-b611-e6e3d28d72b7",
+      "c394f656-93f2-4798-ac27-d7b89a4f6645",
+      "b46198d3-ddfa-4093-a49d-23845e67c109",
+      "4c5e8940-02be-429d-ade0-3f1b239f56be",
+      "e1000001-0001-4001-8001-000000000010",
+      "a6eeed58-2ed1-464c-8757-135b47e77fce",
+      "e1000001-0001-4001-8001-000000000005",
+      "b2a9c2dd-645a-44f4-9a74-b4d2e149ca8c"
+    ],
+    "tags": [],
+    "indexed": true,
+    "indexed_at": "2026-01-05T02:08:07.839902+00:00",
+    "metadata": {
+      "department": "06_SYSTEMS",
+      "local_path": "/Users/celeste7/Documents/yacht-nas/ROOT/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_5.pdf",
+      "directories": [
+        "06_SYSTEMS",
+        "watermakers",
+        "schematics"
+      ],
+      "file_extension": "pdf",
+      "upload_timestamp": "2026-01-05T02:08:06.797Z"
+    },
+    "created_at": "2026-01-05T02:08:06.865879+00:00",
+    "updated_at": "2026-01-05T02:08:07.839902+00:00",
+    "system_path": "06_SYSTEMS/watermakers/schematics",
+    "doc_type": "general",
+    "oem": null,
+    "model": null,
+    "system_type": "water"
+  },
+  {
+    "id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "source": "nas",
+    "original_path": "/Users/celeste7/Documents/yacht-nas/ROOT/06_SYSTEMS/ballast_systems/system_manuals/Ballast_Systems_Reference_Manual.pdf",
+    "filename": "Ballast_Systems_Reference_Manual.pdf",
+    "content_type": "application/pdf",
+    "size_bytes": 2115,
+    "sha256": null,
+    "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/06_SYSTEMS/ballast_systems/system_manuals/Ballast_Systems_Reference_Manual.pdf",
+    "equipment_ids": [
+      "8d11a162-b6ab-4172-8f0e-30e81d2e0a9c",
+      "e1000001-0001-4001-8001-000000000012",
+      "e1000001-0001-4001-8001-000000000009",
+      "e1000001-0001-4001-8001-000000000010"
+    ],
+    "tags": [],
+    "indexed": true,
+    "indexed_at": "2026-01-05T02:08:11.105557+00:00",
+    "metadata": {
+      "department": "06_SYSTEMS",
+      "local_path": "/Users/celeste7/Documents/yacht-nas/ROOT/06_SYSTEMS/ballast_systems/system_manuals/Ballast_Systems_Reference_Manual.pdf",
+      "directories": [
+        "06_SYSTEMS",
+        "ballast_systems",
+        "system_manuals"
+      ],
+      "file_extension": "pdf",
+      "upload_timestamp": "2026-01-05T02:08:09.818Z"
+    },
+    "created_at": "2026-01-05T02:08:09.888233+00:00",
+    "updated_at": "2026-01-05T02:08:11.105557+00:00",
+    "system_path": "06_SYSTEMS/ballast_systems/system_manuals",
+    "doc_type": "general",
+    "oem": null,
+    "model": null,
+    "system_type": "general"
+  },
+  {
+    "id": "245edc33-094f-4b49-8e72-dedcdf4dc4c0",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "source": "nas",
+    "original_path": "/Users/celeste7/Documents/yacht-nas/ROOT/01_BRIDGE/communications/general_equipment/manuals/PilotLink Quick Start Guide V1_01_Eng.pdf",
+    "filename": "PilotLink Quick Start Guide V1_01_Eng.pdf",
+    "content_type": "application/pdf",
+    "size_bytes": 513151,
+    "sha256": null,
+    "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/01_BRIDGE/communications/general_equipment/manuals/PilotLink Quick Start Guide V1_01_Eng.pdf",
+    "equipment_ids": [
+      "c394f656-93f2-4798-ac27-d7b89a4f6645",
+      "8d11a162-b6ab-4172-8f0e-30e81d2e0a9c"
+    ],
+    "tags": [],
+    "indexed": true,
+    "indexed_at": "2026-01-05T11:52:43.758033+00:00",
+    "metadata": {
+      "department": "01_BRIDGE",
+      "local_path": "/Users/celeste7/Documents/yacht-nas/ROOT/01_BRIDGE/communications/general_equipment/manuals/PilotLink Quick Start Guide V1_01_Eng.pdf",
+      "directories": [
+        "01_BRIDGE",
+        "communications",
+        "general_equipment",
+        "manuals"
+      ],
+      "file_extension": "pdf",
+      "upload_timestamp": "2026-01-05T11:52:39.321Z"
+    },
+    "created_at": "2026-01-05T11:52:39.407173+00:00",
+    "updated_at": "2026-01-05T11:52:43.758033+00:00",
+    "system_path": "01_BRIDGE/communications/general_equipment/manuals",
+    "doc_type": "general",
+    "oem": null,
+    "model": null,
+    "system_type": "communications"
+  },
+  {
+    "id": "e644455a-261f-4b79-8fb3-d73e64783fd3",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "source": "regulatory",
+    "original_path": "/uploads/test_doc_3.pdf",
+    "filename": "test_document_3_1768420937189.pdf",
+    "content_type": "image/jpeg",
+    "size_bytes": 204800,
+    "sha256": null,
+    "storage_path": "test/85fe1119-b04c-41ac-80f1-829d23322598/documents/test_doc_3.pdf",
+    "equipment_ids": [],
+    "tags": [
+      "test",
+      "variant-3",
+      "hvac"
+    ],
+    "indexed": false,
+    "indexed_at": null,
+    "metadata": {
+      "test": true,
+      "variant": 3
+    },
+    "created_at": "2026-01-14T20:02:17.484938+00:00",
+    "updated_at": "2026-01-14T20:02:17.484938+00:00",
+    "system_path": null,
+    "doc_type": "report",
+    "oem": "Kohler",
+    "model": "Model-1002",
+    "system_type": "hydraulic"
+  }
+]
