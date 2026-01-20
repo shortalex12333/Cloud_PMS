@@ -1,0 +1,85 @@
+{
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "equipment": null,
+  "pms_work_orders": [
+    {
+      "id": "b04c6e09-7b40-4802-accd-966c0baa9701",
+      "title": "Test WO 1768739916350",
+      "status": "planned",
+      "priority": "routine",
+      "equipment_id": null
+    },
+    {
+      "id": "e84c157d-ec03-4447-ac5e-388115d85b19",
+      "title": "Test WO",
+      "status": "planned",
+      "priority": "routine",
+      "equipment_id": null
+    },
+    {
+      "id": "a245fe62-94df-4a9c-b24b-2d0bfc928fbc",
+      "title": "Test WO",
+      "status": "planned",
+      "priority": "routine",
+      "equipment_id": null
+    },
+    {
+      "id": "57a015f7-2257-42b9-a16c-98cceda00b25",
+      "title": "P1 Test WO - 15:25:22",
+      "status": "cancelled",
+      "priority": "critical",
+      "equipment_id": null
+    },
+    {
+      "id": "b507e262-bdcf-4a59-971b-e5c8ff2707f6",
+      "title": "Valid Work Order Title",
+      "status": "cancelled",
+      "priority": "critical",
+      "equipment_id": null
+    }
+  ],
+  "handovers": [
+    {
+      "id": "0d86174b-50d0-4212-bc43-00e7c6c8a813",
+      "title": "Chief Engineer Watch Handover - Night to Day",
+      "status": "completed"
+    },
+    {
+      "id": "eed49a92-cfcc-4d0d-a466-e47e57431a27",
+      "title": "ETO Afternoon Handover",
+      "status": "completed"
+    },
+    {
+      "id": "d26af0c3-de54-406c-b147-8e4c73ca1537",
+      "title": "Weekly Engineering Summary",
+      "status": "draft"
+    }
+  ],
+  "documents": [
+    {
+      "id": "0a75fa80-9435-41fb-b7ea-626cca9173a4",
+      "filename": "Generic_watermakers_Document_4.pdf",
+      "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_4.pdf"
+    },
+    {
+      "id": "47973364-23fa-448b-ab6f-64364cce8462",
+      "filename": "Generic_watermakers_Document_5.pdf",
+      "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/06_SYSTEMS/watermakers/schematics/Generic_watermakers_Document_5.pdf"
+    },
+    {
+      "id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "filename": "Ballast_Systems_Reference_Manual.pdf",
+      "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/06_SYSTEMS/ballast_systems/system_manuals/Ballast_Systems_Reference_Manual.pdf"
+    },
+    {
+      "id": "245edc33-094f-4b49-8e72-dedcdf4dc4c0",
+      "filename": "PilotLink Quick Start Guide V1_01_Eng.pdf",
+      "storage_path": "documents/85fe1119-b04c-41ac-80f1-829d23322598/01_BRIDGE/communications/general_equipment/manuals/PilotLink Quick Start Guide V1_01_Eng.pdf"
+    },
+    {
+      "id": "e644455a-261f-4b79-8fb3-d73e64783fd3",
+      "filename": "test_document_3_1768420937189.pdf",
+      "storage_path": "test/85fe1119-b04c-41ac-80f1-829d23322598/documents/test_doc_3.pdf"
+    }
+  ]
+}

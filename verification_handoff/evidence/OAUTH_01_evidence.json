@@ -1,0 +1,18 @@
+{
+  "test": "OAUTH_01",
+  "status": "BLOCKED",
+  "timestamp": "2026-01-20T19:05:05.013Z",
+  "steps": [
+    {
+      "step": "login",
+      "status": "success",
+      "url": "https://app.celeste7.ai/app"
+    },
+    {
+      "step": "open_settings",
+      "status": "success"
+    }
+  ],
+  "reason": "Integrations tab not visible - feature not deployed to production",
+  "action_required": "Deploy SettingsModal.tsx changes to production"
+}

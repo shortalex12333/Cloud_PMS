@@ -1,0 +1,236 @@
+{
+  "version": "1.0.0",
+  "created": "2026-01-20",
+  "description": "Microaction Normalization Matrix - Tests action router with paraphrased inputs, entity variants, and contradiction handling",
+  "core_actions": [
+    {
+      "action": "create_work_order",
+      "canonical_form": "Create a work order for {equipment} to {description}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Create a work order for Generator 2 oil change", "expected_action": "create_work_order"},
+          {"id": "Y2", "input": "Make a new WO for generator maintenance", "expected_action": "create_work_order"},
+          {"id": "Y3", "input": "I need to create a maintenance ticket for the starboard engine", "expected_action": "create_work_order"},
+          {"id": "Y4", "input": "Open a job card for HVAC inspection", "expected_action": "create_work_order"},
+          {"id": "Y5", "input": "Start a new work request for bow thruster repair", "expected_action": "create_work_order"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Create WO for gen 2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z2", "input": "Create WO for the port generator", "expected_entity": "Generator 1", "entity_type": "equipment_id"},
+          {"id": "Z3", "input": "New work order for e1000001-0001-4001-8001-000000000004", "expected_entity": "Generator 2", "entity_type": "equipment_id"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Create a work order but don't save it", "expected_behavior": "clarification_required"},
+          {"id": "W2", "input": "Delete the work order I just created", "expected_behavior": "separate_action_delete"}
+        ]
+      }
+    },
+    {
+      "action": "report_fault",
+      "canonical_form": "Report a fault on {equipment}: {description}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Report a fault on Generator 2 - abnormal vibration", "expected_action": "report_fault"},
+          {"id": "Y2", "input": "Log a defect on the HVAC chiller", "expected_action": "report_fault"},
+          {"id": "Y3", "input": "There's a problem with the bow thruster, please record it", "expected_action": "report_fault"},
+          {"id": "Y4", "input": "Create a fault report for radar display flickering", "expected_action": "report_fault"},
+          {"id": "Y5", "input": "Mark the watermaker as having an issue", "expected_action": "report_fault"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Report fault on gen2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z2", "input": "Fault report for the main engine", "expected_entity": "Main Engine", "entity_type": "equipment_id"},
+          {"id": "Z3", "input": "Log defect e1000001-0001-4001-8001-000000000007", "expected_entity": "Bow Thruster", "entity_type": "equipment_id"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Report a fault but it's not actually broken", "expected_behavior": "clarification_required"},
+          {"id": "W2", "input": "Cancel the fault I just reported", "expected_behavior": "separate_action_cancel"}
+        ]
+      }
+    },
+    {
+      "action": "add_to_handover",
+      "canonical_form": "Add {note} to handover log",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Add to handover: Generator check completed", "expected_action": "add_to_handover"},
+          {"id": "Y2", "input": "Put this in the handover notes: fuel bunkered 5000L", "expected_action": "add_to_handover"},
+          {"id": "Y3", "input": "Log for handover - all systems normal", "expected_action": "add_to_handover"},
+          {"id": "Y4", "input": "Record in handover that anchor was deployed at 0800", "expected_action": "add_to_handover"},
+          {"id": "Y5", "input": "Make a handover note about the weather conditions", "expected_action": "add_to_handover"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Handover note for captain", "expected_entity": "captain", "entity_type": "role"},
+          {"id": "Z2", "input": "Add to engineer's handover log", "expected_entity": "engineer", "entity_type": "role"},
+          {"id": "Z3", "input": "Note for next watch: bilge levels high", "expected_entity": "next_watch", "entity_type": "context"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Add to handover but keep it private", "expected_behavior": "clarification_required"},
+          {"id": "W2", "input": "Remove my last handover note", "expected_behavior": "separate_action_remove"}
+        ]
+      }
+    },
+    {
+      "action": "order_part",
+      "canonical_form": "Order {quantity} x {part_name} for {equipment}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Order 5 oil filters for Generator 2", "expected_action": "order_part"},
+          {"id": "Y2", "input": "Put in a purchase request for hydraulic seals", "expected_action": "order_part"},
+          {"id": "Y3", "input": "Need to order replacement belts for HVAC", "expected_action": "order_part"},
+          {"id": "Y4", "input": "Add 10 fuel filters to the shopping list", "expected_action": "order_part"},
+          {"id": "Y5", "input": "Requisition spare radar cables", "expected_action": "order_part"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Order parts for gen 2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z2", "input": "Order GEN-OF-001", "expected_entity": "Oil Filter - Generator", "entity_type": "part_number"},
+          {"id": "Z3", "input": "Order 3 items from supplier Marine Parts Ltd", "expected_entity": "Marine Parts Ltd", "entity_type": "supplier"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Order parts but don't submit the request yet", "expected_behavior": "draft_mode"},
+          {"id": "W2", "input": "Cancel the parts order I just made", "expected_behavior": "separate_action_cancel"}
+        ]
+      }
+    },
+    {
+      "action": "view_manual",
+      "canonical_form": "Show manual for {equipment}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Show manual for Generator 2", "expected_action": "view_manual"},
+          {"id": "Y2", "input": "Open the HVAC documentation", "expected_action": "view_manual"},
+          {"id": "Y3", "input": "Pull up the bow thruster service guide", "expected_action": "view_manual"},
+          {"id": "Y4", "input": "I need the radar system manual", "expected_action": "view_manual"},
+          {"id": "Y5", "input": "Find the watermaker operating instructions", "expected_action": "view_manual"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Manual for gen2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z2", "input": "Show Caterpillar 3412 documentation", "expected_entity": "CAT 3412", "entity_type": "model"},
+          {"id": "Z3", "input": "Get the maintenance manual, not operator guide", "expected_entity": "maintenance_manual", "entity_type": "doc_type"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Show manual but I don't remember which equipment", "expected_behavior": "clarification_required"},
+          {"id": "W2", "input": "Close the manual", "expected_behavior": "separate_action_close"}
+        ]
+      }
+    },
+    {
+      "action": "schedule_maintenance",
+      "canonical_form": "Schedule maintenance for {equipment} on {date}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Schedule maintenance for Generator 2 next week", "expected_action": "schedule_maintenance"},
+          {"id": "Y2", "input": "Plan HVAC service for next month", "expected_action": "schedule_maintenance"},
+          {"id": "Y3", "input": "Book in bow thruster inspection for Friday", "expected_action": "schedule_maintenance"},
+          {"id": "Y4", "input": "Set up a routine check on the watermaker", "expected_action": "schedule_maintenance"},
+          {"id": "Y5", "input": "Add radar calibration to maintenance calendar", "expected_action": "schedule_maintenance"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Schedule gen2 maintenance", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z2", "input": "Schedule maintenance for 2026-02-15", "expected_entity": "2026-02-15", "entity_type": "date"},
+          {"id": "Z3", "input": "Schedule 500hr service", "expected_entity": "500_hour_service", "entity_type": "interval"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Schedule maintenance but we're departing that day", "expected_behavior": "clarification_required"},
+          {"id": "W2", "input": "Cancel the scheduled maintenance", "expected_behavior": "separate_action_cancel"}
+        ]
+      }
+    },
+    {
+      "action": "close_work_order",
+      "canonical_form": "Close work order {work_order_id}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Close work order WO-2024-001", "expected_action": "close_work_order"},
+          {"id": "Y2", "input": "Mark the generator maintenance job as complete", "expected_action": "close_work_order"},
+          {"id": "Y3", "input": "Finish and close the HVAC repair work order", "expected_action": "close_work_order"},
+          {"id": "Y4", "input": "Complete the bow thruster inspection ticket", "expected_action": "close_work_order"},
+          {"id": "Y5", "input": "Sign off on job card for radar calibration", "expected_action": "close_work_order"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Close WO b04c6e09-7b40-4802-accd-966c0baa9701", "expected_entity": "b04c6e09-7b40-4802-accd-966c0baa9701", "entity_type": "work_order_id"},
+          {"id": "Z2", "input": "Close the gen2 oil change work order", "expected_entity": "Generator 2 Oil Change", "entity_type": "work_order_title"},
+          {"id": "Z3", "input": "Close all overdue work orders", "expected_entity": "overdue", "entity_type": "filter"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Close the work order but leave it as pending", "expected_behavior": "contradiction_error"},
+          {"id": "W2", "input": "Reopen the work order I just closed", "expected_behavior": "separate_action_reopen"}
+        ]
+      }
+    },
+    {
+      "action": "attach_document",
+      "canonical_form": "Attach {document} to {entity}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Attach service report to work order WO-2024-001", "expected_action": "attach_document"},
+          {"id": "Y2", "input": "Link the invoice PDF to Generator 2", "expected_action": "attach_document"},
+          {"id": "Y3", "input": "Add photo evidence to fault report", "expected_action": "attach_document"},
+          {"id": "Y4", "input": "Upload certificate to equipment record", "expected_action": "attach_document"},
+          {"id": "Y5", "input": "Connect the inspection checklist to this job", "expected_action": "attach_document"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Attach to WO b04c6e09", "expected_entity": "b04c6e09-7b40-4802-accd-966c0baa9701", "entity_type": "work_order_id"},
+          {"id": "Z2", "input": "Attach to Generator 2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z3", "input": "Attach Generic_watermakers_Document_4.pdf", "expected_entity": "Generic_watermakers_Document_4.pdf", "entity_type": "document_name"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Attach document but it's confidential", "expected_behavior": "permission_check"},
+          {"id": "W2", "input": "Remove the document I just attached", "expected_behavior": "separate_action_remove"}
+        ]
+      }
+    },
+    {
+      "action": "search_inventory",
+      "canonical_form": "Search inventory for {part_name}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Search inventory for oil filters", "expected_action": "search_inventory"},
+          {"id": "Y2", "input": "Check if we have hydraulic seals in stock", "expected_action": "search_inventory"},
+          {"id": "Y3", "input": "Find spare fuel filters in parts store", "expected_action": "search_inventory"},
+          {"id": "Y4", "input": "Look up how many belts we have", "expected_action": "search_inventory"},
+          {"id": "Y5", "input": "Query parts inventory for radar cables", "expected_action": "search_inventory"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Search for GEN-OF-001", "expected_entity": "GEN-OF-001", "entity_type": "part_number"},
+          {"id": "Z2", "input": "Search parts for gen 2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z3", "input": "Check Engine Room Store A inventory", "expected_entity": "Engine Room Store A", "entity_type": "location"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Search inventory but I forgot what I need", "expected_behavior": "clarification_required"},
+          {"id": "W2", "input": "Clear my search results", "expected_behavior": "ui_action_clear"}
+        ]
+      }
+    },
+    {
+      "action": "link_email_to_entity",
+      "canonical_form": "Link email to {entity_type} {entity_id}",
+      "test_cases": {
+        "Y_paraphrases": [
+          {"id": "Y1", "input": "Link this email to work order WO-2024-001", "expected_action": "link_email_to_entity"},
+          {"id": "Y2", "input": "Connect the email to Generator 2 equipment", "expected_action": "link_email_to_entity"},
+          {"id": "Y3", "input": "Associate this message with the HVAC fault report", "expected_action": "link_email_to_entity"},
+          {"id": "Y4", "input": "Attach email correspondence to purchase order", "expected_action": "link_email_to_entity"},
+          {"id": "Y5", "input": "File this email under radar maintenance", "expected_action": "link_email_to_entity"}
+        ],
+        "Z_entity_variants": [
+          {"id": "Z1", "input": "Link to WO b04c6e09", "expected_entity": "b04c6e09-7b40-4802-accd-966c0baa9701", "entity_type": "work_order_id"},
+          {"id": "Z2", "input": "Link to equipment Generator 2", "expected_entity": "Generator 2", "entity_type": "equipment_id"},
+          {"id": "Z3", "input": "Link from email thread ID abc123", "expected_entity": "abc123", "entity_type": "email_thread_id"}
+        ],
+        "W_contradictions": [
+          {"id": "W1", "input": "Link email but it's not related", "expected_behavior": "confirmation_required"},
+          {"id": "W2", "input": "Unlink the email I just linked", "expected_behavior": "separate_action_unlink"}
+        ]
+      }
+    }
+  ],
+  "test_summary": {
+    "total_actions": 10,
+    "variants_per_action": {
+      "Y_paraphrases": 5,
+      "Z_entity_variants": 3,
+      "W_contradictions": 2
+    },
+    "total_test_cases": 100
+  }
+}
