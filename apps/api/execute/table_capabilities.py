@@ -248,8 +248,10 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
                 name="search_document_chunks",
                 yacht_id_column="yacht_id",
                 primary_key="id",
-                # NOTE: RPC removed - unified_search_v2 doesn't exist with expected signature
-                # Using SQL fallback with ILIKE on content column
+                # NOTE: unified_search_v2 requires embeddings (not available in fallback)
+                # Use unified_search_simple for text-only search fallback
+                # rpc_function="unified_search_simple" can be enabled if needed
+                # Using SQL fallback with ILIKE on content column for now
                 searchable_columns=[
                     SearchableColumn(
                         name="content",
