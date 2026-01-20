@@ -10,6 +10,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Header, Request
 from pydantic import BaseModel
 import time
+import uuid
 
 from .registry import get_action, HandlerType
 from .validators import (
@@ -48,6 +49,7 @@ class ActionResponse(BaseModel):
 
     status: str
     action: str
+    execution_id: str = None
     result: Dict[str, Any] = None
     error_code: str = None
     message: str = None
@@ -91,6 +93,7 @@ async def execute_action(
     """
     start_time = time.time()
     action_id = request_data.action
+    execution_id = str(uuid.uuid4())
 
     try:
         # ====================================================================
@@ -348,6 +351,7 @@ async def execute_action(
             status="success",
             result=result,
             duration_ms=duration_ms,
+            execution_id=execution_id,
         )
 
         # ====================================================================
@@ -356,6 +360,7 @@ async def execute_action(
         return ActionResponse(
             status="success",
             action=action_id,
+            execution_id=execution_id,
             result=result,
         )
 
