@@ -1,0 +1,15 @@
+{
+  "phase": "01.02",
+  "name": "Verify JWT Contains Required Claims",
+  "date": "2026-01-19",
+  "status": "PASSED",
+  "claims_found": {
+    "sub": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+    "email": "x@alex-short.com",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "user_role": "captain",
+    "exp": 1768866886
+  },
+  "all_required_present": true,
+  "notes": "JWT from tenant Supabase contains all required claims for authorization"
+}

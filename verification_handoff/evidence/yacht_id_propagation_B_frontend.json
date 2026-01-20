@@ -1,0 +1,30 @@
+{
+  "phase": "Yacht ID Propagation - Part B",
+  "name": "Frontend Transmission Proof",
+  "date": "2026-01-20T12:45:00Z",
+  "status": "PASSED",
+  "evidence_type": "CODE_INSPECTION",
+  "file": "apps/web/src/contexts/AuthContext.tsx",
+  "lines": "117-124",
+  "code_snippet": "const response = await fetch(`${RENDER_API_URL}/v1/bootstrap`, {\n  method: 'POST',\n  headers: {\n    'Authorization': `Bearer ${accessToken}`,\n    'Content-Type': 'application/json',\n  },\n  signal: controller.signal,\n});",
+  "verification": {
+    "sends_authorization_header": true,
+    "uses_bearer_scheme": true,
+    "token_source": "accessToken (from Supabase session)",
+    "endpoint": "${RENDER_API_URL}/v1/bootstrap",
+    "method": "POST"
+  },
+  "accessToken_source": {
+    "file": "apps/web/src/contexts/AuthContext.tsx",
+    "function": "fetchBootstrap",
+    "parameter": "accessToken: string",
+    "origin": "supabase.auth.getSession().session.access_token"
+  },
+  "RENDER_API_URL": {
+    "file": "apps/web/src/contexts/AuthContext.tsx",
+    "line": 86,
+    "value": "process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai'",
+    "production_value": "https://pipeline-core.int.celeste7.ai"
+  },
+  "conclusion": "Frontend transmits JWT via Authorization: Bearer header to /v1/bootstrap. Part B: PASSED"
+}

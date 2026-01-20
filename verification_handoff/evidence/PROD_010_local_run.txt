@@ -21,14 +21,70 @@ Global Setup: Complete
 
 Running 6 tests using 1 worker
 
-  ✓  1 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:72:7 › Production Smoke Tests › GATE-001: Login page loads (1.1s)
-  ✓  2 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:95:7 › Production Smoke Tests › GATE-002: Login succeeds (84ms)
+  ✓  1 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:72:7 › Production Smoke Tests › GATE-001: Login page loads (1.2s)
+  ✓  2 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:95:7 › Production Smoke Tests › GATE-002: Login succeeds (89ms)
 [Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
-[Network] Response: 401 https://pipeline-core.int.celeste7.ai/v1/bootstrap
-  ✘  3 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar (15.1s)
-  ✘  4 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results (30.1s)
-  ✓  5 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:202:7 › Production Smoke Tests › GATE-005: No console errors on critical paths (2.6s)
-  ✘  6 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata (768ms)
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: GET https://pipeline-core.int.celeste7.ai/email/inbox?page=1&linked=false
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/email/inbox?page=1&linked=false
+  ✓  3 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar (1.9s)
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/webhook/search
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/webhook/search
+Pipeline request fired: true
+Pipeline response: {"success":true,"query":"fuel filter","results":[{"id":"1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68","primary_id":"1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68","type":"pms_equipment","source_table":"pms_equipment","title":"Racor Fuel Filter","subtitle":"Manufacturer: Racor","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"900FG","manufacturer":"Racor","serial_number":"SN-RFF-001-76048","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":1136,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":150,"proximity_bonus":66,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter","fuel"],"matched_columns":[]},"_score":1136},{"id":"fe8d89fd-413f-43d6-a5a4-0576bae993f8","primary_id":"fe8d89fd-413f-43d6-a5a4-0576bae993f8","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 10 - Filter 1768408497401","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1009","manufacturer":"Siemens","serial_number":"SN-TEST-1768408497401-9","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"ee5eaf1d-9fa3-43a8-8f20-6d346e28dc8a","primary_id":"ee5eaf1d-9fa3-43a8-8f20-6d346e28dc8a","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 10 - Filter 1768420982517","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1009","manufacturer":"Siemens","serial_number":"SN-TEST-1768420982517-9","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"e65dae97-8f13-4273-87a5-1a4ab3887e34","primary_id":"e65dae97-8f13-4273-87a5-1a4ab3887e34","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 5 - Filter 1768408497401","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1004","manufacturer":"Siemens","serial_number":"SN-TEST-1768408497401-4","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"db7dfcbb-57ee-47e2-ad07-b2462d988a42","primary_id":"db7dfcbb-57ee-47e2-ad07-b2462d988a42","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 10 - Filter 1768420933314","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1009","manufacturer":"Siemens","serial_number":"SN-TEST-1768420933314-9","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"d0302f5e-ea49-4b60-b40f-eb248c8f5f09","primary_id":"d0302f5e-ea49-4b60-b40f-eb248c8f5f09","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 10 - Filter 1768408470513","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1009","manufacturer":"Siemens","serial_number":"SN-TEST-1768408470513-9","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"a6d75ded-5c54-4cb3-ae26-e32bbecef654","primary_id":"a6d75ded-5c54-4cb3-ae26-e32bbecef654","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 15 - Filter 1768408497401","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1014","manufacturer":"Siemens","serial_number":"SN-TEST-1768408497401-14","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"a0fad96c-e020-494c-86c2-6ed595401ccb","primary_id":"a0fad96c-e020-494c-86c2-6ed595401ccb","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 5 - Filter 1768408470513","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1004","manufacturer":"Siemens","serial_number":"SN-TEST-1768408470513-4","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"7de80acf-8eaa-4471-887f-4c865d43ba77","primary_id":"7de80acf-8eaa-4471-887f-4c865d43ba77","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 5 - Filter 1768420982517","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1004","manufacturer":"Siemens","serial_number":"SN-TEST-1768420982517-4","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920},{"id":"724753a6-9e9c-4499-86b9-8e50cd955731","primary_id":"724753a6-9e9c-4499-86b9-8e50cd955731","type":"pms_equipment","source_table":"pms_equipment","title":"Test Equipment 15 - Filter 1768420933314","subtitle":"Manufacturer: Siemens","preview":"","score":0.5,"metadata":{"source_table":"pms_equipment","model":"Model-1014","manufacturer":"Siemens","serial_number":"SN-TEST-1768420933314-14","_capability":"equipment_by_name_or_model","_source_table":"pms_equipment"},"actions":[],"score_components":{"total":920,"match_tier":800,"match_mode":"EXACT_TEXT","conjunction_bonus":0,"proximity_bonus":0,"entity_confidence":120,"intent_table_prior":0,"recency_bonus":0,"catalog_penalty":0,"noise_penalty":0,"matched_entities":["filter"],"matched_columns":[]},"_score":920}],"total_count":10,"available_actions":[{"action":"view_details","label":"View Details","execution_class":"auto"},{"action":"view_maintenance","label":"View Maintenance","execution_class":"auto"},{"action":"log_hours","label":"Log Hours","execution_class":"auto"},{"action":"view_node","label":"View Node","execution_class":"auto"},{"action":"view_connections","label":"View Connections","execution_class":"auto"},{"action":"expand_graph","label":"Expand Graph","execution_class":"auto"}],"entities":[{"type":"EQUIPMENT_NAME","value":"Filter","confidence":0.8},{"type":"SYSTEM_NAME","value":"Fuel","confidence":0.8}],"plans":[{"capability":"equipment_by_name_or_model","entity_type":"EQUIPMENT_NAME","entity_value":"Filter","search_column":"name","blocked":false,"blocked_reason":null},{"capability":"graph_node_search","entity_type":"SYSTEM_NAME","entity_value":"Fuel","search_column":"label","blocked":false,"blocked_reason":null}],"timing_ms":{"extraction":3336.301326751709,"prepare":0.02288818359375,"execute":303.27463150024414,"total":3641.209125518799},"results_by_domain":{},"error":null,"request_id":"6f09c672","ok":true}
+Search results visible: true
+  ✓  4 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results (5.1s)
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Request: GET https://pipeline-core.int.celeste7.ai/email/inbox?page=1&linked=false
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/email/inbox?page=1&linked=false
+[Network] Response: 200 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+  ✓  5 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:202:7 › Production Smoke Tests › GATE-005: No console errors on critical paths (3.5s)
+Evidence collected: {
+  timestamp: [32m'2026-01-20T15:06:37.203Z'[39m,
+  prodUrl: [32m'https://app.celeste7.ai'[39m,
+  pipelineUrl: [32m'https://pipeline-core.int.celeste7.ai'[39m,
+  tests: [],
+  prodUrlStatus: [33m200[39m,
+  prodUrlHeaders: {
+    age: [32m'0'[39m,
+    [32m'cache-control'[39m: [32m'private, no-cache, no-store, max-age=0, must-revalidate'[39m,
+    [32m'content-encoding'[39m: [32m'br'[39m,
+    [32m'content-security-policy'[39m: [32m"default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://app.celeste7.ai; frame-ancestors 'none'; frame-src 'self' blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co; media-src 'self' blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co; worker-src 'self' blob:; connect-src 'self' https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co https://pipeline-core.int.celeste7.ai https://api.celeste7.ai https://app.celeste7.ai https://auth.celeste7.ai"[39m,
+    [32m'content-type'[39m: [32m'text/html; charset=utf-8'[39m,
+    date: [32m'Tue, 20 Jan 2026 15:06:37 GMT'[39m,
+    server: [32m'Vercel'[39m,
+    [32m'strict-transport-security'[39m: [32m'max-age=63072000'[39m,
+    vary: [32m'RSC, Next-Router-State-Tree, Next-Router-Prefetch'[39m,
+    [32m'x-matched-path'[39m: [32m'/login'[39m,
+    [32m'x-powered-by'[39m: [32m'Next.js'[39m,
+    [32m'x-vercel-cache'[39m: [32m'MISS'[39m,
+    [32m'x-vercel-id'[39m: [32m'iad1::iad1::6scnj-1768921597540-b580b30c5d22'[39m
+  },
+  pipelineHealth: {
+    status: [33m200[39m,
+    body: [32m'{"status":"healthy","version":"1.0.0","pipeline_ready":true}'[39m
+  },
+  bootstrapCheck: {
+    status: [33m422[39m,
+    body: [32m'{"detail":[{"type":"missing","loc":["header","Authorization"],"msg":"Field required","input":null}]}'[39m,
+    b001_status: [32m'OK'[39m
+  }
+}
+  ✓  6 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata (846ms)
 
 ========================================
 Global Teardown: Starting
@@ -36,84 +92,13 @@ Global Teardown: Starting
 
 Cleaned up auth state.
 
-Artifacts generated: 3 files
+Artifacts generated: 0 files
 
 Artifacts by test:
-  prod_smoke-Production-Smok-cd731-y-fires-and-returns-results-e2e-chromium: test-failed-1.png
-  prod_smoke-Production-Smok-e6de2--page-loads-with-search-bar-e2e-chromium: error-context.md, test-failed-1.png
 
 ========================================
 Global Teardown: Complete
 ========================================
 
 
-
-  1) [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar 
-
-    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
-
-    Locator: locator('input[type="search"], input[placeholder*="search" i], input[placeholder*="Search" i], [role="searchbox"], [data-testid="search-input"], .search-input, #search').first()
-    Expected: visible
-    Timeout: 15000ms
-    Error: element(s) not found
-
-    Call log:
-    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
-    [2m  - waiting for locator('input[type="search"], input[placeholder*="search" i], input[placeholder*="Search" i], [role="searchbox"], [data-testid="search-input"], .search-input, #search').first()[22m
-
-
-      139 |     ].join(', ')).first();
-      140 |
-    > 141 |     await expect(searchBar).toBeVisible({ timeout: 15000 });
-          |                             ^
-      142 |   });
-      143 |
-      144 |   test('GATE-004: Search query fires and returns results', async () => {
-        at /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/e2e/prod_smoke.spec.ts:141:29
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/artifacts/prod_smoke-Production-Smok-e6de2--page-loads-with-search-bar-e2e-chromium/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results/artifacts/prod_smoke-Production-Smok-e6de2--page-loads-with-search-bar-e2e-chromium/error-context.md
-
-  2) [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results 
-
-    [31mTest timeout of 30000ms exceeded.[39m
-
-    Error: locator.click: Target page, context or browser has been closed
-    Call log:
-    [2m  - waiting for locator('input[type="search"], input[placeholder*="search" i], input[placeholder*="Search" i], [role="searchbox"], [data-testid="search-input"], .search-input, #search').first()[22m
-
-
-      159 |
-      160 |     // Type search query
-    > 161 |     await searchBar.click();
-          |                     ^
-      162 |     await searchBar.fill('fuel filter');
-      163 |
-      164 |     // Wait for search to trigger (debounce + network)
-        at /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/e2e/prod_smoke.spec.ts:161:21
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results/artifacts/prod_smoke-Production-Smok-cd731-y-fires-and-returns-results-e2e-chromium/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  3) [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata 
-
-    TypeError: prodResponse.headers(...).entries is not a function
-
-      247 |     const prodResponse = await request.head(PROD_URL);
-      248 |     evidence.prodUrlStatus = prodResponse.status();
-    > 249 |     evidence.prodUrlHeaders = Object.fromEntries(prodResponse.headers().entries());
-          |                                                                         ^
-      250 |
-      251 |     // Test pipeline health
-      252 |     try {
-        at /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/e2e/prod_smoke.spec.ts:249:73
-
-  3 failed
-    [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar 
-    [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results 
-    [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata 
-  3 passed (54.7s)
+  6 passed (15.4s)
