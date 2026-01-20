@@ -58,19 +58,22 @@ def create_navigation_context(
 
         context_row = context_response.data[0]
 
-        # Insert audit event: artefact_opened
-        audit_event = {
-            "yacht_id": str(data.yacht_id),
-            "user_id": str(data.user_id),
-            "event_name": "artefact_opened",
-            "payload": {
-                "situation_id": context_row["id"],
-                "artefact_type": data.artefact_type,
-                "artefact_id": str(data.artefact_id),
-            },
-        }
-
-        supabase.table("ledger_events").insert(audit_event).execute()
+        # Insert audit event: artefact_opened (non-blocking - schema may not match)
+        try:
+            audit_event = {
+                "yacht_id": str(data.yacht_id),
+                "user_id": str(data.user_id),
+                "event_name": "artefact_opened",
+                "payload": {
+                    "situation_id": context_row["id"],
+                    "artefact_type": data.artefact_type,
+                    "artefact_id": str(data.artefact_id),
+                },
+            }
+            supabase.table("ledger_events").insert(audit_event).execute()
+        except Exception as ledger_err:
+            # B003: ledger_events schema may not match - log but don't fail
+            logger.warning(f"Failed to write ledger event (B003): {ledger_err}")
 
         logger.info(f"Created navigation context {context_row['id']} for user {data.user_id}")
 
@@ -125,19 +128,22 @@ def update_active_anchor(
 
         context_row = context_response.data[0]
 
-        # Insert audit event: artefact_opened
-        audit_event = {
-            "yacht_id": str(yacht_id),
-            "user_id": str(user_id),
-            "event_name": "artefact_opened",
-            "payload": {
-                "situation_id": str(context_id),
-                "artefact_type": new_anchor_type,
-                "artefact_id": str(new_anchor_id),
-            },
-        }
-
-        supabase.table("ledger_events").insert(audit_event).execute()
+        # Insert audit event: artefact_opened (non-blocking - schema may not match)
+        try:
+            audit_event = {
+                "yacht_id": str(yacht_id),
+                "user_id": str(user_id),
+                "event_name": "artefact_opened",
+                "payload": {
+                    "situation_id": str(context_id),
+                    "artefact_type": new_anchor_type,
+                    "artefact_id": str(new_anchor_id),
+                },
+            }
+            supabase.table("ledger_events").insert(audit_event).execute()
+        except Exception as ledger_err:
+            # B003: ledger_events schema may not match - log but don't fail
+            logger.warning(f"Failed to write ledger event (B003): {ledger_err}")
 
         logger.info(f"Updated anchor for context {context_id} to {new_anchor_type}:{new_anchor_id}")
 
@@ -253,21 +259,24 @@ def add_user_relation(
 
         relation_row = relation_response.data[0]
 
-        # Insert audit event: relation_added
-        audit_event = {
-            "yacht_id": str(data.yacht_id),
-            "user_id": str(data.user_id),
-            "event_name": "relation_added",
-            "payload": {
-                "relation_id": relation_row["id"],
-                "from_artefact_type": data.from_artefact_type,
-                "from_artefact_id": str(data.from_artefact_id),
-                "to_artefact_type": data.to_artefact_type,
-                "to_artefact_id": str(data.to_artefact_id),
-            },
-        }
-
-        supabase.table("ledger_events").insert(audit_event).execute()
+        # Insert audit event: relation_added (non-blocking - schema may not match)
+        try:
+            audit_event = {
+                "yacht_id": str(data.yacht_id),
+                "user_id": str(data.user_id),
+                "event_name": "relation_added",
+                "payload": {
+                    "relation_id": relation_row["id"],
+                    "from_artefact_type": data.from_artefact_type,
+                    "from_artefact_id": str(data.from_artefact_id),
+                    "to_artefact_type": data.to_artefact_type,
+                    "to_artefact_id": str(data.to_artefact_id),
+                },
+            }
+            supabase.table("ledger_events").insert(audit_event).execute()
+        except Exception as ledger_err:
+            # B003: ledger_events schema may not match - log but don't fail
+            logger.warning(f"Failed to write ledger event (B003): {ledger_err}")
 
         logger.info(f"Created user relation {relation_row['id']}: {data.from_artefact_type}:{data.from_artefact_id} → {data.to_artefact_type}:{data.to_artefact_id}")
 
@@ -312,17 +321,20 @@ def end_navigation_context(
         if not context_response.data:
             raise Exception(f"Navigation context {context_id} not found or not authorized")
 
-        # Insert audit event: situation_ended
-        audit_event = {
-            "yacht_id": str(yacht_id),
-            "user_id": str(user_id),
-            "event_name": "situation_ended",
-            "payload": {
-                "situation_id": str(context_id),
-            },
-        }
-
-        supabase.table("ledger_events").insert(audit_event).execute()
+        # Insert audit event: situation_ended (non-blocking - schema may not match)
+        try:
+            audit_event = {
+                "yacht_id": str(yacht_id),
+                "user_id": str(user_id),
+                "event_name": "situation_ended",
+                "payload": {
+                    "situation_id": str(context_id),
+                },
+            }
+            supabase.table("ledger_events").insert(audit_event).execute()
+        except Exception as ledger_err:
+            # B003: ledger_events schema may not match - log but don't fail
+            logger.warning(f"Failed to write ledger event (B003): {ledger_err}")
 
         logger.info(f"Ended navigation context {context_id}")
 
