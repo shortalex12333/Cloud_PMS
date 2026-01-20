@@ -32,29 +32,53 @@ def validate_jwt(token: str) -> ValidationResult:
         token = token[7:]
 
     try:
-        # Get JWT secret from environment
-        # Check multiple env var names for flexibility (including typo tolerance)
-        jwt_secret = (
-            os.getenv("TENANT_SUPABASE_JWT_SECRET") or
-            os.getenv("TENNANT_SUPABASE_JWT_SECRET") or  # Typo tolerance
-            os.getenv("MASTER_SUPABASE_JWT_SECRET") or
-            os.getenv("SUPABASE_JWT_SECRET")
-        )
-        if not jwt_secret:
+        # B001-AR FIX: Try MASTER secret first, then TENANT
+        # Frontend authenticates against MASTER Supabase, so JWTs are signed with MASTER secret
+        secrets_to_try = []
+
+        # MASTER first (frontend authenticates against MASTER Supabase)
+        if os.getenv("MASTER_SUPABASE_JWT_SECRET"):
+            secrets_to_try.append(("MASTER", os.getenv("MASTER_SUPABASE_JWT_SECRET")))
+
+        # TENANT second (for multi-tenant scenarios where tenant has own Supabase)
+        tenant_secret = os.getenv("TENANT_SUPABASE_JWT_SECRET") or os.getenv("TENNANT_SUPABASE_JWT_SECRET")
+        if tenant_secret and tenant_secret not in [s[1] for s in secrets_to_try]:
+            secrets_to_try.append(("TENANT", tenant_secret))
+
+        # Legacy fallback
+        if os.getenv("SUPABASE_JWT_SECRET") and os.getenv("SUPABASE_JWT_SECRET") not in [s[1] for s in secrets_to_try]:
+            secrets_to_try.append(("SUPABASE", os.getenv("SUPABASE_JWT_SECRET")))
+
+        if not secrets_to_try:
             return ValidationResult.failure(
                 error_code="server_config_error",
                 message="JWT secret not configured (MASTER_SUPABASE_JWT_SECRET)",
             )
 
-        # Decode and verify JWT
-        # Note: Supabase tokens have audience="authenticated", skip audience verification
-        # as we validate yacht_id separately for tenant isolation
-        payload = jwt.decode(
-            token,
-            jwt_secret,
-            algorithms=["HS256"],
-            options={"verify_exp": True, "verify_aud": False},
-        )
+        # Try each secret until one works
+        last_error = None
+        payload = None
+        for secret_name, secret in secrets_to_try:
+            try:
+                # Decode and verify JWT
+                # Note: Supabase tokens have audience="authenticated", skip audience verification
+                # as we validate yacht_id separately for tenant isolation
+                payload = jwt.decode(
+                    token,
+                    secret,
+                    algorithms=["HS256"],
+                    options={"verify_exp": True, "verify_aud": False},
+                )
+                break  # Success - stop trying
+            except jwt.InvalidSignatureError as e:
+                last_error = e
+                continue  # Try next secret
+
+        if payload is None:
+            return ValidationResult.failure(
+                error_code="invalid_token",
+                message=f"Invalid token: Signature verification failed",
+            )
 
         # Extract user context from JWT
         user_id = payload.get("sub")

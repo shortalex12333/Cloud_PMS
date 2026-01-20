@@ -292,17 +292,45 @@ async def verify_security(
 
     token = authorization.replace("Bearer ", "")
     try:
-        jwt_secret = os.getenv("TENANT_SUPABASE_JWT_SECRET") or os.getenv("TENNANT_SUPABASE_JWT_SECRET") or os.getenv("MASTER_SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
-        if jwt_secret:
+        # B001-AR FIX: Try MASTER secret first, then TENANT
+        # Frontend authenticates against MASTER Supabase, so JWTs are signed with MASTER secret
+        secrets_to_try = []
+
+        # MASTER first (frontend authenticates against MASTER Supabase)
+        if os.getenv("MASTER_SUPABASE_JWT_SECRET"):
+            secrets_to_try.append(os.getenv("MASTER_SUPABASE_JWT_SECRET"))
+
+        # TENANT second (for multi-tenant scenarios)
+        tenant_secret = os.getenv("TENANT_SUPABASE_JWT_SECRET") or os.getenv("TENNANT_SUPABASE_JWT_SECRET")
+        if tenant_secret and tenant_secret not in secrets_to_try:
+            secrets_to_try.append(tenant_secret)
+
+        # Legacy fallback
+        if os.getenv("SUPABASE_JWT_SECRET") and os.getenv("SUPABASE_JWT_SECRET") not in secrets_to_try:
+            secrets_to_try.append(os.getenv("SUPABASE_JWT_SECRET"))
+
+        if secrets_to_try:
             from datetime import timedelta
-            # Decode JWT - skip audience verification to allow service_role/anon tokens
-            payload = jwt.decode(
-                token,
-                jwt_secret,
-                algorithms=["HS256"],
-                options={"verify_aud": False},
-                leeway=timedelta(minutes=5)
-            )
+            payload = None
+            last_error = None
+
+            for secret in secrets_to_try:
+                try:
+                    # Decode JWT - skip audience verification to allow service_role/anon tokens
+                    payload = jwt.decode(
+                        token,
+                        secret,
+                        algorithms=["HS256"],
+                        options={"verify_aud": False},
+                        leeway=timedelta(minutes=5)
+                    )
+                    break  # Success - stop trying
+                except jwt.InvalidSignatureError as e:
+                    last_error = e
+                    continue  # Try next secret
+
+            if payload is None:
+                raise jwt.InvalidTokenError(f"Signature verification failed")
 
             # Get user_id from sub (user tokens) or use role for service tokens
             user_id = payload.get("sub") or payload.get("role", "service")
