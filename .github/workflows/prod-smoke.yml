@@ -1,0 +1,217 @@
+name: Production Smoke Tests
+
+on:
+  # Run on demand
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable debug mode (extended timeouts, verbose logging)'
+        required: false
+        default: 'false'
+  # Run on push to main (after deploy)
+  push:
+    branches: [main]
+  # Run daily at 6 AM UTC
+  schedule:
+    - cron: '0 6 * * *'
+
+env:
+  # Production URLs
+  VERCEL_PROD_URL: https://app.celeste7.ai
+  RENDER_API_URL: https://pipeline-core.int.celeste7.ai
+
+  # Test configuration
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+  TEST_YACHT_ID: ${{ secrets.TEST_YACHT_ID }}
+
+  # Supabase MASTER (for auth)
+  MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+  MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+  MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
+
+  # Supabase TENANT (for data verification)
+  TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+  TENANT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  smoke-tests:
+    name: Production Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Create test results directories
+        run: |
+          mkdir -p test-results/prod
+          mkdir -p test-results/artifacts
+          mkdir -p test-results/screenshots
+
+      - name: Run Production Smoke Tests
+        id: smoke-tests
+        continue-on-error: true
+        run: |
+          npx playwright test tests/e2e/prod_smoke.spec.ts \
+            --project=e2e-chromium \
+            --reporter=list,json \
+            --output=test-results/artifacts
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ env.VERCEL_PROD_URL }}
+          CI: true
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## Production Smoke Test Results" > test-results/SMOKE_REPORT.md
+          echo "" >> test-results/SMOKE_REPORT.md
+          echo "**Run Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> test-results/SMOKE_REPORT.md
+          echo "**Target URL:** $VERCEL_PROD_URL" >> test-results/SMOKE_REPORT.md
+          echo "**Pipeline URL:** $RENDER_API_URL" >> test-results/SMOKE_REPORT.md
+          echo "" >> test-results/SMOKE_REPORT.md
+
+          if [ -f test-results/results.json ]; then
+            echo "### Results Summary" >> test-results/SMOKE_REPORT.md
+            cat test-results/results.json | jq -r '.suites[].specs[] | "- \(.title): \(.ok | if . then "PASS" else "FAIL" end)"' >> test-results/SMOKE_REPORT.md 2>/dev/null || echo "Could not parse results" >> test-results/SMOKE_REPORT.md
+          fi
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prod-smoke-results-${{ github.run_number }}
+          path: |
+            test-results/
+          retention-days: 30
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prod-smoke-screenshots-${{ github.run_number }}
+          path: |
+            test-results/prod/*.png
+            test-results/artifacts/**/*.png
+          retention-days: 30
+
+      - name: Check test results
+        if: steps.smoke-tests.outcome == 'failure'
+        run: |
+          echo "::error::Production smoke tests failed! Check artifacts for details."
+          exit 1
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "::notice::Production smoke tests passed successfully!"
+
+  api-gates:
+    name: API Gate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: GATE-API-001: Pipeline Health Check
+        id: health
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://pipeline-core.int.celeste7.ai/health)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Pipeline health check failed with status $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "health_status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "$BODY" > gate-api-001-health.json
+
+      - name: GATE-API-002: Bootstrap Endpoint (JWT Verification)
+        id: bootstrap
+        continue-on-error: true
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        run: |
+          # Login to get JWT
+          LOGIN_RESPONSE=$(curl -s "${MASTER_SUPABASE_URL}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${MASTER_SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${TEST_USER_EMAIL}\",\"password\":\"${TEST_USER_PASSWORD}\"}")
+
+          ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.access_token // empty')
+
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error::Failed to get access token"
+            echo "$LOGIN_RESPONSE"
+            exit 1
+          fi
+
+          echo "Got access token (truncated): ${ACCESS_TOKEN:0:50}..."
+
+          # Test bootstrap
+          BOOTSTRAP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "https://pipeline-core.int.celeste7.ai/v1/bootstrap" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json")
+
+          HTTP_CODE=$(echo "$BOOTSTRAP_RESPONSE" | tail -n1)
+          BODY=$(echo "$BOOTSTRAP_RESPONSE" | sed '$d')
+
+          echo "Bootstrap HTTP Status: $HTTP_CODE"
+          echo "Bootstrap Response: $BODY"
+          echo "$BODY" > gate-api-002-bootstrap.json
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Bootstrap failed with status $HTTP_CODE - B001 NOT RESOLVED"
+            exit 1
+          fi
+
+          YACHT_ID=$(echo "$BODY" | jq -r '.yacht_id // empty')
+          if [ -z "$YACHT_ID" ]; then
+            echo "::error::Bootstrap response missing yacht_id"
+            exit 1
+          fi
+
+          echo "::notice::Bootstrap succeeded! yacht_id=$YACHT_ID"
+
+      - name: Upload API Gate Evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-gate-evidence-${{ github.run_number }}
+          path: |
+            gate-*.json
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## API Gate Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| GATE-API-001: Health | ${{ steps.health.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| GATE-API-002: Bootstrap | ${{ steps.bootstrap.outcome }} |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,119 @@
+
+========================================
+Global Setup: Starting
+========================================
+
+Setting up MASTER DB...
+[Setup] Starting MASTER DB setup...
+[Setup] fleet_registry row exists for 85fe1119...
+[Setup] Test user ID: a35cad0b...
+[Setup] user_accounts row exists for a35cad0b... yacht_id=85fe1119-b04c-41ac-80f1-829d23322598
+[Setup] MASTER DB setup complete!
+MASTER DB setup complete.
+
+Pre-authenticating test user...
+Authentication successful, token cached.
+
+========================================
+Global Setup: Complete
+========================================
+
+
+Running 6 tests using 1 worker
+
+  ✓  1 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:72:7 › Production Smoke Tests › GATE-001: Login page loads (1.1s)
+  ✓  2 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:95:7 › Production Smoke Tests › GATE-002: Login succeeds (84ms)
+[Network] Request: POST https://pipeline-core.int.celeste7.ai/v1/bootstrap
+[Network] Response: 401 https://pipeline-core.int.celeste7.ai/v1/bootstrap
+  ✘  3 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar (15.1s)
+  ✘  4 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results (30.1s)
+  ✓  5 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:202:7 › Production Smoke Tests › GATE-005: No console errors on critical paths (2.6s)
+  ✘  6 [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata (768ms)
+
+========================================
+Global Teardown: Starting
+========================================
+
+Cleaned up auth state.
+
+Artifacts generated: 3 files
+
+Artifacts by test:
+  prod_smoke-Production-Smok-cd731-y-fires-and-returns-results-e2e-chromium: test-failed-1.png
+  prod_smoke-Production-Smok-e6de2--page-loads-with-search-bar-e2e-chromium: error-context.md, test-failed-1.png
+
+========================================
+Global Teardown: Complete
+========================================
+
+
+
+  1) [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('input[type="search"], input[placeholder*="search" i], input[placeholder*="Search" i], [role="searchbox"], [data-testid="search-input"], .search-input, #search').first()
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+    [2m  - waiting for locator('input[type="search"], input[placeholder*="search" i], input[placeholder*="Search" i], [role="searchbox"], [data-testid="search-input"], .search-input, #search').first()[22m
+
+
+      139 |     ].join(', ')).first();
+      140 |
+    > 141 |     await expect(searchBar).toBeVisible({ timeout: 15000 });
+          |                             ^
+      142 |   });
+      143 |
+      144 |   test('GATE-004: Search query fires and returns results', async () => {
+        at /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/e2e/prod_smoke.spec.ts:141:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/artifacts/prod_smoke-Production-Smok-e6de2--page-loads-with-search-bar-e2e-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/artifacts/prod_smoke-Production-Smok-e6de2--page-loads-with-search-bar-e2e-chromium/error-context.md
+
+  2) [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Target page, context or browser has been closed
+    Call log:
+    [2m  - waiting for locator('input[type="search"], input[placeholder*="search" i], input[placeholder*="Search" i], [role="searchbox"], [data-testid="search-input"], .search-input, #search').first()[22m
+
+
+      159 |
+      160 |     // Type search query
+    > 161 |     await searchBar.click();
+          |                     ^
+      162 |     await searchBar.fill('fuel filter');
+      163 |
+      164 |     // Wait for search to trigger (debounce + network)
+        at /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/e2e/prod_smoke.spec.ts:161:21
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/artifacts/prod_smoke-Production-Smok-cd731-y-fires-and-returns-results-e2e-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata 
+
+    TypeError: prodResponse.headers(...).entries is not a function
+
+      247 |     const prodResponse = await request.head(PROD_URL);
+      248 |     evidence.prodUrlStatus = prodResponse.status();
+    > 249 |     evidence.prodUrlHeaders = Object.fromEntries(prodResponse.headers().entries());
+          |                                                                         ^
+      250 |
+      251 |     // Test pipeline health
+      252 |     try {
+        at /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/e2e/prod_smoke.spec.ts:249:73
+
+  3 failed
+    [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:120:7 › Production Smoke Tests › GATE-003: App page loads with search bar 
+    [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:144:7 › Production Smoke Tests › GATE-004: Search query fires and returns results 
+    [e2e-chromium] › tests/e2e/prod_smoke.spec.ts:238:7 › Evidence Collection › Collect production metadata 
+  3 passed (54.7s)
