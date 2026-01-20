@@ -35,7 +35,7 @@ def create_navigation_context(
 
     Behavior:
     1. Insert navigation_contexts row
-    2. Insert audit_events row: artefact_opened
+    2. Insert ledger_events row: artefact_opened
     3. Return context (per schema)
     """
     try:
@@ -70,7 +70,7 @@ def create_navigation_context(
             },
         }
 
-        supabase.table("audit_events").insert(audit_event).execute()
+        supabase.table("ledger_events").insert(audit_event).execute()
 
         logger.info(f"Created navigation context {context_row['id']} for user {data.user_id}")
 
@@ -105,7 +105,7 @@ def update_active_anchor(
 
     Behavior:
     1. Update navigation_contexts.active_anchor_type/id
-    2. Insert audit_events: artefact_opened
+    2. Insert ledger_events: artefact_opened
     3. Return updated context (per schema)
     """
     try:
@@ -137,7 +137,7 @@ def update_active_anchor(
             },
         }
 
-        supabase.table("audit_events").insert(audit_event).execute()
+        supabase.table("ledger_events").insert(audit_event).execute()
 
         logger.info(f"Updated anchor for context {context_id} to {new_anchor_type}:{new_anchor_id}")
 
@@ -229,7 +229,7 @@ def add_user_relation(
     Behavior:
     1. Insert user_added_relations (immediate active, source=user)
     2. Attribute created_by_user_id
-    3. Insert audit_events: relation_added
+    3. Insert ledger_events: relation_added
     4. Return created relation (per schema)
     """
     try:
@@ -267,7 +267,7 @@ def add_user_relation(
             },
         }
 
-        supabase.table("audit_events").insert(audit_event).execute()
+        supabase.table("ledger_events").insert(audit_event).execute()
 
         logger.info(f"Created user relation {relation_row['id']}: {data.from_artefact_type}:{data.from_artefact_id} → {data.to_artefact_type}:{data.to_artefact_id}")
 
@@ -296,7 +296,7 @@ def end_navigation_context(
 
     Behavior:
     1. Set navigation_contexts.ended_at = now()
-    2. Insert audit_events: situation_ended
+    2. Insert ledger_events: situation_ended
     3. Return success
     """
     try:
@@ -322,7 +322,7 @@ def end_navigation_context(
             },
         }
 
-        supabase.table("audit_events").insert(audit_event).execute()
+        supabase.table("ledger_events").insert(audit_event).execute()
 
         logger.info(f"Ended navigation context {context_id}")
 
