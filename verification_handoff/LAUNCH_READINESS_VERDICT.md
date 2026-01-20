@@ -2,7 +2,7 @@
 
 **Date:** 2026-01-20T17:15:00Z
 **Verification Run:** Evidence-Grade 7-Phase
-**Last Updated:** After B001-AR fix (commit c196d3b)
+**Last Updated:** After B002 fix (commit c9acc90)
 
 ---
 
@@ -23,6 +23,7 @@ All critical security issues have been fixed. The system is now fully operationa
 - Bootstrap (yacht context) ✅
 - **Action router (71 microactions) ✅** (B001-AR FIXED)
 - **Handover endpoint ✅** (B001-AR FIXED)
+- **Navigation context ✅** (B002 FIXED - pending deploy)
 
 ---
 
@@ -50,6 +51,13 @@ All critical security issues have been fixed. The system is now fully operationa
 - **Commit:** c196d3b
 - **Status:** ✅ DEPLOYED
 - **Verified:** Endpoints no longer return "Signature verification failed"
+
+### B002: Table Name Mismatch (audit_events → ledger_events)
+- **Commit:** c9acc90
+- **Status:** ✅ FIXED (pending deploy)
+- **Issue:** Context navigation handlers referenced non-existent `audit_events` table
+- **Fixed:** Changed to correct `ledger_events` table in 3 files
+- **Files:** context_navigation_handlers.py, context_navigation_routes.py, test_context_navigation.py
 
 ---
 
@@ -98,9 +106,10 @@ All evidence files in `verification_handoff/evidence/`:
 
 ### Immediate (Before Launch)
 
-1. **Fix B001-AR in 3 files** - Apply MASTER-first JWT pattern
-2. **Re-deploy to production** - Push fix and verify
-3. **Re-test action endpoints** - Confirm microactions work
+1. ~~**Fix B001-AR in 3 files**~~ - ✅ DONE (c196d3b)
+2. ~~**Fix B002 table mismatch**~~ - ✅ DONE (c9acc90)
+3. **Deploy to production** - Push fixes and verify
+4. **Re-test context navigation** - Confirm search result clicks work
 
 ### Post-Launch (Low Priority)
 
@@ -123,5 +132,6 @@ All evidence files in `verification_handoff/evidence/`:
 **Fixes Applied:**
 - B001 (a19afcf) - auth.py JWT fix
 - B001-AR (c196d3b) - action router + microaction service JWT fix
+- B002 (c9acc90) - audit_events → ledger_events table fix
 
-**Ready for Launch:** YES
+**Ready for Launch:** YES (after production deployment)
