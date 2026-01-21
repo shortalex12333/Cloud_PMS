@@ -11,7 +11,7 @@
  */
 
 import { useSurface } from '@/contexts/SurfaceContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { X, ChevronRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FaultCard } from '@/components/cards/FaultCard';

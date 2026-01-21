@@ -21,7 +21,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSurface } from '@/contexts/SurfaceContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 // Entity fetch configuration
 const PIPELINE_URL = process.env.NEXT_PUBLIC_PIPELINE_URL || 'https://pipeline-core.int.celeste7.ai';
@@ -34,7 +34,7 @@ interface DeepLinkHandlerProps {
 export function DeepLinkHandler({ onDeepLinkProcessed }: DeepLinkHandlerProps) {
   const searchParams = useSearchParams();
   const { showContext } = useSurface();
-  const { session, isLoading: authLoading } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const processedRef = useRef(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
