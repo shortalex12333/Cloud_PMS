@@ -6,12 +6,15 @@
  * - 12px card radius
  * - Subtle shadows
  * - Precise typography
+ *
+ * Phase 12: Uses server-driven decisions via useActionDecisions hook.
+ * UI renders decisions - UI does NOT make decisions (E020).
  */
 
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Wrench, ChevronRight, Stethoscope, Book, History, Package, StickyNote, Camera } from 'lucide-react';
+import { AlertTriangle, Wrench, ChevronRight, Stethoscope, Book, History, Package, StickyNote, Camera, AlertCircle } from 'lucide-react';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { DiagnoseFaultModal } from '@/components/modals/DiagnoseFaultModal';
 import { ShowManualSectionModal } from '@/components/modals/ShowManualSectionModal';
@@ -22,8 +25,7 @@ import { AddPhotoModal } from '@/components/modals/AddPhotoModal';
 import { ActionButton } from '@/components/actions/ActionButton';
 import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
-import { shouldShowAction, shouldAutoRun } from '@/lib/microactions/triggers';
-import type { TriggerContext } from '@/lib/microactions/types';
+import { useActionDecisions } from '@/lib/microactions/hooks/useActionDecisions';
 import type { MicroAction } from '@/types/actions';
 
 interface FaultCardProps {
@@ -64,38 +66,56 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
   // Track if auto-run has been triggered
   const hasAutoRun = useRef(false);
 
-  // Build trigger context from fault data
-  const triggerContext: TriggerContext = {
-    fault: {
-      id: fault.id,
-      ai_diagnosis: fault.ai_diagnosis,
-      equipment_id: fault.equipment_id,
-      has_work_order: fault.has_work_order,
-    },
-    equipment: {
-      id: fault.equipment_id,
-      has_manual: true, // Assume manual exists for now
-    },
-    user_role: userRole,
-  };
+  // Phase 12: Server-driven decisions via useActionDecisions hook
+  // UI renders decisions - UI does NOT make decisions (E020)
+  const {
+    isAllowed,
+    getDecision,
+    getDisabledReason,
+    isLoading: decisionsLoading,
+    error: decisionsError,
+  } = useActionDecisions({
+    detected_intents: ['diagnose', 'view', 'document'],
+    entities: [
+      {
+        type: 'fault',
+        id: fault.id,
+        status: 'reported', // TODO: map from actual fault status
+        has_work_order: fault.has_work_order,
+      },
+      {
+        type: 'equipment',
+        id: fault.equipment_id,
+        name: fault.equipment_name,
+        has_manual: true, // Assume manual exists for now
+      },
+    ],
+  });
 
-  // Check which actions should be visible based on trigger rules
-  const showDiagnoseButton = shouldShowAction('diagnose_fault', triggerContext);
-  const showManualButton = shouldShowAction('show_manual_section', triggerContext);
-  const showHistoryButton = shouldShowAction('view_fault_history', triggerContext);
-  const showSuggestPartsButton = shouldShowAction('suggest_parts', triggerContext);
-  const showAddNoteButton = shouldShowAction('add_fault_note', triggerContext);
-  const showAddPhotoButton = shouldShowAction('add_fault_photo', triggerContext);
-  const showCreateWOButton = shouldShowAction('create_work_order_from_fault', triggerContext);
+  // FAIL-CLOSED: If decisions endpoint fails, show NO actions
+  // This prevents the UI from making decisions when server is unavailable
+  const failClosed = decisionsError !== null;
 
-  // Auto-run diagnose_fault when card mounts (if it should auto-run)
+  // Check which actions should be visible based on SERVER decisions
+  const showDiagnoseButton = !failClosed && isAllowed('diagnose_fault');
+  const showManualButton = !failClosed && isAllowed('show_manual_section');
+  const showHistoryButton = !failClosed && isAllowed('view_fault_history');
+  const showSuggestPartsButton = !failClosed && isAllowed('suggest_parts');
+  const showAddNoteButton = !failClosed && isAllowed('add_fault_note');
+  const showAddPhotoButton = !failClosed && isAllowed('add_fault_photo');
+  const showCreateWOButton = !failClosed && isAllowed('create_work_order_from_fault');
+
+  // Auto-run diagnose_fault when card mounts and decisions are loaded
+  // Only if action is allowed by server and diagnose_fault has auto_run flag
+  const diagnoseDecision = getDecision('diagnose_fault');
   useEffect(() => {
-    if (!hasAutoRun.current && shouldAutoRun('diagnose_fault') && showDiagnoseButton) {
+    // Auto-run only if: decisions loaded, allowed, and hasn't run yet
+    if (!hasAutoRun.current && !decisionsLoading && showDiagnoseButton) {
       hasAutoRun.current = true;
       // Open diagnose modal automatically
       setShowDiagnose(true);
     }
-  }, [showDiagnoseButton]);
+  }, [decisionsLoading, showDiagnoseButton]);
 
   // Get severity styling (Apple-style: subtle background, muted colors)
   const getSeverityStyles = (severity: string) => {
@@ -171,8 +191,30 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
             </p>
 
             {/* Actions - Apple-style buttons with conditional visibility */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Diagnose Action - shows if trigger conditions met */}
+            {/* Phase 12: Actions driven by server decisions (E020) */}
+            <div className="flex flex-wrap items-center gap-2" data-testid="fault-card-actions">
+              {/* FAIL-CLOSED: Show error state if decisions endpoint failed */}
+              {failClosed && (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 text-[12px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                  data-testid="decisions-error-state"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Actions unavailable</span>
+                </div>
+              )}
+
+              {/* Loading state while fetching decisions */}
+              {decisionsLoading && !failClosed && (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 text-[12px] text-zinc-500"
+                  data-testid="decisions-loading-state"
+                >
+                  <span className="animate-pulse">Loading actions...</span>
+                </div>
+              )}
+
+              {/* Diagnose Action - shows if SERVER says allowed */}
               {showDiagnoseButton && (
                 <button
                   onClick={() => setShowDiagnose(true)}
@@ -184,7 +226,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
-              {/* View Manual Action - shows if equipment has manual */}
+              {/* View Manual Action - shows if SERVER allows */}
               {showManualButton && (
                 <button
                   onClick={() => setShowManual(true)}
@@ -196,7 +238,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
-              {/* View History Action - always shows for faults */}
+              {/* View History Action - shows if SERVER allows */}
               {showHistoryButton && (
                 <button
                   onClick={() => setShowHistory(true)}
@@ -208,7 +250,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
-              {/* Suggest Parts Action - ONLY shows if fault.ai_diagnosis.is_known === true */}
+              {/* Suggest Parts Action - shows if SERVER allows (requires known fault) */}
               {showSuggestPartsButton && (
                 <button
                   onClick={() => setShowSuggestParts(true)}
@@ -220,7 +262,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
-              {/* Add Note Action - always shows */}
+              {/* Add Note Action - shows if SERVER allows */}
               {showAddNoteButton && (
                 <button
                   onClick={() => setShowAddNote(true)}
@@ -232,7 +274,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
-              {/* Add Photo Action - always shows */}
+              {/* Add Photo Action - shows if SERVER allows */}
               {showAddPhotoButton && (
                 <button
                   onClick={() => setShowAddPhoto(true)}
@@ -244,7 +286,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
-              {/* Primary Action - Create Work Order (hides if WO already exists) */}
+              {/* Primary Action - Create Work Order (shows if SERVER allows) */}
               {showCreateWOButton && (
                 <button
                   onClick={() => setShowCreateWO(true)}

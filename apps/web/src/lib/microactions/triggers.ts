@@ -396,71 +396,23 @@ export const TRIGGER_RULES: TriggerRule[] = [
 
 /**
  * Get trigger rule for a specific action
+ *
+ * Note: The trigger rules are kept for reference and for shouldAutoRun().
+ * All visibility decisions now come from the server via useActionDecisions.
  */
 export function getTriggerRule(actionName: string): TriggerRule | undefined {
   return TRIGGER_RULES.find((rule) => rule.action_name === actionName);
 }
 
 /**
- * Check if an action should be visible given the context
- *
- * @deprecated Phase 11.2: Use useActionDecisions hook instead.
- * The Decision Engine (E017/E018/E019) now handles all trigger logic server-side.
- * UI should render decisions, not make them (E020).
- *
- * Migration:
- * ```tsx
- * // Before (deprecated)
- * const visible = shouldShowAction('diagnose_fault', triggerContext);
- *
- * // After (Phase 11.2)
- * const { isAllowed, getDisabledReason } = useActionDecisions({
- *   entities: [{ type: 'fault', id: faultId }],
- *   detected_intents: ['diagnose'],
- * });
- * const visible = isAllowed('diagnose_fault');
- * ```
- */
-export function shouldShowAction(
-  actionName: string,
-  context: TriggerContext
-): boolean {
-  // DEPRECATED: This function runs client-side trigger logic.
-  // Phase 11.2 moves all decision logic to server via /v1/decisions.
-  // This function is kept for backward compatibility during migration.
-  console.warn(
-    `[DEPRECATED] shouldShowAction('${actionName}') called. ` +
-    `Use useActionDecisions hook instead (Phase 11.2).`
-  );
-
-  const rule = getTriggerRule(actionName);
-  // If no rule exists, default to showing (backward compatibility)
-  if (!rule) return true;
-  return rule.condition(context);
-}
-
-/**
  * Check if an action should auto-run when the card mounts
+ *
+ * This is retained because auto-run is a UI behavior, not a visibility decision.
+ * The server decides IF the action is allowed; this function decides IF it auto-runs.
  */
 export function shouldAutoRun(actionName: string): boolean {
   const rule = getTriggerRule(actionName);
   return rule?.auto_run === true;
-}
-
-/**
- * Get all visible actions for a given context
- *
- * @deprecated Phase 11.2: Use useActionDecisions hook instead.
- * Server-side Decision Engine determines visibility.
- */
-export function getVisibleActions(
-  actionNames: string[],
-  context: TriggerContext
-): string[] {
-  console.warn(
-    '[DEPRECATED] getVisibleActions() called. Use useActionDecisions hook instead.'
-  );
-  return actionNames.filter((name) => shouldShowAction(name, context));
 }
 
 /**
@@ -469,5 +421,31 @@ export function getVisibleActions(
 export function getAutoRunActions(actionNames: string[]): string[] {
   return actionNames.filter((name) => shouldAutoRun(name));
 }
+
+// ============================================================================
+// REMOVED FUNCTIONS (Phase 12)
+// ============================================================================
+//
+// The following functions have been REMOVED as part of Phase 12 migration:
+//
+// - shouldShowAction(): REMOVED - Use useActionDecisions().isAllowed() instead
+// - getVisibleActions(): REMOVED - Use useActionDecisions().allowedDecisions instead
+//
+// All visibility decisions now come from the server via /v1/decisions endpoint.
+// UI renders decisions - UI does NOT make decisions (E020).
+//
+// Migration example:
+// ```tsx
+// // OLD (removed)
+// const visible = shouldShowAction('diagnose_fault', triggerContext);
+//
+// // NEW (Phase 12)
+// const { isAllowed } = useActionDecisions({
+//   entities: [{ type: 'fault', id: faultId }],
+//   detected_intents: ['diagnose'],
+// });
+// const visible = isAllowed('diagnose_fault');
+// ```
+// ============================================================================
 
 export default TRIGGER_RULES;

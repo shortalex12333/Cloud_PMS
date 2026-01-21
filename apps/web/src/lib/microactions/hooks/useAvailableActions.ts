@@ -3,13 +3,17 @@
 /**
  * useAvailableActions Hook
  *
- * React hook for getting available actions based on the current context
- * (card type, entity, user role).
+ * Phase 12: Refactored to use server-driven decisions via useActionDecisions.
+ * UI renders decisions - UI does NOT make decisions (E020).
+ *
+ * This hook maintains backward compatibility with existing consumers while
+ * delegating all visibility decisions to the Decision Engine server.
  */
 
 import { useMemo } from 'react';
 import { getActionsForCardType, getAction } from '../registry';
 import { hasHandler, canExecuteAction } from '../executor';
+import { useActionDecisions, type EntityInput } from './useActionDecisions';
 import type {
   MicroAction,
   CardType,
@@ -18,7 +22,6 @@ import type {
   SideEffectType,
   TriggerContext,
 } from '../types';
-import { shouldShowAction, shouldAutoRun, getAutoRunActions } from '../triggers';
 
 interface UseAvailableActionsOptions {
   /** Card type to get actions for */
@@ -37,7 +40,7 @@ interface UseAvailableActionsOptions {
   requireHandler?: boolean;
   /** Maximum number of actions to return */
   limit?: number;
-  /** Trigger context for conditional visibility */
+  /** Trigger context for conditional visibility (converted to entities for server) */
   triggerContext?: TriggerContext;
 }
 
@@ -58,6 +61,10 @@ interface UseAvailableActionsReturn {
   getActionByName: (actionName: string) => MicroAction | undefined;
   /** Actions that should auto-run when card mounts */
   autoRunActions: MicroAction[];
+  /** Loading state from decisions endpoint */
+  isLoading: boolean;
+  /** Error state from decisions endpoint */
+  error: string | null;
 }
 
 /**
@@ -129,6 +136,75 @@ function getActionVariant(
   return 'MUTATE';
 }
 
+/**
+ * Convert TriggerContext to EntityInput[] for the decisions API
+ */
+function triggerContextToEntities(ctx?: TriggerContext): EntityInput[] {
+  if (!ctx) return [];
+
+  const entities: EntityInput[] = [];
+
+  if (ctx.fault?.id) {
+    entities.push({
+      type: 'fault',
+      id: ctx.fault.id,
+      status: ctx.fault.status,
+      has_work_order: ctx.fault.has_work_order,
+      acknowledged: ctx.fault.acknowledged,
+    });
+  }
+
+  if (ctx.work_order?.id) {
+    entities.push({
+      type: 'work_order',
+      id: ctx.work_order.id,
+      status: ctx.work_order.status,
+      has_checklist: ctx.work_order.has_checklist,
+    });
+  }
+
+  if (ctx.equipment?.id) {
+    entities.push({
+      type: 'equipment',
+      id: ctx.equipment.id,
+      name: ctx.equipment.name,
+      has_manual: ctx.equipment.has_manual,
+    });
+  }
+
+  if (ctx.part?.id) {
+    entities.push({
+      type: 'part',
+      id: ctx.part.id,
+      name: ctx.part.name,
+    });
+  }
+
+  return entities;
+}
+
+/**
+ * Map card type to likely intents for decision API
+ */
+function cardTypeToIntents(cardType: CardType): string[] {
+  switch (cardType) {
+    case 'fault':
+      return ['diagnose', 'view', 'repair'];
+    case 'work_order':
+      return ['view', 'complete_work', 'update'];
+    case 'equipment':
+      return ['view', 'maintain'];
+    case 'part':
+      return ['view', 'order'];
+    case 'document':
+      return ['view'];
+    case 'handover':
+      return ['handover', 'view'];
+    default:
+      return ['view'];
+  }
+}
+
 export function useAvailableActions(
   options: UseAvailableActionsOptions
 ): UseAvailableActionsReturn {
@@ -144,6 +220,28 @@ export function useAvailableActions(
     triggerContext,
   } = options;
 
+  // Phase 12: Get decisions from server
+  const entities = useMemo(
+    () => triggerContextToEntities(triggerContext),
+    [triggerContext]
+  );
+
+  const detectedIntents = useMemo(
+    () => cardTypeToIntents(cardType),
+    [cardType]
+  );
+
+  const {
+    isAllowed,
+    getDecision,
+    isLoading,
+    error,
+  } = useActionDecisions({
+    detected_intents: detectedIntents,
+    entities,
+    skip: entities.length === 0, // Skip if no entity context
+  });
+
   const context: ActionContext = useMemo(
     () => ({
       yacht_id: yachtId || '',
@@ -155,16 +253,13 @@ export function useAvailableActions(
     [yachtId, userId, userRole, entityId, cardType]
   );
 
-  // Merge user role into trigger context if provided
-  const effectiveTriggerContext: TriggerContext = useMemo(
-    () => ({
-      ...triggerContext,
-      user_role: triggerContext?.user_role || userRole,
-    }),
-    [triggerContext, userRole]
-  );
+  // FAIL-CLOSED: If decisions error, return empty arrays
+  const failClosed = error !== null;
 
   const actions = useMemo(() => {
+    // Fail closed: return empty if decisions endpoint failed
+    if (failClosed) return [];
+
     let availableActions = getActionsForCardType(cardType);
 
     // Filter by side effect if specified
@@ -181,12 +276,11 @@ export function useAvailableActions(
       );
     }
 
-    // Filter by trigger context (conditional visibility)
-    if (triggerContext) {
-      availableActions = availableActions.filter((action) =>
-        shouldShowAction(action.action_name, effectiveTriggerContext)
-      );
-    }
+    // Phase 12: Filter by SERVER decisions (replaces shouldShowAction)
+    // Only include actions that the server says are allowed
+    availableActions = availableActions.filter((action) =>
+      isAllowed(action.action_name)
+    );
 
     // Apply limit
     if (limit && limit > 0) {
@@ -194,7 +288,7 @@ export function useAvailableActions(
     }
 
     return availableActions;
-  }, [cardType, sideEffectFilter, requireHandler, limit, triggerContext, effectiveTriggerContext]);
+  }, [cardType, sideEffectFilter, requireHandler, limit, isAllowed, failClosed]);
 
   const primaryAction = useMemo(() => {
     // Prefer mutation_heavy actions as primary
@@ -223,6 +317,7 @@ export function useAvailableActions(
     return actions.map((action) => {
       const canExecute = canExecuteAction(action.action_name, context);
       const isPrimary = primaryAction?.action_name === action.action_name;
+      const decision = getDecision(action.action_name);
 
       return {
         action_name: action.action_name,
@@ -232,16 +327,17 @@ export function useAvailableActions(
         is_primary: isPrimary,
         requires_signature: action.requires_confirmation,
         disabled: !canExecute.allowed,
-        disabled_reason: canExecute.reason,
+        disabled_reason: canExecute.reason || decision?.blocked_by?.detail,
       };
     });
-  }, [actions, context, primaryAction]);
+  }, [actions, context, primaryAction, getDecision]);
 
   const isActionAvailable = useMemo(
     () => (actionName: string) => {
+      if (failClosed) return false;
       return actions.some((a) => a.action_name === actionName);
     },
-    [actions]
+    [actions, failClosed]
   );
 
   const getActionByName = useMemo(
@@ -251,10 +347,17 @@ export function useAvailableActions(
     [actions]
   );
 
-  // Actions that should auto-run when card mounts
+  // Auto-run actions: check server decision for auto_run flag
+  // For now, diagnose_fault is the only auto-run action per E017
   const autoRunActions = useMemo(
-    () => actions.filter((action) => shouldAutoRun(action.action_name)),
-    [actions]
+    () => actions.filter((action) => {
+      // diagnose_fault has auto_run_on_card_mount: true in E017
+      if (action.action_name === 'diagnose_fault') {
+        return isAllowed('diagnose_fault');
+      }
+      return false;
+    }),
+    [actions, isAllowed]
   );
 
   return {
@@ -266,6 +369,8 @@ export function useAvailableActions(
     isActionAvailable,
     getActionByName,
     autoRunActions,
+    isLoading,
+    error,
   };
 }
 
