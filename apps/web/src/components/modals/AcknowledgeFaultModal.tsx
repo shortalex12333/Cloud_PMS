@@ -3,6 +3,9 @@
  *
  * Simple confirmation modal for acknowledging a fault.
  * Acknowledging means "I see this fault and take responsibility".
+ *
+ * IMPORTANT: Uses actionClient (not useActionHandler) to call the correct
+ * backend endpoint: POST /v1/actions/execute
  */
 
 'use client';
@@ -18,7 +21,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useActionHandler } from '@/hooks/useActionHandler';
+import { executeAction, ActionExecutionError } from '@/lib/actionClient';
+import { useAuth } from '@/hooks/useAuth';
 import { CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,26 +45,42 @@ export function AcknowledgeFaultModal({
 }: AcknowledgeFaultModalProps) {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { executeAction, isLoading } = useActionHandler();
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleAcknowledge = async () => {
-    setError(null);
-    try {
-      const result = await executeAction('acknowledge_fault', {
-        fault_id: context.fault_id,
-        note: note || undefined,
-      });
+    if (!user?.yachtId) {
+      setError('User yacht not found');
+      return;
+    }
 
-      if (result?.success) {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      // Call the correct backend endpoint: POST /v1/actions/execute
+      // Payload format: { action, context, payload }
+      const result = await executeAction(
+        'acknowledge_fault',
+        { yacht_id: user.yachtId },
+        { fault_id: context.fault_id, note: note || undefined }
+      );
+
+      if (result?.status === 'success') {
         onSuccess?.();
         onOpenChange(false);
         setNote('');
       } else {
-        const errMsg = result?.error?.message || result?.error || 'Failed to acknowledge fault';
-        setError(typeof errMsg === 'string' ? errMsg : 'Failed to acknowledge fault');
+        setError(result?.message || 'Failed to acknowledge fault');
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to acknowledge fault');
+      if (e instanceof ActionExecutionError) {
+        setError(e.message);
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to acknowledge fault');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 

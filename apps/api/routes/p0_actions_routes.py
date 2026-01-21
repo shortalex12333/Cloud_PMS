@@ -809,14 +809,19 @@ async def execute_action(
         elif action == "acknowledge_fault":
             # Update fault status to investigating (valid: open, investigating, resolved, closed)
             from datetime import datetime, timezone
+            import uuid as uuid_module
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
+            execution_id = str(uuid_module.uuid4())
 
-            # Check if fault exists (don't select severity to avoid enum errors)
-            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            # Check if fault exists and get current state for audit
+            check = db_client.table("pms_faults").select("id, status, severity").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
             if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
+
+            old_status = check.data.get("status", "unknown")
+            old_severity = check.data.get("severity", "unknown")
 
             # Always include severity in update to fix any bad data
             update_data = {
@@ -828,7 +833,34 @@ async def execute_action(
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
-                result = {"status": "success", "message": "Fault acknowledged"}
+                # Create audit log entry
+                try:
+                    audit_entry = {
+                        "id": str(uuid_module.uuid4()),
+                        "yacht_id": yacht_id,
+                        "action": "acknowledge_fault",
+                        "entity_type": "fault",
+                        "entity_id": fault_id,
+                        "user_id": user_id,
+                        "execution_id": execution_id,
+                        "old_values": {"status": old_status, "severity": old_severity},
+                        "new_values": {"status": "investigating", "severity": "medium"},
+                        "metadata": {"note": payload.get("note")},
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    db_client.table("pms_audit_log").insert(audit_entry).execute()
+                    logger.info(f"Audit log created for acknowledge_fault: execution_id={execution_id}")
+                except Exception as audit_err:
+                    # Log audit failure but don't fail the action
+                    logger.warning(f"Audit log failed for acknowledge_fault (fault_id={fault_id}): {audit_err}")
+
+                result = {
+                    "status": "success",
+                    "message": "Fault acknowledged",
+                    "execution_id": execution_id,
+                    "fault_id": fault_id,
+                    "new_status": "investigating"
+                }
             else:
                 result = {"status": "error", "error_code": "UPDATE_FAILED", "message": "Failed to acknowledge fault"}
 
