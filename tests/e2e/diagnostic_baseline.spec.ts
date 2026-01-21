@@ -171,8 +171,8 @@ function getTestPayload(action: Microaction, data: DiscoveredTestData): Record<s
     'add_wo_part': { work_order_id: woId, part_id: partId, quantity: 1 },
     'add_wo_note': { work_order_id: woId, note_text: 'Diagnostic test note' },
 
-    // Checklist actions
-    'view_checklist': { checklist_type: 'arrival' },
+    // Checklist actions - use placeholder checklist_id
+    'view_checklist': { checklist_id: 'no-checklist-found' },
     'mark_checklist_item_complete': { checklist_item_id: 'no-checklist-item' },
     'add_checklist_note': { checklist_item_id: 'no-checklist-item', note_text: 'test' },
     'add_checklist_photo': { checklist_item_id: 'no-checklist-item', photo_url: 'test.jpg' },
@@ -180,7 +180,7 @@ function getTestPayload(action: Microaction, data: DiscoveredTestData): Record<s
     // Worklist actions
     'view_worklist': {},
     'add_worklist_task': { task_description: 'Test task from diagnostic', title: 'Test task', description: 'Test description' },
-    'update_worklist_progress': { worklist_task_id: 'no-worklist-task', progress_percent: 50 },
+    'update_worklist_progress': { worklist_item_id: 'no-worklist-item', progress: 50 },
     'export_worklist': {},
 
     // Equipment actions - use real equipment ID
@@ -204,47 +204,47 @@ function getTestPayload(action: Microaction, data: DiscoveredTestData): Record<s
     'view_linked_equipment': { part_id: partId },
     'check_stock_level': { part_id: partId },
 
-    // Handover actions
+    // Handover actions - use discovered handover_id
     'add_to_handover': { entity_type: 'fault', entity_id: faultId, title: 'Diagnostic handover item' },
-    'add_document_to_handover': { document_id: documentId },
-    'add_predictive_insight_to_handover': { insight_id: 'no-insight' },
-    'edit_handover_section': { handover_section_id: 'no-section', content: 'test' },
+    'add_document_to_handover': { handover_id: handoverId, document_id: documentId },
+    'add_predictive_insight_to_handover': { handover_id: handoverId, insight_text: 'Diagnostic test insight' },
+    'edit_handover_section': { handover_id: handoverId, section_name: 'notes' },
     'export_handover': { handover_id: handoverId },
     'regenerate_handover_summary': { handover_id: handoverId },
-    'view_smart_summary': {},
+    'view_smart_summary': { entity_type: 'fault', entity_id: faultId },
     'upload_photo': { entity_type: 'fault', entity_id: faultId, photo_url: 'test.jpg' },
     'record_voice_note': { entity_type: 'fault', entity_id: faultId, audio_url: 'test.mp3' },
 
-    // Compliance actions
-    'view_hours_of_rest': {},
-    'update_hours_of_rest': { date: '2025-01-01', hours_data: [] },
-    'export_hours_of_rest': { period_start: '2025-01-01', period_end: '2025-01-31' },
+    // Compliance actions - use user_id as crew_id (same person)
+    'view_hours_of_rest': { crew_id: user_id },
+    'update_hours_of_rest': { crew_id: user_id, date: '2025-01-21', hours: 8 },
+    'export_hours_of_rest': { crew_id: user_id },
     'view_compliance_status': {},
-    'tag_for_survey': { worklist_task_id: 'no-worklist-task' },
+    'tag_for_survey': { equipment_id: equipmentId },
 
-    // Purchase actions
-    'create_purchase_request': { items: [] },
-    'add_item_to_purchase': { purchase_order_id: 'no-po', part_id: partId, quantity: 1 },
-    'approve_purchase': { purchase_order_id: 'no-po' },
-    'upload_invoice': { purchase_order_id: 'no-po', invoice_url: 'test.pdf' },
-    'track_delivery': { purchase_order_id: 'no-po' },
-    'log_delivery_received': { purchase_order_id: 'no-po', received_items: [] },
-    'update_purchase_status': { purchase_order_id: 'no-po', new_status: 'approved' },
+    // Purchase actions - use correct field names (purchase_request_id not purchase_order_id)
+    'create_purchase_request': { title: 'Diagnostic Test Purchase Request' },
+    'add_item_to_purchase': { purchase_request_id: 'no-pr-found', item_description: 'Test item' },
+    'approve_purchase': { purchase_request_id: 'no-pr-found' },
+    'upload_invoice': { purchase_request_id: 'no-pr-found', invoice_url: 'test.pdf' },
+    'track_delivery': { purchase_request_id: 'no-pr-found' },
+    'log_delivery_received': { purchase_request_id: 'no-pr-found' },
+    'update_purchase_status': { purchase_request_id: 'no-pr-found', status: 'approved' },
 
     // Document actions - use real document ID
     'view_document': { document_id: documentId },
     'view_related_documents': { entity_type: 'equipment', entity_id: equipmentId },
-    'view_document_section': { document_id: documentId },
+    'view_document_section': { document_id: documentId, section_id: 'intro' },
     'upload_document': { filename: 'test.pdf', folder: 'documents' },
     'delete_document': { document_id: documentId },
 
     // Fleet actions
     'view_fleet_summary': {},
-    'open_vessel': { yacht_id: yacht_id },
+    'open_vessel': { vessel_id: yacht_id },
     'export_fleet_summary': {},
 
-    // Predictive
-    'request_predictive_insight': { equipment_id: equipmentId },
+    // Predictive - use correct field names
+    'request_predictive_insight': { entity_type: 'equipment', entity_id: equipmentId },
   };
 
   return payloads[action.id] || {};
