@@ -2005,7 +2005,7 @@ async def execute_action(
             parts = []
             if equipment_id:
                 parts_result = db_client.table("pms_parts").select(
-                    "id, part_number, name, quantity_on_hand, storage_location"
+                    "id, part_number, name, quantity_on_hand, location"
                 ).eq("yacht_id", yacht_id).limit(10).execute()
                 parts = parts_result.data or []
 
@@ -2077,7 +2077,7 @@ async def execute_action(
             # Get parts (in a real system, there would be an equipment_parts junction table)
             # For now, return all parts for the yacht
             parts = db_client.table("pms_parts").select(
-                "id, part_number, name, quantity_on_hand, quantity_minimum, storage_location"
+                "id, part_number, name, quantity_on_hand, minimum_quantity, location"
             ).eq("yacht_id", yacht_id).limit(50).execute()
 
             result = {
@@ -2120,8 +2120,8 @@ async def execute_action(
 
             # Get equipment to find linked documents
             equipment = db_client.table("pms_equipment").select(
-                "id, name, make, model, metadata"
-            ).eq("id", equipment_id).eq("yacht_id", yacht_id).single().execute()
+                "id, name, manufacturer, model, metadata"
+            ).eq("id", equipment_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not equipment.data:
                 raise HTTPException(status_code=404, detail="Equipment not found")
@@ -2137,7 +2137,7 @@ async def execute_action(
                 "equipment": {
                     "id": equipment.data.get("id"),
                     "name": equipment.data.get("name"),
-                    "make": equipment.data.get("make"),
+                    "manufacturer": equipment.data.get("manufacturer"),
                     "model": equipment.data.get("model")
                 },
                 "manuals": docs.data or [],
@@ -2203,7 +2203,7 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="part_id is required")
 
             part = db_client.table("pms_parts").select(
-                "id, part_number, name, quantity_on_hand, quantity_minimum, quantity_reorder, storage_location"
+                "id, part_number, name, quantity_on_hand, minimum_quantity, location"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not part.data:
@@ -2213,7 +2213,7 @@ async def execute_action(
                 "status": "success",
                 "success": True,
                 "part": part.data,
-                "stock_status": "low" if part.data.get("quantity_on_hand", 0) <= part.data.get("quantity_minimum", 0) else "ok"
+                "stock_status": "low" if part.data.get("quantity_on_hand", 0) <= part.data.get("minimum_quantity", 0) else "ok"
             }
 
         elif action == "view_part_location":
@@ -2226,7 +2226,7 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="part_id is required")
 
             part = db_client.table("pms_parts").select(
-                "id, part_number, name, storage_location"
+                "id, part_number, name, location"
             ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not part.data:
@@ -2238,7 +2238,7 @@ async def execute_action(
                 "part_id": part.data.get("id"),
                 "part_number": part.data.get("part_number"),
                 "name": part.data.get("name"),
-                "storage_location": part.data.get("storage_location")
+                "location": part.data.get("location")
             }
 
         elif action == "view_part_usage":
@@ -2286,7 +2286,7 @@ async def execute_action(
             # In a real system, there would be an equipment_parts junction table
             # For now, return equipment for the yacht
             equipment = db_client.table("pms_equipment").select(
-                "id, name, make, model, location"
+                "id, name, manufacturer, model, location"
             ).eq("yacht_id", yacht_id).limit(10).execute()
 
             result = {
@@ -2335,7 +2335,7 @@ async def execute_action(
 
             # Try to find part by part_number (commonly used as barcode)
             part = db_client.table("pms_parts").select(
-                "id, part_number, name, quantity_on_hand, storage_location"
+                "id, part_number, name, quantity_on_hand, location"
             ).eq("part_number", barcode).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if part.data:
