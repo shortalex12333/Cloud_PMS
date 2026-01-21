@@ -196,6 +196,18 @@ except Exception as e:
     logger.error("V2 Search endpoints will not be available")
 
 # ============================================================================
+# DECISION ENGINE ROUTES (Phase 11 - Policy Layer)
+# ============================================================================
+
+try:
+    from routes.decisions_routes import router as decisions_router
+    app.include_router(decisions_router)
+    logger.info("✅ Decision Engine routes registered at /v1/decisions/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Decision Engine routes: {e}")
+    logger.error("Decision Engine endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
