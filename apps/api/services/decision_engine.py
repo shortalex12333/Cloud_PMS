@@ -140,11 +140,12 @@ class DecisionEngine:
 
         Args:
             policy_dir: Directory containing E017/E019 YAML files.
-                       Defaults to verification_handoff/phase10/
+                       Defaults to apps/api/config/
         """
         if policy_dir is None:
-            # Default: relative to this file
-            policy_dir = Path(__file__).parent.parent.parent.parent / "verification_handoff" / "phase10"
+            # Default: config/ directory relative to apps/api/
+            # This works both locally and on Render (where root is apps/api/)
+            policy_dir = Path(__file__).parent.parent / "config"
 
         self.policy_dir = policy_dir
         self.trigger_contracts: Dict[str, Dict] = {}
