@@ -95,14 +95,15 @@ export async function getFault(faultId: string): Promise<any> {
 
 /**
  * Get parts inventory item
+ * Table: pms_inventory_stock (actual table in tenant DB)
  */
 export async function getPartInventory(partId: string): Promise<any> {
   const client = getTenantClient();
 
   const { data, error } = await client
-    .from('parts_inventory')
+    .from('pms_inventory_stock')
     .select('*')
-    .eq('id', partId)
+    .eq('part_id', partId)
     .single();
 
   if (error) {
@@ -114,6 +115,7 @@ export async function getPartInventory(partId: string): Promise<any> {
 
 /**
  * Get latest audit log entry for entity
+ * Table: pms_audit_log (actual table in tenant DB)
  */
 export async function getLatestAuditLog(
   entityId: string,
@@ -122,7 +124,7 @@ export async function getLatestAuditLog(
   const client = getTenantClient();
 
   let query = client
-    .from('audit_log')
+    .from('pms_audit_log')
     .select('*')
     .eq('entity_id', entityId)
     .order('created_at', { ascending: false })

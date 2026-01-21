@@ -1,0 +1,129 @@
+# SECURITY FIX P0-009: CI Secret Scanning Workflow
+# This workflow prevents secrets from being committed to the repository.
+#
+# Created: 2026-01-21
+# Auditor: Claude B
+
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop, master]
+  pull_request:
+    branches: [main, develop, master]
+
+jobs:
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for hardcoded JWT tokens
+        run: |
+          echo "Checking for hardcoded JWT patterns in source files..."
+
+          # Check for JWT patterns (eyJ... base64 encoded headers)
+          if grep -rE "eyJhbGciOiJIUzI1NiIs" \
+               --include="*.py" \
+               --include="*.ts" \
+               --include="*.tsx" \
+               --include="*.js" \
+               --include="*.jsx" \
+               --exclude-dir=node_modules \
+               --exclude-dir=.git \
+               --exclude-dir=__pycache__ \
+               --exclude-dir=.venv \
+               . 2>/dev/null; then
+            echo ""
+            echo "ERROR: Hardcoded JWT tokens found in source files!"
+            echo "Remove these tokens and use environment variables instead."
+            exit 1
+          fi
+
+          echo "No hardcoded JWT tokens detected."
+
+      - name: Check for hardcoded API keys
+        run: |
+          echo "Checking for hardcoded API key patterns..."
+
+          # Check for OpenAI API keys
+          if grep -rE "sk-proj-[a-zA-Z0-9]{20,}" \
+               --include="*.py" \
+               --include="*.ts" \
+               --include="*.tsx" \
+               --include="*.js" \
+               --include="*.jsx" \
+               --exclude-dir=node_modules \
+               --exclude-dir=.git \
+               --exclude-dir=__pycache__ \
+               --exclude-dir=.venv \
+               . 2>/dev/null; then
+            echo ""
+            echo "ERROR: Hardcoded OpenAI API keys found!"
+            exit 1
+          fi
+
+          # Check for generic secret patterns
+          if grep -rE "sk-[a-zA-Z0-9]{48}" \
+               --include="*.py" \
+               --include="*.ts" \
+               --include="*.tsx" \
+               --include="*.js" \
+               --include="*.jsx" \
+               --exclude-dir=node_modules \
+               --exclude-dir=.git \
+               --exclude-dir=__pycache__ \
+               --exclude-dir=.venv \
+               . 2>/dev/null; then
+            echo ""
+            echo "ERROR: Hardcoded API keys found!"
+            exit 1
+          fi
+
+          echo "No hardcoded API keys detected."
+
+      - name: Check for Supabase service role keys
+        run: |
+          echo "Checking for Supabase service_role patterns..."
+
+          # Service role keys contain "service_role" in the JWT payload
+          if grep -rE '"role":"service_role"' \
+               --include="*.py" \
+               --include="*.ts" \
+               --include="*.tsx" \
+               --include="*.js" \
+               --include="*.jsx" \
+               --exclude-dir=node_modules \
+               --exclude-dir=.git \
+               --exclude-dir=__pycache__ \
+               --exclude-dir=.venv \
+               . 2>/dev/null; then
+            echo ""
+            echo "ERROR: Hardcoded Supabase service_role keys found!"
+            exit 1
+          fi
+
+          echo "No hardcoded Supabase service keys detected."
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "========================================"
+          echo "Security scan completed successfully!"
+          echo "========================================"
+          echo ""
+          echo "Checks passed:"
+          echo "  - Gitleaks secret detection"
+          echo "  - JWT token pattern check"
+          echo "  - API key pattern check"
+          echo "  - Supabase service key check"

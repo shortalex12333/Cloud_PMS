@@ -19,7 +19,7 @@
     "token_purpose": "read",
     "has_access_token": true,
     "has_refresh_token": true,
-    "expires_at": "2026-01-20T20:10:50.428011+00:00",
+    "expires_at": "2026-01-20T23:00:43.871862+00:00",
     "is_revoked": false,
     "created_at": "2026-01-16T11:25:04.656966+00:00"
   }

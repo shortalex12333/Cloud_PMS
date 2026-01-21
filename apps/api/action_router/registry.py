@@ -4,6 +4,9 @@ CelesteOS Action Router - Action Registry
 Defines all available actions, their endpoints, schemas, and permissions.
 
 This is the SINGLE SOURCE OF TRUTH for all micro-actions.
+
+PHASE 8 CULL (2026-01-21): Removed 16 ghost actions not deployed to production.
+Remaining: 30 actions that exist in production.
 """
 
 from typing import Dict, List, Any
@@ -41,24 +44,16 @@ class ActionDefinition:
 
 
 # ============================================================================
-# ACTION REGISTRY
+# ACTION REGISTRY - PRODUCTION VERIFIED (30 ACTIONS)
+# ============================================================================
+# CULLED 2026-01-21: Removed 16 actions returning 404 in production
+# See: verification_handoff/phase8/E008_ACTION_CULL.md
 # ============================================================================
 
 ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     # ========================================================================
-    # NOTES ACTIONS
+    # NOTES ACTIONS (1)
     # ========================================================================
-    "add_note": ActionDefinition(
-        action_id="add_note",
-        label="Add Note",
-        endpoint="/v1/notes/create",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "equipment_id", "note_text"],
-        schema_file="add_note.json",
-    ),
-
     "add_note_to_work_order": ActionDefinition(
         action_id="add_note_to_work_order",
         label="Add Note to Work Order",
@@ -71,7 +66,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
-    # WORK ORDER ACTIONS
+    # WORK ORDER ACTIONS (14)
     # ========================================================================
     "create_work_order": ActionDefinition(
         action_id="create_work_order",
@@ -82,17 +77,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         allowed_roles=["Engineer", "HOD", "Manager"],
         required_fields=["yacht_id", "equipment_id", "title", "priority"],
         schema_file="create_work_order.json",
-    ),
-
-    "create_work_order_fault": ActionDefinition(
-        action_id="create_work_order_fault",
-        label="Create Work Order for Fault",
-        endpoint="/v1/work-orders/create",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "equipment_id", "description"],
-        schema_file="create_work_order_fault.json",
     ),
 
     "close_work_order": ActionDefinition(
@@ -106,8 +90,128 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         schema_file="close_work_order.json",
     ),
 
+    "add_work_order_photo": ActionDefinition(
+        action_id="add_work_order_photo",
+        label="Add Work Order Photo",
+        endpoint="/v1/work-orders/add-photo",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "photo_url"],
+    ),
+
+    "add_parts_to_work_order": ActionDefinition(
+        action_id="add_parts_to_work_order",
+        label="Add Parts to Work Order",
+        endpoint="/v1/work-orders/add-parts",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "part_id"],
+    ),
+
+    "view_work_order_checklist": ActionDefinition(
+        action_id="view_work_order_checklist",
+        label="View Work Order Checklist",
+        endpoint="/v1/work-orders/checklist",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "assign_work_order": ActionDefinition(
+        action_id="assign_work_order",
+        label="Assign Work Order",
+        endpoint="/v1/work-orders/assign",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "assigned_to"],
+    ),
+
+    "update_work_order": ActionDefinition(
+        action_id="update_work_order",
+        label="Update Work Order",
+        endpoint="/v1/work-orders/update",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "add_wo_hours": ActionDefinition(
+        action_id="add_wo_hours",
+        label="Add Work Order Hours",
+        endpoint="/v1/work-orders/add-hours",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "hours"],
+    ),
+
+    "add_wo_part": ActionDefinition(
+        action_id="add_wo_part",
+        label="Add Part to Work Order",
+        endpoint="/v1/work-orders/add-part",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "part_id"],
+    ),
+
+    "add_wo_note": ActionDefinition(
+        action_id="add_wo_note",
+        label="Add Work Order Note",
+        endpoint="/v1/work-orders/add-note",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id", "note_text"],
+    ),
+
+    "start_work_order": ActionDefinition(
+        action_id="start_work_order",
+        label="Start Work Order",
+        endpoint="/v1/work-orders/start",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "cancel_work_order": ActionDefinition(
+        action_id="cancel_work_order",
+        label="Cancel Work Order",
+        endpoint="/v1/work-orders/cancel",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "view_work_order_detail": ActionDefinition(
+        action_id="view_work_order_detail",
+        label="View Work Order Detail",
+        endpoint="/v1/work-orders/view",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "work_order_id"],
+    ),
+
+    "create_work_order_from_fault": ActionDefinition(
+        action_id="create_work_order_from_fault",
+        label="Create Work Order from Fault",
+        endpoint="/v1/work-orders/create-from-fault",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Engineer", "HOD", "Manager"],
+        required_fields=["yacht_id", "fault_id"],
+    ),
+
     # ========================================================================
-    # EQUIPMENT ACTIONS
+    # EQUIPMENT ACTIONS (1)
     # ========================================================================
     "update_equipment_status": ActionDefinition(
         action_id="update_equipment_status",
@@ -116,12 +220,12 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "equipment_id", "attention_flag"],
+        required_fields=["yacht_id", "equipment_id", "new_status"],
         schema_file=None,
     ),
 
     # ========================================================================
-    # HANDOVER ACTIONS
+    # HANDOVER ACTIONS (1)
     # ========================================================================
     "add_to_handover": ActionDefinition(
         action_id="add_to_handover",
@@ -130,120 +234,12 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         handler_type=HandlerType.INTERNAL,
         method="POST",
         allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "summary_text"],
-        schema_file=None,
-    ),
-
-    "add_document_to_handover": ActionDefinition(
-        action_id="add_document_to_handover",
-        label="Add Document to Handover",
-        endpoint="/v1/handover/add-document",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "document_id"],
-        schema_file="add_document_to_handover.json",
-    ),
-
-    "add_part_to_handover": ActionDefinition(
-        action_id="add_part_to_handover",
-        label="Add Part to Handover",
-        endpoint="/v1/handover/add-part",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "part_id", "reason"],
-        schema_file="add_part_to_handover.json",
-    ),
-
-    "add_predictive_to_handover": ActionDefinition(
-        action_id="add_predictive_to_handover",
-        label="Add Predictive Insight to Handover",
-        endpoint="/v1/handover/add-predictive",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "equipment_id", "insight_id", "summary"],
-        schema_file="add_predictive_to_handover.json",
-    ),
-
-    "edit_handover_section": ActionDefinition(
-        action_id="edit_handover_section",
-        label="Edit Handover Section",
-        endpoint="/v1/handover/edit-section",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["HOD", "Manager"],
-        required_fields=["yacht_id", "handover_id", "section_name", "new_text"],
-        schema_file="edit_handover_section.json",
-    ),
-
-    "export_handover": ActionDefinition(
-        action_id="export_handover",
-        label="Export Handover",
-        endpoint="/v1/handover/export",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["HOD", "Manager"],
-        required_fields=["yacht_id"],
-        schema_file="export_handover.json",
-    ),
-
-    # ========================================================================
-    # DOCUMENT ACTIONS
-    # ========================================================================
-    "open_document": ActionDefinition(
-        action_id="open_document",
-        label="Open Document",
-        endpoint="/v1/documents/open",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["storage_path"],
-        schema_file="open_document.json",
-    ),
-
-    "delete_document": ActionDefinition(
-        action_id="delete_document",
-        label="Delete Document",
-        endpoint="/v1/documents/delete",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["HOD", "Manager"],
-        required_fields=["yacht_id", "document_id"],
+        required_fields=["yacht_id", "title"],
         schema_file=None,
     ),
 
     # ========================================================================
-    # INVENTORY/SHOPPING ACTIONS
-    # ========================================================================
-    "delete_shopping_item": ActionDefinition(
-        action_id="delete_shopping_item",
-        label="Delete Shopping Item",
-        endpoint="/v1/shopping/delete-item",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "item_id"],
-        schema_file=None,
-    ),
-
-    # ========================================================================
-    # INVENTORY ACTIONS
-    # ========================================================================
-    "order_part": ActionDefinition(
-        action_id="order_part",
-        label="Order Part",
-        endpoint="/v1/inventory/order-part",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "part_id", "qty"],
-        schema_file="order_part.json",
-    ),
-
-    # ========================================================================
-    # FAULT ACTIONS
+    # FAULT ACTIONS (10)
     # ========================================================================
     "report_fault": ActionDefinition(
         action_id="report_fault",
@@ -253,16 +249,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         method="POST",
         allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
         required_fields=["yacht_id", "equipment_id", "description"],
-    ),
-
-    "classify_fault": ActionDefinition(
-        action_id="classify_fault",
-        label="Classify Fault",
-        endpoint="/v1/faults/classify",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "fault_id", "classification"],
     ),
 
     "acknowledge_fault": ActionDefinition(
@@ -345,26 +331,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "fault_id"],
     ),
 
-    "view_fault_history": ActionDefinition(
-        action_id="view_fault_history",
-        label="View Fault History",
-        endpoint="/v1/faults/history",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "entity_id"],
-    ),
-
-    "suggest_parts": ActionDefinition(
-        action_id="suggest_parts",
-        label="Suggest Parts",
-        endpoint="/v1/faults/suggest-parts",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "fault_id"],
-    ),
-
     "show_manual_section": ActionDefinition(
         action_id="show_manual_section",
         label="Show Manual Section",
@@ -375,141 +341,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "equipment_id"],
     ),
 
-    "add_fault_note": ActionDefinition(
-        action_id="add_fault_note",
-        label="Add Fault Note",
-        endpoint="/v1/faults/add-note",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "fault_id", "note"],
-    ),
-
-    "create_work_order_from_fault": ActionDefinition(
-        action_id="create_work_order_from_fault",
-        label="Create Work Order from Fault",
-        endpoint="/v1/work-orders/create-from-fault",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "fault_id"],
-    ),
-
     # ========================================================================
-    # ADDITIONAL WORK ORDER ACTIONS
-    # ========================================================================
-    "add_work_order_photo": ActionDefinition(
-        action_id="add_work_order_photo",
-        label="Add Work Order Photo",
-        endpoint="/v1/work-orders/add-photo",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id", "photo_url"],
-    ),
-
-    "add_parts_to_work_order": ActionDefinition(
-        action_id="add_parts_to_work_order",
-        label="Add Parts to Work Order",
-        endpoint="/v1/work-orders/add-parts",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id", "part_id"],
-    ),
-
-    "view_work_order_checklist": ActionDefinition(
-        action_id="view_work_order_checklist",
-        label="View Work Order Checklist",
-        endpoint="/v1/work-orders/checklist",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id"],
-    ),
-
-    "assign_work_order": ActionDefinition(
-        action_id="assign_work_order",
-        label="Assign Work Order",
-        endpoint="/v1/work-orders/assign",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id", "assignee_id"],
-    ),
-
-    "update_work_order": ActionDefinition(
-        action_id="update_work_order",
-        label="Update Work Order",
-        endpoint="/v1/work-orders/update",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id"],
-    ),
-
-    "add_wo_hours": ActionDefinition(
-        action_id="add_wo_hours",
-        label="Add Work Order Hours",
-        endpoint="/v1/work-orders/add-hours",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id", "hours"],
-    ),
-
-    "add_wo_part": ActionDefinition(
-        action_id="add_wo_part",
-        label="Add Part to Work Order",
-        endpoint="/v1/work-orders/add-part",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id", "part_id"],
-    ),
-
-    "add_wo_note": ActionDefinition(
-        action_id="add_wo_note",
-        label="Add Work Order Note",
-        endpoint="/v1/work-orders/add-note",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id", "note"],
-    ),
-
-    "start_work_order": ActionDefinition(
-        action_id="start_work_order",
-        label="Start Work Order",
-        endpoint="/v1/work-orders/start",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id"],
-    ),
-
-    "cancel_work_order": ActionDefinition(
-        action_id="cancel_work_order",
-        label="Cancel Work Order",
-        endpoint="/v1/work-orders/cancel",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id"],
-    ),
-
-    "view_work_order_detail": ActionDefinition(
-        action_id="view_work_order_detail",
-        label="View Work Order Detail",
-        endpoint="/v1/work-orders/view",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "work_order_id"],
-    ),
-
-    # ========================================================================
-    # WORKLIST ACTIONS (SHIPYARD)
+    # WORKLIST ACTIONS (3)
     # ========================================================================
     "view_worklist": ActionDefinition(
         action_id="view_worklist",
@@ -531,16 +364,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "task_description"],
     ),
 
-    "update_worklist_progress": ActionDefinition(
-        action_id="update_worklist_progress",
-        label="Update Worklist Progress",
-        endpoint="/v1/worklist/update-progress",
-        handler_type=HandlerType.INTERNAL,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "task_id", "progress"],
-    ),
-
     "export_worklist": ActionDefinition(
         action_id="export_worklist",
         label="Export Worklist",
@@ -551,6 +374,32 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id"],
     ),
 }
+
+
+# ============================================================================
+# CULLED ACTIONS (16) - DO NOT RE-ADD WITHOUT DEPLOYING TO PRODUCTION
+# ============================================================================
+# The following actions were removed 2026-01-21 because they return 404:
+#
+# - add_note                      (notes to equipment - handler not deployed)
+# - add_document_to_handover      (N8N handler not deployed)
+# - add_part_to_handover          (N8N handler not deployed)
+# - add_predictive_to_handover    (N8N handler not deployed)
+# - edit_handover_section         (handler not deployed)
+# - export_handover               (N8N handler not deployed)
+# - open_document                 (handler not deployed)
+# - delete_document               (handler not deployed)
+# - delete_shopping_item          (handler not deployed)
+# - order_part                    (N8N handler not deployed)
+# - classify_fault                (handler not deployed)
+# - view_fault_history            (handler not deployed)
+# - suggest_parts                 (handler not deployed)
+# - add_fault_note                (handler not deployed)
+# - create_work_order_fault       (N8N handler not deployed)
+# - update_worklist_progress      (handler not deployed)
+#
+# See: verification_handoff/phase8/E008_ACTION_CULL.md
+# ============================================================================
 
 
 def get_action(action_id: str) -> ActionDefinition:

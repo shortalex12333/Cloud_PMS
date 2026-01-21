@@ -5,12 +5,15 @@ API endpoints for situational continuity layer.
 Handles navigation context lifecycle, related expansion, and user relations.
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends
 from typing import Optional
 from uuid import UUID
 import logging
 import os
 from supabase import create_client, Client
+
+# SECURITY FIX P0-002: Import auth dependency
+from middleware.auth import get_authenticated_user
 
 from context_nav.schemas import (
     NavigationContextCreate,
@@ -60,7 +63,7 @@ def get_supabase_client() -> Client:
 @router.post("/create", response_model=NavigationContext)
 async def create_context(
     data: NavigationContextCreate,
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-002
 ):
     """
     Create a new navigation context when user opens an artifact from search.
@@ -73,6 +76,10 @@ async def create_context(
     3. Return context (per schema)
     """
     try:
+        # SECURITY: Override client-supplied IDs with JWT-verified values
+        data.yacht_id = auth["yacht_id"]
+        data.user_id = auth["user_id"]
+
         supabase = get_supabase_client()
         context = create_navigation_context(supabase, data)
         return context
@@ -87,9 +94,7 @@ async def update_anchor(
     context_id: UUID,
     anchor_type: str,
     anchor_id: UUID,
-    yacht_id: UUID,
-    user_id: UUID,
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-002
 ):
     """
     Update the active anchor when user navigates to a different artifact.
@@ -102,6 +107,10 @@ async def update_anchor(
     3. Return updated context (per schema)
     """
     try:
+        # SECURITY: Extract IDs from JWT, not client
+        yacht_id = auth["yacht_id"]
+        user_id = auth["user_id"]
+
         supabase = get_supabase_client()
         context = update_active_anchor(
             supabase, context_id, yacht_id, user_id, anchor_type, anchor_id
@@ -116,7 +125,7 @@ async def update_anchor(
 @router.post("/related", response_model=RelatedResponse)
 async def get_related_artifacts(
     data: RelatedRequest,
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-002
 ):
     """
     Get related artifacts for the current anchor (deterministic expansion only).
@@ -136,6 +145,10 @@ async def get_related_artifacts(
     CRITICAL: NO audit event for viewing related (not in spec)
     """
     try:
+        # SECURITY: Verify yacht_id matches authenticated user
+        if str(data.yacht_id) != str(auth["yacht_id"]):
+            raise HTTPException(status_code=403, detail="Yacht ID mismatch")
+
         supabase = get_supabase_client()
         response = get_related(supabase, data)
         return response
@@ -148,7 +161,7 @@ async def get_related_artifacts(
 @router.post("/add-relation", response_model=AddRelatedResponse)
 async def add_relation(
     data: AddRelatedRequest,
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-002
 ):
     """
     Add an explicit user relation between two artifacts.
@@ -166,6 +179,10 @@ async def add_relation(
     4. Return created relation (per schema)
     """
     try:
+        # SECURITY: Verify yacht_id matches authenticated user
+        if str(data.yacht_id) != str(auth["yacht_id"]):
+            raise HTTPException(status_code=403, detail="Yacht ID mismatch")
+
         supabase = get_supabase_client()
         response = add_user_relation(supabase, data)
         return response
@@ -181,9 +198,7 @@ async def add_relation(
 @router.post("/{context_id}/end")
 async def end_context(
     context_id: UUID,
-    yacht_id: UUID,
-    user_id: UUID,
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-002
 ):
     """
     End the navigation context when user returns to search bar home.
@@ -196,6 +211,10 @@ async def end_context(
     3. Return success
     """
     try:
+        # SECURITY: Extract IDs from JWT, not client
+        yacht_id = auth["yacht_id"]
+        user_id = auth["user_id"]
+
         supabase = get_supabase_client()
         result = end_navigation_context(supabase, context_id, yacht_id, user_id)
         return result

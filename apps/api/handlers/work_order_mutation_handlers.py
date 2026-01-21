@@ -911,7 +911,8 @@ class WorkOrderMutationHandlers:
                 # Get part details separately
                 part = {}
                 if wp.get("part_id"):
-                    part_res = self.db.table("pms_parts").select("id, name, part_number, quantity_on_hand").eq("id", wp["part_id"]).limit(1).execute()
+                    # SECURITY FIX P0-006: Add yacht_id filter for tenant isolation
+                    part_res = self.db.table("pms_parts").select("id, name, part_number, quantity_on_hand").eq("id", wp["part_id"]).eq("yacht_id", yacht_id).limit(1).execute()
                     if part_res.data and len(part_res.data) > 0:
                         part = part_res.data[0]
                 parts_list.append({

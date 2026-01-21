@@ -423,15 +423,34 @@ async def get_outlook_status(authorization: str = Header(None)):
 
         token = authorization.split(' ')[1]
 
-        # Decode JWT to get user_id (Supabase JWT structure)
+        # Decode and VERIFY JWT signature (SECURITY FIX: P0-001)
         import jwt
+
+        # Get JWT secret for signature verification
+        jwt_secret = (
+            os.getenv("MASTER_SUPABASE_JWT_SECRET") or
+            os.getenv("TENANT_SUPABASE_JWT_SECRET") or
+            os.getenv("SUPABASE_JWT_SECRET")
+        )
+
+        if not jwt_secret:
+            logger.error("[Auth] No JWT secret configured for signature verification")
+            return OutlookStatusResponse(connected=False)
+
         try:
-            # Decode without verification (we trust tokens from frontend)
-            # In production, you'd verify with Supabase JWT secret
-            payload = jwt.decode(token, options={"verify_signature": False})
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+                options={"verify_exp": True}
+            )
             user_id = payload.get('sub')
-        except Exception as e:
-            logger.warning(f"[Auth] Failed to decode JWT: {e}")
+        except jwt.ExpiredSignatureError:
+            logger.warning("[Auth] JWT expired")
+            return OutlookStatusResponse(connected=False)
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"[Auth] JWT validation failed: {e}")
             return OutlookStatusResponse(connected=False)
 
         if not user_id:

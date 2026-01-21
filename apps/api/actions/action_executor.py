@@ -1352,7 +1352,8 @@ class ActionExecutor:
         if payload["status"] in ("completed", "closed"):
             update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
 
-        self.db.table("work_orders").update(update_data).eq("id", entity_id).execute()
+        # SECURITY FIX P0-004: Add yacht_id filter for tenant isolation
+        self.db.table("work_orders").update(update_data).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
 
         return {"updated": True, "new_status": payload["status"]}
 
@@ -1494,7 +1495,8 @@ class ActionExecutor:
         for change in diff["changes"]:
             update_data[change["field"]] = change["to"]
 
-        self.db.table("work_orders").update(update_data).eq("id", entity_id).execute()
+        # SECURITY FIX P0-004: Add yacht_id filter for tenant isolation
+        self.db.table("work_orders").update(update_data).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
 
         return {"updated": True}
 
@@ -1919,7 +1921,8 @@ class ActionExecutor:
 
     async def _prepare_update_purchase_status(self, entity_id: str, yacht_id: str, payload: Dict) -> Dict:
         """Prepare updating purchase status"""
-        current = self.db.table("purchases").select("status").eq("id", entity_id).single().execute()
+        # SECURITY FIX P0-004: Add yacht_id filter for tenant isolation
+        current = self.db.table("purchases").select("status").eq("id", entity_id).eq("yacht_id", yacht_id).single().execute()
 
         return {
             "before": {"status": current.data["status"] if current.data else None},
@@ -1979,13 +1982,15 @@ class ActionExecutor:
     ) -> Dict:
         """Commit adding note to checklist item"""
         # Append to existing notes or create new
-        current = self.db.table("checklist_items").select("notes").eq("id", entity_id).single().execute()
+        # SECURITY FIX P0-004: Add yacht_id filter for tenant isolation
+        current = self.db.table("checklist_items").select("notes").eq("id", entity_id).eq("yacht_id", yacht_id).single().execute()
         existing_notes = current.data.get("notes", "") if current.data else ""
         new_notes = f"{existing_notes}\n[{datetime.now(timezone.utc).isoformat()}] {payload.get('note', '')}"
 
+        # SECURITY FIX P0-004: Add yacht_id filter for tenant isolation
         self.db.table("checklist_items").update({
             "notes": new_notes.strip()
-        }).eq("id", entity_id).execute()
+        }).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
 
         return {"added": True}
 
