@@ -1,8 +1,8 @@
 {
   "status": 200,
   "data": {
-    "url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=41f6dc82-8127-4330-97e0-c6b26e6aa967&response_type=code&redirect_uri=https%3A%2F%2Fapp.celeste7.ai%2Fapi%2Fintegrations%2Foutlook%2Fcallback&scope=Mail.Read+User.Read+MailboxSettings.Read+offline_access&state=a35cad0b-02ff-4287-b6e4-17c96fa6a424%3Aread%3A98bb2b422fae3e9cfb6b98f978a64263&response_mode=query",
-    "state": "a35cad0b-02ff-4287-b6e4-17c96fa6a424:read:98bb2b422fae3e9cfb6b98f978a64263",
+    "url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=41f6dc82-8127-4330-97e0-c6b26e6aa967&response_type=code&redirect_uri=https%3A%2F%2Fapp.celeste7.ai%2Fapi%2Fintegrations%2Foutlook%2Fcallback&scope=Mail.Read+User.Read+MailboxSettings.Read+offline_access&state=a35cad0b-02ff-4287-b6e4-17c96fa6a424%3Aread%3Aca2ba9fbcbb6239bc5a41d3422c649be&response_mode=query",
+    "state": "a35cad0b-02ff-4287-b6e4-17c96fa6a424:read:ca2ba9fbcbb6239bc5a41d3422c649be",
     "purpose": "read",
     "scopes": [
       "Mail.Read",

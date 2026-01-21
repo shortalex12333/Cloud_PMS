@@ -61,7 +61,6 @@ interface SpotlightSearchProps {
   onClose?: () => void;
   isModal?: boolean;
   className?: string;
-  onEmailClick?: () => void;
 }
 
 // ============================================================================
@@ -145,7 +144,6 @@ export default function SpotlightSearch({
   onClose,
   isModal = false,
   className,
-  onEmailClick
 }: SpotlightSearchProps) {
   // Get user context from auth (yacht_id comes from bootstrap, not DB query)
   // CRITICAL: Must get user FIRST before useCelesteSearch to pass yachtId

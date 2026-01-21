@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RelatedResponse",
+  "type": "object",
+  "required": [
+    "situation_id",
+    "anchor_type",
+    "anchor_id",
+    "groups"
+  ],
+  "properties": {
+    "situation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "anchor_type": {
+      "type": "string"
+    },
+    "anchor_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "domain",
+          "items"
+        ],
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "artefact_type",
+                "artefact_id",
+                "title"
+              ],
+              "properties": {
+                "artefact_type": {
+                  "type": "string"
+                },
+                "artefact_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "subtitle": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -14,12 +14,15 @@ Endpoints:
 All routes require yacht_id parameter and return triggered items with suggested actions.
 """
 
-from fastapi import APIRouter, Query, HTTPException, Header
+from fastapi import APIRouter, Query, HTTPException, Header, Depends
 from typing import Optional
 import os
 import logging
 
 from supabase import create_client, Client
+
+# SECURITY FIX P0-003: Import auth dependency
+from middleware.auth import get_authenticated_user
 
 # Import trigger service
 import sys
@@ -64,8 +67,7 @@ def get_trigger_service() -> TriggerService:
 
 @router.get("/check")
 async def check_all_triggers(
-    yacht_id: str = Query(..., description="Yacht ID to check triggers for"),
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-003
 ):
     """
     Check all business rule triggers for a yacht.
@@ -82,6 +84,9 @@ async def check_all_triggers(
     - suggested_actions (list of action names)
     """
     try:
+        # SECURITY: Extract yacht_id from JWT, not query param
+        yacht_id = auth["yacht_id"]
+
         service = get_trigger_service()
         result = await service.check_all_triggers(yacht_id)
 
@@ -97,8 +102,7 @@ async def check_all_triggers(
 
 @router.get("/low-stock")
 async def check_low_stock(
-    yacht_id: str = Query(..., description="Yacht ID"),
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-003
 ):
     """
     Check for parts with stock level at or below minimum threshold.
@@ -110,6 +114,9 @@ async def check_low_stock(
     - warning: Low stock (quantity > 0 but <= minimum)
     """
     try:
+        # SECURITY: Extract yacht_id from JWT, not query param
+        yacht_id = auth["yacht_id"]
+
         service = get_trigger_service()
         items = await service.check_low_stock(yacht_id)
 
@@ -127,8 +134,7 @@ async def check_low_stock(
 
 @router.get("/overdue-work-orders")
 async def check_overdue_work_orders(
-    yacht_id: str = Query(..., description="Yacht ID"),
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-003
 ):
     """
     Check for work orders that are past their due date.
@@ -140,6 +146,9 @@ async def check_overdue_work_orders(
     - warning: Overdue <= 7 days
     """
     try:
+        # SECURITY: Extract yacht_id from JWT, not query param
+        yacht_id = auth["yacht_id"]
+
         service = get_trigger_service()
         items = await service.check_overdue_work_orders(yacht_id)
 
@@ -157,9 +166,8 @@ async def check_overdue_work_orders(
 
 @router.get("/hor-violations")
 async def check_hor_violations(
-    yacht_id: str = Query(..., description="Yacht ID"),
     days_back: int = Query(7, description="Number of days to check back"),
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-003
 ):
     """
     Check for Hours of Rest compliance violations.
@@ -173,6 +181,9 @@ async def check_hor_violations(
     - warning: Either daily OR weekly violation
     """
     try:
+        # SECURITY: Extract yacht_id from JWT, not query param
+        yacht_id = auth["yacht_id"]
+
         service = get_trigger_service()
         items = await service.check_hor_violations(yacht_id, days_back)
 
@@ -190,9 +201,8 @@ async def check_hor_violations(
 
 @router.get("/maintenance-due")
 async def check_maintenance_due(
-    yacht_id: str = Query(..., description="Yacht ID"),
     days_ahead: int = Query(7, description="Number of days ahead to check"),
-    authorization: Optional[str] = Header(None)
+    auth: dict = Depends(get_authenticated_user)  # SECURITY FIX P0-003
 ):
     """
     Check for equipment with maintenance due within specified window.
@@ -205,6 +215,9 @@ async def check_maintenance_due(
     - info: Due within 7 days
     """
     try:
+        # SECURITY: Extract yacht_id from JWT, not query param
+        yacht_id = auth["yacht_id"]
+
         service = get_trigger_service()
         items = await service.check_maintenance_due(yacht_id, days_ahead)
 

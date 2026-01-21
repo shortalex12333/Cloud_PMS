@@ -26,6 +26,7 @@ from datetime import datetime, timedelta
 import logging
 import uuid
 import hashlib
+import os  # SECURITY FIX P0-007: For path operations
 
 # Local imports
 from middleware.auth import get_authenticated_user
@@ -46,6 +47,30 @@ from services.email_suggestion_service import generate_suggestions_for_thread
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email"])
+
+# ============================================================================
+# SECURITY FIX P0-007: File Upload Validation Constants
+# ============================================================================
+ALLOWED_EXTENSIONS = {
+    '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff',
+    '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.txt', '.csv', '.rtf', '.odt', '.ods', '.odp'
+}
+ALLOWED_MIME_TYPES = {
+    'application/pdf',
+    'image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain', 'text/csv', 'application/rtf',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.spreadsheet',
+    'application/vnd.oasis.opendocument.presentation',
+}
+MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50MB
 
 
 # ============================================================================
@@ -1292,11 +1317,35 @@ async def save_attachment(
         import base64
         file_data = base64.b64decode(content_bytes)
 
-        # Determine storage path
-        filename = attachment.get('name', 'attachment')
+        # SECURITY FIX P0-007: Validate file size
+        if len(file_data) > MAX_FILE_SIZE_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE_BYTES // (1024*1024)}MB"
+            )
+
+        # SECURITY FIX P0-007: Validate and sanitize filename
+        original_filename = attachment.get('name', 'attachment')
+        _, ext = os.path.splitext(original_filename)
+        ext = ext.lower()
+
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            )
+
+        # SECURITY FIX P0-007: Validate MIME type
         content_type = attachment.get('contentType', 'application/octet-stream')
-        folder = request.target_folder or 'email-attachments'
-        storage_path = f"{yacht_id}/{folder}/{uuid.uuid4()}-{filename}"
+        if content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Content type '{content_type}' not allowed"
+            )
+
+        # SECURITY FIX P0-007: Generate safe storage path (no user-provided path components)
+        safe_filename = f"{uuid.uuid4()}{ext}"
+        storage_path = f"{yacht_id}/email-attachments/{safe_filename}"
 
         # Upload to storage
         supabase.storage.from_('documents').upload(
@@ -1307,7 +1356,7 @@ async def save_attachment(
         # Create document entry
         doc_entry = {
             'yacht_id': yacht_id,
-            'title': filename,
+            'title': original_filename,
             'source': 'email_attachment',
             'storage_path': storage_path,
             'content_type': content_type,

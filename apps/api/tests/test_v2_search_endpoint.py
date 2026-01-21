@@ -23,12 +23,29 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
-# Set environment variables (for local testing)
-os.environ.setdefault('MASTER_SUPABASE_URL', 'https://qvzmkaamzaqxpzbewjxe.supabase.co')
-os.environ.setdefault('MASTER_SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Mzk3OTA0NiwiZXhwIjoyMDc5NTU1MDQ2fQ.83Bc6rEQl4qNf0MUwJPmMl1n0mhqEo6nVe5fBiRmh8Q')
-os.environ.setdefault('MASTER_SUPABASE_JWT_SECRET', 'wXka4UZu4tZc8Sx/HsoMBXu/L5avLHl+xoiWAH9lBbxJdbztPhYVc+stfrJOS/mlqF3U37HUkrkAMOhkpwjRsw==')
-os.environ.setdefault('TENANT_1_SUPABASE_URL', 'https://vzsohavtuotocgrfkfyd.supabase.co')
-os.environ.setdefault('TENANT_1_SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6c29oYXZ0dW90b2NncmZrZnlkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzU5Mjg3NSwiZXhwIjoyMDc5MTY4ODc1fQ.fC7eC_4xGnCHIebPzfaJ18pFMPKgImE7BuN0I3A-pSY')
+# SECURITY FIX P0-008: Require secrets from environment - DO NOT hardcode
+# These must be set in your environment or .env file before running tests
+REQUIRED_ENV_VARS = [
+    'MASTER_SUPABASE_URL',
+    'MASTER_SUPABASE_SERVICE_KEY',
+    'MASTER_SUPABASE_JWT_SECRET',
+    'TENANT_1_SUPABASE_URL',
+    'TENANT_1_SUPABASE_SERVICE_KEY',
+]
+
+missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
+if missing_vars:
+    logger.error("=" * 60)
+    logger.error("MISSING REQUIRED ENVIRONMENT VARIABLES")
+    logger.error("=" * 60)
+    logger.error("The following environment variables must be set:")
+    for var in missing_vars:
+        logger.error(f"  - {var}")
+    logger.error("")
+    logger.error("Set these in your environment or create a .env file.")
+    logger.error("DO NOT hardcode secrets in source files.")
+    logger.error("=" * 60)
+    sys.exit(1)
 
 TEST_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598'
 TEST_USER_ID = 'test-user-001'

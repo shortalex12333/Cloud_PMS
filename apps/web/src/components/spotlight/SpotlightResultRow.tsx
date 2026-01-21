@@ -89,6 +89,7 @@ export default function SpotlightResultRow({
   return (
     <div
       data-index={index}
+      data-testid="search-result-item"
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       className={cn(

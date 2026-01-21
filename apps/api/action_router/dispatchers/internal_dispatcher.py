@@ -8,8 +8,12 @@ These are simple CRUD operations that don't require complex workflow orchestrati
 
 from typing import Dict, Any, Callable
 import os
+import logging
 from datetime import datetime
 from supabase import create_client, Client
+
+# SECURITY FIX P1-005: Logger for audit failures
+logger = logging.getLogger(__name__)
 
 # Import handler classes for P1/P3 handlers
 import sys
@@ -93,6 +97,14 @@ async def add_note(params: Dict[str, Any]) -> Dict[str, Any]:
         - user_id: UUID (from JWT)
     """
     supabase = get_supabase_client()
+
+    # SECURITY FIX P1-002: Verify equipment belongs to yacht before INSERT
+    eq_result = supabase.table("pms_equipment").select("id, name").eq(
+        "id", params["equipment_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not eq_result.data:
+        raise ValueError(f"Equipment {params['equipment_id']} not found or access denied")
 
     # Insert note
     result = supabase.table("notes").insert({
@@ -197,14 +209,23 @@ async def open_document(params: Dict[str, Any]) -> Dict[str, Any]:
     Generate a signed URL for a document.
 
     Required params:
+        - yacht_id: UUID (from JWT context)
         - storage_path: str (path in Supabase storage)
     """
     supabase = get_supabase_client()
 
+    # SECURITY FIX P1-001: Validate storage_path belongs to user's yacht
+    yacht_id = params["yacht_id"]
+    storage_path = params["storage_path"]
+
+    # Storage paths must start with yacht_id prefix to prevent cross-tenant access
+    if not storage_path.startswith(f"{yacht_id}/"):
+        raise ValueError(f"Access denied: Document does not belong to your yacht")
+
     # Generate signed URL (valid for 1 hour)
     try:
         result = supabase.storage.from_("documents").create_signed_url(
-            params["storage_path"],
+            storage_path,
             expires_in=3600,
         )
 
@@ -248,11 +269,12 @@ async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
     content[params["section_name"]] = params["new_text"]
 
     # Update handover
+    # SECURITY FIX P0-005: Add yacht_id filter for tenant isolation
     result = supabase.table("handovers").update({
         "content": content,
         "updated_at": datetime.utcnow().isoformat(),
         "updated_by": params["user_id"],
-    }).eq("id", params["handover_id"]).execute()
+    }).eq("id", params["handover_id"]).eq("yacht_id", params["yacht_id"]).execute()
 
     if not result.data:
         raise Exception("Failed to update handover section")
@@ -311,6 +333,7 @@ async def update_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
         raise Exception("Failed to update equipment status")
 
     # Create audit log
+    # SECURITY FIX P1-005: Log warning on audit failure instead of silent pass
     try:
         supabase.table("pms_audit_log").insert({
             "yacht_id": params["yacht_id"],
@@ -322,8 +345,8 @@ async def update_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
             "new_values": {"attention_flag": new_flag, "attention_reason": new_reason},
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
-    except Exception:
-        pass  # Don't fail if audit log fails
+    except Exception as e:
+        logger.warning(f"Audit log failed for update_equipment_status (equipment_id={params['equipment_id']}): {e}")
 
     return {
         "equipment_id": params["equipment_id"],
@@ -362,6 +385,29 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     if not summary_text or len(summary_text) < 10:
         raise ValueError("summary_text must be at least 10 characters")
 
+    # SECURITY FIX P1-004: Verify entity belongs to yacht before INSERT
+    entity_id = params.get("entity_id") or params.get("equipment_id")
+    entity_type = params.get("entity_type", "equipment")
+    yacht_id = params["yacht_id"]
+
+    # Map entity_type to table name for ownership verification
+    entity_table_map = {
+        "equipment": "pms_equipment",
+        "fault": "pms_faults",
+        "work_order": "pms_work_orders",
+        "part": "pms_parts",
+        "document": "documents",
+    }
+
+    if entity_id and entity_type in entity_table_map:
+        table_name = entity_table_map[entity_type]
+        entity_result = supabase.table(table_name).select("id").eq(
+            "id", entity_id
+        ).eq("yacht_id", yacht_id).execute()
+
+        if not entity_result.data:
+            raise ValueError(f"{entity_type.capitalize()} {entity_id} not found or access denied")
+
     # Map priority to integer
     priority_value = {"low": 1, "normal": 2, "high": 3, "urgent": 4}.get(
         params.get("priority", "normal"), 2
@@ -371,9 +417,9 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
     handover_id = str(uuid_lib.uuid4())
     handover_entry = {
         "id": handover_id,
-        "yacht_id": params["yacht_id"],
-        "entity_type": params.get("entity_type", "equipment"),
-        "entity_id": params.get("entity_id") or params.get("equipment_id"),
+        "yacht_id": yacht_id,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
         "summary_text": summary_text,
         "category": category,
         "priority": priority_value,
@@ -387,27 +433,28 @@ async def add_to_handover(params: Dict[str, Any]) -> Dict[str, Any]:
         raise Exception("Failed to create handover entry")
 
     # Create audit log
+    # SECURITY FIX P1-005: Log warning on audit failure instead of silent pass
     try:
         supabase.table("pms_audit_log").insert({
-            "yacht_id": params["yacht_id"],
+            "yacht_id": yacht_id,
             "action": "add_to_handover",
             "entity_type": "handover",
             "entity_id": handover_id,
             "user_id": params["user_id"],
             "new_values": {
-                "entity_type": params.get("entity_type"),
-                "entity_id": params.get("entity_id") or params.get("equipment_id"),
+                "entity_type": entity_type,
+                "entity_id": entity_id,
                 "category": category,
             },
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
-    except Exception:
-        pass  # Don't fail if audit log fails
+    except Exception as e:
+        logger.warning(f"Audit log failed for add_to_handover (handover_id={handover_id}): {e}")
 
     return {
         "handover_id": handover_id,
-        "entity_type": params.get("entity_type", "equipment"),
-        "entity_id": params.get("entity_id") or params.get("equipment_id"),
+        "entity_type": entity_type,
+        "entity_id": entity_id,
         "summary_text": summary_text,
         "category": category,
         "priority": params.get("priority", "normal"),
@@ -442,16 +489,18 @@ async def delete_document(params: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("Document is already deleted")
 
     # Soft delete by setting deleted_at
+    # SECURITY FIX P0-005: Add yacht_id filter for tenant isolation
     result = supabase.table("documents").update({
         "deleted_at": datetime.utcnow().isoformat(),
         "deleted_by": params["user_id"],
         "delete_reason": params.get("reason", "Deleted via API"),
-    }).eq("id", params["document_id"]).execute()
+    }).eq("id", params["document_id"]).eq("yacht_id", params["yacht_id"]).execute()
 
     if not result.data:
         raise Exception("Failed to delete document")
 
     # Create audit log
+    # SECURITY FIX P1-005: Log warning on audit failure instead of silent pass
     try:
         supabase.table("pms_audit_log").insert({
             "yacht_id": params["yacht_id"],
@@ -463,8 +512,8 @@ async def delete_document(params: Dict[str, Any]) -> Dict[str, Any]:
             "new_values": {"deleted_at": result.data[0].get("deleted_at")},
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Audit log failed for delete_document (document_id={params['document_id']}): {e}")
 
     return {
         "document_id": params["document_id"],
@@ -505,6 +554,7 @@ async def delete_shopping_item(params: Dict[str, Any]) -> Dict[str, Any]:
     ).eq("yacht_id", params["yacht_id"]).execute()
 
     # Create audit log
+    # SECURITY FIX P1-005: Log warning on audit failure instead of silent pass
     try:
         supabase.table("pms_audit_log").insert({
             "yacht_id": params["yacht_id"],
@@ -516,8 +566,8 @@ async def delete_shopping_item(params: Dict[str, Any]) -> Dict[str, Any]:
             "new_values": None,
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Audit log failed for delete_shopping_item (item_id={params['item_id']}): {e}")
 
     return {
         "item_id": params["item_id"],
@@ -544,6 +594,14 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
+
+    # SECURITY FIX P1-003: Verify equipment belongs to yacht before INSERT
+    eq_result = supabase.table("pms_equipment").select("id, name").eq(
+        "id", params["equipment_id"]
+    ).eq("yacht_id", params["yacht_id"]).execute()
+
+    if not eq_result.data:
+        raise ValueError(f"Equipment {params['equipment_id']} not found or access denied")
 
     fault_id = str(uuid_lib.uuid4())
     fault_data = {

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddRelatedResponse",
+  "type": "object",
+  "required": [
+    "relation_id",
+    "tenant_id",
+    "created_by_user_id",
+    "created_at",
+    "from_artefact_type",
+    "from_artefact_id",
+    "to_artefact_type",
+    "to_artefact_id",
+    "source"
+  ],
+  "properties": {
+    "relation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "from_artefact_type": {
+      "type": "string"
+    },
+    "from_artefact_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "to_artefact_type": {
+      "type": "string"
+    },
+    "to_artefact_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["user"]
+    }
+  },
+  "additionalProperties": false
+}
