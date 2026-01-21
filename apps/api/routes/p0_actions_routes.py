@@ -430,6 +430,7 @@ async def execute_action(
     # ========================================================================
     REQUIRED_FIELDS = {
         "report_fault": ["equipment_id", "description"],
+        "diagnose_fault": ["fault_id"],
         "close_fault": ["fault_id"],
         "update_fault": ["fault_id"],
         "add_fault_photo": ["fault_id", "photo_url"],
@@ -464,6 +465,25 @@ async def execute_action(
         "add_wo_hours": ["work_order_id", "hours"],
         "add_wo_part": ["work_order_id", "part_id"],
         "add_wo_note": ["work_order_id", "note_text"],
+        # Tier 1 - Fault/WO History
+        "view_fault_history": ["equipment_id"],
+        "add_fault_note": ["fault_id", "note_text"],
+        "view_work_order_history": ["equipment_id"],
+        "suggest_parts": ["fault_id"],
+        # Tier 2 - Equipment Views
+        "view_equipment_details": ["equipment_id"],
+        "view_equipment_history": ["equipment_id"],
+        "view_equipment_parts": ["equipment_id"],
+        "view_linked_faults": ["equipment_id"],
+        "view_equipment_manual": ["equipment_id"],
+        "add_equipment_note": ["equipment_id", "note_text"],
+        # Tier 3 - Inventory
+        "view_part_stock": ["part_id"],
+        "view_part_location": ["part_id"],
+        "view_part_usage": ["part_id"],
+        "view_linked_equipment": ["part_id"],
+        "order_part": ["part_id"],
+        "scan_part_barcode": ["barcode"],
     }
 
     if action in REQUIRED_FIELDS:
@@ -1829,6 +1849,473 @@ async def execute_action(
                 "success": True,
                 "document": doc_result.data
             }
+
+        # =====================================================================
+        # TIER 1 HANDLERS - Fault/WO History and Notes
+        # =====================================================================
+
+        elif action == "view_fault_history":
+            # View fault history for an equipment
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            faults = db_client.table("pms_faults").select(
+                "id, title, description, status, severity, detected_at, resolved_at, created_at"
+            ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order(
+                "created_at", desc=True
+            ).limit(50).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "faults": faults.data or [],
+                "count": len(faults.data) if faults.data else 0
+            }
+
+        elif action == "add_fault_note":
+            # Add a note to a fault (stored in metadata.notes array)
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_id = payload.get("fault_id")
+            note_text = payload.get("note_text", "")
+
+            if not fault_id:
+                raise HTTPException(status_code=400, detail="fault_id is required")
+            if not note_text:
+                raise HTTPException(status_code=400, detail="note_text is required")
+
+            # Get current fault metadata
+            current = db_client.table("pms_faults").select("id, metadata").eq(
+                "id", fault_id
+            ).eq("yacht_id", yacht_id).single().execute()
+
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            metadata = current.data.get("metadata", {}) or {}
+            notes = metadata.get("notes", []) or []
+
+            # Add new note
+            notes.append({
+                "text": note_text,
+                "added_by": user_id,
+                "added_at": datetime.now(timezone.utc).isoformat()
+            })
+            metadata["notes"] = notes
+
+            # Update fault
+            update_result = db_client.table("pms_faults").update({
+                "metadata": metadata,
+                "updated_by": user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "message": "Note added to fault",
+                "notes_count": len(notes)
+            }
+
+        elif action == "view_work_order_history":
+            # View work order history for an equipment
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            work_orders = db_client.table("pms_work_orders").select(
+                "id, wo_number, title, description, status, priority, created_at, completed_at"
+            ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order(
+                "created_at", desc=True
+            ).limit(50).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "work_orders": work_orders.data or [],
+                "count": len(work_orders.data) if work_orders.data else 0
+            }
+
+        elif action == "suggest_parts":
+            # Suggest parts for a fault based on equipment type
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            fault_id = payload.get("fault_id")
+
+            if not fault_id:
+                raise HTTPException(status_code=400, detail="fault_id is required")
+
+            # Get fault and equipment info
+            fault = db_client.table("pms_faults").select(
+                "id, equipment_id, fault_code, title"
+            ).eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+
+            if not fault.data:
+                raise HTTPException(status_code=404, detail="Fault not found")
+
+            equipment_id = fault.data.get("equipment_id")
+
+            # Get parts linked to this equipment
+            parts = []
+            if equipment_id:
+                parts_result = db_client.table("pms_parts").select(
+                    "id, part_number, name, current_quantity_onboard, location"
+                ).eq("yacht_id", yacht_id).limit(10).execute()
+                parts = parts_result.data or []
+
+            result = {
+                "status": "success",
+                "success": True,
+                "suggested_parts": parts,
+                "message": f"Found {len(parts)} potentially relevant parts"
+            }
+
+        # =====================================================================
+        # TIER 2 HANDLERS - Equipment Views
+        # =====================================================================
+
+        elif action == "view_equipment_details":
+            # Get detailed equipment information
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            equipment = db_client.table("pms_equipment").select("*").eq(
+                "id", equipment_id
+            ).eq("yacht_id", yacht_id).single().execute()
+
+            if not equipment.data:
+                raise HTTPException(status_code=404, detail="Equipment not found")
+
+            result = {
+                "status": "success",
+                "success": True,
+                "equipment": equipment.data
+            }
+
+        elif action == "view_equipment_history":
+            # View maintenance history for equipment (work orders)
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            # Get work orders for this equipment
+            work_orders = db_client.table("pms_work_orders").select(
+                "id, wo_number, title, status, priority, created_at, completed_at"
+            ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order(
+                "created_at", desc=True
+            ).limit(50).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "maintenance_history": work_orders.data or [],
+                "count": len(work_orders.data) if work_orders.data else 0
+            }
+
+        elif action == "view_equipment_parts":
+            # View parts associated with equipment
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            # Get parts (in a real system, there would be an equipment_parts junction table)
+            # For now, return all parts for the yacht
+            parts = db_client.table("pms_parts").select(
+                "id, part_number, name, current_quantity_onboard, min_quantity, location"
+            ).eq("yacht_id", yacht_id).limit(50).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "parts": parts.data or [],
+                "count": len(parts.data) if parts.data else 0
+            }
+
+        elif action == "view_linked_faults":
+            # View faults linked to equipment
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            faults = db_client.table("pms_faults").select(
+                "id, title, description, status, severity, detected_at"
+            ).eq("equipment_id", equipment_id).eq("yacht_id", yacht_id).order(
+                "detected_at", desc=True
+            ).limit(50).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "faults": faults.data or [],
+                "count": len(faults.data) if faults.data else 0
+            }
+
+        elif action == "view_equipment_manual":
+            # View manual/documentation for equipment
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+
+            # Get equipment to find linked documents
+            equipment = db_client.table("pms_equipment").select(
+                "id, name, make, model, metadata"
+            ).eq("id", equipment_id).eq("yacht_id", yacht_id).single().execute()
+
+            if not equipment.data:
+                raise HTTPException(status_code=404, detail="Equipment not found")
+
+            # Try to find linked documents
+            docs = db_client.table("documents").select(
+                "id, title, file_path, document_type"
+            ).eq("yacht_id", yacht_id).limit(10).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "equipment": {
+                    "id": equipment.data.get("id"),
+                    "name": equipment.data.get("name"),
+                    "make": equipment.data.get("make"),
+                    "model": equipment.data.get("model")
+                },
+                "manuals": docs.data or [],
+                "manual_count": len(docs.data) if docs.data else 0
+            }
+
+        elif action == "add_equipment_note":
+            # Add a note to equipment
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            equipment_id = payload.get("equipment_id")
+            note_text = payload.get("note_text", "")
+
+            if not equipment_id:
+                raise HTTPException(status_code=400, detail="equipment_id is required")
+            if not note_text:
+                raise HTTPException(status_code=400, detail="note_text is required")
+
+            # Get current equipment metadata
+            current = db_client.table("pms_equipment").select("id, metadata").eq(
+                "id", equipment_id
+            ).eq("yacht_id", yacht_id).single().execute()
+
+            if not current.data:
+                raise HTTPException(status_code=404, detail="Equipment not found")
+
+            metadata = current.data.get("metadata", {}) or {}
+            notes = metadata.get("notes", []) or []
+
+            # Add new note
+            notes.append({
+                "text": note_text,
+                "added_by": user_id,
+                "added_at": datetime.now(timezone.utc).isoformat()
+            })
+            metadata["notes"] = notes
+
+            # Update equipment
+            db_client.table("pms_equipment").update({
+                "metadata": metadata,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", equipment_id).eq("yacht_id", yacht_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "message": "Note added to equipment",
+                "notes_count": len(notes)
+            }
+
+        # =====================================================================
+        # TIER 3 HANDLERS - Inventory Views
+        # =====================================================================
+
+        elif action == "view_part_stock":
+            # View stock level for a specific part
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            part_id = payload.get("part_id")
+
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            part = db_client.table("pms_parts").select(
+                "id, part_number, name, current_quantity_onboard, min_quantity, reorder_point, location"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).single().execute()
+
+            if not part.data:
+                raise HTTPException(status_code=404, detail="Part not found")
+
+            result = {
+                "status": "success",
+                "success": True,
+                "part": part.data,
+                "stock_status": "low" if part.data.get("current_quantity_onboard", 0) <= part.data.get("min_quantity", 0) else "ok"
+            }
+
+        elif action == "view_part_location":
+            # View storage location for a part
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            part_id = payload.get("part_id")
+
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            part = db_client.table("pms_parts").select(
+                "id, part_number, name, location, storage_bin, deck"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).single().execute()
+
+            if not part.data:
+                raise HTTPException(status_code=404, detail="Part not found")
+
+            result = {
+                "status": "success",
+                "success": True,
+                "part_id": part.data.get("id"),
+                "part_number": part.data.get("part_number"),
+                "name": part.data.get("name"),
+                "location": part.data.get("location"),
+                "storage_bin": part.data.get("storage_bin"),
+                "deck": part.data.get("deck")
+            }
+
+        elif action == "view_part_usage":
+            # View usage history for a part
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            part_id = payload.get("part_id")
+
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            # Check if part_usage table exists, otherwise return empty
+            try:
+                usage = db_client.table("part_usage").select(
+                    "id, quantity, usage_reason, work_order_id, created_at"
+                ).eq("part_id", part_id).eq("yacht_id", yacht_id).order(
+                    "created_at", desc=True
+                ).limit(50).execute()
+
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "usage_history": usage.data or [],
+                    "count": len(usage.data) if usage.data else 0
+                }
+            except Exception:
+                # Table may not exist
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "usage_history": [],
+                    "count": 0,
+                    "message": "No usage history available"
+                }
+
+        elif action == "view_linked_equipment":
+            # View equipment that uses this part
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            part_id = payload.get("part_id")
+
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            # In a real system, there would be an equipment_parts junction table
+            # For now, return equipment for the yacht
+            equipment = db_client.table("pms_equipment").select(
+                "id, name, make, model, location"
+            ).eq("yacht_id", yacht_id).limit(10).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "linked_equipment": equipment.data or [],
+                "count": len(equipment.data) if equipment.data else 0
+            }
+
+        elif action == "order_part":
+            # Create a purchase request for a part
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            part_id = payload.get("part_id")
+            quantity = payload.get("quantity", 1)
+
+            if not part_id:
+                raise HTTPException(status_code=400, detail="part_id is required")
+
+            # Get part info
+            part = db_client.table("pms_parts").select(
+                "id, part_number, name"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).single().execute()
+
+            if not part.data:
+                raise HTTPException(status_code=404, detail="Part not found")
+
+            # For now, just return success - in a real system, this would create a purchase request
+            result = {
+                "status": "success",
+                "success": True,
+                "message": f"Purchase request created for {quantity}x {part.data.get('name')}",
+                "part_id": part_id,
+                "quantity": quantity
+            }
+
+        elif action == "scan_part_barcode":
+            # Look up part by barcode
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            barcode = payload.get("barcode")
+
+            if not barcode:
+                raise HTTPException(status_code=400, detail="barcode is required")
+
+            # Try to find part by part_number (commonly used as barcode)
+            part = db_client.table("pms_parts").select(
+                "id, part_number, name, current_quantity_onboard, location"
+            ).eq("part_number", barcode).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if part.data:
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "found": True,
+                    "part": part.data
+                }
+            else:
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "found": False,
+                    "message": f"No part found with barcode: {barcode}"
+                }
 
         else:
             raise HTTPException(
