@@ -174,10 +174,10 @@ export async function discoverTestData(): Promise<DiscoveredTestData> {
     console.warn('Failed to discover documents:', e.message);
   }
 
-  // Discover handover
+  // Discover handover (table is plural: handovers)
   try {
     const { data: handover } = await client
-      .from('handover')
+      .from('handovers')
       .select('id')
       .eq('yacht_id', yacht_id)
       .limit(1);

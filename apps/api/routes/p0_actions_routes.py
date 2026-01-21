@@ -1993,7 +1993,7 @@ async def execute_action(
 
             # Get fault and equipment info
             fault = db_client.table("pms_faults").select(
-                "id, equipment_id, fault_number, title"
+                "id, equipment_id, fault_code, title"
             ).eq("id", fault_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not fault.data:
@@ -2128,7 +2128,7 @@ async def execute_action(
 
             # Try to find linked documents
             docs = db_client.table("documents").select(
-                "id, title, storage_path, category"
+                "id, filename, storage_path, doc_type"
             ).eq("yacht_id", yacht_id).limit(10).execute()
 
             result = {
@@ -3699,7 +3699,7 @@ async def execute_action(
             try:
                 # Query documents linked to the entity
                 docs = db_client.table("documents").select(
-                    "id, title, document_type, file_url, created_at"
+                    "id, filename, doc_type, storage_path, created_at"
                 ).eq("yacht_id", yacht_id).or_(
                     f"metadata->>entity_id.eq.{entity_id},metadata->>related_entity_id.eq.{entity_id}"
                 ).limit(20).execute()
@@ -3716,7 +3716,7 @@ async def execute_action(
                 # Fallback to simple query
                 try:
                     docs = db_client.table("documents").select(
-                        "id, title, document_type, file_url, created_at"
+                        "id, filename, doc_type, storage_path, created_at"
                     ).eq("yacht_id", yacht_id).limit(10).execute()
 
                     result = {
@@ -3753,7 +3753,7 @@ async def execute_action(
             try:
                 # Get document
                 doc = db_client.table("documents").select(
-                    "id, title, content, metadata"
+                    "id, filename, metadata"
                 ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
                 if not doc.data:
@@ -3768,7 +3768,7 @@ async def execute_action(
                     "status": "success",
                     "success": True,
                     "document_id": document_id,
-                    "document_title": doc.data.get("title"),
+                    "document_title": doc.data.get("filename"),
                     "section_id": section_id,
                     "section": section_content if section_content else {
                         "content": "Section not found",
