@@ -14,7 +14,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Wrench, ChevronRight, Stethoscope, Book, History, Package, StickyNote, Camera, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Wrench, ChevronRight, Stethoscope, Book, History, Package, StickyNote, Camera, AlertCircle, CheckCircle2, Edit, ClipboardList } from 'lucide-react';
 import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { DiagnoseFaultModal } from '@/components/modals/DiagnoseFaultModal';
 import { ShowManualSectionModal } from '@/components/modals/ShowManualSectionModal';
@@ -22,6 +22,9 @@ import { FaultHistoryModal } from '@/components/modals/FaultHistoryModal';
 import { SuggestPartsModal } from '@/components/modals/SuggestPartsModal';
 import { AddNoteModal } from '@/components/modals/AddNoteModal';
 import { AddPhotoModal } from '@/components/modals/AddPhotoModal';
+import { AcknowledgeFaultModal } from '@/components/modals/AcknowledgeFaultModal';
+import { EditFaultDetailsModal } from '@/components/modals/EditFaultDetailsModal';
+import { AddToHandoverQuickModal } from '@/components/modals/AddToHandoverQuickModal';
 import { ActionButton } from '@/components/actions/ActionButton';
 import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
@@ -62,6 +65,9 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
   const [showSuggestParts, setShowSuggestParts] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [showAddPhoto, setShowAddPhoto] = useState(false);
+  const [showAcknowledge, setShowAcknowledge] = useState(false);
+  const [showUpdate, setShowUpdate] = useState(false);
+  const [showHandover, setShowHandover] = useState(false);
 
   // Track if auto-run has been triggered
   const hasAutoRun = useRef(false);
@@ -104,6 +110,9 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
   const showAddNoteButton = !failClosed && isAllowed('add_fault_note');
   const showAddPhotoButton = !failClosed && isAllowed('add_fault_photo');
   const showCreateWOButton = !failClosed && isAllowed('create_work_order_from_fault');
+  const showAcknowledgeButton = !failClosed && isAllowed('acknowledge_fault');
+  const showUpdateButton = !failClosed && isAllowed('update_fault');
+  const showHandoverButton = !failClosed && isAllowed('add_to_handover');
 
   // Auto-run diagnose_fault when card mounts and decisions are loaded
   // Only if action is allowed by server and diagnose_fault has auto_run flag
@@ -286,6 +295,42 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
                 </button>
               )}
 
+              {/* Acknowledge Fault Action - shows if SERVER allows */}
+              {showAcknowledgeButton && (
+                <button
+                  onClick={() => setShowAcknowledge(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="acknowledge-fault-button"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Acknowledge
+                </button>
+              )}
+
+              {/* Update Fault Action - shows if SERVER allows */}
+              {showUpdateButton && (
+                <button
+                  onClick={() => setShowUpdate(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="update-fault-button"
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                  Update
+                </button>
+              )}
+
+              {/* Add to Handover Action - shows if SERVER allows */}
+              {showHandoverButton && (
+                <button
+                  onClick={() => setShowHandover(true)}
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  data-testid="add-to-handover-button"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Handover
+                </button>
+              )}
+
               {/* Primary Action - Create Work Order (shows if SERVER allows) */}
               {showCreateWOButton && (
                 <button
@@ -416,6 +461,38 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
           entity_title: fault.title,
           entity_subtitle: fault.equipment_name,
         }}
+      />
+
+      {/* Acknowledge Fault Modal */}
+      <AcknowledgeFaultModal
+        open={showAcknowledge}
+        onOpenChange={setShowAcknowledge}
+        context={{
+          fault_id: fault.id,
+          fault_title: fault.title,
+          severity: fault.severity,
+        }}
+      />
+
+      {/* Edit/Update Fault Modal */}
+      <EditFaultDetailsModal
+        open={showUpdate}
+        onOpenChange={setShowUpdate}
+        context={{
+          fault_id: fault.id,
+          current_title: fault.title,
+          current_description: fault.description,
+          current_severity: fault.severity,
+          current_status: 'open', // TODO: get from fault object
+        }}
+      />
+
+      {/* Add to Handover Modal */}
+      <AddToHandoverQuickModal
+        open={showHandover}
+        onOpenChange={setShowHandover}
+        entityType="fault"
+        entityId={fault.id}
       />
     </>
   );

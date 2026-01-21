@@ -11,7 +11,7 @@
 // ============================================================================
 
 export type MicroAction =
-  // FAULT & DIAGNOSIS (9 actions)
+  // FAULT & DIAGNOSIS (12 actions)
   | 'diagnose_fault'
   | 'report_fault'
   | 'show_manual_section'
@@ -21,6 +21,9 @@ export type MicroAction =
   | 'add_fault_note'
   | 'add_fault_photo'
   | 'link_equipment_to_fault'
+  | 'acknowledge_fault'
+  | 'update_fault'
+  | 'view_fault_detail'
 
   // WORK ORDER / PMS (11 actions)
   | 'create_work_order'
@@ -368,6 +371,30 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     side_effect_type: 'mutation_light',
     icon: 'Camera',
     description: 'Upload photo evidence of fault condition',
+  },
+  acknowledge_fault: {
+    action_name: 'acknowledge_fault',
+    label: 'Acknowledge',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_light',
+    icon: 'CheckCircle',
+    description: 'Acknowledge fault and take responsibility',
+  },
+  update_fault: {
+    action_name: 'update_fault',
+    label: 'Update',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_light',
+    icon: 'Edit',
+    description: 'Update fault details (severity, description, etc.)',
+  },
+  view_fault_detail: {
+    action_name: 'view_fault_detail',
+    label: 'View Details',
+    cluster: 'fix_something',
+    side_effect_type: 'read_only',
+    icon: 'Eye',
+    description: 'View full fault details',
   },
   report_fault: {
     action_name: 'report_fault',

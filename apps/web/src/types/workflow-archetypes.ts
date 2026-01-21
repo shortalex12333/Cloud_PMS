@@ -236,8 +236,9 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   view_fleet_summary: 'VIEW',
   open_vessel: 'VIEW',
   view_smart_summary: 'VIEW',
+  view_fault_detail: 'VIEW',
 
-  // UPDATE (21)
+  // UPDATE (24)
   mark_work_order_complete: 'UPDATE',
   complete_work_order: 'UPDATE',
   edit_part_quantity: 'UPDATE',
@@ -259,6 +260,8 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   edit_invoice_amount: 'UPDATE',
   edit_fault_details: 'UPDATE',
   edit_note: 'UPDATE',
+  acknowledge_fault: 'UPDATE',
+  update_fault: 'UPDATE',
 
   // CREATE (16)
   create_work_order: 'CREATE',
