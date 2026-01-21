@@ -157,16 +157,17 @@ async def get_decisions(
     )
 
     try:
-        # Convert entities to dicts
+        # Convert entities to dicts (only include non-None values)
         entities_list = []
         for e in request.entities:
-            entity_dict = {
-                "type": e.type,
-                "id": e.id,
-                "name": e.name,
-                "status": e.status,
-            }
-            # Add optional fields if present
+            entity_dict = {"type": e.type}
+            # Only add optional fields if they have values (not None)
+            if e.id is not None:
+                entity_dict["id"] = e.id
+            if e.name is not None:
+                entity_dict["name"] = e.name
+            if e.status is not None:
+                entity_dict["status"] = e.status
             if e.has_work_order is not None:
                 entity_dict["has_work_order"] = e.has_work_order
             if e.has_checklist is not None:
