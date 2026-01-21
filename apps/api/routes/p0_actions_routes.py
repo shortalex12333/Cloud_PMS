@@ -833,7 +833,7 @@ async def execute_action(
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
-                # Create audit log entry (table: audit_log, NOT pms_audit_log)
+                # Create audit log entry (table: pms_audit_log - tenant DB convention)
                 try:
                     audit_entry = {
                         "id": str(uuid_module.uuid4()),
@@ -851,7 +851,7 @@ async def execute_action(
                             "action": "acknowledge_fault"
                         }
                     }
-                    db_client.table("audit_log").insert(audit_entry).execute()
+                    db_client.table("pms_audit_log").insert(audit_entry).execute()
                     logger.info(f"Audit log created for acknowledge_fault: execution_id={execution_id}")
                 except Exception as audit_err:
                     # Log audit failure but don't fail the action
