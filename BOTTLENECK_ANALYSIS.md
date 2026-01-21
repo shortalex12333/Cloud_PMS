@@ -1,7 +1,7 @@
 # BOTTLENECK ANALYSIS - CelesteOS Microactions
 
-**Last Updated:** 2026-01-21 (Final)
-**Current System Health:** ~95% (estimated 61/64 actions working)
+**Last Updated:** 2026-01-21 (Final - Day 1 Complete)
+**Current System Health:** 64% (41/64 actions working)
 **Total Handlers:** 81 (in p0_actions_routes.py)
 **Baseline Hash:** ZGlhZ25vc2VfZmF1bHQ6V09SS0lOR3xz
 
@@ -14,7 +14,9 @@
 | After data discovery | 20% | 13/64 | Using real IDs |
 | After Tier 1-3 handlers | ~45% | ~29/64 | DEPLOYED |
 | After Tier 4-8 handlers | ~75% | ~48/64 | DEPLOYED |
-| After Tier 9 handlers | ~95% | ~61/64 | **COMPLETE** |
+| After column name fixes | 50% | 32/64 | Fixed pms_parts columns |
+| After documents fixes | 59% | 38/64 | Fixed documents columns |
+| After all schema fixes | **64%** | **41/64** | **0 RUNTIME_ERROR, 0 DB_ERROR**
 
 ### All Handlers Implemented
 
