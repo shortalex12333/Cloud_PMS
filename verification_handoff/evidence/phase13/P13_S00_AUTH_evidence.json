@@ -1,0 +1,70 @@
+{
+  "journeyId": "P13",
+  "stepId": "S00_AUTH",
+  "timestamp": "2026-01-21T19:32:52.192Z",
+  "screenshots": [
+    "verification_handoff/evidence/phase13/P13_S00_01_login_page.png",
+    "verification_handoff/evidence/phase13/P13_S00_02_after_login.png",
+    "verification_handoff/evidence/phase13/P13_S00_03_auth_debug_expanded.png"
+  ],
+  "networkCalls": [
+    {
+      "url": "https://qvzmkaamzaqxpzbewjxe.supabase.co/auth/v1/token?grant_type=password",
+      "method": "POST",
+      "status": 200,
+      "responseBody": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjE3UGY4ZUVPVnFXZXlmRGIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJhMzVjYWQwYi0wMmZmLTQyODctYjZlNC0xN2M5NmZhNmE0MjQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzY5MDI3NTczLCJpYXQiOjE3NjkwMjM5NzMsImVtYWlsIjoieEBhbGV4LXNob3J0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzY5MDIzOTczfV0sInNlc3Npb25faWQiOiI2OWNkODdhZi0yZmRmLTRmMjktOGFjNS03YjI4ZDQ4ZTUzZTIiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.rsuuBZtPv8lR8Pa4uMbS69fzxajG_lEza5vXai8QyyY",
+        "token_type": "bearer",
+        "expires_in": 3600,
+        "expires_at": 1769027573,
+        "refresh_token": "t32lnbvjw7i6",
+        "user": {
+          "id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+          "aud": "authenticated",
+          "role": "authenticated",
+          "email": "x@alex-short.com",
+          "email_confirmed_at": "2026-01-20T13:13:02.041328Z",
+          "phone": "",
+          "confirmed_at": "2026-01-20T13:13:02.041328Z",
+          "last_sign_in_at": "2026-01-21T19:32:53.379794503Z",
+          "app_metadata": {
+            "provider": "email",
+            "providers": [
+              "email"
+            ]
+          },
+          "user_metadata": {
+            "email_verified": true
+          },
+          "identities": [
+            {
+              "identity_id": "3ead6fe8-bee7-47f7-a32c-09ad24663ab0",
+              "id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+              "user_id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+              "identity_data": {
+                "email": "x@alex-short.com",
+                "email_verified": false,
+                "phone_verified": false,
+                "sub": "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
+              },
+              "provider": "email",
+              "last_sign_in_at": "2026-01-20T13:13:02.036239Z",
+              "created_at": "2026-01-20T13:13:02.036301Z",
+              "updated_at": "2026-01-20T13:13:02.036301Z",
+              "email": "x@alex-short.com"
+            }
+          ],
+          "created_at": "2026-01-20T13:13:02.021768Z",
+          "updated_at": "2026-01-21T19:32:53.384625Z",
+          "is_anonymous": false
+        },
+        "weak_password": null
+      }
+    }
+  ],
+  "decisionsProof": {
+    "called": false
+  },
+  "verdict": "FAIL",
+  "failureReason": "Auth failed: auth=true, bootstrap=undefined, yacht=false, role=false, active=false"
+}
