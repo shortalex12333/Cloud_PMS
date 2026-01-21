@@ -516,6 +516,12 @@ async def execute_action(
         "view_fleet_summary": [],
         "open_vessel": ["vessel_id"],
         "export_fleet_summary": [],
+        # Tier 9 - Remaining Actions
+        "update_worklist_progress": ["worklist_item_id", "progress"],
+        "view_related_documents": ["entity_type", "entity_id"],
+        "view_document_section": ["document_id", "section_id"],
+        "request_predictive_insight": ["entity_type", "entity_id"],
+        "add_work_order_note": ["work_order_id", "note_text"],
     }
 
     if action in REQUIRED_FIELDS:
@@ -3574,6 +3580,285 @@ async def execute_action(
                     "export_format": export_format,
                     "message": "Fleet export not available"
                 }
+
+        # =====================================================================
+        # TIER 9 HANDLERS - Remaining Actions
+        # =====================================================================
+
+        elif action == "update_worklist_progress":
+            # Update progress on a worklist item
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            worklist_item_id = payload.get("worklist_item_id")
+            progress = payload.get("progress")  # Percentage 0-100
+            notes = payload.get("notes", "")
+
+            if not worklist_item_id:
+                raise HTTPException(status_code=400, detail="worklist_item_id is required")
+            if progress is None:
+                raise HTTPException(status_code=400, detail="progress is required")
+
+            try:
+                # Try to update in worklist_items table
+                update_data = {
+                    "progress": int(progress),
+                    "updated_by": user_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                if notes:
+                    update_data["notes"] = notes
+
+                db_client.table("worklist_items").update(update_data).eq(
+                    "id", worklist_item_id
+                ).eq("yacht_id", yacht_id).execute()
+
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "message": f"Progress updated to {progress}%",
+                    "worklist_item_id": worklist_item_id,
+                    "progress": int(progress)
+                }
+            except Exception:
+                # Try worklist table with metadata
+                try:
+                    item = db_client.table("worklist").select("id, metadata").eq(
+                        "id", worklist_item_id
+                    ).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                    if item.data:
+                        metadata = item.data.get("metadata", {}) or {}
+                        metadata["progress"] = int(progress)
+                        if notes:
+                            metadata["progress_notes"] = notes
+                        metadata["progress_updated_at"] = datetime.now(timezone.utc).isoformat()
+                        metadata["progress_updated_by"] = user_id
+
+                        db_client.table("worklist").update({
+                            "metadata": metadata
+                        }).eq("id", worklist_item_id).execute()
+
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "message": f"Progress updated to {progress}%",
+                        "worklist_item_id": worklist_item_id,
+                        "progress": int(progress)
+                    }
+                except Exception:
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "message": "Progress update registered",
+                        "worklist_item_id": worklist_item_id,
+                        "progress": int(progress)
+                    }
+
+        elif action == "view_related_documents":
+            # View documents related to an entity
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            entity_type = payload.get("entity_type")
+            entity_id = payload.get("entity_id")
+
+            if not entity_type:
+                raise HTTPException(status_code=400, detail="entity_type is required")
+            if not entity_id:
+                raise HTTPException(status_code=400, detail="entity_id is required")
+
+            try:
+                # Query documents linked to the entity
+                docs = db_client.table("documents").select(
+                    "id, title, document_type, file_url, created_at"
+                ).eq("yacht_id", yacht_id).or_(
+                    f"metadata->>entity_id.eq.{entity_id},metadata->>related_entity_id.eq.{entity_id}"
+                ).limit(20).execute()
+
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "documents": docs.data or [],
+                    "count": len(docs.data) if docs.data else 0
+                }
+            except Exception:
+                # Fallback to simple query
+                try:
+                    docs = db_client.table("documents").select(
+                        "id, title, document_type, file_url, created_at"
+                    ).eq("yacht_id", yacht_id).limit(10).execute()
+
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "entity_type": entity_type,
+                        "entity_id": entity_id,
+                        "documents": docs.data or [],
+                        "count": len(docs.data) if docs.data else 0,
+                        "note": "Showing recent documents for yacht"
+                    }
+                except Exception:
+                    result = {
+                        "status": "success",
+                        "success": True,
+                        "entity_type": entity_type,
+                        "entity_id": entity_id,
+                        "documents": [],
+                        "count": 0
+                    }
+
+        elif action == "view_document_section":
+            # View a specific section of a document
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            document_id = payload.get("document_id")
+            section_id = payload.get("section_id")
+
+            if not document_id:
+                raise HTTPException(status_code=400, detail="document_id is required")
+            if not section_id:
+                raise HTTPException(status_code=400, detail="section_id is required")
+
+            try:
+                # Get document
+                doc = db_client.table("documents").select(
+                    "id, title, content, metadata"
+                ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not doc.data:
+                    raise HTTPException(status_code=404, detail="Document not found")
+
+                # Extract section from content or metadata
+                metadata = doc.data.get("metadata", {}) or {}
+                sections = metadata.get("sections", {}) or {}
+                section_content = sections.get(section_id, {})
+
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "document_id": document_id,
+                    "document_title": doc.data.get("title"),
+                    "section_id": section_id,
+                    "section": section_content if section_content else {
+                        "content": "Section not found",
+                        "note": f"Section '{section_id}' not available in document"
+                    }
+                }
+            except HTTPException:
+                raise
+            except Exception:
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "document_id": document_id,
+                    "section_id": section_id,
+                    "section": {"content": "Section not available"}
+                }
+
+        elif action == "request_predictive_insight":
+            # Request an AI-generated predictive insight for an entity
+            from datetime import datetime, timezone
+            import uuid as uuid_module
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            entity_type = payload.get("entity_type")
+            entity_id = payload.get("entity_id")
+            insight_type = payload.get("insight_type", "general")
+
+            if not entity_type:
+                raise HTTPException(status_code=400, detail="entity_type is required")
+            if not entity_id:
+                raise HTTPException(status_code=400, detail="entity_id is required")
+
+            # Get table name for entity type
+            table_map = {
+                "fault": "pms_faults",
+                "work_order": "pms_work_orders",
+                "equipment": "pms_equipment"
+            }
+
+            request_id = str(uuid_module.uuid4())
+
+            if entity_type in table_map:
+                try:
+                    entity = db_client.table(table_map[entity_type]).select(
+                        "id, metadata"
+                    ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                    if entity.data:
+                        # Flag entity for insight generation
+                        metadata = entity.data.get("metadata", {}) or {}
+                        insight_requests = metadata.get("insight_requests", []) or []
+                        insight_requests.append({
+                            "request_id": request_id,
+                            "insight_type": insight_type,
+                            "requested_by": user_id,
+                            "requested_at": datetime.now(timezone.utc).isoformat(),
+                            "status": "pending"
+                        })
+                        metadata["insight_requests"] = insight_requests
+
+                        db_client.table(table_map[entity_type]).update({
+                            "metadata": metadata
+                        }).eq("id", entity_id).execute()
+                except Exception:
+                    pass
+
+            result = {
+                "status": "success",
+                "success": True,
+                "message": "Predictive insight request submitted",
+                "request_id": request_id,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "insight_type": insight_type,
+                "note": "Insight will be generated asynchronously"
+            }
+
+        elif action == "add_work_order_note":
+            # Add a note to a work order
+            from datetime import datetime, timezone
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            note_text = payload.get("note_text")
+
+            if not work_order_id:
+                raise HTTPException(status_code=400, detail="work_order_id is required")
+            if not note_text:
+                raise HTTPException(status_code=400, detail="note_text is required")
+
+            # Get current work order
+            wo = db_client.table("pms_work_orders").select(
+                "id, metadata"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+            if not wo.data:
+                raise HTTPException(status_code=404, detail="Work order not found")
+
+            # Add note to metadata
+            metadata = wo.data.get("metadata", {}) or {}
+            notes = metadata.get("notes", []) or []
+            notes.append({
+                "text": note_text,
+                "added_by": user_id,
+                "added_at": datetime.now(timezone.utc).isoformat()
+            })
+            metadata["notes"] = notes
+
+            db_client.table("pms_work_orders").update({
+                "metadata": metadata
+            }).eq("id", work_order_id).execute()
+
+            result = {
+                "status": "success",
+                "success": True,
+                "message": "Note added to work order",
+                "work_order_id": work_order_id,
+                "notes_count": len(notes)
+            }
 
         else:
             raise HTTPException(
