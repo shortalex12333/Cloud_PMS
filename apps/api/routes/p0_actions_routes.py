@@ -833,7 +833,7 @@ async def execute_action(
 
             fault_result = db_client.table("pms_faults").update(update_data).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
             if fault_result.data:
-                # Create audit log entry
+                # Create audit log entry (table: audit_log, NOT pms_audit_log)
                 try:
                     audit_entry = {
                         "id": str(uuid_module.uuid4()),
@@ -842,13 +842,16 @@ async def execute_action(
                         "entity_type": "fault",
                         "entity_id": fault_id,
                         "user_id": user_id,
-                        "execution_id": execution_id,
                         "old_values": {"status": old_status, "severity": old_severity},
-                        "new_values": {"status": "investigating", "severity": "medium"},
-                        "metadata": {"note": payload.get("note")},
-                        "created_at": datetime.now(timezone.utc).isoformat()
+                        "new_values": {"status": "investigating", "severity": "medium", "note": payload.get("note")},
+                        "signature": {
+                            "user_id": user_id,
+                            "execution_id": execution_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "action": "acknowledge_fault"
+                        }
                     }
-                    db_client.table("pms_audit_log").insert(audit_entry).execute()
+                    db_client.table("audit_log").insert(audit_entry).execute()
                     logger.info(f"Audit log created for acknowledge_fault: execution_id={execution_id}")
                 except Exception as audit_err:
                     # Log audit failure but don't fail the action

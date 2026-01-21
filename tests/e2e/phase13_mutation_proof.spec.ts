@@ -213,13 +213,13 @@ test.describe('Phase 13: Mutation Proof', () => {
         console.log('[DB] Fault after:', JSON.stringify(faultAfter, null, 2));
       }
 
-      // Step 6: Query audit log (pms_audit_log table, may not exist)
+      // Step 6: Query audit log (audit_log table, may not exist)
       console.log('[DB] Querying audit log...');
       let auditError: Error | null = null;
       let auditLogs: unknown[] | null = null;
       try {
         const auditResult = await supabase
-          .from('pms_audit_log')
+          .from('audit_log')
           .select('*')
           .eq('entity_id', FAULT_ID)
           .eq('action', 'acknowledge_fault')
