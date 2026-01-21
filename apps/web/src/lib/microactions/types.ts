@@ -119,6 +119,8 @@ export interface TriggerContext {
   fault?: {
     id: string;
     code?: string;
+    status?: 'open' | 'investigating' | 'resolved' | 'closed';
+    acknowledged?: boolean;
     ai_diagnosis?: {
       is_known: boolean;
       diagnosis?: string;
@@ -131,6 +133,7 @@ export interface TriggerContext {
   // Equipment-specific context
   equipment?: {
     id: string;
+    name?: string;
     has_manual?: boolean;
     predictive_maintenance_enabled?: boolean;
   };
@@ -138,6 +141,7 @@ export interface TriggerContext {
   // Part-specific context
   part?: {
     id: string;
+    name?: string;
     stock_level?: number;
     reorder_threshold?: number;
     is_out_of_stock?: boolean;

@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 // Decision types from E020/E021
 export interface ConfidenceBreakdown {
@@ -139,7 +139,7 @@ export function useActionDecisions(
     skip = false,
   } = options;
 
-  const { session, isLoading: authLoading } = useAuth();
+  const { session, loading: authLoading } = useAuth();
 
   const [decisions, setDecisions] = useState<ActionDecision[]>([]);
   const [executionId, setExecutionId] = useState<string | null>(null);

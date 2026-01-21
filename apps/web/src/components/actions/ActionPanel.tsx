@@ -88,7 +88,7 @@ export function ActionPanel({
         <ActionButton
           key={decision.action}
           decision={decision}
-          variant="primary"
+          variant="default"
           onClick={() => onAction(decision.action, decision)}
           showConfidence={showConfidence}
         />
@@ -157,7 +157,7 @@ export function ActionPanel({
 
 interface ActionButtonProps {
   decision: ActionDecision;
-  variant: 'primary' | 'secondary' | 'ghost';
+  variant: 'default' | 'secondary' | 'ghost';
   onClick: () => void;
   showConfidence?: boolean;
 }
