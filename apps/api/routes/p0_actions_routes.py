@@ -2334,16 +2334,21 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="barcode is required")
 
             # Try to find part by part_number (commonly used as barcode)
-            part = db_client.table("pms_parts").select(
-                "id, part_number, name, quantity_on_hand, location"
-            ).eq("part_number", barcode).eq("yacht_id", yacht_id).maybe_single().execute()
+            try:
+                part = db_client.table("pms_parts").select(
+                    "id, part_number, name, quantity_on_hand, location"
+                ).eq("part_number", barcode).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if part.data:
+                part_data = part.data if part else None
+            except Exception:
+                part_data = None
+
+            if part_data:
                 result = {
                     "status": "success",
                     "success": True,
                     "found": True,
-                    "part": part.data
+                    "part": part_data
                 }
             else:
                 result = {
