@@ -25,6 +25,7 @@ const TENANT_SERVICE_KEY = process.env.TENANT_SUPABASE_SERVICE_ROLE_KEY || '';
 
 const EVIDENCE_DIR = 'verification_handoff/evidence/phase13';
 const FAULT_ID = 'e2e00002-0002-0002-0002-000000000001';
+const YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598';
 
 if (!fs.existsSync(EVIDENCE_DIR)) {
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
@@ -81,6 +82,16 @@ test.describe('Phase 13: Mutation Proof', () => {
     };
 
     const supabase = getSupabaseClient();
+
+    // Reset fault to 'open' status for clean test
+    if (supabase) {
+      console.log('[DB] Resetting fault to open status...');
+      await supabase
+        .from('pms_faults')
+        .update({ status: 'open' })
+        .eq('id', FAULT_ID)
+        .eq('yacht_id', YACHT_ID);
+    }
 
     // Capture mutation response
     let mutationResponse: { status: number; body: unknown } | null = null;
