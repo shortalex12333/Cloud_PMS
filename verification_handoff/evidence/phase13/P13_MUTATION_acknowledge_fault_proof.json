@@ -1,7 +1,7 @@
 {
   "action": "acknowledge_fault",
-  "timestamp": "2026-01-21T20:06:10.926Z",
-  "httpStatus": null,
+  "timestamp": "2026-01-21T20:22:13.940Z",
+  "httpStatus": 200,
   "dbBefore": {
     "id": "e2e00002-0002-0002-0002-000000000001",
     "title": "E2E Test Fault - Generator Vibration",
@@ -11,7 +11,7 @@
   "dbAfter": {
     "id": "e2e00002-0002-0002-0002-000000000001",
     "title": "E2E Test Fault - Generator Vibration",
-    "status": "open",
+    "status": "investigating",
     "metadata": {}
   },
   "auditLog": null,
@@ -20,6 +20,5 @@
     "verification_handoff/evidence/phase13/P13_MUT_acknowledge_02_modal_open.png",
     "verification_handoff/evidence/phase13/P13_MUT_acknowledge_03_after_submit.png"
   ],
-  "verdict": "FAIL",
-  "failureReason": "DB not updated: status open→open, metadata acknowledged=undefined"
+  "verdict": "PASS"
 }
