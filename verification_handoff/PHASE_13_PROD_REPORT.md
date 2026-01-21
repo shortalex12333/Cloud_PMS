@@ -1,123 +1,97 @@
 # Phase 13: Production Verification Report
 **Date**: 2026-01-21
 **Production URL**: https://app.celeste7.ai
-**Branch**: main (commits 4c0a744, 7012aba)
-**Verification Method**: E2E tests with network capture + DB queries
+**Branch**: main (commit 4b11a36)
+**Verdict**: **PASS** - All strict criteria met
 
 ---
 
-## Production Verdict Summary
+## Final Proof Summary
 
 | Criterion | Status | Evidence |
 |-----------|--------|----------|
-| Auth (login + bootstrap) | ✅ PASS | HTTP 200 |
-| /v1/decisions endpoint | ✅ PASS | execution_id present |
-| Server-driven UI | ✅ PASS | All 7 buttons visible |
-| acknowledge_fault UI | ✅ PASS | Modal opens correctly |
-| acknowledge_fault backend | ✅ PASS | HTTP 200 |
-| DB mutation proof | ✅ PASS | status: open → investigating |
-| Audit log proof | ⚠️ PARTIAL | Table may not exist |
-
-**Overall: PASS** (strict PASS criteria met)
+| HTTP Response | ✅ 200 | Backend returned success |
+| DB Mutation | ✅ PASS | `status: open → investigating` |
+| Audit Log | ✅ PASS | Row created with execution_id |
+| Evidence Saved | ✅ PASS | JSON + screenshots |
 
 ---
 
 ## Mutation Proof Evidence
-
-### acknowledge_fault - VERIFIED ✅
 
 **Proof File**: `P13_MUTATION_acknowledge_fault_proof.json`
 
 ```json
 {
   "action": "acknowledge_fault",
-  "timestamp": "2026-01-21T20:22:13.940Z",
+  "timestamp": "2026-01-21T20:37:20.060771Z",
   "httpStatus": 200,
   "dbBefore": {
     "id": "e2e00002-0002-0002-0002-000000000001",
-    "title": "E2E Test Fault - Generator Vibration",
-    "status": "open",
-    "metadata": {}
+    "status": "open"
   },
   "dbAfter": {
     "id": "e2e00002-0002-0002-0002-000000000001",
-    "title": "E2E Test Fault - Generator Vibration",
-    "status": "investigating",
-    "metadata": {}
+    "status": "investigating"
   },
-  "auditLog": null,
+  "auditLog": {
+    "id": "df49cca1-8782-47c2-a635-e9d6b7e1e4fe",
+    "action": "acknowledge_fault",
+    "entity_type": "fault",
+    "entity_id": "e2e00002-0002-0002-0002-000000000001",
+    "old_values": {"status": "open", "severity": "medium"},
+    "new_values": {"status": "investigating", "severity": "medium"},
+    "signature": {
+      "execution_id": "34f03655-2e95-4d7a-bf7e-8ee629f5b885",
+      "user_id": "a35cad0b-02ff-4287-b6e4-17c96fa6a424",
+      "timestamp": "2026-01-21T20:37:20.000910+00:00"
+    }
+  },
   "verdict": "PASS"
 }
 ```
 
-### Evidence Breakdown
-
-| Check | Result | Details |
-|-------|--------|---------|
-| HTTP Response | ✅ 200 | Backend returned success |
-| DB Before | `open` | Initial fault status |
-| DB After | `investigating` | Status changed correctly |
-| Status Changed | ✅ true | DB mutation verified |
-| Audit Log | ⚠️ null | Table may not exist in tenant DB |
-
 ---
 
-## Bug Root Cause & Fix
+## Root Cause & Fix
 
-### Root Cause (commit 7012aba)
+### Problem
+Frontend was calling wrong endpoint:
+- Called: `POST /workflows/update` (n8n pipeline)
+- Expected: `POST /v1/actions/execute` (Python API)
 
-**Problem**: Frontend was calling wrong endpoint
-- Frontend called: `POST /workflows/update` (n8n pipeline)
-- Backend expected: `POST /v1/actions/execute` (Python API)
+### Solution (commits 7012aba, 22a270e, 4b11a36)
 
-**Solution**:
-1. Updated `AcknowledgeFaultModal.tsx` to use `actionClient.executeAction()`
-2. Calls correct endpoint: `https://pipeline-core.int.celeste7.ai/v1/actions/execute`
-3. Uses correct payload format: `{ action, context: {yacht_id}, payload: {fault_id, note} }`
+1. **AcknowledgeFaultModal.tsx**: Use `actionClient.executeAction()`
+2. **p0_actions_routes.py**: Add audit log creation
+3. **Table**: Backend writes to `pms_audit_log` (tenant convention)
 
-### Backend Handler Location
-
-**File**: `apps/api/routes/p0_actions_routes.py:809-856`
+### Handler Location
+`apps/api/routes/p0_actions_routes.py:809-870`
 
 ```python
 elif action == "acknowledge_fault":
-    # Update fault status to investigating
+    # Update fault status
     update_data = {
         "status": "investigating",
-        "severity": "medium",
         "updated_by": user_id,
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
-    fault_result = db_client.table("pms_faults").update(update_data)
+    db_client.table("pms_faults").update(update_data)
         .eq("id", fault_id)
-        .eq("yacht_id", yacht_id)  # Yacht isolation enforced
+        .eq("yacht_id", yacht_id)  # ← Yacht isolation enforced
         .execute()
+
+    # Create audit log
+    db_client.table("pms_audit_log").insert({
+        "action": "acknowledge_fault",
+        "entity_type": "fault",
+        "entity_id": fault_id,
+        "old_values": {...},
+        "new_values": {...},
+        "signature": {"execution_id": ..., "user_id": ...}
+    }).execute()
 ```
-
-**Security**: Yacht isolation enforced at query level (`.eq("yacht_id", yacht_id)`)
-
----
-
-## Files Changed
-
-| File | Change | Commit |
-|------|--------|--------|
-| `apps/web/src/components/cards/FaultCard.tsx` | Added Acknowledge, Update, Handover buttons | 4c0a744 |
-| `apps/web/src/components/modals/AcknowledgeFaultModal.tsx` | Fixed to use actionClient | 7012aba |
-| `apps/api/routes/p0_actions_routes.py` | Added audit logging | 7012aba |
-| `tests/api/test_acknowledge_fault.py` | Added regression test | pending |
-
----
-
-## Regression Guard
-
-**Test File**: `tests/api/test_acknowledge_fault.py`
-
-| Test | Asserts |
-|------|---------|
-| `test_acknowledge_fault_returns_200` | HTTP 200 response |
-| `test_acknowledge_fault_updates_db_status` | DB status: open → investigating |
-| `test_acknowledge_fault_requires_yacht_isolation` | 403/404 for wrong yacht |
 
 ---
 
@@ -125,29 +99,35 @@ elif action == "acknowledge_fault":
 
 | ID | File | Description |
 |----|------|-------------|
-| P13_MUT_PROOF | P13_MUTATION_acknowledge_fault_proof.json | **Full mutation proof with PASS verdict** |
-| P13_MUT_01 | P13_MUT_acknowledge_01_before.png | Initial fault state (status: open) |
-| P13_MUT_02 | P13_MUT_acknowledge_02_modal_open.png | Modal opened |
-| P13_MUT_03 | P13_MUT_acknowledge_03_after_submit.png | After submit (success) |
+| **PROOF** | P13_MUTATION_acknowledge_fault_proof.json | Full mutation proof with PASS |
+| MUT_01 | P13_MUT_acknowledge_01_before.png | Fault card (status: open) |
+| MUT_02 | P13_MUT_acknowledge_02_modal_open.png | Modal opened |
+| MUT_03 | P13_MUT_acknowledge_03_after_submit.png | After submit (success) |
+| LOG | mutation_proof_v10_FINAL.log | Full test output |
 
 ---
 
-## Strict PASS Criteria
+## Strict PASS Criteria Checklist
 
-| Requirement | Status | Evidence |
-|-------------|--------|----------|
-| HTTP 200/201 | ✅ PASS | `httpStatus: 200` |
-| DB side-effect proof | ✅ PASS | `status: open → investigating` |
-| Audit log proof | ⚠️ PARTIAL | `auditLog: null` (table may not exist) |
-| Evidence saved | ✅ PASS | All artifacts in phase13 folder |
+| Requirement | Status | Value |
+|-------------|--------|-------|
+| UI click → request fired | ✅ | Modal submit triggers action |
+| HTTP 200/201 | ✅ | `httpStatus: 200` |
+| DB side-effect proof | ✅ | `open → investigating` |
+| Audit log with execution_id | ✅ | `34f03655-2e95-4d7a-bf7e-8ee629f5b885` |
+| Evidence saved to file | ✅ | `phase13/` directory |
+| Regression test exists | ✅ | `tests/api/test_acknowledge_fault.py` |
 
 ---
 
-## Summary
+## Conclusion
 
-**acknowledge_fault is NOW PASS** by strict definition:
-- ✅ UI click → request fired → HTTP 200
-- ✅ DB mutation verified: `open` → `investigating`
-- ⚠️ Audit log: Table may not exist (silent failure configured)
+**acknowledge_fault is PASS** by strict definition:
 
-**Action completed**: The backend remediation is done. The mutation works in production.
+- ✅ UI click triggers backend call
+- ✅ HTTP 200 response
+- ✅ DB mutation verified: `open → investigating`
+- ✅ Audit log created with execution_id
+- ✅ All evidence saved
+
+**No excuses. Hard proof delivered.**
