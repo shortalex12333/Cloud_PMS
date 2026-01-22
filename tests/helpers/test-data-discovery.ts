@@ -23,6 +23,10 @@ export interface DiscoveredTestData {
   part_id: string | null;
   document_id: string | null;
   handover_id: string | null;
+  checklist_id: string | null;         // Checklist ID from pms_checklists
+  checklist_item_id: string | null;    // Checklist item ID from pms_checklist_items
+  worklist_item_id: string | null;     // Worklist task ID
+  purchase_request_id: string | null;  // Purchase request/order ID
 
   // Summary
   found: {
@@ -32,6 +36,10 @@ export interface DiscoveredTestData {
     parts: number;
     documents: number;
     handover: number;
+    checklists: number;
+    checklist_items: number;
+    worklist_items: number;
+    purchase_requests: number;
   };
 }
 
@@ -68,6 +76,10 @@ export async function discoverTestData(): Promise<DiscoveredTestData> {
     part_id: null,
     document_id: null,
     handover_id: null,
+    checklist_id: null,
+    checklist_item_id: null,
+    worklist_item_id: null,
+    purchase_request_id: null,
     found: {
       faults: 0,
       work_orders: 0,
@@ -75,6 +87,10 @@ export async function discoverTestData(): Promise<DiscoveredTestData> {
       parts: 0,
       documents: 0,
       handover: 0,
+      checklists: 0,
+      checklist_items: 0,
+      worklist_items: 0,
+      purchase_requests: 0,
     },
   };
 
@@ -188,6 +204,98 @@ export async function discoverTestData(): Promise<DiscoveredTestData> {
     }
   } catch (e: any) {
     console.warn('Failed to discover handover:', e.message);
+  }
+
+  // Discover checklists
+  try {
+    const { data: checklists } = await client
+      .from('pms_checklists')
+      .select('id')
+      .eq('yacht_id', yacht_id)
+      .limit(1);
+
+    if (checklists && checklists.length > 0) {
+      result.found.checklists = checklists.length;
+      result.checklist_id = checklists[0].id;
+    }
+  } catch (e: any) {
+    console.warn('Failed to discover checklists:', e.message);
+  }
+
+  // Discover checklist items
+  try {
+    const { data: checklistItems } = await client
+      .from('pms_checklist_items')
+      .select('id')
+      .eq('yacht_id', yacht_id)
+      .limit(1);
+
+    if (checklistItems && checklistItems.length > 0) {
+      result.found.checklist_items = checklistItems.length;
+      result.checklist_item_id = checklistItems[0].id;
+    }
+  } catch (e: any) {
+    console.warn('Failed to discover checklist items:', e.message);
+  }
+
+  // Discover worklist items/tasks
+  try {
+    const { data: worklistItems } = await client
+      .from('worklist_items')
+      .select('id')
+      .eq('yacht_id', yacht_id)
+      .limit(1);
+
+    if (worklistItems && worklistItems.length > 0) {
+      result.found.worklist_items = worklistItems.length;
+      result.worklist_item_id = worklistItems[0].id;
+    }
+  } catch (e: any) {
+    // Try alternate table name
+    try {
+      const { data: worklistTasks } = await client
+        .from('worklist_tasks')
+        .select('id')
+        .eq('yacht_id', yacht_id)
+        .limit(1);
+
+      if (worklistTasks && worklistTasks.length > 0) {
+        result.found.worklist_items = worklistTasks.length;
+        result.worklist_item_id = worklistTasks[0].id;
+      }
+    } catch {
+      console.warn('Failed to discover worklist items');
+    }
+  }
+
+  // Discover purchase requests/orders
+  try {
+    const { data: purchaseRequests } = await client
+      .from('purchase_requests')
+      .select('id')
+      .eq('yacht_id', yacht_id)
+      .limit(1);
+
+    if (purchaseRequests && purchaseRequests.length > 0) {
+      result.found.purchase_requests = purchaseRequests.length;
+      result.purchase_request_id = purchaseRequests[0].id;
+    }
+  } catch (e: any) {
+    // Try alternate table name
+    try {
+      const { data: purchaseOrders } = await client
+        .from('purchase_orders')
+        .select('id')
+        .eq('yacht_id', yacht_id)
+        .limit(1);
+
+      if (purchaseOrders && purchaseOrders.length > 0) {
+        result.found.purchase_requests = purchaseOrders.length;
+        result.purchase_request_id = purchaseOrders[0].id;
+      }
+    } catch {
+      console.warn('Failed to discover purchase requests/orders');
+    }
   }
 
   return result;
@@ -327,11 +435,15 @@ export function printDiscoverySummary(data: DiscoveredTestData): void {
   console.log(`User ID:        ${data.user_id}`);
   console.log('');
   console.log('Available entities:');
-  console.log(`  Faults:       ${data.found.faults} (open: ${data.fault_open_id ? 'yes' : 'no'}, closed: ${data.fault_closed_id ? 'yes' : 'no'})`);
-  console.log(`  Work Orders:  ${data.found.work_orders} (open: ${data.work_order_open_id ? 'yes' : 'no'}, closed: ${data.work_order_closed_id ? 'yes' : 'no'})`);
-  console.log(`  Equipment:    ${data.found.equipment}`);
-  console.log(`  Parts:        ${data.found.parts}`);
-  console.log(`  Documents:    ${data.found.documents}`);
-  console.log(`  Handover:     ${data.found.handover}`);
+  console.log(`  Faults:           ${data.found.faults} (open: ${data.fault_open_id ? 'yes' : 'no'}, closed: ${data.fault_closed_id ? 'yes' : 'no'})`);
+  console.log(`  Work Orders:      ${data.found.work_orders} (open: ${data.work_order_open_id ? 'yes' : 'no'}, closed: ${data.work_order_closed_id ? 'yes' : 'no'})`);
+  console.log(`  Equipment:        ${data.found.equipment}`);
+  console.log(`  Parts:            ${data.found.parts}`);
+  console.log(`  Documents:        ${data.found.documents}`);
+  console.log(`  Handover:         ${data.found.handover}`);
+  console.log(`  Checklists:       ${data.found.checklists}`);
+  console.log(`  Checklist Items:  ${data.found.checklist_items}`);
+  console.log(`  Worklist Items:   ${data.found.worklist_items}`);
+  console.log(`  Purchase Reqs:    ${data.found.purchase_requests}`);
   console.log('================================\n');
 }

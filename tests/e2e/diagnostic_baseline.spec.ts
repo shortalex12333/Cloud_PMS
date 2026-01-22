@@ -122,6 +122,7 @@ function getTestPayload(action: Microaction, data: DiscoveredTestData): Record<s
   const partId = data.part_id || 'no-part-found';
   const documentId = data.document_id || 'no-document-found';
   const handoverId = data.handover_id || 'no-handover-found';
+  const checklistId = data.checklist_id || 'no-checklist-found';
 
   // Map action IDs to their payloads with real data
   const payloads: Record<string, Record<string, any>> = {
@@ -171,8 +172,8 @@ function getTestPayload(action: Microaction, data: DiscoveredTestData): Record<s
     'add_wo_part': { work_order_id: woId, part_id: partId, quantity: 1 },
     'add_wo_note': { work_order_id: woId, note_text: 'Diagnostic test note' },
 
-    // Checklist actions - use placeholder checklist_id
-    'view_checklist': { checklist_id: 'no-checklist-found' },
+    // Checklist actions - use discovered checklist_id
+    'view_checklist': { checklist_id: checklistId },
     'mark_checklist_item_complete': { checklist_item_id: 'no-checklist-item' },
     'add_checklist_note': { checklist_item_id: 'no-checklist-item', note_text: 'test' },
     'add_checklist_photo': { checklist_item_id: 'no-checklist-item', photo_url: 'test.jpg' },
