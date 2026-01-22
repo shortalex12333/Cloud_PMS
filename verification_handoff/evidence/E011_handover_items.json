@@ -1,3 +1,0 @@
-[{"id":"0cd3f33c-9fcf-4f56-a440-a5c50b4e96c8","yacht_id":"85fe1119-b04c-41ac-80f1-829d23322598","handover_id":"0d86174b-50d0-4212-bc43-00e7c6c8a813","summary":"Fault E031 - Ongoing monitoring required","status":"pending"}, 
- {"id":"5cf53cd7-8a17-4a3e-afb6-acf961ffd7c5","yacht_id":"85fe1119-b04c-41ac-80f1-829d23322598","handover_id":"0d86174b-50d0-4212-bc43-00e7c6c8a813","summary":"Work order in progress - 60% complete","status":"pending"}, 
- {"id":"a08f6d9c-a114-40b6-81a3-dcb47b1a6f44","yacht_id":"85fe1119-b04c-41ac-80f1-829d23322598","handover_id":"0d86174b-50d0-4212-bc43-00e7c6c8a813","summary":"Generator 2 - Running hours: 4521","status":"acknowledged"}]

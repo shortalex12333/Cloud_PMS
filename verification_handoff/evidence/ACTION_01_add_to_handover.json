@@ -1,6 +1,0 @@
-{
-  "status": 400,
-  "data": {
-    "detail": "Missing required field(s): title"
-  }
-}

@@ -1,1 +1,0 @@
-{"code":"PGRST202","details":"Searched for the function public.unified_search_v2 with parameter search_query or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.","hint":null,"message":"Could not find the function public.unified_search_v2(search_query) in the schema cache"}

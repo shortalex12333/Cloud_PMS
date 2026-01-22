@@ -1,18 +1,0 @@
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-HTTP/2 307 
-age: 0
-cache-control: private, no-cache, no-store, max-age=0, must-revalidate
-content-security-policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://app.celeste7.ai; frame-ancestors 'none'; frame-src 'self' blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co; media-src 'self' blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co; worker-src 'self' blob:; connect-src 'self' https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co https://pipeline-core.int.celeste7.ai https://api.celeste7.ai https://app.celeste7.ai https://auth.celeste7.ai
-content-type: text/html; charset=utf-8
-date: Tue, 20 Jan 2026 14:31:10 GMT
-location: /login
-server: Vercel
-strict-transport-security: max-age=63072000
-vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch
-x-matched-path: /
-x-powered-by: Next.js
-x-vercel-cache: MISS
-x-vercel-id: iad1::iad1::f7fsk-1768919469657-2d2fed9acfd9
-
