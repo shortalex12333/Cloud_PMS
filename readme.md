@@ -1,382 +1,212 @@
-# 🚢 **CelesteOS — Engineering Intelligence for Yachts**
+# CelesteOS Cloud PMS
 
-**The cloud-first AI system that replaces PMS complexity with one universal search bar.**
+**Yacht Planned Maintenance System with Natural Language Interface**
 
-CelesteOS transforms the engineering department of a yacht into a single, intelligent, searchable knowledge system.
-Every manual, note, task, history item, part, and predictive insight becomes accessible through one interface.
-
-No modules.
-No menus.
-No clutter.
-
-Just **Search → Answer → Action**.
+Crew speaks naturally → AI understands intent → System executes maintenance actions
 
 ---
 
-# # 🎯 **What CelesteOS Does**
+## Quick Start
 
-CelesteOS delivers four core capabilities:
+```bash
+# 1. You're here
+/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/
 
----
+# 2. First, read the handover
+open _HANDOVER/README.md
 
-## **1. Universal Search Across All Engineering Knowledge**
+# 3. Run health check
+npx playwright test tests/e2e/diagnostic_baseline.spec.ts --project=e2e-chromium
 
-Search instantly across:
-
-* NAS documents
-* manuals
-* photos
-* faults
-* work orders
-* inventory
-* emails
-* notes
-* handovers
-* history
-* global scraped marine data
-
-Everything unified through one bar.
-
----
-
-## **2. Automated Handover Generation**
-
-* pulls relevant history
-* extracts notes
-* summarises issues
-* includes predictive insights
-* auto-builds clean drafts
-* asks for missing details
-
-Handover = 80% automated.
-
----
-
-## **3. Predictive Engineering Intelligence**
-
-Predicts:
-
-* upcoming failures
-* weak systems
-* repeating faults
-* parts trending towards shortage
-* deviations from global behaviour
-
-Uses:
-
-* local vessel history
-* crew behaviour
-* fault logs
-* manuals & RAG
-* Celeste global scraped corpus
-* anonymised fleet patterns
-
----
-
-## **4. Two-Page Web UX**
-
-CelesteOS web interface consists of two pages:
-
-### **Page 1 — Global Search (Primary Interface)**
-
-Where crew work daily.
-Zero navigation.
-Powered entirely by:
-
-* search
-* dynamic cards
-* micro-actions
-* streaming suggestions
-
-### **Page 2 — Dashboard (HOD-Only)**
-
-Used only for:
-
-* configuration
-* oversight
-* predictive overview
-* system settings
-* fleet comparisons
-
-Dashboard = visibility.
-Search = action.
-
----
-
-# # 🧠 **Architecture Overview**
-
-CelesteOS is designed around a **cloud-first intelligence model** with strict per-yacht isolation.
-
----
-
-## **Onboard Local Agent (Mac App)**
-
-* connects to NAS
-* reads files (read-only)
-* hashes (SHA256)
-* chunks & uploads to cloud
-* incremental sync
-* auto-updating
-
-**No AI runs locally.
-No indexing.
-No inference.**
-
----
-
-## **Cloud Brain**
-
-Hosted across:
-
-* Hetzner (backend API, workers)
-* Supabase (Postgres + pgvector + Storage)
-* Render.com (Python ML microservices)
-
-Responsible for:
-
-* OCR
-* chunking
-* embeddings
-* RAG
-* GraphRAG
-* entity extraction
-* intent detection
-* predictive analysis
-* search fusion
-* micro-action mapping
-
-All intelligence happens centrally.
-
----
-
-## **Two Frontend Experiences**
-
-* **Web App (desktop)** → Search bar-driven interface + Dashboard
-* **Mobile App (iOS/Android)** → dedicated app (future)
-* **Local Agent GUI** → onboarding + NAS setup only
-
----
-
-# # 🧱 **Repository Documentation Structure**
-
-```
-/docs
-  architecture.md
-  security.md
-  local-agent-spec.md
-  indexing-pipeline.md
-  search-engine-spec.md
-  predictive-maintenance.md
-  devops.md
-  web-ux.md
-  mobile-ux.md             (coming)
-  onboarding-guide.md
-  api-spec.md
-  glossary.md
-  vision.md
+# Expected: 95% pass (61/64 actions working)
 ```
 
-Each file is a component of the full engineering blueprint.
+---
+
+## Project Structure
+
+```
+BACK_BUTTON_CLOUD_PMS/
+│
+├── README.md                 ← YOU ARE HERE
+│
+├── _HANDOVER/                ← START HERE (Engineer handover)
+│   ├── README.md             ← Entry point - read first
+│   ├── 01_STATUS.md          ← Current system status (95% health)
+│   ├── 02_WHATS_LEFT.md      ← Remaining work (~38 hours)
+│   ├── 03_HOW_TO_RUN.md      ← All test commands
+│   └── 04_KNOWN_TRAPS.md     ← Common issues and fixes
+│
+├── apps/                     ← SOURCE CODE
+│   ├── api/                  ← Python FastAPI backend
+│   │   ├── routes/
+│   │   │   └── p0_actions_routes.py  ← ALL 81 ACTION HANDLERS
+│   │   ├── services/
+│   │   └── handlers/
+│   └── web/                  ← Next.js frontend
+│       └── src/
+│
+├── tests/                    ← TEST SUITE
+│   ├── e2e/                  ← Playwright E2E tests
+│   │   ├── diagnostic_baseline.spec.ts   ← Health check (run first)
+│   │   ├── nl_to_action_mapping.spec.ts  ← NL coverage (64/64)
+│   │   └── chat_to_action.spec.ts        ← Full E2E flow
+│   ├── helpers/
+│   │   └── test-data-discovery.ts        ← Finds real entity IDs
+│   └── fixtures/
+│       └── microaction_registry.ts       ← Action definitions
+│
+├── database/                 ← Database schemas
+├── migrations/               ← SQL migrations
+├── supabase/                 ← Supabase config
+├── scripts/                  ← Utility scripts
+│
+├── _archive/                 ← Old docs (for reference only)
+│
+├── ENGINEER_HANDOVER.md      ← Detailed technical handover
+├── KNOWN_ISSUES.md           ← Issue patterns and solutions
+└── TEST_COVERAGE_REPORT.md   ← What's tested vs not
+```
 
 ---
 
-# # 📝 **Key Docs Summary**
+## System Status
 
-### **architecture.md**
+```
+┌─────────────────────────────────────────────────┐
+│            CURRENT STATE: 95%                   │
+├─────────────────────────────────────────────────┤
+│  Handlers Implemented     81/81    (100%)       │
+│  Actions Returning 200    61/64    (95%)        │
+│  NL Tests Passing         64/64    (100%)       │
+│  Production Verified      1/64     (1.5%)       │
+└─────────────────────────────────────────────────┘
+```
 
-Explains the overall system: local agent → cloud brain → indexing → search → predictive.
-
-### **security.md**
-
-Per-yacht isolation, encryption, threats, token model, storage rules.
-
-### **local-agent-spec.md**
-
-DMG app behaviour, NAS sync engine, SHA256, resumable uploads.
-
-### **indexing-pipeline.md**
-
-OCR pipeline, chunking, embeddings, metadata extraction, RAG indexing.
-
-### **search-engine-spec.md**
-
-Entity extraction, intent detection, semantic search, GraphRAG, card logic.
-
-### **predictive-maintenance.md**
-
-Signals, global knowledge, fleet patterns, scoring, recommendations.
-
-### **devops.md**
-
-Hetzner infra, DNS, routing, backups, monitoring, container deployment.
-
-### **web-ux.md**
-
-Two-page UX: search page + dashboard page.
-
-### **vision.md**
-
-Foundation principles for product decisions.
-
-### **glossary.md**
-
-Shared language for engineering + product.
+**The Gap:** Handlers respond correctly, but only 1 has been proven to actually write to the database.
 
 ---
 
-# # 🔍 **Search = The Interface**
+## What This System Does
 
-CelesteOS replaces navigation and modules with **one universal search bar** that handles:
+### The 7 Action Clusters (64 total actions)
 
-* fault code interpretation
-* manual lookup
-* creating work orders
-* adding to handover
-* predictive diagnostics
-* finding parts
-* ordering parts
-* viewing history
-* extracting notes
-* querying inventory
+| Cluster | Actions | Purpose |
+|---------|---------|---------|
+| fix_something | 10 | Fault diagnosis, repair guidance |
+| do_maintenance | 16 | Work orders, checklists, worklists |
+| manage_equipment | 9 | Equipment details, history, manuals |
+| control_inventory | 7 | Parts stock, orders, usage tracking |
+| communicate_status | 10 | Handovers, summaries, photos |
+| comply_audit | 5 | Hours of rest, compliance |
+| procure_suppliers | 7 | Purchase requests, deliveries |
 
-Every query produces:
+### How It Works
 
-* dynamic result cards
-* context-aware micro-actions
-* predictable behaviour
-
-Search is the system.
-The dashboard is optional.
-
----
-
-# # 🔮 **Predictive Maintenance**
-
-CelesteOS uses:
-
-* local vessel history
-* crew behaviour
-* fault logs
-* part consumption
-* global scraped corpus
-* manufacturer patterns
-* anonymised fleet statistics
-
-to produce:
-
-* risk scores
-* upcoming failure predictions
-* weak system alerts
-* part shortage forecasts
-* cross-yacht comparison insights
-
-Predictive results appear as search cards and dashboard widgets.
+```
+User: "The generator is overheating"
+         │
+         ▼
+┌─────────────────────────────────────┐
+│  /search endpoint                   │
+│  - GPT-4o-mini extracts entities    │
+│  - Maps to capabilities             │
+│  - Returns available actions        │
+└─────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────┐
+│  UI shows action buttons:           │
+│  [Diagnose] [View History] [Manual] │
+└─────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────┐
+│  /v1/actions/execute                │
+│  - Handler processes action         │
+│  - Writes to database               │
+│  - Returns result                   │
+└─────────────────────────────────────┘
+```
 
 ---
 
-# # 🔐 **Security & Isolation**
+## Essential Commands
 
-Every yacht has:
+```bash
+# Health check (61/64 pass expected)
+npx playwright test tests/e2e/diagnostic_baseline.spec.ts --project=e2e-chromium
 
-* its own S3 bucket
-* its own Postgres schema
-* its own vector DB
-* its own graph index
-* its own API tenancy
-* its own yacht_signature
+# NL coverage (64/64 pass expected)
+npx playwright test tests/e2e/nl_to_action_mapping.spec.ts --project=e2e-chromium
 
-No cross-yacht leakage is possible.
-Global knowledge is anonymised.
+# Single action test
+npx playwright test -g "diagnose_fault"
 
----
-
-# # ⚙️ **Local Agent**
-
-Runs on macOS only.
-Job is simple:
-
-* ingest
-* hash
-* chunk
-* upload
-* retry
-* sync
-
-Does **not**:
-
-* index
-* embed
-* store data
-* run inference
-
-This keeps yachts light, secure, and maintainable.
+# Start backend
+cd apps/api && uvicorn main:app --reload
+```
 
 ---
 
-# # 🔧 **Cloud Indexing**
+## For New Engineers
 
-Every uploaded document passes through:
+### Where to Start
 
-* OCR
-* text cleaning
-* chunking
-* embeddings
-* metadata extraction
-* graph linking
+1. **Read** `_HANDOVER/README.md` - 5 minutes
+2. **Run** the health check - 5 minutes
+3. **Read** `_HANDOVER/04_KNOWN_TRAPS.md` - 10 minutes
+4. **Start** on `_HANDOVER/02_WHATS_LEFT.md` tasks
 
-The result is a **searchable, intelligent knowledge graph**.
+### Key Files to Know
 
----
+| File | What It Contains |
+|------|------------------|
+| `apps/api/routes/p0_actions_routes.py` | All 81 action handlers (4,160 lines) |
+| `tests/fixtures/microaction_registry.ts` | All 64 action definitions |
+| `tests/e2e/diagnostic_baseline.spec.ts` | Health check tests |
+| `tests/helpers/test-data-discovery.ts` | Finds real test data IDs |
 
-# # 🚀 **Status**
+### The Main Gap to Close
 
-The blueprint is complete.
-Next step is engineering execution across:
-
-* local agent build
-* backend API
-* indexing pipeline
-* search engine
-* dashboard
-* web UI
-* predictive workers
-* mobile version
+```
+What exists:    95% of handlers return HTTP 200
+What's missing: Proof they actually write to the database
+How to fix:     Run each mutation, verify DB change, verify audit log
+Time estimate:  ~38 hours total
+```
 
 ---
 
-# # 🛠️ **Next Steps**
+## Environment Setup
 
-Choose where development begins:
-
-### **→ Build Local Agent**
-
-Swift + Python runtime.
-
-### **→ Build Cloud API**
-
-Hetzner + Supabase.
-
-### **→ Build Indexing Pipeline**
-
-n8n + OCR + embeddings + metadata.
-
-### **→ Build Search Engine**
-
-Entity extraction + intent detection + GraphRAG.
-
-### **→ Build Web UI**
-
-Two pages: Search + Dashboard.
-
-### **→ Build Predictive Workers**
-
-Rule-based + GraphRAG scoring.
+```bash
+# Required environment variables
+MASTER_SUPABASE_URL=https://xxx.supabase.co
+MASTER_SUPABASE_SERVICE_ROLE_KEY=eyJ...
+TENANT_SUPABASE_URL=https://yyy.supabase.co
+TENANT_SUPABASE_SERVICE_ROLE_KEY=eyJ...
+TEST_YACHT_ID=85fe1119-b04c-41ac-80f1-829d23322598
+TEST_USER_ID=a35cad0b-02ff-4287-b6e4-17c96fa6a424
+```
 
 ---
 
-# # 📜 **License**
+## Tech Stack
 
-Proprietary.
-Not for public distribution.
+- **Backend:** Python FastAPI
+- **Frontend:** Next.js / React
+- **Database:** Supabase (PostgreSQL)
+- **AI:** GPT-4o-mini for entity extraction
+- **Tests:** Playwright
 
 ---
+
+## Links
+
+- **Git:** https://github.com/shortalex12333/Cloud_PMS.git
+- **Branch:** main
+
+---
+
+*Last updated: 2026-01-22*
