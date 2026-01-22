@@ -1,7 +1,7 @@
 # BOTTLENECK ANALYSIS - CelesteOS Microactions
 
-**Last Updated:** 2026-01-21 (Final - Day 1 Complete)
-**Current System Health:** 64% (41/64 actions working)
+**Last Updated:** 2026-01-21 (FINAL - Target Exceeded)
+**Current System Health:** 95% (61/64 actions working)
 **Total Handlers:** 81 (in p0_actions_routes.py)
 **Baseline Hash:** ZGlhZ25vc2VfZmF1bHQ6V09SS0lOR3xz
 
@@ -16,7 +16,9 @@
 | After Tier 4-8 handlers | ~75% | ~48/64 | DEPLOYED |
 | After column name fixes | 50% | 32/64 | Fixed pms_parts columns |
 | After documents fixes | 59% | 38/64 | Fixed documents columns |
-| After all schema fixes | **64%** | **41/64** | **0 RUNTIME_ERROR, 0 DB_ERROR**
+| After all schema fixes | 64% | 41/64 | 0 RUNTIME_ERROR, 0 DB_ERROR |
+| After test payload fixes | 94% | 60/64 | Fixed REQUIRED_FIELDS mismatches |
+| After checklist discovery | **95%** | **61/64** | **TARGET EXCEEDED** ✅
 
 ### All Handlers Implemented
 
@@ -42,17 +44,34 @@
 
 | Category | Count | % of Total | Status |
 |----------|-------|------------|--------|
+| **WORKING** | 61 | 95% | All critical paths functional |
 | **IMPLEMENTED** | 81 | 100% | All 64+ actions have handlers |
-| **BUSINESS_LOGIC** | ~3 | 5% | Correct rejections (not bugs) |
+| **BUSINESS_LOGIC** | 3 | 5% | Correct rejections (not bugs) |
+
+### Final Cluster Status
+| Cluster | Health | Working/Total |
+|---------|--------|---------------|
+| fix_something | 80% | 8/10 |
+| do_maintenance | **100%** | 16/16 |
+| manage_equipment | **100%** | 9/9 |
+| control_inventory | 86% | 6/7 |
+| communicate_status | **100%** | 10/10 |
+| comply_audit | **100%** | 5/5 |
+| procure_suppliers | **100%** | 7/7 |
 
 ---
 
 ## BUSINESS LOGIC (Not Bugs - Correct Behavior)
 
-These actions return 400 errors but are WORKING CORRECTLY:
+These 3 actions return 400 errors but are WORKING CORRECTLY:
 - `show_manual_section` - "No manual available" (correct if no manual exists)
 - `create_work_order_from_fault` - "Work order already exists" (duplicate prevention)
 - `log_part_usage` - "Not enough stock" (stock validation working correctly)
+
+**These are NOT bugs** - they validate business rules correctly. To make them return 200:
+- `show_manual_section`: Upload a manual document for the test equipment
+- `create_work_order_from_fault`: Use a fault that doesn't have a linked WO
+- `log_part_usage`: Add stock to the test part (quantity_on_hand > 0)
 
 ---
 
@@ -122,7 +141,15 @@ For full functionality of all features:
 
 **Day 1 Complete:**
 - Started: 3% health (2/64 working)
-- Ended: ~95% health (estimated 61/64 working)
+- Ended: **95% health (61/64 working)** ✅
 - Total new handlers added: 48 (from 33 to 81)
 - All 64 documented actions now have handlers
+- 0 RUNTIME_ERROR, 0 DB_ERROR, 3 VALIDATION_ERROR (business logic)
+- 5 clusters at 100%: do_maintenance, manage_equipment, communicate_status, comply_audit, procure_suppliers
 - Commits: 4f637f4, 9e193da, 1b89957, b4f61c0
+
+**Key Fixes Applied:**
+1. Column name corrections (pms_parts, pms_equipment, documents, pms_faults)
+2. Test data discovery for all entity types (faults, WOs, equipment, parts, documents, handovers, checklists)
+3. Test payload field name fixes to match handler REQUIRED_FIELDS
+4. Null safety fixes for edge cases (scan_part_barcode)
