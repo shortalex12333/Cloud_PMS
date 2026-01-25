@@ -31,7 +31,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 # Git commit for /version endpoint
-# Updated: 2026-01-25 - certificate lens v2 integration
+# Updated: 2026-01-25 23:50 - certificate lens v2 integration
 GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", os.environ.get("GIT_COMMIT", "dev"))
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
