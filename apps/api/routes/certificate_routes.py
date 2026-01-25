@@ -26,8 +26,15 @@ from supabase import create_client, Client
 # Auth middleware
 from middleware.auth import get_authenticated_user
 
-# Certificate handlers
-from handlers.certificate_handlers import get_certificate_handlers
+# Certificate handlers (optional - graceful degradation if schema_mapping incomplete)
+try:
+    from handlers.certificate_handlers import get_certificate_handlers
+    CERTIFICATE_HANDLERS_AVAILABLE = True
+except ImportError as e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(f"Certificate handlers not available: {e}")
+    get_certificate_handlers = None
+    CERTIFICATE_HANDLERS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +99,15 @@ def get_supabase_client() -> Client:
 def check_feature_flag() -> bool:
     """Check if certificate feature is enabled."""
     return os.getenv("FEATURE_CERTIFICATES", "false").lower() == "true"
+
+
+def check_handlers_available():
+    """Verify certificate handlers are available. Raises 503 if not."""
+    if not CERTIFICATE_HANDLERS_AVAILABLE or get_certificate_handlers is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Certificate handlers not available - service degraded"
+        )
 
 
 # =============================================================================
