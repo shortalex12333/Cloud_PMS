@@ -522,6 +522,12 @@ async def execute_action(
         "view_document_section": ["document_id", "section_id"],
         "request_predictive_insight": ["entity_type", "entity_id"],
         "add_work_order_note": ["work_order_id", "note_text"],
+        # Certificate Actions (Certificate Lens v2)
+        "create_vessel_certificate": ["certificate_type", "certificate_name", "issuing_authority"],
+        "create_crew_certificate": ["person_name", "certificate_type", "issuing_authority"],
+        "update_certificate": ["certificate_id"],
+        "link_document_to_certificate": ["certificate_id", "document_id"],
+        "supersede_certificate": ["certificate_id", "reason", "signature"],
     }
 
     if action in REQUIRED_FIELDS:
@@ -1351,7 +1357,33 @@ async def execute_action(
             }
             wo_result = db_client.table("pms_work_orders").insert(wo_data).execute()
             if wo_result.data:
-                result = {"status": "success", "work_order_id": wo_result.data[0]["id"], "message": "Work order created"}
+                work_order_id = wo_result.data[0]["id"]
+
+                # Create audit log entry
+                try:
+                    audit_entry = {
+                        "id": str(uuid.uuid4()),
+                        "yacht_id": yacht_id,
+                        "action": "create_work_order",
+                        "entity_type": "work_order",
+                        "entity_id": work_order_id,
+                        "user_id": user_id,
+                        "old_values": {},
+                        "new_values": wo_data,
+                        "signature": {
+                            "user_id": user_id,
+                            "execution_id": execution_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "action": "create_work_order"
+                        }
+                    }
+                    db_client.table("pms_audit_log").insert(audit_entry).execute()
+                    logger.info(f"Audit log created for create_work_order: execution_id={execution_id}")
+                except Exception as audit_err:
+                    # Log audit failure but don't fail the action
+                    logger.warning(f"Audit log failed for create_work_order (work_order_id={work_order_id}): {audit_err}")
+
+                result = {"status": "success", "work_order_id": work_order_id, "message": "Work order created"}
             else:
                 result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create work order"}
 
@@ -3893,6 +3925,43 @@ async def execute_action(
                 "work_order_id": work_order_id,
                 "notes_count": len(notes)
             }
+
+        # ===== CERTIFICATE ACTIONS (Certificate Lens v2) =====
+        elif action in ("create_vessel_certificate", "create_crew_certificate",
+                        "update_certificate", "link_document_to_certificate",
+                        "supersede_certificate"):
+            # Import certificate handlers lazily
+            from handlers.certificate_handlers import get_certificate_handlers
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            cert_handlers = get_certificate_handlers(db_client)
+
+            # Get the handler function
+            handler_fn = cert_handlers.get(action)
+            if not handler_fn:
+                raise HTTPException(status_code=404, detail=f"Certificate handler '{action}' not found")
+
+            # Merge context and payload for handler
+            handler_params = {
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                **payload
+            }
+
+            # Call the handler (async handlers)
+            if action == "create_vessel_certificate":
+                result = await handler_fn(**handler_params)
+            elif action == "create_crew_certificate":
+                result = await handler_fn(**handler_params)
+            elif action == "update_certificate":
+                result = await handler_fn(**handler_params)
+            elif action == "link_document_to_certificate":
+                result = await handler_fn(**handler_params)
+            elif action == "supersede_certificate":
+                # Supersede requires signature validation
+                if not payload.get("signature"):
+                    raise HTTPException(status_code=400, detail="signature payload is required for supersede action")
+                result = await handler_fn(**handler_params)
 
         else:
             raise HTTPException(
