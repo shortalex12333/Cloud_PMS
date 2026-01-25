@@ -29,7 +29,7 @@ Without these rules, we'd have false positives:
 - GOOD: "diagnose E047" → correctly detected as action (starts with "diagnose" verb)
 
 === SUPPORTED ACTIONS ===
-This module detects 21 specific actions in 7 categories:
+This module detects 31+ specific actions in 8 categories:
 1. Work Orders: create, list, update, close, add_note
 2. History: view_history, show_equipment_history
 3. Handover: add_to, export, view
@@ -37,6 +37,7 @@ This module detects 21 specific actions in 7 categories:
 5. Inventory: check_stock, order_parts
 6. Documents: upload, search, show_manual_section
 7. Hours of Rest: log
+8. Certificates: create_vessel, create_crew, update, supersede, link_document, list, find_expiring, view_history
 
 STRICT RULES:
 - Only verb-based action patterns
@@ -534,6 +535,159 @@ class StrictMicroActionDetector:
 
                 # "log note on work order"
                 (r"^log\s+(a\s+)?note\s+on\s+(the\s+)?work\s*order", 0.92, "log"),
+            ],
+
+            # =============================================================
+            # CERTIFICATE ACTIONS - Vessel & Crew Certificates
+            # =============================================================
+            # Manage compliance certificates (Class, ISM, ISPS, STCW, ENG1, etc.)
+            # Critical for maritime regulatory compliance.
+
+            "create_vessel_certificate": [
+                # "create vessel certificate" or "create a certificate"
+                (r"^create\s+(a\s+)?(new\s+)?(vessel\s+)?certificate", 0.95, "create"),
+
+                # "add vessel certificate" or "add certificate"
+                (r"^add\s+(a\s+)?(new\s+)?(vessel\s+)?certificate", 0.93, "add"),
+
+                # "register certificate"
+                (r"^register\s+(a\s+)?(new\s+)?certificate", 0.90, "register"),
+
+                # "create class certificate" or "create ISM certificate"
+                (r"^create\s+(a\s+)?(class|ISM|ISPS|SOLAS|MLC|flag|safety)\s+certificate", 0.95, "create"),
+
+                # "add class certificate"
+                (r"^add\s+(a\s+)?(class|ISM|ISPS|SOLAS|MLC|flag|safety)\s+certificate", 0.93, "add"),
+            ],
+
+            "create_crew_certificate": [
+                # "create crew certificate"
+                (r"^create\s+(a\s+)?(new\s+)?crew\s+certificate", 0.95, "create"),
+
+                # "add crew certificate"
+                (r"^add\s+(a\s+)?(new\s+)?crew\s+certificate", 0.93, "add"),
+
+                # "create STCW certificate" or "create ENG1"
+                (r"^create\s+(a\s+)?(STCW|ENG1|GMDSS|medical|license)\s+(certificate)?", 0.95, "create"),
+
+                # "add STCW" etc.
+                (r"^add\s+(a\s+)?(STCW|ENG1|GMDSS|medical|license)\s+(certificate)?", 0.93, "add"),
+
+                # "register crew certificate for [name]"
+                (r"^register\s+(a\s+)?crew\s+certificate\s+for", 0.92, "register"),
+            ],
+
+            "update_certificate": [
+                # "update certificate"
+                (r"^update\s+(the\s+)?certificate", 0.93, "update"),
+
+                # "edit certificate"
+                (r"^edit\s+(the\s+)?certificate", 0.92, "edit"),
+
+                # "modify certificate"
+                (r"^modify\s+(the\s+)?certificate", 0.90, "modify"),
+
+                # "update expiry" for certificate
+                (r"^update\s+(the\s+)?certificate\s+expiry", 0.93, "update"),
+            ],
+
+            "supersede_certificate": [
+                # "supersede certificate" - replace with new version (SIGNED action)
+                (r"^supersede\s+(the\s+)?certificate", 0.95, "supersede"),
+
+                # "replace certificate"
+                (r"^replace\s+(the\s+)?certificate", 0.93, "replace"),
+
+                # "renew certificate" (implies supersession)
+                (r"^renew\s+(the\s+)?certificate", 0.92, "renew"),
+
+                # "supersede ISM certificate" etc.
+                (r"^supersede\s+(the\s+)?(class|ISM|ISPS|STCW)\s+certificate", 0.95, "supersede"),
+            ],
+
+            "link_document_to_certificate": [
+                # "link document to certificate"
+                (r"^link\s+(a\s+)?document\s+to\s+(the\s+)?certificate", 0.95, "link"),
+
+                # "attach document to certificate"
+                (r"^attach\s+(a\s+)?document\s+to\s+(the\s+)?certificate", 0.93, "attach"),
+
+                # "add document to certificate"
+                (r"^add\s+(a\s+)?document\s+to\s+(the\s+)?certificate", 0.92, "add"),
+
+                # "upload certificate document"
+                (r"^upload\s+(a\s+)?certificate\s+document", 0.92, "upload"),
+            ],
+
+            "list_vessel_certificates": [
+                # "show certificates" or "list certificates"
+                (r"^show\s+(all\s+)?(vessel\s+)?certificates", 0.93, "show"),
+                (r"^list\s+(all\s+)?(vessel\s+)?certificates", 0.93, "list"),
+
+                # "view certificates"
+                (r"^view\s+(all\s+)?(vessel\s+)?certificates", 0.92, "view"),
+
+                # "display certificates"
+                (r"^display\s+(vessel\s+)?certificates", 0.90, "display"),
+            ],
+
+            "list_crew_certificates": [
+                # "show crew certificates"
+                (r"^show\s+(all\s+)?crew\s+certificates", 0.93, "show"),
+
+                # "list crew certificates"
+                (r"^list\s+(all\s+)?crew\s+certificates", 0.93, "list"),
+
+                # "view crew certificates"
+                (r"^view\s+(all\s+)?crew\s+certificates", 0.92, "view"),
+
+                # "show certificates for [crew member]"
+                (r"^show\s+certificates\s+for\s+", 0.92, "show"),
+            ],
+
+            "find_expiring_certificates": [
+                # "show expiring certificates"
+                (r"^show\s+(all\s+)?expiring\s+certificates", 0.95, "show"),
+
+                # "find expiring certificates"
+                (r"^find\s+(all\s+)?expiring\s+certificates", 0.95, "find"),
+
+                # "list certificates expiring"
+                (r"^list\s+certificates\s+expiring", 0.93, "list"),
+
+                # "check certificate expiry"
+                (r"^check\s+certificate\s+expir(y|ation|ing)", 0.93, "check"),
+
+                # "which certificates expire"
+                (r"^which\s+certificates\s+(are\s+)?expir(ing|e)", 0.90, "which"),
+
+                # "certificates due for renewal"
+                (r"^(show\s+|list\s+|find\s+)?certificates\s+due\s+(for\s+)?renewal", 0.92, "show"),
+            ],
+
+            "view_certificate_history": [
+                # "show certificate history"
+                (r"^show\s+(the\s+)?certificate\s+history", 0.93, "show"),
+
+                # "view certificate history"
+                (r"^view\s+(the\s+)?certificate\s+history", 0.92, "view"),
+
+                # "get certificate audit trail"
+                (r"^(show|view|get)\s+(the\s+)?certificate\s+audit\s+trail", 0.93, "show"),
+            ],
+
+            "get_certificate_details": [
+                # "show certificate" (singular - implies details)
+                (r"^show\s+(the\s+)?certificate\s+details", 0.93, "show"),
+
+                # "view certificate"
+                (r"^view\s+(the\s+)?certificate$", 0.90, "view"),
+
+                # "get certificate details"
+                (r"^get\s+(the\s+)?certificate\s+(details|info)", 0.92, "get"),
+
+                # "open certificate"
+                (r"^open\s+(the\s+)?certificate", 0.90, "open"),
             ],
         }
 

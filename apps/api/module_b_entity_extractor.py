@@ -91,6 +91,7 @@ HARD_ENTITY_TYPES = {
     'brand',         # MTU, Caterpillar, Furuno - known manufacturers (we have a list)
     'part',          # membrane, impeller - specific replacement components
     'equipment',     # generator, radar, pump - known equipment types (we have a list)
+    'certificate',   # ISM, ISPS, STCW, MLC - specific certificate types (compliance-critical)
 }
 
 SOFT_ENTITY_TYPES = {
@@ -187,13 +188,17 @@ class EntityDetection:
         # Base weights by entity type - higher = more important for search ranking
         type_weights = {
             'fault_code': 4.5,      # Fault codes are very specific - high weight
+            'certificate': 4.2,     # Certificates are compliance-critical, specific types
             'symptom': 4.0,         # Symptoms are key for diagnosis
             'model': 4.0,           # Model numbers are very specific
             'measurement': 3.8,     # Concrete values like "85°C"
             'brand': 3.5,           # Known brands narrow down results
             'document_type': 3.2,   # Manual, schematic, parts list
+            'certificate_status': 3.0, # Expiry, renewal status
             'part': 3.0,            # Specific components
+            'survey': 3.0,          # Survey types (annual, intermediate)
             'equipment': 2.8,       # Equipment types (broader than parts)
+            'certificate_authority': 2.5, # Issuing authority
             'action': 2.5,          # Verbs like replace, inspect
             'system': 2.3,          # Broad categories like "cooling system"
             'location': 2.0,        # Spatial references like "engine room"
@@ -386,6 +391,158 @@ class MaritimeEntityExtractor:
             "1st_officer": [r"\b1st\s+officer\b", r"\bfirst\s+officer\b", r"\bchief\s+officer\b"],
         }
 
+        # =====================================================================
+        # CERTIFICATE TYPE PATTERNS
+        # =====================================================================
+        # These detect specific certificate types mentioned in queries
+        # Important for compliance queries and certificate management
+        #
+        # FORMAT: {canonical: [list of regex patterns]}
+        # - canonical: Standardized certificate type code
+        # - patterns: Regex patterns that match this certificate type
+
+        self.certificate_patterns = {
+            # -----------------------------------------------------------------
+            # VESSEL CERTIFICATES (International/Flag State)
+            # -----------------------------------------------------------------
+            # ISM - International Safety Management
+            "ISM": [
+                r"\bISM\b",
+                r"\bISM\s+(?:code|cert(?:ificate)?)\b",
+                r"\binternational\s+safety\s+management\b",
+                r"\bsafety\s+management\s+cert(?:ificate)?\b",
+            ],
+            # ISPS - International Ship and Port Facility Security
+            "ISPS": [
+                r"\bISPS\b",
+                r"\bISPS\s+(?:code|cert(?:ificate)?)\b",
+                r"\binternational\s+ship\s+(?:and\s+)?port\s+(?:facility\s+)?security\b",
+                r"\bship\s+security\s+cert(?:ificate)?\b",
+            ],
+            # SOLAS - Safety of Life at Sea
+            "SOLAS": [
+                r"\bSOLAS\b",
+                r"\bSOLAS\s+cert(?:ificate)?\b",
+                r"\bsafety\s+of\s+life\s+at\s+sea\b",
+            ],
+            # MLC - Maritime Labour Convention
+            "MLC": [
+                r"\bMLC\b",
+                r"\bMLC\s+(?:2006\s+)?cert(?:ificate)?\b",
+                r"\bmaritime\s+labour\s+(?:convention|cert(?:ificate)?)\b",
+            ],
+            # Class Certificate
+            "CLASS": [
+                r"\bclass\s+cert(?:ificate)?\b",
+                r"\bclassification\s+(?:society\s+)?cert(?:ificate)?\b",
+                r"\bLloyds?\s+cert(?:ificate)?\b",
+                r"\bDNV(?:\s+GL)?\s+cert(?:ificate)?\b",
+                r"\bBureau\s+Veritas\s+cert(?:ificate)?\b",
+                r"\bABS\s+cert(?:ificate)?\b",
+            ],
+            # Safety Equipment Certificate
+            "SEC": [
+                r"\bSEC\b",
+                r"\bsafety\s+equipment\s+cert(?:ificate)?\b",
+            ],
+            # Safety Radio Certificate
+            "SRC": [
+                r"\bSRC\b",
+                r"\bsafety\s+radio\s+cert(?:ificate)?\b",
+            ],
+            # Safety Construction Certificate
+            "SCC": [
+                r"\bSCC\b",
+                r"\bsafety\s+construction\s+cert(?:ificate)?\b",
+            ],
+            # Load Line Certificate
+            "LOAD_LINE": [
+                r"\bload\s+line\s+cert(?:ificate)?\b",
+                r"\binternational\s+load\s+line\b",
+            ],
+            # Tonnage Certificate
+            "TONNAGE": [
+                r"\btonnage\s+cert(?:ificate)?\b",
+                r"\binternational\s+tonnage\b",
+            ],
+            # Flag State Certificate
+            "FLAG": [
+                r"\bflag\s+(?:state\s+)?cert(?:ificate)?\b",
+                r"\bregistry\s+cert(?:ificate)?\b",
+            ],
+            # MARPOL (pollution prevention)
+            "MARPOL": [
+                r"\bMARPOL\b",
+                r"\bIOPP\b",  # International Oil Pollution Prevention
+                r"\bpollution\s+prevention\s+cert(?:ificate)?\b",
+            ],
+
+            # -----------------------------------------------------------------
+            # CREW CERTIFICATES (Personal/Seafarer)
+            # -----------------------------------------------------------------
+            # STCW - Standards of Training, Certification and Watchkeeping
+            "STCW": [
+                r"\bSTCW\b",
+                r"\bSTCW\s+(?:95|2010)?\s*cert(?:ificate)?\b",
+                r"\bseafarer(?:'?s)?\s+cert(?:ificate)?\b",
+                r"\bwatchkeeping\s+cert(?:ificate)?\b",
+            ],
+            # ENG1 - UK Seafarer Medical Certificate
+            "ENG1": [
+                r"\bENG\s*1\b",
+                r"\bENG\s*one\b",
+                r"\bseafarer\s+medical\s+cert(?:ificate)?\b",
+                r"\bmaritime\s+medical\b",
+            ],
+            # CoC - Certificate of Competency
+            "COC": [
+                r"\bCoC\b",
+                r"\bcert(?:ificate)?\s+of\s+competency\b",
+                r"\bcompetency\s+cert(?:ificate)?\b",
+            ],
+            # GMDSS - Global Maritime Distress and Safety System
+            "GMDSS": [
+                r"\bGMDSS\b",
+                r"\bGMDSS\s+(?:operator\s+)?cert(?:ificate)?\b",
+                r"\bradio\s+operator\s+cert(?:ificate)?\b",
+            ],
+            # Basic Safety Training
+            "BST": [
+                r"\bBST\b",
+                r"\bbasic\s+safety\s+training\b",
+                r"\bSTCW\s+basic\s+training\b",
+            ],
+            # Proficiency in Survival Craft
+            "PSC": [
+                r"\bPSC\b",
+                r"\bproficiency\s+in\s+survival\s+craft\b",
+                r"\bsurvival\s+craft\s+cert(?:ificate)?\b",
+            ],
+            # Advanced Fire Fighting
+            "AFF": [
+                r"\bAFF\b",
+                r"\badvanced\s+fire\s*fighting\b",
+            ],
+            # Medical Care
+            "MEDICAL_CARE": [
+                r"\bmedical\s+care\s+cert(?:ificate)?\b",
+                r"\bship(?:'?s)?\s+medical\s+cert(?:ificate)?\b",
+            ],
+        }
+
+        # Certificate-related terms (generic patterns for certificate context)
+        self.certificate_term_patterns = [
+            # Generic certificate mentions
+            (r"\bcertificate(?:s)?\b", "certificate", 0.85),
+            (r"\bcert(?:s)?\b", "certificate", 0.80),
+            # Expiry/renewal context
+            (r"\b(?:expir(?:y|ing|ed)|due|renewal|renew)\s+(?:date|soon|notice)?\b", "certificate_status", 0.75),
+            # Survey-related
+            (r"\b(?:annual|intermediate|renewal|special)\s+survey\b", "survey", 0.88),
+            # Issuing authority
+            (r"\bissuing\s+authority\b", "certificate_authority", 0.85),
+        ]
+
         # Compile all regex patterns for better performance
         # (compiled patterns run faster than compiling each time)
         self._compile_patterns()
@@ -469,6 +626,19 @@ class MaritimeEntityExtractor:
             canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
             for canonical, patterns in self.person_patterns.items()
         }
+
+        # Compile certificate type patterns
+        # Result: dict of {canonical: [compiled_pattern, ...]}
+        self.compiled_certificates = {
+            canonical: [re.compile(p, re.IGNORECASE) for p in patterns]
+            for canonical, patterns in self.certificate_patterns.items()
+        }
+
+        # Compile certificate term patterns
+        self.compiled_certificate_terms = [
+            (re.compile(pattern, re.IGNORECASE), entity_type, confidence)
+            for pattern, entity_type, confidence in self.certificate_term_patterns
+        ]
 
     def extract_entities(self, query: str) -> List[EntityDetection]:
         """
@@ -876,7 +1046,51 @@ class MaritimeEntityExtractor:
                     ))
 
         # =====================================================================
-        # STEP 7: REMOVE DUPLICATES AND OVERLAPS
+        # STEP 7: CERTIFICATES - Certificate types and terms
+        # =====================================================================
+        # Match certificate types: ISM, ISPS, STCW, ENG1, class cert, etc.
+        # These are compliance-critical entities used for certificate management
+
+        # 7a. Specific certificate types (high confidence)
+        for canonical, patterns in self.compiled_certificates.items():
+            for pattern in patterns:
+                for match in pattern.finditer(query):
+                    entities.append(EntityDetection(
+                        type="certificate",
+                        value=match.group(0),
+                        canonical=canonical,
+                        confidence=0.92,  # High confidence for known certificate types
+                        span=(match.start(), match.end()),
+                        metadata={
+                            "source": "certificate_pattern",
+                            "certificate_type": canonical
+                        }
+                    ))
+
+        # 7b. Generic certificate terms (lower confidence)
+        for pattern, entity_type, confidence in self.compiled_certificate_terms:
+            for match in pattern.finditer(query):
+                # Skip if already matched by specific certificate pattern
+                already_matched = False
+                for e in entities:
+                    if e.type == "certificate" and (
+                        e.span[0] <= match.start() < e.span[1] or
+                        e.span[0] < match.end() <= e.span[1]
+                    ):
+                        already_matched = True
+                        break
+                if not already_matched:
+                    entities.append(EntityDetection(
+                        type=entity_type,
+                        value=match.group(0),
+                        canonical=match.group(0).upper().replace(" ", "_"),
+                        confidence=confidence,
+                        span=(match.start(), match.end()),
+                        metadata={"source": "certificate_term_pattern"}
+                    ))
+
+        # =====================================================================
+        # STEP 8: REMOVE DUPLICATES AND OVERLAPS
         # =====================================================================
         # Multiple patterns might match the same text
         # Keep the highest confidence match when there's overlap
@@ -1124,6 +1338,14 @@ if __name__ == "__main__":
         "sea water pump pressure low 2 bar",
         "24V generator failure alarm",
         "captain reported vibration from main engine at 1800 rpm",
+        # Certificate test cases
+        "show ISM certificate expiry date",
+        "list all STCW certificates for crew",
+        "ENG1 medical certificate expiring soon",
+        "class certificate renewal due next month",
+        "ISPS code certificate needs annual survey",
+        "create vessel certificate for MLC 2006",
+        "find expiring GMDSS operator certificates",
     ]
 
     print("=" * 80)

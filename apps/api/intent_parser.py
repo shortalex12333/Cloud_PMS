@@ -184,6 +184,26 @@ INTENT_CATEGORIES = {
         "view_inventory_stats",        # "What parts are low on stock?"
         "view_compliance_stats",       # "How is our compliance?"
     ],
+
+    # =========================================================================
+    # MANAGE CERTIFICATES - Actions related to vessel and crew certificates
+    # =========================================================================
+    "manage_certificates": [
+        # READ OPERATIONS
+        "list_vessel_certificates",    # "Show all vessel certificates"
+        "list_crew_certificates",      # "Show all crew certificates"
+        "get_certificate_details",     # "Show ISM certificate details"
+        "view_certificate_history",    # "Show certificate history"
+        "find_expiring_certificates",  # "What certificates expire this month?"
+
+        # WRITE OPERATIONS (gated/confirmation required)
+        "create_vessel_certificate",   # "Create new class certificate"
+        "create_crew_certificate",     # "Create STCW certificate for John"
+        "update_certificate",          # "Update certificate expiry date"
+        "link_document_to_certificate",# "Link PDF to ISM certificate"
+        "supersede_certificate",       # "Supersede class certificate" (SIGNED)
+        "delete_certificate",          # "Delete certificate" (Manager-only)
+    ],
 }
 
 # Create a flat list of all intents for validation
@@ -265,6 +285,14 @@ MUTATION_INTENTS = {
     "create_purchase_request",         # Starts new purchase
     "approve_purchase",                # Approves purchase
     "log_delivery_received",           # Marks delivery complete
+
+    # Certificate mutations (compliance-critical)
+    "create_vessel_certificate",       # Creates vessel certificate
+    "create_crew_certificate",         # Creates crew certificate
+    "update_certificate",              # Updates certificate details
+    "link_document_to_certificate",    # Links document to certificate
+    "supersede_certificate",           # Supersedes certificate (SIGNED action)
+    "delete_certificate",              # Deletes certificate (Manager-only)
 }
 
 
@@ -319,7 +347,8 @@ INTENT CATEGORIES:
 - manage_equipment: view equipment details, history, parts
 - control_inventory: check stock, order parts, view locations
 - communicate_status: handover, notes, exports
-- comply_audit: hours of rest, certificates, compliance
+- comply_audit: hours of rest, compliance
+- manage_certificates: vessel/crew certificates (ISM, ISPS, STCW, MLC, ENG1, class)
 - procure_suppliers: purchase orders, deliveries, invoices
 - search_documents: find manuals, documents
 - analytics: stats, trends, aggregations
@@ -344,7 +373,8 @@ OUTPUT FORMAT (JSON only, no markdown):
     "person": "crew member or null",
     "location": "location reference or null",
     "time_range": "today|this_week|this_month|overdue or null",
-    "measurement": "any measurement or null"
+    "measurement": "any measurement or null",
+    "certificate_type": "ISM|ISPS|STCW|MLC|CLASS|ENG1|SOLAS|GMDSS or null"
   },
   "parameters": {
     "filter_by": "field to filter by or null",
@@ -434,6 +464,68 @@ Query: "MTU 16V4000 engine overheating manual"
   "parameters": {},
   "confidence": 0.94,
   "requires_mutation": false
+}
+
+Query: "show ISM certificate expiry"
+{
+  "intent": "get_certificate_details",
+  "intent_category": "manage_certificates",
+  "query_type": "compliance",
+  "entities": {
+    "certificate_type": "ISM"
+  },
+  "parameters": {
+    "filter_by": "certificate_type",
+    "filter_value": "ISM"
+  },
+  "confidence": 0.91,
+  "requires_mutation": false
+}
+
+Query: "what certificates expire next month"
+{
+  "intent": "find_expiring_certificates",
+  "intent_category": "manage_certificates",
+  "query_type": "compliance",
+  "entities": {
+    "time_range": "next_month"
+  },
+  "parameters": {
+    "filter_by": "expiry_date",
+    "filter_value": "next_month"
+  },
+  "confidence": 0.90,
+  "requires_mutation": false
+}
+
+Query: "create STCW certificate for John Smith"
+{
+  "intent": "create_crew_certificate",
+  "intent_category": "manage_certificates",
+  "query_type": "mutation",
+  "entities": {
+    "certificate_type": "STCW",
+    "person": "John Smith"
+  },
+  "parameters": {},
+  "confidence": 0.93,
+  "requires_mutation": true
+}
+
+Query: "supersede class certificate with renewal"
+{
+  "intent": "supersede_certificate",
+  "intent_category": "manage_certificates",
+  "query_type": "mutation",
+  "entities": {
+    "certificate_type": "CLASS"
+  },
+  "parameters": {
+    "action": "supersede",
+    "reason": "renewal"
+  },
+  "confidence": 0.92,
+  "requires_mutation": true
 }
 """
 
@@ -606,11 +698,59 @@ class IntentParser:
         requires_mutation = False
 
         # =====================================================================
-        # CHECK 1: COMPLIANCE QUERIES (check first - before mutations)
+        # CHECK 1: CERTIFICATE QUERIES (check first - compliance-critical)
+        # =====================================================================
+        # Certificate queries have specific intents in manage_certificates
+        certificate_keywords = [
+            "certificate", "cert", "ism", "isps", "stcw", "mlc", "solas",
+            "eng1", "eng 1", "class cert", "gmdss", "coc", "bst"
+        ]
+        if any(kw in query_lower for kw in certificate_keywords):
+            query_type = "compliance"
+            intent_category = "manage_certificates"
+
+            # Determine specific certificate intent
+            if any(kw in query_lower for kw in ["expir", "due", "renew"]):
+                intent = "find_expiring_certificates"
+            elif any(kw in query_lower for kw in ["list", "show all", "all cert"]):
+                if any(kw in query_lower for kw in ["crew", "stcw", "eng1", "gmdss", "coc"]):
+                    intent = "list_crew_certificates"
+                else:
+                    intent = "list_vessel_certificates"
+            elif any(kw in query_lower for kw in ["history", "audit", "log"]):
+                intent = "view_certificate_history"
+            elif any(kw in query_lower for kw in ["supersede", "replace"]):
+                intent = "supersede_certificate"
+                query_type = "mutation"
+                requires_mutation = True
+            elif re.search(r'^(please |can you |i want to )?(create|add)\b', query_lower):
+                if any(kw in query_lower for kw in ["crew", "stcw", "eng1", "gmdss", "coc"]):
+                    intent = "create_crew_certificate"
+                else:
+                    intent = "create_vessel_certificate"
+                query_type = "mutation"
+                requires_mutation = True
+            elif any(kw in query_lower for kw in ["update", "edit", "change"]):
+                intent = "update_certificate"
+                query_type = "mutation"
+                requires_mutation = True
+            elif any(kw in query_lower for kw in ["link", "attach"]):
+                intent = "link_document_to_certificate"
+                query_type = "mutation"
+                requires_mutation = True
+            elif any(kw in query_lower for kw in ["delete", "remove"]):
+                intent = "delete_certificate"
+                query_type = "mutation"
+                requires_mutation = True
+            else:
+                intent = "get_certificate_details"
+
+        # =====================================================================
+        # CHECK 2: COMPLIANCE QUERIES (HOR and general compliance)
         # =====================================================================
         # "who hasn't completed HOR" should NOT trigger mutation just because
         # "completed" is in the query. Check compliance keywords first.
-        if any(kw in query_lower for kw in ["hor", "hours of rest", "compliance", "certificate"]):
+        elif any(kw in query_lower for kw in ["hor", "hours of rest", "compliance"]):
             query_type = "compliance"
             intent = "view_compliance_status"
             intent_category = "comply_audit"
@@ -622,7 +762,7 @@ class IntentParser:
                 requires_mutation = True
 
         # =====================================================================
-        # CHECK 2: AGGREGATION QUERIES
+        # CHECK 3: AGGREGATION QUERIES
         # =====================================================================
         # "what is failing most" is aggregation, not mutation
         elif any(kw in query_lower for kw in AGGREGATION_KEYWORDS):
@@ -631,7 +771,7 @@ class IntentParser:
             intent_category = "analytics"
 
         # =====================================================================
-        # CHECK 3: INVENTORY LOOKUP
+        # CHECK 4: INVENTORY LOOKUP
         # =====================================================================
         # "where is box 3d" or "check stock" are lookups
         elif any(kw in query_lower for kw in ["box", "stock", "inventory", "where is", "location"]):
@@ -640,7 +780,7 @@ class IntentParser:
             intent_category = "control_inventory"
 
         # =====================================================================
-        # CHECK 4: MUTATION QUERIES (create, update, delete)
+        # CHECK 5: MUTATION QUERIES (create, update, delete)
         # =====================================================================
         # CAUTION: Words like "order" and "update" are ambiguous
         # "order" can be noun ("work order") or verb ("order parts")
@@ -892,6 +1032,12 @@ if __name__ == "__main__":
         "show me box 3d contents",                 # lookup
         "order 2 MTU fuel filters",                # mutation
         "what work is due today",                  # aggregation
+        # Certificate queries
+        "show ISM certificate",                    # certificate read
+        "what certificates expire next month",     # certificate expiry
+        "list all crew certificates",              # certificate list
+        "create STCW certificate for John",        # certificate mutation
+        "supersede class certificate",             # certificate supersede (signed)
     ]
 
     print("Intent Parser Test")
