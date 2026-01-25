@@ -139,12 +139,18 @@ logger.info("✅ [Pipeline] Rate limiting enabled")
 # P0 ACTIONS ROUTES
 # ============================================================================
 
+_p0_import_error = None  # Store import error for debug endpoint
+
 try:
     from routes.p0_actions_routes import router as p0_actions_router
     app.include_router(p0_actions_router)
     logger.info("✅ P0 Actions routes registered at /v1/actions/*")
+    logger.info(f"   Router prefix: {p0_actions_router.prefix}, routes: {len(p0_actions_router.routes)}")
 except Exception as e:
+    import traceback
+    _p0_import_error = traceback.format_exc()
     logger.error(f"❌ Failed to register P0 Actions routes: {e}")
+    logger.error(f"   Full traceback:\n{_p0_import_error}")
     logger.error("P0 Actions will not be available via API")
 
 # ============================================================================
@@ -1187,6 +1193,54 @@ def try_load_extractor_debug():
             "error_type": type(e).__name__,
             "traceback": traceback.format_exc()
         }
+
+
+@app.get("/debug/routes")
+async def debug_routes():
+    """Debug endpoint to check registered routes and import status."""
+    import traceback as tb
+
+    # Collect all registered route prefixes
+    route_prefixes = set()
+    route_count = 0
+    for route in app.routes:
+        route_count += 1
+        if hasattr(route, 'path'):
+            prefix = route.path.split('/')[1] if '/' in route.path else route.path
+            route_prefixes.add(prefix)
+
+    # Try to import p0_actions_routes and report any errors
+    p0_status = {"loaded": False, "error": None}
+    try:
+        from routes.p0_actions_routes import router as test_router
+        p0_status["loaded"] = True
+        p0_status["prefix"] = test_router.prefix
+        p0_status["route_count"] = len(test_router.routes)
+    except Exception as e:
+        p0_status["error"] = str(e)
+        p0_status["traceback"] = tb.format_exc()
+
+    # Check certificate handlers import
+    cert_status = {"loaded": False, "error": None}
+    try:
+        from handlers.certificate_handlers import get_certificate_handlers
+        cert_status["loaded"] = True
+    except Exception as e:
+        cert_status["error"] = str(e)
+        cert_status["traceback"] = tb.format_exc()
+
+    return {
+        "total_routes": route_count,
+        "route_prefixes": sorted(list(route_prefixes)),
+        "has_v1_actions": "v1" in route_prefixes,
+        "p0_actions_status": p0_status,
+        "certificate_handlers_status": cert_status,
+        "env_vars": {
+            "DEFAULT_YACHT_CODE": os.environ.get("DEFAULT_YACHT_CODE", "NOT_SET"),
+            "has_supabase_url": bool(os.environ.get("SUPABASE_URL")),
+            "has_supabase_key": bool(os.environ.get("SUPABASE_SERVICE_KEY")),
+        }
+    }
 
 
 # ============================================================================
