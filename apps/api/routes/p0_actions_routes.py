@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 # SUPABASE CLIENT
 # ============================================================================
 
-def get_supabase_client() -> Client:
+def get_supabase_client() -> Optional[Client]:
     """Get TENANT Supabase client for yacht operations data.
 
     Architecture:
@@ -50,6 +50,8 @@ def get_supabase_client() -> Client:
 
     P0 handlers work with TENANT tables, so this returns the default tenant client.
     Uses DEFAULT_YACHT_CODE env var (e.g., 'yTEST_YACHT_001') to construct env var names.
+
+    Returns None if credentials are missing (allows app to start without DB).
     """
     # Get default yacht code for tenant routing
     default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
@@ -59,9 +61,14 @@ def get_supabase_client() -> Client:
     key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 
     if not url or not key:
-        raise ValueError(f"Missing TENANT Supabase credentials. Set {default_yacht}_SUPABASE_URL and {default_yacht}_SUPABASE_SERVICE_KEY")
+        logger.warning(f"Missing TENANT Supabase credentials for {default_yacht} - handlers will be unavailable")
+        return None
 
-    return create_client(url, key)
+    try:
+        return create_client(url, key)
+    except Exception as e:
+        logger.error(f"Failed to create Supabase client: {e}")
+        return None
 
 
 def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
@@ -91,16 +98,23 @@ def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
 
 router = APIRouter(prefix="/v1/actions", tags=["p0-actions"])
 
-# Initialize handlers
-try:
-    supabase = get_supabase_client()
-    wo_handlers = WorkOrderMutationHandlers(supabase)
-    inventory_handlers = InventoryHandlers(supabase)
-    handover_handlers = HandoverHandlers(supabase)
-    manual_handlers = ManualHandlers(supabase)
-    logger.info("✅ All P0 action handlers initialized")
-except Exception as e:
-    logger.error(f"Failed to initialize handlers: {e}")
+# Initialize handlers (gracefully handle missing DB connection)
+supabase = get_supabase_client()
+if supabase:
+    try:
+        wo_handlers = WorkOrderMutationHandlers(supabase)
+        inventory_handlers = InventoryHandlers(supabase)
+        handover_handlers = HandoverHandlers(supabase)
+        manual_handlers = ManualHandlers(supabase)
+        logger.info("✅ All P0 action handlers initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize handlers: {e}")
+        wo_handlers = None
+        inventory_handlers = None
+        handover_handlers = None
+        manual_handlers = None
+else:
+    logger.warning("⚠️ P0 handlers not initialized - no database connection")
     wo_handlers = None
     inventory_handlers = None
     handover_handlers = None
