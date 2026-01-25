@@ -211,6 +211,7 @@ class ExtractionConfig:
         'purchasing': 4.0,
         'hours_of_rest': 4.0,
         'mobile': 4.0,
+        'certificates': 4.0,  # Vessel + crew certificates (compliance)
 
         # Unsupported: Not actionable (filler)
         # Queries we can't handle
@@ -232,6 +233,7 @@ class ExtractionConfig:
         'purchasing',
         'documents',
         'hours_of_rest',
+        'certificates',  # Vessel + crew certificates
         'mobile'
     ])
 
@@ -691,7 +693,22 @@ class ValidationRules:
         # Logging hours of rest needs:
         # - How many hours
         # - What date
-        'log_hours_of_rest': ['hours', 'date']
+        'log_hours_of_rest': ['hours', 'date'],
+
+        # Creating vessel certificate needs:
+        # - Certificate type (class, ISM, ISPS, etc.)
+        # - Issuing authority
+        'create_vessel_certificate': ['certificate_type', 'issuing_authority'],
+
+        # Creating crew certificate needs:
+        # - Person name or ID
+        # - Certificate type (STCW, ENG1, license, etc.)
+        'create_crew_certificate': ['person', 'certificate_type'],
+
+        # Supersede certificate needs:
+        # - Certificate ID to supersede
+        # - Reason for supersession
+        'supersede_certificate': ['certificate_id', 'reason']
     }
 
     # =================================================================
@@ -711,7 +728,14 @@ class ValidationRules:
         ('export_handover', 'clear_handover'),
 
         # Can't approve AND reject same PO
-        ('approve_purchase_order', 'reject_purchase_order')
+        ('approve_purchase_order', 'reject_purchase_order'),
+
+        # Can't create AND supersede certificate in same action
+        ('create_vessel_certificate', 'supersede_certificate'),
+        ('create_crew_certificate', 'supersede_certificate'),
+
+        # Can't supersede AND delete certificate in same action
+        ('supersede_certificate', 'delete_certificate')
     ]
 
     # =================================================================

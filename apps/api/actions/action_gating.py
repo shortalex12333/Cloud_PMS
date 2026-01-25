@@ -31,6 +31,10 @@ GATED_ACTIONS: Set[str] = frozenset([
     "upload_certificate_document",
     "update_certificate_metadata",
 
+    # Certificate actions (compliance-critical, signed)
+    "supersede_certificate",      # SIGNED action - requires signature payload
+    "delete_certificate",         # Manager-only, destructive
+
     # Multi-user impact
     "assign_work_order",
     "assign_task",
@@ -68,6 +72,12 @@ STATE_CHANGING_ACTIONS: Set[str] = frozenset([
 
     # Documents
     "upload_document",
+
+    # Certificates (HOD write operations)
+    "create_vessel_certificate",
+    "create_crew_certificate",
+    "update_certificate",
+    "link_document_to_certificate",
 
     # Handover
     "add_to_handover",
@@ -121,6 +131,13 @@ READ_ONLY_ACTIONS: Set[str] = frozenset([
     "show_certificates",
     "show_certificate_expiry",
     "generate_audit_pack",
+
+    # Certificate reads
+    "list_vessel_certificates",
+    "list_crew_certificates",
+    "view_certificate_history",
+    "find_expiring_certificates",
+    "get_certificate_details",
 
     # Documents reads
     "search_documents",

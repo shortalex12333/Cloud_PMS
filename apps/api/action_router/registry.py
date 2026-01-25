@@ -373,6 +373,86 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         allowed_roles=["HOD", "Manager"],
         required_fields=["yacht_id"],
     ),
+
+    # ========================================================================
+    # CERTIFICATE ACTIONS
+    # ========================================================================
+    "create_vessel_certificate": ActionDefinition(
+        action_id="create_vessel_certificate",
+        label="Create Vessel Certificate",
+        endpoint="/v1/certificates/create-vessel",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=[
+            "yacht_id",
+            "certificate_type",
+            "certificate_name",
+            "issuing_authority",
+        ],
+        schema_file=None,
+    ),
+
+    "create_crew_certificate": ActionDefinition(
+        action_id="create_crew_certificate",
+        label="Create Crew Certificate",
+        endpoint="/v1/certificates/create-crew",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],  # is_hod() = chief_engineer, captain, manager
+        required_fields=[
+            "yacht_id",
+            "person_name",
+            "certificate_type",
+            "issuing_authority",
+        ],
+        schema_file=None,
+    ),
+
+    "update_certificate": ActionDefinition(
+        action_id="update_certificate",
+        label="Update Certificate",
+        endpoint="/v1/certificates/update",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=[
+            "yacht_id",
+            "certificate_id",
+        ],
+        schema_file=None,
+    ),
+
+    "link_document_to_certificate": ActionDefinition(
+        action_id="link_document_to_certificate",
+        label="Link Document to Certificate",
+        endpoint="/v1/certificates/link-document",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["HOD", "Manager"],
+        required_fields=[
+            "yacht_id",
+            "certificate_id",
+            "document_id",
+        ],
+        schema_file=None,
+    ),
+
+    "supersede_certificate": ActionDefinition(
+        action_id="supersede_certificate",
+        label="Supersede Certificate",
+        endpoint="/v1/certificates/supersede",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["Captain", "Manager"],  # Command roles for SIGNED action (lens: Captain/Manager)
+        required_fields=[
+            "yacht_id",
+            "certificate_id",
+            "reason",
+            "signature",  # REQUIRED - signed action
+        ],
+        schema_file=None,
+    ),
 }
 
 

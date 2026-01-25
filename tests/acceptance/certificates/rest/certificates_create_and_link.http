@@ -1,0 +1,556 @@
+# Certificate Lens v2 - Acceptance Tests
+# =======================================
+# Tests for certificate pipeline: create, link, read operations
+#
+# SETUP:
+#   export API_BASE=https://pipeline-core.int.celeste7.ai
+#   export FEATURE_CERTIFICATES=true
+#   export UI_CERTIFICATES=true
+#   export CREW_JWT="..."    # Crew user JWT (limited permissions)
+#   export HOD_JWT="..."     # HOD user JWT (write permissions)
+#   export MANAGER_JWT="..." # Manager user JWT (full permissions)
+#   export YACHT_ID="..."    # Test yacht UUID
+#
+# RUN:
+#   httpie/curl or VSCode REST Client
+#
+# Expected roles:
+#   - Crew: READ only (list, view, expiring)
+#   - HOD: READ + WRITE (create, update, link) - maps to is_hod() = chief_engineer, captain, manager
+#   - Captain/Manager: READ + WRITE + DELETE + SUPERSEDE (signed)
+
+
+###############################################################################
+# TEST 1: Feature Status Check
+###############################################################################
+# Should return feature flag status
+# Expected: 200 OK with feature_enabled=true
+
+GET {{API_BASE}}/api/v1/certificates/debug/status
+
+###############################################################################
+# TEST 2: Debug Pipeline - Read Query (Crew JWT)
+###############################################################################
+# Test pipeline processing for a READ query
+# Expected: intent=get_certificate_details, entities=[certificate:ISM], no mutations
+
+POST {{API_BASE}}/api/v1/certificates/debug/pipeline-test
+Authorization: Bearer {{CREW_JWT}}
+Content-Type: application/json
+
+{
+  "query": "show ISM certificate expiry",
+  "yacht_id": "{{YACHT_ID}}"
+}
+
+# Expected response:
+# {
+#   "query": "show ISM certificate expiry",
+#   "entities_extracted": [{"type": "certificate", "canonical": "ISM", ...}],
+#   "intent_detected": {"intent": "get_certificate_details", "intent_category": "manage_certificates", ...},
+#   "actions_detected": [...],
+#   "handler_result": {...},
+#   "debug_info": {...}
+# }
+
+###############################################################################
+# TEST 3: Debug Pipeline - Expiring Certificates Query (Crew JWT)
+###############################################################################
+# Test pipeline for finding expiring certificates
+# Expected: intent=find_expiring_certificates
+
+POST {{API_BASE}}/api/v1/certificates/debug/pipeline-test
+Authorization: Bearer {{CREW_JWT}}
+Content-Type: application/json
+
+{
+  "query": "what certificates expire next month",
+  "yacht_id": "{{YACHT_ID}}"
+}
+
+###############################################################################
+# TEST 4: Debug Pipeline - Create Query Detection (HOD JWT)
+###############################################################################
+# Test pipeline detects create action
+# Expected: intent=create_vessel_certificate, requires_mutation=true
+
+POST {{API_BASE}}/api/v1/certificates/debug/pipeline-test
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "query": "create ISM certificate for annual survey",
+  "yacht_id": "{{YACHT_ID}}"
+}
+
+###############################################################################
+# TEST 5: List Vessel Certificates (Crew JWT)
+###############################################################################
+# List all vessel certificates
+# Expected: 200 OK with certificates array
+
+GET {{API_BASE}}/api/v1/certificates/vessel?limit=20
+Authorization: Bearer {{CREW_JWT}}
+
+###############################################################################
+# TEST 6: List Crew Certificates (Crew JWT)
+###############################################################################
+# List all crew certificates
+# Expected: 200 OK with certificates array
+
+GET {{API_BASE}}/api/v1/certificates/crew?limit=20
+Authorization: Bearer {{CREW_JWT}}
+
+###############################################################################
+# TEST 7: Find Expiring Certificates - 30 Days (Crew JWT)
+###############################################################################
+# Find certificates expiring within 30 days
+# Expected: 200 OK with grouped expiring certificates
+
+GET {{API_BASE}}/api/v1/certificates/expiring?days_ahead=30&domain=all
+Authorization: Bearer {{CREW_JWT}}
+
+###############################################################################
+# TEST 8: Create Vessel Certificate - HOD (Positive Test)
+###############################################################################
+# Create new vessel certificate via Action Router
+# Expected: 200 OK with certificate_id
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "create_vessel_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_type": "CLASS",
+    "certificate_name": "Classification Certificate - Lloyds",
+    "certificate_number": "CL-2026-001",
+    "issuing_authority": "Lloyd's Register",
+    "issue_date": "2026-01-15",
+    "expiry_date": "2027-01-15"
+  }
+}
+
+# Expected response:
+# {
+#   "status": "success",
+#   "certificate_id": "<uuid>"
+# }
+
+###############################################################################
+# TEST 9: Create Vessel Certificate - Crew (Negative Test)
+###############################################################################
+# Crew should NOT be able to create certificates
+# Expected: 401/403 Forbidden (RLS policy denial)
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{CREW_JWT}}
+Content-Type: application/json
+
+{
+  "action": "create_vessel_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_type": "CLASS",
+    "certificate_name": "Test - Should Fail",
+    "issuing_authority": "Test Authority"
+  }
+}
+
+# Expected response:
+# HTTP 401/403 or error in response body
+
+###############################################################################
+# TEST 10: Link Document to Certificate - HOD
+###############################################################################
+# Link an existing document to a certificate
+# Prerequisite: Upload document first, get document_id
+# Expected: 200 OK with certificate_id and document_id
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "link_document_to_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id_from_test_8>",
+    "document_id": "<document_id_from_upload>",
+    "domain": "vessel"
+  }
+}
+
+# Expected response:
+# {
+#   "status": "success",
+#   "certificate_id": "<uuid>",
+#   "document_id": "<uuid>"
+# }
+
+###############################################################################
+# TEST 11: Get Certificate Details (Crew JWT)
+###############################################################################
+# View certificate details including linked document
+# Expected: 200 OK with full certificate data
+
+GET {{API_BASE}}/api/v1/certificates/<certificate_id_from_test_8>?domain=vessel
+Authorization: Bearer {{CREW_JWT}}
+
+###############################################################################
+# TEST 12: View Certificate History (Crew JWT)
+###############################################################################
+# View audit history for a certificate
+# Expected: 200 OK with history array (create, link events)
+
+GET {{API_BASE}}/api/v1/certificates/<certificate_id_from_test_8>/history?domain=vessel
+Authorization: Bearer {{CREW_JWT}}
+
+###############################################################################
+# TEST 13: Create Crew Certificate - HOD (Positive Test)
+###############################################################################
+# Create new crew certificate via Action Router
+# Expected: 200 OK with certificate_id
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "create_crew_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "person_name": "John Smith",
+    "certificate_type": "STCW",
+    "certificate_number": "STCW-2026-001",
+    "issuing_authority": "MCA",
+    "issue_date": "2026-01-10",
+    "expiry_date": "2031-01-10"
+  }
+}
+
+# Expected response:
+# {
+#   "status": "success",
+#   "certificate_id": "<uuid>",
+#   "person_name": "John Smith"
+# }
+
+###############################################################################
+# TEST 14: Create Crew Certificate - Crew (Negative Test)
+###############################################################################
+# Crew should NOT be able to create certificates
+# Expected: 401/403 Forbidden (RLS policy denial)
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{CREW_JWT}}
+Content-Type: application/json
+
+{
+  "action": "create_crew_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "person_name": "Test User",
+    "certificate_type": "STCW",
+    "issuing_authority": "Test Authority"
+  }
+}
+
+# Expected response:
+# HTTP 401/403 or error in response body
+
+###############################################################################
+# TEST 15: Update Certificate - HOD (Positive Test)
+###############################################################################
+# Update vessel certificate via Action Router
+# Expected: 200 OK with updated_fields
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "update_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id_from_test_8>",
+    "domain": "vessel",
+    "expiry_date": "2027-06-15",
+    "last_survey_date": "2026-01-20",
+    "next_survey_due": "2027-01-20"
+  }
+}
+
+# Expected response:
+# {
+#   "status": "success",
+#   "certificate_id": "<uuid>",
+#   "updated_fields": ["expiry_date", "last_survey_date", "next_survey_due"]
+# }
+
+###############################################################################
+# TEST 16: Update Certificate - Crew (Negative Test)
+###############################################################################
+# Crew should NOT be able to update certificates
+# Expected: 401/403 Forbidden (RLS policy denial)
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{CREW_JWT}}
+Content-Type: application/json
+
+{
+  "action": "update_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id_from_test_8>",
+    "domain": "vessel",
+    "expiry_date": "2028-01-15"
+  }
+}
+
+# Expected response:
+# HTTP 401/403 or error in response body
+
+###############################################################################
+# TEST 17: Update Certificate - Invalid Date (Negative Test)
+###############################################################################
+# expiry_date before issue_date should fail validation
+# Expected: 400 Bad Request
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "update_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id_from_test_8>",
+    "domain": "vessel",
+    "expiry_date": "2025-01-01"
+  }
+}
+
+# Expected response:
+# HTTP 400 with message "expiry_date must be after issue_date"
+
+###############################################################################
+# TEST 18: Supersede Certificate - Captain/Manager (Positive Test, SIGNED)
+###############################################################################
+# Supersede a certificate (Captain or Manager, requires signature)
+# This is a SIGNED action - signature payload is REQUIRED
+# Expected: 200 OK with superseded_certificate_id, new_certificate_id, is_signed=true
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{MANAGER_JWT}}
+Content-Type: application/json
+
+{
+  "action": "supersede_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id_from_test_8>",
+    "domain": "vessel",
+    "reason": "Annual renewal - replacing expired certificate",
+    "signature": {
+      "signer_id": "{{MANAGER_USER_ID}}",
+      "signed_at": "2026-01-25T10:30:00Z",
+      "signature_hash": "sha256:abc123...",
+      "certificate_fingerprint": "CLASS-CL-2026-001"
+    },
+    "new_certificate": {
+      "certificate_name": "Classification Certificate - Lloyds (2026)",
+      "certificate_number": "CL-2026-002",
+      "issue_date": "2026-01-25",
+      "expiry_date": "2027-01-25"
+    }
+  }
+}
+
+# Expected response:
+# {
+#   "status": "success",
+#   "superseded_certificate_id": "<old_uuid>",
+#   "new_certificate_id": "<new_uuid>",
+#   "reason": "Annual renewal - replacing expired certificate",
+#   "is_signed": true
+# }
+
+###############################################################################
+# TEST 19: Supersede Certificate - HOD (Negative Test)
+###############################################################################
+# HOD should NOT be able to supersede (Manager-only action)
+# Expected: 401/403 Forbidden (role check)
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "supersede_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id>",
+    "domain": "vessel",
+    "reason": "Test supersede",
+    "signature": {
+      "signer_id": "test",
+      "signed_at": "2026-01-25T10:30:00Z"
+    }
+  }
+}
+
+# Expected response:
+# HTTP 401/403 (not Manager role)
+
+###############################################################################
+# TEST 20: Supersede Certificate - Missing Signature (Negative Test)
+###############################################################################
+# Supersede without signature should fail (signed action requires signature)
+# Expected: 400 Bad Request
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{MANAGER_JWT}}
+Content-Type: application/json
+
+{
+  "action": "supersede_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<certificate_id>",
+    "domain": "vessel",
+    "reason": "Test without signature"
+  }
+}
+
+# Expected response:
+# HTTP 400 with message "signature payload is required for supersede action"
+
+###############################################################################
+# TEST 21: Supersede Audit Log Verification (SIGNED)
+###############################################################################
+# Verify supersede action created SIGNED audit log entry
+# Check pms_audit_log for:
+#   - action = 'supersede_certificate'
+#   - signature IS NOT NULL AND signature != '{}'
+#   - old_values shows previous status
+#   - new_values shows 'superseded' + new_certificate_id
+
+# SQL to verify:
+# SELECT id, action, old_values, new_values, signature, created_at
+# FROM pms_audit_log
+# WHERE entity_type = 'certificate'
+#   AND action = 'supersede_certificate'
+#   AND entity_id = '<superseded_certificate_id>'
+# ORDER BY created_at DESC
+# LIMIT 1;
+#
+# Expected:
+#   - signature should contain signer_id, signed_at, signature_hash
+#   - metadata.is_signed_action = true
+#   - new_values.status = 'superseded'
+
+###############################################################################
+# TEST 22: Superseded Certificate Terminal State
+###############################################################################
+# Verify superseded certificate cannot be updated or superseded again
+# Expected: 400 Bad Request
+
+POST {{API_BASE}}/api/v1/actions/execute
+Authorization: Bearer {{HOD_JWT}}
+Content-Type: application/json
+
+{
+  "action": "update_certificate",
+  "context": {
+    "yacht_id": "{{YACHT_ID}}"
+  },
+  "payload": {
+    "certificate_id": "<superseded_certificate_id>",
+    "domain": "vessel",
+    "expiry_date": "2028-01-01"
+  }
+}
+
+# Expected response:
+# HTTP 400 with message "Cannot update certificate with status 'superseded'"
+
+###############################################################################
+# TEST 23: Single-Tenant Assertion Query
+###############################################################################
+# Verify single-tenant model: COUNT DISTINCT yacht_id = 1
+# This should be run directly against Supabase or via a debug endpoint
+
+# SQL to verify:
+# SELECT COUNT(DISTINCT yacht_id) AS tenant_count
+# FROM pms_vessel_certificates
+# WHERE yacht_id = '<YACHT_ID>';
+# -- Expected: tenant_count = 1
+
+###############################################################################
+# TEST 14: Audit Log Verification
+###############################################################################
+# Verify audit log entries were created for certificate operations
+# Check pms_audit_log for:
+#   - action = 'create_vessel_certificate'
+#   - action = 'link_document'
+#   - signature = '{}' (non-signed actions)
+
+# SQL to verify:
+# SELECT id, action, entity_type, entity_id, signature, created_at
+# FROM pms_audit_log
+# WHERE entity_type = 'certificate'
+#   AND entity_id = '<certificate_id_from_test_8>'
+# ORDER BY created_at;
+
+###############################################################################
+# TEST 15: Storage Path Verification
+###############################################################################
+# When uploading a certificate document, verify storage path format
+#
+# IMPORTANT: Bucket = "documents", Object path = "{yacht_id}/certificates/{cert_id}/{filename}"
+# The storage_path stored in doc_metadata should NOT include "documents/" prefix
+# (the bucket name is already "documents")
+#
+# Expected storage_path in doc_metadata: {yacht_id}/certificates/{certificate_id}/{filename}
+
+# Upload flow:
+# 1. Upload to Supabase Storage bucket "documents" with object path:
+#      {YACHT_ID}/certificates/{CERT_ID}/certificate.pdf
+# 2. INSERT doc_metadata with:
+#      - storage_path = "{YACHT_ID}/certificates/{CERT_ID}/certificate.pdf"
+#      - filename = "certificate.pdf"
+#      - content_type = "application/pdf"
+# 3. Link via Action Router: link_document_to_certificate
+
+###############################################################################
+# CLEANUP
+###############################################################################
+# After tests, consider cleaning up test data:
+# - DELETE FROM pms_vessel_certificates WHERE certificate_name LIKE 'Test%';
+# - DELETE FROM pms_audit_log WHERE entity_id IN (...);
+# - DELETE FROM doc_metadata WHERE filename LIKE 'Test%';

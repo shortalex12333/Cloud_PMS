@@ -24,6 +24,7 @@ from handlers.p3_read_only_handlers import P3ReadOnlyHandlers
 from handlers.p1_compliance_handlers import P1ComplianceHandlers
 from handlers.p1_purchasing_handlers import P1PurchasingHandlers
 from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
+from handlers.certificate_handlers import get_certificate_handlers as _get_certificate_handlers
 
 # Lazy-initialized handler instances
 _p3_handlers = None
@@ -239,6 +240,50 @@ async def open_document(params: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         raise Exception(f"Failed to generate document URL: {str(e)}")
+
+
+# ============================================================================
+# CERTIFICATE WRAPPERS (bridge to certificate handlers)
+# ============================================================================
+
+async def _cert_create_vessel_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("create_vessel_certificate")
+    if not fn:
+        raise ValueError("create_vessel_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_create_crew_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("create_crew_certificate")
+    if not fn:
+        raise ValueError("create_crew_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_update_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("update_certificate")
+    if not fn:
+        raise ValueError("update_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_link_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("link_document_to_certificate")
+    if not fn:
+        raise ValueError("link_document_to_certificate handler not registered")
+    return await fn(**params)
+
+
+async def _cert_supersede_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_certificate_handlers(get_supabase_client())
+    fn = handlers.get("supersede_certificate")
+    if not fn:
+        raise ValueError("supersede_certificate handler not registered")
+    return await fn(**params)
 
 
 async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -584,36 +629,80 @@ async def delete_shopping_item(params: Dict[str, Any]) -> Dict[str, Any]:
 
 async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Report a new fault.
+    Report a new fault (UPGRADED - Phase 13).
 
     Required params:
         - yacht_id: UUID
-        - equipment_id: UUID
-        - description: str
         - user_id: UUID (from JWT)
+        - title: str
+        - severity: str (cosmetic, minor, major, critical, safety)
+        - description: str
+        - equipment_id: UUID (optional)
+        - signature: Dict (optional, for audit trail)
+
+    Returns:
+        - fault_id: UUID
+        - fault_number: str (e.g., FLT-2026-001)
+        - status: str
+        - audit_log_id: UUID
+        - handover_item_id: UUID (if severity=critical/safety)
+        - next_actions: List[str]
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
 
+    # Extract required fields
+    yacht_id = params["yacht_id"]
+    user_id = params["user_id"]
+    title = params["title"]
+    severity = params.get("severity", "minor")
+    description = params.get("description", "")
+    equipment_id = params.get("equipment_id")
+    signature = params.get("signature")
+
+    # Validate severity
+    valid_severities = ['cosmetic', 'minor', 'major', 'critical', 'safety']
+    if severity not in valid_severities:
+        raise ValueError(f"Severity must be one of: {', '.join(valid_severities)}")
+
     # SECURITY FIX P1-003: Verify equipment belongs to yacht before INSERT
-    eq_result = supabase.table("pms_equipment").select("id, name").eq(
-        "id", params["equipment_id"]
-    ).eq("yacht_id", params["yacht_id"]).execute()
+    equipment_name = None
+    if equipment_id:
+        eq_result = supabase.table("pms_equipment").select("id, name").eq(
+            "id", equipment_id
+        ).eq("yacht_id", yacht_id).execute()
 
-    if not eq_result.data:
-        raise ValueError(f"Equipment {params['equipment_id']} not found or access denied")
+        if not eq_result.data:
+            raise ValueError(f"Equipment {equipment_id} not found or access denied")
 
+        equipment_name = eq_result.data[0]["name"]
+
+    # Generate fault number (FLT-2026-001 format)
+    year = datetime.utcnow().year
+    count_result = supabase.table("pms_faults").select(
+        "id", count="exact"
+    ).eq("yacht_id", yacht_id).gte(
+        "created_at", f"{year}-01-01"
+    ).execute()
+    count = (count_result.count or 0) + 1
+    fault_number = f"FLT-{year}-{count:03d}"
+
+    # Create fault record
     fault_id = str(uuid_lib.uuid4())
+    now = datetime.utcnow().isoformat()
     fault_data = {
         "id": fault_id,
-        "yacht_id": params["yacht_id"],
-        "equipment_id": params["equipment_id"],
-        "description": params["description"],
-        "priority": params.get("priority", "medium"),
+        "yacht_id": yacht_id,
+        "fault_number": fault_number,
+        "title": title,
+        "description": description,
+        "severity": severity,
         "status": "open",
-        "reported_by": params["user_id"],
-        "reported_at": datetime.utcnow().isoformat(),
-        "created_at": datetime.utcnow().isoformat(),
+        "equipment_id": equipment_id,
+        "reported_by": user_id,
+        "reported_at": now,
+        "created_at": now,
+        "updated_at": now
     }
 
     result = supabase.table("pms_faults").insert(fault_data).execute()
@@ -621,10 +710,75 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     if not result.data:
         raise Exception("Failed to create fault")
 
+    fault = result.data[0]
+
+    # Create audit log entry (PHASE 13 REQUIREMENT)
+    audit_log_id = None
+    try:
+        audit_data = {
+            "yacht_id": yacht_id,
+            "action": "report_fault",
+            "entity_type": "fault",
+            "entity_id": fault_id,
+            "user_id": user_id,
+            "new_values": fault,
+            "signature": signature,
+            "created_at": now
+        }
+        audit_result = supabase.table("pms_audit_log").insert(audit_data).execute()
+        if audit_result.data:
+            audit_log_id = audit_result.data[0]["id"]
+    except Exception as e:
+        logger.error(f"Failed to create audit log for report_fault: {e}")
+
+    # If critical/safety, add to handover (PHASE 13 REQUIREMENT)
+    handover_item_id = None
+    if severity in ('critical', 'safety'):
+        try:
+            handover_result = supabase.table("handovers").select(
+                "id"
+            ).eq("yacht_id", yacht_id).eq("status", "active").maybe_single().execute()
+
+            if handover_result.data:
+                handover_id = handover_result.data["id"]
+                handover_item_data = {
+                    "yacht_id": yacht_id,
+                    "handover_id": handover_id,
+                    "entity_type": "fault",
+                    "entity_id": fault_id,
+                    "summary": f"{severity.upper()}: {title}",
+                    "priority": "high" if severity == "critical" else "urgent",
+                    "status": "pending",
+                    "added_by": user_id,
+                    "created_at": now
+                }
+                item_result = supabase.table("handover_items").insert(handover_item_data).execute()
+                if item_result.data:
+                    handover_item_id = item_result.data[0]["id"]
+        except Exception as e:
+            logger.warning(f"Failed to add fault to handover: {e}")
+
+    # Build response
+    message = f"✓ {fault_number} reported"
+    if handover_item_id:
+        message += " (added to handover)"
+
     return {
+        "status": "success",
         "fault_id": fault_id,
-        "status": "open",
-        "created_at": fault_data["created_at"],
+        "fault_number": fault_number,
+        "title": title,
+        "severity": severity,
+        "equipment_name": equipment_name,
+        "created_at": fault["created_at"],
+        "audit_log_id": audit_log_id,
+        "handover_item_id": handover_item_id,
+        "next_actions": [
+            "add_fault_note",
+            "add_fault_photo",
+            "create_work_order_from_fault"
+        ],
+        "message": message
     }
 
 
@@ -2045,6 +2199,13 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "update_worklist_progress": _p2_update_worklist_progress,
     "upload_invoice": _p2_upload_invoice,
     "upload_photo": _p2_upload_photo,
+
+    # Certificates
+    "create_vessel_certificate": _cert_create_vessel_certificate,
+    "create_crew_certificate": _cert_create_crew_certificate,
+    "update_certificate": _cert_update_certificate,
+    "link_document_to_certificate": _cert_link_document,
+    "supersede_certificate": _cert_supersede_certificate,
 }
 
 
