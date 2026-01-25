@@ -40,6 +40,9 @@ TABLE_MAP = {
     "purchase_orders": "pms_purchase_orders",       # PO headers
     "purchase_order_items": "pms_purchase_order_items",  # PO line items
     "suppliers": "pms_suppliers",                   # Vendor registry
+    # Certificate tables (Certificate Lens v2)
+    "vessel_certificates": "pms_vessel_certificates",  # Vessel/flag certificates
+    "crew_certificates": "pms_crew_certificates",      # Crew/seafarer certificates
 }
 
 
@@ -107,6 +110,26 @@ def normalize_fault(data: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def map_vessel_certificate_select() -> str:
+    """Return SELECT clause for vessel certificate queries."""
+    return "*"
+
+
+def normalize_vessel_certificate(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize vessel certificate data from database format to API format."""
+    return data
+
+
+def map_crew_certificate_select() -> str:
+    """Return SELECT clause for crew certificate queries."""
+    return "*"
+
+
+def normalize_crew_certificate(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize crew certificate data from database format to API format."""
+    return data
+
+
 __all__ = [
     "get_table",
     "map_equipment_select",
@@ -117,4 +140,8 @@ __all__ = [
     "normalize_part",
     "map_faults_select",
     "normalize_fault",
+    "map_vessel_certificate_select",
+    "normalize_vessel_certificate",
+    "map_crew_certificate_select",
+    "normalize_crew_certificate",
 ]
