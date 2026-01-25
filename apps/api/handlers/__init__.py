@@ -20,6 +20,16 @@ from .p2_mutation_light_handlers import P2MutationLightHandlers, get_p2_mutation
 # P3 Read-Only Handlers
 from .p3_read_only_handlers import P3ReadOnlyHandlers, get_p3_read_only_handlers
 
+# Certificate Handlers (Certificate Lens v2)
+# Import is optional - may fail if schema_mapping is missing certificate functions
+try:
+    from .certificate_handlers import CertificateHandlers, get_certificate_handlers
+except ImportError as e:
+    import logging
+    logging.getLogger(__name__).warning(f"Certificate handlers not available: {e}")
+    CertificateHandlers = None
+    get_certificate_handlers = None
+
 # Situation State Machines
 from .situation_handlers import (
     SituationManager,
@@ -55,6 +65,10 @@ __all__ = [
     # P3 Read-Only Handlers
     'P3ReadOnlyHandlers',
     'get_p3_read_only_handlers',
+
+    # Certificate Handlers
+    'CertificateHandlers',
+    'get_certificate_handlers',
 
     # Situation State Machines
     'SituationManager',
