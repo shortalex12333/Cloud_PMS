@@ -1229,10 +1229,18 @@ async def debug_routes():
         cert_status["error"] = str(e)
         cert_status["traceback"] = tb.format_exc()
 
+    # List all actual route paths
+    all_paths = []
+    for route in app.routes:
+        if hasattr(route, 'path'):
+            all_paths.append(route.path)
+
     return {
         "total_routes": route_count,
         "route_prefixes": sorted(list(route_prefixes)),
         "has_v1_actions": "v1" in route_prefixes,
+        "startup_import_error": _p0_import_error,
+        "all_paths": sorted(all_paths),
         "p0_actions_status": p0_status,
         "certificate_handlers_status": cert_status,
         "env_vars": {
