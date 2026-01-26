@@ -152,10 +152,16 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
           {/* Search bar - only show when not viewing thread */}
           {!selectedThread && (
             <>
-            <div className="spotlight-panel">
+            {/* Email scope indicator */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="px-2 py-0.5 bg-[#0a84ff]/20 border border-[#0a84ff]/30 rounded text-[11px] text-[#0a84ff] font-medium">
+                Email Scope
+              </div>
+            </div>
+            <div className="spotlight-panel ring-1 ring-[#0a84ff]/30">
               <div className="flex items-center gap-3 px-4 h-[50px]">
                 <Search
-                  className="flex-shrink-0 w-5 h-5 text-[#98989f]"
+                  className="flex-shrink-0 w-5 h-5 text-[#0a84ff]"
                   strokeWidth={1.8}
                 />
 
