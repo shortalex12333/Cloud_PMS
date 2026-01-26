@@ -391,6 +391,12 @@ def get_extractor():
 # ENDPOINTS
 # ============================================================================
 
+@app.get("/healthz", include_in_schema=False)
+async def healthz():
+    """Minimal health check - no Pydantic, no dependencies."""
+    return {"status": "ok"}
+
+
 @app.get("/", response_model=HealthResponse)
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
