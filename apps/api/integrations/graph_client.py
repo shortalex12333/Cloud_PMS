@@ -25,6 +25,27 @@ logger = logging.getLogger(__name__)
 GRAPH_API_BASE = "https://graph.microsoft.com/v1.0"
 TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
+# Proactive refresh: refresh tokens 5 minutes before expiry
+TOKEN_REFRESH_SKEW_SECONDS = 300  # 5 minutes
+
+
+def needs_refresh(expires_at: datetime, skew_seconds: int = TOKEN_REFRESH_SKEW_SECONDS) -> bool:
+    """
+    Check if token needs refresh (within skew window of expiry).
+
+    Args:
+        expires_at: Token expiry timestamp (must be timezone-aware)
+        skew_seconds: Seconds before expiry to trigger refresh (default: 300 = 5 min)
+
+    Returns:
+        True if token should be refreshed now
+    """
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    refresh_threshold = datetime.now(timezone.utc) + timedelta(seconds=skew_seconds)
+    return expires_at <= refresh_threshold
+
 # Azure app config (READ app)
 AZURE_READ_APP_ID = os.getenv('AZURE_READ_APP_ID', os.getenv('AZURE_APP_ID', '41f6dc82-8127-4330-97e0-c6b26e6aa967'))
 AZURE_READ_CLIENT_SECRET = os.getenv('AZURE_READ_CLIENT_SECRET', os.getenv('AZURE_CLIENT_SECRET', ''))
@@ -232,14 +253,35 @@ async def get_valid_token(
 
     This is the main entry point for getting tokens with auto-refresh.
 
+    PROACTIVE REFRESH: Refreshes tokens 5 minutes before expiry to prevent
+    mid-request failures. This is critical for long-running sync operations.
+
     Returns: valid access token
     Raises: TokenNotFoundError, TokenRevokedError, TokenRefreshError
     """
     # Get token without expiry check
     token_data = get_user_token(supabase, user_id, yacht_id, purpose, check_expiry=False)
 
-    if token_data.get('is_expired'):
-        logger.info(f"[GetToken] Token expired, attempting refresh for {purpose}")
+    # Parse expiry for proactive refresh check
+    expires_at_str = token_data.get('token_expires_at', '')
+    try:
+        if expires_at_str:
+            if expires_at_str.endswith('Z'):
+                expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+            elif '+' in expires_at_str or expires_at_str.endswith('00:00'):
+                expires_at = datetime.fromisoformat(expires_at_str)
+            else:
+                expires_at = datetime.fromisoformat(expires_at_str).replace(tzinfo=timezone.utc)
+        else:
+            # No expiry means treat as expired
+            expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    except (ValueError, TypeError):
+        expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+
+    # PROACTIVE REFRESH: Refresh if expired OR within 5-min skew window
+    if token_data.get('is_expired') or needs_refresh(expires_at):
+        reason = "expired" if token_data.get('is_expired') else "proactive (within 5-min window)"
+        logger.info(f"[GetToken] Token {reason}, refreshing {purpose} token")
         # Refresh and return new token
         return await refresh_access_token(supabase, user_id, yacht_id, purpose)
 
@@ -591,6 +633,113 @@ def create_write_client(supabase: Client, user_id: str, yacht_id: str) -> GraphW
     return GraphWriteClient(supabase, user_id, yacht_id)
 
 
+# ============================================================================
+# WATCHER STATUS HELPERS
+# ============================================================================
+
+async def mark_watcher_degraded(
+    supabase: Client,
+    user_id: str,
+    yacht_id: str,
+    error_reason: str
+) -> None:
+    """
+    Mark email watcher as degraded after token refresh failure.
+
+    This triggers the UI to show "Reconnect Outlook" banner.
+    """
+    try:
+        supabase.table('email_watchers').update({
+            'sync_status': 'degraded',
+            'last_sync_error': error_reason,
+            'degraded_at': datetime.now(timezone.utc).isoformat(),
+            'updated_at': datetime.now(timezone.utc).isoformat(),
+        }).eq('user_id', user_id).eq('yacht_id', yacht_id).execute()
+        logger.warning(f"[Watcher] Marked degraded: {error_reason}")
+    except Exception as e:
+        logger.error(f"[Watcher] Failed to mark degraded: {e}")
+
+
+async def clear_watcher_degraded(
+    supabase: Client,
+    user_id: str,
+    yacht_id: str
+) -> None:
+    """
+    Clear degraded status after successful token refresh.
+    """
+    try:
+        supabase.table('email_watchers').update({
+            'sync_status': 'active',
+            'last_sync_error': None,
+            'degraded_at': None,
+            'updated_at': datetime.now(timezone.utc).isoformat(),
+        }).eq('user_id', user_id).eq('yacht_id', yacht_id).execute()
+        logger.info(f"[Watcher] Cleared degraded status")
+    except Exception as e:
+        logger.error(f"[Watcher] Failed to clear degraded: {e}")
+
+
+# ============================================================================
+# PROACTIVE TOKEN REFRESH (Worker Heartbeat)
+# ============================================================================
+
+async def refresh_expiring_tokens(
+    supabase: Client,
+    skew_seconds: int = TOKEN_REFRESH_SKEW_SECONDS
+) -> Dict[str, Any]:
+    """
+    Proactively refresh all tokens expiring within the skew window.
+
+    Call this periodically from a worker/heartbeat (e.g., every 2-3 minutes).
+
+    Returns:
+        {
+            'refreshed': [{'user_id': ..., 'yacht_id': ..., 'purpose': ...}, ...],
+            'failed': [{'user_id': ..., 'error': ...}, ...],
+            'checked': int
+        }
+    """
+    refresh_threshold = datetime.now(timezone.utc) + timedelta(seconds=skew_seconds)
+
+    # Find tokens expiring soon
+    result = supabase.table('auth_microsoft_tokens').select(
+        'id, user_id, yacht_id, token_purpose, token_expires_at'
+    ).eq('is_revoked', False).lt(
+        'token_expires_at', refresh_threshold.isoformat()
+    ).execute()
+
+    stats = {'refreshed': [], 'failed': [], 'checked': len(result.data) if result.data else 0}
+
+    for token in (result.data or []):
+        user_id = token['user_id']
+        yacht_id = token['yacht_id']
+        purpose = token['token_purpose']
+
+        try:
+            await refresh_access_token(supabase, user_id, yacht_id, purpose)
+            stats['refreshed'].append({
+                'user_id': user_id,
+                'yacht_id': yacht_id,
+                'purpose': purpose
+            })
+            # Clear degraded if previously set
+            await clear_watcher_degraded(supabase, user_id, yacht_id)
+            logger.info(f"[ProactiveRefresh] Refreshed {purpose} token for user {user_id[:8]}...")
+        except Exception as e:
+            stats['failed'].append({
+                'user_id': user_id,
+                'yacht_id': yacht_id,
+                'purpose': purpose,
+                'error': str(e)
+            })
+            # Mark watcher degraded
+            await mark_watcher_degraded(supabase, user_id, yacht_id, f"refresh_failed: {str(e)[:100]}")
+            logger.error(f"[ProactiveRefresh] Failed for user {user_id[:8]}...: {e}")
+
+    return stats
+
+
 __all__ = [
     'GraphClientError',
     'TokenPurposeMismatchError',
@@ -606,4 +755,9 @@ __all__ = [
     'get_user_token',
     'get_valid_token',
     'refresh_access_token',
+    'needs_refresh',
+    'mark_watcher_degraded',
+    'clear_watcher_degraded',
+    'refresh_expiring_tokens',
+    'TOKEN_REFRESH_SKEW_SECONDS',
 ]
