@@ -28,21 +28,62 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from supabase import create_client, Client
 
 # ============================================================================
-# CONFIG
+# CONFIG - Uses Render environment variables
 # ============================================================================
 
-# Test yacht and credentials
+# Test yacht ID (matches yTEST_YACHT_001 tenant)
 TEST_YACHT_ID = os.getenv('TEST_YACHT_ID', '85fe1119-b04c-41ac-80f1-829d23322598')
 
-# Production Supabase (tenant DB)
-SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://vzsohavtuotocgrfkfyd.supabase.co')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+# Tenant DB (yTEST_YACHT_001 - the test tenant in Render)
+SUPABASE_URL = os.getenv('yTEST_YACHT_001_SUPABASE_URL') or os.getenv('SUPABASE_URL')
+SUPABASE_SERVICE_KEY = os.getenv('yTEST_YACHT_001_SUPABASE_SERVICE_KEY') or os.getenv('SUPABASE_SERVICE_KEY')
 
-# Render backend
+# Master DB (for user lookups if needed)
+MASTER_SUPABASE_URL = os.getenv('MASTER_SUPABASE_URL')
+MASTER_SUPABASE_SERVICE_KEY = os.getenv('MASTER_SUPABASE_SERVICE_KEY')
+
+# Render backend API
 API_BASE = os.getenv('API_BASE', 'https://pipeline-core.int.celeste7.ai')
 
-# Test user JWT (needs to be refreshed)
+# Test user JWT - can be generated from tenant JWT secret
+# Use TENNANT_SUPABASE_JWT_SECRET (note: Render has typo "TENNANT")
+TENANT_JWT_SECRET = os.getenv('TENNANT_SUPABASE_JWT_SECRET') or os.getenv('TENANT_SUPABASE_JWT_SECRET')
 TEST_JWT = os.getenv('TEST_JWT')
+
+# Test user ID (x@alex-short.com in test yacht)
+TEST_USER_ID = os.getenv('TEST_USER_ID', '4653cc88-cacd-4770-9853-98854e757758')
+
+# ============================================================================
+# JWT GENERATION HELPER
+# ============================================================================
+
+def generate_test_jwt(user_id: str, yacht_id: str) -> Optional[str]:
+    """
+    Generate a test JWT using the tenant JWT secret from Render.
+    This allows tests to run without manually refreshing tokens.
+    """
+    if not TENANT_JWT_SECRET:
+        return None
+
+    try:
+        import jwt
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            'sub': user_id,
+            'aud': 'authenticated',
+            'role': 'authenticated',
+            'iat': int(now.timestamp()),
+            'exp': int((now + timedelta(hours=1)).timestamp()),
+            # Custom claims for our app
+            'yacht_id': yacht_id,
+        }
+
+        return jwt.encode(payload, TENANT_JWT_SECRET, algorithm='HS256')
+    except Exception as e:
+        print(f"[Warning] Could not generate JWT: {e}")
+        return None
 
 # ============================================================================
 # FIXTURES
@@ -50,19 +91,39 @@ TEST_JWT = os.getenv('TEST_JWT')
 
 @pytest.fixture(scope='module')
 def supabase() -> Client:
-    """Create Supabase client for DB verification."""
-    if not SUPABASE_SERVICE_KEY:
-        pytest.skip("SUPABASE_SERVICE_KEY not set")
+    """Create Supabase client for DB verification using Render env vars."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        pytest.skip("yTEST_YACHT_001_SUPABASE_URL/KEY not set - check Render env vars")
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 @pytest.fixture(scope='module')
+def master_supabase() -> Optional[Client]:
+    """Create Master Supabase client (optional, for user lookups)."""
+    if not MASTER_SUPABASE_URL or not MASTER_SUPABASE_SERVICE_KEY:
+        return None
+    return create_client(MASTER_SUPABASE_URL, MASTER_SUPABASE_SERVICE_KEY)
+
+
+@pytest.fixture(scope='module')
 def auth_headers() -> Dict[str, str]:
-    """Get auth headers for API calls."""
-    if not TEST_JWT:
-        pytest.skip("TEST_JWT not set - run refresh_test_token.py first")
+    """
+    Get auth headers for API calls.
+    Uses TEST_JWT if set, otherwise generates one from TENANT_JWT_SECRET.
+    """
+    token = TEST_JWT
+
+    if not token:
+        # Try to generate from JWT secret
+        token = generate_test_jwt(TEST_USER_ID, TEST_YACHT_ID)
+
+    if not token:
+        pytest.skip(
+            "No auth token available. Set TEST_JWT or TENNANT_SUPABASE_JWT_SECRET"
+        )
+
     return {
-        'Authorization': f'Bearer {TEST_JWT}',
+        'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json',
     }
 
