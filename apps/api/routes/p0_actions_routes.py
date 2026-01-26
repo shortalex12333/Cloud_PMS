@@ -3945,6 +3945,23 @@ async def execute_action(
         elif action in ("create_vessel_certificate", "create_crew_certificate",
                         "update_certificate", "link_document_to_certificate",
                         "supersede_certificate"):
+            # Role-based access control for certificate actions
+            CERT_ALLOWED_ROLES = {
+                "create_vessel_certificate": ["chief_engineer", "captain", "manager"],
+                "create_crew_certificate": ["chief_engineer", "captain", "manager"],
+                "update_certificate": ["chief_engineer", "captain", "manager"],
+                "link_document_to_certificate": ["chief_engineer", "captain", "manager"],
+                "supersede_certificate": ["captain", "manager"],  # Manager-only for signed actions
+            }
+            user_role = user_context.get("role", "")
+            allowed_roles = CERT_ALLOWED_ROLES.get(action, [])
+            if user_role not in allowed_roles:
+                logger.warning(f"[RLS] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
+                )
+
             # Import certificate handlers lazily
             from handlers.certificate_handlers import get_certificate_handlers
             tenant_alias = user_context.get("tenant_key_alias", "")
