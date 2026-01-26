@@ -11,9 +11,9 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Mail, Paperclip, ChevronLeft, Loader2, ArrowLeft, Inbox, Send } from 'lucide-react';
+import { Search, X, Mail, Paperclip, ChevronLeft, Loader2, ArrowLeft, Inbox, Send, Download, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useInboxThreads, useThread, useMessageContent, type EmailThread } from '@/hooks/useEmailData';
+import { useInboxThreads, useThread, useMessageContent, downloadAndSaveAttachment, type EmailThread, type DownloadError } from '@/hooks/useEmailData';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 // ============================================================================
@@ -654,20 +654,11 @@ function MessageContent({ providerMessageId }: MessageContentProps) {
           </h4>
           <div className="flex flex-wrap gap-2">
             {content.attachments.map((att: any, i: number) => (
-              <div
+              <AttachmentItem
                 key={i}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#3a3a3c]"
-              >
-                <Paperclip className="w-3.5 h-3.5 text-[#98989f]" />
-                <span className="text-[13px] text-white truncate max-w-[200px]">
-                  {att.name}
-                </span>
-                {att.size && (
-                  <span className="text-[11px] text-[#636366]">
-                    {formatFileSize(att.size)}
-                  </span>
-                )}
-              </div>
+                attachment={att}
+                providerMessageId={providerMessageId}
+              />
             ))}
           </div>
         </div>
@@ -737,5 +728,81 @@ function OperatorChip({ label, active, onClick }: OperatorChipProps) {
     >
       {label}
     </button>
+  );
+}
+
+// ============================================================================
+// ATTACHMENT ITEM (with download)
+// ============================================================================
+
+interface AttachmentItemProps {
+  attachment: {
+    id: string;
+    name: string;
+    contentType?: string;
+    size?: number;
+  };
+  providerMessageId: string;
+}
+
+function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) {
+  const [status, setStatus] = React.useState<'idle' | 'downloading' | 'error'>('idle');
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleDownload = async () => {
+    setStatus('downloading');
+    setError(null);
+
+    const result = await downloadAndSaveAttachment(
+      providerMessageId,
+      attachment.id,
+      attachment.name
+    );
+
+    if (result.success) {
+      setStatus('idle');
+    } else {
+      setStatus('error');
+      setError(result.error.message);
+    }
+  };
+
+  return (
+    <div className="flex flex-col">
+      <button
+        onClick={handleDownload}
+        disabled={status === 'downloading'}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
+          status === 'error'
+            ? 'bg-[#3a1a1a] border border-[#ff453a]/30'
+            : 'bg-[#3a3a3c] hover:bg-[#48484a]'
+        )}
+      >
+        {status === 'downloading' ? (
+          <Loader2 className="w-3.5 h-3.5 text-[#98989f] animate-spin" />
+        ) : status === 'error' ? (
+          <AlertCircle className="w-3.5 h-3.5 text-[#ff453a]" />
+        ) : (
+          <Download className="w-3.5 h-3.5 text-[#98989f]" />
+        )}
+        <span className={cn(
+          'text-[13px] truncate max-w-[180px]',
+          status === 'error' ? 'text-[#ff453a]' : 'text-white'
+        )}>
+          {attachment.name}
+        </span>
+        {attachment.size && status !== 'error' && (
+          <span className="text-[11px] text-[#636366]">
+            {formatFileSize(attachment.size)}
+          </span>
+        )}
+      </button>
+      {error && (
+        <p className="text-[11px] text-[#ff453a] mt-1 ml-1">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

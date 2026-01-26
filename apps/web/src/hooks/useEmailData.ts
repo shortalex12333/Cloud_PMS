@@ -519,3 +519,95 @@ export function useWatcherStatus() {
     retry: 1,
   });
 }
+
+// ============================================================================
+// ATTACHMENT DOWNLOAD
+// ============================================================================
+
+export type DownloadError = {
+  code: 'OVERSIZE' | 'DISALLOWED_TYPE' | 'NOT_FOUND' | 'UNKNOWN';
+  message: string;
+};
+
+/**
+ * Download an attachment from an email message.
+ * Returns a Blob on success, or throws a DownloadError.
+ *
+ * Error codes:
+ * - OVERSIZE (413): File exceeds size limit
+ * - DISALLOWED_TYPE (415): File type not permitted
+ * - NOT_FOUND (404): Attachment not found
+ * - UNKNOWN: Other errors
+ */
+export async function downloadAttachment(
+  providerMessageId: string,
+  attachmentId: string
+): Promise<Blob> {
+  const headers = await getAuthHeaders();
+  const encodedMessageId = encodeURIComponent(providerMessageId);
+
+  const response = await fetch(
+    `${API_BASE}/email/message/${encodedMessageId}/attachments/${attachmentId}/download`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    let errorDetail = 'Download failed';
+    try {
+      const errorData = await response.json();
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      // Response may not be JSON
+    }
+
+    const error: DownloadError = {
+      code: 'UNKNOWN',
+      message: errorDetail,
+    };
+
+    if (response.status === 413) {
+      error.code = 'OVERSIZE';
+      error.message = 'File is too large to download (max 50MB)';
+    } else if (response.status === 415) {
+      error.code = 'DISALLOWED_TYPE';
+      error.message = 'This file type is not permitted for download';
+    } else if (response.status === 404) {
+      error.code = 'NOT_FOUND';
+      error.message = 'Attachment not found';
+    }
+
+    throw error;
+  }
+
+  return response.blob();
+}
+
+/**
+ * Download attachment and trigger browser save dialog
+ */
+export async function downloadAndSaveAttachment(
+  providerMessageId: string,
+  attachmentId: string,
+  filename: string
+): Promise<{ success: true } | { success: false; error: DownloadError }> {
+  try {
+    const blob = await downloadAttachment(providerMessageId, attachmentId);
+
+    // Create download link and trigger save
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error as DownloadError,
+    };
+  }
+}
