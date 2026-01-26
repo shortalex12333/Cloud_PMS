@@ -951,6 +951,15 @@ async def render_message(
         read_client = create_read_client(supabase, user_id, yacht_id)
         content = await read_client.get_message_content(provider_message_id)
 
+        # Debug: Log render request details (no body content for security)
+        body_obj = content.get('body', {})
+        body_type = body_obj.get('contentType', 'unknown')
+        body_len = len(body_obj.get('content', '')) if body_obj.get('content') else 0
+        logger.info(
+            f"[email/render] message={provider_message_id[:16]}... "
+            f"type={body_type} size={body_len} yacht={yacht_id[:8]}"
+        )
+
         return {
             'id': content.get('id'),
             'subject': content.get('subject'),
