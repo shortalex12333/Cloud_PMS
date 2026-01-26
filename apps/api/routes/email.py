@@ -38,7 +38,7 @@ from threading import Lock
 # Local imports
 from middleware.auth import get_authenticated_user
 from integrations.supabase import get_supabase_client  # Deprecated for email routes
-from pipeline_service import get_tenant_client
+from supabase import create_client
 from integrations.feature_flags import check_email_feature
 from integrations.graph_client import (
     create_read_client,
@@ -55,6 +55,23 @@ from services.email_suggestion_service import generate_suggestions_for_thread
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/email", tags=["email"])
+
+
+# ============================================================================
+# TENANT CLIENT (Avoids circular import from pipeline_service)
+# ============================================================================
+
+def get_tenant_client(tenant_key_alias: str):
+    """Get Supabase client for tenant DB using tenant-prefixed env vars."""
+    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
+    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
+
+    if not url or not key:
+        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
+        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
+
+    return create_client(url, key)
+
 
 # ============================================================================
 # SECURITY FIX P0-007: File Upload Validation Constants
@@ -2450,7 +2467,6 @@ async def save_attachment(
         import base64
         file_data = base64.b64decode(content_bytes)
 
-<<<<<<< HEAD
         # SECURITY FIX P0-007: Validate file size
         if len(file_data) > MAX_FILE_SIZE_BYTES:
             raise HTTPException(
@@ -2480,31 +2496,6 @@ async def save_attachment(
         # SECURITY FIX P0-007: Generate safe storage path (no user-provided path components)
         safe_filename = f"{uuid.uuid4()}{ext}"
         storage_path = f"{yacht_id}/email-attachments/{safe_filename}"
-=======
-        # M4: File size validation
-        if len(file_data) > MAX_ATTACHMENT_SIZE_BYTES:
-            logger.warning(f"[email/evidence/save-attachment] File too large: {len(file_data)} bytes")
-            raise HTTPException(
-                status_code=413,
-                detail=f"Attachment too large. Maximum size is {MAX_ATTACHMENT_SIZE_BYTES // (1024*1024)} MB"
-            )
-
-        # Determine storage path
-        filename = attachment.get('name', 'attachment')
-        content_type = attachment.get('contentType', 'application/octet-stream')
-
-        # M4: Content type validation
-        if content_type not in ALLOWED_ATTACHMENT_TYPES:
-            logger.warning(f"[email/evidence/save-attachment] Disallowed content type: {content_type}")
-            raise HTTPException(
-                status_code=415,
-                detail=f"Content type '{content_type}' is not allowed for evidence attachments"
-            )
-
-        # Sanitize folder path (prevent path traversal)
-        folder = (request.target_folder or 'email-attachments').replace('..', '').strip('/')
-        storage_path = f"{yacht_id}/{folder}/{uuid.uuid4()}-{filename}"
->>>>>>> 43293c5 (fix(email): Use get_tenant_client for multi-tenant DB routing)
 
         # Upload to storage
         supabase.storage.from_('documents').upload(

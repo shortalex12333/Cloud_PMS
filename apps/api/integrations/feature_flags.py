@@ -27,6 +27,8 @@ EMAIL_RENDER_ENABLED = os.getenv('EMAIL_RENDER_ENABLED', 'true').lower() == 'tru
 EMAIL_LINK_ENABLED = os.getenv('EMAIL_LINK_ENABLED', 'true').lower() == 'true'
 EMAIL_SYNC_ENABLED = os.getenv('EMAIL_SYNC_ENABLED', 'true').lower() == 'true'
 EMAIL_EVIDENCE_ENABLED = os.getenv('EMAIL_EVIDENCE_ENABLED', 'true').lower() == 'true'
+EMAIL_SEARCH_ENABLED = os.getenv('EMAIL_SEARCH_ENABLED', 'true').lower() == 'true'
+EMAIL_FOCUS_ENABLED = os.getenv('EMAIL_FOCUS_ENABLED', 'true').lower() == 'true'
 
 # Log flag status on startup
 logger.info(f"[FeatureFlags] EMAIL_TRANSPORT_ENABLED={EMAIL_TRANSPORT_ENABLED}")
@@ -36,6 +38,8 @@ logger.info(f"[FeatureFlags] EMAIL_RENDER_ENABLED={EMAIL_RENDER_ENABLED}")
 logger.info(f"[FeatureFlags] EMAIL_LINK_ENABLED={EMAIL_LINK_ENABLED}")
 logger.info(f"[FeatureFlags] EMAIL_SYNC_ENABLED={EMAIL_SYNC_ENABLED}")
 logger.info(f"[FeatureFlags] EMAIL_EVIDENCE_ENABLED={EMAIL_EVIDENCE_ENABLED}")
+logger.info(f"[FeatureFlags] EMAIL_SEARCH_ENABLED={EMAIL_SEARCH_ENABLED}")
+logger.info(f"[FeatureFlags] EMAIL_FOCUS_ENABLED={EMAIL_FOCUS_ENABLED}")
 
 
 def check_email_feature(feature_name: str) -> tuple[bool, str]:
@@ -55,6 +59,8 @@ def check_email_feature(feature_name: str) -> tuple[bool, str]:
         'link': EMAIL_LINK_ENABLED,
         'sync': EMAIL_SYNC_ENABLED,
         'evidence': EMAIL_EVIDENCE_ENABLED,
+        'search': EMAIL_SEARCH_ENABLED,
+        'focus': EMAIL_FOCUS_ENABLED,
     }
 
     enabled = flags.get(feature_name, False)
@@ -72,5 +78,7 @@ __all__ = [
     'EMAIL_LINK_ENABLED',
     'EMAIL_SYNC_ENABLED',
     'EMAIL_EVIDENCE_ENABLED',
+    'EMAIL_SEARCH_ENABLED',
+    'EMAIL_FOCUS_ENABLED',
     'check_email_feature',
 ]
