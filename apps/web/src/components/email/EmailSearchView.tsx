@@ -42,6 +42,76 @@ import {
   type EmailSearchResult,
 } from '@/hooks/useEmailData';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import DOMPurify from 'isomorphic-dompurify';
+
+// ============================================================================
+// HTML SANITIZATION CONFIG
+// ============================================================================
+
+// Configure DOMPurify to allow safe HTML tags and block dangerous content
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS: [
+    // Structure
+    'p', 'div', 'span', 'br', 'hr',
+    // Headings
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    // Lists
+    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+    // Text formatting
+    'b', 'i', 'u', 's', 'strong', 'em', 'mark', 'small', 'sub', 'sup',
+    // Links (with restricted attributes)
+    'a',
+    // Tables
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+    // Quotes and code
+    'blockquote', 'pre', 'code',
+    // Images (cid: references only, external blocked)
+    'img',
+  ],
+  ALLOWED_ATTR: [
+    // Global
+    'class', 'id', 'style',
+    // Links
+    'href', 'target', 'rel',
+    // Images
+    'src', 'alt', 'width', 'height',
+    // Tables
+    'colspan', 'rowspan', 'scope',
+  ],
+  // Force all links to open in new tab with security
+  ADD_ATTR: ['target', 'rel'],
+  // Block data: URIs in images (potential XSS vector)
+  ALLOW_DATA_ATTR: false,
+  // Don't allow external images by default (privacy/tracking)
+  FORBID_TAGS: ['script', 'style', 'iframe', 'frame', 'object', 'embed', 'form', 'input', 'button'],
+  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+};
+
+/**
+ * Sanitize HTML content for safe rendering
+ * - Strips scripts and dangerous attributes
+ * - Blocks external image auto-loading
+ * - Forces links to open securely in new tabs
+ */
+function sanitizeHtml(html: string): string {
+  // First pass: DOMPurify sanitization
+  let clean = DOMPurify.sanitize(html, SANITIZE_CONFIG);
+
+  // Second pass: Add security attributes to links
+  clean = clean.replace(
+    /<a\s+([^>]*?)>/gi,
+    '<a $1 target="_blank" rel="noopener noreferrer">'
+  );
+
+  // Third pass: Block external images (replace src with data-blocked-src)
+  // Only allow cid: references (inline attachments) and data:image (already sanitized)
+  clean = clean.replace(
+    /<img\s+([^>]*?)src=["'](?!(cid:|data:image))/gi,
+    '<img $1data-blocked-src="'
+  );
+
+  return clean;
+}
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -813,9 +883,10 @@ function MessagePanel({
                   className="prose prose-invert prose-sm max-w-none text-[14px] leading-relaxed
                     [&_a]:text-[#0a84ff] [&_a]:no-underline [&_a:hover]:underline
                     [&_img]:max-w-full [&_img]:h-auto
+                    [&_img[data-blocked-src]]:hidden
                     [&_table]:border-collapse [&_td]:border [&_td]:border-[#3d3d3f] [&_td]:p-2
                     [&_th]:border [&_th]:border-[#3d3d3f] [&_th]:p-2 [&_th]:bg-[#2c2c2e]"
-                  dangerouslySetInnerHTML={{ __html: content.body.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body.content) }}
                 />
               ) : (
                 <pre className="text-[14px] text-white whitespace-pre-wrap font-sans leading-relaxed">
