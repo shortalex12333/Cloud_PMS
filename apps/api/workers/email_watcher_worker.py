@@ -130,6 +130,23 @@ class EmailWatcherWorker:
 
         logger.info(f"Syncing watcher for user={user_id[:8]}... yacht={yacht_id[:8]}...")
 
+        # GUARDRAIL: Validate watcher.user_id has a valid token before syncing
+        # This prevents the "user_id mismatch" bug where watcher pointed to wrong user
+        token_exists = self.supabase.table('auth_microsoft_tokens').select('user_id').eq(
+            'user_id', user_id
+        ).eq('yacht_id', yacht_id).eq('provider', 'microsoft_graph').eq(
+            'token_purpose', 'read'
+        ).eq('is_revoked', False).execute()
+
+        if not token_exists.data:
+            logger.error(
+                f"[GUARDRAIL] No valid token for watcher user_id={user_id[:8]}... "
+                "This may indicate watcher/token user mismatch. "
+                "Verify watcher.user_id matches token.user_id in auth_microsoft_tokens."
+            )
+            await self._mark_watcher_error(watcher['id'], 'token_user_mismatch')
+            return
+
         # Get fresh access token
         access_token = await self._get_access_token(user_id, yacht_id)
 

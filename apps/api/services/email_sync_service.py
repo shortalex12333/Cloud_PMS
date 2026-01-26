@@ -320,15 +320,10 @@ class EmailSyncService:
             else:
                 update_data['last_outbound_at'] = activity_time
 
-            # Increment message count
+            # Update thread metadata (message_count will be recalculated if needed)
             self.supabase.table('email_threads').update(update_data).eq(
                 'id', thread_id
             ).execute()
-
-            # Update message count separately
-            self.supabase.rpc('increment_thread_message_count', {
-                'p_thread_id': thread_id
-            }).execute()
 
         else:
             # Create new thread
@@ -338,7 +333,7 @@ class EmailSyncService:
                 'latest_subject': subject,
                 'participant_hashes': participant_hashes,
                 'has_attachments': has_attachments,
-                'source': 'outlook',
+                'source': 'external',  # Check constraint: external, internal, celeste
                 'message_count': 1,
                 'first_message_at': activity_time,
                 'last_activity_at': activity_time,
@@ -403,7 +398,7 @@ class EmailSyncService:
             'from_display_name': from_display_name,
             'to_addresses_hash': to_hashes,
             'cc_addresses_hash': cc_hashes,
-            'folder': folder,
+            'folder': 'sent' if folder == 'sentItems' else folder,  # Map Graph API folder name to DB constraint
             'direction': direction,
             'received_at': msg.get('receivedDateTime'),
             'sent_at': msg.get('sentDateTime'),
