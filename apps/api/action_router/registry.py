@@ -383,7 +383,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/create-vessel",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
         required_fields=[
             "yacht_id",
             "certificate_type",
@@ -399,7 +399,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/create-crew",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],  # is_hod() = chief_engineer, captain, manager
+        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
         required_fields=[
             "yacht_id",
             "person_name",
@@ -415,7 +415,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/update",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
         required_fields=[
             "yacht_id",
             "certificate_id",
@@ -429,7 +429,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/link-document",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],  # HOD roles
         required_fields=[
             "yacht_id",
             "certificate_id",
@@ -444,7 +444,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/certificates/supersede",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Captain", "Manager"],  # Command roles for SIGNED action (lens: Captain/Manager)
+        allowed_roles=["captain", "manager"],  # Manager roles for SIGNED action
         required_fields=[
             "yacht_id",
             "certificate_id",
