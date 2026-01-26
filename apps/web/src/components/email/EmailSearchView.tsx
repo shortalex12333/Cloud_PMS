@@ -245,6 +245,34 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
                 }}
               />
             </div>
+
+            {/* Operator Chips - insert query operators */}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="text-[11px] text-[#636366] mr-1">Operators:</span>
+              <OperatorChip
+                label="from:"
+                onClick={() => setSearchQuery(q => q + (q && !q.endsWith(' ') ? ' ' : '') + 'from:')}
+              />
+              <OperatorChip
+                label="to:"
+                onClick={() => setSearchQuery(q => q + (q && !q.endsWith(' ') ? ' ' : '') + 'to:')}
+              />
+              <OperatorChip
+                label="subject:"
+                onClick={() => setSearchQuery(q => q + (q && !q.endsWith(' ') ? ' ' : '') + 'subject:')}
+              />
+              <OperatorChip
+                label="has:attachment"
+                active={searchQuery.includes('has:attachment')}
+                onClick={() => {
+                  if (searchQuery.includes('has:attachment')) {
+                    setSearchQuery(q => q.replace(/has:attachment\s*/g, '').trim());
+                  } else {
+                    setSearchQuery(q => q + (q && !q.endsWith(' ') ? ' ' : '') + 'has:attachment');
+                  }
+                }}
+              />
+            </div>
             </>
           )}
         </div>
@@ -681,6 +709,32 @@ function DirectionChip({ icon, label, active, onClick }: DirectionChipProps) {
       )}
     >
       {icon}
+      {label}
+    </button>
+  );
+}
+
+// ============================================================================
+// OPERATOR CHIP
+// ============================================================================
+
+interface OperatorChipProps {
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}
+
+function OperatorChip({ label, active, onClick }: OperatorChipProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'px-2 py-1 rounded text-[11px] font-mono transition-colors',
+        active
+          ? 'bg-[#30d158]/20 text-[#30d158] border border-[#30d158]/30'
+          : 'bg-[#2c2c2e] text-[#98989f] hover:bg-[#3a3a3c] border border-[#3d3d3f]/30'
+      )}
+    >
       {label}
     </button>
   );
