@@ -219,7 +219,7 @@ except Exception as e:
 
 try:
     from routes.certificate_routes import router as certificate_router
-    app.include_router(certificate_router)
+    app.include_router(certificate_router, prefix="/api/v1/certificates", tags=["certificates"])
     logger.info("✅ Certificate routes registered at /api/v1/certificates/*")
 except Exception as e:
     logger.error(f"❌ Failed to register Certificate routes: {e}")
@@ -395,6 +395,18 @@ def get_extractor():
 async def healthz():
     """Minimal health check - no Pydantic, no dependencies."""
     return {"status": "ok"}
+
+
+@app.get("/debug/routes", include_in_schema=False)
+async def debug_routes():
+    """List all mounted routes for debugging."""
+    routes = []
+    for route in app.routes:
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+        if path:
+            routes.append({"path": path, "methods": list(methods) if methods else None})
+    return {"routes": sorted(routes, key=lambda r: r["path"])}
 
 
 @app.get("/", response_model=HealthResponse)
