@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Mail, Paperclip, ChevronLeft, Loader2, ArrowLeft } from 'lucide-react';
+import { Search, X, Mail, Paperclip, ChevronLeft, Loader2, ArrowLeft, Inbox, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useInboxThreads, useThread, useMessageContent, type EmailThread } from '@/hooks/useEmailData';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -41,6 +41,8 @@ interface EmailSearchViewProps {
 // COMPONENT
 // ============================================================================
 
+type DirectionFilter = 'all' | 'inbound' | 'outbound';
+
 export default function EmailSearchView({ className }: EmailSearchViewProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,10 +51,16 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch threads with search
-  const { data, isLoading, error, refetch } = useInboxThreads(page, true, debouncedQuery);
+  // Fetch threads with search and direction filter
+  const { data, isLoading, error, refetch } = useInboxThreads(
+    page,
+    true,
+    debouncedQuery,
+    directionFilter === 'all' ? undefined : directionFilter
+  );
 
   const threads = data?.threads || [];
   const total = data?.total || 0;
@@ -143,6 +151,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
 
           {/* Search bar - only show when not viewing thread */}
           {!selectedThread && (
+            <>
             <div className="spotlight-panel">
               <div className="flex items-center gap-3 px-4 h-[50px]">
                 <Search
@@ -199,6 +208,38 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
                 )}
               </div>
             </div>
+
+            {/* Direction Filter Chips */}
+            <div className="flex items-center gap-2 mt-3">
+              <DirectionChip
+                icon={<Mail className="w-3.5 h-3.5" />}
+                label="All"
+                active={directionFilter === 'all'}
+                onClick={() => {
+                  setDirectionFilter('all');
+                  setPage(1);
+                }}
+              />
+              <DirectionChip
+                icon={<Inbox className="w-3.5 h-3.5" />}
+                label="Inbox"
+                active={directionFilter === 'inbound'}
+                onClick={() => {
+                  setDirectionFilter('inbound');
+                  setPage(1);
+                }}
+              />
+              <DirectionChip
+                icon={<Send className="w-3.5 h-3.5" />}
+                label="Sent"
+                active={directionFilter === 'outbound'}
+                onClick={() => {
+                  setDirectionFilter('outbound');
+                  setPage(1);
+                }}
+              />
+            </div>
+            </>
           )}
         </div>
       </div>
@@ -609,4 +650,32 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ============================================================================
+// DIRECTION FILTER CHIP
+// ============================================================================
+
+interface DirectionChipProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+function DirectionChip({ icon, label, active, onClick }: DirectionChipProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors',
+        active
+          ? 'bg-[#0a84ff] text-white'
+          : 'bg-[#3a3a3c] text-[#98989f] hover:bg-[#48484a]'
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
 }
