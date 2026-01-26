@@ -319,7 +319,7 @@ export function useCreateLink() {
       objectId: string;
     }) => {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_BASE}/email/link/create`, {
+      const response = await fetch(`${API_BASE}/email/link/add`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -357,10 +357,16 @@ export type InboxResponse = {
 
 /**
  * Fetch inbox threads (optionally unlinked only)
+ * @param direction - 'inbound', 'outbound', or undefined for both
  */
-export function useInboxThreads(page: number = 1, linked: boolean = false, searchQuery: string = '') {
+export function useInboxThreads(
+  page: number = 1,
+  linked: boolean = false,
+  searchQuery: string = '',
+  direction?: 'inbound' | 'outbound'
+) {
   return useQuery<InboxResponse>({
-    queryKey: ['email', 'inbox', page, linked, searchQuery],
+    queryKey: ['email', 'inbox', page, linked, searchQuery, direction],
     queryFn: async () => {
       const headers = await getAuthHeaders();
       const params = new URLSearchParams({
@@ -369,6 +375,9 @@ export function useInboxThreads(page: number = 1, linked: boolean = false, searc
       });
       if (searchQuery && searchQuery.length >= 2) {
         params.set('q', searchQuery);
+      }
+      if (direction) {
+        params.set('direction', direction);
       }
       const response = await fetch(
         `${API_BASE}/email/inbox?${params.toString()}`,
