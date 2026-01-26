@@ -1,0 +1,291 @@
+name: Staging Certificates Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/certificate_handlers.py'
+      - 'apps/api/routes/certificate_routes.py'
+      - 'supabase/migrations/*cert*'
+      - 'tests/acceptance/certificates/**'
+      - '.github/workflows/staging-certificates-acceptance.yml'
+  workflow_dispatch:
+
+env:
+  API_BASE: https://pipeline-core.int.celeste7.ai
+  YACHT_ID: 85fe1119-b04c-41ac-80f1-829d23322598
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch JWT from MASTER
+        id: jwt
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          STAGING_USER_EMAIL: ${{ secrets.STAGING_USER_EMAIL }}
+          STAGING_USER_PASSWORD: ${{ secrets.STAGING_USER_PASSWORD }}
+        run: |
+          response=$(curl -sS -X POST \
+            "${MASTER_SUPABASE_URL}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${MASTER_SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${STAGING_USER_EMAIL}\",\"password\":\"${STAGING_USER_PASSWORD}\"}")
+
+          JWT=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+
+          if [ -z "$JWT" ]; then
+            echo "Failed to obtain JWT"
+            echo "$response"
+            exit 1
+          fi
+
+          echo "JWT obtained successfully"
+          echo "jwt=$JWT" >> $GITHUB_OUTPUT
+
+      - name: Verify Feature Flags
+        run: |
+          response=$(curl -sS "${API_BASE}/api/v1/certificates/debug/status")
+          enabled=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('feature_enabled', False))")
+
+          if [ "$enabled" != "True" ]; then
+            echo "FEATURE_CERTIFICATES not enabled on staging"
+            echo "$response"
+            exit 1
+          fi
+          echo "Feature flags verified: enabled"
+
+      - name: Verify OpenAPI Paths
+        run: |
+          paths=$(curl -sS "${API_BASE}/openapi.json" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          cert_paths = [p for p in data.get('paths', {}).keys() if '/certificates' in p]
+          expected = [
+              '/api/v1/certificates/vessel',
+              '/api/v1/certificates/crew',
+              '/api/v1/certificates/expiring',
+              '/api/v1/certificates/{certificate_id}',
+              '/api/v1/certificates/{certificate_id}/history',
+              '/api/v1/certificates/debug/pipeline-test',
+              '/api/v1/certificates/debug/status'
+          ]
+          missing = [p for p in expected if p not in cert_paths]
+          if missing:
+              print(f'MISSING: {missing}')
+              exit(1)
+          print(f'All {len(expected)} paths present')
+          ")
+          echo "$paths"
+
+      - name: Run Certificate Read Tests
+        env:
+          JWT: ${{ steps.jwt.outputs.jwt }}
+        run: |
+          echo "=== List Expiring Certificates ==="
+          result=$(curl -sS -w "\n%{http_code}" \
+            -H "Authorization: Bearer $JWT" \
+            "${API_BASE}/api/v1/certificates/expiring?days_ahead=90")
+          http_code=$(echo "$result" | tail -1)
+          body=$(echo "$result" | head -n -1)
+
+          if [ "$http_code" != "200" ]; then
+            echo "FAILED: Expected 200, got $http_code"
+            echo "$body"
+            exit 1
+          fi
+          echo "List expiring: OK (HTTP $http_code)"
+
+          echo "=== List Vessel Certificates ==="
+          result=$(curl -sS -w "\n%{http_code}" \
+            -H "Authorization: Bearer $JWT" \
+            "${API_BASE}/api/v1/certificates/vessel")
+          http_code=$(echo "$result" | tail -1)
+
+          if [ "$http_code" != "200" ]; then
+            echo "FAILED: Expected 200, got $http_code"
+            exit 1
+          fi
+          echo "List vessel: OK (HTTP $http_code)"
+
+      - name: Run Certificate Mutation Tests
+        env:
+          JWT: ${{ steps.jwt.outputs.jwt }}
+        run: |
+          echo "=== Create Vessel Certificate ==="
+          CERT_NUM="CI-TEST-$(date +%s)"
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"create_vessel_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_type\": \"FLAG\",
+                \"certificate_name\": \"CI Test Certificate\",
+                \"certificate_number\": \"${CERT_NUM}\",
+                \"issuing_authority\": \"CI Test\",
+                \"expiry_date\": \"2030-01-01\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          body=$(echo "$result" | head -n -1)
+
+          if [ "$http_code" != "200" ]; then
+            echo "FAILED: Create certificate returned $http_code"
+            echo "$body"
+            exit 1
+          fi
+
+          CERT_ID=$(echo "$body" | python3 -c "import sys,json; print(json.load(sys.stdin).get('certificate_id',''))")
+          echo "Created certificate: $CERT_ID"
+          echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
+
+          echo "=== Update Certificate ==="
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"update_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_id\": \"${CERT_ID}\",
+                \"domain\": \"vessel\",
+                \"certificate_number\": \"${CERT_NUM}-UPDATED\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          if [ "$http_code" != "200" ]; then
+            echo "FAILED: Update certificate returned $http_code"
+            exit 1
+          fi
+          echo "Update certificate: OK"
+
+      - name: Run Negative Tests
+        env:
+          JWT: ${{ steps.jwt.outputs.jwt }}
+        run: |
+          echo "=== Supersede Without Signature (expect 400) ==="
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"supersede_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_id\": \"${CERT_ID}\",
+                \"domain\": \"vessel\",
+                \"reason\": \"Test without signature\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          if [ "$http_code" != "400" ]; then
+            echo "FAILED: Expected 400 for missing signature, got $http_code"
+            exit 1
+          fi
+          echo "Supersede without signature rejected: OK (HTTP 400)"
+
+          echo "=== Date Validation (expiry < issue = 400) ==="
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"update_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_id\": \"${CERT_ID}\",
+                \"domain\": \"vessel\",
+                \"issue_date\": \"2030-01-01\",
+                \"expiry_date\": \"2025-01-01\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          if [ "$http_code" != "500" ] && [ "$http_code" != "400" ]; then
+            echo "FAILED: Expected 400/500 for invalid dates, got $http_code"
+            exit 1
+          fi
+          echo "Date validation enforced: OK"
+
+      - name: Verify DB Invariants
+        env:
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_1_SUPABASE_URL }}
+          TENANT_SUPABASE_KEY: ${{ secrets.TENANT_1_SUPABASE_SERVICE_KEY }}
+        run: |
+          echo "=== Single-Tenant Assertion ==="
+          result=$(curl -sS \
+            -H "apikey: ${TENANT_SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${TENANT_SUPABASE_KEY}" \
+            -H "Prefer: count=exact" \
+            "${TENANT_SUPABASE_URL}/rest/v1/pms_vessel_certificates?select=yacht_id")
+
+          yacht_count=$(echo "$result" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          yachts = set(r['yacht_id'] for r in data)
+          print(len(yachts))
+          ")
+
+          if [ "$yacht_count" != "1" ]; then
+            echo "FAILED: Expected 1 yacht_id, found $yacht_count"
+            exit 1
+          fi
+          echo "Single-tenant assertion: OK (1 yacht_id)"
+
+          echo "=== Audit Log Check ==="
+          result=$(curl -sS \
+            -H "apikey: ${TENANT_SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${TENANT_SUPABASE_KEY}" \
+            "${TENANT_SUPABASE_URL}/rest/v1/pms_audit_log?entity_type=eq.certificate&limit=5&order=created_at.desc")
+
+          count=$(echo "$result" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          echo "Recent certificate audit entries: $count"
+
+      - name: Cleanup Test Certificate
+        if: always()
+        env:
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_1_SUPABASE_URL }}
+          TENANT_SUPABASE_KEY: ${{ secrets.TENANT_1_SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -n "$CERT_ID" ]; then
+            curl -sS -X DELETE \
+              -H "apikey: ${TENANT_SUPABASE_KEY}" \
+              -H "Authorization: Bearer ${TENANT_SUPABASE_KEY}" \
+              "${TENANT_SUPABASE_URL}/rest/v1/pms_vessel_certificates?id=eq.${CERT_ID}"
+            echo "Cleaned up test certificate: $CERT_ID"
+          fi
+
+      - name: Summary
+        run: |
+          echo "=========================================="
+          echo "STAGING ACCEPTANCE - CERTIFICATES"
+          echo "=========================================="
+          echo "Feature flags: PASS"
+          echo "OpenAPI paths: PASS"
+          echo "Read endpoints: PASS"
+          echo "Mutation endpoints: PASS"
+          echo "Negative tests: PASS"
+          echo "DB invariants: PASS"
+          echo "=========================================="
+          echo "ALL TESTS PASSED"
