@@ -1,13 +1,13 @@
 /**
  * CelesteOS Workflow Archetype Mapping
  *
- * Maps all 67 micro-actions to 6 master workflow archetypes
- * This eliminates the need for 67 separate n8n workflows
+ * Maps all 83 micro-actions to 6 master workflow archetypes
+ * This eliminates the need for 83 separate n8n workflows
  *
  * Architecture: 6 master workflows with switch nodes
  *
- * Version: 1.0
- * Date: 2025-11-21
+ * Version: 1.1
+ * Date: 2026-01-26
  */
 
 import { MicroAction } from './actions';
@@ -350,18 +350,19 @@ export function isActionOfType(action: MicroAction, archetype: WorkflowArchetype
 // ============================================================================
 
 export const ARCHETYPE_STATS = {
-  VIEW: VIEW_ACTIONS.length,      // 23
-  UPDATE: UPDATE_ACTIONS.length,  // 18
-  CREATE: CREATE_ACTIONS.length,  // 14
-  EXPORT: EXPORT_ACTIONS.length,  // 6
-  RAG: RAG_ACTIONS.length,        // 4
-  LINKING: LINKING_ACTIONS.length, // 6
-  DELETE: DELETE_ACTIONS.length,  // 1
-  TOTAL: 67,
+  VIEW: VIEW_ACTIONS.length,       // 24
+  UPDATE: UPDATE_ACTIONS.length,   // 23
+  CREATE: CREATE_ACTIONS.length,   // 17
+  EXPORT: EXPORT_ACTIONS.length,   // 6
+  RAG: RAG_ACTIONS.length,         // 4
+  LINKING: LINKING_ACTIONS.length, // 8
+  DELETE: DELETE_ACTIONS.length,   // 1
+  TOTAL: 83,
 };
 
-// Validation: Ensure all 67 actions are accounted for
+// Validation: Ensure all 83 actions are accounted for
+// (Original spec was 67, expanded to 83 with edit/addendum actions)
 const totalMapped = Object.keys(ACTION_TO_ARCHETYPE_MAP).length;
-if (totalMapped !== 67) {
-  console.warn(`⚠️ Action count mismatch: ${totalMapped}/67 actions mapped`);
+if (totalMapped !== 83) {
+  console.warn(`⚠️ Action count mismatch: ${totalMapped}/83 actions mapped`);
 }

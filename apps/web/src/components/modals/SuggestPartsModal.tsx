@@ -64,42 +64,42 @@ export function SuggestPartsModal({
   const [faultCode, setFaultCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadSuggestedParts = async () => {
-    setError(null);
-
-    const response = await executeAction(
-      'suggest_parts',
-      {
-        fault_id: context.fault_id,
-      },
-      {
-        successMessage: 'Parts suggestions loaded',
-        refreshData: false,
-      }
-    );
-
-    if (response?.success && response.data) {
-      setParts(response.data.suggested_parts || []);
-      setSummary(response.data.summary || null);
-      setFaultCode(response.data.fault_code || null);
-
-      if (onSuccess) {
-        onSuccess({
-          parts: response.data.suggested_parts || [],
-          summary: response.data.summary,
-        });
-      }
-    } else {
-      setError(response?.error?.message || 'Failed to load part suggestions');
-    }
-  };
-
   // Load parts when modal opens
   useEffect(() => {
-    if (open && context.fault_id) {
-      loadSuggestedParts();
-    }
-  }, [open, context.fault_id]);
+    if (!open || !context.fault_id) return;
+
+    const loadSuggestedParts = async () => {
+      setError(null);
+
+      const response = await executeAction(
+        'suggest_parts',
+        {
+          fault_id: context.fault_id,
+        },
+        {
+          successMessage: 'Parts suggestions loaded',
+          refreshData: false,
+        }
+      );
+
+      if (response?.success && response.data) {
+        setParts(response.data.suggested_parts || []);
+        setSummary(response.data.summary || null);
+        setFaultCode(response.data.fault_code || null);
+
+        if (onSuccess) {
+          onSuccess({
+            parts: response.data.suggested_parts || [],
+            summary: response.data.summary,
+          });
+        }
+      } else {
+        setError(response?.error?.message || 'Failed to load part suggestions');
+      }
+    };
+
+    loadSuggestedParts();
+  }, [open, context.fault_id, executeAction, onSuccess]);
 
   // Reset state when modal closes
   useEffect(() => {

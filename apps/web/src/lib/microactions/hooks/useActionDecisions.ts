@@ -147,6 +147,11 @@ export function useActionDecisions(
   const [error, setError] = useState<string | null>(null);
   const [timingMs, setTimingMs] = useState<number | null>(null);
 
+  // Stable keys for dependency tracking (avoids complex expressions in useCallback deps)
+  const intentsKey = useMemo(() => JSON.stringify(detected_intents), [detected_intents]);
+  const entitiesKey = useMemo(() => JSON.stringify(entities), [entities]);
+  const situationKey = useMemo(() => JSON.stringify(situation), [situation]);
+
   const fetchDecisions = useCallback(async () => {
     if (skip || authLoading || !session?.access_token) {
       return;
@@ -188,13 +193,14 @@ export function useActionDecisions(
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     skip,
     authLoading,
     session?.access_token,
-    JSON.stringify(detected_intents),
-    JSON.stringify(entities),
-    JSON.stringify(situation),
+    intentsKey,
+    entitiesKey,
+    situationKey,
     environment,
     include_blocked,
   ]);

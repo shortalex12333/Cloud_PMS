@@ -238,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
   const bootstrapRetryRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshBootstrapRef = useRef<(() => Promise<void>) | null>(null);
 
   /**
    * Refresh bootstrap data (can be called manually to retry after error)
@@ -250,14 +251,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(enrichedUser);
     setBootstrapping(false);
 
-    // If error, schedule retry
+    // If error, schedule retry using ref to get latest function
     if (enrichedUser.bootstrapStatus === 'error') {
       bootstrapRetryRef.current = setTimeout(() => {
         console.log('[AuthContext] Retrying bootstrap...');
-        refreshBootstrap();
+        refreshBootstrapRef.current?.();
       }, 10000); // Retry in 10s
     }
   }, [user, session]);
+
+  // Keep ref in sync with latest refreshBootstrap
+  useEffect(() => {
+    refreshBootstrapRef.current = refreshBootstrap;
+  }, [refreshBootstrap]);
 
   /**
    * Handle session changes - fast path, sets user immediately from session
@@ -284,11 +290,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(enrichedUser);
     setBootstrapping(false);
 
-    // Schedule retry if bootstrap failed
+    // Schedule retry if bootstrap failed (using ref to get latest function)
     if (enrichedUser.bootstrapStatus === 'error') {
       bootstrapRetryRef.current = setTimeout(() => {
         console.log('[AuthContext] Retrying bootstrap after error...');
-        refreshBootstrap();
+        refreshBootstrapRef.current?.();
       }, 10000);
     }
   }, []);
@@ -345,6 +351,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (subscription) subscription.unsubscribe();
       if (bootstrapRetryRef.current) clearTimeout(bootstrapRetryRef.current);
     };
+    // Note: 'user' intentionally excluded - this effect initializes once, user check
+    // is a snapshot to prevent double-init before handleSession completes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleSession]);
 
   /**

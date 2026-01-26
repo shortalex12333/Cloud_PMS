@@ -132,55 +132,55 @@ export function AddToHandoverQuickModal({
 
   // Fetch prefill data when modal opens
   useEffect(() => {
-    if (open && entityType && entityId) {
-      fetchPrefillData();
-    }
-  }, [open, entityType, entityId]);
+    if (!open || !entityType || !entityId) return;
 
-  const fetchPrefillData = async () => {
-    setPrefillLoading(true);
-    setPrefillError(null);
+    const fetchPrefillData = async () => {
+      setPrefillLoading(true);
+      setPrefillError(null);
 
-    try {
-      // Call prefill endpoint
-      const response = await fetch(
-        `/v1/actions/add_to_handover/prefill?entity_type=${entityType}&entity_id=${entityId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to load handover details');
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'success' && data.prefill_data) {
-        const prefill = data.prefill_data;
-
-        // Set form values from prefill
-        setValue('title', prefill.title || '');
-        setValue('category', prefill.category || 'general');
-        setValue('priority', prefill.priority || 'normal');
-        setValue(
-          'summary_text',
-          prefill.summary_text
-            ? `${prefill.summary_text}\n\n[Your note here]`
-            : '[Your note here]'
+      try {
+        // Call prefill endpoint
+        const response = await fetch(
+          `/v1/actions/add_to_handover/prefill?entity_type=${entityType}&entity_id=${entityId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            },
+          }
         );
-      } else {
-        setPrefillError(data.message || 'Failed to load context');
+
+        if (!response.ok) {
+          throw new Error('Failed to load handover details');
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'success' && data.prefill_data) {
+          const prefill = data.prefill_data;
+
+          // Set form values from prefill
+          setValue('title', prefill.title || '');
+          setValue('category', prefill.category || 'general');
+          setValue('priority', prefill.priority || 'normal');
+          setValue(
+            'summary_text',
+            prefill.summary_text
+              ? `${prefill.summary_text}\n\n[Your note here]`
+              : '[Your note here]'
+          );
+        } else {
+          setPrefillError(data.message || 'Failed to load context');
+        }
+      } catch (error) {
+        console.error('Prefill error:', error);
+        setPrefillError('Failed to load entity context');
+      } finally {
+        setPrefillLoading(false);
       }
-    } catch (error) {
-      console.error('Prefill error:', error);
-      setPrefillError('Failed to load entity context');
-    } finally {
-      setPrefillLoading(false);
-    }
-  };
+    };
+
+    fetchPrefillData();
+  }, [open, entityType, entityId, setValue]);
 
   const onSubmit = async (data: AddToHandoverQuickFormData) => {
     const response = await executeAction(
