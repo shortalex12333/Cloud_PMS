@@ -1290,6 +1290,7 @@ class LinkAddRequest(BaseModel):
 
 
 @router.post("/link/add")
+@router.post("/link/create")  # Alias for backward compatibility
 async def add_link(
     request: LinkAddRequest,
     auth: dict = Depends(get_authenticated_user),
