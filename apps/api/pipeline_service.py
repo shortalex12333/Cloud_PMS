@@ -397,18 +397,6 @@ async def healthz():
     return {"status": "ok"}
 
 
-@app.get("/debug/routes", include_in_schema=False)
-async def debug_routes():
-    """List all mounted routes for debugging."""
-    routes = []
-    for route in app.routes:
-        path = getattr(route, "path", None)
-        methods = getattr(route, "methods", None)
-        if path:
-            routes.append({"path": path, "methods": list(methods) if methods else None})
-    return {"routes": sorted(routes, key=lambda r: r["path"])}
-
-
 @app.get("/", response_model=HealthResponse)
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
