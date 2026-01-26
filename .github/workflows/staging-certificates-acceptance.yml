@@ -6,6 +6,7 @@ on:
     paths:
       - 'apps/api/handlers/certificate_handlers.py'
       - 'apps/api/routes/certificate_routes.py'
+      - 'apps/api/routes/p0_actions_routes.py'
       - 'supabase/migrations/*cert*'
       - 'tests/acceptance/certificates/**'
       - '.github/workflows/staging-certificates-acceptance.yml'
@@ -31,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch JWT from MASTER
+      - name: Fetch JWT from MASTER (HOD user)
         id: jwt
         env:
           MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
@@ -53,7 +54,32 @@ jobs:
             exit 1
           fi
 
-          echo "JWT obtained successfully"
+          echo "JWT obtained successfully (HOD user)"
+          echo "jwt=$JWT" >> $GITHUB_OUTPUT
+
+      - name: Fetch JWT for CREW user (role denial test)
+        id: jwt_crew
+        env:
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          CREW_USER_EMAIL: ${{ secrets.CREW_USER_EMAIL }}
+          CREW_USER_PASSWORD: ${{ secrets.CREW_USER_PASSWORD }}
+        run: |
+          response=$(curl -sS -X POST \
+            "${MASTER_SUPABASE_URL}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${MASTER_SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${CREW_USER_EMAIL}\",\"password\":\"${CREW_USER_PASSWORD}\"}")
+
+          JWT=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+
+          if [ -z "$JWT" ]; then
+            echo "Failed to obtain CREW JWT"
+            echo "$response"
+            exit 1
+          fi
+
+          echo "CREW JWT obtained successfully"
           echo "jwt=$JWT" >> $GITHUB_OUTPUT
 
       - name: Verify Feature Flags
@@ -229,6 +255,149 @@ jobs:
           fi
           echo "Date validation enforced: OK"
 
+      - name: RLS Role Denial Tests
+        env:
+          JWT_CREW: ${{ steps.jwt_crew.outputs.jwt }}
+          JWT_HOD: ${{ steps.jwt.outputs.jwt }}
+          YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+        run: |
+          echo "=== CREW Cannot Create Certificate (expect 403) ==="
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT_CREW" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"create_vessel_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_type\": \"FLAG\",
+                \"certificate_name\": \"CREW Should Not Create\",
+                \"certificate_number\": \"CREW-DENY-$(date +%s)\",
+                \"issuing_authority\": \"Test\",
+                \"expiry_date\": \"2030-01-01\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          body=$(echo "$result" | head -n -1)
+
+          if [ "$http_code" != "403" ]; then
+            echo "FAILED: CREW should get 403, got $http_code"
+            echo "$body"
+            exit 1
+          fi
+          echo "CREW role denial: OK (HTTP 403)"
+
+          echo "=== CREW Cannot Supersede Certificate (expect 403) ==="
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT_CREW" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"supersede_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_id\": \"${CERT_ID}\",
+                \"domain\": \"vessel\",
+                \"reason\": \"CREW should not supersede\",
+                \"signature\": \"CREW-SIG\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          if [ "$http_code" != "403" ]; then
+            echo "FAILED: CREW should get 403 for supersede, got $http_code"
+            exit 1
+          fi
+          echo "CREW supersede denial: OK (HTTP 403)"
+
+      - name: Anon Read Tests
+        env:
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_ANON_KEY: ${{ secrets.TENANT_SUPABASE_ANON_KEY }}
+        run: |
+          echo "=== Anon Read Returns Empty Array ==="
+          result=$(curl -sS \
+            -H "apikey: ${TENANT_SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${TENANT_SUPABASE_ANON_KEY}" \
+            "${TENANT_SUPABASE_URL}/rest/v1/pms_vessel_certificates?select=id&limit=5")
+
+          count=$(echo "$result" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+
+          if [ "$count" != "0" ]; then
+            echo "FAILED: Anon should see 0 rows, got $count"
+            echo "$result"
+            exit 1
+          fi
+          echo "Anon read returns []: OK (0 rows)"
+
+      - name: Duplicate Certificate Number Test
+        env:
+          JWT: ${{ steps.jwt.outputs.jwt }}
+          YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+        run: |
+          echo "=== Create Certificate with Duplicate Number (expect 409) ==="
+          DUP_NUM="DUP-TEST-$(date +%s)"
+
+          # First create
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"create_vessel_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_type\": \"FLAG\",
+                \"certificate_name\": \"Dup Test 1\",
+                \"certificate_number\": \"${DUP_NUM}\",
+                \"issuing_authority\": \"Test\",
+                \"expiry_date\": \"2030-01-01\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          body=$(echo "$result" | head -n -1)
+          DUP_CERT_ID=$(echo "$body" | python3 -c "import sys,json; print(json.load(sys.stdin).get('certificate_id',''))" 2>/dev/null || echo "")
+
+          if [ "$http_code" != "200" ]; then
+            echo "FAILED: First create should succeed, got $http_code"
+            exit 1
+          fi
+          echo "First certificate created: $DUP_CERT_ID"
+
+          # Second create with same number (should fail)
+          result=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"create_vessel_certificate\",
+              \"context\": {\"yacht_id\": \"${YACHT_ID}\"},
+              \"payload\": {
+                \"certificate_type\": \"CLASS\",
+                \"certificate_name\": \"Dup Test 2\",
+                \"certificate_number\": \"${DUP_NUM}\",
+                \"issuing_authority\": \"Test\",
+                \"expiry_date\": \"2030-01-01\"
+              }
+            }" \
+            "${API_BASE}/v1/actions/execute")
+
+          http_code=$(echo "$result" | tail -1)
+          if [ "$http_code" != "409" ] && [ "$http_code" != "400" ] && [ "$http_code" != "500" ]; then
+            echo "FAILED: Duplicate should fail, got $http_code"
+            exit 1
+          fi
+          echo "Duplicate certificate_number rejected: OK (HTTP $http_code)"
+
+          # Cleanup
+          if [ -n "$DUP_CERT_ID" ]; then
+            curl -sS -X DELETE \
+              -H "apikey: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}" \
+              "${{ secrets.TENANT_SUPABASE_URL }}/rest/v1/pms_vessel_certificates?id=eq.${DUP_CERT_ID}"
+          fi
+
       - name: Verify DB Invariants
         env:
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
@@ -287,6 +456,9 @@ jobs:
           echo "Read endpoints: PASS"
           echo "Mutation endpoints: PASS"
           echo "Negative tests: PASS"
+          echo "RLS role denial: PASS"
+          echo "Anon read isolation: PASS"
+          echo "Duplicate rejection: PASS"
           echo "DB invariants: PASS"
           echo "=========================================="
           echo "ALL TESTS PASSED"
