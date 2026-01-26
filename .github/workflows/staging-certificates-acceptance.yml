@@ -13,7 +13,6 @@ on:
 
 env:
   API_BASE: https://pipeline-core.int.celeste7.ai
-  YACHT_ID: 85fe1119-b04c-41ac-80f1-829d23322598
 
 jobs:
   acceptance:
@@ -37,14 +36,14 @@ jobs:
         env:
           MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
           MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
-          STAGING_USER_EMAIL: ${{ secrets.STAGING_USER_EMAIL }}
-          STAGING_USER_PASSWORD: ${{ secrets.STAGING_USER_PASSWORD }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
         run: |
           response=$(curl -sS -X POST \
             "${MASTER_SUPABASE_URL}/auth/v1/token?grant_type=password" \
             -H "apikey: ${MASTER_SUPABASE_ANON_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{\"email\":\"${STAGING_USER_EMAIL}\",\"password\":\"${STAGING_USER_PASSWORD}\"}")
+            -d "{\"email\":\"${TEST_USER_EMAIL}\",\"password\":\"${TEST_USER_PASSWORD}\"}")
 
           JWT=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 
@@ -125,6 +124,7 @@ jobs:
       - name: Run Certificate Mutation Tests
         env:
           JWT: ${{ steps.jwt.outputs.jwt }}
+          YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
         run: |
           echo "=== Create Vessel Certificate ==="
           CERT_NUM="CI-TEST-$(date +%s)"
@@ -182,6 +182,7 @@ jobs:
       - name: Run Negative Tests
         env:
           JWT: ${{ steps.jwt.outputs.jwt }}
+          YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
         run: |
           echo "=== Supersede Without Signature (expect 400) ==="
           result=$(curl -sS -w "\n%{http_code}" -X POST \
@@ -230,8 +231,8 @@ jobs:
 
       - name: Verify DB Invariants
         env:
-          TENANT_SUPABASE_URL: ${{ secrets.TENANT_1_SUPABASE_URL }}
-          TENANT_SUPABASE_KEY: ${{ secrets.TENANT_1_SUPABASE_SERVICE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "=== Single-Tenant Assertion ==="
           result=$(curl -sS \
@@ -265,8 +266,8 @@ jobs:
       - name: Cleanup Test Certificate
         if: always()
         env:
-          TENANT_SUPABASE_URL: ${{ secrets.TENANT_1_SUPABASE_URL }}
-          TENANT_SUPABASE_KEY: ${{ secrets.TENANT_1_SUPABASE_SERVICE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -n "$CERT_ID" ]; then
             curl -sS -X DELETE \
