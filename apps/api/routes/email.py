@@ -667,13 +667,17 @@ async def search_emails(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[email/search] Error: {e}")
+        import traceback
+        tb_str = traceback.format_exc()
+        logger.error(f"[email/search] Error: {e}\n{tb_str}")
         # Log telemetry even on failure
         telemetry['total_ms'] = int((time.time() - start_time) * 1000)
         logger.error(
-            f"[email/search/error] yacht={yacht_id[:8]} total_ms={telemetry['total_ms']} error={str(e)[:100]}"
+            f"[email/search/error] yacht={yacht_id[:8]} total_ms={telemetry['total_ms']} error={str(e)[:200]}"
         )
-        raise HTTPException(status_code=500, detail="Search failed")
+        # Include error type in response for debugging (production should sanitize)
+        error_detail = f"Search failed: {type(e).__name__}: {str(e)[:100]}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 # ============================================================================
