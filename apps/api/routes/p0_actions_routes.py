@@ -1429,7 +1429,8 @@ async def execute_action(
             )
 
         # ===== COMPLIANCE ACTIONS (Cluster 06 - BLOCKED: tables not exist) =====
-        elif action in ("add_certificate", "renew_certificate", "update_certificate", "add_service_contract", "record_contract_claim"):
+        # NOTE: update_certificate is now handled by Certificate Lens v2 (pms_vessel_certificates/pms_crew_certificates)
+        elif action in ("add_certificate", "renew_certificate", "add_service_contract", "record_contract_claim"):
             # BLOCKED: pms_certificates and pms_service_contracts tables do not exist
             raise HTTPException(
                 status_code=501,
