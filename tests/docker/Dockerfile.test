@@ -1,0 +1,9 @@
+FROM python:3.11-slim
+
+WORKDIR /tests
+
+RUN pip install --no-cache-dir requests
+
+COPY run_rls_tests.py .
+
+CMD ["python", "run_rls_tests.py"]
