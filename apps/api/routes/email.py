@@ -472,7 +472,7 @@ async def search_emails(
 
     yacht_id = auth['yacht_id']
     user_id = auth.get('user_id', 'unknown')
-    supabase = get_tenant_client(auth['tenant_key_alias'])
+    supabase = get_supabase_client()  # Use same client as inbox for consistency
 
     # Telemetry tracking
     telemetry = {
