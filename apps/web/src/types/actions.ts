@@ -1,9 +1,9 @@
 /**
  * CelesteOS Micro-Actions Type System
- * Complete registry of all 67 canonical micro-actions
+ * Complete registry of all 83 canonical micro-actions
  *
- * Version: 1.0
- * Last Updated: 2025-11-21
+ * Version: 1.1
+ * Last Updated: 2026-01-26
  */
 
 // ============================================================================

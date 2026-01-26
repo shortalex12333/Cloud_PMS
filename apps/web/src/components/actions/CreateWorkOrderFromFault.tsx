@@ -80,61 +80,61 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
 
   // Fetch prefill data on mount
   useEffect(() => {
+    const fetchPrefillData = async () => {
+      try {
+        setStep('loading');
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+
+        const response = await fetch(
+          `/api/v1/actions/create_work_order_from_fault/prefill?fault_id=${faultId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch prefill data');
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'error') {
+          throw new Error(data.message);
+        }
+
+        // Set form values from prefill
+        const prefill = data.prefill_data;
+        setPrefillData(prefill);
+        setTitle(prefill.title);
+        setEquipmentId(prefill.equipment_id);
+        setLocation(prefill.location);
+        setDescription(prefill.description);
+        setPriority(prefill.priority);
+
+        // Check for duplicate
+        setDuplicateCheck(data.duplicate_check);
+
+        if (data.duplicate_check.has_duplicate) {
+          setStep('duplicate_warning');
+        } else {
+          setStep('form');
+        }
+
+      } catch (err) {
+        console.error('Prefill fetch error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load form');
+        setStep('error');
+      }
+    };
+
     fetchPrefillData();
   }, [faultId]);
-
-  const fetchPrefillData = async () => {
-    try {
-      setStep('loading');
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(
-        `/api/v1/actions/create_work_order_from_fault/prefill?fault_id=${faultId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch prefill data');
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'error') {
-        throw new Error(data.message);
-      }
-
-      // Set form values from prefill
-      const prefill = data.prefill_data;
-      setPrefillData(prefill);
-      setTitle(prefill.title);
-      setEquipmentId(prefill.equipment_id);
-      setLocation(prefill.location);
-      setDescription(prefill.description);
-      setPriority(prefill.priority);
-
-      // Check for duplicate
-      setDuplicateCheck(data.duplicate_check);
-
-      if (data.duplicate_check.has_duplicate) {
-        setStep('duplicate_warning');
-      } else {
-        setStep('form');
-      }
-
-    } catch (err) {
-      console.error('Prefill fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load form');
-      setStep('error');
-    }
-  };
 
   const handleNext = async () => {
     try {

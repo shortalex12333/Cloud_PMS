@@ -265,8 +265,9 @@ export function AddPhotoModal({
               </div>
             </div>
           ) : (
-            // Preview
+            // Preview - using img for blob URL (Next Image doesn't support blob URLs)
             <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={preview}
                 alt="Preview"

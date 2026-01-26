@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -65,7 +65,7 @@ export function ShowManualSectionModal({
   const [relatedSections, setRelatedSections] = useState<ManualSection[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const loadManualSection = async (sectionId?: string) => {
+  const loadManualSection = useCallback(async (sectionId?: string) => {
     setError(null);
 
     const response = await executeAction(
@@ -95,14 +95,14 @@ export function ShowManualSectionModal({
     } else {
       setError(response?.error?.message || 'Failed to load manual section');
     }
-  };
+  }, [executeAction, context.equipment_id, context.fault_code, onSuccess]);
 
   // Load section when modal opens
   useEffect(() => {
     if (open && context.equipment_id) {
       loadManualSection();
     }
-  }, [open, context.equipment_id, context.fault_code]);
+  }, [open, context.equipment_id, loadManualSection]);
 
   // Reset state when modal closes
   useEffect(() => {

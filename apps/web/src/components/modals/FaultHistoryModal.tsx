@@ -71,41 +71,41 @@ export function FaultHistoryModal({
   const [summary, setSummary] = useState<FaultHistorySummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadHistory = async () => {
-    setError(null);
-
-    const response = await executeAction(
-      'view_fault_history',
-      {
-        entity_id: context.entity_id,
-      },
-      {
-        successMessage: 'Fault history loaded',
-        refreshData: false,
-      }
-    );
-
-    if (response?.success && response.data) {
-      setFaults(response.data.faults || []);
-      setSummary(response.data.summary || null);
-
-      if (onSuccess) {
-        onSuccess({
-          faults: response.data.faults || [],
-          summary: response.data.summary,
-        });
-      }
-    } else {
-      setError(response?.error?.message || 'Failed to load fault history');
-    }
-  };
-
   // Load history when modal opens
   useEffect(() => {
-    if (open && context.entity_id) {
-      loadHistory();
-    }
-  }, [open, context.entity_id]);
+    if (!open || !context.entity_id) return;
+
+    const loadHistory = async () => {
+      setError(null);
+
+      const response = await executeAction(
+        'view_fault_history',
+        {
+          entity_id: context.entity_id,
+        },
+        {
+          successMessage: 'Fault history loaded',
+          refreshData: false,
+        }
+      );
+
+      if (response?.success && response.data) {
+        setFaults(response.data.faults || []);
+        setSummary(response.data.summary || null);
+
+        if (onSuccess) {
+          onSuccess({
+            faults: response.data.faults || [],
+            summary: response.data.summary,
+          });
+        }
+      } else {
+        setError(response?.error?.message || 'Failed to load fault history');
+      }
+    };
+
+    loadHistory();
+  }, [open, context.entity_id, executeAction, onSuccess]);
 
   // Reset state when modal closes
   useEffect(() => {
