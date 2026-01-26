@@ -397,6 +397,82 @@ export function useInboxThreads(
 }
 
 // ============================================================================
+// EMAIL SEARCH HOOK (Semantic Search via /email/search)
+// ============================================================================
+
+export type EmailSearchResult = {
+  id: string;
+  thread_id: string;
+  subject: string | null;
+  from_display_name: string | null;
+  preview_text: string | null;
+  sent_at: string | null;
+  has_attachments: boolean;
+  similarity_score: number;
+  match_reasons: string[];
+};
+
+export type EmailSearchResponse = {
+  results: EmailSearchResult[];
+  count: number;
+  query: string;
+  parsed: {
+    free_text: string;
+    operators_count: number;
+    filters: Record<string, string>;
+    match_reasons: string[];
+    warnings: string[];
+  };
+  extracted_keywords: string[];
+  telemetry: {
+    total_ms: number;
+    search_ms: number;
+  };
+};
+
+/**
+ * Semantic email search using /email/search endpoint
+ * Supports operators: from:, to:, subject:, has:attachment, before:, after:
+ * Uses hybrid search (vector similarity + entity keywords)
+ */
+export function useEmailSearch(
+  query: string,
+  options?: {
+    limit?: number;
+    direction?: 'inbound' | 'outbound';
+  }
+) {
+  return useQuery<EmailSearchResponse>({
+    queryKey: ['email', 'search', query, options?.direction, options?.limit],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams({
+        q: query,
+        limit: String(options?.limit || 20),
+      });
+      if (options?.direction) {
+        params.set('direction', options.direction);
+      }
+
+      const response = await fetch(
+        `${API_BASE}/email/search?${params.toString()}`,
+        { headers }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(error.detail || 'Search failed');
+      }
+
+      return response.json();
+    },
+    enabled: query.length >= 2,
+    staleTime: 30000,
+    retry: 1,
+  });
+}
+
+// ============================================================================
 // OBJECT SEARCH HOOK
 // ============================================================================
 
@@ -441,6 +517,153 @@ export function useObjectSearch(
 }
 
 // ============================================================================
+// BACKFILL / IMPORT HOOK
+// ============================================================================
+
+export type BackfillStatus = {
+  status: 'idle' | 'running' | 'completed' | 'error';
+  progress: number; // 0-100
+  totalEmails: number;
+  processedEmails: number;
+  error: string | null;
+  startedAt: string | null;
+};
+
+/**
+ * Trigger and monitor email backfill/import
+ */
+export function useEmailBackfill() {
+  const queryClient = useQueryClient();
+
+  // Check backfill status
+  const statusQuery = useQuery<BackfillStatus>({
+    queryKey: ['email', 'backfill-status'],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE}/email/worker/status`, { headers });
+
+      if (!response.ok) {
+        return {
+          status: 'idle' as const,
+          progress: 0,
+          totalEmails: 0,
+          processedEmails: 0,
+          error: null,
+          startedAt: null,
+        };
+      }
+
+      const data = await response.json();
+      return {
+        status: data.status || 'idle',
+        progress: data.progress || 0,
+        totalEmails: data.total_emails || 0,
+        processedEmails: data.processed_emails || 0,
+        error: data.error || null,
+        startedAt: data.started_at || null,
+      };
+    },
+    staleTime: 5000, // Refresh frequently during import
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 3000 : false),
+    retry: 1,
+  });
+
+  // Trigger backfill mutation
+  const triggerBackfill = useMutation({
+    mutationFn: async () => {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE}/email/worker/backfill`, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(error.detail || 'Failed to start import');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email', 'backfill-status'] });
+      queryClient.invalidateQueries({ queryKey: ['email', 'inbox'] });
+    },
+  });
+
+  return {
+    status: statusQuery.data,
+    isLoading: statusQuery.isLoading,
+    isRunning: statusQuery.data?.status === 'running',
+    triggerBackfill: triggerBackfill.mutate,
+    isTriggering: triggerBackfill.isPending,
+    triggerError: triggerBackfill.error,
+    refetchStatus: statusQuery.refetch,
+  };
+}
+
+// ============================================================================
+// THREAD LINKS HOOK (for "See related" vs "Link to")
+// ============================================================================
+
+export type ThreadLink = {
+  id: string;
+  object_type: string;
+  object_id: string;
+  confidence: number;
+  confidence_level: LinkConfidence;
+  suggested_reason: string | null;
+  accepted: boolean;
+  created_at: string;
+};
+
+export type ThreadLinksResponse = {
+  links: ThreadLink[];
+  count: number;
+};
+
+/**
+ * Fetch links for a specific thread
+ * Used for "See related (N)" vs "Link to..." conditional
+ */
+export function useThreadLinks(threadId: string | null, confidenceThreshold: number = 0.6) {
+  return useQuery<ThreadLinksResponse>({
+    queryKey: ['email', 'thread-links', threadId],
+    queryFn: async () => {
+      if (!threadId) return { links: [], count: 0 };
+
+      const headers = await getAuthHeaders();
+      const response = await fetch(
+        `${API_BASE}/email/thread/${threadId}/links`,
+        { headers }
+      );
+
+      if (!response.ok) {
+        // If endpoint doesn't exist, return empty
+        if (response.status === 404) {
+          return { links: [], count: 0 };
+        }
+        const error = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(error.detail || 'Failed to fetch links');
+      }
+
+      const data = await response.json();
+      // Filter by confidence threshold
+      const filteredLinks = (data.links || []).filter(
+        (link: ThreadLink) => link.confidence >= confidenceThreshold
+      );
+
+      return {
+        links: filteredLinks,
+        count: filteredLinks.length,
+      };
+    },
+    enabled: !!threadId,
+    staleTime: 30000,
+    retry: 1,
+  });
+}
+
+// ============================================================================
 // FEATURE FLAG CHECK
 // ============================================================================
 
@@ -453,6 +676,120 @@ export function useEmailFeatureEnabled() {
   // In production, this could call an API endpoint
   const enabled = process.env.NEXT_PUBLIC_EMAIL_ENABLED === 'true';
   return { enabled, isLoading: false };
+}
+
+// ============================================================================
+// OUTLOOK CONNECTION STATUS HOOK
+// ============================================================================
+
+export type OutlookConnectionStatus = {
+  isConnected: boolean;
+  isExpired: boolean;
+  email: string | null;
+  expiresAt: string | null;
+  error: string | null;
+};
+
+/**
+ * Check Outlook OAuth connection status
+ * Returns connection state and provides reconnect URL generator
+ */
+export function useOutlookConnection() {
+  const queryClient = useQueryClient();
+
+  const statusQuery = useQuery<OutlookConnectionStatus>({
+    queryKey: ['email', 'outlook-connection'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        return {
+          isConnected: false,
+          isExpired: false,
+          email: null,
+          expiresAt: null,
+          error: 'Not authenticated',
+        };
+      }
+
+      try {
+        const response = await fetch('/api/integrations/outlook/status', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!response.ok) {
+          return {
+            isConnected: false,
+            isExpired: false,
+            email: null,
+            expiresAt: null,
+            error: 'Failed to check status',
+          };
+        }
+
+        const data = await response.json();
+        const readStatus = data.read || {};
+
+        // Check if token is expired or expiring soon (within 5 minutes)
+        const expiresAt = readStatus.expires_at;
+        const isExpired = expiresAt
+          ? new Date(expiresAt).getTime() < Date.now() + 5 * 60 * 1000
+          : false;
+
+        return {
+          isConnected: readStatus.connected || false,
+          isExpired,
+          email: readStatus.email || null,
+          expiresAt,
+          error: null,
+        };
+      } catch (err) {
+        return {
+          isConnected: false,
+          isExpired: false,
+          email: null,
+          expiresAt: null,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        };
+      }
+    },
+    staleTime: 60000, // 1 minute
+    retry: 1,
+  });
+
+  // Function to initiate reconnect
+  const initiateReconnect = async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      return null;
+    }
+
+    try {
+      const response = await fetch('/api/integrations/outlook/auth-url', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Failed to get auth URL');
+        return null;
+      }
+
+      const data = await response.json();
+      return data.url || null;
+    } catch (err) {
+      console.error('Error getting auth URL:', err);
+      return null;
+    }
+  };
+
+  return {
+    ...statusQuery,
+    initiateReconnect,
+    refetchStatus: () => queryClient.invalidateQueries({ queryKey: ['email', 'outlook-connection'] }),
+  };
 }
 
 // ============================================================================

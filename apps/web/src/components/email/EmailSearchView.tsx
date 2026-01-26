@@ -28,13 +28,18 @@ import {
 import { useRouter } from 'next/navigation';
 import {
   useInboxThreads,
+  useEmailSearch,
   useThread,
   useMessageContent,
+  useThreadLinks,
+  useEmailBackfill,
   downloadAndSaveAttachment,
   useWatcherStatus,
+  useOutlookConnection,
   type EmailThread,
   type EmailMessage,
   type MessageContent as MessageContentType,
+  type EmailSearchResult,
 } from '@/hooks/useEmailData';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
@@ -88,15 +93,72 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
   // Fetch watcher status for sync indicator
   const { data: watcherStatus } = useWatcherStatus();
 
+  // Outlook connection status for auth recovery
+  const { data: outlookStatus, initiateReconnect, isLoading: outlookLoading } = useOutlookConnection();
+  const [reconnecting, setReconnecting] = useState(false);
+
   const threads = data?.threads || [];
   const total = data?.total || 0;
   const hasMore = data?.has_more || false;
+
+  // Handle Outlook reconnect
+  const handleReconnect = useCallback(async () => {
+    setReconnecting(true);
+    const authUrl = await initiateReconnect();
+    if (authUrl) {
+      window.location.href = authUrl;
+    } else {
+      setReconnecting(false);
+    }
+  }, [initiateReconnect]);
+
+  // Determine if we need to show reconnect banner
+  const needsReconnect = !outlookLoading && outlookStatus && (!outlookStatus.isConnected || outlookStatus.isExpired);
+
+  // Semantic search (uses /email/search endpoint when query present)
+  const {
+    data: searchData,
+    isLoading: searchLoading,
+    error: searchError,
+  } = useEmailSearch(debouncedQuery, {
+    direction: directionFilter === 'all' ? undefined : directionFilter,
+    limit: 20,
+  });
+
+  // Use search results when searching, inbox otherwise
+  const isSearching = debouncedQuery.length >= 2;
+  const displayThreads = isSearching
+    ? (searchData?.results || []).map((r) => ({
+        id: r.thread_id,
+        provider_conversation_id: '',
+        latest_subject: r.subject,
+        message_count: 1,
+        has_attachments: r.has_attachments,
+        source: '',
+        first_message_at: null,
+        last_activity_at: r.sent_at,
+      }))
+    : threads;
+  const displayLoading = isSearching ? searchLoading : isLoading;
+  const displayError = isSearching ? searchError : error;
+
+  // Backfill hook for import
+  const {
+    status: backfillStatus,
+    isRunning: isBackfilling,
+    triggerBackfill,
+    isTriggering,
+  } = useEmailBackfill();
 
   // Get selected thread details
   const { data: selectedThread, isLoading: threadLoading } = useThread(selectedThreadId);
 
   // Get selected message content
   const { data: selectedContent, isLoading: contentLoading } = useMessageContent(selectedMessageId);
+
+  // Get links for selected thread (for "See related" vs "Link to")
+  const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.6);
+  const hasRelatedLinks = (threadLinksData?.count || 0) > 0;
 
   // Debounce search query
   useEffect(() => {
@@ -127,6 +189,23 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
 
     return () => clearInterval(interval);
   }, [searchQuery]);
+
+  // Auto-trigger backfill if inbox is empty (and not already running)
+  const backfillTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isSearching &&
+      threads.length === 0 &&
+      !isBackfilling &&
+      !backfillTriggeredRef.current &&
+      outlookStatus?.isConnected
+    ) {
+      backfillTriggeredRef.current = true;
+      console.log('[EmailSearchView] Auto-triggering backfill for empty inbox');
+      triggerBackfill();
+    }
+  }, [isLoading, isSearching, threads.length, isBackfilling, outlookStatus?.isConnected, triggerBackfill]);
 
   // Auto-select first message when thread loads
   useEffect(() => {
@@ -172,6 +251,47 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
 
   return (
     <div className={cn('h-screen flex flex-col bg-[#1c1c1e] font-body', className)}>
+      {/* Outlook Reconnect Banner */}
+      {needsReconnect && (
+        <div className="bg-[#3a2a1a] border-b border-[#ff9f0a]/30 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-[#ff9f0a]" />
+              <div>
+                <p className="text-[14px] font-medium text-white">
+                  {outlookStatus?.isExpired ? 'Outlook session expired' : 'Outlook not connected'}
+                </p>
+                <p className="text-[12px] text-[#98989f]">
+                  Reconnect to sync and search your emails
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleReconnect}
+              disabled={reconnecting}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                reconnecting
+                  ? 'bg-[#48484a] text-[#98989f] cursor-not-allowed'
+                  : 'bg-[#ff9f0a] text-black hover:bg-[#ffb340]'
+              )}
+            >
+              {reconnecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Reconnect Outlook
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header - Search Bar */}
       <div className="sticky top-0 z-10 bg-[#1c1c1e]/95 backdrop-blur-md border-b border-[#3d3d3f]/30 px-4 py-3">
         <div className="flex items-center gap-3">
@@ -320,16 +440,51 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Thread List */}
         <div className="w-80 flex-shrink-0 border-r border-[#3d3d3f]/30 overflow-y-auto">
-          {isLoading && (
+          {/* Backfill progress indicator */}
+          {isBackfilling && (
+            <div className="p-3 border-b border-[#3d3d3f]/30 bg-[#2c2c2e]">
+              <div className="flex items-center gap-2 text-[12px] text-[#98989f]">
+                <Loader2 className="w-4 h-4 animate-spin text-[#0a84ff]" />
+                <span>Importing emails...</span>
+                {(backfillStatus?.progress ?? 0) > 0 && (
+                  <span className="ml-auto">{backfillStatus?.progress ?? 0}%</span>
+                )}
+              </div>
+              {(backfillStatus?.totalEmails ?? 0) > 0 && (
+                <div className="mt-1 h-1 bg-[#3d3d3f] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#0a84ff] transition-all duration-300"
+                    style={{ width: `${backfillStatus?.progress ?? 0}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Import All CTA (always visible unless backfilling) */}
+          {!isBackfilling && outlookStatus?.isConnected && (
+            <div className="p-3 border-b border-[#3d3d3f]/30">
+              <button
+                onClick={() => triggerBackfill()}
+                disabled={isTriggering}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#2c2c2e] hover:bg-[#3a3a3c] text-[12px] text-[#98989f] transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {isTriggering ? 'Starting import...' : 'Import all emails'}
+              </button>
+            </div>
+          )}
+
+          {displayLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-[#98989f]" />
             </div>
           )}
 
-          {error && (
+          {displayError && (
             <div className="py-8 text-center px-4">
               <p className="text-[13px] text-[#ff453a]">
-                {error instanceof Error ? error.message : 'Failed to load emails'}
+                {displayError instanceof Error ? displayError.message : 'Failed to load emails'}
               </p>
               <button
                 onClick={() => refetch()}
@@ -340,7 +495,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
             </div>
           )}
 
-          {!isLoading && !error && threads.length === 0 && (
+          {!displayLoading && !displayError && displayThreads.length === 0 && (
             <div className="py-12 text-center px-4">
               <Mail className="h-10 w-10 text-[#48484a] mx-auto mb-3" />
               <p className="text-[13px] text-[#98989f]">
@@ -349,19 +504,19 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
             </div>
           )}
 
-          {!isLoading && !error && threads.length > 0 && (
+          {!displayLoading && !displayError && displayThreads.length > 0 && (
             <>
-              {threads.map((thread) => (
+              {displayThreads.map((thread) => (
                 <ThreadListItem
                   key={thread.id}
-                  thread={thread}
+                  thread={thread as EmailThread}
                   isSelected={selectedThreadId === thread.id}
                   onClick={() => handleThreadClick(thread.id)}
                 />
               ))}
 
-              {/* Pagination */}
-              {(page > 1 || hasMore) && (
+              {/* Pagination (only for inbox, not search) */}
+              {!isSearching && (page > 1 || hasMore) && (
                 <div className="flex items-center justify-center gap-4 py-4 border-t border-[#3d3d3f]/30">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -418,6 +573,8 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
               onMessageSelect={handleMessageClick}
               content={selectedContent}
               contentLoading={contentLoading}
+              relatedLinksCount={threadLinksData?.count || 0}
+              hasRelatedLinks={hasRelatedLinks}
             />
           )}
         </div>
@@ -509,6 +666,8 @@ interface MessagePanelProps {
   onMessageSelect: (providerMessageId: string) => void;
   content: MessageContentType | null | undefined;
   contentLoading: boolean;
+  relatedLinksCount: number;
+  hasRelatedLinks: boolean;
 }
 
 function MessagePanel({
@@ -517,24 +676,52 @@ function MessagePanel({
   onMessageSelect,
   content,
   contentLoading,
+  relatedLinksCount,
+  hasRelatedLinks,
 }: MessagePanelProps) {
+  const [showLinkModal, setShowLinkModal] = useState(false);
+
   return (
     <div className="h-full flex flex-col">
       {/* Thread header */}
       <div className="p-4 border-b border-[#3d3d3f]/30">
-        <h2 className="text-[16px] font-semibold text-white">
-          {thread.latest_subject || '(No subject)'}
-        </h2>
-        <div className="flex items-center gap-3 mt-1 text-[12px] text-[#636366]">
-          <span>
-            {thread.message_count} message{thread.message_count !== 1 ? 's' : ''}
-          </span>
-          {thread.has_attachments && (
-            <span className="flex items-center gap-1">
-              <Paperclip className="w-3 h-3" />
-              Has attachments
-            </span>
-          )}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h2 className="text-[16px] font-semibold text-white">
+              {thread.latest_subject || '(No subject)'}
+            </h2>
+            <div className="flex items-center gap-3 mt-1 text-[12px] text-[#636366]">
+              <span>
+                {thread.message_count} message{thread.message_count !== 1 ? 's' : ''}
+              </span>
+              {thread.has_attachments && (
+                <span className="flex items-center gap-1">
+                  <Paperclip className="w-3 h-3" />
+                  Has attachments
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* "See related" vs "Link to" conditional button */}
+          <div className="flex-shrink-0">
+            {hasRelatedLinks ? (
+              <button
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#30d158]/20 text-[#30d158] text-[12px] font-medium hover:bg-[#30d158]/30 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+                See related ({relatedLinksCount})
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLinkModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a84ff]/20 text-[#0a84ff] text-[12px] font-medium hover:bg-[#0a84ff]/30 transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Link to...
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
