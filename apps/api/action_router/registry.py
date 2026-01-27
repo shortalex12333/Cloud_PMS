@@ -79,18 +79,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
-    # WORK ORDER ACTIONS (14)
+    # WORK ORDER ACTIONS (curated, executable)
     # ========================================================================
-    "create_work_order": ActionDefinition(
-        action_id="create_work_order",
-        label="Create Work Order",
-        endpoint="/v1/work-orders/create",
-        handler_type=HandlerType.N8N,
-        method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "equipment_id", "title", "priority"],
-        schema_file="create_work_order.json",
-    ),
 
     "close_work_order": ActionDefinition(
         action_id="close_work_order",
@@ -98,9 +88,12 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/close",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id"],
         schema_file="close_work_order.json",
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["close", "complete", "finish", "work", "order", "wo"],
     ),
 
     "add_work_order_photo": ActionDefinition(
@@ -109,8 +102,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/add-photo",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "photo_url"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "upload", "photo", "image", "work", "order", "wo"],
     ),
 
     "add_parts_to_work_order": ActionDefinition(
@@ -119,8 +115,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/add-parts",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "part_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "parts", "part", "work", "order", "wo"],
     ),
 
     "view_work_order_checklist": ActionDefinition(
@@ -129,8 +128,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/checklist",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        allowed_roles=["crew", "chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id"],
+        domain="work_orders",
+        variant=ActionVariant.READ,
+        search_keywords=["view", "checklist", "tasks", "work", "order", "wo"],
     ),
 
     "assign_work_order": ActionDefinition(
@@ -139,8 +141,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/assign",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "assigned_to"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["assign", "reassign", "owner", "work", "order", "wo"],
     ),
 
     "update_work_order": ActionDefinition(
@@ -149,8 +154,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/update",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["update", "edit", "modify", "work", "order", "wo"],
     ),
 
     "add_wo_hours": ActionDefinition(
@@ -159,8 +167,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/add-hours",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "hours"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "hours", "time", "work", "order", "wo"],
     ),
 
     "add_wo_part": ActionDefinition(
@@ -169,8 +180,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/add-part",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "part_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "part", "work", "order", "wo"],
     ),
 
     "add_wo_note": ActionDefinition(
@@ -179,8 +193,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/add-note",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id", "note_text"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "note", "comment", "work", "order", "wo"],
     ),
 
     "start_work_order": ActionDefinition(
@@ -189,8 +206,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/start",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["start", "begin", "in_progress", "work", "order", "wo"],
     ),
 
     "cancel_work_order": ActionDefinition(
@@ -199,8 +219,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/cancel",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["HOD", "Manager"],
+        allowed_roles=["captain", "manager"],
         required_fields=["yacht_id", "work_order_id"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["cancel", "void", "abort", "work", "order", "wo"],
     ),
 
     "view_work_order_detail": ActionDefinition(
@@ -209,8 +232,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/view",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Crew", "ETO", "Engineer", "HOD", "Manager"],
+        allowed_roles=["crew", "chief_engineer", "captain", "manager"],
         required_fields=["yacht_id", "work_order_id"],
+        domain="work_orders",
+        variant=ActionVariant.READ,
+        search_keywords=["view", "detail", "show", "work", "order", "wo"],
     ),
 
     "create_work_order_from_fault": ActionDefinition(
@@ -219,8 +245,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/work-orders/create-from-fault",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["Engineer", "HOD", "Manager"],
-        required_fields=["yacht_id", "fault_id"],
+        allowed_roles=["chief_engineer", "captain", "manager"],
+        required_fields=["yacht_id", "fault_id", "signature"],
+        domain="work_orders",
+        variant=ActionVariant.SIGNED,
+        search_keywords=["create", "add", "new", "work", "order", "wo", "from", "fault"],
     ),
 
     # ========================================================================
@@ -565,6 +594,13 @@ ACTION_STORAGE_CONFIG: Dict[str, Dict[str, Any]] = {
         "writable_prefixes": ["{yacht_id}/certificates/"],
         "confirmation_required": True,
     },
+    # Work orders
+    "add_work_order_photo": {
+        "bucket": "documents",
+        "path_template": "{yacht_id}/work_orders/{work_order_id}/{filename}",
+        "writable_prefixes": ["{yacht_id}/work_orders/"],
+        "confirmation_required": True,
+    },
 }
 
 
@@ -587,10 +623,13 @@ def get_storage_options(action_id: str, yacht_id: str = None, entity_id: str = N
         path_preview = path_preview.replace("{yacht_id}", yacht_id)
         writable = [p.replace("{yacht_id}", yacht_id) for p in writable]
 
+    # Replace known entity placeholders for preview
     if entity_id:
         path_preview = path_preview.replace("{certificate_id}", entity_id)
+        path_preview = path_preview.replace("{work_order_id}", entity_id)
     else:
         path_preview = path_preview.replace("{certificate_id}", "<new_id>")
+        path_preview = path_preview.replace("{work_order_id}", "<id>")
 
     return {
         "bucket": config["bucket"],
