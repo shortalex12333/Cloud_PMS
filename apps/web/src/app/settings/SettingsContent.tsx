@@ -1,68 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthSession, waitForSession } from '@/hooks/useAuthSession';
 import { withAuth } from '@/components/withAuth';
-import { supabase } from '@/lib/supabaseClient';
-import { X, Mail, Sun, Moon, Monitor, Keyboard } from 'lucide-react';
+import { X, Mail, Sun, Moon, Monitor, Keyboard, AlertCircle, RefreshCw } from 'lucide-react';
+
+// Build version marker for cache verification
+console.log('[SettingsContent] Module loaded - build 2026-01-27-v2');
 
 // Integration status type
 interface IntegrationStatus {
   connected: boolean;
   email?: string;
   connectedAt?: string;
+  error?: string;
 }
 
 type Theme = 'light' | 'dark' | 'system';
 
-// Helper for authenticated API calls with token refresh
-async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  // Get current session
-  let { data: { session } } = await supabase.auth.getSession();
-
-  // Check if session is missing, has no token, or token is expired/expiring soon
-  const needsRefresh = !session?.access_token ||
-    (session.expires_at && Date.now() > (session.expires_at - 60) * 1000); // Refresh if expiring within 60 seconds
-
-  if (needsRefresh) {
-    console.log('[authFetch] Session needs refresh:', {
-      hasSession: !!session,
-      hasToken: !!session?.access_token,
-      expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
-      now: new Date().toISOString(),
-    });
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError) {
-      console.error('[authFetch] Session refresh failed:', refreshError.message);
-    } else if (refreshData.session) {
-      session = refreshData.session;
-      console.log('[authFetch] Session refreshed successfully, new expiry:', new Date(refreshData.session.expires_at! * 1000).toISOString());
-    }
-  }
-
-  const token = session?.access_token;
-  if (!token) {
-    console.error('[authFetch] No access token available after refresh attempt');
-  }
-
-  return fetch(url, {
-    ...options,
-    headers: {
-      ...options.headers,
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    },
-  });
-}
+// Max retries for status endpoint (bounded, not infinite)
+const MAX_STATUS_RETRIES = 3;
+const STATUS_RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff
 
 function SettingsContent() {
   const { user, logout } = useAuth();
+  const { accessToken, isReady, isAuthenticated, refreshToken } = useAuthSession();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // State for Outlook integration
   const [outlookStatus, setOutlookStatus] = useState<IntegrationStatus | null>(null);
   const [outlookLoading, setOutlookLoading] = useState(true);
+  const [outlookError, setOutlookError] = useState<string | null>(null);
   const [connectingOutlook, setConnectingOutlook] = useState(false);
 
   // Preferences state
@@ -102,24 +73,97 @@ function SettingsContent() {
     }
   }, [keyboardShortcuts]);
 
-  // Fetch integration statuses
-  useEffect(() => {
-    const fetchStatuses = async () => {
-      try {
-        const outlookRes = await authFetch('/api/integrations/outlook/status');
-        if (outlookRes.ok) {
-          const data = await outlookRes.json();
-          setOutlookStatus(data);
-        }
-      } catch (error) {
-        console.error('[Settings] Error fetching Outlook status:', error);
-      } finally {
-        setOutlookLoading(false);
-      }
-    };
+  /**
+   * Fetch with authentication - uses centralized session
+   * No retry loops - single attempt with clear error surfacing
+   */
+  const authFetch = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
+    // Wait for session to be ready (with timeout)
+    const token = accessToken || await waitForSession(3000);
 
-    fetchStatuses();
-  }, []);
+    if (!token) {
+      console.error('[authFetch] No access token available');
+      throw new Error('login_required');
+    }
+
+    console.log('[authFetch] Making request to:', url, 'with token length:', token.length);
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+      },
+    });
+  }, [accessToken]);
+
+  /**
+   * Fetch Outlook status with bounded retries
+   * Stops on 401 (auth issue) or after MAX_STATUS_RETRIES
+   */
+  const fetchOutlookStatus = useCallback(async (retryCount = 0): Promise<void> => {
+    if (!isReady) {
+      console.log('[Settings] Waiting for auth to be ready...');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      console.log('[Settings] Not authenticated, skipping status fetch');
+      setOutlookLoading(false);
+      return;
+    }
+
+    try {
+      setOutlookError(null);
+      const res = await authFetch('/api/integrations/outlook/status');
+
+      if (res.status === 401) {
+        // Auth issue - don't retry, surface immediately
+        console.error('[Settings] Status 401 - session invalid');
+        setOutlookError('Session expired. Please sign in again.');
+        setOutlookLoading(false);
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setOutlookStatus(data);
+      setOutlookLoading(false);
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMsg === 'login_required') {
+        setOutlookError('Please sign in to view integrations.');
+        setOutlookLoading(false);
+        return;
+      }
+
+      // Retry with backoff for network/5xx errors
+      if (retryCount < MAX_STATUS_RETRIES) {
+        const delay = STATUS_RETRY_DELAYS[retryCount] || 4000;
+        console.log(`[Settings] Status fetch failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_STATUS_RETRIES})`);
+        setTimeout(() => fetchOutlookStatus(retryCount + 1), delay);
+        return;
+      }
+
+      // Max retries exhausted
+      console.error('[Settings] Status fetch failed after retries:', errorMsg);
+      setOutlookError('Unable to load integration status. Please try again.');
+      setOutlookLoading(false);
+    }
+  }, [isReady, isAuthenticated, authFetch]);
+
+  // Fetch integration status when auth is ready
+  useEffect(() => {
+    if (isReady) {
+      fetchOutlookStatus();
+    }
+  }, [isReady, fetchOutlookStatus]);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -127,76 +171,101 @@ function SettingsContent() {
     const error = searchParams.get('error');
 
     if (connected === 'outlook') {
+      console.log('[Settings] OAuth callback - connected');
       setOutlookLoading(true);
-      authFetch('/api/integrations/outlook/status')
-        .then(res => res.json())
-        .then(data => setOutlookStatus(data))
-        .finally(() => setOutlookLoading(false));
+      fetchOutlookStatus();
       router.replace('/settings');
     }
 
     if (error) {
       console.error('[Settings] OAuth error:', error);
+      setOutlookError(`Connection failed: ${error}`);
       router.replace('/settings');
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, fetchOutlookStatus]);
 
-  // Connect to Outlook
+  /**
+   * Connect to Outlook - single attempt with one retry on 401
+   */
   const handleConnectOutlook = async () => {
     setConnectingOutlook(true);
-    console.log('[Settings] Connect clicked - getting session...');
+    setOutlookError(null);
 
     try {
-      // Pre-flight: Check session state before making the call
-      const { data: { session: preSession } } = await supabase.auth.getSession();
-      console.log('[Settings] Pre-flight session check:', {
-        hasSession: !!preSession,
-        hasToken: !!preSession?.access_token,
-        tokenLength: preSession?.access_token?.length || 0,
-        expiresAt: preSession?.expires_at ? new Date(preSession.expires_at * 1000).toISOString() : 'N/A',
-        userId: preSession?.user?.id?.substring(0, 8) || 'N/A',
+      // Ensure we have a fresh token
+      let token = accessToken;
+      if (!token) {
+        console.log('[Settings] No token, waiting for session...');
+        token = await waitForSession(5000);
+      }
+
+      if (!token) {
+        setOutlookError('Unable to authenticate. Please sign in again.');
+        setConnectingOutlook(false);
+        return;
+      }
+
+      console.log('[Settings] Requesting auth URL with token length:', token.length);
+
+      const res = await fetch('/api/integrations/outlook/auth-url', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+        },
       });
 
-      const res = await authFetch('/api/integrations/outlook/auth-url');
       const data = await res.json();
 
-      console.log('[Settings] Auth URL response:', { status: res.status, data });
+      if (res.status === 401) {
+        console.log('[Settings] Got 401, attempting token refresh...');
+        // Try refresh once
+        const freshToken = await refreshToken();
+        if (!freshToken) {
+          setOutlookError('Session expired. Please sign in again.');
+          router.push('/login');
+          return;
+        }
+
+        // Retry with fresh token
+        const retryRes = await fetch('/api/integrations/outlook/auth-url', {
+          headers: {
+            'Authorization': `Bearer ${freshToken}`,
+            'Cache-Control': 'no-cache',
+          },
+        });
+
+        const retryData = await retryRes.json();
+        if (retryRes.ok && retryData.url) {
+          console.log('[Settings] Retry successful, redirecting to Microsoft...');
+          window.location.href = retryData.url;
+          return;
+        }
+
+        // Still failing after refresh
+        setOutlookError('Authentication failed. Please sign in again.');
+        setConnectingOutlook(false);
+        return;
+      }
 
       if (!res.ok) {
-        // Handle specific error codes
         console.error('[Settings] Auth URL error:', data);
-        if (data.code === 'missing_auth_header' || data.code === 'empty_token') {
-          // Session might be missing - try to restore
-          console.log('[Settings] Attempting session restore...');
-          const { data: sessionData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError || !sessionData.session) {
-            alert('Your session has expired. Please log in again.');
-            router.push('/login');
-            return;
-          }
-          // Retry with fresh session
-          const retryRes = await authFetch('/api/integrations/outlook/auth-url');
-          const retryData = await retryRes.json();
-          if (retryData.url) {
-            window.location.href = retryData.url;
-            return;
-          }
-        }
-        alert(`Failed to connect: ${data.error || 'Unknown error'}`);
+        setOutlookError(data.error || 'Failed to start connection');
         setConnectingOutlook(false);
         return;
       }
 
       if (data.url) {
+        console.log('[Settings] Redirecting to Microsoft OAuth...');
         window.location.href = data.url;
       } else {
         console.error('[Settings] No URL in response:', data);
-        alert('Failed to get OAuth URL. Please try again.');
+        setOutlookError('Invalid response from server');
         setConnectingOutlook(false);
       }
+
     } catch (error) {
-      console.error('[Settings] Error getting Outlook auth URL:', error);
-      alert('Network error. Please check your connection and try again.');
+      console.error('[Settings] Connect error:', error);
+      setOutlookError('Network error. Please check your connection.');
       setConnectingOutlook(false);
     }
   };
@@ -206,14 +275,24 @@ function SettingsContent() {
     if (!confirm('Disconnect your Outlook account?')) return;
 
     setOutlookLoading(true);
+    setOutlookError(null);
+
     try {
       await authFetch('/api/integrations/outlook/disconnect', { method: 'POST' });
       setOutlookStatus({ connected: false });
     } catch (error) {
-      console.error('[Settings] Error disconnecting Outlook:', error);
+      console.error('[Settings] Disconnect error:', error);
+      setOutlookError('Failed to disconnect. Please try again.');
     } finally {
       setOutlookLoading(false);
     }
+  };
+
+  // Retry loading status
+  const handleRetryStatus = () => {
+    setOutlookLoading(true);
+    setOutlookError(null);
+    fetchOutlookStatus();
   };
 
   // Open support email
@@ -225,6 +304,9 @@ function SettingsContent() {
   const handleClose = () => {
     router.push('/search');
   };
+
+  // Show loading state until auth is ready
+  const showConnectLoading = !isReady || connectingOutlook;
 
   return (
     <div className="min-h-screen bg-background">
@@ -277,6 +359,21 @@ function SettingsContent() {
             Integrations
           </h2>
 
+          {/* Error display */}
+          {outlookError && (
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <span className="text-sm text-destructive">{outlookError}</span>
+              <button
+                onClick={handleRetryStatus}
+                className="ml-auto p-1 hover:bg-destructive/20 rounded"
+                aria-label="Retry"
+              >
+                <RefreshCw className="h-4 w-4 text-destructive" />
+              </button>
+            </div>
+          )}
+
           {/* Outlook */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -305,10 +402,10 @@ function SettingsContent() {
               ) : (
                 <button
                   onClick={handleConnectOutlook}
-                  disabled={connectingOutlook}
+                  disabled={showConnectLoading}
                   className="px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
-                  {connectingOutlook ? 'Connecting...' : 'Connect'}
+                  {!isReady ? 'Loading...' : connectingOutlook ? 'Connecting...' : 'Connect'}
                 </button>
               )}
             </div>
