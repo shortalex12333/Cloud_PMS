@@ -1283,6 +1283,471 @@ class WorkOrderMutationHandlers:
             }
 
     # =========================================================================
+    # P0 ACTION #6: reassign_work_order
+    # =========================================================================
+
+    async def reassign_work_order_prefill(
+        self,
+        work_order_id: str,
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        GET /v1/actions/reassign_work_order/prefill?work_order_id={uuid}
+
+        Pre-fill reassignment form with WO details and available crew.
+        """
+        try:
+            # Get work order details
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, title, status, assigned_to, equipment_id"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not wo_result.data or len(wo_result.data) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "WO_NOT_FOUND",
+                    "message": f"Work order not found: {work_order_id}"
+                }
+
+            wo = wo_result.data[0]
+
+            if wo["status"] in ("completed", "closed", "cancelled"):
+                return {
+                    "status": "error",
+                    "error_code": "WO_CLOSED",
+                    "message": f"Cannot reassign {wo['status']} work order"
+                }
+
+            # Get current assignee name
+            current_assignee_name = "Unassigned"
+            if wo.get("assigned_to"):
+                assignee_result = self.db.table("auth_users_profiles").select(
+                    "name"
+                ).eq("id", wo["assigned_to"]).limit(1).execute()
+                if assignee_result.data and len(assignee_result.data) > 0:
+                    current_assignee_name = assignee_result.data[0].get("name", "Unknown")
+
+            # Get available crew for reassignment (same yacht, active)
+            crew_result = self.db.table("auth_users_profiles").select(
+                "id, name, email"
+            ).eq("yacht_id", yacht_id).eq("is_active", True).execute()
+
+            available_crew = []
+            for crew in (crew_result.data or []):
+                role_result = self.db.table("auth_users_roles").select(
+                    "role"
+                ).eq("user_id", crew["id"]).eq("yacht_id", yacht_id).eq("is_active", True).limit(1).execute()
+                role = role_result.data[0]["role"] if role_result.data and len(role_result.data) > 0 else "crew"
+
+                available_crew.append({
+                    "id": crew["id"],
+                    "name": crew["name"],
+                    "email": crew.get("email"),
+                    "role": role
+                })
+
+            return {
+                "status": "success",
+                "prefill_data": {
+                    "work_order_id": work_order_id,
+                    "work_order_number": wo.get("wo_number", "N/A"),
+                    "title": wo["title"],
+                    "current_status": wo["status"],
+                    "current_assignee_id": wo.get("assigned_to"),
+                    "current_assignee_name": current_assignee_name,
+                    "available_crew": available_crew
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"reassign_work_order_prefill failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    async def reassign_work_order_execute(
+        self,
+        work_order_id: str,
+        new_assignee_id: str,
+        reason: str,
+        signature: Dict,
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        POST /v1/actions/execute (action=reassign_work_order)
+
+        Reassign work order to a different crew member.
+        Requires HoD signature.
+        """
+        try:
+            # Validate signature
+            if not signature or signature.get("user_id") != user_id:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_SIGNATURE",
+                    "message": "Signature does not match user"
+                }
+
+            # Verify user has HoD role
+            role_result = self.db.table("auth_users_roles").select(
+                "role"
+            ).eq("user_id", user_id).eq("yacht_id", yacht_id).eq("is_active", True).limit(1).execute()
+
+            user_role = role_result.data[0]["role"] if role_result.data and len(role_result.data) > 0 else "crew"
+            hod_roles = ["captain", "chief_engineer", "chief_officer", "purser", "manager"]
+
+            if user_role not in hod_roles:
+                return {
+                    "status": "error",
+                    "error_code": "UNAUTHORIZED",
+                    "message": "Only HOD roles can reassign work orders"
+                }
+
+            # Validate work order
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status, assigned_to"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not wo_result.data or len(wo_result.data) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "WO_NOT_FOUND",
+                    "message": f"Work order not found: {work_order_id}"
+                }
+
+            wo = wo_result.data[0]
+            old_assignee_id = wo.get("assigned_to")
+
+            if wo["status"] in ("completed", "closed", "cancelled"):
+                return {
+                    "status": "error",
+                    "error_code": "WO_CLOSED",
+                    "message": f"Cannot reassign {wo['status']} work order"
+                }
+
+            # Validate new assignee exists on same yacht
+            assignee_result = self.db.table("auth_users_profiles").select(
+                "id, name"
+            ).eq("id", new_assignee_id).eq("yacht_id", yacht_id).eq("is_active", True).limit(1).execute()
+
+            if not assignee_result.data or len(assignee_result.data) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "ASSIGNEE_NOT_FOUND",
+                    "message": "New assignee not found or not on this yacht"
+                }
+
+            new_assignee_name = assignee_result.data[0].get("name", "Unknown")
+
+            # Update work order
+            update_data = {
+                "assigned_to": new_assignee_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user_id
+            }
+
+            update_result = self.db.table("pms_work_orders").update(update_data).eq(
+                "id", work_order_id
+            ).eq("yacht_id", yacht_id).execute()
+
+            if not update_result.data:
+                return {
+                    "status": "error",
+                    "error_code": "INTERNAL_ERROR",
+                    "message": "Failed to update work order"
+                }
+
+            updated_wo = update_result.data[0]
+
+            # Create signed audit log entry
+            await self._create_audit_log(
+                yacht_id=yacht_id,
+                action="reassign_work_order",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                user_id=user_id,
+                old_values={"assigned_to": old_assignee_id},
+                new_values={
+                    "assigned_to": new_assignee_id,
+                    "assignee_name": new_assignee_name,
+                    "reason": reason
+                },
+                signature=signature
+            )
+
+            return {
+                "status": "success",
+                "action": "reassign_work_order",
+                "result": {
+                    "work_order": {
+                        "id": updated_wo["id"],
+                        "number": updated_wo.get("wo_number", "N/A"),
+                        "status": updated_wo["status"],
+                        "assigned_to": updated_wo["assigned_to"],
+                        "assigned_to_name": new_assignee_name
+                    },
+                    "previous_assignee_id": old_assignee_id,
+                    "reason": reason
+                },
+                "message": f"✓ {wo['wo_number']} reassigned to {new_assignee_name}"
+            }
+
+        except Exception as e:
+            logger.error(f"reassign_work_order_execute failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    # =========================================================================
+    # P0 ACTION #7: archive_work_order
+    # =========================================================================
+
+    async def archive_work_order_prefill(
+        self,
+        work_order_id: str,
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        GET /v1/actions/archive_work_order/prefill?work_order_id={uuid}
+
+        Pre-fill archive form with WO details and validation.
+        """
+        try:
+            # Get work order details
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, title, status, fault_id, assigned_to, created_at"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not wo_result.data or len(wo_result.data) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "WO_NOT_FOUND",
+                    "message": f"Work order not found: {work_order_id}"
+                }
+
+            wo = wo_result.data[0]
+
+            if wo["status"] in ("completed", "closed", "cancelled"):
+                return {
+                    "status": "error",
+                    "error_code": "WO_ALREADY_TERMINAL",
+                    "message": f"Work order is already {wo['status']}"
+                }
+
+            # Calculate days open
+            created_at = datetime.fromisoformat(wo["created_at"].replace('Z', '+00:00'))
+            days_open = (datetime.now(timezone.utc) - created_at).days
+
+            # Get linked fault info
+            fault_info = None
+            if wo.get("fault_id"):
+                fault_result = self.db.table("pms_faults").select(
+                    "id, fault_code, title, status"
+                ).eq("id", wo["fault_id"]).limit(1).execute()
+                if fault_result.data and len(fault_result.data) > 0:
+                    fault = fault_result.data[0]
+                    fault_info = {
+                        "id": fault["id"],
+                        "fault_code": fault.get("fault_code"),
+                        "title": fault["title"],
+                        "status": fault["status"]
+                    }
+
+            # Common archive reasons
+            archive_reasons = [
+                "Duplicate work order",
+                "No longer required",
+                "Equipment decommissioned",
+                "Incorrect entry",
+                "Superseded by new work order",
+                "Other (please specify)"
+            ]
+
+            # Warnings
+            warnings = []
+            if fault_info:
+                warnings.append(f"This will return linked fault ({fault_info.get('fault_code') or 'unnamed'}) to 'open' status")
+            if wo["status"] == "in_progress":
+                warnings.append("Work is currently in progress")
+            if days_open > 30:
+                warnings.append(f"Work order has been open for {days_open} days")
+
+            return {
+                "status": "success",
+                "prefill_data": {
+                    "work_order_id": work_order_id,
+                    "work_order_number": wo.get("wo_number", "N/A"),
+                    "title": wo["title"],
+                    "current_status": wo["status"],
+                    "days_open": days_open,
+                    "linked_fault": fault_info,
+                    "archive_reasons": archive_reasons
+                },
+                "warnings": warnings
+            }
+
+        except Exception as e:
+            logger.error(f"archive_work_order_prefill failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    async def archive_work_order_execute(
+        self,
+        work_order_id: str,
+        deletion_reason: str,
+        signature: Dict,
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        POST /v1/actions/execute (action=archive_work_order)
+
+        Archive (soft delete) a work order.
+        Requires Captain/HOD signature.
+
+        Side effects:
+        - Sets deleted_at, deleted_by, deletion_reason
+        - Updates status to 'cancelled'
+        - Cascade trigger returns linked fault to 'open'
+        """
+        try:
+            # Validate signature
+            if not signature or signature.get("user_id") != user_id:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_SIGNATURE",
+                    "message": "Signature does not match user"
+                }
+
+            # Verify user has Captain/HOD role
+            role_result = self.db.table("auth_users_roles").select(
+                "role"
+            ).eq("user_id", user_id).eq("yacht_id", yacht_id).eq("is_active", True).limit(1).execute()
+
+            user_role = role_result.data[0]["role"] if role_result.data and len(role_result.data) > 0 else "crew"
+            archive_roles = ["captain", "chief_engineer", "chief_officer", "purser", "manager"]
+
+            if user_role not in archive_roles:
+                return {
+                    "status": "error",
+                    "error_code": "UNAUTHORIZED",
+                    "message": "Only Captain/HOD roles can archive work orders"
+                }
+
+            # Validate deletion reason
+            if not deletion_reason or len(deletion_reason.strip()) < 5:
+                return {
+                    "status": "error",
+                    "error_code": "VALIDATION_ERROR",
+                    "message": "Deletion reason must be at least 5 characters"
+                }
+
+            # Validate work order
+            wo_result = self.db.table("pms_work_orders").select(
+                "id, wo_number, status, fault_id"
+            ).eq("id", work_order_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not wo_result.data or len(wo_result.data) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "WO_NOT_FOUND",
+                    "message": f"Work order not found: {work_order_id}"
+                }
+
+            wo = wo_result.data[0]
+
+            if wo["status"] in ("completed", "closed", "cancelled"):
+                return {
+                    "status": "error",
+                    "error_code": "WO_ALREADY_TERMINAL",
+                    "message": f"Work order is already {wo['status']}"
+                }
+
+            # Archive (soft delete) the work order
+            now = datetime.now(timezone.utc).isoformat()
+            update_data = {
+                "status": "cancelled",
+                "deleted_at": now,
+                "deleted_by": user_id,
+                "deletion_reason": deletion_reason,
+                "updated_at": now,
+                "updated_by": user_id
+            }
+
+            update_result = self.db.table("pms_work_orders").update(update_data).eq(
+                "id", work_order_id
+            ).eq("yacht_id", yacht_id).execute()
+
+            if not update_result.data:
+                return {
+                    "status": "error",
+                    "error_code": "INTERNAL_ERROR",
+                    "message": "Failed to archive work order"
+                }
+
+            archived_wo = update_result.data[0]
+
+            # Create signed audit log entry
+            await self._create_audit_log(
+                yacht_id=yacht_id,
+                action="archive_work_order",
+                entity_type="work_order",
+                entity_id=work_order_id,
+                user_id=user_id,
+                old_values={"status": wo["status"]},
+                new_values={
+                    "status": "cancelled",
+                    "deleted_at": now,
+                    "deletion_reason": deletion_reason
+                },
+                signature=signature
+            )
+
+            # Check if fault was returned to open (by cascade trigger)
+            fault_updated = False
+            if wo.get("fault_id"):
+                fault_result = self.db.table("pms_faults").select(
+                    "status"
+                ).eq("id", wo["fault_id"]).limit(1).execute()
+                if fault_result.data and len(fault_result.data) > 0:
+                    fault_updated = fault_result.data[0]["status"] == "open"
+
+            return {
+                "status": "success",
+                "action": "archive_work_order",
+                "result": {
+                    "work_order": {
+                        "id": archived_wo["id"],
+                        "number": archived_wo.get("wo_number", "N/A"),
+                        "status": archived_wo["status"],
+                        "deleted_at": archived_wo["deleted_at"],
+                        "deletion_reason": archived_wo["deletion_reason"]
+                    },
+                    "fault_returned_to_open": fault_updated,
+                    "linked_fault_id": wo.get("fault_id")
+                },
+                "message": f"✓ {wo['wo_number']} archived"
+            }
+
+        except Exception as e:
+            logger.error(f"archive_work_order_execute failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    # =========================================================================
     # HELPER METHODS
     # =========================================================================
 
@@ -1426,4 +1891,12 @@ def get_work_order_mutation_handlers(supabase_client) -> Dict[str, callable]:
         "mark_work_order_complete_prefill": handlers.mark_work_order_complete_prefill,
         "mark_work_order_complete_preview": handlers.mark_work_order_complete_preview,
         "mark_work_order_complete": handlers.mark_work_order_complete_execute,
+
+        # reassign_work_order (SIGNED)
+        "reassign_work_order_prefill": handlers.reassign_work_order_prefill,
+        "reassign_work_order": handlers.reassign_work_order_execute,
+
+        # archive_work_order (SIGNED)
+        "archive_work_order_prefill": handlers.archive_work_order_prefill,
+        "archive_work_order": handlers.archive_work_order_execute,
     }
