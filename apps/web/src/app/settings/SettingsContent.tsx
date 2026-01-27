@@ -21,15 +21,23 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   // Get current session
   let { data: { session } } = await supabase.auth.getSession();
 
-  // If no session or token looks expired, try refreshing
-  if (!session?.access_token) {
-    console.log('[authFetch] No access token, attempting refresh...');
+  // Check if session is missing, has no token, or token is expired/expiring soon
+  const needsRefresh = !session?.access_token ||
+    (session.expires_at && Date.now() > (session.expires_at - 60) * 1000); // Refresh if expiring within 60 seconds
+
+  if (needsRefresh) {
+    console.log('[authFetch] Session needs refresh:', {
+      hasSession: !!session,
+      hasToken: !!session?.access_token,
+      expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
+      now: new Date().toISOString(),
+    });
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     if (refreshError) {
       console.error('[authFetch] Session refresh failed:', refreshError.message);
     } else if (refreshData.session) {
       session = refreshData.session;
-      console.log('[authFetch] Session refreshed successfully');
+      console.log('[authFetch] Session refreshed successfully, new expiry:', new Date(refreshData.session.expires_at! * 1000).toISOString());
     }
   }
 
