@@ -1,0 +1,55 @@
+# docker-compose.dev.yml
+# Local development stack for debugging Outlook OAuth flow
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up --build
+#
+# Prerequisites:
+#   - Copy .env.local.template to apps/web/.env.local and fill in values
+#   - Ensure MASTER and TENANT Supabase credentials are correct
+
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - ./apps/web/.env.local
+    volumes:
+      # Mount source for hot reload
+      - ./apps/web/src:/app/src:ro
+      - ./apps/web/public:/app/public:ro
+      # Exclude node_modules
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - celeste-dev
+
+  backend:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+    env_file:
+      - ./apps/api/.env.local
+    volumes:
+      - ./apps/api:/app:ro
+      - /app/__pycache__
+    networks:
+      - celeste-dev
+
+networks:
+  celeste-dev:
+    driver: bridge
