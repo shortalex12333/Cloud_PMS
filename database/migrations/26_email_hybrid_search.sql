@@ -29,7 +29,12 @@ CREATE OR REPLACE FUNCTION public.search_email_hybrid(
     p_date_to TIMESTAMPTZ DEFAULT NULL,
     p_from_display_name TEXT DEFAULT NULL,
     p_has_attachment BOOLEAN DEFAULT NULL,
-    p_direction TEXT DEFAULT NULL
+    p_direction TEXT DEFAULT NULL,
+    -- M3 signal params (accepted for API compatibility, not yet implemented)
+    p_user_email_hash TEXT DEFAULT NULL,
+    p_boost_recency BOOLEAN DEFAULT FALSE,
+    p_boost_affinity BOOLEAN DEFAULT FALSE,
+    p_boost_linkage BOOLEAN DEFAULT FALSE
 )
 RETURNS TABLE(
     message_id UUID,
@@ -117,12 +122,12 @@ $$;
 
 -- Grant execute to backend role
 GRANT EXECUTE ON FUNCTION public.search_email_hybrid(
-    UUID, VECTOR(1536), TEXT[], INT, FLOAT8, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, BOOLEAN, TEXT
+    UUID, VECTOR(1536), TEXT[], INT, FLOAT8, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, BOOLEAN, TEXT, TEXT, BOOLEAN, BOOLEAN, BOOLEAN
 ) TO service_role;
 
 -- Also grant to authenticated users for direct RPC calls
 GRANT EXECUTE ON FUNCTION public.search_email_hybrid(
-    UUID, VECTOR(1536), TEXT[], INT, FLOAT8, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, BOOLEAN, TEXT
+    UUID, VECTOR(1536), TEXT[], INT, FLOAT8, TIMESTAMPTZ, TIMESTAMPTZ, TEXT, BOOLEAN, TEXT, TEXT, BOOLEAN, BOOLEAN, BOOLEAN
 ) TO authenticated;
 
 COMMENT ON FUNCTION public.search_email_hybrid IS
