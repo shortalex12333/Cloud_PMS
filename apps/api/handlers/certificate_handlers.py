@@ -25,6 +25,7 @@ All handlers return standardized ActionResponseEnvelope.
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Optional, List
 import logging
+import json
 
 import sys
 from pathlib import Path
@@ -777,10 +778,13 @@ def _link_document_to_certificate_adapter(handlers: CertificateHandlers):
 
         table = get_table("vessel_certificates" if domain == "vessel" else "crew_certificates")
 
-        # Basic existence checks
-        dm = db.table("doc_metadata").select("id").eq("id", document_id).maybe_single().execute()
-        if not dm.data:
-            raise ValueError(f"document_id not found: {document_id}")
+        # Basic existence checks (defensive against client return shapes)
+        try:
+            dm = db.table("doc_metadata").select("id").eq("id", document_id).maybe_single().execute()
+        except Exception:
+            dm = None
+        if not getattr(dm, 'data', None):
+            raise ValueError("document_id not found")
 
         res = db.table(table).update({"document_id": document_id}).eq("yacht_id", yacht_id).eq("id", cert_id).execute()
         if (res.data or [{}])[0].get("id") != cert_id:
@@ -1022,6 +1026,13 @@ def _supersede_certificate_adapter(handlers: CertificateHandlers):
         domain = (params.get("domain") or "vessel").lower()
         reason = params.get("reason")
         signature = params.get("signature")
+
+        # Parse signature if it's a JSON string
+        if isinstance(signature, str):
+            try:
+                signature = json.loads(signature)
+            except json.JSONDecodeError:
+                raise ValueError("signature must be valid JSON")
 
         # Validate required fields
         if not reason:
