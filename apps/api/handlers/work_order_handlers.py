@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from action_response_schema import (
+from actions.action_response_schema import (
     ResponseBuilder,
     FileReference,
     AvailableAction,
@@ -313,7 +313,7 @@ class WorkOrderHandlers:
     async def _get_parts_count(self, work_order_id: str) -> int:
         """Get count of parts assigned to work order"""
         try:
-            result = self.db.table("work_order_parts").select(
+            result = self.db.table("pms_work_order_parts").select(
                 "id", count="exact"
             ).eq("work_order_id", work_order_id).execute()
             return result.count or 0

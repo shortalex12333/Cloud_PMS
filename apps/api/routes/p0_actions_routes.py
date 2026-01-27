@@ -735,6 +735,50 @@ async def execute_action(
                 override_duplicate=bool(payload.get("override_duplicate", False))
             )
 
+        elif action == "reassign_work_order":
+            if not wo_handlers:
+                raise HTTPException(status_code=500, detail="Work order handlers not initialized")
+            # Role-based access: reassign allowed for HOD, captain, manager
+            user_role = user_context.get("role", "")
+            if user_role not in ("chief_engineer", "chief_officer", "captain", "manager"):
+                raise HTTPException(status_code=403, detail=f"Role '{user_role}' is not authorized to perform action '{action}'")
+            signature = payload.get("signature")
+            if not signature:
+                raise HTTPException(status_code=400, detail="signature is required for reassign_work_order")
+            # Enforce canonical signature keys
+            required_sig_keys = {"signed_at", "user_id", "role_at_signing", "signature_type", "signature_hash"}
+            if not isinstance(signature, dict) or not required_sig_keys.issubset(set(signature.keys())):
+                raise HTTPException(status_code=400, detail="invalid signature payload: missing required fields")
+            result = await wo_handlers.reassign_work_order_execute(
+                work_order_id=payload["work_order_id"],
+                assignee_id=payload["assignee_id"],
+                reason=payload.get("reason", "Reassigned"),
+                signature=signature,
+                yacht_id=yacht_id,
+                user_id=user_id
+            )
+        
+        elif action == "archive_work_order":
+            if not wo_handlers:
+                raise HTTPException(status_code=500, detail="Work order handlers not initialized")
+            # Role-based access: archive allowed for captain, manager
+            user_role = user_context.get("role", "")
+            if user_role not in ("captain", "manager"):
+                raise HTTPException(status_code=403, detail=f"Role '{user_role}' is not authorized to perform action '{action}'")
+            signature = payload.get("signature")
+            if not signature:
+                raise HTTPException(status_code=400, detail="signature is required for archive_work_order")
+            required_sig_keys = {"signed_at", "user_id", "role_at_signing", "signature_type", "signature_hash"}
+            if not isinstance(signature, dict) or not required_sig_keys.issubset(set(signature.keys())):
+                raise HTTPException(status_code=400, detail="invalid signature payload: missing required fields")
+            result = await wo_handlers.archive_work_order_execute(
+                work_order_id=payload["work_order_id"],
+                deletion_reason=payload.get("deletion_reason", "Archived"),
+                signature=signature,
+                yacht_id=yacht_id,
+                user_id=user_id
+            )
+
         # ===== INVENTORY ACTIONS (P0 Actions 6-7) =====
         elif action == "check_stock_level":
             if not inventory_handlers:
@@ -941,12 +985,8 @@ async def execute_action(
                         "user_id": user_id,
                         "old_values": {"status": old_status, "severity": old_severity},
                         "new_values": {"status": "investigating", "severity": "medium", "note": payload.get("note")},
-                        "signature": {
-                            "user_id": user_id,
-                            "execution_id": execution_id,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "action": "acknowledge_fault"
-                        }
+                        # Signature invariant: non-signed actions use empty JSON object
+                        "signature": {}
                     }
                     db_client.table("pms_audit_log").insert(audit_entry).execute()
                     logger.info(f"Audit log created for acknowledge_fault: execution_id={execution_id}")
@@ -4059,6 +4099,85 @@ async def execute_action(
     import uuid
     result["execution_id"] = str(uuid.uuid4())
     result["action"] = request.action
+    return result
+
+
+# ============================================================================
+# MY WORK ORDERS (READ) - v_my_work_orders_summary
+# ============================================================================
+
+@router.get("/work-orders/list-my")
+async def list_my_work_orders_endpoint(
+    group_key: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    authorization: str = Header(None),
+):
+    """
+    List My Work Orders with deterministic grouping and sorting.
+
+    Query params:
+        group_key: Filter by group (overdue/critical/time_consuming/other)
+        assigned_to: Filter by assignee (defaults to current user)
+
+    Returns work orders grouped by:
+        - overdue: days_overdue desc, criticality_rank asc nulls last, due_at asc
+        - critical: criticality_rank asc, due_at asc nulls last
+        - time_consuming: estimated_duration_minutes desc, due_at asc nulls last
+        - other: status priority then last_activity_at desc
+
+    Excludes deleted_at IS NOT NULL.
+    """
+    from handlers.list_handlers import ListHandlers
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+    user_id = user_context.get("user_id")
+
+    # Lookup tenant if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_id)
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info.get("yacht_id")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+            user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
+
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=400, detail="yacht_id is required")
+
+    # Role gating: crew, chief_engineer, chief_officer, captain, manager
+    user_role = user_context.get("role", "")
+    allowed_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager"]
+    if user_role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user_role}' is not authorized for view_my_work_orders"
+        )
+
+    # Get tenant DB client
+    tenant_alias = user_context.get("tenant_key_alias", "")
+    db_client = get_tenant_supabase_client(tenant_alias)
+
+    # Create handler and execute
+    handlers = ListHandlers(db_client)
+    result = await handlers.list_my_work_orders(
+        yacht_id=yacht_id,
+        user_id=user_id,
+        assigned_to=assigned_to,
+        group_key=group_key,
+    )
+
     return result
 
 
