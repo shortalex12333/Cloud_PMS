@@ -1,0 +1,13 @@
+ schemaname |         tablename          |                 indexname                  |                                                                                  indexdef                                                                                   
+------------+----------------------------+--------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ public     | pms_inventory_transactions | idx_inventory_transactions_idempotency     | CREATE UNIQUE INDEX idx_inventory_transactions_idempotency ON public.pms_inventory_transactions USING btree (yacht_id, idempotency_key) WHERE (idempotency_key IS NOT NULL)
+ public     | pms_inventory_transactions | idx_inventory_txn_idempotency              | CREATE UNIQUE INDEX idx_inventory_txn_idempotency ON public.pms_inventory_transactions USING btree (yacht_id, idempotency_key) WHERE (idempotency_key IS NOT NULL)
+ public     | pms_inventory_transactions | idx_inventory_txn_idempotency_partial      | CREATE UNIQUE INDEX idx_inventory_txn_idempotency_partial ON public.pms_inventory_transactions USING btree (yacht_id, idempotency_key) WHERE (idempotency_key IS NOT NULL)
+ public     | pms_part_locations         | idx_part_locations_yacht                   | CREATE INDEX idx_part_locations_yacht ON public.pms_part_locations USING btree (yacht_id)
+ public     | pms_part_locations         | pms_part_locations_pkey                    | CREATE UNIQUE INDEX pms_part_locations_pkey ON public.pms_part_locations USING btree (id)
+ public     | pms_part_locations         | uq_part_locations_yacht_name               | CREATE UNIQUE INDEX uq_part_locations_yacht_name ON public.pms_part_locations USING btree (yacht_id, name)
+ public     | pms_parts                  | idx_pms_parts_active                       | CREATE INDEX idx_pms_parts_active ON public.pms_parts USING btree (yacht_id) WHERE (deleted_at IS NULL)
+ public     | pms_parts                  | idx_pms_parts_primary_location             | CREATE INDEX idx_pms_parts_primary_location ON public.pms_parts USING btree (primary_location_id) WHERE (primary_location_id IS NOT NULL)
+ public     | pms_staged_mutations       | pms_staged_mutations_idempotency_token_key | CREATE UNIQUE INDEX pms_staged_mutations_idempotency_token_key ON public.pms_staged_mutations USING btree (idempotency_token)
+(9 rows)
+
