@@ -275,6 +275,20 @@ async def _cert_link_document(params: Dict[str, Any]) -> Dict[str, Any]:
     fn = handlers.get("link_document_to_certificate")
     if not fn:
         raise ValueError("link_document_to_certificate handler not registered")
+    # Defensive validation: ensure document exists before delegating
+    doc_id = params.get("document_id")
+    yacht_id = params.get("yacht_id")
+    if not doc_id:
+        raise ValueError("document_id is required")
+    # Resolve tenant client from context if available
+    # Fallback to default tenant client if not
+    try:
+        supabase = get_supabase_client()
+        dm = supabase.table("doc_metadata").select("id").eq("id", doc_id).maybe_single().execute()
+    except Exception:
+        dm = None
+    if not getattr(dm, 'data', None):
+        raise ValueError("document_id not found")
     return await fn(**params)
 
 
