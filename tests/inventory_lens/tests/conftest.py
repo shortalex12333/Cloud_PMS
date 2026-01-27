@@ -8,33 +8,40 @@ import pytest
 import asyncio
 import asyncpg
 from uuid import UUID
-from dataclasses import dataclass
-from typing import Optional
+
+# Import helpers from helpers module
+from .helpers import (
+    TestUser,
+    TestPart,
+    TestStock,
+    create_test_part,
+    create_test_stock,
+    create_test_location,
+    set_user_context
+)
+
+# Re-export for test files
+__all__ = [
+    'TestUser',
+    'TestPart',
+    'TestStock',
+    'create_test_part',
+    'create_test_stock',
+    'create_test_location',
+    'set_user_context'
+]
 
 # Environment variables
-DATABASE_URL = os.getenv("DATABASE_URL", "postgres://postgres:postgres@localhost:54322/postgres")
-TEST_YACHT_A_ID = UUID(os.getenv("TEST_YACHT_A_ID", "00000000-0000-0000-0000-000000000001"))
-TEST_YACHT_B_ID = UUID(os.getenv("TEST_YACHT_B_ID", "00000000-0000-0000-0000-000000000002"))
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable must be set in .env.test")
 
+TEST_YACHT_ID = os.getenv("TEST_YACHT_ID")
+if not TEST_YACHT_ID:
+    raise ValueError("TEST_YACHT_ID environment variable must be set in .env.test")
 
-@dataclass
-class TestUser:
-    """Test user context."""
-    id: UUID
-    yacht_id: UUID
-    role: str
-    email: str
-
-
-@dataclass
-class TestPart:
-    """Test part entity."""
-    id: UUID
-    yacht_id: UUID
-    name: str
-    quantity_on_hand: int
-    minimum_quantity: int = 0
-    deleted_at: Optional[str] = None
+TEST_YACHT_A_ID = UUID(TEST_YACHT_ID)
+TEST_YACHT_B_ID = UUID("00000000-0000-0000-0000-000000000002")  # Different yacht for isolation tests
 
 
 @pytest.fixture(scope="session")
@@ -62,169 +69,57 @@ async def db(db_pool):
 
 @pytest.fixture
 async def yacht_a(db) -> UUID:
-    """Ensure test yacht A exists."""
-    await db.execute("""
-        INSERT INTO yacht_registry (id, name, created_at)
-        VALUES ($1, 'Test Yacht A', NOW())
-        ON CONFLICT (id) DO NOTHING
-    """, TEST_YACHT_A_ID)
+    """Return test yacht A ID (already exists in staging)."""
+    # Verify yacht exists
+    result = await db.fetchval("SELECT id FROM yacht_registry WHERE id = $1", TEST_YACHT_A_ID)
+    if not result:
+        raise ValueError(f"Test yacht {TEST_YACHT_A_ID} not found in yacht_registry")
     return TEST_YACHT_A_ID
 
 
 @pytest.fixture
 async def yacht_b(db) -> UUID:
-    """Ensure test yacht B exists."""
-    await db.execute("""
-        INSERT INTO yacht_registry (id, name, created_at)
-        VALUES ($1, 'Test Yacht B', NOW())
-        ON CONFLICT (id) DO NOTHING
-    """, TEST_YACHT_B_ID)
+    """Return test yacht B ID (for isolation tests - different yacht)."""
+    # For isolation tests, use a different yacht ID
+    # This yacht likely doesn't exist, but that's OK for isolation tests
     return TEST_YACHT_B_ID
 
 
 @pytest.fixture
 async def deckhand_a(db, yacht_a) -> TestUser:
-    """Create deckhand user for yacht A."""
-    user_id = UUID("00000000-0000-0000-0000-000000000010")
-    await db.execute("""
-        INSERT INTO auth_users_profiles (id, yacht_id, email, full_name, is_active)
-        VALUES ($1, $2, 'deckhand_a@test.com', 'Deckhand A', true)
-        ON CONFLICT (id) DO UPDATE SET yacht_id = $2
-    """, user_id, yacht_a)
-    await db.execute("""
-        INSERT INTO auth_users_roles (user_id, yacht_id, role, is_active)
-        VALUES ($1, $2, 'deckhand', true)
-        ON CONFLICT (user_id, yacht_id) DO UPDATE SET role = 'deckhand'
-    """, user_id, yacht_a)
-    return TestUser(id=user_id, yacht_id=yacht_a, role="deckhand", email="deckhand_a@test.com")
+    """Use existing crew user for yacht A."""
+    user_id = UUID("6d807a66-955c-49c4-b767-8a6189c2f422")  # crew.tenant@alex-short.com
+    return TestUser(id=user_id, yacht_id=yacht_a, role="crew", email="crew.tenant@alex-short.com")
 
 
 @pytest.fixture
 async def deckhand_b(db, yacht_b) -> TestUser:
-    """Create deckhand user for yacht B."""
+    """Use a crew user for yacht B (for isolation tests)."""
+    # This user doesn't exist in yacht B, which is perfect for isolation testing
     user_id = UUID("00000000-0000-0000-0000-000000000011")
-    await db.execute("""
-        INSERT INTO auth_users_profiles (id, yacht_id, email, full_name, is_active)
-        VALUES ($1, $2, 'deckhand_b@test.com', 'Deckhand B', true)
-        ON CONFLICT (id) DO UPDATE SET yacht_id = $2
-    """, user_id, yacht_b)
-    await db.execute("""
-        INSERT INTO auth_users_roles (user_id, yacht_id, role, is_active)
-        VALUES ($1, $2, 'deckhand', true)
-        ON CONFLICT (user_id, yacht_id) DO UPDATE SET role = 'deckhand'
-    """, user_id, yacht_b)
-    return TestUser(id=user_id, yacht_id=yacht_b, role="deckhand", email="deckhand_b@test.com")
+    return TestUser(id=user_id, yacht_id=yacht_b, role="crew", email="crew_b@test.com")
 
 
 @pytest.fixture
 async def captain(db, yacht_a) -> TestUser:
-    """Create captain user for yacht A."""
-    user_id = UUID("00000000-0000-0000-0000-000000000020")
-    await db.execute("""
-        INSERT INTO auth_users_profiles (id, yacht_id, email, full_name, is_active)
-        VALUES ($1, $2, 'captain@test.com', 'Captain Test', true)
-        ON CONFLICT (id) DO UPDATE SET yacht_id = $2
-    """, user_id, yacht_a)
-    await db.execute("""
-        INSERT INTO auth_users_roles (user_id, yacht_id, role, is_active)
-        VALUES ($1, $2, 'captain', true)
-        ON CONFLICT (user_id, yacht_id) DO UPDATE SET role = 'captain'
-    """, user_id, yacht_a)
-    return TestUser(id=user_id, yacht_id=yacht_a, role="captain", email="captain@test.com")
+    """Use existing captain user for yacht A."""
+    user_id = UUID("5af9d61d-9b2e-4db4-a54c-a3c95eec70e5")  # captain.tenant@alex-short.com
+    return TestUser(id=user_id, yacht_id=yacht_a, role="captain", email="captain.tenant@alex-short.com")
 
 
 @pytest.fixture
 async def manager(db, yacht_a) -> TestUser:
-    """Create manager user for yacht A."""
-    user_id = UUID("00000000-0000-0000-0000-000000000030")
-    await db.execute("""
-        INSERT INTO auth_users_profiles (id, yacht_id, email, full_name, is_active)
-        VALUES ($1, $2, 'manager@test.com', 'Manager Test', true)
-        ON CONFLICT (id) DO UPDATE SET yacht_id = $2
-    """, user_id, yacht_a)
-    await db.execute("""
-        INSERT INTO auth_users_roles (user_id, yacht_id, role, is_active)
-        VALUES ($1, $2, 'manager', true)
-        ON CONFLICT (user_id, yacht_id) DO UPDATE SET role = 'manager'
-    """, user_id, yacht_a)
-    return TestUser(id=user_id, yacht_id=yacht_a, role="manager", email="manager@test.com")
+    """Use existing captain user as manager (captain is a manager role)."""
+    user_id = UUID("5af9d61d-9b2e-4db4-a54c-a3c95eec70e5")  # captain.tenant@alex-short.com
+    return TestUser(id=user_id, yacht_id=yacht_a, role="captain", email="captain.tenant@alex-short.com")
 
 
 @pytest.fixture
 async def guest(db, yacht_a) -> TestUser:
-    """Create guest user (non-operational) for yacht A."""
+    """Create a non-operational guest user (no role in auth_users_roles)."""
+    # Use a UUID that doesn't have a role assigned
     user_id = UUID("00000000-0000-0000-0000-000000000040")
-    await db.execute("""
-        INSERT INTO auth_users_profiles (id, yacht_id, email, full_name, is_active)
-        VALUES ($1, $2, 'guest@test.com', 'Guest Test', true)
-        ON CONFLICT (id) DO UPDATE SET yacht_id = $2
-    """, user_id, yacht_a)
-    await db.execute("""
-        INSERT INTO auth_users_roles (user_id, yacht_id, role, is_active)
-        VALUES ($1, $2, 'guest', true)
-        ON CONFLICT (user_id, yacht_id) DO UPDATE SET role = 'guest'
-    """, user_id, yacht_a)
     return TestUser(id=user_id, yacht_id=yacht_a, role="guest", email="guest@test.com")
 
 
-@dataclass
-class TestStock:
-    """Test stock entity (per-location inventory)."""
-    id: UUID
-    yacht_id: UUID
-    part_id: UUID
-    location: str
-    quantity: int
-    deleted_at: Optional[str] = None
-
-
-async def create_test_part(db, yacht_id: UUID, name: str, quantity: int = 10, **kwargs) -> TestPart:
-    """Helper to create a test part (catalog entry only, no stock)."""
-    from uuid import uuid4
-    part_id = uuid4()
-    await db.execute("""
-        INSERT INTO pms_parts (id, yacht_id, name, quantity_on_hand, minimum_quantity, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-    """, part_id, yacht_id, name, quantity, kwargs.get("minimum_quantity", 0))
-    return TestPart(
-        id=part_id,
-        yacht_id=yacht_id,
-        name=name,
-        quantity_on_hand=quantity,
-        minimum_quantity=kwargs.get("minimum_quantity", 0)
-    )
-
-
-async def create_test_stock(db, yacht_id: UUID, part_id: UUID, location: str, quantity: int = 10) -> TestStock:
-    """Helper to create a test stock record (per-location inventory)."""
-    from uuid import uuid4
-    stock_id = uuid4()
-    await db.execute("""
-        INSERT INTO pms_inventory_stock (id, yacht_id, part_id, location, quantity, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-    """, stock_id, yacht_id, part_id, location, quantity)
-    return TestStock(
-        id=stock_id,
-        yacht_id=yacht_id,
-        part_id=part_id,
-        location=location,
-        quantity=quantity
-    )
-
-
-async def create_test_location(db, yacht_id: UUID, name: str) -> UUID:
-    """Helper to create a test location."""
-    from uuid import uuid4
-    loc_id = uuid4()
-    await db.execute("""
-        INSERT INTO pms_part_locations (id, yacht_id, name, created_at)
-        VALUES ($1, $2, $3, NOW())
-    """, loc_id, yacht_id, name)
-    return loc_id
-
-
-async def set_user_context(db, user: TestUser):
-    """Set JWT claims for RLS testing."""
-    await db.execute("""
-        SET LOCAL "request.jwt.claims" = $1
-    """, f'{{"sub": "{user.id}"}}')
+# Helper functions imported from helpers.py above

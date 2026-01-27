@@ -1,0 +1,19 @@
+# Dockerfile for Inventory Lens Test Runner
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.test.txt .
+RUN pip install --no-cache-dir -r requirements.test.txt
+
+# Copy test code
+COPY . .
+
+# Default command
+CMD ["pytest", "-v", "--tb=short", "tests/"]

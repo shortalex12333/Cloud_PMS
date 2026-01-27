@@ -156,24 +156,38 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
         yacht_id = user_account['yacht_id']
         tenant_key_alias = fleet.get('tenant_key_alias') or f"y{yacht_id}"
 
-        # BUG FIX: Query tenant DB for yacht-specific role from auth_users_roles
-        # The master DB user_accounts.role is not yacht-specific and can be wrong
-        tenant_role = 'crew'  # Default fallback
+        # SECURITY: Query tenant DB for yacht-specific role from auth_users_roles
+        # DENY-BY-DEFAULT: If tenant role lookup fails, return None (block all access)
+        # The master DB user_accounts.role is not yacht-specific and MUST NOT be trusted
+        tenant_role = None
         try:
             from pipeline_service import get_tenant_client
             tenant_client = get_tenant_client(tenant_key_alias)
-            if tenant_client:
-                role_result = tenant_client.table('auth_users_roles').select(
-                    'role'
-                ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('is_active', True).limit(1).execute()
+            if not tenant_client:
+                logger.error(f"[Auth] SECURITY: Failed to get tenant client for {tenant_key_alias}")
+                return None
 
-                if role_result.data and len(role_result.data) > 0:
-                    tenant_role = role_result.data[0]['role']
-                    logger.info(f"[Auth] Found yacht-specific role: {tenant_role} for user {user_id[:8]}... on yacht {yacht_id}")
-                else:
-                    logger.warning(f"[Auth] No active role in auth_users_roles for user {user_id[:8]}... on yacht {yacht_id}, using default: {tenant_role}")
+            role_result = tenant_client.table('auth_users_roles').select(
+                'role, valid_from, valid_until'
+            ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('is_active', True).execute()
+
+            if role_result.data and len(role_result.data) > 0:
+                # If multiple active roles exist, take the most recent one
+                # Sort by valid_from descending to get latest assignment
+                sorted_roles = sorted(
+                    role_result.data,
+                    key=lambda r: r.get('valid_from', ''),
+                    reverse=True
+                )
+                tenant_role = sorted_roles[0]['role']
+                logger.info(f"[Auth] Found yacht-specific role: {tenant_role} for user {user_id[:8]}... on yacht {yacht_id}")
+            else:
+                logger.error(f"[Auth] SECURITY: No active role in auth_users_roles for user {user_id[:8]}... on yacht {yacht_id}")
+                return None
+
         except Exception as role_err:
-            logger.error(f"[Auth] Failed to query tenant DB for role: {role_err}. Using default: {tenant_role}")
+            logger.error(f"[Auth] SECURITY: Failed to query tenant DB for role: {role_err}")
+            return None
 
         tenant_info = {
             'yacht_id': yacht_id,
