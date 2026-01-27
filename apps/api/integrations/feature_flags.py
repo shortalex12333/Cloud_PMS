@@ -4,13 +4,33 @@ CelesteOS Backend - Feature Flags
 Feature flags for gradual rollout and fail-closed behavior.
 All email transport layer features default to OFF.
 
-Updated: 2026-01-17 - Force rebuild for env var refresh
+Updated: 2026-01-27 - Added Fault Lens v1 canary flag
 """
 
 import os
 import logging
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# FAULT LENS V1 FLAGS (default: OFF - fail-closed)
+# ============================================================================
+
+# Master canary flag for Fault Lens v1
+# Set to 'true' ONLY for canary yacht during initial rollout
+FAULT_LENS_V1_ENABLED = os.getenv('FAULT_LENS_V1_ENABLED', 'false').lower() == 'true'
+
+# Individual feature flags for granular control
+FAULT_LENS_SUGGESTIONS_ENABLED = os.getenv('FAULT_LENS_SUGGESTIONS_ENABLED', 'false').lower() == 'true'
+FAULT_LENS_RELATED_ENABLED = os.getenv('FAULT_LENS_RELATED_ENABLED', 'false').lower() == 'true'
+FAULT_LENS_WARRANTY_ENABLED = os.getenv('FAULT_LENS_WARRANTY_ENABLED', 'false').lower() == 'true'
+FAULT_LENS_SIGNED_ACTIONS_ENABLED = os.getenv('FAULT_LENS_SIGNED_ACTIONS_ENABLED', 'false').lower() == 'true'
+
+logger.info(f"[FeatureFlags] FAULT_LENS_V1_ENABLED={FAULT_LENS_V1_ENABLED}")
+logger.info(f"[FeatureFlags] FAULT_LENS_SUGGESTIONS_ENABLED={FAULT_LENS_SUGGESTIONS_ENABLED}")
+logger.info(f"[FeatureFlags] FAULT_LENS_RELATED_ENABLED={FAULT_LENS_RELATED_ENABLED}")
+logger.info(f"[FeatureFlags] FAULT_LENS_WARRANTY_ENABLED={FAULT_LENS_WARRANTY_ENABLED}")
+logger.info(f"[FeatureFlags] FAULT_LENS_SIGNED_ACTIONS_ENABLED={FAULT_LENS_SIGNED_ACTIONS_ENABLED}")
 
 # ============================================================================
 # EMAIL TRANSPORT LAYER FLAGS (default: OFF)
@@ -70,7 +90,32 @@ def check_email_feature(feature_name: str) -> tuple[bool, str]:
     return True, ""
 
 
+def check_fault_lens_feature(feature_name: str) -> tuple[bool, str]:
+    """
+    Check if a Fault Lens feature is enabled.
+    Returns (enabled, error_message).
+
+    Fail-closed: if master switch is off, all features are disabled.
+    """
+    if not FAULT_LENS_V1_ENABLED:
+        return False, "Fault Lens v1 is disabled (canary flag off)"
+
+    flags = {
+        'suggestions': FAULT_LENS_SUGGESTIONS_ENABLED,
+        'related': FAULT_LENS_RELATED_ENABLED,
+        'warranty': FAULT_LENS_WARRANTY_ENABLED,
+        'signed_actions': FAULT_LENS_SIGNED_ACTIONS_ENABLED,
+    }
+
+    enabled = flags.get(feature_name, False)
+    if not enabled:
+        return False, f"Fault Lens feature '{feature_name}' is disabled"
+
+    return True, ""
+
+
 __all__ = [
+    # Email flags
     'EMAIL_TRANSPORT_ENABLED',
     'EMAIL_RELATED_ENABLED',
     'EMAIL_THREAD_ENABLED',
@@ -81,4 +126,11 @@ __all__ = [
     'EMAIL_SEARCH_ENABLED',
     'EMAIL_FOCUS_ENABLED',
     'check_email_feature',
+    # Fault Lens flags
+    'FAULT_LENS_V1_ENABLED',
+    'FAULT_LENS_SUGGESTIONS_ENABLED',
+    'FAULT_LENS_RELATED_ENABLED',
+    'FAULT_LENS_WARRANTY_ENABLED',
+    'FAULT_LENS_SIGNED_ACTIONS_ENABLED',
+    'check_fault_lens_feature',
 ]
