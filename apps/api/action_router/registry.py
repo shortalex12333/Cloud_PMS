@@ -9,7 +9,7 @@ PHASE 8 CULL (2026-01-21): Removed 16 ghost actions not deployed to production.
 Remaining: 30 actions that exist in production.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from enum import Enum
 
 
@@ -17,6 +17,13 @@ class HandlerType(str, Enum):
     """Type of handler for an action."""
     INTERNAL = "internal"
     N8N = "n8n"
+
+
+class ActionVariant(str, Enum):
+    """Variant of action (mutation level)."""
+    READ = "READ"      # Read-only (view, list)
+    MUTATE = "MUTATE"  # Standard mutation (create, update)
+    SIGNED = "SIGNED"  # Requires signature (supersede, delete)
 
 
 class ActionDefinition:
@@ -32,6 +39,9 @@ class ActionDefinition:
         allowed_roles: List[str] = None,
         required_fields: List[str] = None,
         schema_file: str = None,
+        domain: str = None,
+        variant: ActionVariant = ActionVariant.MUTATE,
+        search_keywords: List[str] = None,
     ):
         self.action_id = action_id
         self.label = label
@@ -41,6 +51,9 @@ class ActionDefinition:
         self.allowed_roles = allowed_roles or ["Engineer", "HOD", "Manager"]
         self.required_fields = required_fields or []
         self.schema_file = schema_file
+        self.domain = domain
+        self.variant = variant
+        self.search_keywords = search_keywords or []
 
 
 # ============================================================================
@@ -379,7 +392,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     # ========================================================================
     "create_vessel_certificate": ActionDefinition(
         action_id="create_vessel_certificate",
-        label="Create Vessel Certificate",
+        label="Add Vessel Certificate",
         endpoint="/v1/certificates/create-vessel",
         handler_type=HandlerType.INTERNAL,
         method="POST",
@@ -391,11 +404,14 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "issuing_authority",
         ],
         schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "create", "new", "vessel", "certificate", "cert", "flag", "class", "safety"],
     ),
 
     "create_crew_certificate": ActionDefinition(
         action_id="create_crew_certificate",
-        label="Create Crew Certificate",
+        label="Add Crew Certificate",
         endpoint="/v1/certificates/create-crew",
         handler_type=HandlerType.INTERNAL,
         method="POST",
@@ -407,6 +423,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "issuing_authority",
         ],
         schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "create", "new", "crew", "certificate", "cert", "stcw", "training"],
     ),
 
     "update_certificate": ActionDefinition(
@@ -421,6 +440,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "certificate_id",
         ],
         schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["update", "edit", "modify", "change", "certificate", "cert", "expiry", "renewal"],
     ),
 
     "link_document_to_certificate": ActionDefinition(
@@ -436,6 +458,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "document_id",
         ],
         schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "attach", "upload", "document", "doc", "file", "pdf", "certificate", "cert"],
     ),
 
     "supersede_certificate": ActionDefinition(
@@ -452,6 +477,9 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             "signature",  # REQUIRED - signed action
         ],
         schema_file=None,
+        domain="certificates",
+        variant=ActionVariant.SIGNED,
+        search_keywords=["supersede", "replace", "renew", "certificate", "cert", "expire", "sign"],
     ),
 }
 
@@ -515,15 +543,183 @@ def validate_action_exists(action_id: str) -> bool:
 
 
 # ============================================================================
+# STORAGE SEMANTICS FOR FILE-RELATED ACTIONS
+# ============================================================================
+
+ACTION_STORAGE_CONFIG: Dict[str, Dict[str, Any]] = {
+    "link_document_to_certificate": {
+        "bucket": "documents",
+        "path_template": "{yacht_id}/certificates/{certificate_id}/{filename}",
+        "writable_prefixes": ["{yacht_id}/certificates/"],
+        "confirmation_required": True,
+    },
+    "create_vessel_certificate": {
+        "bucket": "documents",
+        "path_template": "{yacht_id}/certificates/{certificate_id}/{filename}",
+        "writable_prefixes": ["{yacht_id}/certificates/"],
+        "confirmation_required": True,
+    },
+    "create_crew_certificate": {
+        "bucket": "documents",
+        "path_template": "{yacht_id}/certificates/{certificate_id}/{filename}",
+        "writable_prefixes": ["{yacht_id}/certificates/"],
+        "confirmation_required": True,
+    },
+}
+
+
+def get_storage_options(action_id: str, yacht_id: str = None, entity_id: str = None) -> Optional[Dict[str, Any]]:
+    """
+    Get storage options for an action.
+
+    Returns None if action has no storage semantics.
+    Substitutes yacht_id and entity_id into path templates if provided.
+    """
+    config = ACTION_STORAGE_CONFIG.get(action_id)
+    if not config:
+        return None
+
+    # Build preview path
+    path_preview = config["path_template"]
+    writable = list(config["writable_prefixes"])
+
+    if yacht_id:
+        path_preview = path_preview.replace("{yacht_id}", yacht_id)
+        writable = [p.replace("{yacht_id}", yacht_id) for p in writable]
+
+    if entity_id:
+        path_preview = path_preview.replace("{certificate_id}", entity_id)
+    else:
+        path_preview = path_preview.replace("{certificate_id}", "<new_id>")
+
+    return {
+        "bucket": config["bucket"],
+        "path_preview": path_preview,
+        "writable_prefixes": writable,
+        "confirmation_required": config["confirmation_required"],
+    }
+
+
+# ============================================================================
+# ACTION SEARCH
+# ============================================================================
+
+def _tokenize(text: str) -> List[str]:
+    """Tokenize text into lowercase words."""
+    import re
+    return re.findall(r'\w+', text.lower())
+
+
+def _match_score(query_tokens: List[str], action: ActionDefinition) -> float:
+    """
+    Compute match score for an action against query tokens.
+
+    Scoring:
+    - 1.0: Exact match on action_id
+    - 0.9: All query tokens in label
+    - 0.8: All query tokens in search_keywords
+    - 0.5-0.7: Partial matches
+    - 0.0: No match
+    """
+    if not query_tokens:
+        return 1.0  # Empty query matches all
+
+    action_id_lower = action.action_id.lower()
+    label_tokens = _tokenize(action.label)
+    keyword_set = set(kw.lower() for kw in action.search_keywords)
+
+    # Check exact action_id match
+    query_str = "_".join(query_tokens)
+    if query_str == action_id_lower or query_str.replace("_", "") == action_id_lower.replace("_", ""):
+        return 1.0
+
+    # Check if all query tokens appear in label
+    label_set = set(label_tokens)
+    if all(qt in label_set for qt in query_tokens):
+        return 0.9
+
+    # Check if all query tokens appear in keywords
+    if all(qt in keyword_set for qt in query_tokens):
+        return 0.85
+
+    # Partial matches
+    label_hits = sum(1 for qt in query_tokens if qt in label_set)
+    keyword_hits = sum(1 for qt in query_tokens if qt in keyword_set)
+    combined_hits = max(label_hits, keyword_hits)
+
+    if combined_hits == 0:
+        return 0.0
+
+    # Scale from 0.5 to 0.7 based on hit ratio
+    hit_ratio = combined_hits / len(query_tokens)
+    return 0.5 + (hit_ratio * 0.2)
+
+
+def search_actions(
+    query: str = None,
+    role: str = None,
+    domain: str = None,
+) -> List[Dict[str, Any]]:
+    """
+    Search actions with role-gating and optional domain filter.
+
+    Args:
+        query: Search query (optional, returns all if empty)
+        role: User role for filtering (required for gating)
+        domain: Domain filter (optional, e.g., "certificates")
+
+    Returns:
+        List of action dicts with match_score, sorted by score desc
+    """
+    results = []
+    query_tokens = _tokenize(query) if query else []
+
+    for action_id, action in ACTION_REGISTRY.items():
+        # Role gating: skip if user role not in allowed_roles
+        if role and role not in action.allowed_roles:
+            continue
+
+        # Domain filter: skip if domain specified and action doesn't match
+        # (actions with no domain are excluded when a domain filter is provided)
+        if domain and action.domain != domain:
+            continue
+
+        # Compute match score
+        score = _match_score(query_tokens, action)
+
+        # Skip zero-score matches when query is provided
+        if query_tokens and score == 0.0:
+            continue
+
+        results.append({
+            "action_id": action.action_id,
+            "label": action.label,
+            "variant": action.variant.value if action.variant else "MUTATE",
+            "allowed_roles": action.allowed_roles,
+            "required_fields": action.required_fields,
+            "domain": action.domain,
+            "match_score": round(score, 2),
+        })
+
+    # Sort by score descending
+    results.sort(key=lambda x: x["match_score"], reverse=True)
+    return results
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
 __all__ = [
     "ACTION_REGISTRY",
     "ActionDefinition",
+    "ActionVariant",
     "HandlerType",
     "get_action",
     "list_actions",
     "get_actions_for_role",
     "validate_action_exists",
+    "search_actions",
+    "get_storage_options",
+    "ACTION_STORAGE_CONFIG",
 ]
