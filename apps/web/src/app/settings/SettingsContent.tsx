@@ -16,10 +16,27 @@ interface IntegrationStatus {
 
 type Theme = 'light' | 'dark' | 'system';
 
-// Helper for authenticated API calls
+// Helper for authenticated API calls with token refresh
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const { data: { session } } = await supabase.auth.getSession();
+  // Get current session
+  let { data: { session } } = await supabase.auth.getSession();
+
+  // If no session or token looks expired, try refreshing
+  if (!session?.access_token) {
+    console.log('[authFetch] No access token, attempting refresh...');
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      console.error('[authFetch] Session refresh failed:', refreshError.message);
+    } else if (refreshData.session) {
+      session = refreshData.session;
+      console.log('[authFetch] Session refreshed successfully');
+    }
+  }
+
   const token = session?.access_token;
+  if (!token) {
+    console.error('[authFetch] No access token available after refresh attempt');
+  }
 
   return fetch(url, {
     ...options,
