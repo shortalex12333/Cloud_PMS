@@ -1,7 +1,19 @@
 #!/usr/bin/env python3
 """
-Staging Certificates Acceptance (15 tests)
+Staging Certificates Acceptance
+
 Runs against a live API using real JWTs from MASTER.
+
+STABLE-USER MODE (default, recommended):
+  - Set CREATE_USERS='false' in workflow
+  - Provide STAGING_CREW_EMAIL, STAGING_HOD_EMAIL, STAGING_CAPTAIN_EMAIL secrets
+  - Uses pre-provisioned accounts: crew.test@, hod.test@, captain.test@alex-short.com
+  - No DB pollution from timestamped test users
+
+AUTO-PROVISION MODE (first-time setup only):
+  - Set CREATE_USERS='true' in workflow
+  - Creates timestamped users (crew.ci+{ts}@, hod.ci+{ts}@, captain.ci+{ts}@)
+  - Use sparingly; clean up after to avoid DB pollution
 """
 import os, sys, time, json, uuid
 import requests
