@@ -15,7 +15,13 @@ import {
   READ_APP,
 } from '@/lib/email/oauth-utils';
 
+// Force dynamic rendering - this route requires auth headers
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`[Outlook Auth READ][${requestId}] Request received`);
   try {
     // Check required env vars
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -34,26 +40,30 @@ export async function GET(request: NextRequest) {
 
     // Get JWT from Authorization header
     const authHeader = request.headers.get('authorization');
+    console.log(`[Outlook Auth READ][${requestId}] Auth header present: ${!!authHeader}, length: ${authHeader?.length || 0}`);
+
     if (!authHeader) {
-      console.error('[Outlook Auth READ] No Authorization header provided');
+      console.error(`[Outlook Auth READ][${requestId}] FAIL: No Authorization header`);
       return NextResponse.json(
-        { error: 'No authorization header', code: 'missing_auth_header' },
+        { error: 'No authorization header', code: 'missing_auth_header', requestId, hint: 'Ensure frontend sends Authorization: Bearer <token>' },
         { status: 401 }
       );
     }
     if (!authHeader.startsWith('Bearer ')) {
-      console.error('[Outlook Auth READ] Invalid Authorization header format:', authHeader.substring(0, 20));
+      console.error(`[Outlook Auth READ][${requestId}] FAIL: Invalid format - starts with: ${authHeader.substring(0, 10)}`);
       return NextResponse.json(
-        { error: 'Invalid authorization header format', code: 'invalid_auth_format' },
+        { error: 'Invalid authorization header format', code: 'invalid_auth_format', requestId, hint: 'Header must start with "Bearer "' },
         { status: 401 }
       );
     }
 
     const token = authHeader.split(' ')[1];
+    console.log(`[Outlook Auth READ][${requestId}] Token extracted, length: ${token?.length || 0}`);
+
     if (!token || token.length < 10) {
-      console.error('[Outlook Auth READ] Token is empty or too short');
+      console.error(`[Outlook Auth READ][${requestId}] FAIL: Token empty or too short`);
       return NextResponse.json(
-        { error: 'Empty or invalid token', code: 'empty_token' },
+        { error: 'Empty or invalid token', code: 'empty_token', requestId, hint: 'Token is missing or malformed' },
         { status: 401 }
       );
     }
@@ -67,15 +77,17 @@ export async function GET(request: NextRequest) {
     });
 
     // Verify JWT by calling getUser - this validates the token
+    console.log(`[Outlook Auth READ][${requestId}] Validating token against Supabase: ${supabaseUrl.substring(0, 30)}...`);
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.error('[Outlook Auth READ] Auth validation failed:', error?.message);
+      console.error(`[Outlook Auth READ][${requestId}] FAIL: Token validation - ${error?.message || 'no user returned'}`);
       return NextResponse.json(
-        { error: 'Token validation failed', code: 'token_invalid', details: error?.message },
+        { error: 'Token validation failed', code: 'token_invalid', requestId, details: error?.message, hint: 'JWT may be expired or signed by different Supabase project' },
         { status: 401 }
       );
     }
+    console.log(`[Outlook Auth READ][${requestId}] Token valid for user: ${user.id}`);
 
     // Generate state with user_id and purpose for CSRF protection
     const state = generateOAuthState(user.id, 'read');
