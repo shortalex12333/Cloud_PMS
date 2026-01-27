@@ -751,7 +751,7 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="invalid signature payload: missing required fields")
             result = await wo_handlers.reassign_work_order_execute(
                 work_order_id=payload["work_order_id"],
-                assignee_id=payload["assignee_id"],
+                new_assignee_id=payload["assignee_id"],
                 reason=payload.get("reason", "Reassigned"),
                 signature=signature,
                 yacht_id=yacht_id,
