@@ -18,6 +18,10 @@ import {
   WRITE_APP,
 } from '@/lib/email/oauth-utils';
 
+// Force dynamic rendering - this route requires auth headers
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     // Get JWT from Authorization header
