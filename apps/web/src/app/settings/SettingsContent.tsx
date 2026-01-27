@@ -147,11 +147,42 @@ function SettingsContent() {
     try {
       const res = await authFetch('/api/integrations/outlook/auth-url');
       const data = await res.json();
+
+      if (!res.ok) {
+        // Handle specific error codes
+        console.error('[Settings] Auth URL error:', data);
+        if (data.code === 'missing_auth_header' || data.code === 'empty_token') {
+          // Session might be missing - try to restore
+          console.log('[Settings] Attempting session restore...');
+          const { data: sessionData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !sessionData.session) {
+            alert('Your session has expired. Please log in again.');
+            router.push('/login');
+            return;
+          }
+          // Retry with fresh session
+          const retryRes = await authFetch('/api/integrations/outlook/auth-url');
+          const retryData = await retryRes.json();
+          if (retryData.url) {
+            window.location.href = retryData.url;
+            return;
+          }
+        }
+        alert(`Failed to connect: ${data.error || 'Unknown error'}`);
+        setConnectingOutlook(false);
+        return;
+      }
+
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        console.error('[Settings] No URL in response:', data);
+        alert('Failed to get OAuth URL. Please try again.');
+        setConnectingOutlook(false);
       }
     } catch (error) {
       console.error('[Settings] Error getting Outlook auth URL:', error);
+      alert('Network error. Please check your connection and try again.');
       setConnectingOutlook(false);
     }
   };

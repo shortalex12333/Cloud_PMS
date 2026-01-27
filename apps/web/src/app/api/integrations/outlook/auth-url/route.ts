@@ -34,14 +34,29 @@ export async function GET(request: NextRequest) {
 
     // Get JWT from Authorization header
     const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!authHeader) {
+      console.error('[Outlook Auth READ] No Authorization header provided');
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'No authorization header', code: 'missing_auth_header' },
+        { status: 401 }
+      );
+    }
+    if (!authHeader.startsWith('Bearer ')) {
+      console.error('[Outlook Auth READ] Invalid Authorization header format:', authHeader.substring(0, 20));
+      return NextResponse.json(
+        { error: 'Invalid authorization header format', code: 'invalid_auth_format' },
         { status: 401 }
       );
     }
 
     const token = authHeader.split(' ')[1];
+    if (!token || token.length < 10) {
+      console.error('[Outlook Auth READ] Token is empty or too short');
+      return NextResponse.json(
+        { error: 'Empty or invalid token', code: 'empty_token' },
+        { status: 401 }
+      );
+    }
 
     // Create Supabase client with the user's JWT to verify it
     // This uses the anon key but will only succeed if the JWT is valid
@@ -55,9 +70,9 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.error('[Outlook Auth READ] Auth error:', error?.message);
+      console.error('[Outlook Auth READ] Auth validation failed:', error?.message);
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Token validation failed', code: 'token_invalid', details: error?.message },
         { status: 401 }
       );
     }
