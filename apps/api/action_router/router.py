@@ -153,7 +153,19 @@ async def execute_action(
             if tenant_info:
                 user_context["yacht_id"] = tenant_info["yacht_id"]
                 user_context["tenant_key_alias"] = tenant_info.get("tenant_key_alias")
-                user_context["role"] = tenant_info.get("role", user_context.get("role"))
+                # SECURITY: ONLY use tenant-scoped role from auth_users_roles
+                # NEVER fall back to JWT/MASTER role - deny-by-default
+                if not tenant_info.get("role"):
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "status": "error",
+                            "error_code": "no_tenant_role",
+                            "message": "User has no active role on yacht",
+                            "action": action_id,
+                        },
+                    )
+                user_context["role"] = tenant_info["role"]
             else:
                 # User not assigned to any tenant
                 raise HTTPException(

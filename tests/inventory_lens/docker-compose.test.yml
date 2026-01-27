@@ -1,0 +1,70 @@
+# Docker Compose for Inventory Lens Acceptance Tests
+# Lens: Inventory Item Lens v1.2 GOLD
+# Date: 2026-01-27
+
+version: '3.8'
+
+services:
+  db:
+    image: supabase/postgres:15.1.0.117
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "54322:5432"
+    volumes:
+      - ../../supabase/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - test-network
+
+  storage:
+    image: supabase/storage-api:v0.40.4
+    environment:
+      ANON_KEY: "test-anon-key"
+      SERVICE_ROLE_KEY: "test-service-role-key"
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+    volumes:
+      - storage-data:/var/lib/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      STORAGE_URL: http://storage:5000
+      TEST_YACHT_A_ID: "00000000-0000-0000-0000-000000000001"
+      TEST_YACHT_B_ID: "00000000-0000-0000-0000-000000000002"
+      TEST_DECKHAND_A_ID: "00000000-0000-0000-0000-000000000010"
+      TEST_DECKHAND_B_ID: "00000000-0000-0000-0000-000000000011"
+      TEST_CAPTAIN_ID: "00000000-0000-0000-0000-000000000020"
+      TEST_MANAGER_ID: "00000000-0000-0000-0000-000000000030"
+    volumes:
+      - ./:/app
+      - ./reports:/app/reports
+    networks:
+      - test-network
+    command: pytest -v --tb=short --junitxml=reports/junit.xml tests/
+
+volumes:
+  storage-data:
+
+networks:
+  test-network:
+    driver: bridge
