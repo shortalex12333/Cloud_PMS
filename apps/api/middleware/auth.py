@@ -99,13 +99,13 @@ _tenant_cache: Dict[str, Dict] = {}
 
 def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
     """
-    Look up tenant info from MASTER DB for a user.
+    Look up tenant info from MASTER DB for a user, then get yacht-specific role from TENANT DB.
 
     Returns:
         {
             'yacht_id': 'TEST_YACHT_001',
             'tenant_key_alias': 'yTEST_YACHT_001',
-            'role': 'chief_engineer',
+            'role': 'chief_engineer',  # From tenant DB auth_users_roles
             'status': 'active',
             'yacht_name': 'M/Y Test Vessel'
         }
@@ -123,7 +123,7 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
     try:
         # Query user_accounts - PK column is 'id' in production schema
         result = client.table('user_accounts').select(
-            'yacht_id, role, status'
+            'yacht_id, status'
         ).eq('id', user_id).single().execute()
 
         if not result.data:
@@ -156,17 +156,36 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
         yacht_id = user_account['yacht_id']
         tenant_key_alias = fleet.get('tenant_key_alias') or f"y{yacht_id}"
 
+        # BUG FIX: Query tenant DB for yacht-specific role from auth_users_roles
+        # The master DB user_accounts.role is not yacht-specific and can be wrong
+        tenant_role = 'crew'  # Default fallback
+        try:
+            from pipeline_service import get_tenant_client
+            tenant_client = get_tenant_client(tenant_key_alias)
+            if tenant_client:
+                role_result = tenant_client.table('auth_users_roles').select(
+                    'role'
+                ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('is_active', True).limit(1).execute()
+
+                if role_result.data and len(role_result.data) > 0:
+                    tenant_role = role_result.data[0]['role']
+                    logger.info(f"[Auth] Found yacht-specific role: {tenant_role} for user {user_id[:8]}... on yacht {yacht_id}")
+                else:
+                    logger.warning(f"[Auth] No active role in auth_users_roles for user {user_id[:8]}... on yacht {yacht_id}, using default: {tenant_role}")
+        except Exception as role_err:
+            logger.error(f"[Auth] Failed to query tenant DB for role: {role_err}. Using default: {tenant_role}")
+
         tenant_info = {
             'yacht_id': yacht_id,
             'tenant_key_alias': tenant_key_alias,
-            'role': user_account.get('role', 'member'),
+            'role': tenant_role,
             'status': user_account['status'],
             'yacht_name': fleet.get('yacht_name'),
         }
 
         # Cache for future requests
         _tenant_cache[user_id] = tenant_info
-        logger.info(f"[Auth] Tenant lookup success: user={user_id[:8]}... -> yacht={tenant_info['yacht_id']}")
+        logger.info(f"[Auth] Tenant lookup success: user={user_id[:8]}... -> yacht={tenant_info['yacht_id']}, role={tenant_role}")
 
         return tenant_info
 
