@@ -144,9 +144,23 @@ function SettingsContent() {
   // Connect to Outlook
   const handleConnectOutlook = async () => {
     setConnectingOutlook(true);
+    console.log('[Settings] Connect clicked - getting session...');
+
     try {
+      // Pre-flight: Check session state before making the call
+      const { data: { session: preSession } } = await supabase.auth.getSession();
+      console.log('[Settings] Pre-flight session check:', {
+        hasSession: !!preSession,
+        hasToken: !!preSession?.access_token,
+        tokenLength: preSession?.access_token?.length || 0,
+        expiresAt: preSession?.expires_at ? new Date(preSession.expires_at * 1000).toISOString() : 'N/A',
+        userId: preSession?.user?.id?.substring(0, 8) || 'N/A',
+      });
+
       const res = await authFetch('/api/integrations/outlook/auth-url');
       const data = await res.json();
+
+      console.log('[Settings] Auth URL response:', { status: res.status, data });
 
       if (!res.ok) {
         // Handle specific error codes
