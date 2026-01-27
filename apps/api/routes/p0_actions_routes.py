@@ -716,6 +716,25 @@ async def execute_action(
                 user_id=user_id
             )
 
+        elif action == "create_work_order_from_fault":
+            # Execute signed creation of work order from a fault
+            if not wo_handlers:
+                raise HTTPException(status_code=500, detail="Work order handlers not initialized")
+            if not payload.get("signature"):
+                raise HTTPException(status_code=400, detail="signature is required for create_work_order_from_fault")
+            result = await wo_handlers.create_work_order_from_fault_execute(
+                fault_id=payload["fault_id"],
+                title=payload.get("title", ""),
+                equipment_id=payload.get("equipment_id"),
+                location=payload.get("location", ""),
+                description=payload.get("description", ""),
+                priority=payload.get("priority", "routine"),
+                signature=payload["signature"],
+                yacht_id=yacht_id,
+                user_id=user_id,
+                override_duplicate=bool(payload.get("override_duplicate", False))
+            )
+
         # ===== INVENTORY ACTIONS (P0 Actions 6-7) =====
         elif action == "check_stock_level":
             if not inventory_handlers:
