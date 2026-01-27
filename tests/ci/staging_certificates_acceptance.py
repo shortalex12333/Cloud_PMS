@@ -153,6 +153,22 @@ def main():
     }, expect=200)
     ok("Update returned 200 (no audit 409)")
 
+    # Action list: HOD sees create_vessel_certificate
+    resp = call_api(jwts['hod'], 'GET', '/v1/actions/list?q=add+certificate&domain=certificates', expect=200)
+    actions = resp.json().get('actions', [])
+    action_ids = [a.get('action_id') for a in actions]
+    if 'create_vessel_certificate' not in action_ids:
+        fail(f"HOD should see create_vessel_certificate in action list: {action_ids}")
+    ok("HOD sees create_vessel_certificate in action list")
+
+    # Action list: CREW sees no MUTATE actions
+    resp = call_api(jwts['crew'], 'GET', '/v1/actions/list?domain=certificates', expect=200)
+    actions = resp.json().get('actions', [])
+    mutations = [a for a in actions if a.get('variant') in ('MUTATE', 'SIGNED')]
+    if len(mutations) > 0:
+        fail(f"CREW should not see mutation actions: {[a['action_id'] for a in mutations]}")
+    ok("CREW sees no mutation actions in certificate domain")
+
     print("\nAll required staging re-checks passed.")
 
 if __name__ == '__main__':

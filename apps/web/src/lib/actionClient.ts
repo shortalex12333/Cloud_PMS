@@ -8,10 +8,10 @@
 import { useState } from 'react';
 import { supabase } from './supabaseClient';
 
-// Action Router endpoint
-const ACTION_ROUTER_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/v1/actions/execute`
-  : 'https://pipeline-core.int.celeste7.ai/v1/actions/execute';
+// Action Router endpoints
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+const ACTION_ROUTER_URL = `${API_BASE_URL}/v1/actions/execute`;
+const ACTION_LIST_URL = `${API_BASE_URL}/v1/actions/list`;
 
 /**
  * Action execution result
@@ -22,6 +22,35 @@ export interface ActionResult {
   result?: Record<string, any>;
   error_code?: string;
   message?: string;
+}
+
+/**
+ * Action suggestion from backend
+ */
+export interface ActionSuggestion {
+  action_id: string;
+  label: string;
+  variant: 'READ' | 'MUTATE' | 'SIGNED';
+  allowed_roles: string[];
+  required_fields: string[];
+  domain: string | null;
+  match_score: number;
+  storage_options?: {
+    bucket: string;
+    path_preview: string;
+    writable_prefixes: string[];
+    confirmation_required: boolean;
+  };
+}
+
+/**
+ * Action suggestions response from backend
+ */
+export interface ActionSuggestionsResponse {
+  query: string | null;
+  actions: ActionSuggestion[];
+  total_count: number;
+  role: string;
 }
 
 /**
@@ -208,6 +237,89 @@ export const ACTION_CONFIGS = {
     required_payload: ['quantity'],
   },
 } as const;
+
+/**
+ * Get action suggestions from backend
+ *
+ * @param query - Search query (e.g., 'add certificate')
+ * @param domain - Domain filter (e.g., 'certificates')
+ * @returns Promise with action suggestions
+ *
+ * @example
+ * ```typescript
+ * const { actions } = await getActionSuggestions('add certificate', 'certificates');
+ * // actions: [{ action_id: 'create_vessel_certificate', label: 'Add Vessel Certificate', ... }]
+ * ```
+ */
+export async function getActionSuggestions(
+  query: string,
+  domain: string = 'certificates'
+): Promise<ActionSuggestionsResponse> {
+  // Get current Supabase session for JWT
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    throw new ActionExecutionError(
+      'list_actions',
+      'unauthenticated',
+      'Authentication required to fetch action suggestions',
+      401
+    );
+  }
+
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  if (domain) params.set('domain', domain);
+
+  const url = `${ACTION_LIST_URL}?${params.toString()}`;
+
+  console.log('[actionClient] Fetching action suggestions:', { query, domain, url });
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ActionExecutionError(
+        'list_actions',
+        errorData.error_code || 'fetch_error',
+        errorData.message || `Failed to fetch suggestions: ${response.status}`,
+        response.status
+      );
+    }
+
+    const data: ActionSuggestionsResponse = await response.json();
+
+    console.log('[actionClient] Action suggestions received:', {
+      query,
+      count: data.total_count,
+      role: data.role,
+    });
+
+    return data;
+  } catch (error) {
+    if (error instanceof ActionExecutionError) {
+      throw error;
+    }
+
+    console.error('[actionClient] Failed to fetch action suggestions:', error);
+    throw new ActionExecutionError(
+      'list_actions',
+      'network_error',
+      error instanceof Error ? error.message : 'Network error',
+      undefined,
+      error
+    );
+  }
+}
 
 /**
  * React hook for executing actions with loading/error states

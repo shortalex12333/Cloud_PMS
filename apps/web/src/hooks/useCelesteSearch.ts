@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getYachtId, getYachtSignature } from '@/lib/authHelpers';
 import { ensureFreshToken } from '@/lib/tokenRefresh';
 import type { SearchResult } from '@/types/search';
+import { getActionSuggestions, type ActionSuggestion } from '@/lib/actionClient';
 
 // Constants
 const FAST_TYPING_DEBOUNCE = 140; // ms - user typing quickly
@@ -23,6 +24,27 @@ const RECENT_QUERIES_KEY = 'celeste_recent_queries';
 const MAX_RECENT_QUERIES = 5;
 const CACHE_TTL = 5 * 60 * 1000;  // 5 minutes
 
+// Certificate action keywords - triggers action suggestions fetch
+const CERT_ACTION_KEYWORDS = [
+  'add certificate',
+  'create certificate',
+  'new certificate',
+  'link document',
+  'attach document',
+  'supersede cert',
+  'update cert',
+  'add vessel cert',
+  'add crew cert',
+];
+
+/**
+ * Detect if query contains explicit certificate micro-action intent
+ */
+function detectCertActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return CERT_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
 // Types
 interface SearchState {
   query: string;
@@ -31,6 +53,7 @@ interface SearchState {
   isLoading: boolean;
   error: string | null;
   suggestions: SearchSuggestion[];
+  actionSuggestions: ActionSuggestion[];
 }
 
 interface SearchSuggestion {
@@ -321,6 +344,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
     isLoading: false,
     error: null,
     suggestions: [],
+    actionSuggestions: [],
   });
 
   // Refs for debouncing and cancellation
@@ -397,6 +421,33 @@ export function useCelesteSearch(yachtId: string | null = null) {
   }, []);
 
   /**
+   * Fetch action suggestions if query has cert action intent
+   */
+  const fetchActionSuggestionsIfNeeded = useCallback(async (query: string) => {
+    if (!detectCertActionIntent(query)) {
+      // Clear action suggestions if no intent
+      setState(prev => ({ ...prev, actionSuggestions: [] }));
+      return;
+    }
+
+    console.log('[useCelesteSearch] 🎯 Cert action intent detected, fetching suggestions');
+
+    try {
+      const response = await getActionSuggestions(query, 'certificates');
+      console.log('[useCelesteSearch] 📋 Action suggestions received:', response.actions.length);
+
+      setState(prev => ({
+        ...prev,
+        actionSuggestions: response.actions,
+      }));
+    } catch (error) {
+      console.warn('[useCelesteSearch] Failed to fetch action suggestions:', error);
+      // Don't block search on action suggestion failure
+      setState(prev => ({ ...prev, actionSuggestions: [] }));
+    }
+  }, []);
+
+  /**
    * Execute search
    */
   const executeSearch = useCallback(async (query: string) => {
@@ -409,10 +460,14 @@ export function useCelesteSearch(yachtId: string | null = null) {
         isLoading: false,
         isStreaming: false,
         error: null,
+        actionSuggestions: [],
       }));
       clearResultMap();
       return;
     }
+
+    // Fetch action suggestions in parallel with search (non-blocking)
+    fetchActionSuggestionsIfNeeded(query);
 
     // Check cache first
     const cached = getCachedResults(query);
@@ -512,7 +567,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
         }
       }, 2000);
     }
-  }, [clearResultMap, mergeResults, yachtId]);  // CRITICAL: yachtId must be in deps
+  }, [clearResultMap, mergeResults, yachtId, fetchActionSuggestionsIfNeeded]);  // CRITICAL: yachtId must be in deps
 
   /**
    * Handle input change with debouncing
@@ -589,6 +644,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
       isLoading: false,
       error: null,
       suggestions: [],
+      actionSuggestions: [],
     });
   }, [cancelCurrentRequest, clearResultMap]);
 
@@ -617,6 +673,15 @@ export function useCelesteSearch(yachtId: string | null = null) {
     console.log('[useCelesteSearch] 🗑️ Cache cleared');
   }, []);
 
+  /**
+   * Refetch current search (for refreshing after action)
+   */
+  const refetch = useCallback(() => {
+    if (state.query.trim()) {
+      executeSearch(state.query);
+    }
+  }, [state.query, executeSearch]);
+
   return {
     // State
     query: state.query,
@@ -625,6 +690,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
     isLoading: state.isLoading,
     error: state.error,
     suggestions: state.suggestions,
+    actionSuggestions: state.actionSuggestions,
 
     // Actions
     handleQueryChange,
@@ -632,6 +698,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
     clear,
     clearCache,
     selectSuggestion,
+    refetch,
 
     // Utils
     recentQueries: getRecentQueries(),

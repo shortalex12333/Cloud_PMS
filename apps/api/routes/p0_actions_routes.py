@@ -4141,6 +4141,75 @@ async def get_handover_items(
         raise HTTPException(status_code=500, detail=f"Failed to fetch handover items: {str(e)}")
 
 
+# ============================================================================
+# ACTION LIST ENDPOINT
+# ============================================================================
+
+@router.get("/list")
+async def list_actions_endpoint(
+    q: str = None,
+    domain: str = None,
+    entity_id: str = None,
+    authorization: str = Header(None),
+):
+    """
+    List available actions with role-gating and search.
+
+    Query params:
+        q: Search query (optional)
+        domain: Filter by domain (e.g., "certificates")
+        entity_id: Entity ID for storage path preview (optional)
+
+    Returns:
+        List of actions the user can perform, with storage options where applicable.
+    """
+    from action_router.registry import search_actions, get_storage_options
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+
+    # Lookup tenant if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_context["user_id"])
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info.get("yacht_id")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+
+    user_role = user_context.get("role")
+    yacht_id = user_context.get("yacht_id")
+
+    # Search actions with role-gating
+    actions = search_actions(query=q, role=user_role, domain=domain)
+
+    # Enrich with storage options
+    for action in actions:
+        storage_opts = get_storage_options(
+            action["action_id"],
+            yacht_id=yacht_id,
+            entity_id=entity_id,
+        )
+        if storage_opts:
+            action["storage_options"] = storage_opts
+
+    return {
+        "query": q,
+        "actions": actions,
+        "total_count": len(actions),
+        "role": user_role,
+    }
+
+
 @router.get("/health")
 async def health_check():
     """Health check for P0 actions routes."""

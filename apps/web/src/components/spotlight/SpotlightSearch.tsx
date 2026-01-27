@@ -24,6 +24,7 @@ import SettingsModal from '@/components/SettingsModal';
 import { EntityLine, StatusLine } from '@/components/celeste';
 import { EmailInboxView } from '@/components/email/EmailInboxView';
 import SituationRouter from '@/components/situations/SituationRouter';
+import SuggestedActions from '@/components/SuggestedActions';
 import { toast } from 'sonner';
 import { executeAction } from '@/lib/actionClient';
 import { supabase } from '@/lib/supabaseClient';
@@ -159,6 +160,8 @@ export default function SpotlightSearch({
     handleQueryChange,
     search,
     clear,
+    actionSuggestions,
+    refetch,
   } = useCelesteSearch(user?.yachtId ?? null);
 
   // Pass yacht_id to situation state hook as well
@@ -642,6 +645,15 @@ export default function SpotlightSearch({
                 // For now, extract type from first result as demonstration
                 ...(results[0]?.type ? [{ label: 'Type', value: results[0].type.replace('_', ' ') }] : []),
               ]}
+            />
+          )}
+
+          {/* Suggested Actions - backend-provided action buttons */}
+          {hasQuery && actionSuggestions.length > 0 && (
+            <SuggestedActions
+              actions={actionSuggestions}
+              yachtId={user?.yachtId ?? null}
+              onActionComplete={refetch}
             />
           )}
 
