@@ -176,10 +176,66 @@ export default function SpotlightSearch({
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
+  const [emailScopeActive, setEmailScopeActive] = useState(false);
+  const [emailResults, setEmailResults] = useState<any[]>([]);
+  const [emailLoading, setEmailLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => apiResults.map(mapAPIResult), [apiResults]);
+  // Transform API results based on scope
+  const results = useMemo(() => {
+    if (emailScopeActive && emailResults.length > 0) {
+      // Transform email search results
+      return emailResults.map((r: any) => ({
+        id: r.message_id || r.id,
+        type: 'email_thread',
+        title: r.subject || '(No subject)',
+        subtitle: r.preview_text || r.from_display_name || '',
+        metadata: {
+          thread_id: r.thread_id,
+          from_display_name: r.from_display_name,
+          sent_at: r.sent_at,
+          direction: r.direction,
+          has_attachments: r.has_attachments,
+          vector_score: r.vector_score,
+          entity_score: r.entity_score,
+          total_score: r.total_score,
+          matched_entities: r.matched_entities,
+        },
+      }));
+    }
+    return apiResults.map(mapAPIResult);
+  }, [apiResults, emailScopeActive, emailResults]);
+
+  // Email search function (calls /api/email/search when in email scope)
+  const searchEmail = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setEmailResults([]);
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const response = await fetch('/api/email/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, limit: 20 }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEmailResults(data.results || []);
+      } else {
+        console.error('[SpotlightSearch] Email search failed:', response.status);
+        setEmailResults([]);
+      }
+    } catch (error) {
+      console.error('[SpotlightSearch] Email search error:', error);
+      setEmailResults([]);
+    } finally {
+      setEmailLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 50);
@@ -445,7 +501,8 @@ export default function SpotlightSearch({
 
   const hasResults = results.length > 0;
   const hasQuery = query.trim().length > 0;
-  const showNoResults = hasQuery && !hasResults && !isLoading && !isStreaming;
+  const effectiveLoading = emailScopeActive ? emailLoading : isLoading;
+  const showNoResults = hasQuery && !hasResults && !effectiveLoading && !isStreaming;
 
   return (
     <div
@@ -470,12 +527,15 @@ export default function SpotlightSearch({
           isModal && 'relative z-10'
         )}
       >
-        {/* Main Spotlight Panel */}
+        {/* Main Spotlight Panel - BLUE when email scope active */}
         <div
           className={cn(
             'spotlight-panel w-full font-body',
-            'animate-spotlight-in'
+            'animate-spotlight-in',
+            // Email scope: blue background and border
+            emailScopeActive && 'bg-[#0a84ff]/20 border-2 border-[#0a84ff] ring-2 ring-[#0a84ff]/40'
           )}
+          data-email-scope={emailScopeActive}
         >
           {/* Search Input */}
           <div
@@ -484,8 +544,17 @@ export default function SpotlightSearch({
               (hasQuery || hasResults) && 'border-b border-[#3d3d3f]/30'
             )}
           >
+            {/* Email Scope Badge */}
+            {emailScopeActive && (
+              <div className="px-2 py-0.5 bg-[#0a84ff] text-white rounded text-[11px] font-semibold whitespace-nowrap">
+                Email
+              </div>
+            )}
             <Search
-              className="flex-shrink-0 w-5 h-5 text-[#98989f]"
+              className={cn(
+                'flex-shrink-0 w-5 h-5',
+                emailScopeActive ? 'text-[#0a84ff]' : 'text-[#98989f]'
+              )}
               strokeWidth={1.8}
             />
 
@@ -497,6 +566,10 @@ export default function SpotlightSearch({
                 onChange={(e) => {
                   handleQueryChange(e.target.value);
                   if (e.target.value) setShowEmailList(false);
+                  // Route to email search when in email scope
+                  if (emailScopeActive) {
+                    searchEmail(e.target.value);
+                  }
                 }}
                 onKeyDown={handleKeyDown}
                 data-testid="search-input"
@@ -548,8 +621,16 @@ export default function SpotlightSearch({
 
           {/* Status Line - system transparency */}
           <StatusLine
-            message={isLoading ? 'Searching…' : isStreaming ? 'Loading results…' : ''}
-            visible={isLoading || isStreaming}
+            message={
+              emailScopeActive && emailLoading
+                ? 'Searching emails…'
+                : isLoading
+                  ? 'Searching…'
+                  : isStreaming
+                    ? 'Loading results…'
+                    : ''
+            }
+            visible={effectiveLoading || isStreaming}
             className="px-4 py-2"
           />
 
@@ -618,7 +699,32 @@ export default function SpotlightSearch({
 
         {/* Action Buttons - below panel, centered */}
         <div className="flex justify-center items-center gap-2 mt-4">
-          {/* Ledger Dropdown - Email and other record access */}
+          {/* Email Scope Toggle - Prominent button to switch search scope */}
+          <button
+            onClick={() => {
+              const newEmailScope = !emailScopeActive;
+              setEmailScopeActive(newEmailScope);
+              setShowEmailList(newEmailScope);
+              if (!newEmailScope) {
+                setEmailResults([]);
+              }
+              clear(); // Clear search when toggling scope
+              inputRef.current?.focus();
+            }}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium',
+              emailScopeActive
+                ? 'bg-[#0a84ff] text-white hover:bg-[#409cff]'
+                : 'text-[#98989f] hover:text-white hover:bg-white/10'
+            )}
+            aria-label={emailScopeActive ? 'Exit Email Scope' : 'Search Email'}
+            data-testid="email-scope-toggle"
+          >
+            <Mail className="w-5 h-5" strokeWidth={1.5} />
+            <span className="text-[13px]">{emailScopeActive ? 'Exit Email' : 'Email'}</span>
+          </button>
+
+          {/* Ledger Dropdown - Other record access */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -635,7 +741,12 @@ export default function SpotlightSearch({
               <DropdownMenuItem
                 onClick={() => {
                   // Show email list inline beneath search bar (per UX doctrine)
-                  setShowEmailList(!showEmailList);
+                  const newShowEmail = !showEmailList;
+                  setShowEmailList(newShowEmail);
+                  setEmailScopeActive(newShowEmail);
+                  if (!newShowEmail) {
+                    setEmailResults([]);
+                  }
                   clear(); // Clear search to show email list
                 }}
                 className="flex items-center gap-2 cursor-pointer focus:bg-[#3d3d3f] focus:text-white"
