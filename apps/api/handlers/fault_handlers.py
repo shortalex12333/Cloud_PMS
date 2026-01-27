@@ -485,19 +485,19 @@ class FaultHandlers:
 
     def _days_open(self, fault: Dict) -> int:
         """Calculate days fault has been open"""
-        reported_at = fault.get("reported_at")
-        if not reported_at:
+        detected_at = fault.get("detected_at")
+        if not detected_at:
             return 0
 
         try:
-            reported = datetime.fromisoformat(reported_at.replace("Z", "+00:00"))
+            detected = datetime.fromisoformat(detected_at.replace("Z", "+00:00"))
 
             if fault.get("resolved_at"):
                 end = datetime.fromisoformat(fault["resolved_at"].replace("Z", "+00:00"))
             else:
                 end = datetime.now(timezone.utc)
 
-            return (end - reported).days
+            return (end - detected).days
         except Exception:
             return 0
 

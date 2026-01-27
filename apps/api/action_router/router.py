@@ -12,7 +12,17 @@ from pydantic import BaseModel
 import time
 import uuid
 
-from .registry import get_action, HandlerType
+from .registry import (
+    get_action,
+    HandlerType,
+    ActionVariant,
+    search_actions,
+    get_storage_options,
+    check_context_gating,
+    get_actions_for_domain,
+    ACTION_REGISTRY,
+    validate_signature_role,
+)
 from .validators import (
     validate_jwt,
     validate_yacht_isolation,
@@ -22,6 +32,18 @@ from .validators import (
 )
 from .dispatchers import internal_dispatcher, n8n_dispatcher
 from .logger import log_action
+
+# Feature flags for Fault Lens v1 (fail-closed)
+try:
+    from integrations.feature_flags import (
+        FAULT_LENS_V1_ENABLED,
+        check_fault_lens_feature,
+    )
+except ImportError:
+    # Fallback if feature flags not available
+    FAULT_LENS_V1_ENABLED = False
+    def check_fault_lens_feature(feature: str):
+        return False, "Feature flags not available"
 
 # Import tenant lookup from auth middleware (Architecture Option 1)
 try:
@@ -222,6 +244,93 @@ async def execute_action(
             )
 
         # ====================================================================
+        # STEP 4.5: Validate SIGNED actions (Fault Lens v1)
+        # ====================================================================
+        if action_def.variant == ActionVariant.SIGNED:
+            # Check feature flag for faults domain signed actions
+            if action_def.domain == "faults":
+                enabled, message = check_fault_lens_feature("signed_actions")
+                if not enabled:
+                    raise HTTPException(
+                        status_code=503,
+                        detail={
+                            "status": "error",
+                            "error_code": "FEATURE_DISABLED",
+                            "message": message,
+                            "action": action_id,
+                        },
+                    )
+
+            # Validate signature is present
+            signature = request_data.payload.get("signature")
+            if not signature:
+                await log_action(
+                    action_id=action_id,
+                    action_label=action_def.label,
+                    yacht_id=request_data.context["yacht_id"],
+                    user_id=user_context["user_id"],
+                    payload=request_data.payload,
+                    status="error",
+                    error_message="Signature required for SIGNED action",
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "error",
+                        "error_code": "signature_required",
+                        "message": "Signature payload required for SIGNED action",
+                        "action": action_id,
+                    },
+                )
+
+            # Validate signature structure
+            required_keys = ["signed_at", "user_id", "role_at_signing", "signature_type"]
+            missing_keys = [k for k in required_keys if k not in signature]
+            if missing_keys:
+                await log_action(
+                    action_id=action_id,
+                    action_label=action_def.label,
+                    yacht_id=request_data.context["yacht_id"],
+                    user_id=user_context["user_id"],
+                    payload=request_data.payload,
+                    status="error",
+                    error_message=f"Invalid signature: missing {missing_keys}",
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "error",
+                        "error_code": "invalid_signature",
+                        "message": f"Invalid signature: missing keys {missing_keys}",
+                        "action": action_id,
+                    },
+                )
+
+            # Validate signer role
+            role_at_signing = signature.get("role_at_signing")
+            sig_result = validate_signature_role(action_id, role_at_signing)
+            if not sig_result["valid"]:
+                await log_action(
+                    action_id=action_id,
+                    action_label=action_def.label,
+                    yacht_id=request_data.context["yacht_id"],
+                    user_id=user_context["user_id"],
+                    payload=request_data.payload,
+                    status="error",
+                    error_message=sig_result["reason"],
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": "invalid_signer_role",
+                        "message": sig_result["reason"],
+                        "action": action_id,
+                        "required_roles": sig_result["required_roles"],
+                    },
+                )
+
+        # ====================================================================
         # STEP 5: Merge parameters (context + payload + user_context)
         # ====================================================================
         params = {
@@ -391,6 +500,251 @@ async def execute_action(
 
 
 # ============================================================================
+# ACTION LIST ENDPOINT
+# ============================================================================
+
+
+@router.get("/list")
+async def list_actions_endpoint(
+    q: str = None,
+    domain: str = None,
+    entity_id: str = None,
+    authorization: str = Header(None),
+):
+    """
+    List available actions with role-gating and search.
+
+    Query params:
+        q: Search query (optional)
+        domain: Filter by domain (e.g., "certificates")
+        entity_id: Entity ID for storage path preview (optional)
+
+    Returns:
+        List of actions the user can perform, with storage options where applicable.
+    """
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+    user_role = user_context.get("role")
+    yacht_id = user_context.get("yacht_id")
+
+    # Search actions with role-gating
+    actions = search_actions(query=q, role=user_role, domain=domain)
+
+    # Enrich with storage options
+    for action in actions:
+        storage_opts = get_storage_options(
+            action["action_id"],
+            yacht_id=yacht_id,
+            entity_id=entity_id,
+        )
+        if storage_opts:
+            action["storage_options"] = storage_opts
+
+    return {
+        "query": q,
+        "actions": actions,
+        "total_count": len(actions),
+        "role": user_role,
+    }
+
+
+# ============================================================================
+# SUGGESTIONS API ENDPOINT
+# ============================================================================
+
+
+class SuggestionsRequest(BaseModel):
+    """Request model for suggestions endpoint."""
+
+    query_text: str = None
+    domain: str = None
+    entity_type: str = None
+    entity_id: str = None
+    limit: int = 5
+
+
+class SuggestionsResponse(BaseModel):
+    """Response model for suggestions endpoint."""
+
+    candidates: list
+    unresolved: list = []
+    focused_entity: dict = None
+    warnings: list = []
+
+
+@router.post("/suggestions", response_model=SuggestionsResponse)
+async def get_suggestions(
+    request_data: SuggestionsRequest,
+    authorization: str = Header(None),
+) -> SuggestionsResponse:
+    """
+    Get action suggestions based on query text and context.
+
+    Fault Lens v1 requirements:
+    - Do NOT surface create_work_order_from_fault from free-text search
+    - Only list context-gated actions when focused on appropriate entity
+    - Return multiple candidates (never just one when there are matches)
+    - Include unresolved[] for ambiguous entity references
+    - Domain filter is honored; match_scores are deterministic
+
+    Args:
+        request_data: SuggestionsRequest with query, domain, entity context
+        authorization: JWT token from Authorization header
+
+    Returns:
+        SuggestionsResponse with candidates[], unresolved[], focused_entity
+    """
+    # Feature flag check for faults domain
+    if request_data.domain == "faults":
+        enabled, message = check_fault_lens_feature("suggestions")
+        if not enabled:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "status": "error",
+                    "error_code": "FEATURE_DISABLED",
+                    "message": message,
+                },
+            )
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+    user_role = user_context.get("role")
+    yacht_id = user_context.get("yacht_id")
+
+    # Build candidates list
+    candidates = []
+    unresolved = []
+    warnings = []
+
+    # Search actions with role-gating and optional domain filter
+    actions = search_actions(
+        query=request_data.query_text,
+        role=user_role,
+        domain=request_data.domain,
+    )
+
+    # Filter by context gating
+    for action in actions:
+        action_id = action["action_id"]
+
+        # Check context gating requirements
+        gating_result = check_context_gating(
+            action_id,
+            entity_type=request_data.entity_type,
+            entity_id=request_data.entity_id,
+        )
+
+        if not gating_result["allowed"]:
+            # Context-gated action not allowed in current context
+            # Do NOT include in candidates (per brief: "Do not surface from free-text")
+            continue
+
+        # Enrich with storage options if applicable
+        storage_opts = get_storage_options(
+            action_id,
+            yacht_id=yacht_id,
+            entity_id=request_data.entity_id,
+        )
+        if storage_opts:
+            action["storage_options"] = storage_opts
+
+        candidates.append(action)
+
+    # Limit results
+    candidates = candidates[:request_data.limit]
+
+    # Build focused_entity if entity context provided
+    focused_entity = None
+    if request_data.entity_type and request_data.entity_id:
+        focused_entity = {
+            "entity_type": request_data.entity_type,
+            "entity_id": request_data.entity_id,
+        }
+
+        # Add context-specific actions when focused
+        # These are actions that require entity context
+        context_actions = []
+        for action_id, action_def in ACTION_REGISTRY.items():
+            if action_def.context_required:
+                # Check if this action is allowed for current context
+                gating = check_context_gating(
+                    action_id,
+                    entity_type=request_data.entity_type,
+                    entity_id=request_data.entity_id,
+                )
+                if gating["allowed"] and user_role in action_def.allowed_roles:
+                    # Check if already in candidates
+                    existing_ids = [c["action_id"] for c in candidates]
+                    if action_id not in existing_ids:
+                        context_actions.append({
+                            "action_id": action_id,
+                            "label": action_def.label,
+                            "variant": action_def.variant.value if action_def.variant else "MUTATE",
+                            "allowed_roles": action_def.allowed_roles,
+                            "required_fields": action_def.required_fields,
+                            "domain": action_def.domain,
+                            "match_score": 0.95,  # High score for context-specific actions
+                            "context_match": True,
+                        })
+
+        # Add context actions to candidates (but keep total under limit)
+        for ctx_action in context_actions:
+            if len(candidates) < request_data.limit:
+                candidates.append(ctx_action)
+
+    # Ensure we never return just one candidate if there are more available
+    # (Per brief: "Return multiple candidates (never just one)")
+    if len(candidates) == 1 and len(actions) > 1:
+        # Try to add more candidates up to limit
+        for action in actions[1:request_data.limit]:
+            action_id = action["action_id"]
+            gating_result = check_context_gating(
+                action_id,
+                entity_type=request_data.entity_type,
+                entity_id=request_data.entity_id,
+            )
+            if gating_result["allowed"]:
+                existing_ids = [c["action_id"] for c in candidates]
+                if action_id not in existing_ids:
+                    candidates.append(action)
+                    if len(candidates) >= request_data.limit:
+                        break
+
+    # Sort by match_score descending
+    candidates.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+
+    return SuggestionsResponse(
+        candidates=candidates,
+        unresolved=unresolved,
+        focused_entity=focused_entity,
+        warnings=warnings,
+    )
+
+
+# ============================================================================
 # HEALTH CHECK ENDPOINT
 # ============================================================================
 
@@ -405,4 +759,4 @@ async def health_check():
     }
 
 
-__all__ = ["router", "execute_action"]
+__all__ = ["router", "execute_action", "get_suggestions"]
