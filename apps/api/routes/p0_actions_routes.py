@@ -3988,6 +3988,16 @@ async def execute_action(
             elif action == "update_certificate":
                 result = await handler_fn(**handler_params)
             elif action == "link_document_to_certificate":
+                # Defensive validation: ensure document exists before handler
+                doc_id = payload.get("document_id")
+                if not doc_id:
+                    raise HTTPException(status_code=400, detail="document_id is required")
+                try:
+                    dm = db_client.table("doc_metadata").select("id").eq("id", doc_id).maybe_single().execute()
+                except Exception:
+                    dm = None
+                if not getattr(dm, 'data', None):
+                    raise HTTPException(status_code=404, detail="document_id not found")
                 result = await handler_fn(**handler_params)
             elif action == "supersede_certificate":
                 # Supersede requires signature validation
@@ -4004,6 +4014,10 @@ async def execute_action(
     except HTTPException:
         # Let HTTPExceptions propagate with their original status code
         raise
+    except ValueError as e:
+        # Validation errors from handlers should return 400
+        logger.warning(f"Action validation failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Action execution failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -4258,4 +4272,3 @@ async def log_part_usage_preview(
         raise HTTPException(status_code=400, detail=result["message"])
 
     return result
-
