@@ -2,18 +2,20 @@
 
 **Date**: 2026-01-28
 **Status**: ✅ **READY FOR CANARY**
-**Test Pass Rate**: 100% core acceptance (6/6), 100% signed actions (8/8)
+**Test Pass Rate**: 100% core acceptance (6/6), 100% signed actions (9/9)
+**Latest Deploy**: 8a7be84f (fixed missing document_handlers import)
 
 ---
 
 ## Executive Summary
 
 Part Lens v2 canonical router implementation validated in staging with:
-- ✅ **100% test pass rate** (6/6 core acceptance + 8/8 signed actions)
+- ✅ **100% test pass rate** (6/6 core acceptance + 9/9 signed actions)
 - ✅ **Zero 5xx errors** (comprehensive scan)
 - ✅ **Multi-role RLS** validated (HOD, CAPTAIN, CREW)
 - ✅ **Idempotency** enforced (409 on duplicate)
 - ✅ **Signature validation** complete (pin+totp + role enforcement)
+- ✅ **write_off_part role enforcement** (Captain/Manager only via role_at_signing + is_manager RPC)
 
 ---
 
@@ -32,25 +34,28 @@ Part Lens v2 canonical router implementation validated in staging with:
 
 **Evidence**: `canonical_router_acceptance_summary.json`
 
-### Signed Actions (8/8 PASS - all resolved)
+### Signed Actions (9/9 PASS - all doctrine-compliant)
 
 | Test | Status | Details |
 |------|--------|---------|
 | adjust_stock_quantity: missing signature | ✅ PASS | 400 signature_required |
 | adjust_stock_quantity: invalid signature | ✅ PASS | 400 signature structure validation |
 | adjust_stock_quantity: crew forbidden | ✅ PASS | 403 role enforcement (chief_engineer/captain/manager only) |
-| adjust_stock_quantity: hod authorized | ✅ PASS | 200 success |
+| adjust_stock_quantity: HOD authorized | ✅ PASS | 200 success |
 | write_off_part: missing signature | ✅ PASS | 400 signature_required |
 | write_off_part: invalid signature | ✅ PASS | 400 signature structure validation |
-| write_off_part: crew allowed | ✅ PASS | 200 (no role restriction by design) |
-| write_off_part: hod authorized | ✅ PASS | 200 success |
+| write_off_part: crew forbidden | ✅ PASS | 403 "write_off_part requires Captain/Manager role" |
+| write_off_part: HOD forbidden | ✅ PASS | 403 "write_off_part requires Captain/Manager role" |
+| write_off_part: manager authorized | ✅ PASS | 200 success (validates role_at_signing="manager") |
 
-**Evidence**: `signed_actions_evidence.json`
+**Evidence**: `signed_actions_evidence_v3.json`
 
 **ALL FINDINGS RESOLVED**:
-- ✅ **adjust_stock_quantity** now has signature structure validation (pin + totp required)
-- ✅ **adjust_stock_quantity** now has role enforcement (chief_engineer/captain/manager only)
-- ℹ️ **write_off_part** intentionally has no role restrictions (any authenticated user can write off)
+- ✅ **adjust_stock_quantity** has signature structure validation (pin + totp required)
+- ✅ **adjust_stock_quantity** has role enforcement (chief_engineer/captain/manager only)
+- ✅ **write_off_part** has signature structure validation (pin + totp required)
+- ✅ **write_off_part** has role enforcement (captain/manager only via handler-level check)
+- ✅ **Role check method**: Validates role_at_signing from signature payload OR uses is_manager RPC fallback
 
 ### Idempotency (1/1 PASS)
 
@@ -162,7 +167,7 @@ All files in `docs/evidence/part_lens_v2/`:
 | view_part_details_{hod,captain,crew}.json | Multi-role RLS samples |
 | consume_part_result.json | Mutation execution proof |
 | zero_5xx_scan.json | No server errors evidence |
-| signed_actions_evidence.json | Signature/role validation tests |
+| signed_actions_evidence_v3.json | 9/9 signature + role validation tests (FINAL) |
 | idempotency_409_evidence.json | Duplicate prevention proof |
 | storage_rls_403_evidence.json | Storage bucket status (N/A) |
 | sql_evidence.json | Yacht isolation, view/policy metadata |
