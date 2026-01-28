@@ -598,7 +598,7 @@ async def execute_action(
     # PART LENS SIGNED ACTIONS - STRICT role enforcement (captain/manager only)
     PART_LENS_SIGNED_ROLES = {
         "adjust_stock_quantity": ["chief_engineer", "captain", "manager"],
-        "write_off_part": ["captain", "manager"],  # Captain/Manager only (NOT crew, NOT HOD)
+        # NOTE: write_off_part role check is at handler level (checks role_at_signing + is_manager RPC)
     }
 
     if action in FAULT_LENS_ROLES:
