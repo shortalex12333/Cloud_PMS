@@ -630,3 +630,41 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 ---
 
 **SQL BACKEND STATUS:** ✅ DEFINED (with DB truth clarifications, sort orders, guardrails)
+
+---
+
+## V1 Shipped (2026-01-28)
+
+### Production Deployment Verified
+
+**PR #8 merged and deployed to staging/production.**
+
+**Schema Fixes Applied:**
+- Column name: `wo_number` (not `number`) in `pms_work_orders` table
+- All soft-delete filters use `.is_("deleted_at", "null")` pattern
+- Attachments query uses `pms_attachments` table (not deprecated `pms_work_order_attachments`)
+
+**Validation Contract:**
+- `limit > 50` → 400 (manual validation for deterministic error code)
+- `limit <= 0` → 422 (Pydantic validation)
+- Invalid `entity_type` → 400
+- Self-link attempt → 400
+- CREW add link → 403 (role enforcement via `_is_hod_or_manager`)
+- Duplicate link → 409 (explicit check before insert)
+- Entity not found → 404 (includes cross-yacht privacy)
+
+**Test Results:**
+- Docker tests: 14/14 ✅
+- Staging CI: 7/7 ✅
+- Zero 500 errors
+
+**Live Smoke Tests Passed:**
+1. CREW read → 200 (groups, match_reasons, add_related_enabled present)
+2. HOD add link → 200/409 (creates or detects duplicate)
+3. CREW add link → 403 (role enforcement working)
+
+**V2 Tracking (Future):**
+- Add `embedding_updated_at` column for staleness detection
+- Batch nightly embedding refresh
+- Backfill `doc_metadata.description` before enabling doc embeddings
+- V3: Watchdog for orphaned links and stale embeddings
