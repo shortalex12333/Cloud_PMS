@@ -603,22 +603,12 @@ class PartHandlers:
 
             # Check if PostgREST 204 (No Content) - RPC succeeded but no data returned
             if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
-                logger.info(f"PostgREST 204 detected on RPC add_stock_inventory (stock_id={stock_id}) - RPC succeeded, querying updated stock")
+                logger.info(f"PostgREST 204 detected on RPC add_stock_inventory (stock_id={stock_id}) - RPC succeeded, using calculated values")
 
-                # Query the updated stock to get actual values after RPC completed
-                updated_stock = self.db.table("pms_part_stock").select(
-                    "on_hand"
-                ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
-
-                if not updated_stock or not updated_stock.data:
-                    # Fallback if query fails - use calculated values
-                    logger.warning("Could not query updated stock after PostgREST 204, using calculated values")
-                    qty_after = stock.get('on_hand', 0) + quantity_received
-                    qty_before = stock.get('on_hand', 0)
-                else:
-                    # Use actual values from database
-                    qty_after = updated_stock.data.get('on_hand', 0)
-                    qty_before = qty_after - quantity_received
+                # Use calculated values since RPC succeeded but didn't return data
+                # The RPC atomically updated the stock, so we can infer the values
+                qty_before = stock.get('on_hand', 0)
+                qty_after = qty_before + quantity_received
 
                 # Create synthetic result matching expected RPC response structure
                 rpc_result = type('SyntheticResult', (object,), {
