@@ -1182,6 +1182,218 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
+    # RECEIVING LENS V1 ACTIONS (10 actions)
+    # ========================================================================
+    # Workflow: Image upload → OCR extraction → User review/adjust → Accept (SIGNED)
+    # Roles: HOD+ for mutations, Captain/Manager for signed acceptance
+    # Storage: {yacht_id}/receiving/{receiving_id}/{filename}
+    # ========================================================================
+
+    "create_receiving": ActionDefinition(
+        action_id="create_receiving",
+        label="Create Receiving",
+        endpoint="/v1/receiving/create",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["new", "create", "receive", "invoice", "package", "delivery", "shipment"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("vendor_name", FieldClassification.OPTIONAL, description="Vendor/supplier name"),
+            FieldMetadata("vendor_reference", FieldClassification.OPTIONAL, description="Invoice number, AWB, packing slip"),
+            FieldMetadata("received_date", FieldClassification.OPTIONAL, description="Receipt date (default today)"),
+            FieldMetadata("currency", FieldClassification.OPTIONAL, description="Currency code"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL, description="General notes"),
+            FieldMetadata("linked_work_order_id", FieldClassification.OPTIONAL, description="Link to work order if applicable"),
+        ],
+    ),
+
+    "attach_receiving_image_with_comment": ActionDefinition(
+        action_id="attach_receiving_image_with_comment",
+        label="Attach Image/Document",
+        endpoint="/v1/receiving/attach-image",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id", "document_id"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["attach", "upload", "scan", "photo", "image", "document"],
+        storage_bucket="pms-receiving-images",  # or "documents" for PDFs
+        storage_path_template="{yacht_id}/receiving/{receiving_id}/{filename}",
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="Document metadata ID"),
+            FieldMetadata("doc_type", FieldClassification.OPTIONAL, options=["invoice", "packing_slip", "photo"], description="Document type"),
+            FieldMetadata("comment", FieldClassification.OPTIONAL, description="Inline comment about this attachment"),
+        ],
+    ),
+
+    "extract_receiving_candidates": ActionDefinition(
+        action_id="extract_receiving_candidates",
+        label="Extract from Image (OCR)",
+        endpoint="/v1/receiving/extract",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id", "source_document_id"],
+        domain="receiving",
+        variant=ActionVariant.READ,  # PREPARE-only action (advisory)
+        search_keywords=["extract", "scan", "ocr", "parse", "read"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("source_document_id", FieldClassification.REQUIRED, description="Document to extract from"),
+        ],
+    ),
+
+    "update_receiving_fields": ActionDefinition(
+        action_id="update_receiving_fields",
+        label="Update Receiving Fields",
+        endpoint="/v1/receiving/update-fields",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["update", "edit", "change", "modify"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("vendor_name", FieldClassification.OPTIONAL, description="Vendor/supplier name"),
+            FieldMetadata("vendor_reference", FieldClassification.OPTIONAL, description="Invoice number"),
+            FieldMetadata("currency", FieldClassification.OPTIONAL, description="Currency code"),
+            FieldMetadata("received_date", FieldClassification.OPTIONAL, description="Receipt date"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL, description="Notes"),
+        ],
+    ),
+
+    "add_receiving_item": ActionDefinition(
+        action_id="add_receiving_item",
+        label="Add Line Item",
+        endpoint="/v1/receiving/add-item",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id", "quantity_received"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "item", "line", "part", "product"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("part_id", FieldClassification.OPTIONAL, description="Link to parts catalog"),
+            FieldMetadata("description", FieldClassification.OPTIONAL, description="Part description (required if no part_id)"),
+            FieldMetadata("quantity_expected", FieldClassification.OPTIONAL, description="Expected quantity from PO"),
+            FieldMetadata("quantity_received", FieldClassification.REQUIRED, description="Actual quantity received"),
+            FieldMetadata("unit_price", FieldClassification.OPTIONAL, description="Unit price"),
+            FieldMetadata("currency", FieldClassification.OPTIONAL, description="Currency code"),
+        ],
+    ),
+
+    "adjust_receiving_item": ActionDefinition(
+        action_id="adjust_receiving_item",
+        label="Adjust Line Item",
+        endpoint="/v1/receiving/adjust-item",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id", "receiving_item_id"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["adjust", "modify", "update", "change", "item"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("receiving_item_id", FieldClassification.REQUIRED, description="Line item ID"),
+            FieldMetadata("quantity_received", FieldClassification.OPTIONAL, description="Updated quantity"),
+            FieldMetadata("unit_price", FieldClassification.OPTIONAL, description="Updated price"),
+            FieldMetadata("description", FieldClassification.OPTIONAL, description="Updated description"),
+        ],
+    ),
+
+    "link_invoice_document": ActionDefinition(
+        action_id="link_invoice_document",
+        label="Link Invoice PDF",
+        endpoint="/v1/receiving/link-invoice",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id", "document_id"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["link", "attach", "invoice", "pdf", "document"],
+        storage_bucket="documents",
+        storage_path_template="{yacht_id}/receiving/{receiving_id}/{filename}",
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="Document metadata ID"),
+            FieldMetadata("comment", FieldClassification.OPTIONAL, description="Comment about this document"),
+        ],
+    ),
+
+    "accept_receiving": ActionDefinition(
+        action_id="accept_receiving",
+        label="Accept Receiving (Sign)",
+        endpoint="/v1/receiving/accept",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["captain", "manager"],
+        required_fields=["yacht_id", "receiving_id"],
+        domain="receiving",
+        variant=ActionVariant.SIGNED,
+        signature_roles_required=["captain", "manager"],
+        search_keywords=["accept", "approve", "sign", "finalize", "confirm"],
+        prefill_endpoint="/v1/receiving/accept?mode=prepare",
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("signature", FieldClassification.REQUIRED, description="Signature payload (PIN+TOTP) - execute only"),
+        ],
+    ),
+
+    "reject_receiving": ActionDefinition(
+        action_id="reject_receiving",
+        label="Reject Receiving",
+        endpoint="/v1/receiving/reject",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id", "reason"],
+        domain="receiving",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["reject", "decline", "refuse", "cancel"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+            FieldMetadata("reason", FieldClassification.REQUIRED, description="Reason for rejection"),
+        ],
+    ),
+
+    "view_receiving_history": ActionDefinition(
+        action_id="view_receiving_history",
+        label="View Receiving History",
+        endpoint="/v1/receiving/history",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "engineer", "eto", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "receiving_id"],
+        domain="receiving",
+        variant=ActionVariant.READ,
+        search_keywords=["view", "history", "audit", "trail", "log"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
+        ],
+    ),
+
+    # ========================================================================
     # CERTIFICATE ACTIONS
     # ========================================================================
     "create_vessel_certificate": ActionDefinition(
@@ -1277,6 +1489,141 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
+    # DOCUMENT ACTIONS (Document Lens v2)
+    # ========================================================================
+    # Domain: documents
+    # Table: doc_metadata (yacht-scoped, RLS enabled)
+    # Storage: documents bucket, path: {yacht_id}/documents/{document_id}/{filename}
+    # Handlers: apps/api/handlers/document_handlers.py
+    #
+    # Actions:
+    #   upload_document     - MUTATE (All Crew) - Upload new document
+    #   update_document     - MUTATE (HOD)      - Update metadata (title, tags, oem, doc_type)
+    #   add_document_tags   - MUTATE (HOD)      - Batch add/modify tags
+    #   delete_document     - SIGNED (Manager)  - Soft-delete with reason + signature
+    #   get_document_url    - READ (All Crew)   - Get signed download URL
+    #
+    # NOTE: link_document_to_equipment is in Equipment section (domain=equipment)
+    # NOTE: link_document_to_certificate is in Certificate section (domain=certificates)
+    # ========================================================================
+
+    "upload_document": ActionDefinition(
+        action_id="upload_document",
+        label="Upload Document",
+        endpoint="/v1/documents/upload",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "file_name", "mime_type"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["upload", "add", "create", "document", "doc", "file", "manual", "pdf", "attach"],
+        storage_bucket="documents",
+        storage_path_template="{yacht_id}/documents/{document_id}/{filename}",
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("file_name", FieldClassification.REQUIRED, description="Original filename (with extension)"),
+            FieldMetadata("mime_type", FieldClassification.REQUIRED, description="MIME type (e.g., application/pdf, image/jpeg)"),
+            FieldMetadata("title", FieldClassification.OPTIONAL, description="Human-readable document title"),
+            FieldMetadata("doc_type", FieldClassification.OPTIONAL,
+                          options=["manual", "drawing", "certificate", "report", "photo", "spec_sheet", "schematic", "other"],
+                          description="Document classification"),
+            FieldMetadata("oem", FieldClassification.OPTIONAL, description="Manufacturer/OEM name"),
+            FieldMetadata("model_number", FieldClassification.OPTIONAL, description="Equipment model number"),
+            FieldMetadata("serial_number", FieldClassification.OPTIONAL, description="Serial number if applicable"),
+            FieldMetadata("system_path", FieldClassification.OPTIONAL, description="Hierarchical system path (e.g., 'propulsion/main_engine')"),
+            FieldMetadata("tags", FieldClassification.OPTIONAL, description="Array of string tags"),
+            FieldMetadata("equipment_ids", FieldClassification.OPTIONAL, description="Array of equipment UUIDs to link"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL, description="Upload notes/description"),
+        ],
+    ),
+
+    "update_document": ActionDefinition(
+        action_id="update_document",
+        label="Update Document",
+        endpoint="/v1/documents/update",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD roles
+        required_fields=["yacht_id", "document_id"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["update", "edit", "modify", "document", "doc", "metadata", "title", "tags"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
+            FieldMetadata("title", FieldClassification.OPTIONAL, description="Update title"),
+            FieldMetadata("doc_type", FieldClassification.OPTIONAL,
+                          options=["manual", "drawing", "certificate", "report", "photo", "spec_sheet", "schematic", "other"]),
+            FieldMetadata("oem", FieldClassification.OPTIONAL, description="Update OEM/manufacturer"),
+            FieldMetadata("model_number", FieldClassification.OPTIONAL),
+            FieldMetadata("serial_number", FieldClassification.OPTIONAL),
+            FieldMetadata("system_path", FieldClassification.OPTIONAL),
+            FieldMetadata("tags", FieldClassification.OPTIONAL, description="Replace tags array"),
+            FieldMetadata("equipment_ids", FieldClassification.OPTIONAL, description="Replace linked equipment array"),
+            FieldMetadata("notes", FieldClassification.OPTIONAL),
+        ],
+    ),
+
+    "add_document_tags": ActionDefinition(
+        action_id="add_document_tags",
+        label="Add Document Tags",
+        endpoint="/v1/documents/add-tags",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD roles
+        required_fields=["yacht_id", "document_id", "tags"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["tag", "label", "categorize", "document", "doc", "organize", "classify"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
+            FieldMetadata("tags", FieldClassification.REQUIRED, description="Array of tags to add (merges with existing)"),
+            FieldMetadata("replace", FieldClassification.OPTIONAL, description="If true, replace all tags instead of merging"),
+        ],
+    ),
+
+    "delete_document": ActionDefinition(
+        action_id="delete_document",
+        label="Delete Document",
+        endpoint="/v1/documents/delete",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["captain", "manager"],  # Manager roles - SIGNED action
+        required_fields=["yacht_id", "document_id", "reason", "signature"],
+        domain="documents",
+        variant=ActionVariant.SIGNED,
+        search_keywords=["delete", "remove", "archive", "document", "doc", "destroy"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
+            FieldMetadata("reason", FieldClassification.REQUIRED, description="Deletion reason (audit trail)"),
+            FieldMetadata("signature", FieldClassification.REQUIRED, description="Digital signature JSON payload"),
+        ],
+    ),
+
+    "get_document_url": ActionDefinition(
+        action_id="get_document_url",
+        label="Get Document Download Link",
+        endpoint="/v1/documents/get-url",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "document_id"],
+        domain="documents",
+        variant=ActionVariant.READ,
+        search_keywords=["download", "view", "open", "document", "doc", "link", "url", "get"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
+            FieldMetadata("expires_in", FieldClassification.OPTIONAL, description="URL expiry seconds (default: 3600)"),
+        ],
+    ),
+
+    # ========================================================================
     # PARTS/INVENTORY ACTIONS (Part Lens v2)
     # ========================================================================
     # 10 actions: 2 READ, 6 MUTATE, 2 SIGNED
@@ -1285,27 +1632,118 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     # Suggested order qty = round_up(max(min_level - on_hand, 1), reorder_multiple)
     # ========================================================================
 
-    "add_to_shopping_list": ActionDefinition(
-        action_id="add_to_shopping_list",
+    # ========================================================================
+    # SHOPPING LIST LENS ACTIONS (v1)
+    # ========================================================================
+    # Domain: shopping_list
+    # Tables: pms_shopping_list_items, pms_shopping_list_state_history
+    # Handlers: apps/api/handlers/shopping_list_handlers.py
+    # ========================================================================
+
+    "create_shopping_list_item": ActionDefinition(
+        action_id="create_shopping_list_item",
         label="Add to Shopping List",
-        endpoint="/v1/parts/shopping-list/add",
+        endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["deckhand", "bosun", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        required_fields=["yacht_id", "part_id", "quantity_requested"],
-        domain="parts",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "part_name", "quantity_requested", "source_type"],
+        domain="shopping_list",
         variant=ActionVariant.MUTATE,
-        search_keywords=["add", "shopping", "list", "order", "request", "part", "buy", "purchase", "need", "reorder"],
+        search_keywords=["add", "shopping", "list", "request", "order", "need", "buy", "purchase"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
-            FieldMetadata("part_id", FieldClassification.REQUIRED, auto_populate_from="part", lookup_required=True),
-            FieldMetadata("part_name", FieldClassification.BACKEND_AUTO, auto_populate_from="part"),
-            FieldMetadata("quantity_requested", FieldClassification.BACKEND_AUTO, auto_populate_from="stock_calculation",
-                          description="round_up(max(min_level - on_hand, 1), reorder_multiple)"),
-            FieldMetadata("urgency", FieldClassification.OPTIONAL, options=["low", "medium", "high", "critical"]),
-            FieldMetadata("notes", FieldClassification.OPTIONAL),
+            FieldMetadata("part_name", FieldClassification.REQUIRED, description="Name of part/item needed"),
+            FieldMetadata("quantity_requested", FieldClassification.REQUIRED, description="Amount requested (must be > 0)"),
+            FieldMetadata("source_type", FieldClassification.REQUIRED,
+                          options=["inventory_low", "inventory_oos", "work_order_usage", "receiving_missing", "receiving_damaged", "manual_add"],
+                          description="Origin of request"),
+            FieldMetadata("part_id", FieldClassification.OPTIONAL, description="Link to existing part in catalog"),
+            FieldMetadata("part_number", FieldClassification.OPTIONAL),
+            FieldMetadata("manufacturer", FieldClassification.OPTIONAL),
+            FieldMetadata("unit", FieldClassification.OPTIONAL,
+                          options=["ea", "kg", "L", "m", "box", "set", "roll"]),
+            FieldMetadata("preferred_supplier", FieldClassification.OPTIONAL),
+            FieldMetadata("estimated_unit_price", FieldClassification.OPTIONAL),
+            FieldMetadata("urgency", FieldClassification.OPTIONAL,
+                          options=["low", "normal", "high", "critical"]),
+            FieldMetadata("required_by_date", FieldClassification.OPTIONAL, description="Deadline (ISO date)"),
+            FieldMetadata("source_work_order_id", FieldClassification.OPTIONAL, description="Source WO if from work order"),
+            FieldMetadata("source_receiving_id", FieldClassification.OPTIONAL, description="Source receiving if from receiving"),
+            FieldMetadata("source_notes", FieldClassification.OPTIONAL),
         ],
-        prefill_endpoint="/v1/parts/shopping-list/prefill",
+    ),
+
+    "approve_shopping_list_item": ActionDefinition(
+        action_id="approve_shopping_list_item",
+        label="Approve Shopping List Item",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
+        required_fields=["yacht_id", "item_id", "quantity_approved"],
+        domain="shopping_list",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["approve", "shopping", "list", "accept", "authorize"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("item_id", FieldClassification.REQUIRED, description="Shopping list item ID"),
+            FieldMetadata("quantity_approved", FieldClassification.REQUIRED, description="Approved amount (must be > 0)"),
+            FieldMetadata("approval_notes", FieldClassification.OPTIONAL),
+        ],
+    ),
+
+    "reject_shopping_list_item": ActionDefinition(
+        action_id="reject_shopping_list_item",
+        label="Reject Shopping List Item",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
+        required_fields=["yacht_id", "item_id", "rejection_reason"],
+        domain="shopping_list",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["reject", "shopping", "list", "deny", "decline"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("item_id", FieldClassification.REQUIRED, description="Shopping list item ID"),
+            FieldMetadata("rejection_reason", FieldClassification.REQUIRED, description="Why item was rejected"),
+            FieldMetadata("rejection_notes", FieldClassification.OPTIONAL),
+        ],
+    ),
+
+    "promote_candidate_to_part": ActionDefinition(
+        action_id="promote_candidate_to_part",
+        label="Add to Parts Catalog",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "manager"],  # Engineers only
+        required_fields=["yacht_id", "item_id"],
+        domain="shopping_list",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["promote", "catalog", "part", "add", "create"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("item_id", FieldClassification.REQUIRED, description="Shopping list item ID (must be candidate)"),
+        ],
+    ),
+
+    "view_shopping_list_history": ActionDefinition(
+        action_id="view_shopping_list_history",
+        label="View Item History",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager"],  # All crew
+        required_fields=["yacht_id", "item_id"],
+        domain="shopping_list",
+        variant=ActionVariant.READ,
+        search_keywords=["history", "timeline", "changes", "audit"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("item_id", FieldClassification.REQUIRED, description="Shopping list item ID"),
+        ],
     ),
 
     "consume_part": ActionDefinition(
@@ -1750,6 +2188,14 @@ ACTION_STORAGE_CONFIG: Dict[str, Dict[str, Any]] = {
         "writable_prefixes": ["{yacht_id}/equipment/"],
         "confirmation_required": True,
     },
+    # Document Lens v2 - Generic document uploads
+    "upload_document": {
+        "bucket": "documents",
+        "path_template": "{yacht_id}/documents/{document_id}/{filename}",
+        "writable_prefixes": ["{yacht_id}/documents/"],
+        "max_file_size_mb": 50,
+        "confirmation_required": True,
+    },
 }
 
 
@@ -1779,12 +2225,14 @@ def get_storage_options(action_id: str, yacht_id: str = None, entity_id: str = N
         path_preview = path_preview.replace("{fault_id}", entity_id)
         path_preview = path_preview.replace("{equipment_id}", entity_id)
         path_preview = path_preview.replace("{part_id}", entity_id)
+        path_preview = path_preview.replace("{document_id}", entity_id)
     else:
         path_preview = path_preview.replace("{certificate_id}", "<new_id>")
         path_preview = path_preview.replace("{work_order_id}", "<id>")
         path_preview = path_preview.replace("{fault_id}", "<fault_id>")
         path_preview = path_preview.replace("{equipment_id}", "<equipment_id>")
         path_preview = path_preview.replace("{part_id}", "<part_id>")
+        path_preview = path_preview.replace("{document_id}", "<document_id>")
 
     return {
         "bucket": config["bucket"],
