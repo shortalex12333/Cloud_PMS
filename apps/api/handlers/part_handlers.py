@@ -100,10 +100,10 @@ class PartHandlers:
         # Try to find existing
         result = self.db.table("pms_inventory_stock").select("id").eq(
             "yacht_id", yacht_id
-        ).eq("part_id", part_id).eq("location", loc).maybe_single().execute()
+        ).eq("part_id", part_id).eq("location", loc).limit(1).execute()
 
-        if result and result.data:
-            return result.data["id"]
+        if result and result.data and len(result.data) > 0:
+            return result.data[0]["id"]
 
         # Create new stock record
         stock_id = str(uuid_lib.uuid4())
@@ -199,16 +199,17 @@ class PartHandlers:
 
         try:
             # Get part with stock from canonical pms_part_stock view
+            # Use .limit(1) instead of .maybe_single() to avoid PostgREST 204 on views
             result = self.db.table("pms_part_stock").select(
                 "part_id, part_name, part_number, on_hand, min_level, reorder_multiple, "
                 "location, is_critical, department, category, stock_id"
-            ).eq("yacht_id", yacht_id).eq("part_id", entity_id).maybe_single().execute()
+            ).eq("yacht_id", yacht_id).eq("part_id", entity_id).limit(1).execute()
 
-            if not result.data:
+            if not result.data or len(result.data) == 0:
                 builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
                 return builder.build()
 
-            stock = result.data
+            stock = result.data[0]
             on_hand = stock.get("on_hand", 0) or 0
             min_level = stock.get("min_level", 0) or 0
             reorder_multiple = stock.get("reorder_multiple", 1) or 1
@@ -216,9 +217,9 @@ class PartHandlers:
             # Get additional part details from pms_parts
             part_result = self.db.table("pms_parts").select(
                 "description, manufacturer, unit_cost"
-            ).eq("id", entity_id).maybe_single().execute()
+            ).eq("id", entity_id).limit(1).execute()
 
-            part_extra = part_result.data or {}
+            part_extra = (part_result.data[0] if part_result.data and len(part_result.data) > 0 else {})
 
             # Compute derived fields
             is_low_stock = min_level > 0 and on_hand <= min_level
@@ -308,12 +309,12 @@ class PartHandlers:
             # Get document
             doc_result = self.db.table("doc_metadata").select(
                 "id, filename, storage_path, storage_bucket, document_type, content_type"
-            ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            ).eq("id", document_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not doc_result.data:
+            if not doc_result.data or len(doc_result.data) == 0:
                 return {"error": "NOT_FOUND", "message": f"Document not found: {document_id}"}
 
-            doc = doc_result.data
+            doc = doc_result.data[0]
 
             # Generate signed URL if in storage
             url = None
@@ -377,12 +378,12 @@ class PartHandlers:
         # Verify part exists via pms_part_stock
         part_result = self.db.table("pms_part_stock").select("part_id, part_name").eq(
             "part_id", part_id
-        ).eq("yacht_id", yacht_id).maybe_single().execute()
+        ).eq("yacht_id", yacht_id).limit(1).execute()
 
-        if not part_result.data:
+        if not part_result.data or len(part_result.data) == 0:
             raise ValueError(f"Part {part_id} not found or access denied")
 
-        part_name = part_result.data.get("part_name")
+        part_name = part_result.data[0].get("part_name")
 
         # Insert shopping list item
         item_data = {
@@ -451,12 +452,12 @@ class PartHandlers:
         # Get stock_id from canonical pms_part_stock view
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, stock_id, part_name"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-        if not stock_result or not stock_result.data:
+        if not stock_result or not stock_result.data or len(stock_result.data) == 0:
             raise ValueError(f"No stock record for part {part_id}")
 
-        stock = stock_result.data
+        stock = stock_result.data[0]
         stock_id = stock.get("stock_id")
 
         # Get or create stock record if needed
@@ -578,12 +579,12 @@ class PartHandlers:
         # Get current stock from canonical pms_part_stock view
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, part_name, stock_id"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-        if not stock_result or not stock_result.data:
+        if not stock_result or not stock_result.data or len(stock_result.data) == 0:
             raise ValueError(f"Part {part_id} not found")
 
-        stock = stock_result.data
+        stock = stock_result.data[0]
         final_location = location or stock.get("location") or "default"
         stock_id = stock.get("stock_id")
 
@@ -614,10 +615,10 @@ class PartHandlers:
                 try:
                     read_after = self.db.table("pms_part_stock").select(
                         "on_hand"
-                    ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                    ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-                    if read_after and read_after.data:
-                        qty_after = read_after.data.get('on_hand', 0)
+                    if read_after and read_after.data and len(read_after.data) > 0:
+                        qty_after = read_after.data[0].get('on_hand', 0)
                         # Compute qty_before = max(qty_after - quantity_received, 0)
                         qty_before = max(qty_after - quantity_received, 0)
                     else:
@@ -753,12 +754,12 @@ class PartHandlers:
         # Get stock at source location
         from_stock_result = self.db.table("pms_part_stock").select(
             "stock_id, on_hand, location, part_name"
-        ).eq("yacht_id", yacht_id).eq("part_id", part_id).eq("location", from_location).maybe_single().execute()
+        ).eq("yacht_id", yacht_id).eq("part_id", part_id).eq("location", from_location).limit(1).execute()
 
-        if not from_stock_result or not from_stock_result.data:
+        if not from_stock_result or not from_stock_result.data or len(from_stock_result.data) == 0:
             raise ValueError(f"No stock at location {from_location}")  # 404
 
-        from_stock = from_stock_result.data
+        from_stock = from_stock_result.data[0]
         from_stock_id = from_stock["stock_id"]
 
         # Get or create stock at destination
@@ -914,12 +915,12 @@ class PartHandlers:
         # Get current stock
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, part_name, stock_id"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-        if not stock_result or not stock_result.data:
+        if not stock_result or not stock_result.data or len(stock_result.data) == 0:
             raise ValueError(f"Part {part_id} not found")
 
-        stock = stock_result.data
+        stock = stock_result.data[0]
         old_qty = stock.get("on_hand", 0) or 0
         adjustment = new_quantity - old_qty
         stock_id = stock.get("stock_id")
@@ -1089,12 +1090,12 @@ class PartHandlers:
         # Get current stock
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, part_name, stock_id"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-        if not stock_result or not stock_result.data:
+        if not stock_result or not stock_result.data or len(stock_result.data) == 0:
             raise ValueError(f"Part {part_id} not found")
 
-        stock = stock_result.data
+        stock = stock_result.data[0]
         current_qty = stock.get("on_hand", 0) or 0
         stock_id = stock.get("stock_id")
 
@@ -1288,12 +1289,12 @@ class PartHandlers:
         # Validate document exists
         doc_result = self.db.table("doc_metadata").select(
             "id, storage_path, storage_bucket"
-        ).eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        ).eq("id", document_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-        if not doc_result.data:
+        if not doc_result.data or len(doc_result.data) == 0:
             raise ValueError(f"Document not found: {document_id}")
 
-        doc = doc_result.data
+        doc = doc_result.data[0]
         storage_path = doc.get("storage_path")
 
         result = {
@@ -1356,18 +1357,18 @@ class PartHandlers:
             # Try user_profiles first
             result = self.db.table("user_profiles").select(
                 "role"
-            ).eq("id", user_id).maybe_single().execute()
+            ).eq("id", user_id).limit(1).execute()
 
-            if result.data and result.data.get("role"):
-                return result.data["role"]
+            if result.data and len(result.data) > 0 and result.data[0].get("role"):
+                return result.data[0]["role"]
 
             # Fallback to crew_assignments
             crew_result = self.db.table("crew_assignments").select(
                 "role"
-            ).eq("user_id", user_id).eq("is_active", True).maybe_single().execute()
+            ).eq("user_id", user_id).eq("is_active", True).limit(1).execute()
 
-            if crew_result.data and crew_result.data.get("role"):
-                return crew_result.data["role"]
+            if crew_result.data and len(crew_result.data) > 0 and crew_result.data[0].get("role"):
+                return crew_result.data[0]["role"]
 
             return None
         except Exception as e:

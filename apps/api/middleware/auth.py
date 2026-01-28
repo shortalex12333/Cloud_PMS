@@ -18,12 +18,23 @@ Handles:
 from typing import Optional, Callable, Dict
 from functools import wraps
 import jwt
+import time
 from fastapi import Request, HTTPException, Header, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 import logging
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# INCIDENT MODE / KILL SWITCH CONFIGURATION
+# ============================================================================
+
+# Action groups blocked during incident mode
+INCIDENT_BLOCKED_GROUPS = {"MUTATE", "SIGNED", "ADMIN"}
+
+# Cache TTL for system flags (seconds) - short for quick incident response
+SYSTEM_FLAGS_CACHE_TTL = int(os.getenv("SYSTEM_FLAGS_CACHE_TTL", "10"))
 
 # ============================================================================
 # CONFIGURATION
@@ -89,6 +100,140 @@ def get_master_client():
             logger.error(f"[Auth] Failed to create MASTER client: {e}")
             return None
     return _master_client
+
+# ============================================================================
+# SYSTEM FLAGS CACHE (INCIDENT MODE / KILL SWITCH)
+# ============================================================================
+
+_system_flags_cache: Optional[Dict] = None
+_system_flags_cache_time: float = 0
+
+def get_system_flags() -> Dict:
+    """
+    Get current system flags from MASTER DB with caching.
+
+    SECURITY: This is the kill switch. When incident_mode is True,
+    MUTATE/SIGNED/ADMIN actions should be blocked globally.
+
+    Returns:
+        {
+            'incident_mode': bool,
+            'disable_streaming': bool,
+            'disable_signed_urls': bool,
+            'disable_writes': bool,
+            'incident_reason': str or None,
+            'incident_started_at': str or None,
+        }
+    """
+    global _system_flags_cache, _system_flags_cache_time
+
+    now = time.time()
+
+    # Return cached if still valid
+    if _system_flags_cache is not None and (now - _system_flags_cache_time) < SYSTEM_FLAGS_CACHE_TTL:
+        return _system_flags_cache
+
+    client = get_master_client()
+    if not client:
+        logger.error("[Auth] Cannot get system flags - no MASTER client")
+        # DENY-BY-DEFAULT: If we can't check, assume incident mode OFF but log warning
+        return {
+            'incident_mode': False,
+            'disable_streaming': False,
+            'disable_signed_urls': False,
+            'disable_writes': False,
+            'incident_reason': None,
+            'incident_started_at': None,
+        }
+
+    try:
+        # The system_flags table has a single row with id=1
+        result = client.table('system_flags').select('*').eq('id', 1).single().execute()
+
+        if result.data:
+            flags = {
+                'incident_mode': result.data.get('incident_mode', False),
+                'disable_streaming': result.data.get('disable_streaming', False),
+                'disable_signed_urls': result.data.get('disable_signed_urls', False),
+                'disable_writes': result.data.get('disable_writes', False),
+                'incident_reason': result.data.get('incident_reason'),
+                'incident_started_at': result.data.get('incident_started_at'),
+            }
+        else:
+            # No row exists yet - default to not in incident mode
+            flags = {
+                'incident_mode': False,
+                'disable_streaming': False,
+                'disable_signed_urls': False,
+                'disable_writes': False,
+                'incident_reason': None,
+                'incident_started_at': None,
+            }
+
+        # Update cache
+        _system_flags_cache = flags
+        _system_flags_cache_time = now
+
+        if flags['incident_mode']:
+            logger.warning(f"[Auth] INCIDENT MODE ACTIVE: {flags['incident_reason']}")
+
+        return flags
+
+    except Exception as e:
+        logger.error(f"[Auth] Failed to get system flags: {e}")
+        # DENY-BY-DEFAULT on error: return cached if available, else safe defaults
+        if _system_flags_cache is not None:
+            return _system_flags_cache
+        return {
+            'incident_mode': False,
+            'disable_streaming': False,
+            'disable_signed_urls': False,
+            'disable_writes': False,
+            'incident_reason': None,
+            'incident_started_at': None,
+        }
+
+
+def clear_system_flags_cache():
+    """Clear system flags cache (call after updating flags)."""
+    global _system_flags_cache, _system_flags_cache_time
+    _system_flags_cache = None
+    _system_flags_cache_time = 0
+
+
+def is_incident_mode_active() -> bool:
+    """Check if global incident mode is active."""
+    return get_system_flags().get('incident_mode', False)
+
+
+def check_incident_mode_for_action(action_group: str, is_streaming: bool = False) -> Optional[str]:
+    """
+    Check if an action should be blocked due to incident mode.
+
+    Args:
+        action_group: The action group (READ, MUTATE, SIGNED, ADMIN)
+        is_streaming: Whether this is a streaming request
+
+    Returns:
+        None if allowed, or an error message if blocked
+    """
+    flags = get_system_flags()
+
+    if not flags['incident_mode']:
+        return None  # Not in incident mode, allow all
+
+    # Check if action group is blocked
+    if action_group in INCIDENT_BLOCKED_GROUPS:
+        reason = flags.get('incident_reason') or 'security incident'
+        return f"System in incident mode: {reason}. {action_group} actions are temporarily disabled."
+
+    # Check streaming specifically
+    if is_streaming and flags.get('disable_streaming', False):
+        reason = flags.get('incident_reason') or 'security incident'
+        return f"System in incident mode: {reason}. Streaming is temporarily disabled."
+
+    return None  # Allowed
+
 
 # ============================================================================
 # TENANT LOOKUP CACHE
@@ -456,6 +601,84 @@ async def validate_agent_token(
 
 
 # ============================================================================
+# INCIDENT MODE ENFORCEMENT
+# ============================================================================
+
+def enforce_incident_mode(action_group: str, is_streaming: bool = False):
+    """
+    FastAPI dependency factory to enforce incident mode checks.
+
+    Usage:
+        @app.post('/update')
+        async def update(
+            auth: dict = Depends(get_authenticated_user),
+            _: None = Depends(enforce_incident_mode("MUTATE"))
+        ):
+            ...
+    """
+    async def _check():
+        error = check_incident_mode_for_action(action_group, is_streaming)
+        if error:
+            logger.warning(f"[Auth] INCIDENT MODE BLOCK: {action_group} action denied")
+            raise HTTPException(status_code=503, detail=error)
+    return _check
+
+
+async def check_streaming_allowed():
+    """
+    FastAPI dependency to check if streaming is allowed.
+
+    Use this for streaming endpoints.
+
+    Raises:
+        503 if streaming is disabled due to incident mode
+    """
+    flags = get_system_flags()
+    if flags.get('incident_mode') and flags.get('disable_streaming'):
+        reason = flags.get('incident_reason') or 'security incident'
+        raise HTTPException(
+            status_code=503,
+            detail=f"Streaming temporarily disabled: {reason}"
+        )
+
+
+async def check_signed_urls_allowed():
+    """
+    FastAPI dependency to check if signed URL generation is allowed.
+
+    Use this for storage/document endpoints.
+
+    Raises:
+        503 if signed URLs are disabled due to incident mode
+    """
+    flags = get_system_flags()
+    if flags.get('incident_mode') and flags.get('disable_signed_urls'):
+        reason = flags.get('incident_reason') or 'security incident'
+        raise HTTPException(
+            status_code=503,
+            detail=f"Document access temporarily disabled: {reason}"
+        )
+
+
+async def check_writes_allowed():
+    """
+    FastAPI dependency to check if write operations are allowed.
+
+    Use this for any mutation endpoints.
+
+    Raises:
+        503 if writes are disabled due to incident mode
+    """
+    flags = get_system_flags()
+    if flags.get('incident_mode') and flags.get('disable_writes'):
+        reason = flags.get('incident_reason') or 'security incident'
+        raise HTTPException(
+            status_code=503,
+            detail=f"Write operations temporarily disabled: {reason}"
+        )
+
+
+# ============================================================================
 # ROLE-BASED ACCESS CONTROL
 # ============================================================================
 
@@ -538,17 +761,31 @@ def create_agent_token(yacht_signature: str, agent_id: str, expires_days: int = 
 # ============================================================================
 
 __all__ = [
+    # JWT functions
     'decode_jwt',
     'extract_yacht_id',
     'extract_user_id',
     'extract_role',
+    # Auth dependencies
     'validate_user_jwt',
-    'get_authenticated_user',  # NEW: Primary auth dependency
-    'lookup_tenant_for_user',  # NEW: Tenant lookup
-    'clear_tenant_cache',      # NEW: Cache management
+    'get_authenticated_user',
     'inject_yacht_context',
     'validate_agent_token',
+    # Tenant lookup
+    'lookup_tenant_for_user',
+    'clear_tenant_cache',
+    # Incident mode / kill switch
+    'get_system_flags',
+    'clear_system_flags_cache',
+    'is_incident_mode_active',
+    'check_incident_mode_for_action',
+    'enforce_incident_mode',
+    'check_streaming_allowed',
+    'check_signed_urls_allowed',
+    'check_writes_allowed',
+    # Role-based access
     'require_role',
     'enforce_yacht_isolation',
+    # Token utilities
     'create_agent_token',
 ]
