@@ -872,18 +872,28 @@ async def execute_action(
 
         # ===== PART LENS V2 ACTIONS =====
         elif action == "view_part_details":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.view_part_details(
+            # Get tenant-specific client for this request
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.view_part_details(
                 entity_id=payload["part_id"],
                 yacht_id=yacht_id,
                 user_id=user_id
             )
 
         elif action == "add_to_shopping_list":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.add_to_shopping_list(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.add_to_shopping_list(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -893,9 +903,13 @@ async def execute_action(
             )
 
         elif action == "consume_part":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.consume_part(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.consume_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -905,9 +919,13 @@ async def execute_action(
             )
 
         elif action == "receive_part":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.receive_part(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.receive_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -919,9 +937,13 @@ async def execute_action(
             )
 
         elif action == "transfer_part":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.transfer_part(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.transfer_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -932,9 +954,13 @@ async def execute_action(
             )
 
         elif action == "adjust_stock_quantity":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.adjust_stock_quantity(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.adjust_stock_quantity(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -945,9 +971,13 @@ async def execute_action(
             )
 
         elif action == "write_off_part":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.write_off_part(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.write_off_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -958,18 +988,26 @@ async def execute_action(
             )
 
         elif action == "generate_part_labels":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.generate_part_labels(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.generate_part_labels(
                 part_ids=payload["part_ids"],
                 yacht_id=yacht_id,
                 user_id=user_id
             )
 
         elif action == "request_label_output":
-            if not part_handlers:
-                raise HTTPException(status_code=500, detail="Part handlers not initialized")
-            result = await part_handlers.request_label_output(
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            if not tenant_alias:
+                raise HTTPException(status_code=500, detail="No tenant mapping found for user")
+            tenant_db = get_tenant_supabase_client(tenant_alias)
+            request_part_handlers = PartHandlers(tenant_db)
+
+            result = await request_part_handlers.request_label_output(
                 label_request_id=payload["label_request_id"],
                 output_format=payload["output_format"],
                 yacht_id=yacht_id,
@@ -4272,7 +4310,30 @@ async def execute_action(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Action execution failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        error_str = str(e).lower()
+
+        # Parse database errors to return appropriate status codes (Phase 8)
+        # 404 - Resource not found
+        if "pgrst116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str or "not found" in error_str:
+            raise HTTPException(status_code=404, detail=str(e))
+        # 400 - Foreign key violations (invalid reference)
+        elif "foreign key" in error_str or "violates foreign key constraint" in error_str or "fk_" in error_str:
+            raise HTTPException(status_code=400, detail=f"Invalid reference: {str(e)}")
+        # 409 - Duplicate entries
+        elif "unique constraint" in error_str or "duplicate key" in error_str or "already exists" in error_str:
+            raise HTTPException(status_code=409, detail="Resource already exists")
+        # 400 - Check constraint violations (data validation)
+        elif "check constraint" in error_str or "violates check constraint" in error_str:
+            raise HTTPException(status_code=400, detail=f"Validation failed: {str(e)}")
+        # 400 - Invalid signature
+        elif "signature" in error_str and ("invalid" in error_str or "missing" in error_str or "required" in error_str):
+            raise HTTPException(status_code=400, detail=str(e))
+        # 403 - RLS/permission denied
+        elif "policy" in error_str or "permission denied" in error_str:
+            raise HTTPException(status_code=403, detail=f"Access denied: {str(e)}")
+        # 500 - Real server errors (connection issues, server misconfiguration)
+        else:
+            raise HTTPException(status_code=500, detail=str(e))
 
     # Handle errors from handler
     if result["status"] == "error":
@@ -4538,6 +4599,129 @@ async def list_actions_endpoint(
         "actions": actions,
         "total_count": len(actions),
         "role": user_role,
+    }
+
+
+@router.post("/suggestions")
+async def suggest_actions_endpoint(
+    request: Dict[str, Any],
+    authorization: str = Header(None),
+):
+    """
+    Suggest actions based on context with ambiguity detection (Phase 8).
+
+    Request body:
+        {
+            "q": "search query (optional)",
+            "domain": "domain filter (optional)",
+            "context": {
+                "entity_type": "fault|work_order|equipment|part",
+                "entity_id": "UUID (optional)"
+            }
+        }
+
+    Returns:
+        {
+            "actions": [...],      # Contextually-gated actions
+            "candidates": [...],   # Disambiguation candidates (if ambiguous)
+            "unresolved": [...],   # Queries that matched nothing
+            "role": "crew|chief_engineer|...",
+            "context": {...}       # Echo back context
+        }
+
+    Context gating:
+    - create_work_order_from_fault: requires entity_type=fault AND entity_id
+    - add_fault_photo, add_fault_note: requires entity_type=fault
+    - add_work_order_photo: requires entity_type=work_order
+    """
+    from action_router.registry import search_actions, get_storage_options, ACTION_REGISTRY
+
+    # Validate JWT and extract user context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": jwt_result.error.error_code,
+                "message": jwt_result.error.message,
+            },
+        )
+
+    user_context = jwt_result.context
+
+    # Lookup tenant if yacht_id not in JWT
+    if not user_context.get("yacht_id") and lookup_tenant_for_user:
+        tenant_info = lookup_tenant_for_user(user_context["user_id"])
+        if tenant_info:
+            user_context["yacht_id"] = tenant_info.get("yacht_id")
+            user_context["role"] = tenant_info.get("role", user_context.get("role"))
+
+    user_role = user_context.get("role")
+    yacht_id = user_context.get("yacht_id")
+
+    # Extract request parameters
+    query = request.get("q")
+    domain = request.get("domain")
+    context = request.get("context", {})
+    entity_type = context.get("entity_type")
+    entity_id = context.get("entity_id")
+
+    # Search actions with role-gating
+    all_actions = search_actions(query=query, role=user_role, domain=domain)
+
+    # Apply context gating
+    actions = []
+    for action in all_actions:
+        action_def = ACTION_REGISTRY.get(action["action_id"])
+        if not action_def:
+            continue
+
+        # Check context requirements
+        if action_def.context_required:
+            # Verify all required context fields are present
+            context_match = all(
+                context.get(key) == value
+                for key, value in action_def.context_required.items()
+            )
+            if not context_match:
+                continue  # Skip this action if context doesn't match
+
+        # Enrich with storage options
+        storage_opts = get_storage_options(
+            action["action_id"],
+            yacht_id=yacht_id,
+            entity_id=entity_id,
+        )
+        if storage_opts:
+            action["storage_options"] = storage_opts
+
+        actions.append(action)
+
+    # Ambiguity detection
+    candidates = []
+    unresolved = []
+
+    # If query provided but no matches, mark as unresolved
+    if query and len(actions) == 0:
+        unresolved.append({
+            "query": query,
+            "reason": "No actions matched query with current role and context"
+        })
+
+    # If multiple high-score matches (>0.8), mark as candidates for disambiguation
+    if len(actions) > 1:
+        high_score_actions = [a for a in actions if a.get("match_score", 0) > 0.8]
+        if len(high_score_actions) > 1:
+            candidates = high_score_actions
+
+    return {
+        "actions": actions,
+        "candidates": candidates,
+        "unresolved": unresolved,
+        "total_count": len(actions),
+        "role": user_role,
+        "context": context,
     }
 
 
