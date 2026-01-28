@@ -4583,8 +4583,18 @@ async def execute_action(
         else:
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Handle errors from handler
-    if result["status"] == "error":
+    # Handle errors from handler (support both old and new formats)
+    # New format (ActionResponseEnvelope): has "success" field
+    # Old format: has "status" field
+    if "success" in result:
+        # New ActionResponseEnvelope format
+        if not result["success"] and result.get("error"):
+            error = result["error"]
+            error_code = error.get("error_code", "UNKNOWN_ERROR")
+            status_code = error.get("status_code", 500)
+            raise HTTPException(status_code=status_code, detail=error.get("message", "Unknown error"))
+    elif "status" in result and result["status"] == "error":
+        # Old format (backward compatibility)
         status_code = 400
         error_code = result.get("error_code", "UNKNOWN_ERROR")
 
