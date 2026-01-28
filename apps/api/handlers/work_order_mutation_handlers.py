@@ -1840,8 +1840,19 @@ class WorkOrderMutationHandlers:
         new_values: Optional[Dict] = None,
         signature: Optional[Dict] = None
     ) -> str:
-        """Create audit log entry."""
+        """
+        Create audit log entry.
+
+        Signature handling (Fault Lens v1 canonical format):
+        - Signed actions: Write canonical signature JSON (signed_at, user_id, role_at_signing, signature_type, signature_hash)
+        - Non-signed actions: Write {} (empty object)
+        - NEVER write None (signature column is NOT NULL)
+        """
         try:
+            # Ensure signature is never None (column is NOT NULL)
+            # For non-signed actions, use empty object
+            canonical_signature = signature if signature else {}
+
             audit_data = {
                 "yacht_id": yacht_id,
                 "action": action,
@@ -1850,7 +1861,7 @@ class WorkOrderMutationHandlers:
                 "user_id": user_id,
                 "old_values": old_values,
                 "new_values": new_values,
-                "signature": signature,
+                "signature": canonical_signature,  # Always JSONB object, never None
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
 
