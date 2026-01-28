@@ -68,5 +68,5 @@ ENV PYTHONUNBUFFERED=1 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -fsS http://127.0.0.1:${PORT}/health || exit 1
 
-# Run with uvicorn
-CMD ["sh", "-c", "uvicorn pipeline_service:app --host 0.0.0.0 --port ${PORT}"]
+# Run with uvicorn (microaction_service includes Part Lens v2 routes)
+CMD ["sh", "-c", "uvicorn microaction_service:app --host 0.0.0.0 --port ${PORT}"]
