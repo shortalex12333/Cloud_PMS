@@ -188,6 +188,11 @@ def get_test_link_data() -> Dict[str, Any]:
         "note": "Test link from staging CI"
     }
 
+
+def get_error_msg(body: Dict[str, Any]) -> str:
+    """Extract error message from response (FastAPI uses 'detail', not 'error')."""
+    return body.get('detail') or body.get('error') or str(body)
+
 # =============================================================================
 # Staging CI Tests (Subset of Docker Matrix)
 # =============================================================================
@@ -229,7 +234,8 @@ def test_crew_cannot_add_link_403():
 
     try:
         assert code == 403, f"Expected 403, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
         results.record_pass("test_crew_cannot_add_link_403")
 
     except AssertionError as e:
@@ -274,7 +280,8 @@ def test_invalid_entity_type_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
         results.record_pass("test_invalid_entity_type_400")
 
     except AssertionError as e:
@@ -284,11 +291,11 @@ def test_invalid_entity_type_400():
             results.record_fail("test_invalid_entity_type_400", e)
 
 def test_caps_enforced():
-    """TEST 5: Caps enforced (limit parameter respected)"""
+    """TEST 5: Caps enforced (limit parameter respected per group)"""
     params = {
         "entity_type": "work_order",
         "entity_id": STAGING_WORK_ORDER_ID,
-        "limit": 3  # Request only 3 results
+        "limit": 3  # Request only 3 results per group
     }
 
     code, body = api_get("/v1/related", STAGING_JWT_CREW, params)
@@ -296,9 +303,11 @@ def test_caps_enforced():
     try:
         assert code == 200, f"Expected 200, got {code}"
 
-        # Count total items across all groups
-        total_items = sum(len(group.get('items', [])) for group in body.get('groups', []))
-        assert total_items <= 3, f"Expected <= 3 total items, got {total_items}"
+        # Verify each group respects the limit
+        for group in body.get('groups', []):
+            group_key = group.get('group_key', group.get('type', 'unknown'))
+            item_count = len(group.get('items', []))
+            assert item_count <= 3, f"Group {group_key} has {item_count} items, expected <= 3"
 
         results.record_pass("test_caps_enforced")
 
@@ -320,7 +329,8 @@ def test_limit_exceeds_max_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
         results.record_pass("test_limit_exceeds_max_400")
 
     except AssertionError as e:

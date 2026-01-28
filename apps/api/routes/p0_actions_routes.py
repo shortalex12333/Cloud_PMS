@@ -488,7 +488,12 @@ async def execute_action(
         "add_to_handover": ["title"],
         "show_manual_section": ["equipment_id"],
         "update_equipment_status": ["equipment_id", "new_status"],
-        "delete_document": ["document_id"],
+        # Document Lens v2 Actions
+        "upload_document": ["file_name", "mime_type"],
+        "update_document": ["document_id"],
+        "delete_document": ["document_id", "reason", "signature"],
+        "add_document_tags": ["document_id", "tags"],
+        "get_document_url": ["document_id"],
         "delete_shopping_item": ["item_id"],
         # Add_wo_* variants
         "add_wo_hours": ["work_order_id", "hours"],
@@ -1963,44 +1968,8 @@ async def execute_action(
                         detail="Action blocked: pms_equipment.status column not found. Run migration 00000000000018."
                     )
                 raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
-        # ===== DOCUMENT DELETE ACTION (Cluster 07) =====
-        elif action == "delete_document":
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            document_id = payload.get("document_id")
-            if not document_id:
-                raise HTTPException(status_code=400, detail="document_id is required")
-
-            try:
-                # Check if document exists
-                check = db_client.table("documents").select("id").eq("id", document_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                if not check or not check.data:
-                    raise HTTPException(status_code=404, detail="Document not found")
-
-                # Delete document
-                db_client.table("documents").delete().eq("id", document_id).eq("yacht_id", yacht_id).execute()
-
-                result = {
-                    "status": "success",
-                    "success": True,
-                    "document_id": document_id,
-                    "message": "Document deleted successfully"
-                }
-            except HTTPException:
-                raise  # Re-raise our own 404
-            except Exception as e:
-                error_str = str(e)
-                # If row not found during delete (race condition), treat as success (idempotent)
-                if "0 rows" in error_str.lower() or "no rows" in error_str.lower():
-                    result = {
-                        "status": "success",
-                        "success": True,
-                        "document_id": document_id,
-                        "message": "Document already deleted"
-                    }
-                else:
-                    raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
+        # ===== DOCUMENT ACTIONS moved to Document Lens v2 block =====
+        # (see elif block for upload_document, update_document, etc.)
 
         # ===== SHOPPING ITEM DELETE ACTION (Cluster 08) =====
         elif action == "delete_shopping_item":
@@ -2392,44 +2361,9 @@ async def execute_action(
                 "work_orders": work_orders.data or []
             }
 
-        elif action == "upload_document":
-            # Document upload is handled via storage, not direct action
-            # This returns the pre-signed URL for upload
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            filename = payload.get("filename", "document")
-            folder = payload.get("folder", "documents")
-
-            # Generate storage path
-            import uuid
-            storage_path = f"{yacht_id}/{folder}/{uuid.uuid4()}-{filename}"
-
-            result = {
-                "status": "success",
-                "success": True,
-                "storage_path": storage_path,
-                "message": "Document upload ready. Use storage API to upload file."
-            }
-
-        elif action == "view_document":
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
-
-            document_id = payload.get("document_id")
-            if not document_id:
-                raise HTTPException(status_code=400, detail="document_id is required")
-
-            # Get document details
-            doc_result = db_client.table("documents").select("*").eq("id", document_id).eq("yacht_id", yacht_id).single().execute()
-            if not doc_result.data:
-                raise HTTPException(status_code=404, detail="Document not found")
-
-            result = {
-                "status": "success",
-                "success": True,
-                "document": doc_result.data
-            }
+        # ===== DOCUMENT LENS V2 ACTIONS =====
+        # upload_document, update_document, delete_document, add_document_tags, get_document_url
+        # Routed through document_handlers (see below, after certificate actions)
 
         # =====================================================================
         # TIER 1 HANDLERS - Fault/WO History and Notes
@@ -4530,6 +4464,50 @@ async def execute_action(
                 yacht_id=yacht_id,
                 params=payload
             )
+
+        # ===== DOCUMENT LENS V2 ACTIONS =====
+        elif action in ("upload_document", "update_document", "delete_document",
+                        "add_document_tags", "get_document_url", "list_documents"):
+            # Role-based access control for document actions
+            DOC_ALLOWED_ROLES = {
+                "upload_document": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "update_document": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "add_document_tags": ["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "delete_document": ["captain", "manager"],  # SIGNED action - manager/captain only
+                "get_document_url": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                     "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "list_documents": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                   "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+            }
+            user_role = user_context.get("role", "")
+            allowed_roles = DOC_ALLOWED_ROLES.get(action, [])
+            if user_role not in allowed_roles:
+                logger.warning(f"[RLS] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
+                )
+
+            # Import document handlers lazily
+            from handlers.document_handlers import get_document_handlers
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            doc_handlers = get_document_handlers(db_client)
+
+            # Get the handler function
+            handler_fn = doc_handlers.get(action)
+            if not handler_fn:
+                raise HTTPException(status_code=404, detail=f"Document handler '{action}' not found")
+
+            # Merge context and payload for handler
+            handler_params = {
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                **payload
+            }
+
+            # Call the handler (async handlers)
+            result = await handler_fn(**handler_params)
 
         else:
             raise HTTPException(

@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir requests
 COPY run_rls_tests.py .
 COPY run_work_orders_action_list_tests.py .
 
-CMD ["python", "run_work_orders_action_list_tests.py"]
+CMD ["python", "run_rls_tests.py"]
