@@ -133,7 +133,39 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+# ============================================================================
+# EXCEPTION HANDLERS
+# ============================================================================
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTPException with structured error response"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail,
+            "status_code": exc.status_code,
+            "path": str(request.url)
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions with 500 response"""
+    logger.error(f"Unhandled exception: {exc}")
+    logger.error(f"Request path: {request.url}")
+    logger.error(f"Exception type: {type(exc).__name__}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "detail": str(exc),
+            "path": str(request.url)
+        }
+    )
+
 logger.info("✅ [Pipeline] Rate limiting enabled")
+logger.info("✅ [Pipeline] Exception handlers registered")
 
 # ============================================================================
 # P0 ACTIONS ROUTES
