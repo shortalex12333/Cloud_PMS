@@ -82,6 +82,8 @@ async def create_test_location(db, yacht_id: UUID, name: str) -> UUID:
 
 async def set_user_context(db, user: TestUser):
     """Set JWT claims for RLS testing."""
-    await db.execute("""
-        SET LOCAL "request.jwt.claims" = $1
-    """, f'{{"sub": "{user.id}"}}')
+    import json
+    claims = json.dumps({"sub": str(user.id)})
+    await db.execute(f"""
+        SET LOCAL "request.jwt.claims" = '{claims}'
+    """)

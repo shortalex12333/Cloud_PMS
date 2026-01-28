@@ -173,6 +173,17 @@ except Exception as e:
     logger.warning(f"⚠ P0 Actions routes not loaded: {e}")
 
 # ========================================================================
+# PART LENS ROUTES
+# ========================================================================
+# Include Part Lens v2 routes for inventory actions
+try:
+    from routes.part_routes import router as part_routes_router
+    app.include_router(part_routes_router)
+    logger.info("✅ Part Lens routes loaded")
+except Exception as e:
+    logger.warning(f"⚠ Part Lens routes not loaded: {e}")
+
+# ========================================================================
 # TRIGGER ROUTES
 # ========================================================================
 # Include trigger routes for business rule checks

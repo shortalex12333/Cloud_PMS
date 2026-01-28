@@ -1,0 +1,163 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-7.4.3, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/tests/inventory_lens
+configfile: pytest.ini
+plugins: mock-3.15.1, Faker-20.1.0, cov-4.1.0, asyncio-0.21.1, anyio-3.7.1, langsmith-0.4.8
+asyncio: mode=auto
+collecting ... collected 21 items
+
+tests/test_inventory_critical.py::TestRLSIsolation::test_parts_isolated_by_yacht SKIPPED [  4%]
+tests/test_inventory_critical.py::TestRLSIsolation::test_stock_isolated_by_yacht SKIPPED [  9%]
+tests/test_inventory_critical.py::TestRLSIsolation::test_transactions_isolated_by_yacht SKIPPED [ 14%]
+tests/test_inventory_critical.py::TestRLSIsolation::test_locations_isolated_by_yacht SKIPPED [ 19%]
+tests/test_inventory_critical.py::TestRLSIsolation::test_cross_yacht_consume_blocked SKIPPED [ 23%]
+tests/test_inventory_critical.py::TestConcurrency::test_concurrent_consume_atomic FAILED [ 28%]
+tests/test_inventory_critical.py::TestConcurrency::test_concurrent_receive_atomic FAILED [ 33%]
+tests/test_inventory_critical.py::TestConcurrency::test_concurrent_receive_atomic ERROR [ 33%]
+tests/test_inventory_critical.py::TestIdempotency::test_duplicate_receive_blocked PASSED [ 38%]
+tests/test_inventory_critical.py::TestIdempotency::test_idempotency_key_scoped_to_yacht SKIPPED [ 42%]
+tests/test_inventory_critical.py::TestSoftDelete::test_consume_blocked_on_deactivated PASSED [ 47%]
+tests/test_inventory_critical.py::TestSoftDelete::test_trigger_blocks_transaction_insert PASSED [ 52%]
+tests/test_inventory_critical.py::TestSoftDelete::test_reactivate_restores_mutations PASSED [ 57%]
+tests/test_inventory_critical.py::TestReversalUniqueness::test_double_reversal_blocked PASSED [ 61%]
+tests/test_inventory_critical.py::TestReversalUniqueness::test_reversal_of_reversal_blocked PASSED [ 66%]
+tests/test_inventory_critical.py::TestTransactionTypeRLS::test_crew_can_insert_consumed FAILED [ 71%]
+tests/test_inventory_critical.py::TestTransactionTypeRLS::test_crew_cannot_insert_write_off FAILED [ 76%]
+tests/test_inventory_critical.py::TestTransactionTypeRLS::test_crew_cannot_insert_reversed FAILED [ 80%]
+tests/test_inventory_critical.py::TestTransferValidation::test_transfer_same_location_blocked PASSED [ 85%]
+tests/test_inventory_critical.py::TestHelperParity::test_is_operational_crew_includes_all_roles FAILED [ 90%]
+tests/test_inventory_critical.py::TestHelperParity::test_is_operational_crew_excludes_guest FAILED [ 95%]
+tests/test_inventory_critical.py::TestDualLedgerConsistency::test_no_inventory_drift PASSED [100%]
+
+==================================== ERRORS ====================================
+_____ ERROR at teardown of TestConcurrency.test_concurrent_receive_atomic ______
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/pytest_asyncio/plugin.py:302: in finalizer
+    event_loop.run_until_complete(async_finalizer())
+/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py:642: in run_until_complete
+    return future.result()
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/pytest_asyncio/plugin.py:294: in async_finalizer
+    await gen_obj.__anext__()
+tests/conftest.py:68: in db
+    yield conn
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/pool.py:988: in __aexit__
+    await self.pool.release(con)
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/pool.py:862: in release
+    return await asyncio.shield(ch.release(timeout))
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/pool.py:219: in release
+    raise ex
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/pool.py:209: in release
+    await self._con.reset(timeout=budget)
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1500: in reset
+    await self.execute(reset_query, timeout=timeout)
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:350: in execute
+    result = await self._protocol.query(query, timeout)
+asyncpg/protocol/protocol.pyx:359: in query
+    ???
+asyncpg/protocol/protocol.pyx:744: in asyncpg.protocol.protocol.BaseProtocol._check_state
+    ???
+E   asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress
+=================================== FAILURES ===================================
+________________ TestConcurrency.test_concurrent_consume_atomic ________________
+tests/test_inventory_critical.py:161: in test_concurrent_consume_atomic
+    assert len(failures) == 1, "Exactly one consume should fail"
+E   AssertionError: Exactly one consume should fail
+E   assert 0 == 1
+E    +  where 0 = len([])
+________________ TestConcurrency.test_concurrent_receive_atomic ________________
+tests/test_inventory_critical.py:182: in test_concurrent_receive_atomic
+    results = await asyncio.gather(receive_10(), receive_10())
+tests/test_inventory_critical.py:178: in receive_10
+    return await db.fetchrow("""
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:749: in fetchrow
+    data = await self._execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1793: in _execute
+    with self._stmt_exclusive_section:
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:2531: in __enter__
+    raise exceptions.InterfaceError(
+E   asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress
+_____________ TestTransactionTypeRLS.test_crew_can_insert_consumed _____________
+tests/test_inventory_critical.py:417: in test_crew_can_insert_consumed
+    await set_user_context(db, deckhand_a)
+tests/helpers.py:85: in set_user_context
+    await db.execute("""
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:353: in execute
+    _, status, _ = await self._execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1794: in _execute
+    result, _ = await self.__execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1892: in __execute
+    result, stmt = await self._do_execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1925: in _do_execute
+    stmt = await self._get_statement(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:433: in _get_statement
+    statement = await self._protocol.prepare(
+asyncpg/protocol/protocol.pyx:166: in prepare
+    ???
+E   asyncpg.exceptions.PostgresSyntaxError: syntax error at or near "$1"
+___________ TestTransactionTypeRLS.test_crew_cannot_insert_write_off ___________
+tests/test_inventory_critical.py:432: in test_crew_cannot_insert_write_off
+    await set_user_context(db, deckhand_a)
+tests/helpers.py:85: in set_user_context
+    await db.execute("""
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:353: in execute
+    _, status, _ = await self._execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1794: in _execute
+    result, _ = await self.__execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1892: in __execute
+    result, stmt = await self._do_execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1925: in _do_execute
+    stmt = await self._get_statement(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:433: in _get_statement
+    statement = await self._protocol.prepare(
+asyncpg/protocol/protocol.pyx:166: in prepare
+    ???
+E   asyncpg.exceptions.PostgresSyntaxError: syntax error at or near "$1"
+___________ TestTransactionTypeRLS.test_crew_cannot_insert_reversed ____________
+tests/test_inventory_critical.py:448: in test_crew_cannot_insert_reversed
+    await set_user_context(db, deckhand_a)
+tests/helpers.py:85: in set_user_context
+    await db.execute("""
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:353: in execute
+    _, status, _ = await self._execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1794: in _execute
+    result, _ = await self.__execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1892: in __execute
+    result, stmt = await self._do_execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1925: in _do_execute
+    stmt = await self._get_statement(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:433: in _get_statement
+    statement = await self._protocol.prepare(
+asyncpg/protocol/protocol.pyx:166: in prepare
+    ???
+E   asyncpg.exceptions.PostgresSyntaxError: syntax error at or near "$1"
+_________ TestHelperParity.test_is_operational_crew_includes_all_roles _________
+tests/test_inventory_critical.py:503: in test_is_operational_crew_includes_all_roles
+    await db.execute("""
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:353: in execute
+    _, status, _ = await self._execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1794: in _execute
+    result, _ = await self.__execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1892: in __execute
+    result, stmt = await self._do_execute(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:1925: in _do_execute
+    stmt = await self._get_statement(
+/Users/celeste7/Library/Python/3.9/lib/python/site-packages/asyncpg/connection.py:433: in _get_statement
+    statement = await self._protocol.prepare(
+asyncpg/protocol/protocol.pyx:166: in prepare
+    ???
+E   asyncpg.exceptions.UndefinedColumnError: column "full_name" of relation "auth_users_profiles" does not exist
+___________ TestHelperParity.test_is_operational_crew_excludes_guest ___________
+tests/test_inventory_critical.py:531: in test_is_operational_crew_excludes_guest
+    assert result == "guest"
+E   AssertionError: assert None == 'guest'
+- generated xml file: /Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/docs/evidence/inventory_item/07_acceptance_junit_20260127_191320.xml -
+=========================== short test summary info ============================
+FAILED tests/test_inventory_critical.py::TestConcurrency::test_concurrent_consume_atomic
+FAILED tests/test_inventory_critical.py::TestConcurrency::test_concurrent_receive_atomic
+FAILED tests/test_inventory_critical.py::TestTransactionTypeRLS::test_crew_can_insert_consumed
+FAILED tests/test_inventory_critical.py::TestTransactionTypeRLS::test_crew_cannot_insert_write_off
+FAILED tests/test_inventory_critical.py::TestTransactionTypeRLS::test_crew_cannot_insert_reversed
+FAILED tests/test_inventory_critical.py::TestHelperParity::test_is_operational_crew_includes_all_roles
+FAILED tests/test_inventory_critical.py::TestHelperParity::test_is_operational_crew_excludes_guest
+ERROR tests/test_inventory_critical.py::TestConcurrency::test_concurrent_receive_atomic
+========= 7 failed, 8 passed, 6 skipped, 3 warnings, 1 error in 14.59s =========
