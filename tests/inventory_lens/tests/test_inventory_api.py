@@ -34,23 +34,27 @@ from typing import Dict, Any
 API_BASE_URL = os.getenv("RENDER_API_BASE_URL", "https://pipeline-core.int.celeste7.ai")
 TEST_YACHT_ID = os.getenv("TEST_YACHT_ID", "85fe1119-b04c-41ac-80f1-829d23322598")
 
-# HARDCODED JWTs FOR CI (to avoid GitHub Secrets copy-paste issues)
-# These JWTs are MASTER-signed with 365-day expiry (expires 2027-01-28)
-# Generated with iat=1769436968 (2026-01-26 14:16 UTC, 48 hours in past)
-# EXTREME clock skew tolerance to handle server time sync issues
-# TODO: Replace with proper secret management system once clock issue resolved
-CREW_JWT = os.getenv(
-    "CREW_JWT",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIyZGExMmE0Yi1jMGExLTQ3MTYtODBhZS1kMjljOTBkOTgyMzMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQ1NzY4LCJpYXQiOjE3Njk0MzY5NjgsImVtYWlsIjoiY3Jldy50ZW5hbnRAYWxleC1zaG9ydC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc2OTQzNjk2OH1dLCJzZXNzaW9uX2lkIjoiY2ktdGVzdC0yZGExMmE0YiIsImlzX2Fub255bW91cyI6ZmFsc2V9.89YpyjxFOuech4CZkmZBrzVfrpXgBizN3gCl4sO7Wz0"
-)
-HOD_JWT = os.getenv(
-    "HOD_JWT",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI4OWIxMjYyYy1mZjU5LTQ1OTEtYjk1NC03NTdjZGYzZDYwOWQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQ1NzY4LCJpYXQiOjE3Njk0MzY5NjgsImVtYWlsIjoiaG9kLnRlbmFudEBhbGV4LXNob3J0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnt9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzY5NDM2OTY4fV0sInNlc3Npb25faWQiOiJjaS10ZXN0LTg5YjEyNjJjIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.K9BPpMKe82VGc2E3gNL24118KRMufZMs1g-5aGmlCfg"
-)
-CAPTAIN_JWT = os.getenv(
-    "CAPTAIN_JWT",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiNzJjMzVmZi1lMzA5LTRhMTktYTYxNy1iZmM3MDZhNzhjMGYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQ1NzY4LCJpYXQiOjE3Njk0MzY5NjgsImVtYWlsIjoiY2FwdGFpbi50ZW5hbnRAYWxleC1zaG9ydC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc2OTQzNjk2OH1dLCJzZXNzaW9uX2lkIjoiY2ktdGVzdC1iNzJjMzVmZiIsImlzX2Fub255bW91cyI6ZmFsc2V9.-TEeiHxLsc-kmOuY2qA70qCZ4gMoHe9L2BEM182UyW4"
-)
+# JWTs generated fresh via password-grant in CI workflow
+# See: tests/ci/generate_fresh_jwts.py
+# This eliminates iat/nbf clock skew issues by minting tokens with current timestamps
+CREW_JWT = os.getenv("CREW_JWT")
+HOD_JWT = os.getenv("HOD_JWT")
+CAPTAIN_JWT = os.getenv("CAPTAIN_JWT")
+
+# Validate JWTs are present
+if not all([CREW_JWT, HOD_JWT, CAPTAIN_JWT]):
+    missing = []
+    if not CREW_JWT:
+        missing.append("CREW_JWT")
+    if not HOD_JWT:
+        missing.append("HOD_JWT")
+    if not CAPTAIN_JWT:
+        missing.append("CAPTAIN_JWT")
+    raise RuntimeError(
+        f"Missing required JWT environment variables: {', '.join(missing)}\n"
+        f"In CI, these are generated via tests/ci/generate_fresh_jwts.py\n"
+        f"For local testing, set these environment variables manually."
+    )
 
 
 # ============================================================================
