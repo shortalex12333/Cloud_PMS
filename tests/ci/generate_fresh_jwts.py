@@ -5,7 +5,7 @@ Generate fresh JWTs via password-grant against MASTER Supabase.
 This eliminates iat/nbf clock skew issues by minting tokens with current timestamps.
 Required environment variables:
 - MASTER_SUPABASE_URL
-- MASTER_SUPABASE_SERVICE_KEY
+- MASTER_SUPABASE_SERVICE_ROLE_KEY
 - STAGING_CREW_EMAIL
 - STAGING_HOD_EMAIL
 - STAGING_CAPTAIN_EMAIL
@@ -36,7 +36,7 @@ def password_grant_jwt(
 
     headers = {
         "Content-Type": "application/json",
-        "apikey": os.getenv("MASTER_SUPABASE_SERVICE_KEY", "")
+        "apikey": os.getenv("MASTER_SUPABASE_SERVICE_ROLE_KEY", "")
     }
 
     try:
@@ -59,7 +59,7 @@ def main():
     # Required environment variables
     required_vars = [
         "MASTER_SUPABASE_URL",
-        "MASTER_SUPABASE_SERVICE_KEY",
+        "MASTER_SUPABASE_SERVICE_ROLE_KEY",
         "STAGING_CREW_EMAIL",
         "STAGING_HOD_EMAIL",
         "STAGING_CAPTAIN_EMAIL",
