@@ -24,11 +24,14 @@ from typing import Dict, Optional, List
 import logging
 import uuid
 import re
+import os
 
 # Import schema components
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,42 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # UTILITIES
 # ============================================================================
+
+def get_rls_enforced_client(user_jwt: Optional[str] = None) -> Client:
+    """
+    Create Supabase client with RLS enforcement.
+
+    If user_jwt is provided, creates client with user's token (enforces RLS).
+    Otherwise falls back to service key (bypasses RLS - use only for non-RLS ops).
+
+    Args:
+        user_jwt: User's JWT token for RLS enforcement
+
+    Returns:
+        Supabase Client configured for tenant database
+    """
+    # Get tenant database URL
+    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
+    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+
+    if not url:
+        raise ValueError(f"{default_yacht}_SUPABASE_URL must be set")
+
+    # Use user JWT if provided (enforces RLS), otherwise service key (bypasses RLS)
+    if user_jwt:
+        # RLS-enforced: use user's JWT token
+        # This means RLS policies will be active and yacht isolation enforced
+        key = user_jwt
+    else:
+        # Fallback to service key (bypasses RLS)
+        # Only use for operations that don't require RLS (e.g., system operations)
+        key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
+        if not key:
+            raise ValueError(f"{default_yacht}_SUPABASE_SERVICE_KEY must be set")
+        logger.warning("Creating Supabase client without user JWT - RLS bypassed")
+
+    return create_client(url, key)
+
 
 def validate_storage_path_for_receiving(yacht_id: str, receiving_id: str, storage_path: str) -> tuple[bool, Optional[str]]:
     """
@@ -146,12 +185,16 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
     """
     Create new receiving record.
 
-    Required fields: yacht_id, user_id
+    Required fields: yacht_id, user_id, user_jwt
     Optional fields: vendor_name, vendor_reference, received_date, currency, notes, linked_work_order_id
     Allowed roles: HOD+
+    RLS: Enforced via user JWT
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
 
@@ -237,7 +280,10 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
     Storage path validation: {yacht_id}/receiving/{receiving_id}/{filename}
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -341,7 +387,10 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
     pms_receiving_items. User must explicitly apply changes via other actions.
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -444,7 +493,10 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -545,7 +597,10 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -656,7 +711,10 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -753,7 +811,10 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
     Storage path validation: {yacht_id}/receiving/{receiving_id}/{filename}
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -854,7 +915,10 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
     EXECUTE: Mark status='accepted', freeze monetary fields, write signed audit
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -1003,7 +1067,10 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
         receiving_id = params["receiving_id"]
@@ -1091,7 +1158,10 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
     Returns: receiving header, line items, documents, audit trail
     """
     async def _fn(**params):
-        db = handlers.db
+        # Create RLS-enforced client with user's JWT
+        user_jwt = params.get("user_jwt")
+        db = get_rls_enforced_client(user_jwt)
+
         yacht_id = params["yacht_id"]
         receiving_id = params["receiving_id"]
 
