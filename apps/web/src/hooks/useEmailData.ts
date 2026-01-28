@@ -147,8 +147,10 @@ async function fetchThread(threadId: string): Promise<ThreadWithMessages> {
 
 async function fetchMessageContent(providerMessageId: string): Promise<MessageContent> {
   const headers = await getAuthHeaders();
+  // CRITICAL: Encode provider ID - Microsoft IDs contain URL-special chars (+, /, =)
+  const encodedId = encodeURIComponent(providerMessageId);
   const response = await fetch(
-    `${API_BASE}/email/message/${providerMessageId}/render`,
+    `${API_BASE}/email/message/${encodedId}/render`,
     { headers }
   );
 
@@ -881,10 +883,12 @@ export async function downloadAttachment(
   attachmentId: string
 ): Promise<Blob> {
   const headers = await getAuthHeaders();
+  // CRITICAL: Encode both IDs - Microsoft IDs contain URL-special chars (+, /, =)
   const encodedMessageId = encodeURIComponent(providerMessageId);
+  const encodedAttachmentId = encodeURIComponent(attachmentId);
 
   const response = await fetch(
-    `${API_BASE}/email/message/${encodedMessageId}/attachments/${attachmentId}/download`,
+    `${API_BASE}/email/message/${encodedMessageId}/attachments/${encodedAttachmentId}/download`,
     { headers }
   );
 
