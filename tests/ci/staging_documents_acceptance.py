@@ -251,7 +251,7 @@ def main():
         'action': 'update_document',
         'context': {'yacht_id': YACHT_ID},
         'payload': {'document_id': '00000000-0000-0000-0000-000000000000', 'title': 'Should Fail'}
-    }, expect=[400, 404, 500])  # 500 acceptable if handler throws before RLS check
+    }, expect=[400, 404])  # Should be 400 (validation) or 404 (not found)
     ok("Invalid document_id rejected")
 
     # =========================================================================
@@ -301,7 +301,51 @@ def main():
     ok("Captain delete document allowed (200)")
 
     # =========================================================================
-    # TEST 10: Action list - HOD sees upload_document
+    # TEST 10: Audit invariant - upload has signature={}, delete has JSON
+    # =========================================================================
+    print("\n--- Test: Audit signature invariants ---")
+    # Query audit log for document actions
+    audit_resp = SESSION.get(
+        f"{TENANT_URL}/rest/v1/pms_audit_log",
+        headers={
+            "apikey": TENANT_SVC,
+            "Authorization": f"Bearer {TENANT_SVC}",
+        },
+        params={
+            "select": "action,signature,entity_id",
+            "entity_id": f"eq.{doc_id}",
+            "order": "created_at.desc",
+            "limit": "10"
+        }
+    )
+    if audit_resp.status_code == 200:
+        audits = audit_resp.json()
+        # Check upload_document has empty signature
+        upload_audit = next((a for a in audits if a.get('action') == 'upload_document'), None)
+        if upload_audit:
+            sig = upload_audit.get('signature')
+            if sig == {} or sig is None:
+                ok("upload_document audit has signature={} (non-signed)")
+            else:
+                fail(f"upload_document should have signature={{}}, got {sig}")
+        else:
+            ok("upload_document audit not found (may have been cleaned up)")
+
+        # Check delete_document has non-empty signature
+        delete_audit = next((a for a in audits if a.get('action') == 'delete_document'), None)
+        if delete_audit:
+            sig = delete_audit.get('signature')
+            if isinstance(sig, dict) and sig != {}:
+                ok("delete_document audit has signature JSON (signed action)")
+            else:
+                fail(f"delete_document should have non-empty signature, got {sig}")
+        else:
+            ok("delete_document audit not found (may have been cleaned up)")
+    else:
+        ok(f"Audit query skipped (status {audit_resp.status_code})")
+
+    # =========================================================================
+    # TEST 11: Action list - HOD sees upload_document
     # =========================================================================
     print("\n--- Test: Action list - HOD sees upload_document ---")
     resp = call_api(jwts['hod'], 'GET', '/v1/actions/list?q=upload+document&domain=documents', expect=200)
@@ -312,7 +356,7 @@ def main():
     ok("HOD sees upload_document in document action list")
 
     # =========================================================================
-    # TEST 11: Action list - CREW sees no MUTATE actions
+    # TEST 12: Action list - CREW sees no MUTATE actions
     # =========================================================================
     print("\n--- Test: Action list - CREW sees no MUTATE actions ---")
     resp = call_api(jwts['crew'], 'GET', '/v1/actions/list?domain=documents', expect=200)
@@ -323,7 +367,7 @@ def main():
     ok("CREW sees no mutation actions in document domain")
 
     # =========================================================================
-    # TEST 12: CREW can get document URL (READ action)
+    # TEST 13: CREW can get document URL (READ action)
     # =========================================================================
     print("\n--- Test: CREW can get document URL (READ) ---")
     # Create another doc for this test (since we deleted the first one)
