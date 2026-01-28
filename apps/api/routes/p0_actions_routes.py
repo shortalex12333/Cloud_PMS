@@ -562,6 +562,42 @@ async def execute_action(
                 detail=f"Missing required field(s): {', '.join(missing)}"
             )
 
+    # ========================================================================
+    # ROLE VALIDATION - Security fix for Fault Lens v1
+    # ========================================================================
+    # Define allowed roles for each action (Fault Lens v1 - Phase 7)
+    FAULT_LENS_ROLES = {
+        "report_fault": ["crew", "chief_engineer", "chief_officer", "captain"],
+        "add_fault_photo": ["crew", "chief_engineer", "chief_officer", "captain"],
+        "add_fault_note": ["crew", "chief_engineer", "chief_officer", "captain"],
+        "view_fault_detail": ["crew", "chief_engineer", "chief_officer", "captain", "manager", "purser"],
+        "view_fault_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager", "purser"],
+        "acknowledge_fault": ["chief_engineer", "chief_officer", "captain"],
+        "close_fault": ["chief_engineer", "chief_officer", "captain"],
+        "update_fault": ["chief_engineer", "chief_officer", "captain"],
+        "diagnose_fault": ["chief_engineer", "chief_officer", "captain"],
+        "reopen_fault": ["chief_engineer", "chief_officer", "captain"],
+        "mark_fault_false_alarm": ["chief_engineer", "chief_officer", "captain"],
+        "create_work_order_from_fault": ["chief_engineer", "chief_officer", "captain", "manager"],
+    }
+
+    if action in FAULT_LENS_ROLES:
+        user_role = user_context.get("role")
+        allowed_roles = FAULT_LENS_ROLES[action]
+
+        if not user_role:
+            raise HTTPException(
+                status_code=403,
+                detail=f"User role not found"
+            )
+
+        if user_role not in allowed_roles:
+            logger.warning(f"[SECURITY] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
+            )
+
     # Route to handler based on action name
     try:
         # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
