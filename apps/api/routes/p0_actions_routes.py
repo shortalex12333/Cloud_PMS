@@ -4510,10 +4510,32 @@ async def execute_action(
             result = await handler_fn(**handler_params)
 
         else:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Action '{action}' not found or not implemented"
-            )
+            # Fallback to internal_dispatcher for actions not explicitly coded above
+            # This handles: Receiving Lens v1, Shopping List Lens v1, and any future INTERNAL actions
+            try:
+                from action_router.dispatchers import internal_dispatcher
+                tenant_alias = user_context.get("tenant_key_alias", "")
+
+                # Merge context and payload for internal dispatcher
+                handler_params = {
+                    "yacht_id": yacht_id,
+                    "user_id": user_id,
+                    "user_context": user_context,
+                    **payload
+                }
+
+                # Try to dispatch to internal handlers
+                result = await internal_dispatcher.dispatch(action, handler_params)
+
+            except KeyError:
+                # Action not found in internal_dispatcher either
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Action '{action}' not found or not implemented"
+                )
+            except Exception as e:
+                # Re-raise to be handled by outer exception handler
+                raise
 
     except HTTPException:
         # Let HTTPExceptions propagate with their original status code
