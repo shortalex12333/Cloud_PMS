@@ -17,8 +17,8 @@ Endpoint: POST /v1/related/add (HOD/captain/manager only)
 
 Ground Truth (TENANT_1 confirmed):
 - Tables WITH deleted_at: pms_work_orders, pms_equipment, pms_faults, pms_parts,
-  pms_work_order_parts, pms_attachments
-- Tables WITHOUT deleted_at: doc_metadata, pms_work_order_notes, pms_entity_links
+  pms_work_order_parts, pms_attachments, doc_metadata (soft delete migration applied)
+- Tables WITHOUT deleted_at: pms_work_order_notes, pms_entity_links
 """
 
 from datetime import datetime, timezone
@@ -231,7 +231,7 @@ class RelatedHandlers:
         """Query 2: Related Manuals (via equipment -> doc_metadata)."""
         items = []
         try:
-            # doc_metadata has NO deleted_at column
+            # doc_metadata has deleted_at column (soft delete)
             # Use equipment_ids array containment (GIN index exists)
             result = self.db.rpc("get_equipment_manuals", {
                 "p_equipment_id": equipment_id,
@@ -867,7 +867,7 @@ class RelatedHandlers:
                 "fault": ("pms_faults", True),             # has deleted_at
                 "part": ("pms_parts", True),               # has deleted_at
                 "attachment": ("pms_attachments", True),   # has deleted_at
-                "manual": ("doc_metadata", False),         # NO deleted_at
+                "manual": ("doc_metadata", True),          # has deleted_at (soft delete migration)
                 "handover": ("handover_exports", False),   # NO deleted_at
             }
 
