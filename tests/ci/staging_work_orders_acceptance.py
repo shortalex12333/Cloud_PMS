@@ -104,7 +104,7 @@ def map_user_to_tenant(user_id, email, role):
         fail(f"MASTER user_accounts map failed {r.status_code}: {r.text}")
 
     # TENANT profile
-    SESSION.post(
+    r = SESSION.post(
         f"{TENANT_URL}/rest/v1/auth_users_profiles",
         headers={
             "apikey": TENANT_SVC,
@@ -120,9 +120,11 @@ def map_user_to_tenant(user_id, email, role):
             "is_active": True
         }
     )
+    if r.status_code not in (200, 201):
+        print(f"WARN: TENANT profile creation failed {r.status_code}: {r.text}")
 
     # TENANT role
-    SESSION.post(
+    r = SESSION.post(
         f"{TENANT_URL}/rest/v1/auth_users_roles",
         headers={
             "apikey": TENANT_SVC,
@@ -137,6 +139,8 @@ def map_user_to_tenant(user_id, email, role):
             "is_active": True
         }
     )
+    if r.status_code not in (200, 201):
+        print(f"WARN: TENANT role creation failed {r.status_code}: {r.text}")
 
 
 def decode_jwt_user_id(jwt_token):
@@ -202,11 +206,12 @@ def tenant_rest(method, path, params=None, body=None, anon=False):
     return SESSION.post(url, headers=headers, params=params or {}, json=body or {})
 
 
-def get_test_fault_id(jwt):
+def get_test_fault_id(jwt, equipment_id):
     """Create a fresh fault_id for testing to avoid conflicts."""
     # Always create a fresh fault to avoid "work order already exists" errors
     fault_data = {
         'yacht_id': YACHT_ID,
+        'equipment_id': equipment_id,  # Required field
         'title': f'CI Test Fault {int(time.time())}',
         'description': 'Created by staging acceptance test',
         'status': 'open',
@@ -254,7 +259,7 @@ def main():
             'hod': admin_create_user(emails['hod'], PASSWORD),
             'captain': admin_create_user(emails['captain'], PASSWORD),
         }
-        map_user_to_tenant(ids['crew'], emails['crew'], 'deckhand')
+        map_user_to_tenant(ids['crew'], emails['crew'], 'crew')
         map_user_to_tenant(ids['hod'], emails['hod'], 'chief_engineer')
         map_user_to_tenant(ids['captain'], emails['captain'], 'captain')
     else:
@@ -274,17 +279,16 @@ def main():
     user_ids['captain'] = decode_jwt_user_id(jwts['captain'])
     ok("CAPTAIN JWT obtained")
 
-    # Get test data
-    fault_id = get_test_fault_id(jwts['hod'])
+    # Get test data (equipment first, as it's required for fault creation)
+    equipment_id = get_test_equipment_id()
+    if not equipment_id:
+        fail("No equipment found - required for fault creation")
+    ok(f"Test equipment_id: {equipment_id[:8]}...")
+
+    fault_id = get_test_fault_id(jwts['hod'], equipment_id)
     if not fault_id:
         fail("Could not get or create test fault")
     ok(f"Test fault_id: {fault_id[:8]}...")
-
-    equipment_id = get_test_equipment_id()
-    if not equipment_id:
-        ok("No equipment found (optional)")
-    else:
-        ok(f"Test equipment_id: {equipment_id[:8]}...")
 
     # =========================================================================
     # TEST 1: HOD can create work order from fault
@@ -447,15 +451,8 @@ def main():
     # =========================================================================
     # TEST 8: HOD can reassign work order (SIGNED action positive)
     # =========================================================================
-    # Get a user_id to reassign to (can use the captain)
-    captain_id = None
-    captain_profile = tenant_rest('GET', '/rest/v1/auth_users_profiles', params={
-        'select': 'id',
-        'email': f'eq.{emails["captain"]}',
-        'limit': '1'
-    })
-    if captain_profile.status_code == 200 and captain_profile.json():
-        captain_id = captain_profile.json()[0].get('id')
+    # Use captain's user_id from JWT for reassignment target
+    captain_id = user_ids.get('captain')
 
     if captain_id:
         reassign_resp = call_api(jwts['hod'], 'POST', '/v1/actions/execute', {
@@ -496,7 +493,7 @@ def main():
             'signature': {
                 'signed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 'user_id': user_ids['crew'],
-                'role_at_signing': 'deckhand',
+                'role_at_signing': 'crew',
                 'signature_type': 'PIN_TOTP',
                 'signature_hash': 'ci-test-hash'
             }
