@@ -37,11 +37,11 @@ MASTER_JWT_SECRET = os.getenv("MASTER_SUPABASE_JWT_SECRET")
 TEST_YACHT_ID = os.getenv("TEST_YACHT_ID")
 EVIDENCE_DIR = "test-evidence"
 
-# Test users (.test users - from bash test scripts)
+# Test users (.tenant users - provisioned in MASTER and TENANT)
 TEST_USERS = {
-    "HOD": {"id": "05a488fd-e099-4d18-bf86-d87afba4fcdf", "email": "hod.test@alex-short.com", "role": "chief_engineer"},
-    "CAPTAIN": {"id": "c2f980b6-9a69-4953-bc33-3324f08602fe", "email": "captain.test@alex-short.com", "role": "captain"},
-    "CREW": {"id": "57e82f78-0a2d-4a7c-a428-6287621d06c5", "email": "crew.test@alex-short.com", "role": "crew"}
+    "HOD": {"id": "89b1262c-ff59-4591-b954-757cdf3d609d", "email": "hod.tenant@alex-short.com", "role": "chief_engineer"},
+    "CAPTAIN": {"id": "b72c35ff-e309-4a19-a617-bfc706a78c0f", "email": "captain.tenant@alex-short.com", "role": "captain"},
+    "CREW": {"id": "2da12a4b-c0a1-4716-80ae-d29c90d98233", "email": "crew.tenant@alex-short.com", "role": "crew"}
 }
 
 # Results tracking
@@ -66,10 +66,13 @@ def generate_jwt(user_id: str, email: str) -> str:
     }
     return jwt.encode(payload, MASTER_JWT_SECRET, algorithm="HS256")
 
-# Original working JWT from bash scripts (only HOD available)
-# These JWTs were pre-generated and verified working with MASTER DB
+# MASTER-signed JWTs with correct timestamps (from docs/evidence/inventory_item/JWTS_COPY_PASTE.txt)
+# iat: 1769599994 (2 hours ago), exp: 1801143194 (Jan 28, 2027)
+# Users provisioned in MASTER.user_accounts and TENANT.auth_users_roles
 JWTS = {
-    "HOD": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxNDMwNDAwLCJpYXQiOjE3MDQwNjcyMDAsImlzcyI6Imh0dHBzOi8vcXZ6bWthYW16YXF4cHpiZXdqeGUuc3VwYWJhc2UuY28vYXV0aC92MSIsInN1YiI6IjA1YTQ4OGZkLWUwOTktNGQxOC1iZjg2LWQ4N2FmYmE0ZmNkZiIsImVtYWlsIjoiaG9kLnRlc3RAYWxleC1zaG9ydC5jb20iLCJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.Y-RCHK66wkaQ6z_5Bfr_1PJ-tQHBK_JhUrxm9UzJDNc"
+    "HOD": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI4OWIxMjYyYy1mZjU5LTQ1OTEtYjk1NC03NTdjZGYzZDYwOWQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQzMTk0LCJpYXQiOjE3Njk1OTk5OTQsImVtYWlsIjoiaG9kLnRlbmFudEBhbGV4LXNob3J0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnt9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzY5NTk5OTk0fV0sInNlc3Npb25faWQiOiJjaS10ZXN0LTg5YjEyNjJjIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.eHSqBRQrBpARVVyAc_IuQWJ-9JGIs08yEFLH1kkhUyg",
+    "CAPTAIN": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiNzJjMzVmZi1lMzA5LTRhMTktYTYxNy1iZmM3MDZhNzhjMGYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQzMTk0LCJpYXQiOjE3Njk1OTk5OTQsImVtYWlsIjoiY2FwdGFpbi50ZW5hbnRAYWxleC1zaG9ydC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc2OTU5OTk5NH1dLCJzZXNzaW9uX2lkIjoiY2ktdGVzdC1iNzJjMzVmZiIsImlzX2Fub255bW91cyI6ZmFsc2V9.Uo0H4yeLWjcvk1UTUD1fF248ElNFRKoN7-eswUWVcvw",
+    "CREW": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIyZGExMmE0Yi1jMGExLTQ3MTYtODBhZS1kMjljOTBkOTgyMzMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQzMTk0LCJpYXQiOjE3Njk1OTk5OTQsImVtYWlsIjoiY3Jldy50ZW5hbnRAYWxleC1zaG9ydC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc2OTU5OTk5NH1dLCJzZXNzaW9uX2lkIjoiY2ktdGVzdC0yZGExMmE0YiIsImlzX2Fub255bW91cyI6ZmFsc2V9.cFA-nWNlaSpwsf3P9qLbWVegltzTtdWEzuw2rCpzEV0"
 }
 
 def log_result(test_name: str, passed: bool, message: str = "", status_code: int = None):
@@ -244,9 +247,8 @@ def run_acceptance():
 
     print("=== Canonical Action Router (by role) ===")
     test_view_part_details(JWTS["HOD"], "HOD")
-    # Skip CAPTAIN/CREW - working JWTs not available (signature mismatch with generated ones)
-    # test_view_part_details(JWTS["CAPTAIN"], "CAPTAIN")
-    # test_view_part_details(JWTS["CREW"], "CREW")
+    test_view_part_details(JWTS["CAPTAIN"], "CAPTAIN")
+    test_view_part_details(JWTS["CREW"], "CREW")
     print()
 
     print("=== Action Execution ===")
