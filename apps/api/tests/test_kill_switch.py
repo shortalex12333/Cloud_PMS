@@ -321,16 +321,18 @@ class TestStreamingSearchIncidentMode:
     async def test_streaming_context_checks_incident_mode(self, mock_master_client, incident_mode_flags):
         """Test get_streaming_context checks incident mode."""
         from fastapi import HTTPException
+        from middleware.auth import clear_system_flags_cache
+
+        # Clear cache first
+        clear_system_flags_cache()
 
         with patch('middleware.auth.get_master_client', return_value=mock_master_client):
             mock_master_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(data=incident_mode_flags)
 
-            # Import after patching
-            from middleware.auth import clear_system_flags_cache
+            # Clear again after setting up mock
             clear_system_flags_cache()
 
             from routes.search_streaming import get_streaming_context
-            from unittest.mock import MagicMock
 
             mock_request = MagicMock()
             mock_auth = {
@@ -340,7 +342,6 @@ class TestStreamingSearchIncidentMode:
                 "tenant_key_alias": "yYacht001",
             }
 
-            # Mock get_authenticated_user to return our auth
             with pytest.raises(HTTPException) as exc_info:
                 await get_streaming_context(mock_request, mock_auth)
 
@@ -355,27 +356,30 @@ class TestStreamingSearchIncidentMode:
 class TestYachtFreeze:
     """Test per-yacht freeze functionality."""
 
-    def test_yacht_freeze_sets_flag(self, mock_master_client):
+    @pytest.mark.asyncio
+    async def test_yacht_freeze_sets_flag(self, mock_master_client):
         """Test yacht freeze sets is_frozen flag."""
         from handlers.secure_admin_handlers import get_secure_admin_handlers
-        from middleware.action_security import ActionContext
 
         mock_tenant_client = MagicMock()
         handlers = get_secure_admin_handlers(mock_tenant_client, mock_master_client)
 
-        ctx = ActionContext(
-            user_id="admin-001",
-            yacht_id="yacht-001",
-            role="captain",
-            tenant_key_alias="yYacht001",
-            idempotency_key="idem-001",
-        )
+        # Auth dict for the @secure_action wrapper
+        auth = {
+            "user_id": "admin-001",
+            "yacht_id": "yacht-001",
+            "role": "captain",
+            "tenant_key_alias": "yYacht001",
+        }
 
-        # Execute
-        import asyncio
-        with patch('handlers.secure_admin_handlers.asyncio.create_task'):
-            result = asyncio.get_event_loop().run_until_complete(
-                handlers["admin_freeze_yacht"](ctx, freeze=True, reason="Security drill")
+        # Execute with proper arguments for @secure_action wrapper
+        with patch('services.cache.clear_cache_for_yacht', new_callable=AsyncMock):
+            result = await handlers["admin_freeze_yacht"](
+                mock_tenant_client,  # db_client
+                auth,                 # auth dict
+                idempotency_key="idem-001",
+                freeze=True,
+                reason="Security drill",
             )
 
         assert result["is_frozen"] is True
@@ -393,23 +397,27 @@ class TestIncidentModeHandlers:
     async def test_enable_incident_mode_requires_reason(self):
         """Test enable_incident_mode requires reason."""
         from handlers.secure_admin_handlers import get_secure_admin_handlers
-        from middleware.action_security import ActionContext, ActionSecurityError
+        from middleware.action_security import ActionSecurityError
 
         mock_master = MagicMock()
         mock_tenant = MagicMock()
 
         handlers = get_secure_admin_handlers(mock_tenant, mock_master)
 
-        ctx = ActionContext(
-            user_id="admin-001",
-            yacht_id="yacht-001",
-            role="captain",
-            tenant_key_alias="yYacht001",
-            idempotency_key="idem-001",
-        )
+        auth = {
+            "user_id": "admin-001",
+            "yacht_id": "yacht-001",
+            "role": "captain",
+            "tenant_key_alias": "yYacht001",
+        }
 
         with pytest.raises(ActionSecurityError) as exc_info:
-            await handlers["admin_enable_incident_mode"](ctx, reason=None)
+            await handlers["admin_enable_incident_mode"](
+                mock_tenant,
+                auth,
+                idempotency_key="idem-001",
+                reason=None,
+            )
 
         assert "reason is required" in str(exc_info.value)
 
@@ -417,24 +425,24 @@ class TestIncidentModeHandlers:
     async def test_enable_incident_mode_updates_flags(self):
         """Test enable_incident_mode updates system_flags."""
         from handlers.secure_admin_handlers import get_secure_admin_handlers
-        from middleware.action_security import ActionContext
 
         mock_master = MagicMock()
         mock_tenant = MagicMock()
 
         handlers = get_secure_admin_handlers(mock_tenant, mock_master)
 
-        ctx = ActionContext(
-            user_id="admin-001",
-            yacht_id="yacht-001",
-            role="captain",
-            tenant_key_alias="yYacht001",
-            idempotency_key="idem-001",
-        )
+        auth = {
+            "user_id": "admin-001",
+            "yacht_id": "yacht-001",
+            "role": "captain",
+            "tenant_key_alias": "yYacht001",
+        }
 
-        with patch('handlers.secure_admin_handlers.clear_system_flags_cache'):
+        with patch('middleware.auth.clear_system_flags_cache'):
             result = await handlers["admin_enable_incident_mode"](
-                ctx,
+                mock_tenant,
+                auth,
+                idempotency_key="idem-001",
                 reason="Suspicious activity detected",
                 disable_streaming=True,
                 disable_signed_urls=True,
@@ -445,14 +453,13 @@ class TestIncidentModeHandlers:
         assert result["reason"] == "Suspicious activity detected"
         assert result["started_by"] == "admin-001"
 
-        # Verify upsert called
-        mock_master.table.assert_called_with("system_flags")
+        # Verify system_flags was called at some point (may also call security_events for audit)
+        mock_master.table.assert_any_call("system_flags")
 
     @pytest.mark.asyncio
     async def test_disable_incident_mode_clears_flags(self):
         """Test disable_incident_mode clears system_flags."""
         from handlers.secure_admin_handlers import get_secure_admin_handlers
-        from middleware.action_security import ActionContext
 
         mock_master = MagicMock()
         mock_master.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[{
@@ -463,17 +470,18 @@ class TestIncidentModeHandlers:
 
         handlers = get_secure_admin_handlers(mock_tenant, mock_master)
 
-        ctx = ActionContext(
-            user_id="admin-002",
-            yacht_id="yacht-001",
-            role="captain",
-            tenant_key_alias="yYacht001",
-            idempotency_key="idem-002",
-        )
+        auth = {
+            "user_id": "admin-002",
+            "yacht_id": "yacht-001",
+            "role": "captain",
+            "tenant_key_alias": "yYacht001",
+        }
 
-        with patch('handlers.secure_admin_handlers.clear_system_flags_cache'):
+        with patch('middleware.auth.clear_system_flags_cache'):
             result = await handlers["admin_disable_incident_mode"](
-                ctx,
+                mock_tenant,
+                auth,
+                idempotency_key="idem-002",
                 resolution_notes="Investigation complete, no breach found",
             )
 
@@ -484,7 +492,6 @@ class TestIncidentModeHandlers:
     async def test_get_system_flags_returns_current_state(self):
         """Test get_system_flags returns current state."""
         from handlers.secure_admin_handlers import get_secure_admin_handlers
-        from middleware.action_security import ActionContext
 
         mock_master = MagicMock()
         mock_master.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[{
@@ -498,14 +505,17 @@ class TestIncidentModeHandlers:
 
         handlers = get_secure_admin_handlers(mock_tenant, mock_master)
 
-        ctx = ActionContext(
-            user_id="user-001",
-            yacht_id="yacht-001",
-            role="manager",
-            tenant_key_alias="yYacht001",
-        )
+        auth = {
+            "user_id": "user-001",
+            "yacht_id": "yacht-001",
+            "role": "manager",
+            "tenant_key_alias": "yYacht001",
+        }
 
-        result = await handlers["admin_get_system_flags"](ctx)
+        result = await handlers["admin_get_system_flags"](
+            mock_tenant,
+            auth,
+        )
 
         assert result["incident_mode"] is True
         assert result["disable_streaming"] is True
@@ -566,24 +576,24 @@ class TestIncidentModeAuditLogging:
     async def test_enable_incident_mode_logs_audit(self):
         """Test enabling incident mode writes audit log."""
         from handlers.secure_admin_handlers import get_secure_admin_handlers
-        from middleware.action_security import ActionContext
 
         mock_master = MagicMock()
         mock_tenant = MagicMock()
 
         handlers = get_secure_admin_handlers(mock_tenant, mock_master)
 
-        ctx = ActionContext(
-            user_id="admin-001",
-            yacht_id="yacht-001",
-            role="captain",
-            tenant_key_alias="yYacht001",
-            idempotency_key="idem-001",
-        )
+        auth = {
+            "user_id": "admin-001",
+            "yacht_id": "yacht-001",
+            "role": "captain",
+            "tenant_key_alias": "yYacht001",
+        }
 
-        with patch('handlers.secure_admin_handlers.clear_system_flags_cache'):
+        with patch('middleware.auth.clear_system_flags_cache'):
             await handlers["admin_enable_incident_mode"](
-                ctx,
+                mock_tenant,
+                auth,
+                idempotency_key="idem-001",
                 reason="Test incident",
             )
 
