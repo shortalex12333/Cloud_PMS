@@ -233,13 +233,28 @@ class ShoppingListHandlers:
                 "source_notes": params.get("source_notes"),
                 "urgency": urgency,
                 "required_by_date": params.get("required_by_date"),
-                "created_by": user_id,
+                "created_by": user_id,  # Must set manually when using service key
                 "created_at": now,
                 "updated_at": now,
             }
 
-            # Insert (RLS enforces yacht isolation + status='candidate' + created_by=auth.uid())
-            insert_result = self.db.table("pms_shopping_list_items").insert(payload).execute()
+            # Insert (NOTE: Using service key, so RLS is bypassed and we set created_by manually)
+            try:
+                insert_result = self.db.table("pms_shopping_list_items").insert(payload).execute()
+            except Exception as e:
+                error_str = str(e)
+                # Check for foreign key constraint error
+                if "23503" in error_str or "pms_shopping_list_items_created_by_fkey" in error_str:
+                    logger.error(f"Foreign key constraint error (schema issue): {e}")
+                    builder.set_error(
+                        "SCHEMA_ERROR",
+                        "Database schema error: created_by foreign key constraint references invalid table. "
+                        "Please contact system administrator to fix pms_shopping_list_items_created_by_fkey constraint.",
+                        500
+                    )
+                    return builder.build()
+                # Re-raise other exceptions
+                raise
 
             if not insert_result.data or len(insert_result.data) == 0:
                 builder.set_error("EXECUTION_FAILED", "Failed to create shopping list item", 500)
