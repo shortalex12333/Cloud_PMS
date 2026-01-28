@@ -42,6 +42,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from fastapi import HTTPException
+
 from actions.action_response_schema import (
     ResponseBuilder,
     AvailableAction,
@@ -438,7 +440,7 @@ class PartHandlers:
         ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
         if not stock_result or not stock_result.data:
-            raise ValueError(f"No stock record for part {part_id}")
+            raise HTTPException(status_code=404, detail=f"No stock record for part {part_id}")
 
         stock = stock_result.data
         stock_id = stock.get("stock_id")
@@ -612,7 +614,12 @@ class PartHandlers:
             error_str = str(e).lower()
             if "unique" in error_str or "duplicate" in error_str or "idempotency" in error_str or "23505" in error_str:
                 raise ConflictError(f"Duplicate receive: idempotency_key {idempotency_key} already exists")  # 409
-            raise
+            # Check if PostgREST 204 (No Content) - insert succeeded but no data returned
+            if "204" in error_str or "missing response" in error_str:
+                logger.info(f"PostgREST 204 on transaction insert (txn_id={txn_id}) - insert succeeded but no data returned")
+                # Insert succeeded, continue with audit log and return
+            else:
+                raise
 
         # Audit log (non-signed)
         self._write_audit_log(
