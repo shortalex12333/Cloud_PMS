@@ -487,17 +487,26 @@ class PartHandlers:
                 logger.error(f"Atomic deduct RPC failed: {e}")
                 raise
 
-        # If we got 204, query pms_part_stock to determine outcome
+        # If we got 204, query pms_inventory_stock (base table) to determine outcome
         if rpc_succeeded_via_204:
-            # Re-query to get current stock after RPC
-            stock_check = self.db.table("pms_part_stock").select(
-                "on_hand"
-            ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+            # Re-query base table to get current stock after RPC
+            # Use pms_inventory_stock instead of view to avoid PostgREST 204 on views
+            try:
+                stock_check = self.db.table("pms_inventory_stock").select(
+                    "quantity"
+                ).eq("id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not stock_check or not stock_check.data:
-                raise ValueError(f"Part {part_id} not found after RPC")
+                if not stock_check or not stock_check.data:
+                    # If query fails, assume RPC failed
+                    logger.error(f"Stock query failed after PostgREST 204 on RPC - assuming RPC failed")
+                    raise ConflictError(f"Unable to verify stock deduction - please retry")
 
-            qty_after = stock_check.data.get("on_hand", 0)
+                qty_after = stock_check.data.get("quantity", 0)
+            except Exception as query_e:
+                # If stock query also fails, we can't determine outcome
+                # Log and raise a conflict error to be safe
+                logger.error(f"Stock verification query failed after RPC 204: {query_e}")
+                raise ConflictError(f"Unable to verify stock deduction - please retry")
 
             # Check if deduction actually happened
             if qty_after == qty_before_from_initial_check:
