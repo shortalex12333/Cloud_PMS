@@ -24,7 +24,7 @@ jobs:
       - name: Run Stress Tests
         env:
           STAGING_API_URL: ${{ secrets.BASE_URL }}
-          STAGING_JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+          TENANT_SUPABASE_JWT_SECRET: ${{ secrets.TENANT_SUPABASE_JWT_SECRET }}
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
           TEST_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
         run: python3 tests/stress/documents_actions_endpoints.py
