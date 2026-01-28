@@ -137,7 +137,7 @@ class ShoppingListHandlers:
                 "id, name"
             ).eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not user_result.data:
+            if not user_result or not user_result.data:
                 logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
                 builder.set_error("FORBIDDEN", "Access denied", 403)
                 return builder.build()
@@ -196,7 +196,7 @@ class ShoppingListHandlers:
                     "id, part_name, part_number, manufacturer"
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-                if not part_result.data:
+                if not part_result or not part_result.data:
                     builder.set_error("NOT_FOUND", f"Part not found: {part_id}", 404)
                     return builder.build()
 
@@ -288,11 +288,6 @@ class ShoppingListHandlers:
                 "created_at": now,
             })
 
-            builder.set_message(
-                f"Item added to shopping list: {quantity_requested}x {part_name}",
-                Severity.SUCCESS
-            )
-
             # Add available follow-up actions
             builder.add_available_action(AvailableAction(
                 action_id="view_shopping_list_history",
@@ -362,7 +357,7 @@ class ShoppingListHandlers:
                 "id, name, yacht_id"
             ).eq("id", user_id).maybe_single().execute()
 
-            if not user_result.data or user_result.data["yacht_id"] != yacht_id:
+            if not user_result or not user_result.data or user_result.data["yacht_id"] != yacht_id:
                 logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
                 builder.set_error("FORBIDDEN", "Access denied", 403)
                 return builder.build()
@@ -381,7 +376,7 @@ class ShoppingListHandlers:
                 "id, part_name, quantity_requested, status, created_by, rejected_at"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not item_result.data:
+            if not item_result or not item_result.data:
                 builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
                 return builder.build()
 
@@ -494,11 +489,6 @@ class ShoppingListHandlers:
                 "approved_at": now,
             })
 
-            builder.set_message(
-                f"Shopping list item approved: {quantity_approved}x {item['part_name']}",
-                Severity.SUCCESS
-            )
-
             return builder.build()
 
         except Exception as e:
@@ -560,7 +550,7 @@ class ShoppingListHandlers:
                 "id, name, yacht_id"
             ).eq("id", user_id).maybe_single().execute()
 
-            if not user_result.data or user_result.data["yacht_id"] != yacht_id:
+            if not user_result or not user_result.data or user_result.data["yacht_id"] != yacht_id:
                 logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
                 builder.set_error("FORBIDDEN", "Access denied", 403)
                 return builder.build()
@@ -575,7 +565,7 @@ class ShoppingListHandlers:
                 "id, part_name, quantity_requested, status, created_by"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not item_result.data:
+            if not item_result or not item_result.data:
                 builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
                 return builder.build()
 
@@ -682,11 +672,6 @@ class ShoppingListHandlers:
                 "rejected_at": now,
             })
 
-            builder.set_message(
-                f"Shopping list item rejected: {item['part_name']}",
-                Severity.WARNING
-            )
-
             return builder.build()
 
         except Exception as e:
@@ -743,7 +728,7 @@ class ShoppingListHandlers:
                 "id, name, yacht_id"
             ).eq("id", user_id).maybe_single().execute()
 
-            if not user_result.data or user_result.data["yacht_id"] != yacht_id:
+            if not user_result or not user_result.data or user_result.data["yacht_id"] != yacht_id:
                 logger.warning(f"Yacht isolation breach attempt: user {user_id} != yacht {yacht_id}")
                 builder.set_error("FORBIDDEN", "Access denied", 403)
                 return builder.build()
@@ -761,7 +746,7 @@ class ShoppingListHandlers:
                 "id, part_name, part_number, manufacturer, unit, is_candidate_part, candidate_promoted_to_part_id"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-            if not item_result.data:
+            if not item_result or not item_result.data:
                 builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
                 return builder.build()
 
@@ -882,11 +867,6 @@ class ShoppingListHandlers:
                 "promoted_at": now,
             })
 
-            builder.set_message(
-                f"Candidate promoted to parts catalog: {item['part_name']}",
-                Severity.SUCCESS
-            )
-
             return builder.build()
 
         except Exception as e:
@@ -948,14 +928,14 @@ class ShoppingListHandlers:
                 "yacht_id", yacht_id
             ).order("changed_at", desc=True).execute()
 
-            if not history_result.data:
+            if not history_result or not history_result.data:
                 # No history found (possibly item doesn't exist or no state changes yet)
                 # Check if item exists
                 item_result = self.db.table("pms_shopping_list_items").select(
                     "id"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-                if not item_result.data:
+                if not item_result or not item_result.data:
                     builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
                     return builder.build()
 
