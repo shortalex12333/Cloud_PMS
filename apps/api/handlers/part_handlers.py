@@ -464,6 +464,9 @@ class PartHandlers:
             stock_id = self._get_or_create_stock_id(yacht_id, part_id, stock.get("location"))
 
         # ATOMIC: Call deduct_stock_inventory with SELECT FOR UPDATE
+        rpc_succeeded_via_204 = False
+        qty_before_from_initial_check = stock.get("on_hand", 0)
+
         try:
             rpc_result = self.db.rpc("deduct_stock_inventory", {
                 "p_stock_id": stock_id,
@@ -475,19 +478,46 @@ class PartHandlers:
             error_str_lower = error_str.lower()
 
             # Check if PostgREST 204 - RPC succeeded but no response body
-            # This shouldn't happen with RPCs that return data, but handle it gracefully
+            # Workaround: Treat 204 as success and query pms_part_stock to get qty_after
             if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
-                logger.warning(f"PostgREST 204 on deduct_stock RPC - this is unexpected, RPC may have failed")
-                # Treat as insufficient stock (safest assumption)
-                raise ConflictError("Stock deduction may have failed - please verify stock levels")  # 409
+                logger.info(f"PostgREST 204 on deduct_stock RPC - treating as success, querying stock")
+                rpc_succeeded_via_204 = True
+                # Continue to query stock below
+            else:
+                logger.error(f"Atomic deduct RPC failed: {e}")
+                raise
 
-            logger.error(f"Atomic deduct RPC failed: {e}")
-            raise
+        # If we got 204, query pms_part_stock to determine outcome
+        if rpc_succeeded_via_204:
+            # Re-query to get current stock after RPC
+            stock_check = self.db.table("pms_part_stock").select(
+                "on_hand"
+            ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
-            raise ValueError("Atomic deduct returned no data")
+            if not stock_check or not stock_check.data:
+                raise ValueError(f"Part {part_id} not found after RPC")
 
-        result = rpc_result.data[0]
+            qty_after = stock_check.data.get("on_hand", 0)
+
+            # Check if deduction actually happened
+            if qty_after == qty_before_from_initial_check:
+                # Stock unchanged - RPC likely failed silently or stock was insufficient
+                raise ConflictError(f"Insufficient stock: requested {quantity}, available {qty_before_from_initial_check}")
+
+            # Reverse calculate qty_before from qty_after
+            qty_before = qty_after + quantity
+
+            result = {
+                "success": True,
+                "quantity_before": qty_before,
+                "quantity_after": qty_after,
+                "error_code": None
+            }
+        else:
+            if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
+                raise ValueError("Atomic deduct returned no data")
+
+            result = rpc_result.data[0]
 
         # Map DB error codes to HTTP codes (never 500)
         if not result.get("success"):
