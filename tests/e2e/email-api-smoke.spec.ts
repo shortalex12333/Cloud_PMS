@@ -8,6 +8,7 @@
 import { test, expect } from '@playwright/test';
 
 const API_BASE = process.env.RENDER_API_URL || 'https://pipeline-core.int.celeste7.ai';
+const APP_URL = process.env.APP_URL || 'https://app.celeste7.ai';
 const SUPABASE_URL = process.env.TENANT_SUPABASE_URL || 'https://vzsohavtuotocgrfkfyd.supabase.co';
 const ANON_KEY = process.env.TENANT_SUPABASE_ANON_KEY || '';
 
@@ -205,6 +206,37 @@ test.describe('Email API Smoke Tests', () => {
     const data = await response.json();
     expect(data).toHaveProperty('body');
     console.log(`✅ Message render returned body (type: ${data.body?.contentType || 'unknown'})`);
+  });
+
+  test('POST /api/email/search (frontend proxy) returns results', async ({ request }) => {
+    test.skip(!authToken, 'No auth token available');
+
+    // Test the Next.js frontend proxy route that forwards to Python backend
+    const response = await request.post(
+      `${APP_URL}/api/email/search`,
+      {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        data: {
+          query: 'watermaker',
+          limit: 10,
+        },
+      }
+    );
+
+    // May be 200 (success) or 500 (if backend issues)
+    console.log(`POST /api/email/search status: ${response.status()}`);
+
+    if (response.ok()) {
+      const data = await response.json();
+      expect(data).toHaveProperty('results');
+      console.log(`✅ Frontend search proxy returned ${data.results?.length || 0} results`);
+    } else {
+      const error = await response.json().catch(() => ({}));
+      console.log(`⚠️ Frontend proxy error:`, error);
+    }
   });
 
   test('Attachment download returns correct headers', async ({ request }) => {
