@@ -458,10 +458,18 @@ def get_secure_admin_handlers(
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }).eq("user_id", target_user_id).eq("yacht_id", ctx.yacht_id).execute()
 
-            # Clear tenant cache
+            # Clear tenant cache (auth middleware)
             try:
                 from middleware.auth import clear_tenant_cache
                 clear_tenant_cache(target_user_id)
+            except ImportError:
+                pass
+
+            # Clear response/streaming cache for user (SECURITY: role changed = cache invalid)
+            try:
+                from services.cache import clear_cache_for_user
+                import asyncio
+                asyncio.create_task(clear_cache_for_user(target_user_id, ctx.yacht_id))
             except ImportError:
                 pass
 
@@ -471,7 +479,7 @@ def get_secure_admin_handlers(
                 "admin_change_role_success",
                 ctx,
                 target_user_id=target_user_id,
-                details={"old_role": old_role, "new_role": new_role},
+                details={"old_role": old_role, "new_role": new_role, "cache_cleared": True},
                 outcome="allowed",
             )
 
@@ -479,6 +487,7 @@ def get_secure_admin_handlers(
                 "user_id": target_user_id,
                 "old_role": old_role,
                 "new_role": new_role,
+                "cache_cleared": True,
             }
 
         except Exception as e:
@@ -537,10 +546,18 @@ def get_secure_admin_handlers(
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }).eq("user_id", target_user_id).eq("yacht_id", ctx.yacht_id).execute()
 
-            # Clear cache
+            # Clear tenant cache (auth middleware)
             try:
                 from middleware.auth import clear_tenant_cache
                 clear_tenant_cache(target_user_id)
+            except ImportError:
+                pass
+
+            # Clear response/streaming cache for user (SECURITY: revoked = cache invalid)
+            try:
+                from services.cache import clear_cache_for_user
+                import asyncio
+                asyncio.create_task(clear_cache_for_user(target_user_id, ctx.yacht_id))
             except ImportError:
                 pass
 
@@ -549,11 +566,11 @@ def get_secure_admin_handlers(
                 "admin_revoke_success",
                 ctx,
                 target_user_id=target_user_id,
-                details={"reason": reason},
+                details={"reason": reason, "cache_cleared": True},
                 outcome="allowed",
             )
 
-            return {"user_id": target_user_id, "status": "REVOKED"}
+            return {"user_id": target_user_id, "status": "REVOKED", "cache_cleared": True}
 
         except Exception as e:
             _log_admin_audit(
@@ -598,6 +615,14 @@ def get_secure_admin_handlers(
                 "is_frozen": freeze,
             }).eq("yacht_id", ctx.yacht_id).execute()
 
+            # Clear cache for all users on this yacht
+            try:
+                from services.cache import clear_cache_for_yacht
+                import asyncio
+                asyncio.create_task(clear_cache_for_yacht(ctx.yacht_id))
+            except ImportError:
+                pass
+
             _log_admin_audit(
                 master_client,
                 "admin_freeze_success" if freeze else "admin_unfreeze_success",
@@ -617,6 +642,235 @@ def get_secure_admin_handlers(
                 outcome="error",
             )
             raise
+
+    # ========================================================================
+    # GLOBAL INCIDENT MODE (System-wide kill switch)
+    # ========================================================================
+    # NOTE: These handlers are GLOBAL and affect ALL yachts.
+    # They should only be used by platform administrators during security incidents.
+
+    @secure_action(
+        action_id="admin_enable_incident_mode",
+        action_group="ADMIN",
+        required_roles=ADMIN_ROLES,  # In production, restrict to system admins only
+    )
+    async def secure_enable_incident_mode(
+        ctx: ActionContext,
+        reason: str = None,
+        disable_streaming: bool = True,
+        disable_signed_urls: bool = False,
+        disable_writes: bool = True,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Enable global incident mode (affects ALL yachts).
+
+        SECURITY: This is the global kill switch. When enabled:
+        - MUTATE/SIGNED/ADMIN actions blocked (if disable_writes=True)
+        - Streaming disabled (if disable_streaming=True)
+        - Signed URL generation disabled (if disable_signed_urls=True)
+
+        WARNING: This affects ALL tenants across the platform.
+        Only use during confirmed security incidents.
+        """
+        if not reason:
+            raise ActionSecurityError(
+                "VALIDATION_ERROR",
+                "reason is required for incident mode",
+                400,
+            )
+
+        _log_admin_audit(
+            master_client,
+            "incident_mode_enable_attempt",
+            ctx,
+            details={
+                "reason": reason,
+                "disable_streaming": disable_streaming,
+                "disable_signed_urls": disable_signed_urls,
+                "disable_writes": disable_writes,
+            },
+            outcome="attempt",
+        )
+
+        try:
+            # Update system_flags table (singleton row with id=1)
+            master_client.table("system_flags").upsert({
+                "id": 1,
+                "incident_mode": True,
+                "disable_streaming": disable_streaming,
+                "disable_signed_urls": disable_signed_urls,
+                "disable_writes": disable_writes,
+                "incident_reason": reason,
+                "incident_started_at": datetime.now(timezone.utc).isoformat(),
+                "incident_started_by": ctx.user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="id").execute()
+
+            # Clear system flags cache immediately
+            try:
+                from middleware.auth import clear_system_flags_cache
+                clear_system_flags_cache()
+            except ImportError:
+                pass
+
+            _log_admin_audit(
+                master_client,
+                "incident_mode_enabled",
+                ctx,
+                details={
+                    "reason": reason,
+                    "disable_streaming": disable_streaming,
+                    "disable_signed_urls": disable_signed_urls,
+                    "disable_writes": disable_writes,
+                },
+                outcome="allowed",
+            )
+
+            logger.critical(
+                f"[INCIDENT] Global incident mode ENABLED by {ctx.user_id}: {reason}"
+            )
+
+            return {
+                "incident_mode": True,
+                "reason": reason,
+                "disable_streaming": disable_streaming,
+                "disable_signed_urls": disable_signed_urls,
+                "disable_writes": disable_writes,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "started_by": ctx.user_id,
+            }
+
+        except Exception as e:
+            _log_admin_audit(
+                master_client,
+                "incident_mode_enable_error",
+                ctx,
+                details={"error": str(e)},
+                outcome="error",
+            )
+            raise
+
+    @secure_action(
+        action_id="admin_disable_incident_mode",
+        action_group="ADMIN",
+        required_roles=ADMIN_ROLES,  # In production, restrict to system admins only
+    )
+    async def secure_disable_incident_mode(
+        ctx: ActionContext,
+        resolution_notes: str = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Disable global incident mode (restore normal operations).
+
+        SECURITY: Only use this when the incident has been resolved.
+        """
+        _log_admin_audit(
+            master_client,
+            "incident_mode_disable_attempt",
+            ctx,
+            details={"resolution_notes": resolution_notes},
+            outcome="attempt",
+        )
+
+        try:
+            # Get current state first
+            current = master_client.table("system_flags").select("*").eq("id", 1).execute()
+
+            started_at = None
+            started_by = None
+            if current.data:
+                started_at = current.data[0].get("incident_started_at")
+                started_by = current.data[0].get("incident_started_by")
+
+            # Update system_flags table
+            master_client.table("system_flags").upsert({
+                "id": 1,
+                "incident_mode": False,
+                "disable_streaming": False,
+                "disable_signed_urls": False,
+                "disable_writes": False,
+                "incident_reason": None,
+                "incident_started_at": None,
+                "incident_started_by": None,
+                "incident_ended_at": datetime.now(timezone.utc).isoformat(),
+                "incident_ended_by": ctx.user_id,
+                "resolution_notes": resolution_notes,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="id").execute()
+
+            # Clear system flags cache immediately
+            try:
+                from middleware.auth import clear_system_flags_cache
+                clear_system_flags_cache()
+            except ImportError:
+                pass
+
+            _log_admin_audit(
+                master_client,
+                "incident_mode_disabled",
+                ctx,
+                details={
+                    "resolution_notes": resolution_notes,
+                    "incident_started_at": started_at,
+                    "incident_started_by": started_by,
+                },
+                outcome="allowed",
+            )
+
+            logger.critical(
+                f"[INCIDENT] Global incident mode DISABLED by {ctx.user_id}: {resolution_notes}"
+            )
+
+            return {
+                "incident_mode": False,
+                "disabled_by": ctx.user_id,
+                "disabled_at": datetime.now(timezone.utc).isoformat(),
+                "resolution_notes": resolution_notes,
+            }
+
+        except Exception as e:
+            _log_admin_audit(
+                master_client,
+                "incident_mode_disable_error",
+                ctx,
+                details={"error": str(e)},
+                outcome="error",
+            )
+            raise
+
+    @secure_action(
+        action_id="admin_get_system_flags",
+        action_group="READ",
+        required_roles=ADMIN_READ_ROLES,
+    )
+    async def secure_get_system_flags(
+        ctx: ActionContext,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Get current system flags including incident mode status."""
+        result = master_client.table("system_flags").select("*").eq("id", 1).execute()
+
+        if not result.data:
+            return {
+                "incident_mode": False,
+                "disable_streaming": False,
+                "disable_signed_urls": False,
+                "disable_writes": False,
+                "incident_reason": None,
+            }
+
+        flags = result.data[0]
+        return {
+            "incident_mode": flags.get("incident_mode", False),
+            "disable_streaming": flags.get("disable_streaming", False),
+            "disable_signed_urls": flags.get("disable_signed_urls", False),
+            "disable_writes": flags.get("disable_writes", False),
+            "incident_reason": flags.get("incident_reason"),
+            "incident_started_at": flags.get("incident_started_at"),
+            "incident_started_by": flags.get("incident_started_by"),
+        }
 
     # ========================================================================
     # LIST MEMBERSHIPS (READ)
@@ -681,13 +935,19 @@ def get_secure_admin_handlers(
     # ========================================================================
 
     return {
+        # Membership management
         "admin_invite_user": secure_invite_user,
         "admin_approve_membership": secure_approve_membership,
         "admin_change_role": secure_change_role,
         "admin_revoke_membership": secure_revoke_membership,
-        "admin_freeze_yacht": secure_freeze_yacht,
         "admin_list_memberships": secure_list_memberships,
         "admin_get_membership": secure_get_membership,
+        # Yacht freeze (per-yacht kill switch)
+        "admin_freeze_yacht": secure_freeze_yacht,
+        # Global incident mode (platform-wide kill switch)
+        "admin_enable_incident_mode": secure_enable_incident_mode,
+        "admin_disable_incident_mode": secure_disable_incident_mode,
+        "admin_get_system_flags": secure_get_system_flags,
     }
 
 

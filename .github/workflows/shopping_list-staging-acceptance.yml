@@ -1,0 +1,32 @@
+name: shopping_list - Staging Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/shopping_list_*.py'
+      - 'apps/api/routes/shopping_list_*.py'
+      - 'tests/ci/shopping_list_*.py'
+  workflow_dispatch:
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Run Acceptance Tests
+        env:
+          STAGING_API_URL: https://pipeline-core.int.celeste7.ai
+          STAGING_JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python3 tests/ci/shopping_list_signed_flow_acceptance.py
+      - name: Upload Evidence
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: shopping_list-acceptance-evidence
+          path: verification_handoff/phase*/

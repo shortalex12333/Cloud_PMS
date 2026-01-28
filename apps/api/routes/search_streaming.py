@@ -38,7 +38,12 @@ from typing import AsyncGenerator, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from starlette.responses import StreamingResponse
 
-from middleware.auth import get_authenticated_user
+from middleware.auth import (
+    get_authenticated_user,
+    check_streaming_allowed,
+    is_incident_mode_active,
+    get_system_flags,
+)
 from middleware.action_security import (
     ActionContext,
     ActionSecurityError,
@@ -90,13 +95,27 @@ async def get_streaming_context(
 
     Checks:
     1. JWT validation (via get_authenticated_user dependency)
-    2. Membership status (from auth dict)
-    3. Role exists and is valid
-    4. Yacht not frozen
+    2. Incident mode / streaming disabled check
+    3. Membership status (from auth dict)
+    4. Role exists and is valid
+    5. Yacht not frozen
 
     Raises:
         HTTPException 403: If any authz check fails
+        HTTPException 503: If streaming is disabled (incident mode)
     """
+    # Check incident mode FIRST (before building context)
+    flags = get_system_flags()
+    if flags.get('incident_mode') and flags.get('disable_streaming'):
+        reason = flags.get('incident_reason') or 'security incident'
+        logger.warning(
+            f"[StreamSearch] INCIDENT MODE: Streaming disabled, reason={reason}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="service_unavailable",  # Generic message per error hygiene
+        )
+
     # Build context from auth
     ctx = ActionContext(
         user_id=auth['user_id'],
