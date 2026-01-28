@@ -226,6 +226,18 @@ except Exception as e:
     logger.error("Certificate endpoints will not be available")
 
 # ============================================================================
+# PART LENS ROUTES (Part Lens v2)
+# ============================================================================
+
+try:
+    from routes.part_routes import router as part_routes_router
+    app.include_router(part_routes_router)
+    logger.info("✅ Part Lens v2 routes registered at /v1/parts/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Part Lens routes: {e}")
+    logger.error("Part Lens endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
