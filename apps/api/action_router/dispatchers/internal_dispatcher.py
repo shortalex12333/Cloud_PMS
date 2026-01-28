@@ -48,6 +48,7 @@ _p1_compliance_handlers = None
 _p1_purchasing_handlers = None
 _p2_handlers = None
 _equipment_handlers = None
+_receiving_handlers = None
 _shopping_list_handlers = None
 _document_handlers = None
 
@@ -95,6 +96,21 @@ def _get_equipment_handlers():
 def _get_receiving_handlers():
     """Get lazy-initialized Receiving Lens v1 handlers."""
     global _receiving_handlers
+    if _receiving_handlers is None:
+        handlers_instance = ReceivingHandlers(get_supabase_client())
+        _receiving_handlers = {
+            "create_receiving": _create_receiving_adapter(handlers_instance),
+            "attach_receiving_image_with_comment": _attach_receiving_image_with_comment_adapter(handlers_instance),
+            "extract_receiving_candidates": _extract_receiving_candidates_adapter(handlers_instance),
+            "update_receiving_fields": _update_receiving_fields_adapter(handlers_instance),
+            "add_receiving_item": _add_receiving_item_adapter(handlers_instance),
+            "adjust_receiving_item": _adjust_receiving_item_adapter(handlers_instance),
+            "link_invoice_document": _link_invoice_document_adapter(handlers_instance),
+            "accept_receiving": _accept_receiving_adapter(handlers_instance),
+            "reject_receiving": _reject_receiving_adapter(handlers_instance),
+            "view_receiving_history": _view_receiving_history_adapter(handlers_instance),
+        }
+    return _receiving_handlers
 
 
 def _get_shopping_list_handlers():
@@ -111,22 +127,6 @@ def _get_document_handlers():
     if _document_handlers is None:
         _document_handlers = _get_document_handlers_raw(get_supabase_client())
     return _document_handlers
-    if _receiving_handlers is None:
-        handlers_instance = ReceivingHandlers(get_supabase_client())
-        # Build handler dictionary
-        _receiving_handlers = {
-            "create_receiving": _create_receiving_adapter(handlers_instance),
-            "attach_receiving_image_with_comment": _attach_receiving_image_with_comment_adapter(handlers_instance),
-            "extract_receiving_candidates": _extract_receiving_candidates_adapter(handlers_instance),
-            "update_receiving_fields": _update_receiving_fields_adapter(handlers_instance),
-            "add_receiving_item": _add_receiving_item_adapter(handlers_instance),
-            "adjust_receiving_item": _adjust_receiving_item_adapter(handlers_instance),
-            "link_invoice_document": _link_invoice_document_adapter(handlers_instance),
-            "accept_receiving": _accept_receiving_adapter(handlers_instance),
-            "reject_receiving": _reject_receiving_adapter(handlers_instance),
-            "view_receiving_history": _view_receiving_history_adapter(handlers_instance),
-        }
-    return _receiving_handlers
 
 
 def get_supabase_client() -> Client:
