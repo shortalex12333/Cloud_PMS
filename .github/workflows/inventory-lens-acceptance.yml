@@ -52,6 +52,21 @@ jobs:
           echo "DATABASE_URL=${DATABASE_URL}" >> $GITHUB_OUTPUT
           echo "✅ DATABASE_URL configured (using connection pooler port 6543)"
 
+      - name: Network diagnostics
+        env:
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+        run: |
+          HOST=$(echo "$TENANT_SUPABASE_URL" | sed 's|https://||' | sed 's|http://||')
+          echo "🔍 Testing network connectivity to db.${HOST}"
+          echo "Port 5432 (direct):"
+          timeout 5 bash -c "</dev/tcp/db.${HOST}/5432" 2>&1 && echo "✅ Port 5432 open" || echo "❌ Port 5432 closed/unreachable"
+          echo "Port 6543 (pooler):"
+          timeout 5 bash -c "</dev/tcp/db.${HOST}/6543" 2>&1 && echo "✅ Port 6543 open" || echo "❌ Port 6543 closed/unreachable"
+          echo "DNS resolution:"
+          nslookup db.${HOST} || true
+          echo "GitHub Actions runner IP:"
+          curl -s ifconfig.me || echo "Could not determine IP"
+
       - name: Run acceptance tests against staging
         working-directory: tests/inventory_lens
         env:
