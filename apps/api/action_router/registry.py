@@ -391,6 +391,62 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
+    # WORK ORDER RELATED ENTITIES - P1: Show Related (2 actions)
+    # ========================================================================
+
+    # READ: View Related Entities
+    "view_related_entities": ActionDefinition(
+        action_id="view_related_entities",
+        label="View Related Entities",
+        endpoint="/v1/related",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "entity_type", "entity_id"],
+        domain="work_orders",
+        variant=ActionVariant.READ,
+        search_keywords=["related", "context", "parts", "manuals", "previous", "attachments", "handovers"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("entity_type", FieldClassification.REQUIRED,
+                          description="Entity type (e.g., 'work_order')"),
+            FieldMetadata("entity_id", FieldClassification.REQUIRED,
+                          description="Entity UUID"),
+        ],
+    ),
+
+    # MUTATE: Add Entity Link (HOD/manager only)
+    "add_entity_link": ActionDefinition(
+        action_id="add_entity_link",
+        label="Add Related Link",
+        endpoint="/v1/related/add",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "source_entity_type", "source_entity_id", "target_entity_type", "target_entity_id", "link_type"],
+        optional_fields=["note"],
+        domain="work_orders",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["add", "link", "related", "reference", "evidence"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("source_entity_type", FieldClassification.REQUIRED,
+                          description="Source entity type (e.g., 'work_order')"),
+            FieldMetadata("source_entity_id", FieldClassification.REQUIRED,
+                          description="Source entity UUID"),
+            FieldMetadata("target_entity_type", FieldClassification.REQUIRED,
+                          options=["part", "manual", "work_order", "handover", "attachment"],
+                          description="Target entity type"),
+            FieldMetadata("target_entity_id", FieldClassification.REQUIRED,
+                          description="Target entity UUID"),
+            FieldMetadata("link_type", FieldClassification.REQUIRED,
+                          description="Link type (default: 'explicit')"),
+            FieldMetadata("note", FieldClassification.OPTIONAL,
+                          description="Optional context or reason for the link"),
+        ],
+    ),
+
+    # ========================================================================
     # EQUIPMENT ACTIONS - Equipment Lens v2 (8 actions)
     # ========================================================================
     # Roles per Equipment Lens v2 binding brief:

@@ -348,6 +348,125 @@ class RelatedHandlers:
                             "add_related_enabled": True,
                         })
 
+                # ============================================================
+                # P1 Show Related: Additional FK Relations for Work Orders
+                # ============================================================
+
+                # FK: work_order → parts (via pms_work_order_parts)
+                parts_result = self.db.table("pms_work_order_parts").select(
+                    "part_id, pms_parts(id, name, part_number)"
+                ).eq("work_order_id", entity_id).eq("yacht_id", yacht_id).limit(limit).execute()
+
+                if parts_result.data:
+                    part_items = []
+                    for row in parts_result.data:
+                        part = row.get("pms_parts")
+                        if part:
+                            part_items.append({
+                                "id": part["id"],
+                                "name": part.get("name"),
+                                "subtitle": f"Part #: {part.get('part_number', 'N/A')}",
+                            })
+                    if part_items:
+                        groups.append({
+                            "type": "part",
+                            "items": part_items,
+                            "match_reasons": ["work_order_parts_fk"],
+                            "open_action": "focus",
+                            "add_related_enabled": True,
+                        })
+
+                # FK: work_order → manuals (via equipment → documents)
+                if focused.get("equipment_id"):
+                    manuals_result = self.db.table("pms_documents").select(
+                        "id, title, doc_type"
+                    ).eq("equipment_id", focused["equipment_id"]).eq(
+                        "doc_type", "manual"
+                    ).eq("yacht_id", yacht_id).limit(limit).execute()
+
+                    if manuals_result.data:
+                        groups.append({
+                            "type": "manual",
+                            "items": [{
+                                "id": doc["id"],
+                                "title": doc.get("title"),
+                                "subtitle": "Equipment manual",
+                            } for doc in manuals_result.data],
+                            "match_reasons": ["equipment_manual_fk"],
+                            "open_action": "focus",
+                            "add_related_enabled": True,
+                        })
+
+                # FK: work_order → handovers (via equipment → documents)
+                if focused.get("equipment_id"):
+                    handovers_result = self.db.table("pms_documents").select(
+                        "id, title, doc_type, created_at"
+                    ).eq("equipment_id", focused["equipment_id"]).eq(
+                        "doc_type", "handover"
+                    ).eq("yacht_id", yacht_id).order("created_at", desc=True).limit(limit).execute()
+
+                    if handovers_result.data:
+                        groups.append({
+                            "type": "handover",
+                            "items": [{
+                                "id": doc["id"],
+                                "title": doc.get("title"),
+                                "subtitle": doc.get("created_at", "")[:10],
+                            } for doc in handovers_result.data],
+                            "match_reasons": ["equipment_handover_fk"],
+                            "open_action": "focus",
+                            "add_related_enabled": True,
+                        })
+
+                # FK: work_order → previous work orders (same equipment)
+                if focused.get("equipment_id"):
+                    previous_wo_result = self.db.table("pms_work_orders").select(
+                        "id, wo_number, title, status, created_at"
+                    ).eq("equipment_id", focused["equipment_id"]).neq("id", entity_id).is_(
+                        "deleted_at", "null"
+                    ).eq("yacht_id", yacht_id).order("created_at", desc=True).limit(limit).execute()
+
+                    if previous_wo_result.data:
+                        groups.append({
+                            "type": "previous_work",
+                            "items": [{
+                                "id": wo["id"],
+                                "wo_number": wo.get("wo_number"),
+                                "title": wo.get("title"),
+                                "subtitle": wo.get("created_at", "")[:10],
+                                "status": wo.get("status"),
+                            } for wo in previous_wo_result.data],
+                            "match_reasons": ["same_equipment"],
+                            "open_action": "focus",
+                            "add_related_enabled": True,
+                        })
+
+                # FK: work_order → attachments (via pms_work_order_attachments)
+                attachments_result = self.db.table("pms_work_order_attachments").select(
+                    "document_id, created_at, pms_documents(id, title, mime_type)"
+                ).eq("work_order_id", entity_id).eq("yacht_id", yacht_id).order(
+                    "created_at", desc=True
+                ).limit(limit).execute()
+
+                if attachments_result.data:
+                    attachment_items = []
+                    for row in attachments_result.data:
+                        doc = row.get("pms_documents")
+                        if doc:
+                            attachment_items.append({
+                                "id": doc["id"],
+                                "title": doc.get("title"),
+                                "subtitle": doc.get("mime_type", "unknown"),
+                            })
+                    if attachment_items:
+                        groups.append({
+                            "type": "attachment",
+                            "items": attachment_items,
+                            "match_reasons": ["work_order_attachment_fk"],
+                            "open_action": "focus",
+                            "add_related_enabled": True,
+                        })
+
         except Exception as e:
             logger.warning(f"Failed to get FK relations: {e}")
 

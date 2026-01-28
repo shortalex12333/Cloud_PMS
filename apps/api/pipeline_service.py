@@ -250,6 +250,18 @@ except Exception as e:
     logger.error("Fault Lens endpoints will not be available")
 
 # ============================================================================
+# SHOW RELATED ROUTES (Work Order Lens P1)
+# ============================================================================
+
+try:
+    from routes.related_routes import router as related_router
+    app.include_router(related_router)
+    logger.info("✅ Show Related routes registered at /v1/related/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Show Related routes: {e}")
+    logger.error("Show Related endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
