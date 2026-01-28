@@ -7,7 +7,7 @@
 
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import EmailSearchView from '@/components/email/EmailSearchView';
+import EmailSearchView from '@/components/email/_legacy/EmailSearchView';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
