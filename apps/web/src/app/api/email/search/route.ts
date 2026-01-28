@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 // Force dynamic rendering - no static generation
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+// Standard cache control headers for auth-required endpoints
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+};
 
 /**
  * POST /api/email/search
@@ -28,55 +32,24 @@ export async function POST(request: NextRequest) {
     if (!query || typeof query !== 'string') {
       return NextResponse.json(
         { error: 'Query is required' },
-        { status: 400 }
+        { status: 400, headers: NO_CACHE_HEADERS }
       );
     }
 
-    // Get auth token from request or session
+    // Get auth token from Authorization header (required)
     const authHeader = request.headers.get('Authorization');
-
-    // If no auth header provided, try to get from Supabase session cookie
-    let token = authHeader?.replace('Bearer ', '');
-
-    if (!token) {
-      // Fall back to service role for server-side calls (e.g., from SpotlightSearch)
-      // The Python backend will use the JWT to get yacht_id
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'missing_bearer' },
+        { status: 401, headers: NO_CACHE_HEADERS }
       );
-
-      // Try to get session from cookie
-      const cookieHeader = request.headers.get('cookie') || '';
-      const sessionCookie = cookieHeader.split(';').find(c =>
-        c.trim().startsWith('sb-') && c.includes('auth-token')
-      );
-
-      if (sessionCookie) {
-        // Extract token from cookie
-        const tokenMatch = sessionCookie.match(/base64-([^,]+)/);
-        if (tokenMatch) {
-          try {
-            const decoded = Buffer.from(tokenMatch[1], 'base64').toString('utf-8');
-            const parsed = JSON.parse(decoded);
-            token = parsed.access_token;
-          } catch {
-            // Ignore parse errors
-          }
-        }
-      }
     }
 
-    if (!token) {
+    const token = authHeader.split(' ')[1];
+    if (!token || token.length < 10) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: 'Invalid token', code: 'invalid_token' },
+        { status: 401, headers: NO_CACHE_HEADERS }
       );
     }
 
@@ -100,7 +73,7 @@ export async function POST(request: NextRequest) {
       console.error('[api/email/search] Backend error:', response.status, error);
       return NextResponse.json(
         { error: error.detail || error.message || 'Search failed' },
-        { status: response.status }
+        { status: response.status, headers: NO_CACHE_HEADERS }
       );
     }
 
@@ -112,12 +85,12 @@ export async function POST(request: NextRequest) {
       results: data.results || [],
       query,
       telemetry: data.telemetry,
-    });
+    }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('[api/email/search] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: NO_CACHE_HEADERS }
     );
   }
 }

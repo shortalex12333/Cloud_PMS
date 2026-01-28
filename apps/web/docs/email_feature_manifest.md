@@ -65,15 +65,41 @@ searchEmail() in SpotlightSearch.tsx
 Results displayed in SpotlightSearch
 ```
 
+## Hybrid Search Architecture
+
+**Canonical embedding column: `email_messages.meta_embedding` (VECTOR(1536))**
+
+- Migration 26 (`search_email_hybrid`) uses `meta_embedding`
+- Backfill worker writes to `meta_embedding`
+- Legacy `embedding` column is deprecated; do not use for new code
+
+Scoring weights:
+- Vector similarity: 60%
+- Entity keyword match: 25%
+- Recency/affinity/linkage signals: 15% (M3)
+
+## Error Map
+
+| HTTP Status | Code | Meaning | UI Response |
+|-------------|------|---------|-------------|
+| 401 | `missing_bearer` | No Authorization header | Redirect to login |
+| 401 | `invalid_token` | Token expired/invalid | Refresh + retry once |
+| 401 | `token_invalid` | Supabase getUser failed | Redirect to login |
+| 413 | - | Attachment too large | Toast: "File too large" |
+| 415 | - | Attachment type disallowed | Toast: "File type not allowed" |
+| 500 | `internal_error` | Server error | Toast: "Something went wrong" |
+
 ## Security Non-Negotiables
 
 | Rule | Implementation |
 |------|---------------|
 | Bearer JWT only | `authHelpers.ts:getAuthHeaders()` |
 | No body storage | `/render` endpoint fetches from Graph API |
-| `encodeURIComponent` on provider IDs | `useEmailData.ts:fetchMessageContent()` |
+| `encodeURIComponent` on provider IDs | `useEmailData.ts:fetchMessageContent()`, `downloadAndSaveAttachment()` |
 | User-watcher ownership check | Backend middleware |
 | 401 auto-retry | `useEmailData.ts:authFetch()` |
+| External images blocked | `EmailSurface.tsx:sanitizeHtml()` - replaces src with data-blocked-src |
+| Cache-Control: no-store | All auth-required API routes |
 
 ## Component Ownership
 
@@ -99,6 +125,14 @@ Results displayed in SpotlightSearch
 |------|--------|-------------|
 | `_legacy/EmailSearchView.tsx` | Renamed to EmailSurface | `EmailSurface.tsx` |
 | `/email/search/page.tsx` | Redirects to `/email/inbox` | `/email/inbox` |
+
+## Known Limitations
+
+| Gap | Impact | Planned Fix |
+|-----|--------|-------------|
+| OpenAI unavailable returns 500 | Search fails if OPENAI_API_KEY missing | Should degrade to entity-only (zero vector) |
+| Attachment download test skipped | No attachments in test account | Need fixture emails with attachments |
+| cid: images require manual load | Inline images not auto-displayed | User intent required for privacy |
 
 ## Related Documentation
 
