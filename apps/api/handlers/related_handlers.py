@@ -722,6 +722,7 @@ class RelatedHandlers:
         HOD/chief/captain/manager only.
 
         Validations:
+        - user is HOD/chief/captain/manager (403)
         - entity_type in VALID_ENTITY_TYPES
         - link_type in VALID_LINK_TYPES
         - source != target (400)
@@ -730,6 +731,14 @@ class RelatedHandlers:
         - target exists (404)
         - unique constraint (409)
         """
+        # 0. Role enforcement - CREW cannot create links
+        is_authorized = await self._is_hod_or_manager(user_id, yacht_id)
+        if not is_authorized:
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to create links (HOD/captain/manager required)"
+            )
+
         # 1. Validate entity types
         if source_entity_type not in VALID_ENTITY_TYPES:
             raise HTTPException(
