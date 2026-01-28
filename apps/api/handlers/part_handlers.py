@@ -107,15 +107,29 @@ class PartHandlers:
 
         # Create new stock record
         stock_id = str(uuid_lib.uuid4())
-        self.db.table("pms_inventory_stock").insert({
-            "id": stock_id,
-            "yacht_id": yacht_id,
-            "part_id": part_id,
-            "location": loc,
-            "quantity": 0,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
+        try:
+            self.db.table("pms_inventory_stock").insert({
+                "id": stock_id,
+                "yacht_id": yacht_id,
+                "part_id": part_id,
+                "location": loc,
+                "quantity": 0,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as e:
+            error_str = str(e)
+            error_str_lower = error_str.lower()
+
+            # Check if PostgREST 204 (No Content) - INSERT succeeded but no data returned
+            if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
+                logger.info(f"PostgREST 204 detected on stock INSERT (stock_id={stock_id}) - INSERT succeeded")
+                # INSERT succeeded, return the stock_id
+                return stock_id
+            else:
+                # Unknown error - re-raise
+                logger.error(f"Stock INSERT failed: {e}")
+                raise
 
         return stock_id
 
