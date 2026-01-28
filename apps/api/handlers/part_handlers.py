@@ -189,33 +189,37 @@ class PartHandlers:
         entity_id: str,
         yacht_id: str,
         user_id: str,
+        tenant_key_alias: str = None,
         params: Optional[Dict] = None
     ) -> Dict:
         """
         View part details including stock levels and linked equipment.
         Emits read-audit event to pms_audit_log with signature = {}.
+
+        Args:
+            entity_id: Part ID
+            yacht_id: Yacht ID for yacht isolation
+            user_id: User performing the action
+            tenant_key_alias: Tenant routing key for direct SQL (bypasses PostgREST)
+            params: Optional parameters
         """
         builder = ResponseBuilder("view_part_details", entity_id, "part", yacht_id)
 
         try:
             # Get part with stock from canonical pms_part_stock view
-            # Use .limit(1) instead of .maybe_single() to avoid PostgREST 204 on views
-            logger.info(f"[view_part_details] Querying pms_part_stock for part_id={entity_id}, yacht_id={yacht_id}")
-            try:
-                result = self.db.table("pms_part_stock").select(
-                    "part_id, part_name, part_number, on_hand, min_level, reorder_multiple, "
-                    "location, is_critical, department, category, stock_id"
-                ).eq("yacht_id", yacht_id).eq("part_id", entity_id).limit(1).execute()
-                logger.info(f"[view_part_details] pms_part_stock query succeeded, rows: {len(result.data) if result.data else 0}")
-            except Exception as view_err:
-                logger.error(f"[view_part_details] pms_part_stock query failed: {view_err}", exc_info=True)
-                raise
+            # Use DIRECT SQL to bypass PostgREST 204 issues with views
+            logger.info(f"[view_part_details] Querying pms_part_stock via SQL for part_id={entity_id}, yacht_id={yacht_id}")
 
-            if not result.data or len(result.data) == 0:
+            from db.tenant_pg_gateway import get_part_stock
+            stock = get_part_stock(
+                tenant_key_alias=tenant_key_alias or "",
+                yacht_id=yacht_id,
+                part_id=entity_id,
+            )
+
+            if not stock:
                 builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
                 return builder.build()
-
-            stock = result.data[0]
             on_hand = stock.get("on_hand", 0) or 0
             min_level = stock.get("min_level", 0) or 0
             reorder_multiple = stock.get("reorder_multiple", 1) or 1
@@ -445,43 +449,110 @@ class PartHandlers:
         quantity: int,
         work_order_id: str = None,
         notes: str = None,
+        tenant_key_alias: str = None,
     ) -> Dict:
         """
         Consume part using atomic deduct_stock_inventory RPC.
         Returns 409 if insufficient stock (no negative stock allowed).
         Uses SELECT FOR UPDATE to prevent race conditions.
+
+        Args:
+            yacht_id: Yacht ID
+            user_id: User performing action
+            part_id: Part ID to consume
+            quantity: Quantity to consume (must be > 0)
+            work_order_id: Optional work order linkage
+            notes: Optional notes
+            tenant_key_alias: Tenant routing key for direct SQL fallback on RPC 204
         """
         # Validate inputs
         if quantity <= 0:
             raise ValueError("quantity must be > 0")
 
-        # Get stock_id from canonical pms_part_stock view
-        stock_result = self.db.table("pms_part_stock").select(
-            "on_hand, location, stock_id, part_name"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
+        # Get stock_id from canonical pms_part_stock view (DIRECT SQL to avoid PostgREST 204)
+        from db.tenant_pg_gateway import get_part_stock
 
-        if not stock_result or not stock_result.data or len(stock_result.data) == 0:
+        stock_before = get_part_stock(
+            tenant_key_alias=tenant_key_alias or "",
+            yacht_id=yacht_id,
+            part_id=part_id,
+        )
+
+        if not stock_before:
             raise ValueError(f"No stock record for part {part_id}")
 
-        stock = stock_result.data[0]
-        stock_id = stock.get("stock_id")
+        stock_id = stock_before.get("stock_id")
+        qty_before = stock_before.get("on_hand", 0)
+
+        # Pre-check: Insufficient stock → 409 before attempting RPC
+        if qty_before < quantity:
+            raise ConflictError(
+                f"Insufficient stock: requested {quantity}, available {qty_before}"
+            )
 
         # Get or create stock record if needed
         if not stock_id:
-            stock_id = self._get_or_create_stock_id(yacht_id, part_id, stock.get("location"))
+            stock_id = self._get_or_create_stock_id(yacht_id, part_id, stock_before.get("location"))
 
         # ATOMIC: Call deduct_stock_inventory with SELECT FOR UPDATE
-        # RPC uses RETURN NEXT pattern (not RETURN QUERY) to avoid PostgREST 204
-        rpc_result = self.db.rpc("deduct_stock_inventory", {
-            "p_stock_id": stock_id,
-            "p_quantity": quantity,
-            "p_yacht_id": yacht_id
-        }).execute()
+        # Handle PostgREST 204: If RPC returns 204, assume success and confirm via SQL
+        rpc_succeeded_with_204 = False
+        result = None
 
-        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
-            raise ValueError("Atomic deduct returned no data")
+        try:
+            rpc_result = self.db.rpc("deduct_stock_inventory", {
+                "p_stock_id": stock_id,
+                "p_quantity": quantity,
+                "p_yacht_id": yacht_id
+            }).execute()
 
-        result = rpc_result.data[0]
+            if rpc_result and rpc_result.data and len(rpc_result.data) > 0:
+                result = rpc_result.data[0]
+            else:
+                # Empty response but no exception → may be 204
+                rpc_succeeded_with_204 = True
+        except Exception as rpc_err:
+            error_str = str(rpc_err).lower()
+            if "204" in error_str or "missing response" in error_str:
+                logger.info(f"[consume_part] RPC returned 204, treating as success and confirming via SQL")
+                rpc_succeeded_with_204 = True
+            else:
+                # Real error, re-raise
+                raise
+
+        # If RPC gave 204, confirm via direct SQL
+        if rpc_succeeded_with_204:
+            logger.info(f"[consume_part] Confirming deduction via SQL query to pms_part_stock")
+            stock_after = get_part_stock(
+                tenant_key_alias=tenant_key_alias or "",
+                yacht_id=yacht_id,
+                part_id=part_id,
+            )
+
+            if not stock_after:
+                raise ValueError(f"Stock record vanished after RPC: {stock_id}")
+
+            qty_after = stock_after.get("on_hand", 0)
+
+            # Verify deduction occurred
+            if qty_after != qty_before - quantity:
+                logger.error(
+                    f"[consume_part] Stock mismatch after RPC 204: "
+                    f"expected {qty_before - quantity}, got {qty_after}"
+                )
+                raise ValueError("Stock deduction verification failed")
+
+            # Synthesize result dict
+            result = {
+                "success": True,
+                "quantity_before": qty_before,
+                "quantity_after": qty_after,
+                "error_code": None,
+            }
+        else:
+            # RPC returned data normally
+            if not result:
+                raise ValueError("Atomic deduct returned no data")
 
         # Map DB error codes to HTTP codes (never 500)
         if not result.get("success"):

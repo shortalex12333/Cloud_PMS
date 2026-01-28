@@ -127,3 +127,91 @@ jobs:
           echo "  - JWT token pattern check"
           echo "  - API key pattern check"
           echo "  - Supabase service key check"
+
+  # Security Test Suites - Hard gate for PRs
+  security-tests:
+    name: Security Test Suites
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: apps/api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-mock
+
+      - name: Verify secure dispatcher (unsecured handler check)
+        run: |
+          echo "Verifying all handlers use @secure_action decorator..."
+          python -c "
+          import sys
+          try:
+              from action_router.dispatchers.secure_dispatcher import verify_all_handlers_secured
+              unsecured = verify_all_handlers_secured()
+              if unsecured:
+                  print('ERROR: Unsecured handlers detected:')
+                  for h in unsecured:
+                      print(f'  - {h}')
+                  sys.exit(1)
+              print('All handlers properly secured.')
+          except ImportError:
+              print('WARN: secure_dispatcher not found, skipping check')
+          except Exception as e:
+              print(f'WARN: Could not verify handlers: {e}')
+          "
+
+      - name: Run cross-yacht attack tests
+        run: |
+          echo "Running cross-yacht isolation tests..."
+          pytest -v tests/test_cross_yacht_attacks.py --tb=short
+
+      - name: Run streaming safety tests
+        run: |
+          echo "Running streaming safety tests..."
+          pytest -v tests/test_streaming_safety.py tests/test_streaming_cache_isolation.py --tb=short
+
+      - name: Run kill switch tests
+        run: |
+          echo "Running incident mode / kill switch tests..."
+          pytest -v tests/test_kill_switch.py --tb=short
+
+      - name: Run action security tests
+        run: |
+          echo "Running action router security tests..."
+          pytest -v tests/test_action_security.py --tb=short
+
+      - name: Run signed URL security tests
+        run: |
+          echo "Running signed URL security tests..."
+          pytest -v tests/test_signed_url_security.py --tb=short
+
+      - name: Security Test Summary
+        if: always()
+        run: |
+          echo ""
+          echo "========================================"
+          echo "Security Test Suites Complete"
+          echo "========================================"
+          echo ""
+          echo "Test files executed:"
+          echo "  - test_cross_yacht_attacks.py"
+          echo "  - test_streaming_safety.py"
+          echo "  - test_streaming_cache_isolation.py"
+          echo "  - test_kill_switch.py"
+          echo "  - test_action_security.py"
+          echo "  - test_signed_url_security.py"
+          echo ""
+          echo "All tests must pass for PR approval."

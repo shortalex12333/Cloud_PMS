@@ -1032,7 +1032,8 @@ async def execute_action(
             handler_result = await request_part_handlers.view_part_details(
                 entity_id=payload["part_id"],
                 yacht_id=yacht_id,
-                user_id=user_id
+                user_id=user_id,
+                tenant_key_alias=tenant_alias
             )
 
             # Transform ResponseBuilder envelope to simple status format
@@ -1077,7 +1078,8 @@ async def execute_action(
                 part_id=payload["part_id"],
                 quantity=payload["quantity"],
                 work_order_id=payload.get("work_order_id"),
-                notes=payload.get("notes")
+                notes=payload.get("notes"),
+                tenant_key_alias=tenant_alias
             )
 
             # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
