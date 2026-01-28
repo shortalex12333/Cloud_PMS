@@ -13,6 +13,7 @@ All routes require JWT authentication and yacht isolation validation.
 """
 
 from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import logging
@@ -4608,8 +4609,8 @@ async def execute_action(
             error = result["error"]
             error_code = error.get("error_code", "UNKNOWN_ERROR")
             status_code = error.get("status_code", 500)
-            # Preserve full error structure in detail
-            raise HTTPException(status_code=status_code, detail=error)
+            # Return error dict directly (not wrapped in detail)
+            return JSONResponse(status_code=status_code, content=error)
     elif "status" in result and result["status"] == "error":
         # Old format - preserve full error structure including error_code
         error_code = result.get("error_code", "UNKNOWN_ERROR")
@@ -4632,16 +4633,16 @@ async def execute_action(
         else:
             status_code = 400  # Default to 400 for unknown error codes
 
-        # Preserve full error structure in detail (don't just pass message string)
-        error_detail = {
+        # Return error structure directly at top level (not wrapped in detail)
+        error_response = {
             "status": "error",
             "error_code": error_code,
             "message": result.get("message", "Unknown error")
         }
         if "hint" in result:
-            error_detail["hint"] = result["hint"]
+            error_response["hint"] = result["hint"]
 
-        raise HTTPException(status_code=status_code, detail=error_detail)
+        return JSONResponse(status_code=status_code, content=error_response)
 
     # Add execution_id to response for E2E test tracing
     import uuid
