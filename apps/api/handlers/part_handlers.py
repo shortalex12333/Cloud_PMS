@@ -454,7 +454,7 @@ class PartHandlers:
         ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
         if not stock_result or not stock_result.data:
-            raise HTTPException(status_code=404, detail=f"No stock record for part {part_id}")
+            raise ValueError(f"No stock record for part {part_id}")
 
         stock = stock_result.data
         stock_id = stock.get("stock_id")
@@ -464,69 +464,17 @@ class PartHandlers:
             stock_id = self._get_or_create_stock_id(yacht_id, part_id, stock.get("location"))
 
         # ATOMIC: Call deduct_stock_inventory with SELECT FOR UPDATE
-        rpc_succeeded_via_204 = False
-        qty_before_from_initial_check = stock.get("on_hand", 0)
+        # RPC uses RETURN NEXT pattern (not RETURN QUERY) to avoid PostgREST 204
+        rpc_result = self.db.rpc("deduct_stock_inventory", {
+            "p_stock_id": stock_id,
+            "p_quantity": quantity,
+            "p_yacht_id": yacht_id
+        }).execute()
 
-        try:
-            rpc_result = self.db.rpc("deduct_stock_inventory", {
-                "p_stock_id": stock_id,
-                "p_quantity": quantity,
-                "p_yacht_id": yacht_id
-            }).execute()
-        except Exception as e:
-            error_str = str(e)
-            error_str_lower = error_str.lower()
+        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
+            raise ValueError("Atomic deduct returned no data")
 
-            # Check if PostgREST 204 - RPC succeeded but no response body
-            # Workaround: Treat 204 as success and query pms_part_stock to get qty_after
-            if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
-                logger.info(f"PostgREST 204 on deduct_stock RPC - treating as success, querying stock")
-                rpc_succeeded_via_204 = True
-                # Continue to query stock below
-            else:
-                logger.error(f"Atomic deduct RPC failed: {e}")
-                raise
-
-        # If we got 204, query pms_inventory_stock (base table) to determine outcome
-        if rpc_succeeded_via_204:
-            # Re-query base table to get current stock after RPC
-            # Use pms_inventory_stock instead of view to avoid PostgREST 204 on views
-            try:
-                stock_check = self.db.table("pms_inventory_stock").select(
-                    "quantity"
-                ).eq("id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
-
-                if not stock_check or not stock_check.data:
-                    # If query fails, assume RPC failed
-                    logger.error(f"Stock query failed after PostgREST 204 on RPC - assuming RPC failed")
-                    raise ConflictError(f"Unable to verify stock deduction - please retry")
-
-                qty_after = stock_check.data.get("quantity", 0)
-            except Exception as query_e:
-                # If stock query also fails, we can't determine outcome
-                # Log and raise a conflict error to be safe
-                logger.error(f"Stock verification query failed after RPC 204: {query_e}")
-                raise ConflictError(f"Unable to verify stock deduction - please retry")
-
-            # Check if deduction actually happened
-            if qty_after == qty_before_from_initial_check:
-                # Stock unchanged - RPC likely failed silently or stock was insufficient
-                raise ConflictError(f"Insufficient stock: requested {quantity}, available {qty_before_from_initial_check}")
-
-            # Reverse calculate qty_before from qty_after
-            qty_before = qty_after + quantity
-
-            result = {
-                "success": True,
-                "quantity_before": qty_before,
-                "quantity_after": qty_after,
-                "error_code": None
-            }
-        else:
-            if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
-                raise ValueError("Atomic deduct returned no data")
-
-            result = rpc_result.data[0]
+        result = rpc_result.data[0]
 
         # Map DB error codes to HTTP codes (never 500)
         if not result.get("success"):
