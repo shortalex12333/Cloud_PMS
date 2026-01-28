@@ -428,12 +428,16 @@ class PartHandlers:
         Returns 409 if insufficient stock (no negative stock allowed).
         Uses SELECT FOR UPDATE to prevent race conditions.
         """
+        # Validate inputs
+        if quantity <= 0:
+            raise ValueError("quantity must be > 0")
+
         # Get stock_id from canonical pms_part_stock view
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, stock_id, part_name"
         ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not stock_result.data:
+        if not stock_result or not stock_result.data:
             raise ValueError(f"No stock record for part {part_id}")
 
         stock = stock_result.data
@@ -454,7 +458,7 @@ class PartHandlers:
             logger.error(f"Atomic deduct RPC failed: {e}")
             raise
 
-        if not rpc_result.data or len(rpc_result.data) == 0:
+        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
             raise ValueError("Atomic deduct returned no data")
 
         result = rpc_result.data[0]
@@ -537,12 +541,18 @@ class PartHandlers:
         Idempotency enforced by DB unique constraint (yacht_id, idempotency_key).
         Uses SELECT FOR UPDATE to prevent race conditions.
         """
+        # Validate inputs
+        if quantity_received <= 0:
+            raise ValueError("quantity_received must be > 0")
+        if not idempotency_key:
+            raise ValueError("idempotency_key is required")
+
         # Get current stock from canonical pms_part_stock view
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, part_name, stock_id"
         ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not stock_result.data:
+        if not stock_result or not stock_result.data:
             raise ValueError(f"Part {part_id} not found")
 
         stock = stock_result.data
@@ -564,7 +574,7 @@ class PartHandlers:
             logger.error(f"Atomic add RPC failed: {e}")
             raise
 
-        if not rpc_result.data or len(rpc_result.data) == 0:
+        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
             raise ValueError("Atomic add returned no data")
 
         result = rpc_result.data[0]
@@ -650,7 +660,9 @@ class PartHandlers:
         All-or-nothing transfer with SELECT FOR UPDATE on both locations.
         Prevents partial-state race conditions.
         """
-        # Validate from != to
+        # Validate inputs
+        if quantity <= 0:
+            raise ValueError("quantity must be > 0")
         if from_location == to_location:
             raise ValueError("Cannot transfer to the same location")  # 400
 
@@ -659,7 +671,7 @@ class PartHandlers:
             "stock_id, on_hand, location, part_name"
         ).eq("yacht_id", yacht_id).eq("part_id", part_id).eq("location", from_location).maybe_single().execute()
 
-        if not from_stock_result.data:
+        if not from_stock_result or not from_stock_result.data:
             raise ValueError(f"No stock at location {from_location}")  # 404
 
         from_stock = from_stock_result.data
@@ -684,7 +696,7 @@ class PartHandlers:
             logger.error(f"Atomic transfer RPC failed: {e}")
             raise
 
-        if not rpc_result.data or len(rpc_result.data) == 0:
+        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
             raise ValueError("Atomic transfer returned no data")
 
         result = rpc_result.data[0]
@@ -799,6 +811,10 @@ class PartHandlers:
         Adjust stock quantity via transaction.
         SIGNED action - REQUIRES valid signature (400 if missing/invalid).
         """
+        # Validate inputs
+        if new_quantity < 0:
+            raise ValueError("new_quantity must be >= 0")
+
         # ENFORCE SIGNATURE CONTRACT
         if not signature or signature == {}:
             raise SignatureRequiredError(
@@ -810,7 +826,7 @@ class PartHandlers:
             "on_hand, location, part_name, stock_id"
         ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not stock_result.data:
+        if not stock_result or not stock_result.data:
             raise ValueError(f"Part {part_id} not found")
 
         stock = stock_result.data
@@ -845,6 +861,9 @@ class PartHandlers:
                 "p_quantity": abs(adjustment),  # Function expects positive quantity
                 "p_yacht_id": yacht_id
             }).execute()
+
+        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
+            raise ValueError("Atomic adjust returned no data")
 
         result = rpc_result.data[0]
 
@@ -947,6 +966,10 @@ class PartHandlers:
         Write off damaged/expired parts via transaction.
         SIGNED action - REQUIRES valid signature (400 if missing/invalid).
         """
+        # Validate inputs
+        if quantity <= 0:
+            raise ValueError("quantity must be > 0")
+
         # ENFORCE SIGNATURE CONTRACT
         if not signature or signature == {}:
             raise SignatureRequiredError(
@@ -958,7 +981,7 @@ class PartHandlers:
             "on_hand, location, part_name, stock_id"
         ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not stock_result.data:
+        if not stock_result or not stock_result.data:
             raise ValueError(f"Part {part_id} not found")
 
         stock = stock_result.data
@@ -975,6 +998,9 @@ class PartHandlers:
             "p_quantity": quantity,
             "p_yacht_id": yacht_id
         }).execute()
+
+        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
+            raise ValueError("Atomic write-off returned no data")
 
         result = rpc_result.data[0]
 
