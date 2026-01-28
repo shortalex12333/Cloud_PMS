@@ -1,0 +1,56 @@
+============================================================
+PHASE 8 MINIMAL TEST - ENDPOINT & SUGGESTIONS API
+============================================================
+
+Generating fresh JWTs...
+✓ HOD JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhd...
+✓ CREW JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhd...
+
+--- PHASE 8 ENDPOINT AVAILABILITY ---
+[PASS] Actions health endpoint: Status 200
+[PASS] Actions list endpoint: Status 200
+[PASS] Fault routes available: Status 200
+[PASS] Suggestions endpoint exists: Status 200
+
+--- PHASE 8 SUGGESTIONS API (NEW FEATURE) ---
+[PASS] HOD suggestions include mutations: Found: ['close_fault', 'acknowledge_fault', 'diagnose_fault'] in 11 actions
+[PASS] CREW suggestions correct: Allowed: ['report_fault', 'add_fault_note', 'add_fault_photo'], Denied: []
+[PASS] Multiple candidates returned: Got 11 candidates
+[PASS] Storage options in photo actions: 1 actions have storage_options.path_preview
+[PASS] Role returned in response: Role: chief_engineer
+
+--- PHASE 8 ERROR MAPPING (NEW FEATURE) ---
+[PASS] Invalid action returns 4xx: Status 404
+[PASS] Non-existent resource returns 4xx: Status 404
+
+--- ROLE-BASED ACCESS CONTROL ---
+[PASS] CREW denied HOD action: Expected 403, got 403
+[PASS] HOD sees more actions than CREW: HOD: 12, CREW: 5
+
+============================================================
+TEST SUMMARY
+============================================================
+  ✓ Actions health endpoint
+  ✓ Actions list endpoint
+  ✓ Fault routes available
+  ✓ Suggestions endpoint exists
+  ✓ HOD suggestions include mutations
+  ✓ CREW suggestions correct
+  ✓ Multiple candidates returned
+  ✓ Storage options in photo actions
+  ✓ Role returned in response
+  ✓ Invalid action returns 4xx
+  ✓ Non-existent resource returns 4xx
+  ✓ CREW denied HOD action
+  ✓ HOD sees more actions than CREW
+
+Total: 13/13 passed
+
+✅ All Phase 8 core features verified!
+
+PHASE 8 FEATURES CONFIRMED:
+  ✓ POST /v1/actions/suggestions endpoint operational
+  ✓ Error mapping hardening applied (4xx instead of 5xx)
+  ✓ Role-based action filtering working
+  ✓ Storage options included in responses
+  ✓ All fault routes accessible
