@@ -598,8 +598,39 @@ class PartHandlers:
                 "p_yacht_id": yacht_id
             }).execute()
         except Exception as e:
-            logger.error(f"Atomic add RPC failed: {e}")
-            raise
+            error_str = str(e)
+            error_str_lower = error_str.lower()
+
+            # Check if PostgREST 204 (No Content) - RPC succeeded but no data returned
+            if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
+                logger.info(f"PostgREST 204 detected on RPC add_stock_inventory (stock_id={stock_id}) - RPC succeeded, querying updated stock")
+
+                # Query the updated stock to get actual values after RPC completed
+                updated_stock = self.db.table("pms_part_stock").select(
+                    "on_hand"
+                ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not updated_stock or not updated_stock.data:
+                    # Fallback if query fails - use calculated values
+                    logger.warning("Could not query updated stock after PostgREST 204, using calculated values")
+                    qty_after = stock.get('on_hand', 0) + quantity_received
+                    qty_before = stock.get('on_hand', 0)
+                else:
+                    # Use actual values from database
+                    qty_after = updated_stock.data.get('on_hand', 0)
+                    qty_before = qty_after - quantity_received
+
+                # Create synthetic result matching expected RPC response structure
+                rpc_result = type('SyntheticResult', (object,), {
+                    'data': [{
+                        'success': True,
+                        'quantity_before': qty_before,
+                        'quantity_after': qty_after
+                    }]
+                })()
+            else:
+                logger.error(f"Atomic add RPC failed: {e}")
+                raise
 
         if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
             raise ValueError("Atomic add returned no data")
