@@ -237,6 +237,24 @@ def get_test_equipment_id():
     return None
 
 
+def get_stable_tenant_user_id(email):
+    """Get user_id for a stable pre-provisioned TENANT user.
+
+    These users exist in TENANT auth_users_profiles/roles and satisfy FK constraints.
+    Use for reassignment targets to avoid FK errors with auto-provisioned CI users.
+    """
+    r = tenant_rest('GET', '/rest/v1/auth_users_profiles', params={
+        'select': 'id',
+        'email': f'eq.{email}',
+        'yacht_id': f'eq.{YACHT_ID}',
+        'limit': '1'
+    })
+
+    if r.status_code == 200 and r.json():
+        return r.json()[0]['id']
+    return None
+
+
 def main():
     # Validate required environment variables
     required_vars = [API_BASE, MASTER_URL, MASTER_ANON, MASTER_SVC, TENANT_URL, TENANT_SVC, YACHT_ID, PASSWORD]
@@ -451,16 +469,17 @@ def main():
     # =========================================================================
     # TEST 8: HOD can reassign work order (SIGNED action positive)
     # =========================================================================
-    # Use captain's user_id from JWT for reassignment target
-    captain_id = user_ids.get('captain')
+    # Use stable pre-provisioned TENANT user as reassignment target
+    # (avoids FK errors with auto-provisioned CI users)
+    assignee_id = get_stable_tenant_user_id('captain.tenant@alex-short.com')
 
-    if captain_id:
+    if assignee_id:
         reassign_resp = call_api(jwts['hod'], 'POST', '/v1/actions/execute', {
             'action': 'reassign_work_order',
             'context': {'yacht_id': YACHT_ID},
             'payload': {
                 'work_order_id': wo_id,
-                'assignee_id': captain_id,
+                'assignee_id': assignee_id,
                 'reason': 'CI test reassignment',
                 'signature': {
                     'signed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -478,7 +497,7 @@ def main():
         else:
             fail(f"HOD reassign failed: {reassign_result}")
     else:
-        ok("HOD reassign test skipped (no captain profile)")
+        ok("HOD reassign test skipped (no stable assignee found)")
 
     # =========================================================================
     # TEST 9: CREW cannot reassign work order (SIGNED action negative)
@@ -488,7 +507,7 @@ def main():
         'context': {'yacht_id': YACHT_ID},
         'payload': {
             'work_order_id': wo_id,
-            'assignee_id': captain_id or 'dummy-id',
+            'assignee_id': assignee_id or 'dummy-id',
             'reason': 'Should fail',
             'signature': {
                 'signed_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
