@@ -15,7 +15,7 @@
 
 | Route | Method | Purpose | Backend Target | Auth | Runtime |
 |-------|--------|---------|---------------|------|---------|
-| `/api/email/search` | POST | Hybrid semantic search | Supabase RPC `search_email_hybrid` | Service role | nodejs, force-dynamic |
+| `/api/email/search` | POST | Hybrid semantic search | Python `/email/search` (proxied) | Bearer JWT | nodejs, force-dynamic |
 | `/api/integrations/outlook/status` | GET | Connection status | `pipeline-core/auth/outlook/status` | Bearer JWT | nodejs, force-dynamic, no-store |
 | `/api/integrations/outlook/auth-url` | GET | OAuth URL (READ) | Local (oauth-utils) | Bearer JWT | nodejs, force-dynamic, no-store |
 | `/api/integrations/outlook/callback` | GET | OAuth callback (READ) | `pipeline-core/auth/outlook/exchange` | None (OAuth flow) | nodejs, force-dynamic |

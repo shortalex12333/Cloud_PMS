@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import OpenAI from 'openai';
 
 // Force dynamic rendering - no static generation
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(request: NextRequest) {
-  // Initialize clients inside handler to avoid build-time errors
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+/**
+ * POST /api/email/search
+ *
+ * Proxies search requests to Python backend /email/search endpoint.
+ * The Python backend handles:
+ * - Query parsing with operator support (from:, to:, has:attachment, etc.)
+ * - Embedding generation with caching
+ * - Hybrid vector + entity search
+ * - Telemetry and logging
+ *
+ * Frontend sends: { query, limit?, yacht_id? }
+ * Backend expects: GET /email/search?q=query&limit=20
+ */
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, limit = 20, yacht_id } = body;
+    const { query, limit = 20 } = body;
 
     if (!query || typeof query !== 'string') {
       return NextResponse.json(
@@ -27,44 +32,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get yacht_id from auth or use provided one
-    // For now, use the test yacht_id if not provided
-    const targetYachtId = yacht_id || '85fe1119-b04c-41ac-80f1-829d23322598';
+    // Get auth token from request or session
+    const authHeader = request.headers.get('Authorization');
 
-    // Generate embedding for query
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query.slice(0, 8000), // Truncate if too long
-    });
+    // If no auth header provided, try to get from Supabase session cookie
+    let token = authHeader?.replace('Bearer ', '');
 
-    const queryEmbedding = embeddingResponse.data[0].embedding;
+    if (!token) {
+      // Fall back to service role for server-side calls (e.g., from SpotlightSearch)
+      // The Python backend will use the JWT to get yacht_id
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
 
-    // Call the hybrid search function
-    const { data, error } = await supabase.rpc('search_email_hybrid', {
-      p_yacht_id: targetYachtId,
-      p_embedding: queryEmbedding,
-      p_entity_keywords: [], // Could extract keywords from query
-      p_date_from: null,
-      p_date_to: null,
-      p_limit: limit,
-      p_similarity_threshold: 0.1, // Low threshold - ranking handles relevance
-    });
+      // Try to get session from cookie
+      const cookieHeader = request.headers.get('cookie') || '';
+      const sessionCookie = cookieHeader.split(';').find(c =>
+        c.trim().startsWith('sb-') && c.includes('auth-token')
+      );
 
-    if (error) {
-      console.error('[email/search] RPC error:', error);
+      if (sessionCookie) {
+        // Extract token from cookie
+        const tokenMatch = sessionCookie.match(/base64-([^,]+)/);
+        if (tokenMatch) {
+          try {
+            const decoded = Buffer.from(tokenMatch[1], 'base64').toString('utf-8');
+            const parsed = JSON.parse(decoded);
+            token = parsed.access_token;
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+
+    if (!token) {
       return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
+        { error: 'Authentication required' },
+        { status: 401 }
       );
     }
 
+    // Build query params for Python backend
+    const params = new URLSearchParams({
+      q: query,
+      limit: String(limit),
+    });
+
+    // Call Python backend
+    const response = await fetch(`${RENDER_API_URL}/email/search?${params}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      console.error('[api/email/search] Backend error:', response.status, error);
+      return NextResponse.json(
+        { error: error.detail || error.message || 'Search failed' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+
+    // Transform response to match frontend expectations
+    // Python returns { results: [...], telemetry: {...} }
     return NextResponse.json({
-      results: data || [],
+      results: data.results || [],
       query,
-      embedding_tokens: embeddingResponse.usage?.total_tokens || 0,
+      telemetry: data.telemetry,
     });
   } catch (error) {
-    console.error('[email/search] Error:', error);
+    console.error('[api/email/search] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
