@@ -44,11 +44,8 @@ jobs:
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
           TENANT_SUPABASE_SERVICE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
           YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
-          # Use stable test users (no auto-provisioning to avoid pollution)
-          CREATE_USERS: 'false'
-          STAGING_CREW_EMAIL: ${{ secrets.STAGING_CREW_EMAIL }}
-          STAGING_HOD_EMAIL: ${{ secrets.STAGING_HOD_EMAIL }}
-          STAGING_CAPTAIN_EMAIL: ${{ secrets.STAGING_CAPTAIN_EMAIL }}
+          # Auto-provision test users (stable TENANT users used as assignee targets)
+          CREATE_USERS: 'true'
           STAGING_USER_PASSWORD: ${{ secrets.STAGING_USER_PASSWORD }}
         run: |
           python tests/ci/staging_work_orders_acceptance.py
