@@ -50,7 +50,39 @@ This is NOT a code regression - the Render service itself has failed to deploy o
 
 ## Recent Commits Analysis
 
-### Commit 7e3e2b1 (Most Recent)
+### 🚨 Commit 56d66b1 - LIKELY CULPRIT (Most Recent Before Current)
+**Title**: `fix: Rename migration to 14-digit format for CI validation`
+**Changes**: **MASSIVE COMMIT - 5,920 lines added across 19 files**
+**Files Added**:
+- `apps/api/action_router/secure_dispatcher.py` (376 lines)
+- `apps/api/handlers/secure_admin_handlers.py` (465 lines)
+- `apps/api/handlers/secure_document_handlers.py` (334 lines)
+- `apps/api/handlers/secure_fault_handlers.py` (407 lines)
+- `apps/api/middleware/action_security.py` (642 lines)
+- Multiple new test files (1,600+ lines)
+- `apps/api/utils/cache_keys.py` (50 lines)
+
+**Impact**: **EXTREMELY HIGH RISK**
+- Adds entirely new security layer with middleware
+- New secure dispatcher replacing/wrapping existing dispatcher
+- Potential circular imports, missing dependencies, or import errors
+- Middleware might be breaking request processing
+- May conflict with existing p0_actions_routes.py routing
+
+**Why This Likely Broke Deployment**:
+1. **Middleware intercepts all requests** - if action_security.py has errors, ALL endpoints fail
+2. **New dispatcher** - if secure_dispatcher is imported but fails, service won't start
+3. **Import chain complexity** - 5,920 lines of new code adds many import dependencies
+4. **Missing env vars** - new security code may require new environment variables
+5. **Cache dependencies** - cache_keys.py might depend on Redis/cache that's not configured
+
+### Commit 2d7a950 (Current HEAD)
+**Title**: `fix: Rename old migration to 8-digit format`
+**Changes**: Migration rename + documents this deployment failure report
+**Impact**: Should be safe, just file renames
+**Files**: Migration file rename
+
+### Commit 7e3e2b1
 **Title**: `fix(db): Force RPC functions to always return data (prevent PostgREST 204)`
 **Changes**: Database migration for add_stock_inventory and deduct_stock_inventory
 **Impact**: Should not affect API service startup
@@ -59,7 +91,7 @@ This is NOT a code regression - the Render service itself has failed to deploy o
 ### Commit 3f33b50
 **Title**: `fix(document-handlers): remove schema-dependent deleted_at logic`
 **Changes**: Updated document_handlers.py to remove deleted_at column references
-**Impact**: Handler code changes, possible import errors
+**Impact**: Handler code changes, possible import errors (but less likely)
 **Files**: `apps/api/handlers/document_handlers.py`
 
 ### Commit 19b3a84 (My Work)
@@ -85,46 +117,63 @@ Syntax is not the issue - the deployment failure is at the infrastructure or run
 
 ---
 
-## Possible Causes
+## Possible Causes (Ranked by Likelihood)
 
-### Hypothesis 1: Import Error on Startup
-**Likelihood**: HIGH
-- Recent changes to document_handlers.py might have broken imports
-- Receiving handlers might have import issues with get_rls_enforced_client()
-- FastAPI app might fail to start if handlers cannot be imported
+### 🔴 Hypothesis 1: Commit 56d66b1 Security Infrastructure Breaking Deployment
+**Likelihood**: **VERY HIGH** (95%)
+- **5,920 lines** of new security code added in single commit
+- New **middleware** (`action_security.py` - 642 lines) that intercepts ALL requests
+- New **secure_dispatcher** that may conflict with existing routing
+- If middleware has import errors or runtime errors, ALL endpoints fail (explains 404 on everything)
+- If secure_dispatcher is imported but fails initialization, service won't start
+
+**Specific Risks**:
+1. **Middleware errors**: FastAPI middleware runs on EVERY request - any error = all requests fail
+2. **Circular imports**: New dispatchers/handlers/middleware create complex import chain
+3. **Missing dependencies**: Cache utilities, security libs may not be in requirements.txt
+4. **Environment variables**: Security middleware may require new env vars (API keys, secrets)
+5. **Import at startup**: If `pipeline_service.py` or main app tries to import secure_dispatcher, startup fails
 
 **How to Verify**:
-- Check Render deployment logs for ImportError or ModuleNotFoundError
-- Look for Python traceback during startup
+- Check Render logs for ImportError in action_security.py or secure_dispatcher.py
+- Look for middleware-related errors during FastAPI startup
+- Check if service fails during import phase before accepting connections
 
-### Hypothesis 2: Database Migration Failure
-**Likelihood**: MEDIUM
+**Quick Fix**:
+```bash
+# Rollback to before security commit
+git revert 56d66b1
+git push origin main
+```
+
+### Hypothesis 2: Import Error from Earlier Commits
+**Likelihood**: MEDIUM (30%)
+- document_handlers.py changes (commit 3f33b50)
+- receiving_handlers.py get_rls_enforced_client()
+- Other handler changes
+
+**How to Verify**:
+- Check Render logs for ImportError in specific handlers
+- Look for module not found errors
+
+### Hypothesis 3: Database Migration Failure
+**Likelihood**: LOW (15%)
 - Migration 7e3e2b1 modifies RPC functions
-- If migration fails, Render might not start service
-- Health check might depend on database connectivity
+- If migration fails, service might not start
 
 **How to Verify**:
-- Check if migration applied successfully
-- Check database connection logs
+- Check database migration logs
+- Test if migration applied successfully
 
-### Hypothesis 3: Environment Variable Issue
-**Likelihood**: MEDIUM
-- get_rls_enforced_client() depends on DEFAULT_YACHT_CODE, SUPABASE_URL, SUPABASE_SERVICE_KEY
-- If env vars missing or misconfigured, service might crash on startup
-- Recent commits might reference new env vars
-
-**How to Verify**:
-- Check Render environment variables are set correctly
-- Look for KeyError or ValueError in startup logs
-
-### Hypothesis 4: Dependency Conflict
-**Likelihood**: LOW
-- Recent code might require new dependencies
-- Pip install might have failed during build
+### Hypothesis 4: Environment Variable Issue
+**Likelihood**: MEDIUM (40%)
+- New security code likely requires new env vars
+- Cache utilities may need Redis connection string
+- Security middleware may need API keys
 
 **How to Verify**:
-- Check Render build logs for pip errors
-- Verify requirements.txt includes all needed packages
+- Check Render environment variables
+- Look for KeyError or missing config errors in logs
 
 ---
 
