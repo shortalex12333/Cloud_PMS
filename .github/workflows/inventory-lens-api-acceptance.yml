@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio httpx python-dotenv asyncpg pyjwt requests supabase
+          pip install pytest pytest-asyncio httpx python-dotenv asyncpg pyjwt requests
 
       - name: Clock sanity check
         run: |
@@ -57,14 +57,6 @@ jobs:
           STAGING_USER_PASSWORD: ${{ secrets.STAGING_USER_PASSWORD }}
         run: |
           python tests/ci/generate_fresh_jwts.py
-
-      - name: Seed staging test data
-        env:
-          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
-          MASTER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
-        run: |
-          python tests/ci/seed_staging_test_data.py
 
       - name: Run API acceptance tests against Render staging
         working-directory: tests/inventory_lens

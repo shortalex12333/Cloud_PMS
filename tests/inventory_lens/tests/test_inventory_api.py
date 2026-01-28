@@ -91,33 +91,37 @@ def make_request(
 
 @pytest.fixture
 def test_part_id():
-    """Return a test part ID that exists in staging."""
-    # Use seeded test part (created by seed_staging_test_data.py in CI)
-    return os.getenv("TEST_PART_CONSUMABLE", "00000000-0000-4000-8000-000000000001")
+    """Return test part ID for consumable part (100 units @ engine_room)."""
+    # Fixed UUID - part exists in staging database with 100 units on_hand
+    return "00000000-0000-4000-8000-000000000001"
 
 
 @pytest.fixture
 def test_part_adjustable():
-    """Return a test part ID for stock adjustment tests."""
-    return os.getenv("TEST_PART_ADJUSTABLE", "00000000-0000-4000-8000-000000000002")
+    """Return test part ID for adjustable part (50 units @ engine_room)."""
+    # Fixed UUID - part exists in staging database with 50 units on_hand
+    return "00000000-0000-4000-8000-000000000002"
 
 
 @pytest.fixture
 def test_part_receivable():
-    """Return a test part ID for receive tests (starts with 0 stock)."""
-    return os.getenv("TEST_PART_RECEIVABLE", "00000000-0000-4000-8000-000000000003")
+    """Return test part ID for receivable part (0 units @ engine_room)."""
+    # Fixed UUID - part exists in staging database with 0 units on_hand
+    return "00000000-0000-4000-8000-000000000003"
 
 
 @pytest.fixture
 def test_part_low_stock():
-    """Return a test part ID with low stock for insufficient stock tests."""
-    return os.getenv("TEST_PART_LOW_STOCK", "00000000-0000-4000-8000-000000000004")
+    """Return test part ID for low stock part (2 units @ engine_room)."""
+    # Fixed UUID - part exists in staging database with 2 units on_hand
+    return "00000000-0000-4000-8000-000000000004"
 
 
 @pytest.fixture
 def test_part_transferable():
-    """Return a test part ID for transfer tests."""
-    return os.getenv("TEST_PART_TRANSFERABLE", "00000000-0000-4000-8000-000000000005")
+    """Return test part ID for transferable part (25 units @ engine_room)."""
+    # Fixed UUID - part exists in staging database with 25 units on_hand
+    return "00000000-0000-4000-8000-000000000005"
 
 
 @pytest.fixture
