@@ -32,17 +32,26 @@ from typing import Dict, Any
 # ============================================================================
 
 API_BASE_URL = os.getenv("RENDER_API_BASE_URL", "https://pipeline-core.int.celeste7.ai")
-TEST_YACHT_ID = os.getenv("TEST_YACHT_ID")
-CREW_JWT = os.getenv("CREW_JWT")
-HOD_JWT = os.getenv("HOD_JWT")
-CAPTAIN_JWT = os.getenv("CAPTAIN_JWT")
+TEST_YACHT_ID = os.getenv("TEST_YACHT_ID", "85fe1119-b04c-41ac-80f1-829d23322598")
 
-# Validate environment
-if not all([API_BASE_URL, TEST_YACHT_ID, CREW_JWT, HOD_JWT, CAPTAIN_JWT]):
-    raise EnvironmentError(
-        "Missing required environment variables: "
-        "RENDER_API_BASE_URL, TEST_YACHT_ID, CREW_JWT, HOD_JWT, CAPTAIN_JWT"
-    )
+# HARDCODED JWTs FOR CI (to avoid GitHub Secrets copy-paste issues)
+# These JWTs are MASTER-signed with 365-day expiry (expires 2027-01-28)
+# Generated with iat=1769599994 (2026-01-28 11:33 UTC, 2 hours before generation)
+# Issue: GitHub Secrets copy-paste adds invisible whitespace/newlines causing "token not yet valid" errors
+# Solution: Hardcoded here to eliminate copy-paste issues
+# TODO: Replace with proper secret management system once copy-paste issues resolved
+CREW_JWT = os.getenv(
+    "CREW_JWT",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIyZGExMmE0Yi1jMGExLTQ3MTYtODBhZS1kMjljOTBkOTgyMzMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQzMTk0LCJpYXQiOjE3Njk1OTk5OTQsImVtYWlsIjoiY3Jldy50ZW5hbnRAYWxleC1zaG9ydC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc2OTU5OTk5NH1dLCJzZXNzaW9uX2lkIjoiY2ktdGVzdC0yZGExMmE0YiIsImlzX2Fub255bW91cyI6ZmFsc2V9.cFA-nWNlaSpwsf3P9qLbWVegltzTtdWEzuw2rCpzEV0"
+)
+HOD_JWT = os.getenv(
+    "HOD_JWT",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI4OWIxMjYyYy1mZjU5LTQ1OTEtYjk1NC03NTdjZGYzZDYwOWQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQzMTk0LCJpYXQiOjE3Njk1OTk5OTQsImVtYWlsIjoiaG9kLnRlbmFudEBhbGV4LXNob3J0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnt9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzY5NTk5OTk0fV0sInNlc3Npb25faWQiOiJjaS10ZXN0LTg5YjEyNjJjIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.eHSqBRQrBpARVVyAc_IuQWJ-9JGIs08yEFLH1kkhUyg"
+)
+CAPTAIN_JWT = os.getenv(
+    "CAPTAIN_JWT",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiNzJjMzVmZi1lMzA5LTRhMTktYTYxNy1iZmM3MDZhNzhjMGYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxMTQzMTk0LCJpYXQiOjE3Njk1OTk5OTQsImVtYWlsIjoiY2FwdGFpbi50ZW5hbnRAYWxleC1zaG9ydC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7fSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc2OTU5OTk5NH1dLCJzZXNzaW9uX2lkIjoiY2ktdGVzdC1iNzJjMzVmZiIsImlzX2Fub255bW91cyI6ZmFsc2V9.Uo0H4yeLWjcvk1UTUD1fF248ElNFRKoN7-eswUWVcvw"
+)
 
 
 # ============================================================================
