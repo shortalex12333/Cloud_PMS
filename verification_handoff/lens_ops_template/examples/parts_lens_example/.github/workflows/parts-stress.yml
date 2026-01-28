@@ -1,0 +1,27 @@
+name: parts - Stress Testing
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
+  workflow_dispatch:
+
+jobs:
+  stress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Run Stress Tests
+        env:
+          STAGING_API_URL: https://pipeline-core.int.celeste7.ai
+          STAGING_JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+        run: python3 tests/stress/parts_actions_endpoints.py
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: parts-stress-results
+          path: verification_handoff/phase*/*STRESS*.md

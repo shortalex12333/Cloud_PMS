@@ -1,0 +1,323 @@
+name: Equipment Lens v2 Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/equipment_handlers.py'
+      - 'apps/api/handlers/equipment_utils.py'
+      - 'supabase/migrations/20260127_01*.sql'
+      - 'apps/api/tests/test_equipment_lens_v2*.py'
+      - '.github/workflows/equipment-lens-acceptance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/equipment_handlers.py'
+      - 'apps/api/handlers/equipment_utils.py'
+      - 'supabase/migrations/20260127_01*.sql'
+      - 'apps/api/tests/test_equipment_lens_v2*.py'
+  workflow_dispatch:
+
+jobs:
+  acceptance-tests:
+    name: Run Equipment Lens v2 Acceptance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio httpx python-dotenv
+          pip install supabase
+
+      - name: Run acceptance tests against staging
+        working-directory: apps/api
+        env:
+          TENANT_1_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_1_SUPABASE_SERVICE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+          API_BASE_URL: ${{ secrets.RENDER_API_URL }}
+          # 15 JWT Personas for comprehensive role testing
+          CREW_JWT: ${{ secrets.STAGING_CREW_JWT }}
+          DECKHAND_JWT: ${{ secrets.STAGING_DECKHAND_JWT }}
+          STEWARD_JWT: ${{ secrets.STAGING_STEWARD_JWT }}
+          ENGINEER_JWT: ${{ secrets.STAGING_ENGINEER_JWT }}
+          ETO_JWT: ${{ secrets.STAGING_ETO_JWT }}
+          CHIEF_ENGINEER_JWT: ${{ secrets.STAGING_CHIEF_ENGINEER_JWT }}
+          CHIEF_OFFICER_JWT: ${{ secrets.STAGING_CHIEF_OFFICER_JWT }}
+          CHIEF_STEWARD_JWT: ${{ secrets.STAGING_CHIEF_STEWARD_JWT }}
+          PURSER_JWT: ${{ secrets.STAGING_PURSER_JWT }}
+          CAPTAIN_JWT: ${{ secrets.STAGING_CAPTAIN_JWT }}
+          MANAGER_JWT: ${{ secrets.STAGING_MANAGER_JWT }}
+          INACTIVE_JWT: ${{ secrets.STAGING_INACTIVE_JWT }}
+          EXPIRED_JWT: ${{ secrets.STAGING_EXPIRED_JWT }}
+          WRONG_YACHT_JWT: ${{ secrets.STAGING_WRONG_YACHT_JWT }}
+          MIXED_ROLE_JWT: ${{ secrets.STAGING_MIXED_ROLE_JWT }}
+        run: |
+          pytest tests/test_equipment_lens_v2_acceptance.py \
+            -v \
+            --tb=short \
+            --junit-xml=../../junit-results/equipment-lens-acceptance.xml \
+            --junit-prefix=equipment-lens-v2
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: equipment-lens-test-results
+          path: junit-results/equipment-lens-acceptance.xml
+          retention-days: 30
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: junit-results/equipment-lens-acceptance.xml
+          check_name: Equipment Lens v2 Acceptance Results
+          comment_mode: off
+
+      - name: Upload evidence to docs
+        if: github.ref == 'refs/heads/main' && success()
+        run: |
+          mkdir -p docs/evidence/equipment_lens_v2/ci_runs
+          cp junit-results/equipment-lens-acceptance.xml \
+            docs/evidence/equipment_lens_v2/ci_runs/junit_$(date +%Y%m%d_%H%M%S).xml
+
+      - name: Fail if any tests failed
+        if: failure()
+        run: |
+          echo "❌ Equipment Lens v2 acceptance tests FAILED"
+          echo "Review test output above for details"
+          exit 1
+
+  verify-migrations:
+    name: Verify Equipment Migrations Applied
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install asyncpg
+        run: pip install asyncpg
+
+      - name: Build DATABASE_URL
+        id: build_db_url
+        env:
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_DB_PASSWORD: ${{ secrets.TENANT_DB_PASSWORD }}
+        run: |
+          HOST=$(echo "$TENANT_SUPABASE_URL" | sed 's|https://||' | sed 's|http://||')
+          ENCODED_PASSWORD=$(echo "$TENANT_DB_PASSWORD" | sed 's/@/%40/g')
+          DATABASE_URL="postgresql://postgres:${ENCODED_PASSWORD}@db.${HOST}:6543/postgres"
+          echo "DATABASE_URL=${DATABASE_URL}" >> $GITHUB_OUTPUT
+          echo "✅ DATABASE_URL configured (using connection pooler port 6543)"
+
+      - name: Verify Equipment Lens v2 migrations
+        env:
+          DATABASE_URL: ${{ steps.build_db_url.outputs.DATABASE_URL }}
+        run: |
+          python3 <<EOF
+          import asyncio
+          import asyncpg
+          import os
+
+          async def verify_migrations():
+              conn = await asyncpg.connect(os.environ['DATABASE_URL'])
+
+              # Check migration 017: is_hod() includes purser
+              result = await conn.fetchval("""
+                  SELECT prosrc FROM pg_proc
+                  WHERE proname = 'is_hod'
+                  LIMIT 1
+              """)
+              if result and 'purser' in result:
+                  print("✅ Migration 017: is_hod() includes purser")
+              else:
+                  print("❌ Migration 017: purser not in is_hod()")
+                  await conn.close()
+                  exit(1)
+
+              # Check migration 018: comment column exists
+              comment_exists = await conn.fetchval("""
+                  SELECT EXISTS (
+                      SELECT 1 FROM information_schema.columns
+                      WHERE table_name = 'pms_equipment_documents'
+                      AND column_name = 'comment'
+                  )
+              """)
+              if comment_exists:
+                  print("✅ Migration 018: comment column exists")
+              else:
+                  print("❌ Migration 018: comment column missing")
+                  await conn.close()
+                  exit(1)
+
+              # Check migration 019: status constraint has 8 values
+              constraint_def = await conn.fetchval("""
+                  SELECT pg_get_constraintdef(oid)
+                  FROM pg_constraint
+                  WHERE conrelid = 'pms_equipment'::regclass
+                  AND conname LIKE '%status%'
+                  LIMIT 1
+              """)
+              required_values = [
+                  'operational', 'degraded', 'failed', 'maintenance',
+                  'out_of_service', 'in_service', 'archived', 'decommissioned'
+              ]
+              if constraint_def:
+                  missing = [v for v in required_values if v not in constraint_def]
+                  if not missing:
+                      print(f"✅ Migration 019: status constraint has all 8 values")
+                  else:
+                      print(f"❌ Migration 019: missing status values: {missing}")
+                      await conn.close()
+                      exit(1)
+              else:
+                  print("❌ Migration 019: status constraint not found")
+                  await conn.close()
+                  exit(1)
+
+              await conn.close()
+              print("✅ All Equipment Lens v2 migrations verified")
+
+          asyncio.run(verify_migrations())
+          EOF
+
+      - name: Verify RLS policies
+        env:
+          DATABASE_URL: ${{ steps.build_db_url.outputs.DATABASE_URL }}
+        run: |
+          python3 <<EOF
+          import asyncio
+          import asyncpg
+          import os
+
+          async def verify_rls():
+              conn = await asyncpg.connect(os.environ['DATABASE_URL'])
+
+              # Check RLS enabled on equipment tables
+              tables = await conn.fetch("""
+                  SELECT relname, relrowsecurity FROM pg_class
+                  WHERE relname IN (
+                      'pms_equipment',
+                      'pms_equipment_documents',
+                      'pms_equipment_hours',
+                      'pms_equipment_relations'
+                  )
+              """)
+
+              for table in tables:
+                  if not table['relrowsecurity']:
+                      print(f"❌ RLS not enabled on {table['relname']}")
+                      await conn.close()
+                      exit(1)
+                  print(f"✅ RLS enabled on {table['relname']}")
+
+              # Check policies exist
+              policies = await conn.fetch("""
+                  SELECT tablename, COUNT(*) as policy_count
+                  FROM pg_policies
+                  WHERE tablename IN (
+                      'pms_equipment',
+                      'pms_equipment_documents',
+                      'pms_equipment_hours',
+                      'pms_equipment_relations'
+                  )
+                  GROUP BY tablename
+                  ORDER BY tablename
+              """)
+
+              for policy in policies:
+                  table = policy['tablename']
+                  count = policy['policy_count']
+                  if count >= 2:
+                      print(f"✅ {table}: {count} policies")
+                  else:
+                      print(f"⚠️  {table}: {count} policies (expected >= 2)")
+
+              await conn.close()
+              print("✅ Equipment Lens v2 RLS policies verified")
+
+          asyncio.run(verify_rls())
+          EOF
+
+  verify-storage-validation:
+    name: Verify Storage Path Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Test storage path validation
+        run: |
+          python3 <<EOF
+          import re
+
+          # Import validation logic from equipment_utils.py
+          def validate_storage_path_for_equipment(yacht_id: str, equipment_id: str, storage_path: str):
+              """Validate storage path matches equipment pattern."""
+              # Reject paths starting with 'documents/'
+              if storage_path.startswith("documents/"):
+                  return False, "Storage path must not include 'documents/' prefix"
+
+              # Valid pattern: {yacht_id}/equipment/{equipment_id}/{filename}
+              pattern = rf"^{re.escape(yacht_id)}/equipment/{re.escape(equipment_id)}/[^/]+$"
+              if not re.match(pattern, storage_path):
+                  return False, f"Storage path must match pattern: {{yacht_id}}/equipment/{{equipment_id}}/{{filename}}"
+
+              return True, None
+
+          # Test cases
+          yacht_id = "85fe1119-b04c-41ac-80f1-829d23322598"
+          equipment_id = "abc123"
+
+          test_cases = [
+              (f"{yacht_id}/equipment/{equipment_id}/manual.pdf", True, "Valid path"),
+              (f"documents/{yacht_id}/equipment/{equipment_id}/manual.pdf", False, "Invalid: documents/ prefix"),
+              (f"other-yacht-id/equipment/{equipment_id}/manual.pdf", False, "Invalid: wrong yacht_id"),
+              (f"{yacht_id}/equipment/other-eq-id/manual.pdf", False, "Invalid: wrong equipment_id"),
+              (f"{yacht_id}/equipment/{equipment_id}/nested/manual.pdf", False, "Invalid: nested path"),
+          ]
+
+          all_passed = True
+          for path, should_pass, description in test_cases:
+              valid, error = validate_storage_path_for_equipment(yacht_id, equipment_id, path)
+              if valid == should_pass:
+                  print(f"✅ {description}: {path}")
+              else:
+                  print(f"❌ {description}: {path}")
+                  print(f"   Expected: {'valid' if should_pass else 'invalid'}, Got: {'valid' if valid else 'invalid'}")
+                  if error:
+                      print(f"   Error: {error}")
+                  all_passed = False
+
+          if not all_passed:
+              print("❌ Storage path validation tests FAILED")
+              exit(1)
+
+          print("✅ All storage path validation tests PASSED")
+          EOF

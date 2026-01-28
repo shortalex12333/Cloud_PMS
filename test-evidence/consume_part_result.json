@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "transaction_id": "5d54be70-ddee-409e-8b3d-33009d2f54a2",
+  "part_id": "8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3",
+  "quantity_consumed": 1,
+  "new_stock_level": 13,
+  "message": "Consumed 1 units",
+  "execution_id": "41ec3e6d-c7eb-4c6c-add7-f66e511b0c2c",
+  "action": "consume_part"
+}

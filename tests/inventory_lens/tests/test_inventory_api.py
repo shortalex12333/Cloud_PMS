@@ -92,9 +92,32 @@ def make_request(
 @pytest.fixture
 def test_part_id():
     """Return a test part ID that exists in staging."""
-    # Use a known part ID from staging, or create one via API
-    # For now, assume parts exist and tests will create as needed
-    return str(uuid4())
+    # Use seeded test part (created by seed_staging_test_data.py in CI)
+    return os.getenv("TEST_PART_CONSUMABLE", "00000000-0000-4000-8000-000000000001")
+
+
+@pytest.fixture
+def test_part_adjustable():
+    """Return a test part ID for stock adjustment tests."""
+    return os.getenv("TEST_PART_ADJUSTABLE", "00000000-0000-4000-8000-000000000002")
+
+
+@pytest.fixture
+def test_part_receivable():
+    """Return a test part ID for receive tests (starts with 0 stock)."""
+    return os.getenv("TEST_PART_RECEIVABLE", "00000000-0000-4000-8000-000000000003")
+
+
+@pytest.fixture
+def test_part_low_stock():
+    """Return a test part ID with low stock for insufficient stock tests."""
+    return os.getenv("TEST_PART_LOW_STOCK", "00000000-0000-4000-8000-000000000004")
+
+
+@pytest.fixture
+def test_part_transferable():
+    """Return a test part ID for transfer tests."""
+    return os.getenv("TEST_PART_TRANSFERABLE", "00000000-0000-4000-8000-000000000005")
 
 
 @pytest.fixture
@@ -133,12 +156,12 @@ class TestRoleBasedAccess:
         assert response.status_code in [200, 409], \
             f"Expected 200 or 409, got {response.status_code}: {response.text}"
 
-    def test_crew_cannot_adjust_stock(self, test_part_id):
+    def test_crew_cannot_adjust_stock(self, test_part_adjustable):
         """Crew users cannot adjust stock (requires HOD/manager role)."""
         response = make_request(
             action="adjust_stock_quantity",
             payload={
-                "part_id": test_part_id,
+                "part_id": test_part_adjustable,
                 "quantity_change": 10,
                 "reason": "Test adjustment",
                 "signature": {
@@ -154,12 +177,12 @@ class TestRoleBasedAccess:
         assert response.status_code == 403, \
             f"Expected 403, got {response.status_code}: {response.text}"
 
-    def test_hod_can_receive_part(self, test_part_id, test_location_id, idempotency_key):
+    def test_hod_can_receive_part(self, test_part_receivable, test_location_id, idempotency_key):
         """HOD users can receive parts."""
         response = make_request(
             action="receive_part",
             payload={
-                "part_id": test_part_id,
+                "part_id": test_part_receivable,
                 "to_location_id": test_location_id,
                 "quantity": 10,
                 "idempotency_key": idempotency_key
@@ -172,12 +195,12 @@ class TestRoleBasedAccess:
         assert response.status_code in [200, 400, 404, 409], \
             f"Expected 2xx/4xx (not 403), got {response.status_code}: {response.text}"
 
-    def test_captain_can_adjust_stock(self, test_part_id):
+    def test_captain_can_adjust_stock(self, test_part_adjustable):
         """Captain users (HOD role) can adjust stock."""
         response = make_request(
             action="adjust_stock_quantity",
             payload={
-                "part_id": test_part_id,
+                "part_id": test_part_adjustable,
                 "quantity_change": 5,
                 "reason": "Test adjustment by captain",
                 "signature": {
@@ -202,12 +225,12 @@ class TestRoleBasedAccess:
 class TestIdempotency:
     """Test idempotency enforcement through API."""
 
-    def test_duplicate_receive_blocked(self, test_part_id, test_location_id):
+    def test_duplicate_receive_blocked(self, test_part_receivable, test_location_id):
         """Duplicate receive with same idempotency_key should return 409."""
         idempotency_key = str(uuid4())
 
         payload = {
-            "part_id": test_part_id,
+            "part_id": test_part_receivable,
             "to_location_id": test_location_id,
             "quantity": 5,
             "idempotency_key": idempotency_key
@@ -262,14 +285,14 @@ class TestValidation:
         assert response.status_code == 400, \
             f"Expected 400, got {response.status_code}: {response.text}"
 
-    def test_transfer_same_location_rejected(self, test_part_id):
+    def test_transfer_same_location_rejected(self, test_part_transferable):
         """Transferring to same location should return 400."""
         location_id = str(uuid4())
 
         response = make_request(
             action="transfer_part",
             payload={
-                "part_id": test_part_id,
+                "part_id": test_part_transferable,
                 "from_location_id": location_id,
                 "to_location_id": location_id,
                 "quantity": 5
@@ -304,12 +327,12 @@ class TestValidation:
 class TestSignatures:
     """Test signature requirements for SIGNED actions."""
 
-    def test_adjust_stock_without_signature_rejected(self, test_part_id):
+    def test_adjust_stock_without_signature_rejected(self, test_part_adjustable):
         """adjust_stock_quantity without signature should return 400."""
         response = make_request(
             action="adjust_stock_quantity",
             payload={
-                "part_id": test_part_id,
+                "part_id": test_part_adjustable,
                 "quantity_change": 10,
                 "reason": "Test adjustment"
                 # Missing 'signature' field
@@ -349,13 +372,13 @@ class TestSignatures:
 class TestErrorMapping:
     """Test HTTP status code mapping for business logic errors."""
 
-    def test_insufficient_stock_returns_409(self, test_part_id):
+    def test_insufficient_stock_returns_409(self, test_part_low_stock):
         """Consuming more than available should return 409 (conflict)."""
         # Try to consume a very large quantity (unlikely to be available)
         response = make_request(
             action="consume_part",
             payload={
-                "part_id": test_part_id,
+                "part_id": test_part_low_stock,
                 "quantity": 999999,
                 "work_order_id": str(uuid4())
             },
