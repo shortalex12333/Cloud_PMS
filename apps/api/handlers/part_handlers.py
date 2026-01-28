@@ -486,17 +486,26 @@ class PartHandlers:
 
         # INSERT transaction record for audit trail
         txn_id = str(uuid_lib.uuid4())
-        self.db.table("pms_inventory_transactions").insert({
-            "id": txn_id,
-            "yacht_id": yacht_id,
-            "stock_id": stock_id,
-            "transaction_type": TRANSACTION_TYPES["consumed"],
-            "quantity_change": -quantity,
-            "quantity_before": qty_before,
-            "quantity_after": qty_after,
-            "user_id": user_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
+        try:
+            self.db.table("pms_inventory_transactions").insert({
+                "id": txn_id,
+                "yacht_id": yacht_id,
+                "stock_id": stock_id,
+                "transaction_type": TRANSACTION_TYPES["consumed"],
+                "quantity_change": -quantity,
+                "quantity_before": qty_before,
+                "quantity_after": qty_after,
+                "user_id": user_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as e:
+            # Check if PostgREST 204 (No Content) - insert succeeded but no data returned
+            error_str = str(e).lower()
+            if "204" in error_str or "missing response" in error_str:
+                logger.info(f"PostgREST 204 on transaction insert (txn_id={txn_id}) - insert succeeded but no data returned")
+                # Insert succeeded, continue with audit log and return
+            else:
+                raise
 
         # Audit log (non-signed, signature={} per spec)
         self._write_audit_log(
