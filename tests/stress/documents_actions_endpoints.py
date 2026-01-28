@@ -172,6 +172,8 @@ def run_stress_tests() -> Dict:
     endpoint_summaries = []
 
     # Test endpoints
+    # NOTE: get_document_url excluded - requires existing document_id
+    #       Tested in staging acceptance with real documents instead
     endpoints = [
         {
             "name": "list_actions",
@@ -187,16 +189,6 @@ def run_stress_tests() -> Dict:
                 "action": "list_documents",
                 "context": {"yacht_id": YACHT_ID},
                 "payload": {"limit": 10}
-            }
-        },
-        {
-            "name": "execute_get_document_url",
-            "endpoint": "/v1/actions/execute",
-            "method": "POST",
-            "payload": {
-                "action": "get_document_url",
-                "context": {"yacht_id": YACHT_ID},
-                "payload": {"document_id": "00000000-0000-0000-0000-000000000001"}  # Will likely 404, but tests endpoint availability
             }
         }
     ]
