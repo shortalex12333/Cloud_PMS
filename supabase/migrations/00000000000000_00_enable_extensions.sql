@@ -4,8 +4,13 @@
 -- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Enable pgvector for embeddings
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Enable pgvector for embeddings (skip if already exists)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        CREATE EXTENSION vector;
+    END IF;
+END $$;
 
 -- Enable pg_trgm for text search optimization
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

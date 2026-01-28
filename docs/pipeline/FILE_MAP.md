@@ -57,9 +57,12 @@ This map reflects ACTUAL file locations after completing the Certificates lens. 
 
 | File | Purpose |
 |------|---------|
-| `docs/pipeline/README.md` | Pipeline overview |
-| `docs/pipeline/STAGES.md` | 6-stage process |
-| `docs/pipeline/LESSONS_LEARNED.md` | **NEW** - What went wrong and why |
+| `docs/pipeline/README.md` | Pipeline overview + reading order |
+| `docs/pipeline/STAGES.md` | 7-stage process (includes frontend) |
+| `docs/pipeline/LESSONS_LEARNED.md` | What went wrong and why |
+| `docs/pipeline/ACTION_SUGGESTIONS_CONTRACT.md` | Contract for `GET /v1/actions/list` |
+| `docs/pipeline/TEMPLATE_CHECKLIST.md` | Zero→Gold checklist |
+| `docs/pipeline/TROUBLESHOOTING.md` | Common failures and fixes |
 | `docs/pipeline/GUARDRAILS.md` | Non-negotiable rules |
 | `docs/pipeline/ACCEPTANCE_MATRIX.md` | Test expectations |
 | `docs/pipeline/RUNBOOK.md` | Commands to run |

@@ -10,23 +10,32 @@ The Inventory Lens Acceptance CI workflow (`.github/workflows/inventory-lens-acc
 Based on the secrets list provided, these are already configured:
 
 - ✅ `TENANT_SUPABASE_URL` - Tenant Supabase project URL
-- ✅ `STAGING_CREW_EMAIL` - crew.tenant@alex-short.com
-- ✅ `STAGING_HOD_EMAIL` - hod.tenant@alex-short.com
-- ✅ `STAGING_CAPTAIN_EMAIL` - captain.tenant@alex-short.com
 - ✅ `TEST_USER_YACHT_ID` - 85fe1119-b04c-41ac-80f1-829d23322598
 
 ### Need to be Added 🔧
 
-1. **`TENANT_SUPABASE_JWT_SECRET`**
-   - **Value:** `wXka4UZu4tZc8Sx/HsoMBXu/L5avLHl+xoiWAH9lBbxJdbztPhYVc+stfrJOS/mlqF3U37HUkrkAMOhkpwjRsw==`
-   - **Purpose:** Used to sign JWTs for test users
-   - **Source:** From tenant Supabase project settings
-
-2. **`TENANT_DB_PASSWORD`**
+**For Database Connection:**
+1. **`TENANT_DB_PASSWORD`**
    - **Value:** `@-Ei-9Pa.uENn6g`
-   - **Purpose:** Postgres database password for direct DB connection
+   - **Purpose:** Postgres database password for direct DB connection (tests use asyncpg)
    - **Source:** From tenant Supabase project database settings
    - **Note:** Will be URL-encoded automatically in CI (`@` → `%40`)
+
+**For Test Authentication:**
+2. **`STAGING_CREW_JWT`**
+   - **Value:** Get from `tests/inventory_lens/.env.test` (CREW_JWT)
+   - **Purpose:** JWT for crew user (6d807a66-955c-49c4-b767-8a6189c2f422)
+   - **Expires:** Typically 24 hours, regenerate as needed
+
+3. **`STAGING_HOD_JWT`**
+   - **Value:** Get from `tests/inventory_lens/.env.test` (HOD_JWT)
+   - **Purpose:** JWT for HOD user (d5873b1f-5f62-4e3e-bc78-e03978aec5ba)
+   - **Expires:** Typically 24 hours, regenerate as needed
+
+4. **`STAGING_CAPTAIN_JWT`**
+   - **Value:** Get from `tests/inventory_lens/.env.test` (CAPTAIN_JWT)
+   - **Purpose:** JWT for captain user (5af9d61d-9b2e-4db4-a54c-a3c95eec70e5)
+   - **Expires:** Typically 24 hours, regenerate as needed
 
 ## How to Add Secrets
 
@@ -35,15 +44,36 @@ Based on the secrets list provided, these are already configured:
 3. Click **New repository secret**
 4. Add each secret with the name and value above
 
-## Verification
+## Regenerating JWTs (When They Expire)
+
+JWTs typically expire after 24 hours. To regenerate them:
+
+```bash
+cd tests/inventory_lens
+export $(grep -v '^#' .env.test | xargs)
+
+# Use the JWTs from .env.test
+echo $CREW_JWT
+echo $HOD_JWT
+echo $CAPTAIN_JWT
+```
+
+Or use the JWT generation script (if you have the JWT secret):
+```bash
+cd /private/tmp/claude/.../scratchpad
+TENANT_1_SUPABASE_JWT_SECRET="..." python mint_jwts_direct.py
+```
+
+Then update the GitHub secrets with the new JWTs.
+
+## What CI Does
 
 Once secrets are added, the CI workflow will:
 
-1. **Generate JWTs** on-the-fly using the JWT secret and user emails
-2. **Build DATABASE_URL** from TENANT_SUPABASE_URL and TENANT_DB_PASSWORD
-3. **Run 16 acceptance tests** against staging tenant database
-4. **Verify migrations** (RLS policies, atomic functions)
-5. **Upload test artifacts** (JUnit XML)
+1. **Build DATABASE_URL** from TENANT_SUPABASE_URL and TENANT_DB_PASSWORD
+2. **Run 16 acceptance tests** against staging tenant database
+3. **Verify migrations** (RLS policies, atomic functions)
+4. **Upload test artifacts** (JUnit XML)
 
 ## Testing the Workflow
 
@@ -54,17 +84,12 @@ After adding secrets, test the workflow by:
 gh workflow run inventory-lens-acceptance.yml
 
 # Or create a PR that modifies inventory lens files
+git checkout -b test-ci
+touch tests/inventory_lens/tests/test_inventory_critical.py
+git add . && git commit -m "test: Trigger CI"
+git push origin test-ci
+# Create PR on GitHub
 ```
-
-## User IDs Hardcoded in Workflow
-
-The CI workflow uses these hardcoded user IDs (discovered from staging DB):
-
-- **CREW**: `6d807a66-955c-49c4-b767-8a6189c2f422`
-- **HOD**: `d5873b1f-5f62-4e3e-bc78-e03978aec5ba`
-- **CAPTAIN**: `5af9d61d-9b2e-4db4-a54c-a3c95eec70e5`
-
-These correspond to the staging users at the emails provided in GitHub secrets.
 
 ## Expected Outcome
 
@@ -76,15 +101,30 @@ These correspond to the staging users at the emails provided in GitHub secrets.
 
 ## Troubleshooting
 
-### If JWT generation fails
-- Verify `TENANT_SUPABASE_JWT_SECRET` matches the tenant project
-- Check that user IDs in workflow match actual staging users
+### If JWTs are expired
+- Regenerate them using the method above
+- Update GitHub secrets with new values
 
 ### If database connection fails
-- Verify `TENANT_DB_PASSWORD` is correct
+- Verify `TENANT_DB_PASSWORD` is correct (`@-Ei-9Pa.uENn6g`)
 - Check `TENANT_SUPABASE_URL` points to correct project (vzsohavtuotocgrfkfyd.supabase.co)
+- Password should contain `@` - it will be URL-encoded automatically
 
 ### If tests fail
 - Review test output in GitHub Actions logs
 - Check migrations are applied to staging
 - Verify RLS policies exist using the verification job output
+
+## Why Not Generate JWTs Dynamically?
+
+**Simpler approach:** Store JWTs directly as secrets (current approach)
+- ✅ No need for JWT secret in CI
+- ✅ Simpler workflow
+- ⚠️ Need to refresh JWTs when they expire (usually 24h)
+
+**Alternative:** Generate JWTs in CI
+- ✅ JWTs never expire (generated fresh each run)
+- ⚠️ Requires storing JWT secret in GitHub
+- ⚠️ More complex workflow
+
+We chose the simpler approach. If JWT expiration becomes a problem, we can switch to dynamic generation.

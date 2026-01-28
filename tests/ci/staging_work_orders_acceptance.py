@@ -203,19 +203,8 @@ def tenant_rest(method, path, params=None, body=None, anon=False):
 
 
 def get_test_fault_id(jwt):
-    """Get an existing fault_id for testing, or create one via service role."""
-    # Try to get existing open fault
-    r = tenant_rest('GET', '/rest/v1/pms_faults', params={
-        'select': 'id',
-        'status': 'eq.open',
-        'yacht_id': f'eq.{YACHT_ID}',
-        'limit': '1'
-    })
-
-    if r.status_code == 200 and r.json():
-        return r.json()[0]['id']
-
-    # Create a test fault via service role
+    """Create a fresh fault_id for testing to avoid conflicts."""
+    # Always create a fresh fault to avoid "work order already exists" errors
     fault_data = {
         'yacht_id': YACHT_ID,
         'title': f'CI Test Fault {int(time.time())}',

@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS public.email_extraction_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Ownership
-    yacht_id UUID NOT NULL REFERENCES public.yacht_registry(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
     message_id UUID NOT NULL REFERENCES public.email_messages(id) ON DELETE CASCADE,
 
     -- Job configuration
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS public.email_extraction_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Ownership
-    yacht_id UUID NOT NULL REFERENCES public.yacht_registry(id) ON DELETE CASCADE,
+    yacht_id UUID NOT NULL REFERENCES public.yachts(id) ON DELETE CASCADE,
     message_id UUID NOT NULL REFERENCES public.email_messages(id) ON DELETE CASCADE,
 
     -- Entity data

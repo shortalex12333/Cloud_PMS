@@ -90,15 +90,18 @@ When domain filter is "certificates", actions without a domain should NOT pass t
 **Plan said:**
 > Docker: `./scripts/test-local-docker.sh`
 
-**Reality:**
-This script didn't exist. Tests were run via:
+**Reality (in this repo):**
+The script exists and works: `./scripts/test-local-docker.sh`.
+You can also run tests directly with compose or pytest:
 ```bash
-cd apps/api && python3 -m pytest tests/docker/run_rls_tests.py -v
+./scripts/test-local-docker.sh
 # or
 docker-compose -f docker-compose.test.yml up --build
+# or
+cd apps/api && python3 -m pytest tests/docker/run_rls_tests.py -v
 ```
 
-**Lesson:** Verify referenced scripts exist before documenting them.
+**Lesson:** Verify referenced scripts exist before documenting them, and provide direct compose/pytest fallbacks.
 
 ---
 

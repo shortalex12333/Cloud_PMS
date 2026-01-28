@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
-Staging Certificates Acceptance
+Staging Certificates Acceptance (template)
+=========================================
+Purpose: Minimal, fast checks in staging (real JWTs) to gate merges.
 
-Runs against a live API using real JWTs from MASTER.
+Template guidance for next lenses:
+- COPY THE INTENT, NOT THE LITERAL ACTIONS. Adapt assertions to your lens domain.
+- This workflow proves:
+  - Staging uses the same role/RLS semantics as Docker
+  - Client error mapping is correct (e.g., invalid link → 400/404, not 500)
+  - A simple positive flow succeeds (e.g., update → 200)
 
 STABLE-USER MODE (default, recommended):
   - Set CREATE_USERS='false' in workflow
@@ -173,4 +180,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

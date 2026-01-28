@@ -25,12 +25,14 @@ from handlers.p1_compliance_handlers import P1ComplianceHandlers
 from handlers.p1_purchasing_handlers import P1PurchasingHandlers
 from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
 from handlers.certificate_handlers import get_certificate_handlers as _get_certificate_handlers
+from handlers.equipment_handlers import get_equipment_handlers as _get_equipment_handlers_raw
 
 # Lazy-initialized handler instances
 _p3_handlers = None
 _p1_compliance_handlers = None
 _p1_purchasing_handlers = None
 _p2_handlers = None
+_equipment_handlers = None
 
 
 def _get_p3_handlers():
@@ -63,6 +65,14 @@ def _get_p2_handlers():
     if _p2_handlers is None:
         _p2_handlers = P2MutationLightHandlers(get_supabase_client())
     return _p2_handlers
+
+
+def _get_equipment_handlers():
+    """Get lazy-initialized Equipment Lens v2 handlers."""
+    global _equipment_handlers
+    if _equipment_handlers is None:
+        _equipment_handlers = _get_equipment_handlers_raw(get_supabase_client())
+    return _equipment_handlers
 
 
 def get_supabase_client() -> Client:
@@ -643,24 +653,28 @@ async def delete_shopping_item(params: Dict[str, Any]) -> Dict[str, Any]:
 
 async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Report a new fault (UPGRADED - Phase 13).
+    Report a new fault (Fault Lens v1).
 
     Required params:
         - yacht_id: UUID
         - user_id: UUID (from JWT)
+        - equipment_id: UUID (fault MUST be attached to equipment)
         - title: str
-        - severity: str (cosmetic, minor, major, critical, safety)
+
+    Optional params:
+        - severity: str (cosmetic, minor, major, critical, safety) - default: minor
         - description: str
-        - equipment_id: UUID (optional)
-        - signature: Dict (optional, for audit trail)
 
     Returns:
         - fault_id: UUID
-        - fault_number: str (e.g., FLT-2026-001)
+        - fault_code: str (e.g., FLT-2026-000001)
         - status: str
         - audit_log_id: UUID
         - handover_item_id: UUID (if severity=critical/safety)
         - next_actions: List[str]
+
+    Fault Lens v1: All crew can report faults they observe.
+    Equipment is REQUIRED - every fault must be attached to equipment.
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
@@ -668,11 +682,17 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     # Extract required fields
     yacht_id = params["yacht_id"]
     user_id = params["user_id"]
-    title = params["title"]
+    equipment_id = params.get("equipment_id")
+    title = params.get("title")
+
+    # Validate required fields
+    if not equipment_id:
+        raise ValueError("equipment_id is required - faults must be attached to equipment")
+    if not title:
+        raise ValueError("title is required")
+
     severity = params.get("severity", "minor")
     description = params.get("description", "")
-    equipment_id = params.get("equipment_id")
-    signature = params.get("signature")
 
     # Validate severity
     valid_severities = ['cosmetic', 'minor', 'major', 'critical', 'safety']
@@ -681,17 +701,16 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
 
     # SECURITY FIX P1-003: Verify equipment belongs to yacht before INSERT
     equipment_name = None
-    if equipment_id:
-        eq_result = supabase.table("pms_equipment").select("id, name").eq(
-            "id", equipment_id
-        ).eq("yacht_id", yacht_id).execute()
+    eq_result = supabase.table("pms_equipment").select("id, name").eq(
+        "id", equipment_id
+    ).eq("yacht_id", yacht_id).execute()
 
-        if not eq_result.data:
-            raise ValueError(f"Equipment {equipment_id} not found or access denied")
+    if not eq_result.data:
+        raise ValueError(f"Equipment {equipment_id} not found or access denied")
 
-        equipment_name = eq_result.data[0]["name"]
+    equipment_name = eq_result.data[0]["name"]
 
-    # Generate fault number (FLT-2026-001 format)
+    # Generate fault_code (FLT-2026-000001 format) - matches schema
     year = datetime.utcnow().year
     count_result = supabase.table("pms_faults").select(
         "id", count="exact"
@@ -699,24 +718,27 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
         "created_at", f"{year}-01-01"
     ).execute()
     count = (count_result.count or 0) + 1
-    fault_number = f"FLT-{year}-{count:03d}"
+    fault_code = f"FLT-{year}-{count:06d}"
 
-    # Create fault record
+    # Create fault record - using ACTUAL schema columns
     fault_id = str(uuid_lib.uuid4())
     now = datetime.utcnow().isoformat()
     fault_data = {
         "id": fault_id,
         "yacht_id": yacht_id,
-        "fault_number": fault_number,
+        "equipment_id": equipment_id,
+        "fault_code": fault_code,  # Use fault_code (actual column) not fault_number
         "title": title,
         "description": description,
         "severity": severity,
         "status": "open",
-        "equipment_id": equipment_id,
-        "reported_by": user_id,
-        "reported_at": now,
+        "detected_at": now,  # Use detected_at (actual column) not reported_at
+        "metadata": {
+            "reported_by": user_id,
+            "source": "fault_lens",
+        },
         "created_at": now,
-        "updated_at": now
+        "updated_at": now,
     }
 
     result = supabase.table("pms_faults").insert(fault_data).execute()
@@ -726,63 +748,69 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
 
     fault = result.data[0]
 
-    # Create audit log entry (PHASE 13 REQUIREMENT)
+    # P1-005: Create audit log entry with signature invariant
     audit_log_id = None
     try:
+        audit_id = str(uuid_lib.uuid4())
         audit_data = {
+            "id": audit_id,
             "yacht_id": yacht_id,
             "action": "report_fault",
             "entity_type": "fault",
             "entity_id": fault_id,
             "user_id": user_id,
-            "new_values": fault,
-            "signature": signature,
-            "created_at": now
+            "old_values": None,
+            "new_values": {
+                "fault_code": fault_code,
+                "title": title,
+                "severity": severity,
+                "equipment_id": equipment_id,
+            },
+            "signature": {},  # Non-signed action - empty object NOT NULL
+            "metadata": {"source": "fault_lens"},
+            "created_at": now,
         }
         audit_result = supabase.table("pms_audit_log").insert(audit_data).execute()
         if audit_result.data:
             audit_log_id = audit_result.data[0]["id"]
     except Exception as e:
-        logger.error(f"Failed to create audit log for report_fault: {e}")
+        logger.warning(f"Audit log failed for report_fault: {e}")
 
     # If critical/safety, add to handover (PHASE 13 REQUIREMENT)
     handover_item_id = None
     if severity in ('critical', 'safety'):
         try:
-            handover_result = supabase.table("handovers").select(
-                "id"
-            ).eq("yacht_id", yacht_id).eq("status", "active").maybe_single().execute()
-
-            if handover_result.data:
-                handover_id = handover_result.data["id"]
-                handover_item_data = {
-                    "yacht_id": yacht_id,
-                    "handover_id": handover_id,
-                    "entity_type": "fault",
-                    "entity_id": fault_id,
-                    "summary": f"{severity.upper()}: {title}",
-                    "priority": "high" if severity == "critical" else "urgent",
-                    "status": "pending",
-                    "added_by": user_id,
-                    "created_at": now
-                }
-                item_result = supabase.table("handover_items").insert(handover_item_data).execute()
-                if item_result.data:
-                    handover_item_id = item_result.data[0]["id"]
+            # Try dash_handover_items table (newer schema)
+            handover_item_data = {
+                "id": str(uuid_lib.uuid4()),
+                "yacht_id": yacht_id,
+                "source_type": "fault",
+                "source_id": fault_id,
+                "title": f"{severity.upper()}: {title}",
+                "description": description[:200] if description else None,
+                "priority": "high" if severity == "critical" else "urgent",
+                "status": "pending",
+                "created_at": now,
+                "updated_at": now,
+            }
+            item_result = supabase.table("dash_handover_items").insert(handover_item_data).execute()
+            if item_result.data:
+                handover_item_id = item_result.data[0]["id"]
         except Exception as e:
             logger.warning(f"Failed to add fault to handover: {e}")
 
     # Build response
-    message = f"✓ {fault_number} reported"
+    message = f"Fault {fault_code} reported"
     if handover_item_id:
         message += " (added to handover)"
 
     return {
         "status": "success",
         "fault_id": fault_id,
-        "fault_number": fault_number,
+        "fault_code": fault_code,  # Use fault_code (actual column)
         "title": title,
         "severity": severity,
+        "equipment_id": equipment_id,
         "equipment_name": equipment_name,
         "created_at": fault["created_at"],
         "audit_log_id": audit_log_id,
@@ -792,7 +820,7 @@ async def report_fault(params: Dict[str, Any]) -> Dict[str, Any]:
             "add_fault_photo",
             "create_work_order_from_fault"
         ],
-        "message": message
+        "message": message,
     }
 
 
@@ -1027,66 +1055,156 @@ async def add_fault_note(params: Dict[str, Any]) -> Dict[str, Any]:
     Required params:
         - yacht_id: UUID
         - fault_id: UUID
-        - note: str
+        - text: str (note content)
         - user_id: UUID (from JWT)
+
+    Optional params:
+        - note_type: str (general, observation, warning, resolution, handover)
+
+    Fault Lens v1: All crew can add notes to faults.
     """
     import uuid as uuid_lib
     supabase = get_supabase_client()
 
+    yacht_id = params["yacht_id"]
+    fault_id = params["fault_id"]
+    user_id = params["user_id"]
+    text = params.get("text") or params.get("note")  # Support both param names
+    note_type = params.get("note_type", "observation")
+
+    if not text:
+        raise ValueError("Note text is required")
+
+    # P1-003: Verify fault exists and belongs to yacht
+    fault_result = supabase.table("pms_faults").select("id, title").eq(
+        "id", fault_id
+    ).eq("yacht_id", yacht_id).execute()
+
+    if not fault_result.data:
+        raise ValueError(f"Fault {fault_id} not found or access denied")
+
     note_id = str(uuid_lib.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    # Insert note into pms_notes (correct table)
     note_data = {
         "id": note_id,
-        "entity_type": "fault",
-        "entity_id": params["fault_id"],
-        "note_text": params["note"],
-        "created_by": params["user_id"],
-        "created_at": datetime.utcnow().isoformat(),
+        "yacht_id": yacht_id,
+        "fault_id": fault_id,
+        "text": text,
+        "note_type": note_type,
+        "created_by": user_id,
+        "created_at": now,
+        "updated_at": now,
     }
 
-    result = supabase.table("notes").insert(note_data).execute()
+    result = supabase.table("pms_notes").insert(note_data).execute()
+
+    if not result.data:
+        raise Exception("Failed to insert note")
+
+    # P1-005: Audit log with signature invariant
+    try:
+        audit_id = str(uuid_lib.uuid4())
+        supabase.table("pms_audit_log").insert({
+            "id": audit_id,
+            "yacht_id": yacht_id,
+            "entity_type": "note",
+            "entity_id": note_id,
+            "action": "add_fault_note",
+            "user_id": user_id,
+            "old_values": None,
+            "new_values": {
+                "fault_id": fault_id,
+                "text": text[:200] if len(text) > 200 else text,  # Truncate for audit
+                "note_type": note_type,
+            },
+            "signature": {},  # Non-signed action - empty object NOT NULL
+            "metadata": {"source": "fault_lens"},
+            "created_at": now,
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Audit log failed for add_fault_note: {e}")
 
     return {
         "note_id": note_id,
-        "fault_id": params["fault_id"],
-        "created_at": note_data["created_at"],
+        "fault_id": fault_id,
+        "created_at": now,
+        "message": "Note added successfully",
     }
 
 
 async def create_work_order_from_fault(params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create a work order from a fault.
+    Create a work order from a fault. SIGNED ACTION.
 
     Required params:
         - yacht_id: UUID
         - fault_id: UUID
         - user_id: UUID (from JWT)
+        - signature: Dict (required for signed action)
+
+    Optional params:
+        - priority: str (defaults to fault severity mapping)
+        - title: str (defaults to fault title)
+
+    Fault Lens v1: SIGNED action - requires captain/chief_engineer/manager role.
+    Updates fault status to 'work_ordered' after WO creation.
     """
     import uuid as uuid_lib
+    import hashlib
     supabase = get_supabase_client()
 
-    # Get fault details
+    yacht_id = params["yacht_id"]
+    fault_id = params["fault_id"]
+    user_id = params["user_id"]
+    signature = params.get("signature")
+
+    # Validate signature is provided for signed action
+    if not signature:
+        raise ValueError("Signature is required for create_work_order_from_fault action")
+
+    # P1-003: Get fault details and verify yacht ownership
     fault_result = supabase.table("pms_faults").select("*").eq(
-        "id", params["fault_id"]
-    ).eq("yacht_id", params["yacht_id"]).execute()
+        "id", fault_id
+    ).eq("yacht_id", yacht_id).execute()
 
     if not fault_result.data:
-        raise ValueError(f"Fault {params['fault_id']} not found or access denied")
+        raise ValueError(f"Fault {fault_id} not found or access denied")
 
     fault = fault_result.data[0]
 
-    # Create work order
+    # Check fault isn't already work_ordered or resolved
+    if fault.get("status") in ("work_ordered", "resolved", "closed"):
+        raise ValueError(f"Cannot create work order: fault is already {fault.get('status')}")
+
+    # Map fault severity to WO priority
+    severity_to_priority = {
+        "cosmetic": "routine",
+        "minor": "routine",
+        "major": "important",
+        "critical": "critical",
+        "safety": "emergency",
+    }
+    priority = params.get("priority") or severity_to_priority.get(fault.get("severity"), "important")
+
+    now = datetime.utcnow().isoformat()
     wo_id = str(uuid_lib.uuid4())
+
+    # Create work order
     wo_data = {
         "id": wo_id,
-        "yacht_id": params["yacht_id"],
+        "yacht_id": yacht_id,
         "equipment_id": fault.get("equipment_id"),
-        "fault_id": params["fault_id"],
-        "title": f"Fix: {fault.get('description', 'Fault repair')[:100]}",
+        "fault_id": fault_id,
+        "title": params.get("title") or fault.get("title") or f"Fix: {fault.get('description', 'Fault repair')[:100]}",
         "description": fault.get("description"),
-        "priority": fault.get("priority", "medium"),
-        "status": "open",
-        "created_by": params["user_id"],
-        "created_at": datetime.utcnow().isoformat(),
+        "type": "corrective",
+        "priority": priority,
+        "status": "planned",
+        "created_by": user_id,
+        "created_at": now,
+        "updated_at": now,
     }
 
     result = supabase.table("pms_work_orders").insert(wo_data).execute()
@@ -1094,11 +1212,59 @@ async def create_work_order_from_fault(params: Dict[str, Any]) -> Dict[str, Any]
     if not result.data:
         raise Exception("Failed to create work order")
 
+    # Update fault status to 'work_ordered' and link WO
+    supabase.table("pms_faults").update({
+        "status": "work_ordered",
+        "work_order_id": wo_id,
+        "updated_at": now,
+        "updated_by": user_id,
+    }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+
+    # Build signature payload for audit
+    signature_hash = hashlib.sha256(
+        f"{user_id}:{fault_id}:{wo_id}:{now}".encode()
+    ).hexdigest()
+
+    signature_payload = {
+        "user_id": user_id,
+        "role_at_signing": signature.get("role_at_signing", "unknown"),
+        "signature_type": "create_work_order_from_fault",
+        "fault_id": fault_id,
+        "work_order_id": wo_id,
+        "signature_hash": f"sha256:{signature_hash}",
+        "signed_at": now,
+    }
+
+    # P1-005: Audit log with SIGNED signature payload
+    try:
+        audit_id = str(uuid_lib.uuid4())
+        supabase.table("pms_audit_log").insert({
+            "id": audit_id,
+            "yacht_id": yacht_id,
+            "entity_type": "work_order",
+            "entity_id": wo_id,
+            "action": "create_work_order_from_fault",
+            "user_id": user_id,
+            "old_values": {"fault_status": fault.get("status")},
+            "new_values": {
+                "work_order_id": wo_id,
+                "fault_id": fault_id,
+                "fault_status": "work_ordered",
+            },
+            "signature": signature_payload,  # SIGNED action - full payload
+            "metadata": {"source": "fault_lens"},
+            "created_at": now,
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Audit log failed for create_work_order_from_fault: {e}")
+
     return {
         "work_order_id": wo_id,
-        "fault_id": params["fault_id"],
-        "status": "open",
-        "created_at": wo_data["created_at"],
+        "fault_id": fault_id,
+        "status": "planned",
+        "created_at": now,
+        "message": "Work order created from fault",
+        "next_actions": ["assign_work_order", "start_work_order"],
     }
 
 
@@ -2102,6 +2268,238 @@ async def _p2_upload_photo(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ============================================================================
+# EQUIPMENT LENS V2 WRAPPER FUNCTIONS
+# ============================================================================
+
+
+async def _eq_view_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment view_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("view_equipment")
+    if not fn:
+        raise ValueError("view_equipment handler not registered")
+    return await fn(
+        entity_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+async def _eq_view_maintenance_history(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment view_maintenance_history handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("view_maintenance_history")
+    if not fn:
+        raise ValueError("view_maintenance_history handler not registered")
+    return await fn(
+        entity_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+async def _eq_view_equipment_parts(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment view_equipment_parts handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("view_equipment_parts")
+    if not fn:
+        raise ValueError("view_equipment_parts handler not registered")
+    return await fn(
+        entity_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+async def _eq_view_linked_faults(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment view_linked_faults handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("view_linked_faults")
+    if not fn:
+        raise ValueError("view_linked_faults handler not registered")
+    return await fn(
+        entity_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+async def _eq_view_equipment_manual(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment view_equipment_manual handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("view_equipment_manual")
+    if not fn:
+        raise ValueError("view_equipment_manual handler not registered")
+    return await fn(
+        entity_id=params.get("equipment_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+
+async def _eq_update_equipment_status(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment update_equipment_status handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("update_equipment_status")
+    if not fn:
+        raise ValueError("update_equipment_status handler not registered")
+    return await fn(**params)
+
+
+async def _eq_add_equipment_note(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment add_equipment_note handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("add_equipment_note")
+    if not fn:
+        raise ValueError("add_equipment_note handler not registered")
+    return await fn(**params)
+
+
+async def _eq_attach_file_to_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment attach_file_to_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("attach_file_to_equipment")
+    if not fn:
+        raise ValueError("attach_file_to_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_create_work_order_for_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment create_work_order_for_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("create_work_order_for_equipment")
+    if not fn:
+        raise ValueError("create_work_order_for_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_link_part_to_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment link_part_to_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("link_part_to_equipment")
+    if not fn:
+        raise ValueError("link_part_to_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_flag_equipment_attention(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment flag_equipment_attention handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("flag_equipment_attention")
+    if not fn:
+        raise ValueError("flag_equipment_attention handler not registered")
+    return await fn(**params)
+
+
+async def _eq_decommission_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment decommission_equipment handler (SIGNED)."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("decommission_equipment")
+    if not fn:
+        raise ValueError("decommission_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_record_equipment_hours(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment record_equipment_hours handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("record_equipment_hours")
+    if not fn:
+        raise ValueError("record_equipment_hours handler not registered")
+    return await fn(**params)
+
+
+async def _eq_create_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment create_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("create_equipment")
+    if not fn:
+        raise ValueError("create_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_assign_parent_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment assign_parent_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("assign_parent_equipment")
+    if not fn:
+        raise ValueError("assign_parent_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_archive_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment archive_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("archive_equipment")
+    if not fn:
+        raise ValueError("archive_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_restore_archived_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment restore_archived_equipment handler (SIGNED)."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("restore_archived_equipment")
+    if not fn:
+        raise ValueError("restore_archived_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_get_open_faults_for_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment get_open_faults_for_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("get_open_faults_for_equipment")
+    if not fn:
+        raise ValueError("get_open_faults_for_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_get_related_entities_for_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment get_related_entities_for_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("get_related_entities_for_equipment")
+    if not fn:
+        raise ValueError("get_related_entities_for_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_add_entity_link(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment add_entity_link handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("add_entity_link")
+    if not fn:
+        raise ValueError("add_entity_link handler not registered")
+    return await fn(**params)
+
+
+async def _eq_link_document_to_equipment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment link_document_to_equipment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("link_document_to_equipment")
+    if not fn:
+        raise ValueError("link_document_to_equipment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_attach_image_with_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment attach_image_with_comment handler."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("attach_image_with_comment")
+    if not fn:
+        raise ValueError("attach_image_with_comment handler not registered")
+    return await fn(**params)
+
+
+async def _eq_decommission_and_replace(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Equipment decommission_and_replace_equipment handler (SIGNED)."""
+    handlers = _get_equipment_handlers()
+    fn = handlers.get("decommission_and_replace_equipment")
+    if not fn:
+        raise ValueError("decommission_and_replace_equipment handler not registered")
+    return await fn(**params)
+
+
+# ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
 
@@ -2220,6 +2618,40 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "update_certificate": _cert_update_certificate,
     "link_document_to_certificate": _cert_link_document,
     "supersede_certificate": _cert_supersede_certificate,
+
+    # =========================================================================
+    # Equipment Lens v2 Handlers (from equipment_handlers.py)
+    # =========================================================================
+    # READ handlers
+    "view_equipment": _eq_view_equipment,
+    "view_maintenance_history": _eq_view_maintenance_history,
+    "view_equipment_parts": _eq_view_equipment_parts,
+    "view_linked_faults": _eq_view_linked_faults,
+    "view_equipment_manual": _eq_view_equipment_manual,
+
+    # MUTATION handlers (existing)
+    "set_equipment_status": _eq_update_equipment_status,
+    "add_equipment_note": _eq_add_equipment_note,
+    "attach_file_to_equipment": _eq_attach_file_to_equipment,
+    "create_work_order_for_equipment": _eq_create_work_order_for_equipment,
+    "link_part_to_equipment": _eq_link_part_to_equipment,
+    "flag_equipment_attention": _eq_flag_equipment_attention,
+    "decommission_equipment": _eq_decommission_equipment,
+    "record_equipment_hours": _eq_record_equipment_hours,
+
+    # MUTATION handlers (Equipment Lens v2 Phase A)
+    "create_equipment": _eq_create_equipment,
+    "assign_parent_equipment": _eq_assign_parent_equipment,
+    "archive_equipment": _eq_archive_equipment,
+    "restore_archived_equipment": _eq_restore_archived_equipment,
+    "get_open_faults_for_equipment": _eq_get_open_faults_for_equipment,
+    "get_related_entities_for_equipment": _eq_get_related_entities_for_equipment,
+    "add_entity_link": _eq_add_entity_link,
+    "link_document_to_equipment": _eq_link_document_to_equipment,
+
+    # Equipment Lens v2 - Spec completion
+    "attach_image_with_comment": _eq_attach_image_with_comment,
+    "decommission_and_replace_equipment": _eq_decommission_and_replace,
 }
 
 

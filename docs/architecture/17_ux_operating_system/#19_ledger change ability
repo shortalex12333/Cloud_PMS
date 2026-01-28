@@ -1,0 +1,246 @@
+# CelesteOS — The Bottom Icon: Record, Continuity, and Control
+
+## Why This Document Exists
+
+The bottom icon is the **most dangerous element** in CelesteOS.
+
+Handled incorrectly, it becomes:
+- a menu
+- a dashboard
+- a navigation hub
+- the beginning of modules
+
+Handled correctly, it becomes:
+- a memory anchor
+- a continuity surface
+- a trust mechanism
+
+This document exists to lock it permanently.
+
+---
+
+## What the Bottom Icon Is
+
+The bottom icon is a **secondary continuity control**.
+
+It exists to answer one question:
+
+> “What exists now because of me, and what must persist?”
+
+It does **not** exist to help users decide what to do next.
+Search does that.
+
+---
+
+## What the Bottom Icon Is Called
+
+Internally and externally, this surface is called:
+
+**Record**
+
+Not:
+- Menu
+- More
+- Dashboard
+- Activity
+- History
+- Control
+
+Language matters.
+“Record” frames this as evidence, not navigation.
+
+---
+
+## Where the Icon Lives
+
+- Fixed position directly **beneath the search bar**
+- Visually subordinate to search
+- Always reachable
+- Never dominant
+
+Search remains the visual and cognitive center.
+
+---
+
+## What Happens When the Icon Is Opened
+
+Opening **Record** reveals **three and only three sections**:
+
+1. **Ledger**
+2. **Handover**
+3. **Settings**
+
+These are stacked or tabbed **within the same surface**.
+
+They are not separate apps.
+They are not destinations.
+
+---
+
+## Section 1 — Ledger (Default View)
+
+### Purpose
+To reconstruct reality.
+
+### What It Shows
+- actions taken
+- grouped by day
+- grouped by domain
+- expressed as verbs
+
+### What It Does Not Show
+- plans
+- tasks
+- scores
+- summaries
+- KPIs
+
+Ledger is factual memory.
+
+(Full behavior defined in Document 05.)
+
+---
+
+## Section 2 — Handover
+
+### Purpose
+To preserve continuity across people and time.
+
+### What It Shows
+- the current handover draft
+- unresolved context
+- significant actions already accepted into the narrative
+
+### What Users Can Do
+- edit wording
+- add missing context
+- remove irrelevant items
+- export professionally
+
+### What Users Cannot Do
+- plan future work
+- assign tasks
+- track progress
+
+Handover is narrative, not management.
+
+(Full behavior defined in Document 06.)
+
+---
+
+## Section 3 — Settings
+
+### Purpose
+To provide familiarity and personal control.
+
+### What It Contains
+- identity
+- role
+- integrations
+- security
+- appearance
+- report issue
+- logout
+
+### What It Never Contains
+- operational controls
+- vessel state
+- records
+- logic toggles
+
+Settings orient the user.
+They do not operate the system.
+
+(Full behavior defined in Document 07.)
+
+---
+
+## Structural Rules (Non-Negotiable)
+
+- No additional sections may be added
+- No nesting beyond these three
+- No badges that imply urgency
+- No notifications that replace search prompts
+- No persistent indicators of “work to do”
+
+If a fourth section is proposed, it is rejected.
+
+---
+
+## Relationship to Search
+
+Search:
+- expresses intent
+- initiates work
+- surfaces options
+
+Record:
+- preserves outcomes
+- provides proof
+- restores orientation
+
+Record never replaces search.
+Record never initiates work.
+
+If users start their day in Record instead of search, the design is wrong.
+
+---
+
+## Role-Based Behavior for hod, see /16_Roles_of_users/all_ranks.md for how to log users role vs what hod and above department can see. this doucment is losted highest to lowest rank. thus HOD can see entire department, secondary rank can see their eldger + those beneath. 
+
+- Default view is **personal**
+- Higher roles may expand scope **within Ledger only**
+- Handover and Settings remain personal unless explicitly shared
+
+Record respects hierarchy without becoming surveillance.
+
+---
+
+## Mobile vs Desktop
+
+The behavior is identical across devices.
+
+Differences allowed:
+- layout density
+- scroll behavior
+- gesture affordances
+
+Differences not allowed:
+- feature availability
+- logic
+- sections
+
+Consistency is part of trust.
+
+---
+
+## Failure Modes (Automatic Rejection)
+
+Any change that causes the bottom icon to:
+- feel like a menu
+- compete with search
+- surface tasks
+- show KPIs
+- show dashboards
+- become a control panel
+
+…is rejected.
+
+---
+
+## Success Criteria
+
+The bottom icon is correct if:
+- users rely on it after action, not before
+- users trust that nothing is lost
+- captains use it to verify calmly
+- no one describes it as “navigation”
+
+---
+
+## Final Lock
+
+> **Search is how work happens.  
+> Record is how work survives.**
+
+This document is canonical.

@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-01-27T18:11:02.843266",
+  "status_codes": [
+    [
+      "/v1/parts/suggestions",
+      404
+    ],
+    [
+      "/v1/parts/low-stock",
+      404
+    ],
+    [
+      "/health",
+      404
+    ]
+  ],
+  "all_passed": true
+}

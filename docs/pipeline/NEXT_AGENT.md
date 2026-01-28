@@ -8,9 +8,11 @@ This template was battle-tested on the Certificates lens. Read LESSONS_LEARNED.m
 
 1. **LESSONS_LEARNED.md** - What went wrong, actual file locations
 2. **FILE_MAP.md** - Where things actually are (verified)
-3. **STAGES.md** - The 6-stage process
+3. **STAGES.md** - The 7-stage process (includes frontend integration)
 4. **ACCEPTANCE_MATRIX.md** - What tests must pass
-5. **RUNBOOK.md** - Commands to run
+5. **ACTION_SUGGESTIONS_CONTRACT.md** - Contract for GET /v1/actions/list
+6. **TEMPLATE_CHECKLIST.md** - Zero→Gold checklist
+7. **RUNBOOK.md** - Commands to run
 
 ---
 
@@ -167,3 +169,22 @@ Before marking lens complete:
 - [ ] Edge cases handled (empty query, unknown domain, unknown role)
 - [ ] CHANGELOG updated
 - [ ] Git tagged (e.g., `<entity>-lens-gold`)
+
+---
+
+## Quick cURL (Smoke)
+
+```bash
+# List actions (HOD): expect create_* actions when domain matches
+curl -H "Authorization: Bearer $HOD_JWT" \
+  "$API_BASE/v1/actions/list?q=add+<entity>&domain=<entities>"
+
+# Execute an action
+curl -X POST -H "Authorization: Bearer $HOD_JWT" -H "Content-Type: application/json" \
+  "$API_BASE/v1/actions/execute" \
+  -d '{
+    "action": "create_<entity>",
+    "context": {"yacht_id": "'$YACHT_ID'"},
+    "payload": {"field1": "value"}
+  }'
+```

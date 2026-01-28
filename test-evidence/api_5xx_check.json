@@ -1,0 +1,37 @@
+{
+  "total_tests": 5,
+  "non_5xx": 5,
+  "5xx_count": 0,
+  "results": [
+    {
+      "endpoint": "Suggestions (no auth)",
+      "status": 404,
+      "is_5xx": false,
+      "latency_ms": 1078.361988067627
+    },
+    {
+      "endpoint": "Low stock (no auth)",
+      "status": 404,
+      "is_5xx": false,
+      "latency_ms": 263.7791633605957
+    },
+    {
+      "endpoint": "Suggestions (invalid JWT)",
+      "status": 404,
+      "is_5xx": false,
+      "latency_ms": 1440.8738613128662
+    },
+    {
+      "endpoint": "Low stock (invalid JWT)",
+      "status": 404,
+      "is_5xx": false,
+      "latency_ms": 220.76106071472168
+    },
+    {
+      "endpoint": "Health check",
+      "status": 404,
+      "is_5xx": false,
+      "latency_ms": 886.1348628997803
+    }
+  ]
+}
