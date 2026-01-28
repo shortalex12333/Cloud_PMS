@@ -499,12 +499,18 @@ class PartHandlers:
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }).execute()
         except Exception as e:
+            error_str = str(e)
+            error_str_lower = error_str.lower()
+
             # Check if PostgREST 204 (No Content) - insert succeeded but no data returned
-            error_str = str(e).lower()
-            if "204" in error_str or "missing response" in error_str:
-                logger.info(f"PostgREST 204 on transaction insert (txn_id={txn_id}) - insert succeeded but no data returned")
-                # Insert succeeded, continue with audit log and return
+            # This happens when PostgREST returns 204 instead of 201 with data
+            # The INSERT succeeded, so we continue with audit log
+            if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
+                logger.info(f"PostgREST 204 detected on transaction insert (txn_id={txn_id}) - insert succeeded, continuing")
+                # Don't re-raise - insert succeeded, just no response body
             else:
+                # Unknown error - re-raise
+                logger.error(f"Unknown exception on transaction insert (consume_part): {error_str}")
                 raise
 
         # Audit log (non-signed, signature={} per spec)
