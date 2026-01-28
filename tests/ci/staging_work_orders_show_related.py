@@ -33,26 +33,52 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 # =============================================================================
-# Configuration
+# Configuration (supports multiple env var naming conventions)
 # =============================================================================
 
-STAGING_API_URL = os.environ.get('STAGING_API_URL', 'https://api-staging.backbuttoncloud.com')
-STAGING_YACHT_ID = os.environ.get('STAGING_YACHT_ID')
-STAGING_JWT_CREW = os.environ.get('STAGING_JWT_CREW')
-STAGING_JWT_HOD = os.environ.get('STAGING_JWT_HOD')
+# API URL - check multiple names
+STAGING_API_URL = (
+    os.environ.get('STAGING_API_URL') or
+    os.environ.get('BASE_URL') or
+    os.environ.get('RENDER_API_URL') or
+    'https://api-staging.backbuttoncloud.com'
+)
 
-# Test entity IDs (should exist in staging database)
+# Yacht ID - check multiple names
+STAGING_YACHT_ID = (
+    os.environ.get('STAGING_YACHT_ID') or
+    os.environ.get('TEST_USER_YACHT_ID')
+)
+
+# JWTs - check multiple names
+STAGING_JWT_CREW = (
+    os.environ.get('STAGING_JWT_CREW') or
+    os.environ.get('STAGING_CREW_JWT')
+)
+STAGING_JWT_HOD = (
+    os.environ.get('STAGING_JWT_HOD') or
+    os.environ.get('STAGING_HOD_JWT')
+)
+STAGING_JWT_CAPTAIN = (
+    os.environ.get('STAGING_JWT_CAPTAIN') or
+    os.environ.get('STAGING_CAPTAIN_JWT')
+)
+
+# Test entity IDs (will be fetched dynamically if not provided)
 STAGING_WORK_ORDER_ID = os.environ.get('STAGING_WORK_ORDER_ID')
 STAGING_PART_ID = os.environ.get('STAGING_PART_ID')
 
-# Validation
+# Tenant Supabase for dynamic entity lookup
+TENANT_SUPABASE_URL = os.environ.get('TENANT_SUPABASE_URL')
+TENANT_SUPABASE_SERVICE_KEY = (
+    os.environ.get('TENANT_SUPABASE_SERVICE_ROLE_KEY') or
+    os.environ.get('TENANT_SUPABASE_SERVICE_KEY')
+)
+
+# Validation - only require JWTs and yacht (entities can be fetched)
 REQUIRED_ENV_VARS = [
-    'STAGING_API_URL',
-    'STAGING_YACHT_ID',
     'STAGING_JWT_CREW',
     'STAGING_JWT_HOD',
-    'STAGING_WORK_ORDER_ID',
-    'STAGING_PART_ID'
 ]
 
 # =============================================================================
@@ -174,12 +200,76 @@ def api_post(endpoint: str, jwt: str, data: Dict[str, Any]) -> Tuple[int, Dict[s
         return 0, {"error": str(e)}
 
 # =============================================================================
+# Dynamic Entity Lookup (fetch valid IDs from tenant DB if not provided)
+# =============================================================================
+
+def fetch_test_entities():
+    """Fetch valid work order and part IDs from tenant database."""
+    global STAGING_WORK_ORDER_ID, STAGING_PART_ID, STAGING_YACHT_ID
+
+    if STAGING_WORK_ORDER_ID and STAGING_PART_ID:
+        print(f"Using provided entity IDs: WO={STAGING_WORK_ORDER_ID}, Part={STAGING_PART_ID}")
+        return True
+
+    if not TENANT_SUPABASE_URL or not TENANT_SUPABASE_SERVICE_KEY:
+        print("WARNING: Cannot fetch entities - TENANT_SUPABASE_URL/KEY not set")
+        print("Set STAGING_WORK_ORDER_ID and STAGING_PART_ID manually, or provide tenant DB credentials")
+        return False
+
+    try:
+        # Use Supabase REST API to fetch entities
+        headers = {
+            "apikey": TENANT_SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {TENANT_SUPABASE_SERVICE_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        # Fetch a work order (prefer one with equipment_id for richer testing)
+        wo_url = f"{TENANT_SUPABASE_URL}/rest/v1/pms_work_orders?select=id,yacht_id&deleted_at=is.null&limit=1"
+        if STAGING_YACHT_ID:
+            wo_url += f"&yacht_id=eq.{STAGING_YACHT_ID}"
+
+        req = Request(wo_url)
+        for k, v in headers.items():
+            req.add_header(k, v)
+
+        with urlopen(req) as response:
+            work_orders = json.loads(response.read().decode('utf-8'))
+            if work_orders:
+                STAGING_WORK_ORDER_ID = work_orders[0]['id']
+                if not STAGING_YACHT_ID:
+                    STAGING_YACHT_ID = work_orders[0].get('yacht_id')
+                print(f"Fetched work order: {STAGING_WORK_ORDER_ID}")
+
+        # Fetch a part
+        part_url = f"{TENANT_SUPABASE_URL}/rest/v1/pms_parts?select=id&deleted_at=is.null&limit=1"
+        if STAGING_YACHT_ID:
+            part_url += f"&yacht_id=eq.{STAGING_YACHT_ID}"
+
+        req = Request(part_url)
+        for k, v in headers.items():
+            req.add_header(k, v)
+
+        with urlopen(req) as response:
+            parts = json.loads(response.read().decode('utf-8'))
+            if parts:
+                STAGING_PART_ID = parts[0]['id']
+                print(f"Fetched part: {STAGING_PART_ID}")
+
+        return bool(STAGING_WORK_ORDER_ID)
+
+    except Exception as e:
+        print(f"WARNING: Failed to fetch entities: {e}")
+        return False
+
+
+# =============================================================================
 # Test Data Generators
 # =============================================================================
 
 def get_test_link_data() -> Dict[str, Any]:
     """Generate test data for add_entity_link"""
-    return {
+    data = {
         "source_entity_type": "work_order",
         "source_entity_id": STAGING_WORK_ORDER_ID,
         "target_entity_type": "part",
@@ -187,6 +277,10 @@ def get_test_link_data() -> Dict[str, Any]:
         "link_type": "related",
         "note": "Test link from staging CI"
     }
+    # Add yacht_id if available
+    if STAGING_YACHT_ID:
+        data["yacht_id"] = STAGING_YACHT_ID
+    return data
 
 
 def get_error_msg(body: Dict[str, Any]) -> str:
@@ -372,38 +466,54 @@ def test_match_reasons_present():
 # =============================================================================
 
 def validate_environment():
-    """Validate required environment variables"""
-    missing_vars = []
-    for var in REQUIRED_ENV_VARS:
-        if not os.environ.get(var):
-            missing_vars.append(var)
-
-    if missing_vars:
-        print("❌ Missing required environment variables:")
-        for var in missing_vars:
-            print(f"  - {var}")
-        print("\nPlease set all required variables before running staging CI tests.")
+    """Validate required environment variables and fetch entities if needed."""
+    # Check for JWTs (required)
+    if not STAGING_JWT_CREW:
+        print("❌ Missing STAGING_JWT_CREW or STAGING_CREW_JWT")
         sys.exit(1)
+    if not STAGING_JWT_HOD:
+        print("❌ Missing STAGING_JWT_HOD or STAGING_HOD_JWT")
+        sys.exit(1)
+
+    # Fetch test entities if not provided
+    if not STAGING_WORK_ORDER_ID:
+        print("STAGING_WORK_ORDER_ID not set, attempting to fetch from tenant DB...")
+        if not fetch_test_entities():
+            print("❌ Could not fetch test entities. Set STAGING_WORK_ORDER_ID manually.")
+            sys.exit(1)
+
+    print("✅ Environment validated")
+
 
 def main():
     """Run staging CI test suite"""
     print("="*80)
     print("P1 Show Related - Staging CI Tests")
     print("="*80)
+
+    # Validate environment first (may fetch entities)
+    validate_environment()
+
+    # Print configuration after validation (entities may have been fetched)
     print(f"Staging API: {STAGING_API_URL}")
-    print(f"Yacht ID: {STAGING_YACHT_ID}")
+    print(f"Yacht ID: {STAGING_YACHT_ID or 'N/A'}")
     print(f"Work Order ID: {STAGING_WORK_ORDER_ID}")
-    print(f"Part ID: {STAGING_PART_ID}")
+    print(f"Part ID: {STAGING_PART_ID or 'N/A (skip add link tests)'}")
+    print(f"JWT CREW: {'set' if STAGING_JWT_CREW else 'missing'}")
+    print(f"JWT HOD: {'set' if STAGING_JWT_HOD else 'missing'}")
     print("="*80)
     print()
 
-    # Validate environment
-    validate_environment()
-
     # Run test suite (subset of Docker matrix)
     test_crew_view_related_200()
-    test_crew_cannot_add_link_403()
-    test_hod_can_add_link_200()
+
+    # Only run add link tests if we have a part ID
+    if STAGING_PART_ID:
+        test_crew_cannot_add_link_403()
+        test_hod_can_add_link_200()
+    else:
+        print("⏭️  Skipping add link tests (no STAGING_PART_ID)")
+
     test_invalid_entity_type_400()
     test_caps_enforced()
     test_limit_exceeds_max_400()
