@@ -4598,20 +4598,40 @@ async def execute_action(
             error = result["error"]
             error_code = error.get("error_code", "UNKNOWN_ERROR")
             status_code = error.get("status_code", 500)
-            raise HTTPException(status_code=status_code, detail=error.get("message", "Unknown error"))
+            # Preserve full error structure in detail
+            raise HTTPException(status_code=status_code, detail=error)
     elif "status" in result and result["status"] == "error":
-        # Old format (backward compatibility)
-        status_code = 400
+        # Old format - preserve full error structure including error_code
         error_code = result.get("error_code", "UNKNOWN_ERROR")
 
-        if error_code in ("FAULT_NOT_FOUND", "WO_NOT_FOUND", "EQUIPMENT_NOT_FOUND", "PART_NOT_FOUND"):
+        # Map error codes to HTTP status codes
+        if error_code in ("FAULT_NOT_FOUND", "WO_NOT_FOUND", "EQUIPMENT_NOT_FOUND", "PART_NOT_FOUND",
+                          "NOT_FOUND", "RECEIVING_NOT_FOUND", "DOCUMENT_NOT_FOUND"):
             status_code = 404
-        elif error_code in ("INVALID_SIGNATURE", "WO_CLOSED", "DUPLICATE_WO_EXISTS"):
+        elif error_code in ("SIGNATURE_REQUIRED", "RLS_DENIED", "INSUFFICIENT_PERMISSIONS"):
+            status_code = 403
+        elif error_code in ("CONFLICT", "DUPLICATE_RECORD", "DUPLICATE_WO_EXISTS"):
+            status_code = 409
+        elif error_code in ("INVALID_SIGNATURE", "INVALID_STORAGE_PATH", "INVALID_MODE",
+                            "MISSING_REQUIRED_FIELD", "EXTRACT_PREPARE_ONLY",
+                            "INVALID_STATUS_TRANSITION", "ALREADY_ACCEPTED",
+                            "INVALID_CONFIRMATION_TOKEN", "AT_LEAST_ONE_ITEM_REQUIRED",
+                            "WO_CLOSED", "INSUFFICIENT_STOCK", "NO_ITEMS", "MISSING_REASON",
+                            "INVALID_QUANTITY", "NO_FIELDS_TO_UPDATE", "INSERT_FAILED"):
             status_code = 400
-        elif error_code in ("INSUFFICIENT_STOCK",):
-            status_code = 400
+        else:
+            status_code = 400  # Default to 400 for unknown error codes
 
-        raise HTTPException(status_code=status_code, detail=result["message"])
+        # Preserve full error structure in detail (don't just pass message string)
+        error_detail = {
+            "status": "error",
+            "error_code": error_code,
+            "message": result.get("message", "Unknown error")
+        }
+        if "hint" in result:
+            error_detail["hint"] = result["hint"]
+
+        raise HTTPException(status_code=status_code, detail=error_detail)
 
     # Add execution_id to response for E2E test tracing
     import uuid
