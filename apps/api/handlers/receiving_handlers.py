@@ -1165,9 +1165,9 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         yacht_id = params["yacht_id"]
         receiving_id = params["receiving_id"]
 
-        # Get receiving record with user info
+        # Get receiving record (NO JOIN to auth tables - violates "no FK to tenant auth.users" rule)
         recv_result = db.table("pms_receiving").select(
-            "*, received_by_profile:auth_users_profiles!received_by(full_name, role)"
+            "*"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
         if not recv_result.data:
@@ -1178,12 +1178,7 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
             }
 
         receiving = recv_result.data
-
-        # Extract user info
-        received_by_profile = receiving.pop("received_by_profile", None)
-        if received_by_profile:
-            receiving["received_by_name"] = received_by_profile.get("full_name")
-            receiving["received_by_role"] = received_by_profile.get("role")
+        # received_by field contains user_id - frontend can look up name/role if needed
 
         # Get line items
         items_result = db.table("pms_receiving_items").select(
