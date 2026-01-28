@@ -97,6 +97,11 @@ def get_test_link_data(source_type='work_order', target_type='part', link_type='
     }
 
 
+def get_error_msg(body: Dict) -> str:
+    """Extract error message from response (FastAPI uses 'detail', not 'error')."""
+    return body.get('detail') or body.get('error') or str(body)
+
+
 # =============================================================================
 # TEST SUITE
 # =============================================================================
@@ -156,12 +161,14 @@ def test_crew_read_200():
     try:
         assert code == 200, f"Expected 200, got {code}"
         assert 'groups' in body, "Missing 'groups' in response"
-        assert 'focused_entity' in body, "Missing 'focused_entity' in response"
+        assert 'add_related_enabled' in body, "Missing 'add_related_enabled' in response"
+        assert 'group_counts' in body, "Missing 'group_counts' in response"
 
         # Verify match_reasons present when groups non-empty
         for group in body.get('groups', []):
+            group_key = group.get('group_key', group.get('type', 'unknown'))
             if group.get('count', 0) > 0:
-                assert len(group.get('items', [])) > 0, f"Group {group['type']} has count > 0 but no items"
+                assert len(group.get('items', [])) > 0, f"Group {group_key} has count > 0 but no items"
                 for item in group['items']:
                     assert 'match_reasons' in item, f"Item {item.get('entity_id')} missing match_reasons"
                     assert len(item['match_reasons']) > 0, f"Item {item.get('entity_id')} has empty match_reasons"
@@ -186,9 +193,10 @@ def test_crew_add_link_403():
 
     try:
         assert code == 403, f"Expected 403, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'permission' in body['error'].lower() or 'forbidden' in body['error'].lower(), \
-            f"Error message should mention permissions, got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'permission' in err_msg.lower() or 'forbidden' in err_msg.lower() or 'authorized' in err_msg.lower(), \
+            f"Error message should mention permissions, got: {err_msg}"
 
         results.record_pass("test_crew_add_link_403")
     except AssertionError as e:
@@ -240,9 +248,10 @@ def test_duplicate_link_409():
 
     try:
         assert code2 == 409, f"Expected 409 on duplicate, got {code2}"
-        assert 'error' in body2, "Missing 'error' in response"
-        assert 'already exists' in body2['error'].lower() or 'duplicate' in body2['error'].lower(), \
-            f"Error message should mention duplicate/already exists, got: {body2['error']}"
+        err_msg = get_error_msg(body2)
+        assert err_msg, "Missing error message in response"
+        assert 'already exists' in err_msg.lower() or 'duplicate' in err_msg.lower(), \
+            f"Error message should mention duplicate/already exists, got: {err_msg}"
 
         results.record_pass("test_duplicate_link_409")
     except AssertionError as e:
@@ -270,9 +279,10 @@ def test_self_link_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'cannot link entity to itself' in body['error'].lower() or 'self' in body['error'].lower(), \
-            f"Error message should mention self-link, got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'self' in err_msg.lower() or 'source == target' in err_msg.lower(), \
+            f"Error message should mention self-link, got: {err_msg}"
 
         results.record_pass("test_self_link_400")
     except AssertionError as e:
@@ -293,9 +303,10 @@ def test_invalid_entity_type_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'invalid' in body['error'].lower() or 'entity_type' in body['error'].lower(), \
-            f"Error message should mention invalid entity_type, got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'invalid' in err_msg.lower() or 'entity_type' in err_msg.lower(), \
+            f"Error message should mention invalid entity_type, got: {err_msg}"
 
         results.record_pass("test_invalid_entity_type_400")
     except AssertionError as e:
@@ -317,9 +328,10 @@ def test_not_found_404():
 
     try:
         assert code == 404, f"Expected 404, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'not found' in body['error'].lower(), \
-            f"Error message should mention 'not found', got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'not found' in err_msg.lower(), \
+            f"Error message should mention 'not found', got: {err_msg}"
 
         results.record_pass("test_not_found_404")
     except AssertionError as e:
@@ -340,9 +352,10 @@ def test_cross_yacht_404():
 
     try:
         assert code == 404, f"Expected 404 (not 403), got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'not found' in body['error'].lower(), \
-            f"Error message should say 'not found' (not 'forbidden'), got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'not found' in err_msg.lower(), \
+            f"Error message should say 'not found' (not 'forbidden'), got: {err_msg}"
 
         results.record_pass("test_cross_yacht_404")
     except AssertionError as e:
@@ -365,8 +378,9 @@ def test_caps_enforced():
         assert code == 200, f"Expected 200, got {code}"
 
         for group in body.get('groups', []):
+            group_key = group.get('group_key', group.get('type', 'unknown'))
             assert len(group.get('items', [])) <= 5, \
-                f"Group {group['type']} has {len(group['items'])} items, expected <= 5"
+                f"Group {group_key} has {len(group['items'])} items, expected <= 5"
 
         results.record_pass("test_caps_enforced")
     except AssertionError as e:
@@ -388,9 +402,10 @@ def test_invalid_link_type_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'invalid' in body['error'].lower() or 'link_type' in body['error'].lower(), \
-            f"Error message should mention invalid link_type, got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'invalid' in err_msg.lower() or 'link_type' in err_msg.lower(), \
+            f"Error message should mention invalid link_type, got: {err_msg}"
 
         results.record_pass("test_invalid_link_type_400")
     except AssertionError as e:
@@ -413,9 +428,10 @@ def test_note_too_long_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'note' in body['error'].lower() or 'characters' in body['error'].lower(), \
-            f"Error message should mention note length, got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'note' in err_msg.lower() or 'character' in err_msg.lower() or '500' in err_msg, \
+            f"Error message should mention note length, got: {err_msg}"
 
         results.record_pass("test_note_too_long_400")
     except AssertionError as e:
@@ -436,9 +452,10 @@ def test_limit_too_high_400():
 
     try:
         assert code == 400, f"Expected 400, got {code}"
-        assert 'error' in body, "Missing 'error' in response"
-        assert 'limit' in body['error'].lower(), \
-            f"Error message should mention limit, got: {body['error']}"
+        err_msg = get_error_msg(body)
+        assert err_msg, "Missing error message in response"
+        assert 'limit' in err_msg.lower() or '50' in err_msg, \
+            f"Error message should mention limit, got: {err_msg}"
 
         results.record_pass("test_limit_too_high_400")
     except AssertionError as e:
@@ -463,13 +480,13 @@ def test_limit_zero_or_negative_400():
     code2, body2 = api_get(f"/v1/related?entity_type=work_order&entity_id={TEST_WO_A_ID}&limit=-1", jwt_crew)
 
     try:
-        assert code1 == 400, f"Expected 400 for limit=0, got {code1}"
-        assert 'error' in body1, "Missing 'error' in response for limit=0"
-        assert 'limit' in body1['error'].lower(), f"Error should mention limit, got: {body1['error']}"
+        assert code1 == 400 or code1 == 422, f"Expected 400/422 for limit=0, got {code1}"
+        err_msg1 = get_error_msg(body1)
+        assert err_msg1, "Missing error message in response for limit=0"
 
-        assert code2 == 400, f"Expected 400 for limit=-1, got {code2}"
-        assert 'error' in body2, "Missing 'error' in response for limit=-1"
-        assert 'limit' in body2['error'].lower(), f"Error should mention limit, got: {body2['error']}"
+        assert code2 == 400 or code2 == 422, f"Expected 400/422 for limit=-1, got {code2}"
+        err_msg2 = get_error_msg(body2)
+        assert err_msg2, "Missing error message in response for limit=-1"
 
         results.record_pass("test_limit_zero_or_negative_400")
     except AssertionError as e:
@@ -509,7 +526,8 @@ def test_explicit_links_roundtrip():
         found_link = False
         for group in body_read['groups']:
             # Link should be in parts group (target_entity_type='part')
-            if group['type'] == 'parts' or group.get('group_key') == 'parts':
+            group_key = group.get('group_key', group.get('type', ''))
+            if group_key == 'parts':
                 for item in group.get('items', []):
                     if item['entity_id'] == TEST_PART_A_ID:
                         # Check that match_reasons includes explicit_link

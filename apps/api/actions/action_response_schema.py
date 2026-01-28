@@ -247,16 +247,19 @@ class ErrorDetail:
     - message for user display
     - field for form validation errors
     - suggestions for recovery options
+    - status_code for HTTP status code
     """
     code: str                          # e.g., "NOT_FOUND", "PERMISSION_DENIED"
     message: str                       # Human-readable message
+    status_code: int = 500             # HTTP status code (default 500)
     field: Optional[str] = None        # For validation errors
     suggestions: Optional[List[str]] = None  # Recovery suggestions
 
     def to_dict(self) -> Dict:
         result = {
             "code": self.code,
-            "message": self.message
+            "message": self.message,
+            "status_code": self.status_code
         }
         if self.field:
             result["field"] = self.field
@@ -531,6 +534,7 @@ class ResponseBuilder:
         self,
         code: str,
         message: str,
+        status_code: int = 500,
         field: Optional[str] = None,
         suggestions: Optional[List[str]] = None
     ) -> "ResponseBuilder":
@@ -538,6 +542,7 @@ class ResponseBuilder:
         self._error = ErrorDetail(
             code=code,
             message=message,
+            status_code=status_code,
             field=field,
             suggestions=suggestions
         ).to_dict()

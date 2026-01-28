@@ -1,0 +1,55 @@
+================================================================================
+LENS OPS TEMPLATE - START HERE
+================================================================================
+
+Next Engineer: Welcome! This folder contains production-grade automation for
+lens deployment and monitoring.
+
+WHERE TO START:
+📖 Read: HANDOFF_TO_NEXT_ENGINEER.md (comprehensive guide with step-by-step)
+
+WHAT THIS FOLDER CONTAINS:
+📁 templates/          - Python templates (source code)
+📁 migrations/         - DB schema for health monitoring
+📁 docs/              - Complete documentation
+📁 examples/          - Generated example (Parts Lens v2)
+⚙️  create_lens_ops_template.py - Generator script
+
+YOUR MISSION:
+Phase A: Deploy Lens Ops for Fault Lens v1 (immediate)
+  1. Apply DB migration (create health tables)
+  2. Generate faults lens files (run generator)
+  3. Deploy health worker to Render
+  4. Enable CI workflows (GitHub Actions)
+  5. Monitor for 7 days (verify automation works)
+
+Phase B: Instantiate for other lenses (after Phase A success)
+  - Run generator for each lens
+  - Deploy worker + enable CI
+  - Monitor for 24h per lens
+
+QUICK COMMANDS:
+
+# Generate files for a new lens
+python3 create_lens_ops_template.py \
+  --lens-id faults \
+  --domain faults \
+  --feature-flags FAULT_LENS_V1_ENABLED,FAULT_LENS_SUGGESTIONS_ENABLED \
+  --roles crew,chief_engineer,captain,manager \
+  --output-dir .
+
+# Apply DB migration
+psql $STAGING_DB_URL < migrations/ops_health_tables.sql
+
+# Check health status
+SELECT * FROM pms_health_checks WHERE lens_id = 'faults' ORDER BY observed_at DESC LIMIT 10;
+
+NEED HELP?
+- Detailed guide: HANDOFF_TO_NEXT_ENGINEER.md
+- Folder structure: README_FOLDER.md
+- Complete docs: docs/README.md
+- Example output: examples/parts_lens_example/
+
+================================================================================
+👉 ACTION: Open HANDOFF_TO_NEXT_ENGINEER.md and follow Phase A, Step 1
+================================================================================

@@ -382,11 +382,11 @@ class ShoppingListHandlers:
 
             item = item_result.data
 
-            # Check if item is in terminal state (rejected)
-            if item["status"] == "rejected":
+            # Check if item has been rejected (marked by rejected_at, not status)
+            if item.get("rejected_at"):
                 builder.set_error(
                     "INVALID_STATE",
-                    "Cannot approve a rejected item (terminal state)",
+                    "Cannot approve a rejected item",
                     400
                 )
                 return builder.build()
@@ -418,11 +418,32 @@ class ShoppingListHandlers:
             approval_notes = params.get("approval_notes")
 
             # ============================================================
-            # UPDATE ITEM
+            # UPDATE ITEM (Handle state machine: candidate → under_review → approved)
             # ============================================================
 
             now = datetime.now(timezone.utc).isoformat()
 
+            # If item is in 'candidate' status, first transition to 'under_review'
+            if item["status"] == "candidate":
+                intermediate_payload = {
+                    "status": "under_review",
+                    "updated_by": user_id,
+                    "updated_at": now,
+                }
+
+                intermediate_result = self.db.table("pms_shopping_list_items").update(
+                    intermediate_payload
+                ).eq("id", entity_id).eq("yacht_id", yacht_id).execute()
+
+                if not intermediate_result or not intermediate_result.data or len(intermediate_result.data) == 0:
+                    builder.set_error(
+                        "FORBIDDEN",
+                        "Only HoD can modify shopping list items",
+                        403
+                    )
+                    return builder.build()
+
+            # Now transition to 'approved' (works from both 'candidate' → 'under_review' → 'approved' or direct 'under_review' → 'approved')
             update_payload = {
                 "status": "approved",
                 "quantity_approved": quantity_approved,
@@ -562,7 +583,7 @@ class ShoppingListHandlers:
             # ============================================================
 
             item_result = self.db.table("pms_shopping_list_items").select(
-                "id, part_name, quantity_requested, status, created_by"
+                "id, part_name, quantity_requested, status, created_by, rejected_at"
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not item_result or not item_result.data:
@@ -571,11 +592,11 @@ class ShoppingListHandlers:
 
             item = item_result.data
 
-            # Check if already rejected or in terminal state
-            if item["status"] == "rejected":
+            # Check if already rejected (marked by rejected_at, not status)
+            if item.get("rejected_at"):
                 builder.set_error(
                     "INVALID_STATE",
-                    "Item is already rejected (terminal state)",
+                    "Item is already rejected",
                     400
                 )
                 return builder.build()
@@ -602,13 +623,14 @@ class ShoppingListHandlers:
             rejection_notes = params.get("rejection_notes")
 
             # ============================================================
-            # UPDATE ITEM
+            # UPDATE ITEM (Rejection does NOT change status, just sets rejected_at)
             # ============================================================
 
             now = datetime.now(timezone.utc).isoformat()
 
             update_payload = {
-                "status": "rejected",  # Terminal state
+                # NOTE: Status stays as-is (candidate or under_review)
+                # Rejection is marked by rejected_at field, not status
                 "rejected_by": user_id,
                 "rejected_at": now,
                 "rejection_reason": rejection_reason,
@@ -667,7 +689,8 @@ class ShoppingListHandlers:
             builder.set_data({
                 "shopping_list_item_id": entity_id,
                 "part_name": item["part_name"],
-                "status": "rejected",
+                "status": item["status"],  # Status remains unchanged (candidate or under_review)
+                "rejected": True,  # Add flag to indicate item is rejected
                 "rejection_reason": rejection_reason,
                 "rejected_at": now,
             })
@@ -780,13 +803,12 @@ class ShoppingListHandlers:
             part_payload = {
                 "id": new_part_id,
                 "yacht_id": yacht_id,
-                "part_name": item["part_name"],
+                "name": item["part_name"],  # Column is 'name' not 'part_name'
                 "part_number": item.get("part_number"),
                 "manufacturer": item.get("manufacturer"),
                 "unit": item.get("unit"),
                 "quantity_on_hand": 0,  # Initial quantity
-                "quantity_available": 0,
-                "created_by": user_id,
+                # NOTE: created_by column doesn't exist in pms_parts table
                 "created_at": now,
                 "updated_at": now,
             }
