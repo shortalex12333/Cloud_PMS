@@ -34,28 +34,75 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 # CONFIGURATION
 # =============================================================================
 
-SUPABASE_URL = os.getenv('SUPABASE_URL', 'http://localhost:54321')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:3000')
+# API and Supabase configuration
+API_BASE_URL = os.getenv('API_BASE', os.getenv('API_BASE_URL', 'http://localhost:3000'))
+MASTER_SUPABASE_URL = os.getenv('MASTER_SUPABASE_URL')
+MASTER_SUPABASE_ANON_KEY = os.getenv('MASTER_SUPABASE_ANON_KEY')
+TENANT_SUPABASE_URL = os.getenv('TENANT_SUPABASE_URL')
+TENANT_SUPABASE_SERVICE_KEY = os.getenv('TENANT_SUPABASE_SERVICE_KEY')
 
-# Test yacht IDs (from Docker seed data)
-YACHT_A_ID = os.getenv('TEST_YACHT_A_ID', '00000000-0000-0000-0000-00000000000a')
-YACHT_B_ID = os.getenv('TEST_YACHT_B_ID', '00000000-0000-0000-0000-00000000000b')
+# Test yacht IDs
+YACHT_A_ID = os.getenv('YACHT_ID', os.getenv('TEST_YACHT_A_ID', '85fe1119-b04c-41ac-80f1-829d23322598'))
+YACHT_B_ID = os.getenv('OTHER_YACHT_ID', os.getenv('TEST_YACHT_B_ID', '00000000-0000-0000-0000-000000000000'))
 
-# Test entity IDs (seed these in Docker setup)
+# Test entity IDs (seed these in Docker setup or use env vars)
 TEST_WO_A_ID = os.getenv('TEST_WO_A_ID', '11111111-1111-1111-1111-11111111111a')
 TEST_WO_B_ID = os.getenv('TEST_WO_B_ID', '11111111-1111-1111-1111-11111111111b')
 TEST_PART_A_ID = os.getenv('TEST_PART_A_ID', '22222222-2222-2222-2222-22222222222a')
+
+# Test users (for real JWT authentication)
+TEST_PASSWORD = os.getenv('TEST_PASSWORD', 'Password2!')
+TEST_USERS = {
+    'crew': os.getenv('CREW_EMAIL', 'crew.test@alex-short.com'),
+    'chief_engineer': os.getenv('HOD_EMAIL', 'hod.test@alex-short.com'),
+    'captain': os.getenv('CAPTAIN_EMAIL', 'captain.test@alex-short.com'),
+}
+
+# JWT cache
+_jwt_cache: Dict[str, str] = {}
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
+def get_real_jwt(role: str) -> str:
+    """Get real JWT from Supabase auth."""
+    if role in _jwt_cache:
+        return _jwt_cache[role]
+
+    email = TEST_USERS.get(role)
+    if not email:
+        print(f"WARNING: No email configured for role {role}")
+        return f"mock_jwt_{role}"
+
+    if not MASTER_SUPABASE_URL or not MASTER_SUPABASE_ANON_KEY:
+        print("WARNING: Supabase auth not configured, using mock JWT")
+        return f"mock_jwt_{role}"
+
+    url = f"{MASTER_SUPABASE_URL}/auth/v1/token?grant_type=password"
+    headers = {
+        "apikey": MASTER_SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+    }
+    try:
+        response = requests.post(url, headers=headers, json={
+            "email": email,
+            "password": TEST_PASSWORD
+        }, timeout=10)
+        if response.status_code == 200:
+            jwt = response.json().get("access_token")
+            _jwt_cache[role] = jwt
+            return jwt
+        print(f"WARNING: Auth failed for {email}: {response.status_code}")
+        return f"mock_jwt_{role}"
+    except Exception as e:
+        print(f"WARNING: Auth error for {role}: {e}")
+        return f"mock_jwt_{role}"
+
+
 def get_test_jwt(yacht_id: str, role: str) -> str:
-    """Generate test JWT (mock implementation for Docker tests)."""
-    # In real implementation, this would call auth service
-    # For now, return placeholder
-    return f"mock_jwt_{yacht_id}_{role}"
+    """Get JWT for testing (uses real Supabase auth if configured)."""
+    return get_real_jwt(role)
 
 
 def api_get(endpoint: str, jwt: str) -> Tuple[int, Dict]:
