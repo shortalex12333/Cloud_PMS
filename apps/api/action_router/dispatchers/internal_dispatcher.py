@@ -28,6 +28,7 @@ from handlers.certificate_handlers import get_certificate_handlers as _get_certi
 from handlers.equipment_handlers import get_equipment_handlers as _get_equipment_handlers_raw
 from handlers.shopping_list_handlers import get_shopping_list_handlers as _get_shopping_list_handlers_raw
 from handlers.document_handlers import get_document_handlers as _get_document_handlers_raw
+from handlers.part_handlers import get_part_handlers as _get_part_handlers_raw
 from handlers.receiving_handlers import (
     ReceivingHandlers,
     _create_receiving_adapter,
@@ -48,6 +49,7 @@ _p1_compliance_handlers = None
 _p1_purchasing_handlers = None
 _p2_handlers = None
 _equipment_handlers = None
+_part_handlers = None
 _receiving_handlers = None
 _shopping_list_handlers = None
 _document_handlers = None
@@ -91,6 +93,14 @@ def _get_equipment_handlers():
     if _equipment_handlers is None:
         _equipment_handlers = _get_equipment_handlers_raw(get_supabase_client())
     return _equipment_handlers
+
+
+def _get_part_handlers():
+    """Get lazy-initialized Part Lens v2 handlers."""
+    global _part_handlers
+    if _part_handlers is None:
+        _part_handlers = _get_part_handlers_raw(get_supabase_client())
+    return _part_handlers
 
 
 def _get_receiving_handlers():
@@ -2372,6 +2382,154 @@ async def _p2_upload_photo(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ============================================================================
+# PART LENS V2 WRAPPER FUNCTIONS
+# ============================================================================
+
+
+async def _part_view_part_details(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part view_part_details handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("view_part_details")
+    if not fn:
+        raise ValueError("view_part_details handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"]
+    )
+
+
+async def _part_add_to_shopping_list(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part add_to_shopping_list handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("add_to_shopping_list")
+    if not fn:
+        raise ValueError("add_to_shopping_list handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"],
+        quantity=params["quantity"],
+        reason=params.get("reason")
+    )
+
+
+async def _part_consume_part(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part consume_part handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("consume_part")
+    if not fn:
+        raise ValueError("consume_part handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"],
+        quantity=params["quantity"],
+        work_order_id=params.get("work_order_id"),
+        notes=params.get("notes")
+    )
+
+
+async def _part_receive_part(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part receive_part handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("receive_part")
+    if not fn:
+        raise ValueError("receive_part handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"],
+        quantity=params["quantity"],
+        to_location_id=params.get("to_location_id"),
+        supplier_id=params.get("supplier_id"),
+        invoice_number=params.get("invoice_number"),
+        photo_storage_path=params.get("photo_storage_path"),
+        idempotency_key=params.get("idempotency_key")
+    )
+
+
+async def _part_transfer_part(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part transfer_part handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("transfer_part")
+    if not fn:
+        raise ValueError("transfer_part handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"],
+        quantity=params["quantity"],
+        from_location=params["from_location"],
+        to_location=params["to_location"],
+        notes=params.get("notes")
+    )
+
+
+async def _part_adjust_stock_quantity(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part adjust_stock_quantity handler (SIGNED)."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("adjust_stock_quantity")
+    if not fn:
+        raise ValueError("adjust_stock_quantity handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"],
+        new_quantity=params["new_quantity"],
+        reason=params["reason"],
+        signature=params.get("signature"),
+        location=params.get("location")
+    )
+
+
+async def _part_write_off_part(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part write_off_part handler (SIGNED)."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("write_off_part")
+    if not fn:
+        raise ValueError("write_off_part handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_id=params["part_id"],
+        quantity=params["quantity"],
+        reason=params["reason"],
+        signature=params.get("signature")
+    )
+
+
+async def _part_generate_part_labels(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part generate_part_labels handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("generate_part_labels")
+    if not fn:
+        raise ValueError("generate_part_labels handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        part_ids=params["part_ids"],
+        label_type=params.get("label_type", "standard"),
+        include_qr=params.get("include_qr", True)
+    )
+
+
+async def _part_request_label_output(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for Part request_label_output handler."""
+    handlers = _get_part_handlers()
+    fn = handlers.get("request_label_output")
+    if not fn:
+        raise ValueError("request_label_output handler not registered")
+    return await fn(
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        label_pdf_path=params["label_pdf_path"],
+        output_method=params["output_method"],
+        recipient_email=params.get("recipient_email")
+    )
+
+
+# ============================================================================
 # EQUIPMENT LENS V2 WRAPPER FUNCTIONS
 # ============================================================================
 
@@ -2910,6 +3068,26 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     # Equipment Lens v2 - Spec completion
     "attach_image_with_comment": _eq_attach_image_with_comment,
     "decommission_and_replace_equipment": _eq_decommission_and_replace,
+
+    # =========================================================================
+    # Part Lens v2 Handlers (from part_handlers.py)
+    # =========================================================================
+    # READ handlers
+    "view_part_details": _part_view_part_details,
+
+    # MUTATE handlers
+    "add_to_shopping_list": _part_add_to_shopping_list,
+    "consume_part": _part_consume_part,
+    "receive_part": _part_receive_part,
+    "transfer_part": _part_transfer_part,
+
+    # SIGNED handlers
+    "adjust_stock_quantity": _part_adjust_stock_quantity,
+    "write_off_part": _part_write_off_part,
+
+    # Label handlers
+    "generate_part_labels": _part_generate_part_labels,
+    "request_label_output": _part_request_label_output,
 
     # =========================================================================
     # Receiving Lens v1 Handlers (from receiving_handlers.py)
