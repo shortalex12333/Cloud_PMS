@@ -616,6 +616,58 @@ async def execute_action(
     try:
         # ===== WORK ORDER ACTIONS (P0 Actions 2-5) =====
         if action == "create_work_order_from_fault":
+            # STRICT SIGNATURE VALIDATION (canon-critical for Fault Lens v1)
+            signature = payload.get("signature")
+
+            # 1. Check signature is present → 400 signature_required
+            if not signature:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "error",
+                        "error_code": "signature_required",
+                        "message": "Signature payload required for SIGNED action"
+                    }
+                )
+
+            # 2. Validate signature structure → 400 invalid_signature
+            required_sig_keys = {"signed_at", "user_id", "role_at_signing", "signature_type"}
+            if not isinstance(signature, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "error",
+                        "error_code": "invalid_signature",
+                        "message": "Signature must be an object"
+                    }
+                )
+
+            missing_keys = required_sig_keys - set(signature.keys())
+            if missing_keys:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "error",
+                        "error_code": "invalid_signature",
+                        "message": f"Invalid signature: missing keys {sorted(missing_keys)}"
+                    }
+                )
+
+            # 3. Validate signer role → 403 invalid_signer_role
+            # Only captain and manager can sign create_work_order_from_fault
+            role_at_signing = signature.get("role_at_signing")
+            allowed_signer_roles = ["captain", "manager"]
+            if role_at_signing not in allowed_signer_roles:
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": "invalid_signer_role",
+                        "message": f"Role '{role_at_signing}' cannot sign this action",
+                        "required_roles": allowed_signer_roles
+                    }
+                )
+
             # Use tenant client directly (wo_handlers may not be available)
             from datetime import datetime, timezone
             import uuid
@@ -662,6 +714,19 @@ async def execute_action(
                         "updated_by": user_id,
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }).eq("id", fault_id).eq("yacht_id", yacht_id).execute()
+
+                    # Create audit log entry (Fault Lens v1 - signature NOT NULL)
+                    audit_data = {
+                        "yacht_id": yacht_id,
+                        "action": "create_work_order_from_fault",
+                        "entity_type": "work_order",
+                        "entity_id": wo_id,
+                        "user_id": user_id,
+                        "signature": signature,  # Canonical signature with all required keys
+                        "new_values": wo_result.data[0],
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    db_client.table("pms_audit_log").insert(audit_data).execute()
 
                     result = {
                         "status": "success",
