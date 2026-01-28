@@ -71,6 +71,8 @@ Then update the GitHub secrets with the new JWTs.
 Once secrets are added, the CI workflow will:
 
 1. **Build DATABASE_URL** from TENANT_SUPABASE_URL and TENANT_DB_PASSWORD
+   - Uses port 6543 (connection pooler) for GitHub Actions compatibility
+   - Direct postgres port 5432 is blocked by Supabase firewall in CI
 2. **Run 16 acceptance tests** against staging tenant database
 3. **Verify migrations** (RLS policies, atomic functions)
 4. **Upload test artifacts** (JUnit XML)
