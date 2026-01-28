@@ -8,6 +8,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8889:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
     environment:
       # MASTER Supabase (auth/user lookup)
       - MASTER_SUPABASE_URL=https://qvzmkaamzaqxpzbewjxe.supabase.co
@@ -38,6 +46,14 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     environment:
       - API_BASE=http://api:8000
       - MASTER_SUPABASE_URL=https://qvzmkaamzaqxpzbewjxe.supabase.co
