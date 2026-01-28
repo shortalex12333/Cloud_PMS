@@ -596,9 +596,9 @@ async def execute_action(
     }
 
     # PART LENS SIGNED ACTIONS - STRICT role enforcement (captain/manager only)
-    # NOTE: write_off_part is NOT included - any authenticated user can write off parts
     PART_LENS_SIGNED_ROLES = {
         "adjust_stock_quantity": ["chief_engineer", "captain", "manager"],
+        "write_off_part": ["captain", "manager"],  # Captain/Manager only (NOT crew, NOT HOD)
     }
 
     if action in FAULT_LENS_ROLES:
@@ -4500,6 +4500,10 @@ async def execute_action(
     except HTTPException:
         # Let HTTPExceptions propagate with their original status code
         raise
+    except PermissionError as e:
+        # Permission errors from handlers should return 403
+        logger.warning(f"Permission denied: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         # Validation errors from handlers should return 400
         logger.warning(f"Action validation failed: {e}")
