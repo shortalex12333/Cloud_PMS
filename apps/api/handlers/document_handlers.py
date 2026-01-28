@@ -198,9 +198,9 @@ def get_document_handlers(supabase_client) -> Dict[str, callable]:
     handlers = DocumentHandlers(supabase_client)
 
     return {
-        # READ handlers
-        "get_document_url": handlers.get_document_url,
-        "list_documents": handlers.list_documents,
+        # READ handlers (adapters align param shape)
+        "get_document_url": _get_document_url_adapter(handlers),
+        "list_documents": _list_documents_adapter(handlers),
 
         # MUTATION handlers (adapters defined below)
         "upload_document": _upload_document_adapter(handlers),
@@ -208,6 +208,37 @@ def get_document_handlers(supabase_client) -> Dict[str, callable]:
         "add_document_tags": _add_document_tags_adapter(handlers),
         "delete_document": _delete_document_adapter(handlers),
     }
+
+
+# =============================================================================
+# READ ADAPTERS (thin wrappers that align with Action Router param shape)
+# =============================================================================
+
+def _get_document_url_adapter(handlers: DocumentHandlers):
+    async def _fn(**params):
+        """Adapter for get_document_url that accepts flat params."""
+        yacht_id = params["yacht_id"]
+        doc_id = params["document_id"]
+        # Pass remaining params
+        return await handlers.get_document_url(
+            entity_id=doc_id,
+            yacht_id=yacht_id,
+            params=params
+        )
+    return _fn
+
+
+def _list_documents_adapter(handlers: DocumentHandlers):
+    async def _fn(**params):
+        """Adapter for list_documents that accepts flat params."""
+        yacht_id = params["yacht_id"]
+        # Pass remaining params for filtering
+        return await handlers.list_documents(
+            entity_id=None,  # List doesn't have single entity
+            yacht_id=yacht_id,
+            params=params
+        )
+    return _fn
 
 
 # =============================================================================
