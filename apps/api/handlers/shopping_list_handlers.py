@@ -364,9 +364,20 @@ class ShoppingListHandlers:
 
             user = user_result.data
 
-            # Check HoD via RLS helper (is_hod function)
-            # Note: RLS UPDATE policy enforces is_hod(auth.uid(), yacht_id)
-            # We rely on RLS to enforce HoD check, but also verify in handler for explicit error
+            # ============================================================
+            # ROLE CHECK: Only HoD can approve
+            # ============================================================
+            # NOTE: Handlers use service key which bypasses RLS, so we must check roles explicitly
+            is_hod_result = self.db.rpc("is_hod", {"p_user_id": user_id, "p_yacht_id": yacht_id}).execute()
+
+            if not is_hod_result or not is_hod_result.data:
+                logger.warning(f"Non-HoD attempted approve: user={user_id}, yacht={yacht_id}")
+                builder.set_error(
+                    "FORBIDDEN",
+                    "Only HoD (chief engineer, chief officer, captain, manager) can approve shopping list items",
+                    403
+                )
+                return builder.build()
 
             # ============================================================
             # FETCH ITEM & VALIDATE STATE
@@ -579,6 +590,21 @@ class ShoppingListHandlers:
             user = user_result.data
 
             # ============================================================
+            # ROLE CHECK: Only HoD can reject
+            # ============================================================
+            # NOTE: Handlers use service key which bypasses RLS, so we must check roles explicitly
+            is_hod_result = self.db.rpc("is_hod", {"p_user_id": user_id, "p_yacht_id": yacht_id}).execute()
+
+            if not is_hod_result or not is_hod_result.data:
+                logger.warning(f"Non-HoD attempted reject: user={user_id}, yacht={yacht_id}")
+                builder.set_error(
+                    "FORBIDDEN",
+                    "Only HoD (chief engineer, chief officer, captain, manager) can reject shopping list items",
+                    403
+                )
+                return builder.build()
+
+            # ============================================================
             # FETCH ITEM & VALIDATE STATE
             # ============================================================
 
@@ -758,8 +784,20 @@ class ShoppingListHandlers:
 
             user = user_result.data
 
-            # Note: Role check for engineers (chief_engineer, manager) will be enforced by
-            # action router's allowed_roles. We don't re-check here, but RLS may block.
+            # ============================================================
+            # ROLE CHECK: Only engineers can promote
+            # ============================================================
+            # NOTE: Handlers use service key which bypasses RLS, so we must check roles explicitly
+            is_engineer_result = self.db.rpc("is_engineer", {"p_user_id": user_id, "p_yacht_id": yacht_id}).execute()
+
+            if not is_engineer_result or not is_engineer_result.data:
+                logger.warning(f"Non-engineer attempted promote: user={user_id}, yacht={yacht_id}")
+                builder.set_error(
+                    "FORBIDDEN",
+                    "Only engineers (chief engineer, ETO, engineer, manager) can promote candidates to parts catalog",
+                    403
+                )
+                return builder.build()
 
             # ============================================================
             # FETCH ITEM & VALIDATE
