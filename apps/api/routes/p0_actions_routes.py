@@ -4525,6 +4525,9 @@ async def execute_action(
             if user_jwt and user_jwt.startswith("Bearer "):
                 user_jwt = user_jwt[7:]
 
+            # Extract mode from context if present (for prepare/execute pattern)
+            mode = request.context.get("mode")
+
             # Merge context and payload for internal dispatcher
             # CRITICAL: Pass user_jwt so handlers can create RLS-enforced clients
             handler_params = {
@@ -4534,6 +4537,10 @@ async def execute_action(
                 "user_jwt": user_jwt,  # For RLS enforcement
                 **payload
             }
+
+            # Add mode if present (for prepare/execute pattern)
+            if mode:
+                handler_params["mode"] = mode
 
             try:
                 result = await internal_dispatcher.dispatch(action, handler_params)
