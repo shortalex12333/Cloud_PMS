@@ -26,3 +26,35 @@ Manual Staging Quick Test
 Render Deploy Hook (staging)
 - POST https://api.render.com/deploy/srv-d5fr5hre5dus73d3gdn0?key=...
 
+---
+
+Action Suggestions Endpoint
+---------------------------
+
+GET /v1/actions/list - Returns role-gated action suggestions.
+
+Query params:
+- q: Search query (e.g., "add certificate")
+- domain: Filter by domain (e.g., "certificates")
+- entity_id: Entity ID for storage path preview
+
+Response includes:
+- actions[]: List of available actions for user's role
+- storage_options: For file-related actions (bucket, path_preview, confirmation_required)
+- match_score: Relevance score for query matching
+
+Example:
+  curl -H "Authorization: Bearer $HOD_JWT" \
+    "http://localhost:8000/v1/actions/list?q=add+certificate&domain=certificates"
+
+Storage confirmation UX: When storage_options.confirmation_required is true, UI should
+show a confirmation dialog before executing file-related actions. Presigned upload URLs
+are generated only during /execute flow, not in suggestions.
+
+Frontend Smoke (Spotlight)
+--------------------------
+
+- HOD types "add certificate" → SuggestedActions shows "Add Vessel Certificate" button
+- CREW types "add certificate" → No mutation buttons
+- Clicking a button opens ActionModal with required fields and storage path preview
+- Submitting executes action and refreshes results

@@ -1,0 +1,77 @@
+{
+  "allowedPrompts": [
+    {
+      "tool": "Bash",
+      "prompt": "run tests"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "execute scripts"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "verify action"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "query database"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "update files"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "run verification"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "check status"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "list files"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "find handler"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "create directories"
+    }
+  ],
+  "workingDirectory": "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS",
+  "permissions": {
+    "filesystem": {
+      "read": true,
+      "write": true,
+      "scope": "workingDirectory"
+    },
+    "bash": {
+      "enabled": true,
+      "scope": "workingDirectory",
+      "autoApprove": true
+    }
+  },
+  "safety": {
+    "preventParentAccess": true,
+    "restrictToWorkingDirectory": true,
+    "allowedPaths": [
+      "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/**"
+    ],
+    "blockedPaths": [
+      "/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/../**",
+      "~/**",
+      "/tmp/**",
+      "/usr/**",
+      "/System/**"
+    ]
+  },
+  "agents": {
+    "autoApproveInScope": true,
+    "requireConfirmationOutsideScope": true,
+    "maxSessionTime": "6h",
+    "enableLogging": true
+  }
+}

@@ -45,6 +45,52 @@ function detectCertActionIntent(query: string): boolean {
   return CERT_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
 }
 
+// Work order action keywords
+const WO_ACTION_KEYWORDS = [
+  'add work order',
+  'create work order',
+  'new work order',
+  'create wo',
+  'assign work order',
+  'start work order',
+  'close work order',
+  'cancel work order',
+  'add wo note',
+  'add wo photo',
+  'add part to work order',
+  'work order from fault',
+];
+
+function detectWorkOrderActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return WO_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
+// Fault action keywords - Fault Lens v1
+const FAULT_ACTION_KEYWORDS = [
+  'report fault',
+  'add fault',
+  'create fault',
+  'new fault',
+  'log fault',
+  'acknowledge fault',
+  'close fault',
+  'update fault',
+  'add fault note',
+  'add fault photo',
+  'diagnose fault',
+  'reopen fault',
+  'false alarm',
+  'work order from fault',
+  'fault history',
+  'view fault',
+];
+
+function detectFaultActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return FAULT_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
 // Types
 interface SearchState {
   query: string;
@@ -421,19 +467,32 @@ export function useCelesteSearch(yachtId: string | null = null) {
   }, []);
 
   /**
-   * Fetch action suggestions if query has cert action intent
+   * Fetch action suggestions if query has action intent (cert, WO, fault)
    */
   const fetchActionSuggestionsIfNeeded = useCallback(async (query: string) => {
-    if (!detectCertActionIntent(query)) {
+    const wantsCert = detectCertActionIntent(query);
+    const wantsWO = detectWorkOrderActionIntent(query);
+    const wantsFault = detectFaultActionIntent(query);
+
+    if (!wantsCert && !wantsWO && !wantsFault) {
       // Clear action suggestions if no intent
       setState(prev => ({ ...prev, actionSuggestions: [] }));
       return;
     }
 
-    console.log('[useCelesteSearch] 🎯 Cert action intent detected, fetching suggestions');
-
     try {
-      const response = await getActionSuggestions(query, 'certificates');
+      // Determine domain - fault takes precedence if query matches multiple
+      let domain: string;
+      if (wantsFault) {
+        domain = 'faults';
+      } else if (wantsCert) {
+        domain = 'certificates';
+      } else {
+        domain = 'work_orders';
+      }
+
+      console.log('[useCelesteSearch] 🎯 Action intent detected for', domain, '— fetching suggestions');
+      const response = await getActionSuggestions(query, domain);
       console.log('[useCelesteSearch] 📋 Action suggestions received:', response.actions.length);
 
       setState(prev => ({

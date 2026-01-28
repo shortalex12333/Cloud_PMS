@@ -692,6 +692,44 @@ def _create_default_registry() -> ActionRegistry:
         description="Edit work order details"
     ))
 
+    # SIGNED: Reassign work order (HOD signature required)
+    registry.register(Action(
+        action_id="reassign_work_order",
+        label="Reassign",
+        variant=ActionVariant.SIGNED,
+        domain="work_orders",
+        entity_types=["work_order"],
+        allowed_roles=["captain", "chief_engineer", "chief_officer", "purser", "manager"],
+        ui=ActionUI(dropdown_only=True, icon="user-switch"),
+        execution=ActionExecution(handler="reassign_work_order"),
+        mutation=ActionMutation(
+            requires_signature=True,
+            preview_diff=True,
+            confirmation_message="Reassign work order to different crew member"
+        ),
+        audit=ActionAudit(level=AuditLevel.FULL),
+        description="Reassign work order to a different crew member (HOD signature required)"
+    ))
+
+    # SIGNED: Archive work order (Captain/HOD signature required)
+    registry.register(Action(
+        action_id="archive_work_order",
+        label="Archive",
+        variant=ActionVariant.SIGNED,
+        domain="work_orders",
+        entity_types=["work_order"],
+        allowed_roles=["captain", "chief_engineer", "chief_officer", "purser", "manager"],
+        ui=ActionUI(dropdown_only=True, icon="archive"),
+        execution=ActionExecution(handler="archive_work_order"),
+        mutation=ActionMutation(
+            requires_signature=True,
+            preview_diff=True,
+            confirmation_message="Archive this work order? This action cannot be undone."
+        ),
+        audit=ActionAudit(level=AuditLevel.FULL),
+        description="Archive (soft delete) work order - returns linked fault to open status"
+    ))
+
     # -------------------------------------------------------------------------
     # EQUIPMENT DOMAIN - Additional Actions
     # -------------------------------------------------------------------------

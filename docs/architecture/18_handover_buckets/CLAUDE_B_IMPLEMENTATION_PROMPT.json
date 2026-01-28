@@ -1,0 +1,360 @@
+{
+  "task": "Handover Export System Implementation",
+  "target_repository": "https://github.com/shortalex12333/handover_export",
+  "render_service_id": "srv-d5k0avchg0os738oel2g",
+  "branch": "main",
+  "created": "2026-01-14",
+  "priority": "P0",
+
+  "overview": {
+    "description": "Build the Handover Export System that handles TWO primary workflows: (1) User-populated handover entries export (PRIMARY), (2) Email extraction to handover entries (SECONDARY)",
+    "primary_workflow": "User creates handover notes → Filter by user_id → Generate draft → Review → Sign-off → Export PDF/HTML/Email",
+    "secondary_workflow": "Fetch Outlook emails → AI classify → AI summarize → Create handover_entries → Same export flow"
+  },
+
+  "documentation_index": {
+    "base_path": "/Users/celeste7/Desktop/Cloud_PMS_docs_v2/18_handover_buckets/",
+    "must_read_first": [
+      "IMPL_RENDER_DEPLOYMENT.md - Environment vars, repo structure, API endpoints",
+      "ANALYSIS_feasibility.md - Gap analysis and architecture overview",
+      "# 10_supabase_schema.md - Database schema for handover tables",
+      "# 16_api_endpoints.md - API endpoint specifications"
+    ],
+    "implementation_specs": [
+      "IMPL_EMAIL_AZURE_INTEGRATION.md - Azure OAuth, Graph API, email pipeline",
+      "IMPL_PYTHON_PIPELINE.md - 8-stage email processing pipeline",
+      "IMPL_FRONTEND_JOURNEY.md - Frontend UX and component specs"
+    ],
+    "domain_knowledge": [
+      "00_principles.md - Core principles",
+      "01_bucket_taxonomy.md - 6 presentation buckets",
+      "02_domain_to_bucket_map.md - 28 domain codes mapping",
+      "03_role_bucket_biasing.md - Role-based bucket priorities",
+      "05_handover_draft_model.md - Draft state machine"
+    ]
+  },
+
+  "environment": {
+    "render_env_vars_file": "/Users/celeste7/Desktop/Cloud_PMS_docs_v2/env vars/render_hadnover_env_vars.md",
+    "variables": {
+      "MASTER_SUPABASE_URL": "https://qvzmkaamzaqxpzbewjxe.supabase.co",
+      "MASTER_SUPABASE_SERVICE_KEY": "SET_IN_RENDER",
+      "MASTER_SUPABASE_JWT_SECRET": "SET_IN_RENDER",
+      "yTEST_YACHT_001_SUPABASE_URL": "https://vzsohavtuotocgrfkfyd.supabase.co",
+      "yTEST_YACHT_001_SUPABASE_SERVICE_KEY": "SET_IN_RENDER",
+      "yTEST_YACHT_001_SUPABASE_JWT_SECRET": "SET_IN_RENDER",
+      "AZURE_TENANT_ID": "d44c2402-b515-4d6d-a392-5cfc88ae53bb",
+      "AZURE_CLIENT_ID": "a744caeb-9896-4dbf-8b85-d5e07dba935c",
+      "AZURE_CLIENT_SECRET": "SET_IN_RENDER",
+      "OPENAI_API_KEY": "SET_IN_RENDER",
+      "LOG_LEVEL": "INFO",
+      "PYTHONPATH": "/opt/render/project/src",
+      "ENVIRONMENT": "production"
+    },
+    "tenant_pattern": "{YACHT_ID}_SUPABASE_URL, {YACHT_ID}_SUPABASE_SERVICE_KEY, {YACHT_ID}_SUPABASE_JWT_SECRET"
+  },
+
+  "implementation_phases": [
+    {
+      "phase": 1,
+      "name": "Repository Setup & Core Structure",
+      "tasks": [
+        "Clone handover_export repository",
+        "Create directory structure per IMPL_RENDER_DEPLOYMENT.md Section 3",
+        "Create requirements.txt per IMPL_RENDER_DEPLOYMENT.md Section 4",
+        "Create app/main.py with FastAPI app",
+        "Create app/config.py for environment variable loading",
+        "Create app/dependencies.py for Supabase client injection",
+        "Implement health check endpoints (/health, /health/ready)",
+        "Create .env.example with all required variables"
+      ],
+      "verification": [
+        "Run locally: uvicorn app.main:app --reload",
+        "Verify /health returns 200",
+        "Verify environment variables load correctly"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Database Schema - Supabase CLI Migration",
+      "tasks": [
+        "Install Supabase CLI if not present",
+        "Create migration: supabase migration new handover_entries",
+        "Create migration: supabase migration new handover_drafts",
+        "Create migration: supabase migration new handover_draft_sections",
+        "Create migration: supabase migration new handover_draft_items",
+        "Create migration: supabase migration new handover_draft_edits",
+        "Create migration: supabase migration new handover_signoffs",
+        "Create migration: supabase migration new handover_exports",
+        "Create migration: supabase migration new email_extraction_jobs",
+        "Create migration: supabase migration new email_classifications",
+        "Create migration: supabase migration new email_handover_drafts",
+        "Apply migrations to tenant DB"
+      ],
+      "schema_source": "# 10_supabase_schema.md and IMPL_EMAIL_AZURE_INTEGRATION.md Part 6",
+      "verification": [
+        "supabase db push --db-url {tenant_url}",
+        "Verify tables exist in Supabase dashboard",
+        "Test basic CRUD operations"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "RLS Policies",
+      "tasks": [
+        "Enable RLS on all new tables",
+        "Create vessel isolation policies (vessel_id IN user_profiles.yacht_id)",
+        "Create user-specific policies for handover_entries (creator_id = auth.uid())",
+        "Create draft access policies based on outgoing/incoming user",
+        "Create signoff policies ensuring only appropriate users can sign",
+        "Test RLS with different user contexts"
+      ],
+      "policy_pattern": "All tables use vessel_id isolation via user_profiles.yacht_id lookup",
+      "verification": [
+        "Test as different users via Supabase client",
+        "Verify cross-tenant isolation works",
+        "Verify user-level filtering works"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "RPC Functions",
+      "tasks": [
+        "Create generate_handover_draft() RPC",
+        "Create get_handover_draft() RPC with sections/items",
+        "Create enter_review_state() RPC with state validation",
+        "Create edit_draft_item() RPC with audit trail",
+        "Create merge_draft_items() RPC",
+        "Create accept_handover() RPC (outgoing signs)",
+        "Create sign_handover() RPC (incoming countersigns)",
+        "Create export_handover() RPC",
+        "Create create_handover_entry() RPC with domain inference",
+        "Create confirm_entry() and dismiss_entry() RPCs"
+      ],
+      "rpc_source": "IMPLEMENTATION_INDEX.md Handover RPC Functions table",
+      "verification": [
+        "Test each RPC via Supabase client",
+        "Verify state transitions work correctly",
+        "Verify audit trails are created"
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "User Handover Export API (PRIMARY)",
+      "tasks": [
+        "Implement app/routers/handover_entries.py",
+        "Implement app/routers/handover_drafts.py",
+        "Implement app/routers/handover_export.py",
+        "Implement app/services/draft_generator.py",
+        "Implement app/services/draft_reviewer.py",
+        "Implement app/services/signoff_manager.py",
+        "Implement app/services/exporter.py (PDF/HTML/Email)",
+        "Create Jinja2 templates for PDF/HTML export",
+        "Implement state machine: DRAFT → IN_REVIEW → ACCEPTED → SIGNED → EXPORTED"
+      ],
+      "api_source": "IMPL_RENDER_DEPLOYMENT.md Section 7",
+      "verification": [
+        "POST /api/v1/handover/entries - create entry",
+        "GET /api/v1/handover/entries?user_id=X - filter entries",
+        "POST /api/v1/handover/drafts/generate - create draft",
+        "GET /api/v1/handover/drafts/{id} - get draft with sections",
+        "POST /api/v1/handover/drafts/{id}/accept - sign off",
+        "POST /api/v1/handover/drafts/{id}/export - generate PDF"
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Email Extraction Pipeline (SECONDARY)",
+      "tasks": [
+        "Implement app/routers/auth.py (Azure OAuth)",
+        "Implement app/routers/email_extraction.py",
+        "Implement app/services/azure_auth.py (PKCE flow)",
+        "Implement app/services/graph_client.py (Microsoft Graph)",
+        "Implement app/services/email_pipeline.py (8-stage orchestrator)",
+        "Implement app/services/classifier.py (GPT-4o-mini)",
+        "Implement app/services/merger.py (summary merging)",
+        "Map n8n categories to domain codes"
+      ],
+      "pipeline_source": "IMPL_PYTHON_PIPELINE.md",
+      "azure_source": "IMPL_EMAIL_AZURE_INTEGRATION.md",
+      "verification": [
+        "Test OAuth flow with Azure",
+        "Test email fetch from Microsoft Graph",
+        "Test classification with sample emails",
+        "Test full pipeline end-to-end"
+      ]
+    },
+    {
+      "phase": 7,
+      "name": "Docker & Local Testing",
+      "tasks": [
+        "Create Dockerfile per IMPL_RENDER_DEPLOYMENT.md",
+        "Create docker-compose.yml for local development",
+        "Create tests/test_draft_generation.py",
+        "Create tests/test_signoff_workflow.py",
+        "Create tests/test_export.py",
+        "Create tests/test_email_pipeline.py",
+        "Create tests/test_integration.py",
+        "Run full test suite"
+      ],
+      "verification": [
+        "docker-compose up --build",
+        "pytest tests/ -v",
+        "All tests pass"
+      ]
+    },
+    {
+      "phase": 8,
+      "name": "Render Deployment",
+      "tasks": [
+        "Push to main branch",
+        "Verify auto-deploy triggers",
+        "Check Render logs for startup",
+        "Verify /health endpoint",
+        "Verify /health/ready shows all services connected",
+        "Test user handover workflow end-to-end",
+        "Test email extraction workflow end-to-end"
+      ],
+      "verification": [
+        "Service healthy in Render dashboard",
+        "All endpoints responding correctly",
+        "PDF exports generating successfully"
+      ]
+    }
+  ],
+
+  "database_tables": {
+    "tenant_db": [
+      "handover_entries - Raw truth seeds, never overwritten",
+      "handover_drafts - Assembled draft documents",
+      "handover_draft_sections - Bucket structure per draft",
+      "handover_draft_items - Summarised narrative items",
+      "handover_draft_edits - Edit audit trail",
+      "handover_signoffs - Acceptance + countersign records",
+      "handover_exports - PDF/HTML/Email export records",
+      "email_extraction_jobs - Track email extraction runs",
+      "email_classifications - Store AI classifications",
+      "email_handover_drafts - Generated items from email"
+    ],
+    "master_db": [
+      "role_definitions - 45+ yacht roles",
+      "department_definitions - Department groupings",
+      "domain_codes - 28 domain code definitions"
+    ]
+  },
+
+  "state_machine": {
+    "states": ["DRAFT", "IN_REVIEW", "ACCEPTED", "SIGNED", "EXPORTED"],
+    "transitions": {
+      "DRAFT → IN_REVIEW": "User clicks 'Ready for Review'",
+      "IN_REVIEW → ACCEPTED": "Outgoing user signs off",
+      "ACCEPTED → SIGNED": "Incoming user countersigns",
+      "SIGNED → EXPORTED": "Export to PDF/HTML/Email"
+    }
+  },
+
+  "domain_codes": {
+    "count": 28,
+    "buckets": ["Command", "Deck", "Engineering", "Interior", "Admin_Compliance", "Pending"],
+    "mapping_file": "02_domain_to_bucket_map.md"
+  },
+
+  "critical_constraints": [
+    "NO silent automation - user must confirm all actions",
+    "NO inferred intent without showing uncertainty",
+    "Handover is a document, not a workspace",
+    "Every mutation produces confirmation",
+    "Reads are collapsed, not hidden",
+    "Search is the primary interface (CelesteOS principle)",
+    "User-populated entries are PRIMARY, email extraction is SECONDARY"
+  ],
+
+  "performance_targets": {
+    "draft_generation": "< 30 seconds for 500 entries",
+    "export_rendering": "< 10 seconds",
+    "lock_wait": "< 5 seconds",
+    "email_fetch_500": "< 10 seconds",
+    "email_classify_500": "< 20 seconds (10 concurrent)",
+    "email_merge_100_groups": "< 15 seconds (5 concurrent)"
+  },
+
+  "test_commands": {
+    "local_run": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "docker_build": "docker-compose up --build",
+    "run_tests": "pytest tests/ -v --tb=short",
+    "supabase_migration": "supabase db push --db-url $yTEST_YACHT_001_SUPABASE_URL",
+    "supabase_reset": "supabase db reset --db-url $yTEST_YACHT_001_SUPABASE_URL"
+  },
+
+  "integration_points": {
+    "main_app": "/Users/celeste7/Documents/Cloud_PMS",
+    "frontend_calls_handover_api": "Frontend uses fetch() to handover-export-api endpoints",
+    "supabase_auth": "Uses same auth.users table, JWT validation",
+    "storage_bucket": "handover_exports bucket for PDF storage"
+  },
+
+  "files_to_create": [
+    "app/__init__.py",
+    "app/main.py",
+    "app/config.py",
+    "app/dependencies.py",
+    "app/routers/__init__.py",
+    "app/routers/auth.py",
+    "app/routers/health.py",
+    "app/routers/handover_entries.py",
+    "app/routers/handover_drafts.py",
+    "app/routers/handover_export.py",
+    "app/routers/email_extraction.py",
+    "app/services/__init__.py",
+    "app/services/draft_generator.py",
+    "app/services/draft_reviewer.py",
+    "app/services/signoff_manager.py",
+    "app/services/exporter.py",
+    "app/services/azure_auth.py",
+    "app/services/graph_client.py",
+    "app/services/email_pipeline.py",
+    "app/services/classifier.py",
+    "app/services/merger.py",
+    "app/models/__init__.py",
+    "app/models/handover.py",
+    "app/models/signoff.py",
+    "app/models/export.py",
+    "app/models/email.py",
+    "app/models/database.py",
+    "app/utils/__init__.py",
+    "app/utils/encryption.py",
+    "app/utils/rate_limiter.py",
+    "app/utils/pdf_renderer.py",
+    "app/utils/logging.py",
+    "templates/handover_report.html",
+    "templates/email_body.html",
+    "templates/styles.css",
+    "tests/__init__.py",
+    "tests/test_draft_generation.py",
+    "tests/test_signoff_workflow.py",
+    "tests/test_export.py",
+    "tests/test_email_pipeline.py",
+    "tests/test_integration.py",
+    "supabase/migrations/YYYYMMDD_handover_entries.sql",
+    "supabase/migrations/YYYYMMDD_handover_drafts.sql",
+    "supabase/migrations/YYYYMMDD_rls_policies.sql",
+    "supabase/migrations/YYYYMMDD_rpc_functions.sql",
+    "requirements.txt",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".env.example",
+    "README.md"
+  ],
+
+  "success_criteria": [
+    "All database tables created with correct schema",
+    "RLS policies enforcing vessel and user isolation",
+    "All RPC functions working correctly",
+    "User handover export workflow complete (create → draft → sign → export)",
+    "Email extraction pipeline functional",
+    "PDF/HTML exports generating correctly",
+    "All tests passing",
+    "Deployed to Render and healthy",
+    "Auto-deploy on commit working"
+  ]
+}

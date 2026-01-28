@@ -64,6 +64,26 @@ See `FILE_MAP.md` for complete list.
 
 ---
 
+## Reading Order (Next Engineer)
+
+- `LESSONS_LEARNED.md` — False assumptions vs reality (what changed while building Certificates)
+- `FILE_MAP.md` — Where things actually live (backend endpoints, tests, frontend files)
+- `START_HERE_NEXT_LENS.md` — What we wish we had on day 1 (must‑read)
+- `STAGES.md` — The 7 stages (includes Stage 5: Frontend integration)
+- `NEXT_AGENT.md` — Step‑by‑step implementation guide
+- `ACTION_SUGGESTIONS_CONTRACT.md` — API contract for `GET /v1/actions/list`
+- `TEMPLATE_CHECKLIST.md` — Zero→Gold checklist with concrete file paths and commands
+- `RUNBOOK.md` — Commands and CI/staging workflow
+
+---
+
+## Template Guidance (Certificates → Next Lens)
+
+- Certificates is the REFERENCE TEMPLATE. Reuse patterns (registry metadata, `/v1/actions/list`, SuggestedActions/ActionModal, CI gates).
+- Copy the INTENT of each test and endpoint, not the literal action IDs. Replace with your domain’s actions while preserving the role/RLS and error‑mapping guarantees.
+- CI remains the authority: staging acceptance must pass with real JWTs before merge.
+
+
 ## Quick Reference
 
 ```bash

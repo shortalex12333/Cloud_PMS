@@ -35,79 +35,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio asyncpg python-dotenv pyjwt
-
-      - name: Generate test JWTs
-        id: generate_jwts
-        env:
-          TENANT_SUPABASE_JWT_SECRET: ${{ secrets.TENANT_SUPABASE_JWT_SECRET }}
-          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
-          STAGING_CREW_EMAIL: ${{ secrets.STAGING_CREW_EMAIL }}
-          STAGING_HOD_EMAIL: ${{ secrets.STAGING_HOD_EMAIL }}
-          STAGING_CAPTAIN_EMAIL: ${{ secrets.STAGING_CAPTAIN_EMAIL }}
-          TEST_USER_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
-        run: |
-          python3 <<EOF
-          import jwt
-          import os
-          import time
-          from datetime import datetime, timedelta
-
-          # Get secrets
-          JWT_SECRET = os.environ['TENANT_SUPABASE_JWT_SECRET']
-          SUPABASE_URL = os.environ['TENANT_SUPABASE_URL']
-          YACHT_ID = os.environ['TEST_USER_YACHT_ID']
-
-          # User IDs from staging (discovered earlier)
-          users = {
-              'CREW': {
-                  'id': '6d807a66-955c-49c4-b767-8a6189c2f422',
-                  'email': os.environ['STAGING_CREW_EMAIL']
-              },
-              'HOD': {
-                  'id': 'd5873b1f-5f62-4e3e-bc78-e03978aec5ba',
-                  'email': os.environ['STAGING_HOD_EMAIL']
-              },
-              'CAPTAIN': {
-                  'id': '5af9d61d-9b2e-4db4-a54c-a3c95eec70e5',
-                  'email': os.environ['STAGING_CAPTAIN_EMAIL']
-              }
-          }
-
-          # Generate JWTs
-          now = int(time.time())
-          exp = now + (60 * 60 * 24)  # 24 hours
-
-          for role, user_info in users.items():
-              payload = {
-                  "aud": "authenticated",
-                  "exp": exp,
-                  "sub": user_info['id'],
-                  "email": user_info['email'],
-                  "phone": "",
-                  "app_metadata": {
-                      "provider": "email",
-                      "providers": ["email"]
-                  },
-                  "user_metadata": {},
-                  "role": "authenticated",
-                  "aal": "aal1",
-                  "amr": [{"method": "password", "timestamp": now}],
-                  "session_id": f"test-session-{role.lower()}",
-                  "is_anonymous": False,
-                  "iss": f"{SUPABASE_URL}/auth/v1",
-                  "iat": now
-              }
-
-              token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
-              print(f"{role}_JWT={token}")
-
-              # Write to GitHub Actions output
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                  f.write(f"{role}_JWT={token}\n")
-
-          print("✅ JWTs generated successfully")
-          EOF
+          pip install pytest pytest-asyncio asyncpg python-dotenv
 
       - name: Build DATABASE_URL
         id: build_db_url
@@ -115,15 +43,12 @@ jobs:
           TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
           TENANT_DB_PASSWORD: ${{ secrets.TENANT_DB_PASSWORD }}
         run: |
-          # Extract host from TENANT_SUPABASE_URL (e.g., vzsohavtuotocgrfkfyd.supabase.co)
+          # Extract host from TENANT_SUPABASE_URL
           HOST=$(echo "$TENANT_SUPABASE_URL" | sed 's|https://||' | sed 's|http://||')
-
           # URL-encode password (replace @ with %40)
           ENCODED_PASSWORD=$(echo "$TENANT_DB_PASSWORD" | sed 's/@/%40/g')
-
           # Build DATABASE_URL
           DATABASE_URL="postgresql://postgres:${ENCODED_PASSWORD}@db.${HOST}:5432/postgres"
-
           echo "DATABASE_URL=${DATABASE_URL}" >> $GITHUB_OUTPUT
           echo "✅ DATABASE_URL configured"
 
@@ -132,9 +57,9 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.build_db_url.outputs.DATABASE_URL }}
           TEST_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
-          CREW_JWT: ${{ steps.generate_jwts.outputs.CREW_JWT }}
-          HOD_JWT: ${{ steps.generate_jwts.outputs.HOD_JWT }}
-          CAPTAIN_JWT: ${{ steps.generate_jwts.outputs.CAPTAIN_JWT }}
+          CREW_JWT: ${{ secrets.STAGING_CREW_JWT }}
+          HOD_JWT: ${{ secrets.STAGING_HOD_JWT }}
+          CAPTAIN_JWT: ${{ secrets.STAGING_CAPTAIN_JWT }}
         run: |
           pytest tests/test_inventory_critical.py \
             -v \

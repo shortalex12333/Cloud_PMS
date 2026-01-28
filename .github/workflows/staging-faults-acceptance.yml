@@ -1,0 +1,39 @@
+name: Staging Faults Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tests/ci/staging_faults_acceptance.py'
+      - '.github/workflows/staging-faults-acceptance.yml'
+
+jobs:
+  staging-faults:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      - name: Run Staging Acceptance (Faults)
+        env:
+          API_BASE: ${{ secrets.STAGING_API_BASE }}
+          MASTER_SUPABASE_URL: ${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY: ${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+          MASTER_SUPABASE_SERVICE_KEY: ${{ secrets.MASTER_SUPABASE_SERVICE_KEY }}
+          TENANT_SUPABASE_URL: ${{ secrets.TENANT_SUPABASE_URL }}
+          TENANT_SUPABASE_SERVICE_KEY: ${{ secrets.TENANT_SUPABASE_SERVICE_KEY }}
+          YACHT_ID: ${{ secrets.YACHT_ID }}
+          STAGING_CREW_EMAIL: ${{ secrets.STAGING_CREW_EMAIL }}
+          STAGING_HOD_EMAIL: ${{ secrets.STAGING_HOD_EMAIL }}
+          STAGING_CAPTAIN_EMAIL: ${{ secrets.STAGING_CAPTAIN_EMAIL }}
+          STAGING_USER_PASSWORD: ${{ secrets.STAGING_USER_PASSWORD }}
+        run: |
+          python tests/ci/staging_faults_acceptance.py
+

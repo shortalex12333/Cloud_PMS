@@ -2,7 +2,16 @@
 """
 Certificate RLS Test Suite for Docker
 =====================================
-Comprehensive tests for role-based access control and RLS isolation.
+Purpose: Exercise role/RLS guarantees and error mapping for the current lens.
+
+Template guidance for next lenses:
+- COPY THE INTENT, NOT THE LITERAL ACTIONS. Replace certificate actions with your lens actions.
+- This suite exists to prove:
+  - RLS: Users can only touch rows for their yacht (deny-by-default)
+  - Roles: crew denied mutations; chief_engineer allowed; captain/manager allowed for SIGNED
+  - Error mapping: client errors are 4xx; 500 is a hard failure
+  - Storage isolation: paths are constrained to `{yacht_id}/...`
+  - Audit invariant: non-signed `{}` vs signed JSON
 
 Run with: docker-compose -f docker-compose.test.yml up --build
 """

@@ -1,0 +1,501 @@
+{
+  "metadata": {
+    "version": "1.0.1",
+    "total_actions": 37,
+    "last_updated": "2025-11-21",
+    "description": "Micro-action extraction patterns for CelesteOS - Production Quality"
+  },
+  "actions": {
+    "create_work_order": {
+      "category": "work_orders",
+      "weight": 4.5,
+      "patterns": [
+        "create\\s+(a\\s+)?(new\\s+)?work\\s*order",
+        "open\\s+(a\\s+)?(new\\s+)?work\\s*order",
+        "raise\\s+(a\\s+)?work\\s*order",
+        "make\\s+(a\\s+)?new\\s+task",
+        "log\\s+(a\\s+)?(new\\s+)?job",
+        "start\\s+(a\\s+)?new\\s+task",
+        "new\\s+work\\s*order",
+        "generate\\s+work\\s*order"
+      ],
+      "synonyms": ["new task", "new job", "create task", "new ticket"],
+      "abbreviations": ["wo", "w/o"],
+      "verbs": ["create", "open", "raise", "make", "log", "start", "generate"]
+    },
+    "list_work_orders": {
+      "category": "work_orders",
+      "weight": 4.2,
+      "patterns": [
+        "show\\s+(all\\s+)?(open\\s+|pending\\s+|active\\s+)?work\\s*orders",
+        "list\\s+(all\\s+)?(open\\s+|pending\\s+)?work\\s*orders",
+        "view\\s+(all\\s+)?work\\s*orders",
+        "display\\s+work\\s*orders",
+        "all\\s+(open\\s+)?work\\s*orders",
+        "show\\s+(all\\s+)?wo(s)?",
+        "list\\s+(all\\s+)?wo(s)?",
+        "what\\s+work\\s*orders"
+      ],
+      "synonyms": ["show wos", "all tasks", "open jobs"],
+      "verbs": ["show", "list", "view", "display"]
+    },
+    "update_work_order": {
+      "category": "work_orders",
+      "weight": 3.8,
+      "patterns": [
+        "update\\s+(the\\s+)?work\\s*order",
+        "edit\\s+(the\\s+)?work\\s*order",
+        "modify\\s+(the\\s+)?work\\s*order",
+        "change\\s+(the\\s+)?work\\s*order",
+        "update\\s+wo"
+      ],
+      "synonyms": ["edit task", "modify wo"],
+      "verbs": ["update", "edit", "modify", "change"]
+    },
+    "close_work_order": {
+      "category": "work_orders",
+      "weight": 3.8,
+      "patterns": [
+        "close\\s+(the\\s+)?work\\s*order",
+        "complete\\s+(the\\s+)?work\\s*order",
+        "finish\\s+(the\\s+)?work\\s*order",
+        "mark\\s+(the\\s+)?wo\\s+(as\\s+)?(done|complete|finished)",
+        "done\\s+with\\s+(the\\s+)?work\\s*order",
+        "wo\\s+complete"
+      ],
+      "synonyms": ["finish wo", "complete task", "mark done"],
+      "verbs": ["close", "complete", "finish", "mark"]
+    },
+    "assign_work_order": {
+      "category": "work_orders",
+      "weight": 3.5,
+      "patterns": [
+        "assign\\s+work\\s*order",
+        "assign\\s+wo\\s+to",
+        "delegate\\s+work\\s*order",
+        "give\\s+work\\s*order\\s+to"
+      ],
+      "synonyms": ["delegate task", "assign task"],
+      "verbs": ["assign", "delegate", "give"]
+    },
+    "search_work_orders": {
+      "category": "work_orders",
+      "weight": 3.3,
+      "patterns": [
+        "search\\s+work\\s*orders",
+        "find\\s+work\\s*order",
+        "search\\s+for\\s+wo",
+        "look\\s+for\\s+work\\s*order"
+      ],
+      "synonyms": ["find wo", "search tasks"],
+      "verbs": ["search", "find", "look"]
+    },
+    "add_to_handover": {
+      "category": "handover",
+      "weight": 4.5,
+      "patterns": [
+        "add\\s+(this\\s+|it\\s+)?to\\s+(the\\s+)?handover",
+        "add\\s+to\\s+handover\\s+(list|report)?",
+        "put\\s+in\\s+handover",
+        "include\\s+in\\s+handover"
+      ],
+      "synonyms": ["add to report", "include in handover"],
+      "abbreviations": [],
+      "verbs": ["add", "put", "include"]
+    },
+    "export_handover": {
+      "category": "handover",
+      "weight": 4.0,
+      "patterns": [
+        "export\\s+(the\\s+)?handover",
+        "download\\s+(the\\s+)?handover",
+        "generate\\s+(the\\s+)?handover\\s+(report|pdf)?",
+        "handover\\s+report",
+        "print\\s+handover"
+      ],
+      "synonyms": ["download handover", "handover pdf"],
+      "verbs": ["export", "download", "generate", "print"]
+    },
+    "view_handover": {
+      "category": "handover",
+      "weight": 3.8,
+      "patterns": [
+        "view\\s+(the\\s+)?handover",
+        "show\\s+(the\\s+|me\\s+the\\s+)?handover",
+        "display\\s+handover",
+        "see\\s+handover"
+      ],
+      "synonyms": ["show handover"],
+      "verbs": ["view", "show", "display", "see"]
+    },
+    "clear_handover": {
+      "category": "handover",
+      "weight": 3.5,
+      "patterns": [
+        "clear\\s+(the\\s+)?handover",
+        "reset\\s+(the\\s+)?handover",
+        "empty\\s+(the\\s+)?handover",
+        "delete\\s+handover\\s+items"
+      ],
+      "synonyms": ["reset handover", "empty handover"],
+      "verbs": ["clear", "reset", "empty", "delete"]
+    },
+    "remove_from_handover": {
+      "category": "handover",
+      "weight": 3.3,
+      "patterns": [
+        "remove\\s+from\\s+handover",
+        "delete\\s+from\\s+handover",
+        "take\\s+out\\s+of\\s+handover"
+      ],
+      "synonyms": ["delete from handover"],
+      "verbs": ["remove", "delete", "take out"]
+    },
+    "report_fault": {
+      "category": "faults",
+      "weight": 4.2,
+      "patterns": [
+        "report\\s+(a\\s+)?fault",
+        "log\\s+(a\\s+)?fault",
+        "report\\s+(an\\s+)?issue",
+        "report\\s+(a\\s+)?problem",
+        "log\\s+(an\\s+)?alarm",
+        "raise\\s+(a\\s+)?fault"
+      ],
+      "synonyms": ["log issue", "report problem", "new fault"],
+      "verbs": ["report", "log", "raise"]
+    },
+    "diagnose_fault": {
+      "category": "faults",
+      "weight": 3.8,
+      "patterns": [
+        "diagnose\\s+(the\\s+)?fault",
+        "troubleshoot\\s+(the\\s+)?fault",
+        "investigate\\s+(the\\s+)?fault",
+        "analyze\\s+(the\\s+)?fault"
+      ],
+      "synonyms": ["troubleshoot issue", "investigate problem"],
+      "verbs": ["diagnose", "troubleshoot", "investigate", "analyze"]
+    },
+    "acknowledge_fault": {
+      "category": "faults",
+      "weight": 3.5,
+      "patterns": [
+        "acknowledge\\s+(the\\s+)?fault",
+        "ack\\s+(the\\s+)?fault",
+        "acknowledge\\s+(the\\s+)?alarm",
+        "ack\\s+(the\\s+)?alarm"
+      ],
+      "synonyms": ["ack alarm"],
+      "abbreviations": ["ack"],
+      "verbs": ["acknowledge", "ack"]
+    },
+    "list_faults": {
+      "category": "faults",
+      "weight": 3.5,
+      "patterns": [
+        "show\\s+(all\\s+)?(active\\s+)?faults",
+        "list\\s+faults",
+        "view\\s+faults",
+        "display\\s+faults"
+      ],
+      "synonyms": ["show alarms", "list issues"],
+      "verbs": ["show", "list", "view", "display"]
+    },
+    "check_stock": {
+      "category": "inventory",
+      "weight": 4.0,
+      "patterns": [
+        "check\\s+stock",
+        "check\\s+inventory",
+        "view\\s+stock\\s+levels",
+        "show\\s+inventory",
+        "stock\\s+status"
+      ],
+      "synonyms": ["view inventory", "stock levels"],
+      "verbs": ["check", "view", "show"]
+    },
+    "order_parts": {
+      "category": "inventory",
+      "weight": 3.8,
+      "patterns": [
+        "order\\s+parts?",
+        "request\\s+spares?",
+        "order\\s+spares?",
+        "request\\s+parts?"
+      ],
+      "synonyms": ["request spares", "order spare"],
+      "verbs": ["order", "request"]
+    },
+    "update_inventory": {
+      "category": "inventory",
+      "weight": 3.5,
+      "patterns": [
+        "update\\s+inventory",
+        "adjust\\s+stock",
+        "modify\\s+inventory",
+        "update\\s+stock\\s+level"
+      ],
+      "synonyms": ["adjust inventory", "modify stock"],
+      "verbs": ["update", "adjust", "modify"]
+    },
+    "reserve_parts": {
+      "category": "inventory",
+      "weight": 3.3,
+      "patterns": [
+        "reserve\\s+parts?",
+        "hold\\s+stock",
+        "book\\s+parts?",
+        "allocate\\s+parts?"
+      ],
+      "synonyms": ["hold parts", "book stock"],
+      "verbs": ["reserve", "hold", "book", "allocate"]
+    },
+    "view_stock": {
+      "category": "inventory",
+      "weight": 3.5,
+      "patterns": [
+        "view\\s+stock",
+        "show\\s+stock",
+        "check\\s+stock\\s+levels?"
+      ],
+      "synonyms": ["show stock"],
+      "verbs": ["view", "show", "check"]
+    },
+    "upload_document": {
+      "category": "documents",
+      "weight": 3.8,
+      "patterns": [
+        "upload\\s+(a\\s+)?(document|manual|file|pdf|doc)",
+        "add\\s+(a\\s+)?(document|manual)",
+        "attach\\s+(a\\s+)?(document|manual)",
+        "upload\\s+(maintenance\\s+)?manual"
+      ],
+      "synonyms": ["add document", "attach file", "upload file"],
+      "verbs": ["upload", "add", "attach"]
+    },
+    "find_manual": {
+      "category": "documents",
+      "weight": 3.8,
+      "patterns": [
+        "find\\s+(the\\s+)?manual",
+        "search\\s+for\\s+manual",
+        "locate\\s+manual",
+        "show\\s+me\\s+(the\\s+)?manual"
+      ],
+      "synonyms": ["search manual", "locate document"],
+      "verbs": ["find", "search", "locate", "show"]
+    },
+    "search_documents": {
+      "category": "documents",
+      "weight": 3.5,
+      "patterns": [
+        "search\\s+(for\\s+)?documents?",
+        "find\\s+documents?",
+        "search\\s+(for\\s+)?procedure",
+        "look\\s+for\\s+document"
+      ],
+      "synonyms": ["find docs", "search procedures"],
+      "verbs": ["search", "find", "look"]
+    },
+    "download_document": {
+      "category": "documents",
+      "weight": 3.3,
+      "patterns": [
+        "download\\s+(the\\s+)?document",
+        "download\\s+(the\\s+)?manual",
+        "export\\s+(the\\s+)?document",
+        "save\\s+(the\\s+)?document"
+      ],
+      "synonyms": ["export doc", "save manual"],
+      "verbs": ["download", "export", "save"]
+    },
+    "create_purchase_request": {
+      "category": "purchasing",
+      "weight": 4.0,
+      "patterns": [
+        "create\\s+(a\\s+)?purchase\\s+request",
+        "new\\s+purchase\\s+request",
+        "raise\\s+(a\\s+)?purchase\\s+request",
+        "make\\s+(a\\s+)?purchase\\s+request"
+      ],
+      "synonyms": ["new pr", "create pr"],
+      "abbreviations": ["pr"],
+      "verbs": ["create", "raise", "make"]
+    },
+    "approve_purchase_order": {
+      "category": "purchasing",
+      "weight": 3.5,
+      "patterns": [
+        "approve\\s+(the\\s+)?purchase\\s+order",
+        "authorize\\s+(the\\s+)?purchase",
+        "approve\\s+(the\\s+)?po",
+        "sign\\s+off\\s+purchase"
+      ],
+      "synonyms": ["authorize po", "approve po"],
+      "abbreviations": ["po"],
+      "verbs": ["approve", "authorize", "sign"]
+    },
+    "reject_purchase_order": {
+      "category": "purchasing",
+      "weight": 3.3,
+      "patterns": [
+        "reject\\s+(the\\s+)?purchase\\s+order",
+        "decline\\s+(the\\s+)?purchase",
+        "reject\\s+(the\\s+)?po",
+        "deny\\s+purchase"
+      ],
+      "synonyms": ["decline po", "reject po"],
+      "verbs": ["reject", "decline", "deny"]
+    },
+    "track_order": {
+      "category": "purchasing",
+      "weight": 3.3,
+      "patterns": [
+        "track\\s+(the\\s+)?order",
+        "order\\s+status",
+        "where\\s+is\\s+(my|the)\\s+order",
+        "check\\s+order\\s+status"
+      ],
+      "synonyms": ["order status", "track purchase"],
+      "verbs": ["track", "check"]
+    },
+    "log_hours_of_rest": {
+      "category": "hours_of_rest",
+      "weight": 3.8,
+      "patterns": [
+        "log\\s+(my\\s+)?hours\\s+of\\s+rest",
+        "record\\s+(my\\s+)?hours\\s+of\\s+rest",
+        "log\\s+(my\\s+)?rest\\s+hours",
+        "enter\\s+hours\\s+of\\s+rest",
+        "add\\s+hours\\s+of\\s+rest"
+      ],
+      "synonyms": ["record rest hours", "log rest"],
+      "abbreviations": [],
+      "verbs": ["log", "record", "enter", "add"]
+    },
+    "view_hours_of_rest": {
+      "category": "hours_of_rest",
+      "weight": 3.5,
+      "patterns": [
+        "view\\s+(my\\s+)?hours\\s+of\\s+rest",
+        "show\\s+(my\\s+)?hours\\s+of\\s+rest",
+        "check\\s+(my\\s+)?rest\\s+hours",
+        "display\\s+hours\\s+of\\s+rest"
+      ],
+      "synonyms": ["show rest hours", "check hor"],
+      "verbs": ["view", "show", "check", "display"]
+    },
+    "check_hor_compliance": {
+      "category": "hours_of_rest",
+      "weight": 3.3,
+      "patterns": [
+        "check\\s+compliance",
+        "hor\\s+compliance",
+        "rest\\s+hours\\s+compliance",
+        "am\\s+i\\s+compliant"
+      ],
+      "synonyms": ["check hor status"],
+      "verbs": ["check"]
+    },
+    "show_crew_list": {
+      "category": "mobile",
+      "weight": 3.0,
+      "patterns": [
+        "show\\s+(the\\s+)?crew\\s+list",
+        "view\\s+crew",
+        "display\\s+crew\\s+members",
+        "crew\\s+roster"
+      ],
+      "synonyms": ["crew roster", "team list"],
+      "verbs": ["show", "view", "display"]
+    },
+    "check_weather": {
+      "category": "mobile",
+      "weight": 2.8,
+      "patterns": [
+        "check\\s+(the\\s+)?weather",
+        "weather\\s+forecast",
+        "what('s|\\s+is)\\s+the\\s+weather",
+        "show\\s+weather"
+      ],
+      "synonyms": ["weather forecast"],
+      "verbs": ["check", "show"]
+    },
+    "navigation_status": {
+      "category": "mobile",
+      "weight": 2.8,
+      "patterns": [
+        "navigation\\s+status",
+        "current\\s+position",
+        "where\\s+are\\s+we",
+        "vessel\\s+position"
+      ],
+      "synonyms": ["current position", "ship location"],
+      "verbs": ["show", "check"]
+    },
+    "view_notifications": {
+      "category": "mobile",
+      "weight": 3.0,
+      "patterns": [
+        "view\\s+notifications",
+        "show\\s+notifications",
+        "check\\s+notifications",
+        "my\\s+notifications"
+      ],
+      "synonyms": ["show alerts"],
+      "verbs": ["view", "show", "check"]
+    },
+    "scan_qr_code": {
+      "category": "mobile",
+      "weight": 2.5,
+      "patterns": [
+        "scan\\s+qr\\s+code",
+        "scan\\s+barcode",
+        "qr\\s+scan",
+        "barcode\\s+scan"
+      ],
+      "synonyms": ["scan code", "qr scanner"],
+      "verbs": ["scan"]
+    },
+    "take_photo": {
+      "category": "mobile",
+      "weight": 2.5,
+      "patterns": [
+        "take\\s+(a\\s+)?photo",
+        "upload\\s+(a\\s+)?photo",
+        "add\\s+(a\\s+)?photo",
+        "attach\\s+(a\\s+)?picture"
+      ],
+      "synonyms": ["upload photo", "add picture"],
+      "verbs": ["take", "upload", "add", "attach"]
+    }
+  },
+  "conjunctions": {
+    "patterns": [
+      "\\s+and\\s+",
+      "\\s+then\\s+",
+      "\\s+after\\s+that\\s+",
+      "\\s+also\\s+",
+      "\\s+plus\\s+",
+      "\\s+as\\s+well\\s+as\\s+",
+      "\\s+followed\\s+by\\s+",
+      "\\s+next\\s+",
+      ",\\s+"
+    ],
+    "description": "Patterns that indicate multiple actions in sequence"
+  },
+  "unsupported_indicators": {
+    "patterns": [
+      "translate\\s+to",
+      "convert\\s+to\\s+excel",
+      "sync\\s+with",
+      "whatsapp",
+      "google\\s+drive",
+      "dropbox",
+      "email\\s+to",
+      "send\\s+to\\s+whatsapp"
+    ],
+    "description": "Patterns that indicate unsupported external integrations"
+  }
+}
