@@ -595,6 +595,12 @@ async def execute_action(
         "create_work_order_from_fault": ["chief_engineer", "chief_officer", "captain", "manager"],
     }
 
+    # PART LENS SIGNED ACTIONS - STRICT role enforcement (captain/manager only)
+    PART_LENS_SIGNED_ROLES = {
+        "adjust_stock_quantity": ["chief_engineer", "captain", "manager"],
+        "write_off_part": ["chief_engineer", "captain", "manager"],
+    }
+
     if action in FAULT_LENS_ROLES:
         user_role = user_context.get("role")
         allowed_roles = FAULT_LENS_ROLES[action]
@@ -610,6 +616,24 @@ async def execute_action(
             raise HTTPException(
                 status_code=403,
                 detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
+            )
+
+    # PART LENS SIGNED ACTIONS - Role validation (canon-critical for Part Lens v2)
+    if action in PART_LENS_SIGNED_ROLES:
+        user_role = user_context.get("role")
+        allowed_roles = PART_LENS_SIGNED_ROLES[action]
+
+        if not user_role:
+            raise HTTPException(
+                status_code=403,
+                detail=f"User role not found for signed action"
+            )
+
+        if user_role not in allowed_roles:
+            logger.warning(f"[SECURITY] Role '{user_role}' denied for SIGNED action '{action}'. Allowed: {allowed_roles}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role '{user_role}' is not authorized to perform signed action '{action}'"
             )
 
     # Route to handler based on action name

@@ -821,6 +821,12 @@ class PartHandlers:
                 "Signature is required for adjust_stock_quantity (SIGNED action)"
             )
 
+        # Validate signature structure (must have pin AND totp)
+        if not signature.get("pin") or not signature.get("totp"):
+            raise SignatureRequiredError(
+                "Signature must contain 'pin' and 'totp' keys for SIGNED action"
+            )
+
         # Get current stock
         stock_result = self.db.table("pms_part_stock").select(
             "on_hand, location, part_name, stock_id"
@@ -974,6 +980,12 @@ class PartHandlers:
         if not signature or signature == {}:
             raise SignatureRequiredError(
                 "Signature is required for write_off_part (SIGNED action)"
+            )
+
+        # Validate signature structure (must have pin AND totp)
+        if not signature.get("pin") or not signature.get("totp"):
+            raise SignatureRequiredError(
+                "Signature must contain 'pin' and 'totp' keys for SIGNED action"
             )
 
         # Get current stock
