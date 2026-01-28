@@ -591,6 +591,9 @@ class PartHandlers:
             stock_id = self._get_or_create_stock_id(yacht_id, part_id, final_location)
 
         # ATOMIC: Call add_stock_inventory with SELECT FOR UPDATE
+        rpc_result = None
+        rpc_exception_caught = False
+
         try:
             rpc_result = self.db.rpc("add_stock_inventory", {
                 "p_stock_id": stock_id,
@@ -604,25 +607,29 @@ class PartHandlers:
             # Check if PostgREST 204 (No Content) - RPC succeeded but no data returned
             if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
                 logger.info(f"PostgREST 204 detected on RPC add_stock_inventory (stock_id={stock_id}) - RPC succeeded, using calculated values")
+                rpc_exception_caught = True
 
                 # Use calculated values since RPC succeeded but didn't return data
                 # The RPC atomically updated the stock, so we can infer the values
                 qty_before = stock.get('on_hand', 0)
                 qty_after = qty_before + quantity_received
-
-                # Create synthetic result matching expected RPC response structure
-                rpc_result = type('SyntheticResult', (object,), {
-                    'data': [{
-                        'success': True,
-                        'quantity_before': qty_before,
-                        'quantity_after': qty_after
-                    }]
-                })()
             else:
                 logger.error(f"Atomic add RPC failed: {e}")
                 raise
 
-        if not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
+        # Handle PostgREST 204 - create synthetic result
+        if rpc_exception_caught:
+            # Create result dict directly (simpler than using type())
+            class SyntheticResult:
+                def __init__(self, data):
+                    self.data = data
+
+            rpc_result = SyntheticResult([{
+                'success': True,
+                'quantity_before': qty_before,
+                'quantity_after': qty_after
+            }])
+        elif not rpc_result or not rpc_result.data or len(rpc_result.data) == 0:
             raise ValueError("Atomic add returned no data")
 
         result = rpc_result.data[0]
