@@ -53,7 +53,7 @@ router = APIRouter(prefix="/v1/related", tags=["related-entities"])
 
 class AddEntityLinkRequest(BaseModel):
     """Request to add an explicit entity link."""
-    yacht_id: UUID = Field(..., description="Yacht UUID")
+    yacht_id: Optional[UUID] = Field(default=None, description="Yacht UUID (optional, uses auth yacht_id if not provided)")
     source_entity_type: str = Field(..., description="Source entity type (e.g., 'work_order')")
     source_entity_id: UUID = Field(..., description="Source entity UUID")
     target_entity_type: str = Field(..., description="Target entity type")
@@ -106,7 +106,7 @@ def check_handlers_available():
 async def view_related_entities(
     entity_type: str = Query(..., description="Entity type (e.g., 'work_order', 'fault', 'equipment')"),
     entity_id: UUID = Query(..., description="Entity UUID"),
-    limit: int = Query(default=10, ge=1, le=50, description="Max results per group"),
+    limit: int = Query(default=10, ge=1, description="Max results per group (1-50)"),
     auth: dict = Depends(get_authenticated_user)
 ):
     """
@@ -153,6 +153,10 @@ async def view_related_entities(
     }
     """
     check_handlers_available()
+
+    # Manual limit validation for 400 response (not 422)
+    if limit > 50:
+        raise HTTPException(status_code=400, detail="limit cannot exceed 50")
 
     try:
         supabase = get_supabase_client()
@@ -229,8 +233,8 @@ async def add_entity_link(
         supabase = get_supabase_client()
         handlers = RelatedHandlers(supabase)
 
-        # Validate yacht_id matches auth
-        if str(request.yacht_id) != auth["yacht_id"]:
+        # Validate yacht_id matches auth (if provided)
+        if request.yacht_id and str(request.yacht_id) != auth["yacht_id"]:
             raise HTTPException(status_code=403, detail="Yacht ID mismatch")
 
         result = await handlers.add_related(

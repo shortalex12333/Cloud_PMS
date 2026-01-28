@@ -195,6 +195,17 @@ except Exception as e:
     logger.warning(f"⚠ Trigger routes not loaded: {e}")
 
 # ========================================================================
+# RELATED ROUTES (P1 Show Related)
+# ========================================================================
+# Include related routes for Work Order Lens "Show Related" feature
+try:
+    from routes.related_routes import router as related_router
+    app.include_router(related_router)
+    logger.info("✅ Related routes loaded")
+except Exception as e:
+    logger.warning(f"⚠ Related routes not loaded: {e}")
+
+# ========================================================================
 # PIPELINE GATEWAY (Prod-Parity Harness)
 # ========================================================================
 # Routes pipeline calls through LOCAL/REMOTE/REPLAY modes

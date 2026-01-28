@@ -331,3 +331,112 @@ def get_ttl_for_endpoint(endpoint: str) -> int:
 
     # Default: 60 seconds
     return 60
+
+
+# ============================================================================
+# Streaming Search Helpers
+# ============================================================================
+
+
+def normalize_query(q: str) -> str:
+    """
+    Normalize query string for consistent hashing.
+
+    Normalization:
+    - Collapse multiple spaces to single space
+    - Strip leading/trailing whitespace
+    - Convert to lowercase
+
+    Args:
+        q: Raw query string
+
+    Returns:
+        Normalized query string
+    """
+    if not q:
+        return ""
+    return " ".join(q.split()).strip().lower()
+
+
+def hash_query(q: str) -> str:
+    """
+    Hash query string for cache key.
+
+    Uses SHA-256 for collision resistance.
+
+    Args:
+        q: Query string (should be normalized first)
+
+    Returns:
+        Full SHA-256 hex digest
+    """
+    return hashlib.sha256(q.encode("utf-8")).hexdigest()
+
+
+def build_streaming_cache_key(
+    endpoint: str,
+    ctx,
+    phase: int,
+    raw_query: str,
+    dataset_version: Optional[str] = None,
+) -> str:
+    """
+    Build canonical streaming cache key.
+
+    Key format per 07_CACHE_KEY_AND_INVALIDATION_SPEC.md:
+    v1:{tenant_key_alias}:{yacht_id}:{user_id}:{role}:{endpoint}:{phase}:{query_hash}:{dataset_version?}
+
+    Security invariants:
+    1. yacht_id is required
+    2. user_id is required
+    3. role is required
+    4. query_hash must be normalized and hashed
+    5. phase distinguishes Phase 1 (counts) from Phase 2 (details)
+
+    Args:
+        endpoint: API endpoint (e.g., "search.stream")
+        ctx: ActionContext or similar with yacht_id, user_id, role, tenant_key_alias
+        phase: Streaming phase (1=counts, 2=details)
+        raw_query: Raw query string (will be normalized and hashed)
+        dataset_version: Optional dataset version for cache busting
+
+    Returns:
+        Cache key string
+
+    Raises:
+        ValueError: If required context fields are missing
+    """
+    # Extract context fields
+    yacht_id = getattr(ctx, "yacht_id", None)
+    user_id = getattr(ctx, "user_id", None)
+    role = getattr(ctx, "role", None)
+    tenant_key_alias = getattr(ctx, "tenant_key_alias", None)
+
+    # Validate required fields
+    if not yacht_id:
+        raise ValueError("yacht_id is required for streaming cache key")
+    if not user_id:
+        raise ValueError("user_id is required for streaming cache key")
+    if not role:
+        raise ValueError("role is required for streaming cache key")
+
+    # Normalize and hash query
+    nq = normalize_query(raw_query or "")
+    qh = hash_query(nq)
+
+    # Build key components
+    parts = [
+        CACHE_KEY_VERSION,
+        tenant_key_alias or f"y{yacht_id[:8]}",
+        yacht_id,
+        user_id[:16],  # Truncate for key length
+        role,
+        endpoint,
+        str(phase),
+        qh[:32],  # Truncate hash for key length
+    ]
+
+    if dataset_version:
+        parts.append(dataset_version)
+
+    return ":".join(parts)

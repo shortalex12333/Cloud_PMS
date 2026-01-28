@@ -73,42 +73,19 @@ def get_supabase_client() -> Optional[Client]:
         return None
 
 
-# Cache for tenant clients (same pattern as pipeline_service.py)
-_tenant_clients = {}
-
 def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
-    """Get tenant-specific Supabase client instance with caching.
+    """Get tenant-specific Supabase client instance.
+
+    Uses the WORKING pipeline_service.get_tenant_client() function that powers /search.
+    This ensures consistent client behavior across all endpoints.
 
     Routing contract:
     - tenant_key_alias comes from MASTER DB fleet_registry (e.g., 'yTEST_YACHT_001')
     - Env vars on Render: {tenant_key_alias}_SUPABASE_URL, {tenant_key_alias}_SUPABASE_SERVICE_KEY
-    - Example: yTEST_YACHT_001_SUPABASE_URL, yTEST_YACHT_001_SUPABASE_SERVICE_KEY
-
-    Uses client caching to avoid PostgREST connection issues from repeated client creation.
     """
-    global _tenant_clients
-
-    # Return cached client if exists
-    if tenant_key_alias in _tenant_clients:
-        return _tenant_clients[tenant_key_alias]
-
-    if not tenant_key_alias:
-        raise ValueError("tenant_key_alias is required for tenant DB access")
-
-    url = os.getenv(f"{tenant_key_alias}_SUPABASE_URL")
-    key = os.getenv(f"{tenant_key_alias}_SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        raise ValueError(f"Missing tenant credentials for {tenant_key_alias}. "
-                        f"Expected: {tenant_key_alias}_SUPABASE_URL and {tenant_key_alias}_SUPABASE_SERVICE_KEY")
-
-    client = create_client(url, key)
-
-    # Cache for future requests
-    _tenant_clients[tenant_key_alias] = client
-    logger.info(f"[TenantClient] Created and cached client for {tenant_key_alias}: {url[:40]}...")
-
-    return client
+    from pipeline_service import get_tenant_client
+    logger.info(f"[P0Actions] Using pipeline_service.get_tenant_client for {tenant_key_alias}")
+    return get_tenant_client(tenant_key_alias)
 
 
 # ============================================================================

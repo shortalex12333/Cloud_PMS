@@ -67,3 +67,6 @@ services:
       - HOD_EMAIL=hod.test@alex-short.com
       - CAPTAIN_EMAIL=captain.test@alex-short.com
       - TEST_PASSWORD=Password2!
+      # Real entity IDs from staging database (required for Show Related tests)
+      - TEST_WO_A_ID=b36238da-b0fa-4815-883c-0be61fc190d0
+      - TEST_PART_A_ID=24ce26fe-a6ac-4833-85a0-ab2236d10241

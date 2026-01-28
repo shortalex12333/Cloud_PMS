@@ -261,6 +261,14 @@ except Exception as e:
     logger.error(f"❌ Failed to register Show Related routes: {e}")
     logger.error("Show Related endpoints will not be available")
 
+try:
+    from routes.search_streaming import router as search_streaming_router
+    app.include_router(search_streaming_router)
+    logger.info("✅ Streaming Search routes registered at /api/search/stream")
+except Exception as e:
+    logger.error(f"❌ Failed to register Streaming Search routes: {e}")
+    logger.error("Streaming Search endpoints will not be available")
+
 # ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
