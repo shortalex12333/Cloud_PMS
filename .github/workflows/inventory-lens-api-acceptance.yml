@@ -1,0 +1,85 @@
+name: Inventory Lens API Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/part_handlers.py'
+      - 'apps/api/action_router/registry.py'
+      - 'apps/api/routes/**'
+      - 'tests/inventory_lens/**'
+      - '.github/workflows/inventory-lens-api-acceptance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/handlers/part_handlers.py'
+      - 'apps/api/action_router/registry.py'
+      - 'apps/api/routes/**'
+      - 'tests/inventory_lens/**'
+  workflow_dispatch:
+
+jobs:
+  api-acceptance-tests:
+    name: Run API Acceptance Tests (Render HTTPS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio httpx python-dotenv
+
+      - name: Run API acceptance tests against Render staging
+        working-directory: tests/inventory_lens
+        env:
+          RENDER_API_BASE_URL: https://pipeline-core.int.celeste7.ai
+          TEST_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+          CREW_JWT: ${{ secrets.STAGING_CREW_JWT }}
+          HOD_JWT: ${{ secrets.STAGING_HOD_JWT }}
+          CAPTAIN_JWT: ${{ secrets.STAGING_CAPTAIN_JWT }}
+        run: |
+          pytest tests/test_inventory_api.py \
+            -v \
+            --tb=short \
+            --junit-xml=../../junit-results/inventory-lens-api-acceptance.xml \
+            --junit-prefix=inventory-api
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-lens-api-test-results
+          path: junit-results/inventory-lens-api-acceptance.xml
+          retention-days: 30
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: junit-results/inventory-lens-api-acceptance.xml
+          check_name: Inventory Lens API Acceptance Results
+          comment_mode: off
+
+      - name: Upload evidence to docs
+        if: github.ref == 'refs/heads/main' && success()
+        run: |
+          mkdir -p docs/evidence/inventory_item/api_test_runs
+          cp junit-results/inventory-lens-api-acceptance.xml \
+            docs/evidence/inventory_item/api_test_runs/junit_api_$(date +%Y%m%d_%H%M%S).xml
+
+      - name: Fail if any tests failed
+        if: failure()
+        run: |
+          echo "❌ Inventory Lens API acceptance tests FAILED"
+          echo "Review test output above for details"
+          exit 1
