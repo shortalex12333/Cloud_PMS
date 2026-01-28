@@ -875,7 +875,7 @@ async def execute_action(
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.view_part_details(
-                part_id=payload["part_id"],
+                entity_id=payload["part_id"],
                 yacht_id=yacht_id,
                 user_id=user_id
             )
@@ -884,10 +884,11 @@ async def execute_action(
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.add_to_shopping_list(
-                part_id=payload["part_id"],
-                suggested_qty=payload["suggested_qty"],
                 yacht_id=yacht_id,
                 user_id=user_id,
+                part_id=payload["part_id"],
+                quantity_requested=payload.get("suggested_qty") or payload.get("quantity_requested", 1),
+                urgency=payload.get("urgency", "medium"),
                 notes=payload.get("notes")
             )
 
@@ -895,10 +896,10 @@ async def execute_action(
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.consume_part(
-                part_id=payload["part_id"],
-                quantity=payload["quantity"],
                 yacht_id=yacht_id,
                 user_id=user_id,
+                part_id=payload["part_id"],
+                quantity=payload["quantity"],
                 work_order_id=payload.get("work_order_id"),
                 notes=payload.get("notes")
             )
@@ -907,13 +908,13 @@ async def execute_action(
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.receive_part(
-                part_id=payload["part_id"],
-                to_location_id=payload["to_location_id"],
-                quantity=payload["quantity"],
-                idempotency_key=payload["idempotency_key"],
                 yacht_id=yacht_id,
                 user_id=user_id,
-                po_number=payload.get("po_number"),
+                part_id=payload["part_id"],
+                quantity_received=payload.get("quantity") or payload.get("quantity_received"),
+                idempotency_key=payload["idempotency_key"],
+                supplier_id=payload.get("supplier_id"),
+                invoice_number=payload.get("po_number") or payload.get("invoice_number"),
                 notes=payload.get("notes")
             )
 
@@ -921,12 +922,12 @@ async def execute_action(
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.transfer_part(
-                part_id=payload["part_id"],
-                from_location_id=payload["from_location_id"],
-                to_location_id=payload["to_location_id"],
-                quantity=payload["quantity"],
                 yacht_id=yacht_id,
                 user_id=user_id,
+                part_id=payload["part_id"],
+                quantity=payload["quantity"],
+                from_location=payload.get("from_location_id") or payload.get("from_location"),
+                to_location=payload.get("to_location_id") or payload.get("to_location"),
                 notes=payload.get("notes")
             )
 
@@ -934,24 +935,26 @@ async def execute_action(
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.adjust_stock_quantity(
-                part_id=payload["part_id"],
-                quantity_change=payload["quantity_change"],
-                reason=payload["reason"],
-                signature=payload["signature"],
                 yacht_id=yacht_id,
-                user_id=user_id
+                user_id=user_id,
+                part_id=payload["part_id"],
+                new_quantity=payload.get("new_quantity") or payload.get("quantity_change"),
+                reason=payload["reason"],
+                signature=payload.get("signature"),
+                location=payload.get("location")
             )
 
         elif action == "write_off_part":
             if not part_handlers:
                 raise HTTPException(status_code=500, detail="Part handlers not initialized")
             result = await part_handlers.write_off_part(
+                yacht_id=yacht_id,
+                user_id=user_id,
                 part_id=payload["part_id"],
                 quantity=payload["quantity"],
                 reason=payload["reason"],
-                signature=payload["signature"],
-                yacht_id=yacht_id,
-                user_id=user_id
+                signature=payload.get("signature"),
+                location=payload.get("location")
             )
 
         elif action == "generate_part_labels":
