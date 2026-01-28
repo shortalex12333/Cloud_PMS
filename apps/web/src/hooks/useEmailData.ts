@@ -9,6 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
+import { getAuthHeaders as getCentralAuthHeaders, handle401, AuthError } from '@/lib/authHelpers';
 
 // ============================================================================
 // TYPES
@@ -109,55 +110,58 @@ function debugLog(tag: string, msg: string, data?: unknown) {
   }
 }
 
+/**
+ * Get auth headers using centralized auth helper.
+ * Wraps getCentralAuthHeaders with debug logging and Content-Type header.
+ */
 async function getAuthHeaders(): Promise<HeadersInit> {
-  debugLog('AUTH', 'Getting session...');
-  const { data: { session }, error } = await supabase.auth.getSession();
-
-  if (error) {
-    debugLog('AUTH', 'Session error', error);
-    throw new Error(`Auth error: ${error.message}`);
+  debugLog('AUTH', 'Getting auth headers...');
+  try {
+    const headers = await getCentralAuthHeaders();
+    debugLog('AUTH', 'Auth headers obtained');
+    return {
+      ...headers,
+      'Content-Type': 'application/json',
+    };
+  } catch (error) {
+    debugLog('AUTH', 'Auth failed', error);
+    throw error;
   }
+}
 
-  if (!session?.access_token) {
-    debugLog('AUTH', 'No session or token', { hasSession: !!session });
-    throw new Error('Not authenticated');
-  }
-
-  // Check token expiry
-  if (session.expires_at) {
-    const expiresIn = session.expires_at * 1000 - Date.now();
-    debugLog('AUTH', `Token expires in ${Math.round(expiresIn / 1000)}s`);
-
-    if (expiresIn < 60000) {
-      debugLog('AUTH', 'Token expiring soon, refreshing...');
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !refreshed.session) {
-        debugLog('AUTH', 'Refresh failed', refreshError);
-        throw new Error('Session refresh failed');
-      }
-      debugLog('AUTH', 'Token refreshed');
-      return {
-        'Authorization': `Bearer ${refreshed.session.access_token}`,
-        'Content-Type': 'application/json',
-      };
-    }
-  }
-
-  debugLog('AUTH', 'Session valid');
-  return {
-    'Authorization': `Bearer ${session.access_token}`,
-    'Content-Type': 'application/json',
+/**
+ * Authenticated fetch with 401 retry.
+ * If server returns 401, refreshes token and retries once.
+ */
+async function authFetch(url: string, options?: RequestInit): Promise<Response> {
+  const makeRequest = async (): Promise<Response> => {
+    const headers = await getAuthHeaders();
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        ...options?.headers,
+      },
+    });
   };
+
+  const response = await makeRequest();
+
+  // Handle 401 with automatic retry
+  if (response.status === 401) {
+    debugLog('AUTH', '401 received, attempting token refresh...');
+    return handle401(makeRequest);
+  }
+
+  return response;
 }
 
 async function fetchRelatedThreads(
   objectType: string,
   objectId: string
 ): Promise<RelatedThreadsResponse> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(
-    `${API_BASE}/email/related?object_type=${objectType}&object_id=${objectId}`,
-    { headers }
+  const response = await authFetch(
+    `${API_BASE}/email/related?object_type=${objectType}&object_id=${objectId}`
   );
 
   if (!response.ok) {
@@ -170,11 +174,10 @@ async function fetchRelatedThreads(
 
 async function fetchThread(threadId: string): Promise<ThreadWithMessages> {
   debugLog('THREAD', `Fetching thread: ${threadId}`);
-  const headers = await getAuthHeaders();
   const url = `${API_BASE}/email/thread/${threadId}`;
   debugLog('THREAD', `URL: ${url}`);
 
-  const response = await fetch(url, { headers });
+  const response = await authFetch(url);
   debugLog('THREAD', `Response status: ${response.status}`);
 
   if (!response.ok) {
@@ -190,14 +193,13 @@ async function fetchThread(threadId: string): Promise<ThreadWithMessages> {
 
 async function fetchMessageContent(providerMessageId: string): Promise<MessageContent> {
   debugLog('CONTENT', `Fetching content for: ${providerMessageId.substring(0, 50)}...`);
-  const headers = await getAuthHeaders();
 
   // CRITICAL: Encode provider ID - Microsoft IDs contain URL-special chars (+, /, =)
   const encodedId = encodeURIComponent(providerMessageId);
   const url = `${API_BASE}/email/message/${encodedId}/render`;
   debugLog('CONTENT', `URL: ${url.substring(0, 80)}...`);
 
-  const response = await fetch(url, { headers });
+  const response = await authFetch(url);
   debugLog('CONTENT', `Response status: ${response.status}`);
 
   if (!response.ok) {
@@ -212,10 +214,8 @@ async function fetchMessageContent(providerMessageId: string): Promise<MessageCo
 }
 
 async function acceptLink(linkId: string): Promise<{ success: boolean }> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE}/email/link/accept`, {
+  const response = await authFetch(`${API_BASE}/email/link/accept`, {
     method: 'POST',
-    headers,
     body: JSON.stringify({ link_id: linkId }),
   });
 
@@ -232,10 +232,8 @@ async function changeLink(
   newObjectType: string,
   newObjectId: string
 ): Promise<{ success: boolean }> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE}/email/link/change`, {
+  const response = await authFetch(`${API_BASE}/email/link/change`, {
     method: 'POST',
-    headers,
     body: JSON.stringify({
       link_id: linkId,
       new_object_type: newObjectType,
@@ -252,10 +250,8 @@ async function changeLink(
 }
 
 async function removeLink(linkId: string): Promise<{ success: boolean }> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE}/email/link/remove`, {
+  const response = await authFetch(`${API_BASE}/email/link/remove`, {
     method: 'POST',
-    headers,
     body: JSON.stringify({ link_id: linkId }),
   });
 
