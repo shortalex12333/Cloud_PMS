@@ -13,6 +13,46 @@ import { useAvailableActions } from '@/lib/microactions/hooks/useAvailableAction
 import { registerHandler } from '@/lib/microactions/executor';
 import type { ActionContext, ActionResult } from '@/lib/microactions/types';
 
+// Mock useAuth to avoid AuthProvider requirement
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    session: {
+      access_token: 'mock-token-for-testing',
+      user: { id: 'test-user-id' },
+    },
+    loading: false,
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com',
+      role: 'captain',
+      yachtId: '123e4567-e89b-12d3-a456-426614174000',
+      yachtName: 'Test Yacht',
+      bootstrapStatus: 'active',
+    },
+    error: null,
+  }),
+}));
+
+// Mock useActionDecisions to return permissive decisions for unit tests
+// This allows testing useAvailableActions logic without server calls
+vi.mock('@/lib/microactions/hooks/useActionDecisions', () => ({
+  useActionDecisions: () => ({
+    decisions: [],
+    byTier: { primary: [], conditional: [], rare: [] },
+    allowedDecisions: [],
+    blockedDecisions: [],
+    // Allow all actions in unit tests - we're testing hook logic, not server integration
+    isAllowed: () => true,
+    getDecision: () => undefined,
+    getDisabledReason: () => undefined,
+    executionId: null,
+    isLoading: false,
+    error: null,
+    timingMs: null,
+    refetch: async () => {},
+  }),
+}));
+
 describe('Hooks Module', () => {
   // Valid context for testing
   const validContext: ActionContext = {
