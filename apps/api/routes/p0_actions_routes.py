@@ -880,11 +880,18 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.view_part_details(
+            handler_result = await request_part_handlers.view_part_details(
                 entity_id=payload["part_id"],
                 yacht_id=yacht_id,
                 user_id=user_id
             )
+
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
 
         elif action == "add_to_shopping_list":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -893,7 +900,7 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.add_to_shopping_list(
+            handler_result = await request_part_handlers.add_to_shopping_list(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -902,6 +909,13 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+
         elif action == "consume_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
             if not tenant_alias:
@@ -909,7 +923,7 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.consume_part(
+            handler_result = await request_part_handlers.consume_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -918,6 +932,13 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+
         elif action == "receive_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
             if not tenant_alias:
@@ -925,7 +946,7 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.receive_part(
+            handler_result = await request_part_handlers.receive_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -936,6 +957,13 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+
         elif action == "transfer_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
             if not tenant_alias:
@@ -943,7 +971,7 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.transfer_part(
+            handler_result = await request_part_handlers.transfer_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -953,6 +981,13 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+
         elif action == "adjust_stock_quantity":
             tenant_alias = user_context.get("tenant_key_alias", "")
             if not tenant_alias:
@@ -960,7 +995,7 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.adjust_stock_quantity(
+            handler_result = await request_part_handlers.adjust_stock_quantity(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -970,6 +1005,13 @@ async def execute_action(
                 location=payload.get("location")
             )
 
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+
         elif action == "write_off_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
             if not tenant_alias:
@@ -977,7 +1019,7 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.write_off_part(
+            handler_result = await request_part_handlers.write_off_part(
                 yacht_id=yacht_id,
                 user_id=user_id,
                 part_id=payload["part_id"],
@@ -987,6 +1029,13 @@ async def execute_action(
                 location=payload.get("location")
             )
 
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+
         elif action == "generate_part_labels":
             tenant_alias = user_context.get("tenant_key_alias", "")
             if not tenant_alias:
@@ -994,11 +1043,18 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.generate_part_labels(
+            handler_result = await request_part_handlers.generate_part_labels(
                 part_ids=payload["part_ids"],
                 yacht_id=yacht_id,
                 user_id=user_id
             )
+
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
 
         elif action == "request_label_output":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1007,12 +1063,19 @@ async def execute_action(
             tenant_db = get_tenant_supabase_client(tenant_alias)
             request_part_handlers = PartHandlers(tenant_db)
 
-            result = await request_part_handlers.request_label_output(
+            handler_result = await request_part_handlers.request_label_output(
                 label_request_id=payload["label_request_id"],
                 output_format=payload["output_format"],
                 yacht_id=yacht_id,
                 user_id=user_id
             )
+
+            # Transform ResponseBuilder envelope to simple status format
+            if handler_result.get("success"):
+                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            else:
+                error = handler_result.get("error", {})
+                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
 
         # ===== HANDOVER ACTIONS (P0 Action 8) =====
         elif action == "add_to_handover":
