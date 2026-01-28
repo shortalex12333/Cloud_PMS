@@ -11,7 +11,7 @@
 
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-import EmailSearchView from '@/components/email/EmailSearchView';
+import EmailSurface from '@/components/email/EmailSurface';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 // Loading fallback
@@ -28,7 +28,7 @@ export default function EmailInboxPage() {
     <AuthProvider>
       <div className="min-h-screen bg-[#1c1c1e]">
         <Suspense fallback={<EmailInboxLoading />}>
-          <EmailSearchView />
+          <EmailSurface />
         </Suspense>
       </div>
     </AuthProvider>
