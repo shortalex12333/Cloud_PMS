@@ -424,7 +424,6 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         method="POST",
         allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
         required_fields=["yacht_id", "source_entity_type", "source_entity_id", "target_entity_type", "target_entity_id", "link_type"],
-        optional_fields=["note"],
         domain="work_orders",
         variant=ActionVariant.MUTATE,
         search_keywords=["add", "link", "related", "reference", "evidence"],
