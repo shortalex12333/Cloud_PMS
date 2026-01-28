@@ -58,9 +58,13 @@ def get_jwt(email: str, password: str) -> Optional[str]:
     headers = {"apikey": MASTER_SUPABASE_ANON_KEY, "Content-Type": "application/json"}
     try:
         r = requests.post(url, headers=headers, json={"email": email, "password": password}, timeout=12)
-        return r.json().get("access_token") if r.status_code == 200 else None
+        if r.status_code == 200:
+            return r.json().get("access_token")
+        else:
+            log(f"JWT fetch failed for {email}: {r.status_code} {r.text[:200]}", "WARN")
+            return None
     except Exception as e:
-        log(f"JWT fetch failed for {email}: {e}", "WARN")
+        log(f"JWT fetch exception for {email}: {e}", "WARN")
         return None
 
 
@@ -584,11 +588,25 @@ def main():
 
     must_have_env()
 
+    # Debug: Print user emails
+    print(f"   CREW: {USERS['crew']}")
+    print(f"   HOD: {USERS['hod']}")
+    print(f"   ENGINEER: {USERS['engineer']}")
+    print(f"   MASTER_SUPABASE_URL: {MASTER_SUPABASE_URL}")
+    print()
+
     # Get JWTs for all test users
     log("Fetching JWTs for test users...")
     crew_jwt = get_jwt(USERS["crew"], TEST_PASSWORD)
     hod_jwt = get_jwt(USERS["hod"], TEST_PASSWORD)
     engineer_jwt = get_jwt(USERS["engineer"], TEST_PASSWORD)
+
+    if not crew_jwt:
+        log(f"Failed to get CREW JWT for {USERS['crew']}", "WARN")
+    if not hod_jwt:
+        log(f"Failed to get HOD JWT for {USERS['hod']}", "WARN")
+    if not engineer_jwt:
+        log(f"Failed to get ENGINEER JWT for {USERS['engineer']}", "WARN")
 
     if not crew_jwt or not hod_jwt or not engineer_jwt:
         raise SystemExit("Failed to get JWTs for test users. Check MASTER_SUPABASE_URL and credentials.")
