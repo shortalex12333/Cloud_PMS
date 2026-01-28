@@ -60,20 +60,24 @@ def get_rls_enforced_client(user_jwt: Optional[str] = None) -> Client:
     if not url:
         raise ValueError(f"{default_yacht}_SUPABASE_URL must be set")
 
-    # Use user JWT if provided (enforces RLS), otherwise service key (bypasses RLS)
+    # Always use service key as API key (NOT user JWT)
+    # User JWT should be set via auth headers, not as the API key parameter
+    service_key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
+    if not service_key:
+        raise ValueError(f"{default_yacht}_SUPABASE_SERVICE_KEY must be set")
+
+    # Create client with service key
+    client = create_client(url, service_key)
+
+    # If user JWT provided, set it in headers to enforce RLS
     if user_jwt:
-        # RLS-enforced: use user's JWT token
-        # This means RLS policies will be active and yacht isolation enforced
-        key = user_jwt
+        # Set Authorization header with user's JWT to enforce RLS policies
+        # This makes requests run in the context of the authenticated user
+        client.auth.set_session(access_token=user_jwt, refresh_token="")
     else:
-        # Fallback to service key (bypasses RLS)
-        # Only use for operations that don't require RLS (e.g., system operations)
-        key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-        if not key:
-            raise ValueError(f"{default_yacht}_SUPABASE_SERVICE_KEY must be set")
         logger.warning("Creating Supabase client without user JWT - RLS bypassed")
 
-    return create_client(url, key)
+    return client
 
 
 def validate_storage_path_for_receiving(yacht_id: str, receiving_id: str, storage_path: str) -> tuple[bool, Optional[str]]:
