@@ -33,6 +33,7 @@ from handlers.inventory_handlers import InventoryHandlers
 from handlers.handover_handlers import HandoverHandlers
 from handlers.manual_handlers import ManualHandlers
 from handlers.part_handlers import PartHandlers
+from handlers.shopping_list_handlers import ShoppingListHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation
 from middleware.auth import lookup_tenant_for_user
 
@@ -108,7 +109,8 @@ if supabase:
         handover_handlers = HandoverHandlers(supabase)
         manual_handlers = ManualHandlers(supabase)
         part_handlers = PartHandlers(supabase)
-        logger.info("✅ All P0 action handlers initialized (including Part Lens)")
+        shopping_list_handlers = ShoppingListHandlers(supabase)
+        logger.info("✅ All P0 action handlers initialized (including Part Lens and Shopping List Lens)")
     except Exception as e:
         logger.error(f"Failed to initialize handlers: {e}")
         wo_handlers = None
@@ -116,6 +118,7 @@ if supabase:
         handover_handlers = None
         manual_handlers = None
         part_handlers = None
+        shopping_list_handlers = None
 else:
     logger.warning("⚠️ P0 handlers not initialized - no database connection")
     wo_handlers = None
@@ -123,6 +126,7 @@ else:
     handover_handlers = None
     manual_handlers = None
     part_handlers = None
+    shopping_list_handlers = None
 
 
 # ============================================================================
@@ -563,6 +567,12 @@ async def execute_action(
         "update_certificate": ["certificate_id"],
         "link_document_to_certificate": ["certificate_id", "document_id"],
         "supersede_certificate": ["certificate_id", "reason", "signature"],
+        # Shopping List Actions (Shopping List Lens v1)
+        "create_shopping_list_item": ["part_name", "quantity_requested", "source_type"],
+        "approve_shopping_list_item": ["item_id", "quantity_approved"],
+        "reject_shopping_list_item": ["item_id", "rejection_reason"],
+        "promote_candidate_to_part": ["item_id"],
+        "view_shopping_list_history": ["item_id"],
     }
 
     if action in REQUIRED_FIELDS:
@@ -4490,6 +4500,36 @@ async def execute_action(
                 if not payload.get("signature"):
                     raise HTTPException(status_code=400, detail="signature payload is required for supersede action")
                 result = await handler_fn(**handler_params)
+
+        # ===== SHOPPING LIST ACTIONS (Shopping List Lens v1) =====
+        elif action in ("create_shopping_list_item", "approve_shopping_list_item",
+                       "reject_shopping_list_item", "promote_candidate_to_part",
+                       "view_shopping_list_history"):
+            if not shopping_list_handlers:
+                raise HTTPException(status_code=503, detail="Shopping list handlers not available")
+
+            # Map action to handler method
+            handler_map = {
+                "create_shopping_list_item": shopping_list_handlers.create_shopping_list_item,
+                "approve_shopping_list_item": shopping_list_handlers.approve_shopping_list_item,
+                "reject_shopping_list_item": shopping_list_handlers.reject_shopping_list_item,
+                "promote_candidate_to_part": shopping_list_handlers.promote_candidate_to_part,
+                "view_shopping_list_history": shopping_list_handlers.view_shopping_list_history,
+            }
+
+            handler_fn = handler_map[action]
+
+            # Add user context to payload
+            payload["user_id"] = user_id
+            payload["user_role"] = user_context.get("role")
+            payload["user_name"] = user_context.get("name", "Unknown")
+
+            # Call handler
+            result = await handler_fn(
+                entity_id=payload.get("item_id"),
+                yacht_id=yacht_id,
+                params=payload
+            )
 
         else:
             raise HTTPException(
