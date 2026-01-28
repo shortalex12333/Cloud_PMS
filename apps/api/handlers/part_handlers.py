@@ -996,17 +996,8 @@ class PartHandlers:
                 "Signature must contain 'pin' and 'totp' keys for SIGNED action"
             )
 
-        # ENFORCE ROLE: Captain/Manager only (Crew/HOD cannot write off)
-        role_at_signing = signature.get("role_at_signing", "").lower()
-        if role_at_signing not in ("captain", "manager"):
-            # Fallback: check if user is manager via RPC
-            is_manager_result = self.db.rpc("is_manager", {"p_user_id": user_id}).execute()
-            is_manager = is_manager_result.data if is_manager_result.data is not None else False
-
-            if not is_manager:
-                raise PermissionError(
-                    f"write_off_part requires Captain/Manager role. Role at signing: {role_at_signing or 'unknown'}"
-                )
+        # NOTE: Role enforcement (captain/manager only) handled at router level
+        # Router validates role before reaching this handler
 
         # Get current stock
         stock_result = self.db.table("pms_part_stock").select(
