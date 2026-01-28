@@ -623,18 +623,17 @@ class PartHandlers:
             error_str = str(e)
             error_str_lower = error_str.lower()
 
-            # Log full exception for debugging
-            logger.info(f"Transaction insert exception: {error_str}")
-
             if "unique" in error_str_lower or "duplicate" in error_str_lower or "idempotency" in error_str_lower or "23505" in error_str:
                 raise ConflictError(f"Duplicate receive: idempotency_key {idempotency_key} already exists")  # 409
+
             # Check if PostgREST 204 (No Content) - insert succeeded but no data returned
-            elif "204" in error_str or "missing response" in error_str_lower:
-                logger.info(f"PostgREST 204 on transaction insert (txn_id={txn_id}) - insert succeeded, continuing with audit log")
-                # Insert succeeded, continue with audit log and return
-                pass
+            # This happens when PostgREST returns 204 instead of 201 with data
+            # The INSERT succeeded, so we continue with audit log
+            if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
+                logger.info(f"PostgREST 204 detected on transaction insert (txn_id={txn_id}) - insert succeeded, continuing")
+                # Don't re-raise - insert succeeded, just no response body
             else:
-                # Re-raise unknown exceptions
+                # Unknown error - re-raise
                 logger.error(f"Unknown exception on transaction insert: {error_str}")
                 raise
 
