@@ -1131,3 +1131,129 @@ cp .github/workflows/staging-certificates-acceptance.yml .github/workflows/stagi
 | Stress tests | Custom script | Weekly/before release |
 
 This keeps Render deploys limited to verified code and prevents throttling build minutes.
+
+---
+
+## 9. Exit Code 137 & Resource Management
+
+### What Exit Code 137 Means
+
+**137 = SIGKILL (128 + 9)**
+
+Typical causes:
+1. **OOM Kill**: Container/process exceeded memory limit, kernel killed it
+2. **Manual Kill**: External signal (`kill -9`, CI timeout)
+3. **Host Pressure**: cgroup memory limits or job timeout watchdogs
+
+### Diagnosis
+
+```bash
+# Check if OOM killed
+docker inspect <container> | jq '.[0].State.OOMKilled'
+# Expected: false (if not OOM)
+
+# Check kernel logs (requires sudo)
+dmesg -T | grep -i 'killed process\|out of memory'
+
+# Check container exit code
+docker ps -a | grep <service>
+docker inspect <container_id> | jq '.[0].State | {OOMKilled, ExitCode, Error}'
+```
+
+**Exit Code Guide:**
+- `0` - Success
+- `1` - General failure (test failure)
+- `137` - SIGKILL (OOM or manual)
+- `143` - SIGTERM (graceful shutdown)
+
+### Resource Hardening (docker-compose.test.yml)
+
+```yaml
+services:
+  api:
+    deploy:
+      resources:
+        limits:
+          memory: 2G      # Prevents OOM
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  test-runner:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+```
+
+### Test Concurrency Tuning
+
+```bash
+# Reduce load for stress tests
+export CONCURRENCY=10       # Max concurrent requests
+export REQUESTS=40          # Total requests per test
+export TIMEOUT=30           # Request timeout (seconds)
+
+# Pytest serial execution
+pytest -q tests/            # No parallelism
+
+# Pytest limited workers
+pytest -n 2 tests/          # Max 2 workers
+```
+
+### CI/CD Best Practices
+
+**Split Heavy Tests:**
+```yaml
+jobs:
+  test-rls:
+    - run: docker-compose run test-runner python run_rls_tests.py
+
+  test-shopping-list:
+    - run: docker-compose run test-runner python run_shopping_list_rls_tests.py
+
+  test-stress:
+    - run: docker-compose run test-runner python run_stress_tests.py
+```
+
+**Add Job Timeouts:**
+```yaml
+jobs:
+  test:
+    timeout-minutes: 20
+    steps:
+      - run: timeout 600 docker-compose up
+```
+
+**Use Larger Runners:**
+```yaml
+runs-on: ubuntu-latest-8-cores  # 8 cores, 32GB RAM
+```
+
+### Post-Mortem Checklist
+
+1. **Confirm Kill Type:** Check `OOMKilled` flag
+2. **Review Resource Usage:** `docker stats --no-stream`
+3. **Check Logs:** `docker logs <container> | tail -100`
+4. **Apply Fixes:** Add resource limits, reduce concurrency
+5. **Verify:** Re-run with `OOMKilled=false`, exit code 0
+6. **Document:** Update evidence docs with resource limits applied
+
+### Quick Stabilization
+
+```bash
+# Rerun with hardened config
+export CONCURRENCY=10 REQUESTS=40
+docker-compose -f docker-compose.test.yml up --build
+
+# Verify no OOM
+docker inspect back_button_cloud_pms-api-1 | jq '.[0].State.OOMKilled'
+# Expected: false
+```
+
+---
