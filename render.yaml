@@ -30,6 +30,9 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      # Feature Flags - Shopping List Lens v1 Canary
+      - key: SHOPPING_LIST_LENS_V1_ENABLED
+        value: "true"
 
   # Email Watcher Background Worker
   - type: worker

@@ -33,6 +33,16 @@ logger.info(f"[FeatureFlags] FAULT_LENS_WARRANTY_ENABLED={FAULT_LENS_WARRANTY_EN
 logger.info(f"[FeatureFlags] FAULT_LENS_SIGNED_ACTIONS_ENABLED={FAULT_LENS_SIGNED_ACTIONS_ENABLED}")
 
 # ============================================================================
+# SHOPPING LIST LENS V1 FLAGS (default: OFF - fail-closed)
+# ============================================================================
+
+# Master canary flag for Shopping List Lens v1
+# Set to 'true' ONLY for canary yacht during initial rollout
+SHOPPING_LIST_LENS_V1_ENABLED = os.getenv('SHOPPING_LIST_LENS_V1_ENABLED', 'false').lower() == 'true'
+
+logger.info(f"[FeatureFlags] SHOPPING_LIST_LENS_V1_ENABLED={SHOPPING_LIST_LENS_V1_ENABLED}")
+
+# ============================================================================
 # EMAIL TRANSPORT LAYER FLAGS (default: OFF)
 # ============================================================================
 
@@ -114,6 +124,19 @@ def check_fault_lens_feature(feature_name: str) -> tuple[bool, str]:
     return True, ""
 
 
+def check_shopping_list_lens_feature() -> tuple[bool, str]:
+    """
+    Check if Shopping List Lens v1 is enabled.
+    Returns (enabled, error_message).
+
+    Fail-closed: if master switch is off, returns 503.
+    """
+    if not SHOPPING_LIST_LENS_V1_ENABLED:
+        return False, "Shopping List Lens v1 is disabled (canary flag off)"
+
+    return True, ""
+
+
 __all__ = [
     # Email flags
     'EMAIL_TRANSPORT_ENABLED',
@@ -133,4 +156,7 @@ __all__ = [
     'FAULT_LENS_WARRANTY_ENABLED',
     'FAULT_LENS_SIGNED_ACTIONS_ENABLED',
     'check_fault_lens_feature',
+    # Shopping List Lens flags
+    'SHOPPING_LIST_LENS_V1_ENABLED',
+    'check_shopping_list_lens_feature',
 ]
