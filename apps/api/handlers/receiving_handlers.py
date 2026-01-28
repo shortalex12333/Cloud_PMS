@@ -31,7 +31,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from supabase import create_client, Client
+from postgrest import PostgrestClient
+from handlers.db_client import get_user_db, map_postgrest_error
+from utils.errors import error_response, success_response
 
 logger = logging.getLogger(__name__)
 
@@ -40,44 +42,8 @@ logger = logging.getLogger(__name__)
 # UTILITIES
 # ============================================================================
 
-def get_rls_enforced_client(user_jwt: Optional[str] = None) -> Client:
-    """
-    Create Supabase client with RLS enforcement.
-
-    If user_jwt is provided, creates client with user's token (enforces RLS).
-    Otherwise falls back to service key (bypasses RLS - use only for non-RLS ops).
-
-    Args:
-        user_jwt: User's JWT token for RLS enforcement
-
-    Returns:
-        Supabase Client configured for tenant database
-    """
-    # Get tenant database URL
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-
-    if not url:
-        raise ValueError(f"{default_yacht}_SUPABASE_URL must be set")
-
-    # Always use service key as API key (NOT user JWT)
-    # User JWT should be set via auth headers, not as the API key parameter
-    service_key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-    if not service_key:
-        raise ValueError(f"{default_yacht}_SUPABASE_SERVICE_KEY must be set")
-
-    # Create client with service key
-    client = create_client(url, service_key)
-
-    # If user JWT provided, set it in headers to enforce RLS
-    if user_jwt:
-        # Set Authorization header with user's JWT to enforce RLS policies
-        # This makes requests run in the context of the authenticated user
-        client.auth.set_session(access_token=user_jwt, refresh_token="")
-    else:
-        logger.warning("Creating Supabase client without user JWT - RLS bypassed")
-
-    return client
+# RLS enforcement now handled by db_client.get_user_db()
+# See handlers/db_client.py for per-request RLS client creation
 
 
 def validate_storage_path_for_receiving(yacht_id: str, receiving_id: str, storage_path: str) -> tuple[bool, Optional[str]]:
@@ -163,7 +129,7 @@ def _write_audit_log(db, payload: Dict):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    db.table("pms_audit_log").insert(audit_payload).execute()
+    db.from_("pms_audit_log").insert(audit_payload).execute()
 
 
 # ============================================================================
@@ -195,12 +161,17 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
     RLS: Enforced via user JWT
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
 
         # Optional fields
         vendor_name = params.get("vendor_name")
@@ -227,7 +198,7 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
             "created_by": user_id,
         }
 
-        result = db.table("pms_receiving").insert(receiving_payload).execute()
+        result = db.from_("pms_receiving").insert(receiving_payload).execute()
 
         if not result.data or len(result.data) == 0:
             return {
@@ -284,12 +255,17 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
     Storage path validation: {yacht_id}/receiving/{receiving_id}/{filename}
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         document_id = params["document_id"]
         doc_type = params.get("doc_type")  # 'invoice', 'packing_slip', 'photo'
@@ -297,7 +273,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -333,7 +309,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
+        doc_result = db.from_("pms_receiving_documents").insert(doc_payload).execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -391,18 +367,23 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
     pms_receiving_items. User must explicitly apply changes via other actions.
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         source_document_id = params["source_document_id"]
         request_context = params.get("request_context")
 
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -438,7 +419,7 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        extract_result = db.table("pms_receiving_extractions").insert(extraction_record).execute()
+        extract_result = db.from_("pms_receiving_extractions").insert(extraction_record).execute()
 
         if not extract_result.data or len(extract_result.data) == 0:
             return {
@@ -497,12 +478,17 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
 
         # Optional update fields
@@ -514,7 +500,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Get current receiving
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, vendor_name, vendor_reference, currency, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -556,7 +542,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
             }
 
         # Update receiving
-        db.table("pms_receiving").update(update_payload).eq(
+        db.from_("pms_receiving").update(update_payload).eq(
             "id", receiving_id
         ).execute()
 
@@ -601,12 +587,17 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
 
         # Item fields
@@ -627,7 +618,7 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             }
 
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -660,7 +651,7 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        item_result = db.table("pms_receiving_items").insert(item_payload).execute()
+        item_result = db.from_("pms_receiving_items").insert(item_payload).execute()
 
         if not item_result.data or len(item_result.data) == 0:
             return {
@@ -715,12 +706,17 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         receiving_item_id = params["receiving_item_id"]
 
@@ -731,7 +727,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Get current item
-        item_result = db.table("pms_receiving_items").select(
+        item_result = db.from_("pms_receiving_items").select(
             "id, quantity_received, unit_price, description"
         ).eq("id", receiving_item_id).eq("yacht_id", yacht_id).eq("receiving_id", receiving_id).maybe_single().execute()
 
@@ -767,7 +763,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
             }
 
         # Update item
-        db.table("pms_receiving_items").update(update_payload).eq(
+        db.from_("pms_receiving_items").update(update_payload).eq(
             "id", receiving_item_id
         ).execute()
 
@@ -815,19 +811,24 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
     Storage path validation: {yacht_id}/receiving/{receiving_id}/{filename}
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         document_id = params["document_id"]
         comment = params.get("comment")
         request_context = params.get("request_context")
 
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -863,7 +864,7 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
+        doc_result = db.from_("pms_receiving_documents").insert(doc_payload).execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -919,18 +920,23 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
     EXECUTE: Mark status='accepted', freeze monetary fields, write signed audit
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         signature = params.get("signature")
         request_context = params.get("request_context")
 
         # Get receiving record
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, vendor_name, vendor_reference, status, subtotal, tax_total, total"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -952,7 +958,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
             }
 
         # Get line items
-        items_result = db.table("pms_receiving_items").select(
+        items_result = db.from_("pms_receiving_items").select(
             "id, quantity_received, unit_price, currency"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
@@ -1017,7 +1023,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
         # Accept receiving
         now = datetime.now(timezone.utc).isoformat()
 
-        db.table("pms_receiving").update({
+        db.from_("pms_receiving").update({
             "status": "accepted",
             "subtotal": subtotal,
             "tax_total": tax_total,
@@ -1071,12 +1077,17 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         user_id = params["user_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         reason = params.get("reason")
         request_context = params.get("request_context")
@@ -1089,7 +1100,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
             }
 
         # Get receiving record
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1111,7 +1122,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
             }
 
         # Update status to rejected
-        db.table("pms_receiving").update({
+        db.from_("pms_receiving").update({
             "status": "rejected",
             "notes": reason,  # Store reason in notes
         }).eq("id", receiving_id).execute()
@@ -1162,15 +1173,20 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
     Returns: receiving header, line items, documents, audit trail
     """
     async def _fn(**params):
-        # Create RLS-enforced client with user's JWT
-        user_jwt = params.get("user_jwt")
-        db = get_rls_enforced_client(user_jwt)
-
+        # Extract required params
         yacht_id = params["yacht_id"]
         receiving_id = params["receiving_id"]
+        user_jwt = params.get("user_jwt")
+
+        # Create RLS-enforced client with user's JWT
+        try:
+            db = get_user_db(user_jwt, yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create RLS client: {e}")
+            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
 
         # Get receiving record (NO JOIN to auth tables - violates "no FK to tenant auth.users" rule)
-        recv_result = db.table("pms_receiving").select(
+        recv_result = db.from_("pms_receiving").select(
             "*"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1185,14 +1201,14 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         # received_by field contains user_id - frontend can look up name/role if needed
 
         # Get line items
-        items_result = db.table("pms_receiving_items").select(
+        items_result = db.from_("pms_receiving_items").select(
             "*"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
         items = items_result.data or []
 
         # Get documents with metadata (for signed URL generation)
-        docs_result = db.table("pms_receiving_documents").select(
+        docs_result = db.from_("pms_receiving_documents").select(
             "*, doc:doc_metadata(*)"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
@@ -1202,7 +1218,7 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         # For now, return storage_path from doc_metadata
 
         # Get audit trail
-        audit_result = db.table("pms_audit_log").select(
+        audit_result = db.from_("pms_audit_log").select(
             "*"
         ).eq("entity_type", "receiving").eq("entity_id", receiving_id).eq("yacht_id", yacht_id).order("created_at").execute()
 
