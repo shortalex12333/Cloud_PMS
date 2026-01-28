@@ -10,35 +10,20 @@
   },
   {
     "test": "adjust_stock_quantity: invalid signature",
-    "passed": false,
+    "passed": true,
     "expected_status": 400,
-    "actual_status": 200,
+    "actual_status": 400,
     "response": {
-      "status": "success",
-      "transaction_id": "592f3fb8-39c2-4a69-9f93-feedff0032f2",
-      "part_id": "8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3",
-      "old_quantity": 46,
-      "new_quantity": 40,
-      "adjustment": -6,
-      "reason": "Stocktake correction",
-      "is_signed": true,
-      "message": "Stock adjusted from 46 to 40",
-      "execution_id": "fe2639ae-4fde-47dc-af18-b05987e489fe",
-      "action": "adjust_stock_quantity"
+      "detail": "Signature must contain 'pin' and 'totp' keys for SIGNED action"
     }
   },
   {
     "test": "adjust_stock_quantity: crew forbidden",
-    "passed": false,
+    "passed": true,
     "expected_status": 403,
-    "actual_status": 200,
+    "actual_status": 403,
     "response": {
-      "status": "success",
-      "message": "No adjustment needed - quantity unchanged",
-      "part_id": "8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3",
-      "quantity": 40,
-      "execution_id": "53c7058c-28c2-476c-b8be-61ad5c9dc9c9",
-      "action": "adjust_stock_quantity"
+      "detail": "Role 'crew' forbidden: not authorized to perform signed action 'adjust_stock_quantity'"
     }
   },
   {
@@ -48,10 +33,15 @@
     "actual_status": 200,
     "response": {
       "status": "success",
-      "message": "No adjustment needed - quantity unchanged",
+      "transaction_id": "60fa8e84-4636-4f60-9d19-ab510d0173b1",
       "part_id": "8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3",
-      "quantity": 40,
-      "execution_id": "ca6000f9-81d8-4822-a4ff-7132044f388b",
+      "old_quantity": 35,
+      "new_quantity": 40,
+      "adjustment": 5,
+      "reason": "Stocktake correction",
+      "is_signed": true,
+      "message": "Stock adjusted from 35 to 40",
+      "execution_id": "5df29f5d-c6e4-4bca-ae9d-550318fd5254",
       "action": "adjust_stock_quantity"
     }
   },
@@ -80,14 +70,14 @@
     "actual_status": 200,
     "response": {
       "status": "success",
-      "transaction_id": "9a04a69e-4adf-4148-ae02-b12e5a282cb7",
+      "transaction_id": "248bc206-f8a4-427a-9123-158d3e60eb9b",
       "part_id": "8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3",
       "quantity_written_off": 2,
-      "new_stock_level": 78,
+      "new_stock_level": 88,
       "reason": "Damaged beyond repair",
       "is_signed": true,
       "message": "Wrote off 2 units (Damaged beyond repair)",
-      "execution_id": "01d94fb9-ef98-4642-abcd-dcc41e894196",
+      "execution_id": "96ae47f0-460a-46a8-bd4b-d1d7b3f3e6ef",
       "action": "write_off_part"
     }
   },
@@ -98,14 +88,14 @@
     "actual_status": 200,
     "response": {
       "status": "success",
-      "transaction_id": "59c15f1a-34c0-44fe-9543-00686ebd5391",
+      "transaction_id": "11b97af0-cf8c-4597-8a57-6aa8bf3a2dc5",
       "part_id": "8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3",
       "quantity_written_off": 3,
-      "new_stock_level": 73,
+      "new_stock_level": 83,
       "reason": "Damaged beyond repair",
       "is_signed": true,
       "message": "Wrote off 3 units (Damaged beyond repair)",
-      "execution_id": "a52faf76-0c60-470b-9e7d-c0376dc689b9",
+      "execution_id": "9a359dfb-82bd-44c5-83c5-2058b311234f",
       "action": "write_off_part"
     }
   }

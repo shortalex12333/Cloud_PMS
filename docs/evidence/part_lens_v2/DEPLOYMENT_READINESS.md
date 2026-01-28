@@ -1,19 +1,19 @@
 # Part Lens v2 - Deployment Readiness Report
 
 **Date**: 2026-01-28
-**Status**: ✅ **READY FOR CANARY (with findings)**
-**Test Pass Rate**: 100% core acceptance (6/6)
+**Status**: ✅ **READY FOR CANARY**
+**Test Pass Rate**: 100% core acceptance (6/6), 100% signed actions (8/8)
 
 ---
 
 ## Executive Summary
 
 Part Lens v2 canonical router implementation validated in staging with:
-- ✅ **100% test pass rate** (6/6 core acceptance tests)
+- ✅ **100% test pass rate** (6/6 core acceptance + 8/8 signed actions)
 - ✅ **Zero 5xx errors** (comprehensive scan)
 - ✅ **Multi-role RLS** validated (HOD, CAPTAIN, CREW)
 - ✅ **Idempotency** enforced (409 on duplicate)
-- ⚠️ **Findings**: Signature validation gaps in adjust_stock_quantity
+- ✅ **Signature validation** complete (pin+totp + role enforcement)
 
 ---
 
@@ -32,24 +32,25 @@ Part Lens v2 canonical router implementation validated in staging with:
 
 **Evidence**: `canonical_router_acceptance_summary.json`
 
-### Signed Actions (6/8 PASS - with findings)
+### Signed Actions (8/8 PASS - all resolved)
 
 | Test | Status | Details |
 |------|--------|---------|
 | adjust_stock_quantity: missing signature | ✅ PASS | 400 signature_required |
-| adjust_stock_quantity: invalid signature | ⚠️ FINDING | Expected 400, got 200 (no validation) |
-| adjust_stock_quantity: crew forbidden | ⚠️ FINDING | Expected 403, got 200 (no role check) |
+| adjust_stock_quantity: invalid signature | ✅ PASS | 400 signature structure validation |
+| adjust_stock_quantity: crew forbidden | ✅ PASS | 403 role enforcement (chief_engineer/captain/manager only) |
 | adjust_stock_quantity: hod authorized | ✅ PASS | 200 success |
 | write_off_part: missing signature | ✅ PASS | 400 signature_required |
-| write_off_part: invalid signature | ✅ PASS | 400 signature_required |
+| write_off_part: invalid signature | ✅ PASS | 400 signature structure validation |
 | write_off_part: crew allowed | ✅ PASS | 200 (no role restriction by design) |
 | write_off_part: hod authorized | ✅ PASS | 200 success |
 
 **Evidence**: `signed_actions_evidence.json`
 
-**FINDINGS**:
-- ⚠️ **adjust_stock_quantity** lacks signature structure validation and role enforcement
-- ℹ️ **write_off_part** has no role restrictions (any authenticated user can write off)
+**ALL FINDINGS RESOLVED**:
+- ✅ **adjust_stock_quantity** now has signature structure validation (pin + totp required)
+- ✅ **adjust_stock_quantity** now has role enforcement (chief_engineer/captain/manager only)
+- ℹ️ **write_off_part** intentionally has no role restrictions (any authenticated user can write off)
 
 ### Idempotency (1/1 PASS)
 
@@ -198,12 +199,7 @@ All files in `docs/evidence/part_lens_v2/`:
 
 ### Before Production Rollout
 
-1. **Fix signature validation gaps** ⚠️
-   - Add signature structure validation to adjust_stock_quantity
-   - Add role enforcement (chief_engineer, captain only)
-   - Match fault_lens v1 pattern
-
-2. **Create storage buckets** 📦
+1. **Apply storage migration** 📦
    - part-photos
    - work-order-attachments
    - fault-photos
