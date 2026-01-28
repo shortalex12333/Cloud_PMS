@@ -604,8 +604,6 @@ class PartHandlers:
                 raise ConflictError(f"Duplicate receive: idempotency_key {idempotency_key} already exists")  # 409
             raise
 
-        new_qty = old_qty + quantity_received
-
         # Audit log (non-signed)
         self._write_audit_log(
             yacht_id=yacht_id,
@@ -613,13 +611,13 @@ class PartHandlers:
             action="receive_part",
             entity_type="part",
             entity_id=part_id,
-            old_values={"on_hand": old_qty},
-            new_values={"on_hand": new_qty, "received": quantity_received},
+            old_values={"on_hand": qty_before},
+            new_values={"on_hand": qty_after, "received": quantity_received},
             signature={},
             metadata={
                 "supplier_id": supplier_id,
                 "invoice": invoice_number,
-                "transaction_id": txn_result["transaction_id"],
+                "transaction_id": txn_id,
                 "idempotency_key": idempotency_key,
                 "photo_storage_path": photo_storage_path,
                 "location": final_location,
@@ -628,11 +626,11 @@ class PartHandlers:
 
         return {
             "status": "success",
-            "transaction_id": txn_result["transaction_id"],
+            "transaction_id": txn_id,
             "part_id": part_id,
             "part_name": stock.get("part_name"),
             "quantity_received": quantity_received,
-            "new_stock_level": new_qty,
+            "new_stock_level": qty_after,
             "location": final_location,
             "message": f"Received {quantity_received} units",
         }
