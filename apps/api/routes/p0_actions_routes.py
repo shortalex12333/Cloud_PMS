@@ -4509,33 +4509,39 @@ async def execute_action(
             # Call the handler (async handlers)
             result = await handler_fn(**handler_params)
 
-        else:
-            # Fallback to internal_dispatcher for actions not explicitly coded above
-            # This handles: Receiving Lens v1, Shopping List Lens v1, and any future INTERNAL actions
+        # ===== RECEIVING LENS V1 ACTIONS =====
+        elif action in ["create_receiving", "attach_receiving_image_with_comment",
+                        "extract_receiving_candidates", "update_receiving_fields",
+                        "add_receiving_item", "adjust_receiving_item",
+                        "link_invoice_document", "accept_receiving",
+                        "reject_receiving", "view_receiving_history"]:
+            # Receiving Lens v1 actions - dispatch to internal_dispatcher
+            logger.info(f"[RECEIVING] Dispatching action '{action}' to internal_dispatcher")
+
+            from action_router.dispatchers import internal_dispatcher
+
+            # Merge context and payload for internal dispatcher
+            handler_params = {
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                "user_context": user_context,
+                **payload
+            }
+
             try:
-                from action_router.dispatchers import internal_dispatcher
-                tenant_alias = user_context.get("tenant_key_alias", "")
-
-                # Merge context and payload for internal dispatcher
-                handler_params = {
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_context": user_context,
-                    **payload
-                }
-
-                # Try to dispatch to internal handlers
                 result = await internal_dispatcher.dispatch(action, handler_params)
-
-            except KeyError:
-                # Action not found in internal_dispatcher either
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Action '{action}' not found or not implemented"
-                )
+                logger.info(f"[RECEIVING] Action '{action}' completed successfully")
             except Exception as e:
-                # Re-raise to be handled by outer exception handler
+                logger.error(f"[RECEIVING] Action '{action}' failed: {type(e).__name__}: {e}")
                 raise
+
+        else:
+            # Unknown action - return 404
+            logger.warning(f"[ROUTING] Unknown action requested: {action}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Action '{action}' not found or not implemented"
+            )
 
     except HTTPException:
         # Let HTTPExceptions propagate with their original status code
