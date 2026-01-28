@@ -30,11 +30,9 @@ CREATE TABLE IF NOT EXISTS pms_health_checks (
     error_rate_percent numeric(5,2),  -- Error rate as percentage (0.00-100.00)
     sample_size integer,  -- Number of requests in this check
     observed_at timestamp with time zone NOT NULL DEFAULT now(),
-    notes jsonb DEFAULT '{}'::jsonb,  -- Detailed check results (JSON)
-
-    -- Foreign keys
-    CONSTRAINT fk_yacht FOREIGN KEY (yacht_id)
-        REFERENCES yacht_registry(id) ON DELETE CASCADE
+    notes jsonb DEFAULT '{}'::jsonb  -- Detailed check results (JSON)
+    -- NOTE: FK to yacht_registry removed (table doesn't exist in tenant)
+    -- RLS + indexes enforce yacht isolation; FK can be added later if needed
 );
 
 COMMENT ON TABLE pms_health_checks IS 'Aggregated health check results from lens monitoring workers';
