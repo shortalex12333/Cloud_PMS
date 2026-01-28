@@ -52,7 +52,11 @@ def validate_storage_path(path: str, yacht_id: str) -> bool:
     """
     Validate that storage path has correct yacht prefix.
 
-    Security invariant: All storage paths MUST start with {yacht_id}/
+    Security invariants:
+    - All storage paths MUST start with {yacht_id}/
+    - No path traversal (..) allowed
+    - No URL-encoded traversal attempts
+    - No leading whitespace (prefix must be at start)
 
     Args:
         path: Storage path to validate
@@ -65,6 +69,22 @@ def validate_storage_path(path: str, yacht_id: str) -> bool:
         return False
     if not yacht_id:
         return False
+
+    # No leading whitespace (prefix must be at exact start)
+    if path != path.lstrip():
+        return False
+
+    # Block path traversal attempts (raw and URL-encoded)
+    traversal_patterns = [
+        "..",           # Standard traversal
+        "%2e%2e",       # URL-encoded ..
+        "%2E%2E",       # URL-encoded .. (uppercase)
+        "%252e",        # Double-encoded
+    ]
+    path_lower = path.lower()
+    for pattern in traversal_patterns:
+        if pattern.lower() in path_lower:
+            return False
 
     # Path must start with yacht_id/
     expected_prefix = f"{yacht_id}/"

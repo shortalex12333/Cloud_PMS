@@ -200,10 +200,16 @@ class PartHandlers:
         try:
             # Get part with stock from canonical pms_part_stock view
             # Use .limit(1) instead of .maybe_single() to avoid PostgREST 204 on views
-            result = self.db.table("pms_part_stock").select(
-                "part_id, part_name, part_number, on_hand, min_level, reorder_multiple, "
-                "location, is_critical, department, category, stock_id"
-            ).eq("yacht_id", yacht_id).eq("part_id", entity_id).limit(1).execute()
+            logger.info(f"[view_part_details] Querying pms_part_stock for part_id={entity_id}, yacht_id={yacht_id}")
+            try:
+                result = self.db.table("pms_part_stock").select(
+                    "part_id, part_name, part_number, on_hand, min_level, reorder_multiple, "
+                    "location, is_critical, department, category, stock_id"
+                ).eq("yacht_id", yacht_id).eq("part_id", entity_id).limit(1).execute()
+                logger.info(f"[view_part_details] pms_part_stock query succeeded, rows: {len(result.data) if result.data else 0}")
+            except Exception as view_err:
+                logger.error(f"[view_part_details] pms_part_stock query failed: {view_err}", exc_info=True)
+                raise
 
             if not result.data or len(result.data) == 0:
                 builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
