@@ -37,7 +37,7 @@ MASTER_JWT_SECRET = os.getenv("MASTER_SUPABASE_JWT_SECRET")
 TEST_YACHT_ID = os.getenv("TEST_YACHT_ID")
 EVIDENCE_DIR = "test-evidence"
 
-# Test users (already in MASTER user_accounts + TENANT auth_users_roles)
+# Test users (.test users - from bash test scripts)
 TEST_USERS = {
     "HOD": {"id": "05a488fd-e099-4d18-bf86-d87afba4fcdf", "email": "hod.test@alex-short.com", "role": "chief_engineer"},
     "CAPTAIN": {"id": "c2f980b6-9a69-4953-bc33-3324f08602fe", "email": "captain.test@alex-short.com", "role": "captain"},
@@ -66,8 +66,8 @@ def generate_jwt(user_id: str, email: str) -> str:
     }
     return jwt.encode(payload, MASTER_JWT_SECRET, algorithm="HS256")
 
-# Use working pre-generated JWT from bash test scripts (only HOD available)
-# NOTE: CAPTAIN and CREW JWTs with .test emails are not available - those users may not be provisioned in MASTER
+# Original working JWT from bash scripts (only HOD available)
+# These JWTs were pre-generated and verified working with MASTER DB
 JWTS = {
     "HOD": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODAxNDMwNDAwLCJpYXQiOjE3MDQwNjcyMDAsImlzcyI6Imh0dHBzOi8vcXZ6bWthYW16YXF4cHpiZXdqeGUuc3VwYWJhc2UuY28vYXV0aC92MSIsInN1YiI6IjA1YTQ4OGZkLWUwOTktNGQxOC1iZjg2LWQ4N2FmYmE0ZmNkZiIsImVtYWlsIjoiaG9kLnRlc3RAYWxleC1zaG9ydC5jb20iLCJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.Y-RCHK66wkaQ6z_5Bfr_1PJ-tQHBK_JhUrxm9UzJDNc"
 }
@@ -244,7 +244,7 @@ def run_acceptance():
 
     print("=== Canonical Action Router (by role) ===")
     test_view_part_details(JWTS["HOD"], "HOD")
-    # Skip CAPTAIN and CREW - JWTs not available for .test users
+    # Skip CAPTAIN/CREW - working JWTs not available (signature mismatch with generated ones)
     # test_view_part_details(JWTS["CAPTAIN"], "CAPTAIN")
     # test_view_part_details(JWTS["CREW"], "CREW")
     print()
