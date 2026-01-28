@@ -1,0 +1,10 @@
+{
+  "view_definitions": "SKIPPED - RPC not available",
+  "rls_policies": "SKIPPED - RPC not available",
+  "yacht_isolation": {
+    "yachts_with_data": 1,
+    "yacht_ids": [
+      "85fe1119-b04c-41ac-80f1-829d23322598"
+    ]
+  }
+}

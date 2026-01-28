@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-01-28T09:44:41.625244",
+  "api_base": "https://pipeline-core.int.celeste7.ai",
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "total_tests": 6,
+  "passed": 6,
+  "failed": 0,
+  "success_rate": 1.0,
+  "five_xx_count": 0,
+  "results": [
+    {
+      "test": "Low-stock read",
+      "passed": true,
+      "message": "49 parts below min_level",
+      "status_code": 200
+    },
+    {
+      "test": "view_part_details (HOD)",
+      "passed": true,
+      "message": "Status 200",
+      "status_code": 200
+    },
+    {
+      "test": "view_part_details (CAPTAIN)",
+      "passed": true,
+      "message": "Status 200",
+      "status_code": 200
+    },
+    {
+      "test": "view_part_details (CREW)",
+      "passed": true,
+      "message": "Status 200",
+      "status_code": 200
+    },
+    {
+      "test": "consume_part",
+      "passed": true,
+      "message": "Status 200",
+      "status_code": 200
+    },
+    {
+      "test": "Zero 5xx scan",
+      "passed": true,
+      "message": "Tested 2 endpoints, 0 returned 5xx",
+      "status_code": null
+    }
+  ]
+}

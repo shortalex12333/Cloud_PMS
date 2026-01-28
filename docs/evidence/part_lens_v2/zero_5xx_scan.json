@@ -1,0 +1,12 @@
+[
+  {
+    "url": "https://pipeline-core.int.celeste7.ai/health",
+    "status": 200,
+    "is_5xx": false
+  },
+  {
+    "url": "https://pipeline-core.int.celeste7.ai/v1/parts/low-stock?yacht_id=85fe1119-b04c-41ac-80f1-829d23322598",
+    "status": 200,
+    "is_5xx": false
+  }
+]
