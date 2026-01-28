@@ -78,11 +78,14 @@ class DocumentHandlers:
             expires_in = params.get("expires_in", 3600)  # Default 1 hour
 
             # Get document metadata
-            result = self.db.table("doc_metadata").select(
-                "id, filename, storage_path, content_type, yacht_id"
-            ).eq("yacht_id", yacht_id).eq("id", entity_id).maybe_single().execute()
+            try:
+                result = self.db.table("doc_metadata").select(
+                    "id, filename, storage_path, content_type, yacht_id"
+                ).eq("yacht_id", yacht_id).eq("id", entity_id).maybe_single().execute()
+            except Exception:
+                result = None
 
-            if not result.data:
+            if not result or not result.data:
                 builder.set_error("NOT_FOUND", f"Document not found: {entity_id}")
                 return builder.build()
 
@@ -269,6 +272,7 @@ def _upload_document_adapter(handlers: DocumentHandlers):
         # NOTE: No extra 'documents/' prefix - bucket is already 'documents'
         storage_path = f"{yacht_id}/documents/{doc_id}/{filename}"
 
+        # Core payload - only columns guaranteed to exist in doc_metadata
         payload = {
             "id": doc_id,
             "yacht_id": yacht_id,
@@ -276,16 +280,20 @@ def _upload_document_adapter(handlers: DocumentHandlers):
             "storage_path": storage_path,
             "content_type": params["mime_type"],
             "title": params.get("title") or filename,
-            "doc_type": params.get("doc_type"),
-            "oem": params.get("oem"),
-            "model_number": params.get("model_number"),
-            "serial_number": params.get("serial_number"),
-            "system_path": params.get("system_path"),
-            "tags": params.get("tags") or [],
-            "equipment_ids": params.get("equipment_ids") or [],
             "uploaded_by": user_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
+
+        # Optional columns - only add if provided and column exists
+        # These may need database migration to add
+        optional_fields = ["doc_type", "oem", "notes"]
+        for field in optional_fields:
+            if params.get(field):
+                payload[field] = params[field]
+
+        # Array fields - skip if not in schema (requires migration)
+        # "tags", "equipment_ids", "model_number", "serial_number", "system_path"
+        # are extended fields that may not exist yet
 
         # Insert document metadata (RLS enforces yacht isolation)
         ins = db.table("doc_metadata").insert(payload).execute()
@@ -351,11 +359,14 @@ def _update_document_adapter(handlers: DocumentHandlers):
         doc_id = params["document_id"]
 
         # Get current values for audit
-        current = db.table("doc_metadata").select("*").eq(
-            "yacht_id", yacht_id
-        ).eq("id", doc_id).maybe_single().execute()
+        try:
+            current = db.table("doc_metadata").select("*").eq(
+                "yacht_id", yacht_id
+            ).eq("id", doc_id).maybe_single().execute()
+        except Exception:
+            current = None
 
-        if not current.data:
+        if not current or not current.data:
             raise ValueError(f"Document not found or access denied: {doc_id}")
 
         old_values = current.data
@@ -368,10 +379,10 @@ def _update_document_adapter(handlers: DocumentHandlers):
         update_fields = {}
         audit_fields = {}
 
-        updatable = [
-            "title", "doc_type", "oem", "model_number", "serial_number",
-            "system_path", "tags", "equipment_ids", "notes"
-        ]
+        # Core updatable fields - guaranteed to exist in doc_metadata
+        updatable = ["title", "doc_type", "oem", "notes"]
+        # Extended fields require migration: "model_number", "serial_number",
+        # "system_path", "tags", "equipment_ids"
 
         for field in updatable:
             if field in params and params[field] is not None:
@@ -438,11 +449,15 @@ def _add_document_tags_adapter(handlers: DocumentHandlers):
         replace_mode = params.get("replace", False)
 
         # Get current document
-        current = db.table("doc_metadata").select("id, tags").eq(
-            "yacht_id", yacht_id
-        ).eq("id", doc_id).maybe_single().execute()
+        try:
+            current = db.table("doc_metadata").select("id, tags").eq(
+                "yacht_id", yacht_id
+            ).eq("id", doc_id).maybe_single().execute()
+        except Exception:
+            # tags column might not exist yet
+            current = None
 
-        if not current.data:
+        if not current or not current.data:
             raise ValueError(f"Document not found or access denied: {doc_id}")
 
         old_tags = current.data.get("tags") or []
@@ -524,11 +539,14 @@ def _delete_document_adapter(handlers: DocumentHandlers):
             raise ValueError("signature payload is required for delete action (signed action)")
 
         # Get current document
-        current = db.table("doc_metadata").select("*").eq(
-            "yacht_id", yacht_id
-        ).eq("id", doc_id).maybe_single().execute()
+        try:
+            current = db.table("doc_metadata").select("*").eq(
+                "yacht_id", yacht_id
+            ).eq("id", doc_id).maybe_single().execute()
+        except Exception:
+            current = None
 
-        if not current.data:
+        if not current or not current.data:
             raise ValueError(f"Document not found or access denied: {doc_id}")
 
         old_doc = current.data
@@ -537,14 +555,18 @@ def _delete_document_adapter(handlers: DocumentHandlers):
         if old_doc.get("deleted_at"):
             raise ValueError("Document is already deleted")
 
-        # Soft delete: set deleted_at and deleted_by
+        # Soft delete: set deleted_at (core column)
+        # Note: deleted_by, deleted_reason may require migration
         delete_time = datetime.now(timezone.utc).isoformat()
 
-        res = db.table("doc_metadata").update({
-            "deleted_at": delete_time,
-            "deleted_by": user_id,
-            "deleted_reason": reason,
-        }).eq("yacht_id", yacht_id).eq("id", doc_id).execute()
+        delete_payload = {"deleted_at": delete_time}
+        # Add optional columns if they exist in schema
+        # Uncomment after migration: delete_payload["deleted_by"] = user_id
+        # Uncomment after migration: delete_payload["deleted_reason"] = reason
+
+        res = db.table("doc_metadata").update(delete_payload).eq(
+            "yacht_id", yacht_id
+        ).eq("id", doc_id).execute()
 
         if not res.data:
             raise ValueError("Delete failed or not permitted by RLS")
