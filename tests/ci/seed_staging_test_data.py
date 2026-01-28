@@ -109,17 +109,9 @@ def seed_test_data():
                 "currency": "USD"
             }
 
-            # Check if exists
-            existing = db.table("pms_parts_catalog").select("part_id").eq("part_id", part["part_id"]).eq("yacht_id", TEST_YACHT_ID).maybe_single().execute()
-
-            if existing and existing.data:
-                # Update existing
-                db.table("pms_parts_catalog").update(part_data).eq("part_id", part["part_id"]).eq("yacht_id", TEST_YACHT_ID).execute()
-                print(f"  ✅ Updated part in catalog")
-            else:
-                # Insert new
-                db.table("pms_parts_catalog").insert(part_data).execute()
-                print(f"  ✅ Created part in catalog")
+            # Use upsert() to insert or update based on primary key
+            db.table("pms_parts_catalog").upsert(part_data, on_conflict="part_id,yacht_id").execute()
+            print(f"  ✅ Upserted part in catalog")
 
         except Exception as e:
             print(f"  ⚠️  Part catalog error: {e}")
@@ -134,17 +126,10 @@ def seed_test_data():
                 "is_active": True
             }
 
-            # Check if stock exists
-            existing_stock = db.table("pms_inventory_stock").select("stock_id").eq("part_id", part["part_id"]).eq("yacht_id", TEST_YACHT_ID).eq("location", part["location"]).maybe_single().execute()
-
-            if existing_stock and existing_stock.data:
-                # Update existing
-                db.table("pms_inventory_stock").update(stock_data).eq("stock_id", existing_stock.data["stock_id"]).execute()
-                print(f"  ✅ Updated stock record ({part['initial_stock']} units at {part['location']})")
-            else:
-                # Insert new
-                db.table("pms_inventory_stock").insert(stock_data).execute()
-                print(f"  ✅ Created stock record ({part['initial_stock']} units at {part['location']})")
+            # Use upsert() - Supabase will handle insert-or-update based on unique constraints
+            # The unique constraint is likely on (yacht_id, part_id, location)
+            db.table("pms_inventory_stock").upsert(stock_data, on_conflict="yacht_id,part_id,location").execute()
+            print(f"  ✅ Upserted stock record ({part['initial_stock']} units at {part['location']})")
 
         except Exception as e:
             print(f"  ⚠️  Stock record error: {e}")
