@@ -1068,6 +1068,7 @@ async def execute_action(
                 idempotency_key=payload["idempotency_key"],
                 supplier_id=payload.get("supplier_id"),
                 invoice_number=payload.get("po_number") or payload.get("invoice_number"),
+                location=payload.get("to_location_id") or payload.get("location"),
                 notes=payload.get("notes")
             )
 
