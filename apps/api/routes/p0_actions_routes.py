@@ -596,9 +596,9 @@ async def execute_action(
     }
 
     # PART LENS SIGNED ACTIONS - STRICT role enforcement (captain/manager only)
+    # NOTE: write_off_part is NOT included - any authenticated user can write off parts
     PART_LENS_SIGNED_ROLES = {
         "adjust_stock_quantity": ["chief_engineer", "captain", "manager"],
-        "write_off_part": ["chief_engineer", "captain", "manager"],
     }
 
     if action in FAULT_LENS_ROLES:
@@ -4500,6 +4500,10 @@ async def execute_action(
     except HTTPException:
         # Let HTTPExceptions propagate with their original status code
         raise
+    except ValueError as e:
+        # Validation errors from handlers should return 400
+        logger.warning(f"Action validation failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         # Check if it's a SignatureRequiredError (custom exception from part_handlers)
         if e.__class__.__name__ == "SignatureRequiredError":
@@ -4509,13 +4513,6 @@ async def execute_action(
         elif e.__class__.__name__ == "ConflictError":
             logger.warning(f"Conflict detected: {e}")
             raise HTTPException(status_code=409, detail=str(e))
-        # Re-raise for next handler
-        raise
-    except ValueError as e:
-        # Validation errors from handlers should return 400
-        logger.warning(f"Action validation failed: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
         logger.error(f"Action execution failed: {e}", exc_info=True)
         error_str = str(e).lower()
 
