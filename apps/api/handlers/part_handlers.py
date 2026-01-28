@@ -457,6 +457,16 @@ class PartHandlers:
                 "p_yacht_id": yacht_id
             }).execute()
         except Exception as e:
+            error_str = str(e)
+            error_str_lower = error_str.lower()
+
+            # Check if PostgREST 204 - RPC succeeded but no response body
+            # This shouldn't happen with RPCs that return data, but handle it gracefully
+            if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
+                logger.warning(f"PostgREST 204 on deduct_stock RPC - this is unexpected, RPC may have failed")
+                # Treat as insufficient stock (safest assumption)
+                raise ConflictError("Stock deduction may have failed - please verify stock levels")  # 409
+
             logger.error(f"Atomic deduct RPC failed: {e}")
             raise
 
