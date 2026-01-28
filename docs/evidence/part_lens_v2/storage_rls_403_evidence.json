@@ -1,0 +1,20 @@
+[
+  {
+    "bucket": "part-photos",
+    "test": "cross_yacht_read",
+    "error": "{'statusCode': 400, 'error': 'Bucket not found', 'message': 'Bucket not found'}",
+    "passed": false
+  },
+  {
+    "bucket": "work-order-attachments",
+    "test": "cross_yacht_read",
+    "error": "{'statusCode': 400, 'error': 'Bucket not found', 'message': 'Bucket not found'}",
+    "passed": false
+  },
+  {
+    "bucket": "fault-photos",
+    "test": "cross_yacht_read",
+    "error": "{'statusCode': 400, 'error': 'Bucket not found', 'message': 'Bucket not found'}",
+    "passed": false
+  }
+]

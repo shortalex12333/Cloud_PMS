@@ -1,0 +1,13 @@
+{
+  "test": "idempotency_409_duplicate_receive_part",
+  "idempotency_key": "IDEMPOTENCY-TEST-409-001",
+  "first_call": {
+    "status": 200,
+    "response": {"status":"success","transaction_id":"819552d8-84e1-4a1e-99db-8b2981ad460b","part_id":"8ad67e2f-2579-4d6c-afd2-0dee85f4d8b3","part_name":"Test Part 8ad67e2f","quantity_received":10,"new_stock_level":80,"location":"26935636-726c-4388-afda-6028aa6e6944","message":"Received 10 units","execution_id":"728f7ee2-9dd4-4ff6-af92-2082e0b20e03","action":"receive_part"}
+  },
+  "second_call": {
+    "status": 409,
+    "response": {"detail":"Resource already exists"}
+  },
+  "passed": true
+}

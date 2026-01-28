@@ -1,0 +1,26 @@
+{
+  "status": "success",
+  "data": {
+    "id": "bae3409f-4167-48db-bdab-8e3ea21cdcf3",
+    "name": "Test Part bae3409f",
+    "part_number": "TP-bae3409f",
+    "description": null,
+    "category": null,
+    "manufacturer": null,
+    "is_critical": false,
+    "unit_cost": null,
+    "stock": {
+      "on_hand": 0,
+      "min_level": 10,
+      "reorder_multiple": 5,
+      "location": "LOC-bae3",
+      "stock_id": null,
+      "is_low_stock": true,
+      "is_out_of_stock": true,
+      "suggested_order_qty": 10
+    }
+  },
+  "message": "",
+  "execution_id": "b36b22ed-fd96-4791-905d-a29a1f196fe8",
+  "action": "view_part_details"
+}
