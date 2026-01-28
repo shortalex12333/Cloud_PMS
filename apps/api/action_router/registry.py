@@ -1513,8 +1513,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/documents/upload",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD roles - crew deny mutations
         required_fields=["yacht_id", "file_name", "mime_type"],
         domain="documents",
         variant=ActionVariant.MUTATE,
