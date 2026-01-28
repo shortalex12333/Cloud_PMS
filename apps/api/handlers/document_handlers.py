@@ -272,19 +272,18 @@ def _upload_document_adapter(handlers: DocumentHandlers):
         # NOTE: No extra 'documents/' prefix - bucket is already 'documents'
         storage_path = f"{yacht_id}/documents/{doc_id}/{filename}"
 
-        # Minimal payload - only columns that exist in doc_metadata table
-        # Based on certificate_handlers.py:551 comment: "id, filename, storage_path, content_type"
-        # Plus yacht_id for RLS
+        # Minimal payload for doc_metadata table
+        # Required columns (NOT NULL): id, yacht_id, filename, content_type, storage_path, source
         payload = {
             "id": doc_id,
             "yacht_id": yacht_id,
             "filename": filename,
             "storage_path": storage_path,
             "content_type": params["mime_type"],
+            "source": "document_lens",  # Required NOT NULL column
         }
-        # NOTE: Extended columns (title, doc_type, uploaded_by, created_at, oem, notes,
-        # tags, equipment_ids, model_number, serial_number, system_path) require
-        # database migration. See docs/pipeline/entity_lenses/document_lens/v2/
+        # Optional columns that exist but aren't required:
+        # title, doc_type, uploaded_by, oem, notes, tags, equipment_ids, etc.
 
         # Insert document metadata (RLS enforces yacht isolation)
         ins = db.table("doc_metadata").insert(payload).execute()
