@@ -13,6 +13,17 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.6"
+      # MASTER DB - User auth & fleet registry
+      - key: MASTER_SUPABASE_URL
+        value: "https://qvzmkaamzaqxpzbewjxe.supabase.co"
+      - key: MASTER_SUPABASE_SERVICE_KEY
+        sync: false
+      # TENANT_1 DB - PMS data for yTEST_YACHT_001
+      - key: yTEST_YACHT_001_SUPABASE_URL
+        value: "https://vzsohavtuotocgrfkfyd.supabase.co"
+      - key: yTEST_YACHT_001_SUPABASE_SERVICE_KEY
+        sync: false
+      # Default/fallback (points to TENANT_1)
       - key: SUPABASE_URL
         value: "https://vzsohavtuotocgrfkfyd.supabase.co"
       - key: SUPABASE_SERVICE_KEY
