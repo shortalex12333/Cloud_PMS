@@ -6,7 +6,7 @@ set -e  # Exit on error
 
 echo "=== Installing Python dependencies ==="
 pip install --upgrade pip
-pip install -r api/requirements.txt
+pip install -r apps/api/requirements.txt
 
 echo "=== Downloading spaCy English model ==="
 python -m spacy download en_core_web_sm
