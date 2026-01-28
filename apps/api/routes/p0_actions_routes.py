@@ -638,9 +638,19 @@ async def execute_action(
                 note_type = "general"
 
             # Check if work order exists
-            check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-            if not check.data:
-                raise HTTPException(status_code=404, detail="Work order not found")
+            try:
+                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+                if not check.data:
+                    raise HTTPException(status_code=404, detail="Work order not found")
+            except HTTPException:
+                raise  # Re-raise our own 404
+            except Exception as e:
+                # Supabase single() raises exception when 0 rows found
+                error_str = str(e)
+                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
+                    raise HTTPException(status_code=404, detail="Work order not found")
+                # Re-raise other exceptions as 500
+                raise
 
             # Insert note
             note_data = {
@@ -1641,9 +1651,19 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="photo_url is required")
 
             # Check if work order exists
-            check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-            if not check.data:
-                raise HTTPException(status_code=404, detail="Work order not found")
+            try:
+                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+                if not check.data:
+                    raise HTTPException(status_code=404, detail="Work order not found")
+            except HTTPException:
+                raise  # Re-raise our own 404
+            except Exception as e:
+                # Supabase single() raises exception when 0 rows found
+                error_str = str(e)
+                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
+                    raise HTTPException(status_code=404, detail="Work order not found")
+                # Re-raise other exceptions as 500
+                raise
 
             # Store photo URL in metadata (work orders don't have a dedicated photos table)
             wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
@@ -1685,9 +1705,19 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="part_id is required")
 
             # Check if work order exists
-            check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
-            if not check.data:
-                raise HTTPException(status_code=404, detail="Work order not found")
+            try:
+                check = db_client.table("pms_work_orders").select("id").eq("id", work_order_id).eq("yacht_id", yacht_id).single().execute()
+                if not check.data:
+                    raise HTTPException(status_code=404, detail="Work order not found")
+            except HTTPException:
+                raise  # Re-raise our own 404
+            except Exception as e:
+                # Supabase single() raises exception when 0 rows found
+                error_str = str(e)
+                if "PGRST116" in error_str or "0 rows" in error_str or "result contains 0 rows" in error_str.lower():
+                    raise HTTPException(status_code=404, detail="Work order not found")
+                # Re-raise other exceptions as 500
+                raise
 
             # Store part link in metadata
             wo_data = db_client.table("pms_work_orders").select("metadata").eq("id", work_order_id).single().execute()
