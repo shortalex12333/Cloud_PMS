@@ -13,7 +13,8 @@ import * as path from 'path';
  * Uses pre-authenticated token from global setup.
  */
 
-const PROD_URL = 'https://app.celeste7.ai';
+// Use BASE_URL env var for preview testing, default to prod
+const BASE_URL = process.env.BASE_URL || 'https://app.celeste7.ai';
 
 // Get stored auth token from global setup
 function getAuthToken(): string | null {
@@ -31,7 +32,7 @@ test.describe('Connect Outlook Auth Fix - API Tests', () => {
 
   test('AUTH_FIX_01: API returns new error format without auth', async ({ request }) => {
     // Make request without auth header
-    const response = await request.get(`${PROD_URL}/api/integrations/outlook/auth-url`);
+    const response = await request.get(`${BASE_URL}/api/integrations/outlook/auth-url`);
 
     expect(response.status()).toBe(401);
 
@@ -55,7 +56,7 @@ test.describe('Connect Outlook Auth Fix - API Tests', () => {
     expect(token).toBeTruthy();
     console.log('Using token:', token?.substring(0, 50) + '...');
 
-    const response = await request.get(`${PROD_URL}/api/integrations/outlook/auth-url`, {
+    const response = await request.get(`${BASE_URL}/api/integrations/outlook/auth-url`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
@@ -85,7 +86,7 @@ test.describe('Connect Outlook Auth Fix - API Tests', () => {
     const token = getAuthToken();
     expect(token).toBeTruthy();
 
-    const response = await request.get(`${PROD_URL}/api/integrations/outlook/status`, {
+    const response = await request.get(`${BASE_URL}/api/integrations/outlook/status`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
@@ -106,7 +107,7 @@ test.describe('Connect Outlook Auth Fix - API Tests', () => {
   });
 
   test('AUTH_FIX_04: Status endpoint returns error codes without auth', async ({ request }) => {
-    const response = await request.get(`${PROD_URL}/api/integrations/outlook/status`);
+    const response = await request.get(`${BASE_URL}/api/integrations/outlook/status`);
 
     expect(response.status()).toBe(401);
 
@@ -134,7 +135,7 @@ test.describe('Connect Outlook Auth Fix - Browser Tests', () => {
 
     // Set auth cookie/storage to simulate logged in state
     // Navigate to login first to establish session domain
-    await page.goto(`${PROD_URL}/login`);
+    await page.goto(`${BASE_URL}/login`);
 
     // Inject the auth token into localStorage (Supabase stores it there)
     const storageKey = 'sb-qvzmkaamzaqxpzbewjxe-auth-token';
@@ -160,7 +161,7 @@ test.describe('Connect Outlook Auth Fix - Browser Tests', () => {
     });
 
     // Now navigate to settings
-    await page.goto(`${PROD_URL}/settings`);
+    await page.goto(`${BASE_URL}/settings`);
 
     // Wait for page to load
     await page.waitForLoadState('networkidle', { timeout: 15000 });
@@ -175,7 +176,7 @@ test.describe('Connect Outlook Auth Fix - Browser Tests', () => {
     if (url.includes('/login')) {
       console.log('Redirected to login - session injection may have failed');
       // Still check API works
-      const apiResponse = await page.request.get(`${PROD_URL}/api/integrations/outlook/auth-url`, {
+      const apiResponse = await page.request.get(`${BASE_URL}/api/integrations/outlook/auth-url`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       expect(apiResponse.status()).toBe(200);
@@ -207,7 +208,7 @@ test.describe('Connect Outlook Auth Fix - Browser Tests', () => {
     });
 
     // Navigate to settings (may redirect to login)
-    await page.goto(`${PROD_URL}/settings`);
+    await page.goto(`${BASE_URL}/settings`);
     await page.waitForTimeout(5000);
 
     console.log('API calls during page load:');
@@ -235,7 +236,7 @@ test.describe('Connect Outlook Auth Fix - Evidence Collection', () => {
 
     // Test 1: No auth - should get structured error
     console.log('\n=== Test 1: No Auth ===');
-    const noAuthResponse = await request.get(`${PROD_URL}/api/integrations/outlook/auth-url`);
+    const noAuthResponse = await request.get(`${BASE_URL}/api/integrations/outlook/auth-url`);
     const noAuthBody = await noAuthResponse.json();
     evidence.tests.push({
       name: 'no_auth_error_format',
@@ -252,7 +253,7 @@ test.describe('Connect Outlook Auth Fix - Evidence Collection', () => {
     console.log('\n=== Test 2: With Auth ===');
     const token = getAuthToken();
     if (token) {
-      const authResponse = await request.get(`${PROD_URL}/api/integrations/outlook/auth-url`, {
+      const authResponse = await request.get(`${BASE_URL}/api/integrations/outlook/auth-url`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const authBody = await authResponse.json();
@@ -273,7 +274,7 @@ test.describe('Connect Outlook Auth Fix - Evidence Collection', () => {
     // Test 3: Status endpoint
     console.log('\n=== Test 3: Status Endpoint ===');
     if (token) {
-      const statusResponse = await request.get(`${PROD_URL}/api/integrations/outlook/status`, {
+      const statusResponse = await request.get(`${BASE_URL}/api/integrations/outlook/status`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const statusBody = await statusResponse.json();
