@@ -1,0 +1,83 @@
+# Render Blueprint for CelesteOS API Services
+# Deploy: https://dashboard.render.com/select-repo?type=blueprint
+
+services:
+  # ==========================================================================
+  # CELESTE API - MICROACTION SERVICE (includes Part Lens v2)
+  # ==========================================================================
+  - type: web
+    name: celeste-api-staging
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile.microaction
+    dockerContext: apps/api
+    region: oregon
+    plan: starter  # $7/month - upgrade to Standard for production
+
+    # Auto-deploy on push to staging branch
+    autoDeploy: true
+    branch: staging  # or main, depending on your workflow
+
+    # Health check
+    healthCheckPath: /health
+
+    # Environment variables (CRITICAL - set in Render dashboard for security)
+    envVars:
+      # Tenant-specific (for CI pattern)
+      - key: TENANT_1_SUPABASE_URL
+        sync: false  # Set manually: https://vzsohavtuotocgrfkfyd.supabase.co
+      - key: TENANT_1_SUPABASE_SERVICE_KEY
+        sync: false  # Set manually from Supabase project settings
+      - key: TENANT_1_SUPABASE_JWT_SECRET
+        sync: false  # Set manually from Supabase project settings
+      - key: TENANT_1_DB_PASSWORD
+        sync: false  # Set manually
+
+      # Yacht-specific (for runtime pattern)
+      - key: DEFAULT_YACHT_CODE
+        value: "yTEST_YACHT_001"
+      - key: yTEST_YACHT_001_SUPABASE_URL
+        sync: false  # Same as TENANT_1_SUPABASE_URL
+      - key: yTEST_YACHT_001_SUPABASE_SERVICE_KEY
+        sync: false  # Same as TENANT_1_SUPABASE_SERVICE_KEY
+
+      # OpenAI (if needed for AI features)
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually
+
+      # Port
+      - key: PORT
+        value: "8080"
+
+      # Staging mode
+      - key: STAGING_MODE
+        value: "true"
+
+  # ==========================================================================
+  # EMAIL RAG BACKGROUND WORKER
+  # ==========================================================================
+  - type: worker
+    name: email-rag-worker
+    runtime: python
+    region: oregon
+    plan: starter
+
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: python worker.py
+
+    autoDeploy: true
+    branch: main
+
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: WORKER_POLL_INTERVAL
+        value: "60"
+      - key: WORKER_BATCH_SIZE
+        value: "10"
+      - key: WORKER_STAGING_MODE
+        value: "true"
