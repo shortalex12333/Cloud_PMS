@@ -47,10 +47,10 @@ jobs:
           HOST=$(echo "$TENANT_SUPABASE_URL" | sed 's|https://||' | sed 's|http://||')
           # URL-encode password (replace @ with %40)
           ENCODED_PASSWORD=$(echo "$TENANT_DB_PASSWORD" | sed 's/@/%40/g')
-          # Build DATABASE_URL
-          DATABASE_URL="postgresql://postgres:${ENCODED_PASSWORD}@db.${HOST}:5432/postgres"
+          # Build DATABASE_URL using connection pooler (port 6543) for CI compatibility
+          DATABASE_URL="postgresql://postgres:${ENCODED_PASSWORD}@db.${HOST}:6543/postgres"
           echo "DATABASE_URL=${DATABASE_URL}" >> $GITHUB_OUTPUT
-          echo "✅ DATABASE_URL configured"
+          echo "✅ DATABASE_URL configured (using connection pooler port 6543)"
 
       - name: Run acceptance tests against staging
         working-directory: tests/inventory_lens
@@ -122,7 +122,8 @@ jobs:
         run: |
           HOST=$(echo "$TENANT_SUPABASE_URL" | sed 's|https://||' | sed 's|http://||')
           ENCODED_PASSWORD=$(echo "$TENANT_DB_PASSWORD" | sed 's/@/%40/g')
-          DATABASE_URL="postgresql://postgres:${ENCODED_PASSWORD}@db.${HOST}:5432/postgres"
+          # Use connection pooler (port 6543) for CI compatibility
+          DATABASE_URL="postgresql://postgres:${ENCODED_PASSWORD}@db.${HOST}:6543/postgres"
           echo "DATABASE_URL=${DATABASE_URL}" >> $GITHUB_OUTPUT
 
       - name: Verify RLS policies exist
