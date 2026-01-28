@@ -128,32 +128,28 @@ Scoring weights:
 
 ## Known Limitations
 
-| Gap | Impact | Planned Fix |
-|-----|--------|-------------|
-| OpenAI unavailable returns 500 | Search fails if OPENAI_API_KEY missing | Backend patch: degrade to entity-only (see below) |
+| Gap | Impact | Status |
+|-----|--------|--------|
+| ~~OpenAI unavailable returns 500~~ | ~~Search fails if OPENAI_API_KEY missing~~ | ✅ **Fixed** (commit `1807e99`) |
 | Attachment download test skipped | No attachments in test account | Add fixture emails with attachments |
 | cid: images require manual load | Inline images not auto-displayed | User intent required for privacy |
 
-### Entity-Only Fallback (Planned)
+### Entity-Only Fallback (Implemented)
 
-If embeddings are unavailable (OpenAI key missing or API failure), search should degrade gracefully:
+When embeddings are unavailable (OpenAI key missing or API failure), search degrades gracefully to entity keyword matching:
 
 ```python
-# routes/email.py - search_emails handler
-embedding = generate_embedding_sync(q)
-use_vector = True
+# routes/email.py - search_emails handler (lines 550-552)
 if not embedding:
-    logger.warning("[email/search] No embedding; degrading to entity-only")
-    use_vector = False
-    embedding = [0.0] * 1536  # neutral vector
-
-params = {
-    'p_similarity_threshold': 0.0 if not use_vector else threshold,
-    # ... other params
-}
+    logger.warning("[email/search] No embedding available; degrading to entity-only search")
+    embedding = [0.0] * 1536  # Neutral vector
+    telemetry['embed_skipped'] = True  # Triggers threshold=0.0
 ```
 
-When vector lane is disabled, search relies on entity keywords only (p_entity_keywords). Results with entity_score > 0 pass the filter.
+When vector lane is disabled (`embed_skipped=True`):
+- `p_similarity_threshold` is set to `0.0`
+- Results driven by entity keywords (`p_entity_keywords`)
+- Telemetry tracks degraded mode for monitoring
 
 ## Related Documentation
 
