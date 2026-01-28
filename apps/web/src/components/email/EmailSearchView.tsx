@@ -94,8 +94,16 @@ const SANITIZE_CONFIG = {
  * - Forces links to open securely in new tabs
  */
 function sanitizeHtml(html: string): string {
+  console.log('[EMAIL:SANITIZE] Input length:', html?.length || 0);
+
+  if (!html) {
+    console.log('[EMAIL:SANITIZE] FAULT: html is null/undefined/empty');
+    return '';
+  }
+
   // First pass: DOMPurify sanitization
   let clean = DOMPurify.sanitize(html, SANITIZE_CONFIG);
+  console.log('[EMAIL:SANITIZE] After DOMPurify:', clean?.length || 0, 'chars');
 
   // Second pass: Add security attributes to links
   clean = clean.replace(
@@ -110,6 +118,7 @@ function sanitizeHtml(html: string): string {
     '<img $1data-blocked-src="'
   );
 
+  console.log('[EMAIL:SANITIZE] Final output:', clean?.length || 0, 'chars, preview:', clean?.substring(0, 100));
   return clean;
 }
 
@@ -279,8 +288,16 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
 
   // Auto-select first message when thread loads
   useEffect(() => {
+    console.log('[EMAIL:AUTO-SELECT]', {
+      hasThread: !!selectedThread,
+      messageCount: selectedThread?.messages?.length || 0,
+      currentSelectedId: selectedMessageId?.substring(0, 30) || 'null',
+    });
+
     if (selectedThread?.messages?.length && !selectedMessageId) {
-      setSelectedMessageId(selectedThread.messages[0].provider_message_id);
+      const firstMsgId = selectedThread.messages[0].provider_message_id;
+      console.log('[EMAIL:AUTO-SELECT] Setting selectedMessageId:', firstMsgId?.substring(0, 30));
+      setSelectedMessageId(firstMsgId);
     }
   }, [selectedThread, selectedMessageId]);
 
@@ -750,6 +767,17 @@ function MessagePanel({
   hasRelatedLinks,
 }: MessagePanelProps) {
   const [showLinkModal, setShowLinkModal] = useState(false);
+
+  // Debug logging for content flow
+  console.log('[EMAIL:PANEL]', {
+    selectedMessageId: selectedMessageId?.substring(0, 30) || 'null',
+    contentLoading,
+    hasContent: !!content,
+    bodyType: content?.body?.contentType || 'none',
+    bodyLength: content?.body?.content?.length || 0,
+    hasBodyPreview: !!content?.body_preview,
+    subject: content?.subject?.substring(0, 30) || 'none',
+  });
 
   return (
     <div className="h-full flex flex-col">

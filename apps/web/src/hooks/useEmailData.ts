@@ -101,11 +101,49 @@ export type RelatedThreadsResponse = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
+// Debug logging (only in development or when DEBUG_EMAIL=true)
+const DEBUG = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG_EMAIL === 'true';
+function debugLog(tag: string, msg: string, data?: unknown) {
+  if (DEBUG) {
+    console.log(`[EMAIL:${tag}] ${msg}`, data || '');
+  }
+}
+
 async function getAuthHeaders(): Promise<HeadersInit> {
-  const { data: { session } } = await supabase.auth.getSession();
+  debugLog('AUTH', 'Getting session...');
+  const { data: { session }, error } = await supabase.auth.getSession();
+
+  if (error) {
+    debugLog('AUTH', 'Session error', error);
+    throw new Error(`Auth error: ${error.message}`);
+  }
+
   if (!session?.access_token) {
+    debugLog('AUTH', 'No session or token', { hasSession: !!session });
     throw new Error('Not authenticated');
   }
+
+  // Check token expiry
+  if (session.expires_at) {
+    const expiresIn = session.expires_at * 1000 - Date.now();
+    debugLog('AUTH', `Token expires in ${Math.round(expiresIn / 1000)}s`);
+
+    if (expiresIn < 60000) {
+      debugLog('AUTH', 'Token expiring soon, refreshing...');
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshed.session) {
+        debugLog('AUTH', 'Refresh failed', refreshError);
+        throw new Error('Session refresh failed');
+      }
+      debugLog('AUTH', 'Token refreshed');
+      return {
+        'Authorization': `Bearer ${refreshed.session.access_token}`,
+        'Content-Type': 'application/json',
+      };
+    }
+  }
+
+  debugLog('AUTH', 'Session valid');
   return {
     'Authorization': `Bearer ${session.access_token}`,
     'Content-Type': 'application/json',
@@ -131,35 +169,46 @@ async function fetchRelatedThreads(
 }
 
 async function fetchThread(threadId: string): Promise<ThreadWithMessages> {
+  debugLog('THREAD', `Fetching thread: ${threadId}`);
   const headers = await getAuthHeaders();
-  const response = await fetch(
-    `${API_BASE}/email/thread/${threadId}`,
-    { headers }
-  );
+  const url = `${API_BASE}/email/thread/${threadId}`;
+  debugLog('THREAD', `URL: ${url}`);
+
+  const response = await fetch(url, { headers });
+  debugLog('THREAD', `Response status: ${response.status}`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: response.statusText }));
+    debugLog('THREAD', 'Fetch failed', { status: response.status, error });
     throw new Error(error.detail || 'Failed to fetch thread');
   }
 
-  return response.json();
+  const data = await response.json();
+  debugLog('THREAD', `Thread loaded: ${data.messages?.length || 0} messages`);
+  return data;
 }
 
 async function fetchMessageContent(providerMessageId: string): Promise<MessageContent> {
+  debugLog('CONTENT', `Fetching content for: ${providerMessageId.substring(0, 50)}...`);
   const headers = await getAuthHeaders();
+
   // CRITICAL: Encode provider ID - Microsoft IDs contain URL-special chars (+, /, =)
   const encodedId = encodeURIComponent(providerMessageId);
-  const response = await fetch(
-    `${API_BASE}/email/message/${encodedId}/render`,
-    { headers }
-  );
+  const url = `${API_BASE}/email/message/${encodedId}/render`;
+  debugLog('CONTENT', `URL: ${url.substring(0, 80)}...`);
+
+  const response = await fetch(url, { headers });
+  debugLog('CONTENT', `Response status: ${response.status}`);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: response.statusText }));
+    debugLog('CONTENT', 'Fetch failed', { status: response.status, error });
     throw new Error(error.detail || 'Failed to fetch message content');
   }
 
-  return response.json();
+  const data = await response.json();
+  debugLog('CONTENT', `Content loaded: ${data.body?.contentType}, ${data.body?.content?.length || 0} chars`);
+  return data;
 }
 
 async function acceptLink(linkId: string): Promise<{ success: boolean }> {
@@ -239,9 +288,13 @@ export function useRelatedThreads(objectType: string, objectId: string) {
  * Fetch thread with messages
  */
 export function useThread(threadId: string | null) {
+  debugLog('HOOK:THREAD', `Hook called with threadId: ${threadId || 'null'}, enabled: ${!!threadId}`);
   return useQuery({
     queryKey: ['email', 'thread', threadId],
-    queryFn: () => fetchThread(threadId!),
+    queryFn: () => {
+      debugLog('HOOK:THREAD', 'Query function executing...');
+      return fetchThread(threadId!);
+    },
     enabled: !!threadId,
     staleTime: 30000,
     retry: 1,
@@ -252,9 +305,13 @@ export function useThread(threadId: string | null) {
  * Fetch message content (fetch-on-click)
  */
 export function useMessageContent(providerMessageId: string | null) {
+  debugLog('HOOK:CONTENT', `Hook called with providerMessageId: ${providerMessageId?.substring(0, 30) || 'null'}..., enabled: ${!!providerMessageId}`);
   return useQuery({
     queryKey: ['email', 'message', providerMessageId],
-    queryFn: () => fetchMessageContent(providerMessageId!),
+    queryFn: () => {
+      debugLog('HOOK:CONTENT', 'Query function executing...');
+      return fetchMessageContent(providerMessageId!);
+    },
     enabled: !!providerMessageId,
     staleTime: 60000, // 1 minute - content doesn't change
     retry: 1,
