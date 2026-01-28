@@ -93,7 +93,7 @@ def seed_test_data():
     for part in TEST_PARTS:
         print(f"Processing: {part['part_number']} ({part['part_name']})")
 
-        # 1. Upsert part in pms_parts_catalog (yacht-specific)
+        # 1. Upsert part in pms_parts (yacht-specific)
         try:
             part_data = {
                 "part_id": part["part_id"],
@@ -110,13 +110,13 @@ def seed_test_data():
             }
 
             # Use upsert() to insert or update based on primary key
-            db.table("pms_parts_catalog").upsert(part_data, on_conflict="part_id,yacht_id").execute()
+            db.table("pms_parts").upsert(part_data, on_conflict="part_id,yacht_id").execute()
             print(f"  ✅ Upserted part in catalog")
 
         except Exception as e:
             print(f"  ⚠️  Part catalog error: {e}")
 
-        # 2. Upsert stock record in pms_inventory_stock
+        # 2. Upsert stock record in pms_part_stock
         try:
             stock_data = {
                 "yacht_id": TEST_YACHT_ID,
@@ -128,7 +128,7 @@ def seed_test_data():
 
             # Use upsert() - Supabase will handle insert-or-update based on unique constraints
             # The unique constraint is likely on (yacht_id, part_id, location)
-            db.table("pms_inventory_stock").upsert(stock_data, on_conflict="yacht_id,part_id,location").execute()
+            db.table("pms_part_stock").upsert(stock_data, on_conflict="yacht_id,part_id,location").execute()
             print(f"  ✅ Upserted stock record ({part['initial_stock']} units at {part['location']})")
 
         except Exception as e:
