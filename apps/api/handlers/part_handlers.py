@@ -479,7 +479,7 @@ class PartHandlers:
         )
 
         if not stock_before:
-            raise ValueError(f"No stock record for part {part_id}")
+            raise HTTPException(status_code=404, detail=f"Part {part_id} not found")
 
         stock_id = stock_before.get("stock_id")
         qty_before = stock_before.get("on_hand", 0)
