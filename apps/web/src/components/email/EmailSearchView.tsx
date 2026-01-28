@@ -230,10 +230,27 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
   } = useEmailBackfill();
 
   // Get selected thread details
-  const { data: selectedThread, isLoading: threadLoading } = useThread(selectedThreadId);
+  const { data: selectedThread, isLoading: threadLoading, error: threadError } = useThread(selectedThreadId);
 
   // Get selected message content
-  const { data: selectedContent, isLoading: contentLoading } = useMessageContent(selectedMessageId);
+  const { data: selectedContent, isLoading: contentLoading, error: contentError } = useMessageContent(selectedMessageId);
+
+  // Debug logging for thread selection
+  console.log('[EMAIL:THREAD-STATE]', {
+    selectedThreadId: selectedThreadId?.substring(0, 20) || 'null',
+    threadLoading,
+    hasThread: !!selectedThread,
+    threadError: threadError?.message || 'none',
+    messageCount: selectedThread?.messages?.length || 0,
+  });
+
+  console.log('[EMAIL:CONTENT-STATE]', {
+    selectedMessageId: selectedMessageId?.substring(0, 20) || 'null',
+    contentLoading,
+    hasContent: !!selectedContent,
+    contentError: contentError?.message || 'none',
+    bodyLength: selectedContent?.body?.content?.length || 0,
+  });
 
   // Get links for selected thread (for "See related" vs "Link to")
   const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.6);
