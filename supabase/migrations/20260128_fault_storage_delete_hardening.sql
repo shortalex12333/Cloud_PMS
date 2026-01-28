@@ -12,7 +12,6 @@
 BEGIN;
 
 SET client_min_messages = WARNING;
-SET ON_ERROR_STOP = 1;
 
 -- =============================================================================
 -- STEP 1: Drop existing DELETE policy
