@@ -663,17 +663,23 @@ class PartHandlers:
                 rpc_exception_caught = True
 
                 # READ-AFTER-WRITE: Query actual stock to get qty_after
-                read_after = self.db.table("pms_part_stock").select(
-                    "on_hand"
-                ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                try:
+                    read_after = self.db.table("pms_part_stock").select(
+                        "on_hand"
+                    ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-                if read_after and read_after.data:
-                    qty_after = read_after.data.get('on_hand', 0)
-                    # Compute qty_before = max(qty_after - quantity_received, 0)
-                    qty_before = max(qty_after - quantity_received, 0)
-                else:
-                    # Fallback if read fails - use calculated values
-                    logger.warning("Read-after-write failed, using calculated values")
+                    if read_after and read_after.data:
+                        qty_after = read_after.data.get('on_hand', 0)
+                        # Compute qty_before = max(qty_after - quantity_received, 0)
+                        qty_before = max(qty_after - quantity_received, 0)
+                    else:
+                        # Fallback if read fails - use calculated values
+                        logger.warning("Read-after-write failed, using calculated values")
+                        qty_before = stock.get('on_hand', 0)
+                        qty_after = qty_before + quantity_received
+                except Exception as read_exc:
+                    # Read-after-write also failed (possibly PostgREST 204) - use calculated values
+                    logger.warning(f"Read-after-write raised exception ({str(read_exc)[:50]}), using calculated values")
                     qty_before = stock.get('on_hand', 0)
                     qty_after = qty_before + quantity_received
             else:
