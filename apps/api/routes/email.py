@@ -544,9 +544,12 @@ async def search_emails(
 
         telemetry['embed_ms'] = int((time.time() - embed_start) * 1000)
 
+        # Entity-only fallback: if embedding generation failed (OpenAI unavailable),
+        # degrade gracefully to entity keyword search only
         if not embedding:
-            logger.error("[email/search] Failed to generate embedding")
-            raise HTTPException(status_code=500, detail="Failed to process search query")
+            logger.warning("[email/search] No embedding available; degrading to entity-only search")
+            embedding = [0.0] * 1536  # Neutral vector
+            telemetry['embed_skipped'] = True  # Mark as skipped for telemetry
 
         # 3. Build RPC params
         # OPTIMIZATION: When embedding is skipped (zero vector), use threshold=0
