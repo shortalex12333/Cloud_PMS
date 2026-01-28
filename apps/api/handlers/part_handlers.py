@@ -615,9 +615,10 @@ class PartHandlers:
             if "unique" in error_str or "duplicate" in error_str or "idempotency" in error_str or "23505" in error_str:
                 raise ConflictError(f"Duplicate receive: idempotency_key {idempotency_key} already exists")  # 409
             # Check if PostgREST 204 (No Content) - insert succeeded but no data returned
-            if "204" in error_str or "missing response" in error_str:
+            elif "204" in error_str or "missing response" in error_str:
                 logger.info(f"PostgREST 204 on transaction insert (txn_id={txn_id}) - insert succeeded but no data returned")
                 # Insert succeeded, continue with audit log and return
+                pass
             else:
                 raise
 
