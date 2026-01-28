@@ -417,6 +417,10 @@ async def execute_action(
             else:
                 raise ValueError(f"Unknown handler type: {action_def.handler_type}")
 
+        except HTTPException:
+            # Re-raise HTTPException unchanged (from handlers that explicitly set status codes)
+            raise
+
         except ValueError as e:
             # Validation/business logic errors (400)
             await log_action(
