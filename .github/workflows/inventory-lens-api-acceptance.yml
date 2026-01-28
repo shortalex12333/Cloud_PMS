@@ -47,6 +47,7 @@ jobs:
           CREW_JWT: ${{ secrets.STAGING_CREW_JWT }}
           HOD_JWT: ${{ secrets.STAGING_HOD_JWT }}
           CAPTAIN_JWT: ${{ secrets.STAGING_CAPTAIN_JWT }}
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
         run: |
           pytest tests/test_inventory_api.py \
             -v \
