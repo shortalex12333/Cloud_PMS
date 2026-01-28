@@ -7,7 +7,7 @@ services:
     region: oregon
     branch: main
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: uvicorn api.pipeline_service:app --host 0.0.0.0 --port $PORT
+    startCommand: cd apps/api && uvicorn pipeline_service:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
     envVars:
