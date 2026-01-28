@@ -633,7 +633,7 @@ async def execute_action(
             logger.warning(f"[SECURITY] Role '{user_role}' denied for SIGNED action '{action}'. Allowed: {allowed_roles}")
             raise HTTPException(
                 status_code=403,
-                detail=f"Role '{user_role}' is not authorized to perform signed action '{action}'"
+                detail=f"Role '{user_role}' forbidden: not authorized to perform signed action '{action}'"
             )
 
     # Route to handler based on action name
