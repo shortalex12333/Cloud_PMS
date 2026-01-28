@@ -1025,12 +1025,11 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "consume_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1048,12 +1047,11 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "receive_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1073,12 +1071,11 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "transfer_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1097,12 +1094,11 @@ async def execute_action(
                 notes=payload.get("notes")
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "adjust_stock_quantity":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1121,12 +1117,11 @@ async def execute_action(
                 location=payload.get("location")
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "write_off_part":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1145,12 +1140,11 @@ async def execute_action(
                 location=payload.get("location")
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "generate_part_labels":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1165,12 +1159,11 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         elif action == "request_label_output":
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -1186,12 +1179,11 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Transform ResponseBuilder envelope to simple status format
-            if handler_result.get("success"):
-                result = {"status": "success", "data": handler_result.get("data"), "message": handler_result.get("message", "")}
+            # Mutation handlers return plain dict with "status", not ResponseBuilder envelope
+            if handler_result.get("status") == "success":
+                result = handler_result
             else:
-                error = handler_result.get("error", {})
-                result = {"status": "error", "error_code": error.get("code", "UNKNOWN"), "message": error.get("message", "Unknown error")}
+                result = {"status": "error", "message": handler_result.get("message", "Unknown error")}
 
         # ===== HANDOVER ACTIONS (P0 Action 8) =====
         elif action == "add_to_handover":
