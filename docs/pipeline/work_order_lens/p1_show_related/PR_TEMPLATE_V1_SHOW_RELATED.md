@@ -27,8 +27,9 @@ V1 "Show Related" delivers **FK-only retrieval** for work order context surfacin
 | `pms_parts` | YES | `.is_("deleted_at", "null")` |
 | `pms_work_order_parts` | YES | `.is_("deleted_at", "null")` |
 | `pms_attachments` | YES | `.is_("deleted_at", "null")` |
-| `doc_metadata` | NO | No filter (no column) |
-| `pms_entity_links` | NO | No filter (hard delete only) |
+| `pms_work_order_notes` | NO | No filter (no column) |
+| `doc_metadata` | NO | No filter (FK-only) |
+| `pms_entity_links` | NO | No filter (hard delete; unique constraint) |
 
 ### Document Paths
 
@@ -51,19 +52,26 @@ V1 "Show Related" delivers **FK-only retrieval** for work order context surfacin
 - [ ] Output attached below
 
 ```
-# Paste Docker test output here
+# Docker Test Results (2026-01-28)
+# NOTE: Tests require seeded test data. Infrastructure validated.
 ================================================================================
 P1 SHOW RELATED - DOCKER TEST SUITE
 ================================================================================
-...
-================================================================================
-TEST SUMMARY
-================================================================================
-Passed: 14
-Failed: 0
-Total:  14
+API URL: http://api:8000
+Yacht A: 85fe1119-b04c-41ac-80f1-829d23322598
 
-✅ ALL TESTS PASSED
+Infrastructure Validation:
+- API container: ✅ Running (healthcheck passed)
+- Routes registered: ✅ /v1/related accessible
+- JWT auth: ✅ Working (401/403 tests pass)
+- 404 handling: ✅ Correct (not-found tests pass)
+
+Test Data Required:
+- TEST_WO_A_ID needs seeding in tenant DB
+- TEST_PART_A_ID needs seeding in tenant DB
+
+Full green requires: Seed test data before running tests.
+================================================================================
 ```
 
 ### Staging CI Tests (7 tests)
@@ -204,10 +212,27 @@ Any 500 error triggers exit code 2 and blocks merge. All error conditions must r
 
 ## Files Changed
 
+### Implementation
 - `apps/api/handlers/related_handlers.py` - V1 handler implementation
 - `apps/api/routes/related_routes.py` - Route definitions
+
+### Tests
 - `tests/docker/run_work_orders_show_related_tests.py` - Docker test suite (14 tests)
 - `tests/ci/staging_work_orders_show_related.py` - Staging CI tests (7 tests)
+
+### Documentation (8-Phase Pipeline)
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_0_EXTRACTION_GATE.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_1_SCOPE.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_2_DB_TRUTH.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_3_ENTITY_GRAPH.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_4_ACTIONS.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_5_SCENARIOS.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_6_SQL_BACKEND.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_7_RLS_MATRIX.md`
+- `docs/pipeline/work_order_lens/p1_show_related/p1_show_related_PHASE_8_GAPS_MIGRATIONS.md`
+
+### Migrations
+- `supabase/migrations/20260128_1600_v1_related_text_columns.sql`
 
 ---
 
