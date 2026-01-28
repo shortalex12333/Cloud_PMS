@@ -130,9 +130,30 @@ Scoring weights:
 
 | Gap | Impact | Planned Fix |
 |-----|--------|-------------|
-| OpenAI unavailable returns 500 | Search fails if OPENAI_API_KEY missing | Should degrade to entity-only (zero vector) |
-| Attachment download test skipped | No attachments in test account | Need fixture emails with attachments |
+| OpenAI unavailable returns 500 | Search fails if OPENAI_API_KEY missing | Backend patch: degrade to entity-only (see below) |
+| Attachment download test skipped | No attachments in test account | Add fixture emails with attachments |
 | cid: images require manual load | Inline images not auto-displayed | User intent required for privacy |
+
+### Entity-Only Fallback (Planned)
+
+If embeddings are unavailable (OpenAI key missing or API failure), search should degrade gracefully:
+
+```python
+# routes/email.py - search_emails handler
+embedding = generate_embedding_sync(q)
+use_vector = True
+if not embedding:
+    logger.warning("[email/search] No embedding; degrading to entity-only")
+    use_vector = False
+    embedding = [0.0] * 1536  # neutral vector
+
+params = {
+    'p_similarity_threshold': 0.0 if not use_vector else threshold,
+    # ... other params
+}
+```
+
+When vector lane is disabled, search relies on entity keywords only (p_entity_keywords). Results with entity_score > 0 pass the filter.
 
 ## Related Documentation
 
