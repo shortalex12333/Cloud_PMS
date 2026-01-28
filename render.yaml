@@ -90,3 +90,35 @@ services:
         value: "hod.test@alex-short.com"
       - key: LOG_LEVEL
         value: "INFO"
+
+  # Shopping List Health Worker - Lens Ops Monitoring
+  - type: worker
+    name: shopping-list-health-worker
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: pip install requests PyJWT
+    startCommand: python tools/ops/monitors/shopping_list_health_worker.py
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+      - key: HEALTH_CHECK_INTERVAL_MINUTES
+        value: "15"
+      - key: API_BASE_URL
+        value: "https://celeste-pipeline-v1.onrender.com"
+      - key: TENANT_SUPABASE_URL
+        value: "https://vzsohavtuotocgrfkfyd.supabase.co"
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: TENANT_SUPABASE_JWT_SECRET
+        sync: false
+      - key: TEST_YACHT_ID
+        value: "85fe1119-b04c-41ac-80f1-829d23322598"
+      - key: TEST_HOD_USER_ID
+        value: "05a488fd-e099-4d18-bf86-d87afba4fcdf"
+      - key: TEST_HOD_EMAIL
+        value: "hod.test@alex-short.com"
+      - key: LOG_LEVEL
+        value: "INFO"
