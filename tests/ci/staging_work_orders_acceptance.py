@@ -36,13 +36,13 @@ import uuid
 import requests
 import base64
 
-API_BASE = os.environ.get('API_BASE')
+API_BASE = os.environ.get('API_BASE') or os.environ.get('BASE_URL')
 MASTER_URL = os.environ.get('MASTER_SUPABASE_URL')
 MASTER_ANON = os.environ.get('MASTER_SUPABASE_ANON_KEY')
-MASTER_SVC = os.environ.get('MASTER_SUPABASE_SERVICE_KEY')
+MASTER_SVC = os.environ.get('MASTER_SUPABASE_SERVICE_KEY') or os.environ.get('MASTER_SUPABASE_SERVICE_ROLE_KEY')
 TENANT_URL = os.environ.get('TENANT_SUPABASE_URL')
-TENANT_SVC = os.environ.get('TENANT_SUPABASE_SERVICE_KEY')
-YACHT_ID = os.environ.get('YACHT_ID')
+TENANT_SVC = os.environ.get('TENANT_SUPABASE_SERVICE_KEY') or os.environ.get('TENANT_SUPABASE_SERVICE_ROLE_KEY')
+YACHT_ID = os.environ.get('YACHT_ID') or os.environ.get('TEST_USER_YACHT_ID')
 
 CREW_EMAIL = os.environ.get('STAGING_CREW_EMAIL')
 HOD_EMAIL = os.environ.get('STAGING_HOD_EMAIL')
