@@ -273,7 +273,7 @@ class RelatedHandlers:
         items = []
         try:
             result = self.db.table("pms_work_orders").select(
-                "id, number, title, status, created_at, completed_at, "
+                "id, wo_number, title, status, created_at, completed_at,"
                 "completed_by, assigned_to, created_by, related_text, last_activity_at"
             ).eq("equipment_id", equipment_id).neq("id", work_order_id).is_(
                 "deleted_at", "null"
@@ -285,7 +285,7 @@ class RelatedHandlers:
                 for wo in result.data:
                     # Format subtitle as date
                     created_date = wo.get("created_at", "")[:10] if wo.get("created_at") else ""
-                    wo_number = wo.get("number", "")
+                    wo_number = wo.get("wo_number", "")
                     title = wo.get("title", "Untitled")
 
                     items.append({
@@ -400,7 +400,7 @@ class RelatedHandlers:
         items = []
         try:
             result = self.db.table("pms_work_orders").select(
-                "id, number, title, status, created_at, related_text"
+                "id, wo_number, title, status, created_at, related_text"
             ).eq("equipment_id", equipment_id).is_(
                 "deleted_at", "null"
             ).eq("yacht_id", yacht_id).order(
@@ -409,7 +409,7 @@ class RelatedHandlers:
 
             if result.data:
                 for wo in result.data:
-                    wo_number = wo.get("number", "")
+                    wo_number = wo.get("wo_number", "")
                     title = wo.get("title", "Untitled")
                     items.append({
                         "entity_id": wo["id"],
@@ -489,7 +489,7 @@ class RelatedHandlers:
         items = []
         try:
             result = self.db.table("pms_work_orders").select(
-                "id, number, title, status, created_at, related_text"
+                "id, wo_number, title, status, created_at, related_text"
             ).eq("fault_id", fault_id).is_(
                 "deleted_at", "null"
             ).eq("yacht_id", yacht_id).order(
@@ -498,7 +498,7 @@ class RelatedHandlers:
 
             if result.data:
                 for wo in result.data:
-                    wo_number = wo.get("number", "")
+                    wo_number = wo.get("wo_number", "")
                     title = wo.get("title", "Untitled")
                     items.append({
                         "entity_id": wo["id"],
@@ -630,14 +630,14 @@ class RelatedHandlers:
         try:
             if entity_type == "work_order":
                 result = self.db.table("pms_work_orders").select(
-                    "id, number, title, equipment_id, fault_id, status"
+                    "id, wo_number, title, equipment_id, fault_id, status"
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).is_(
                     "deleted_at", "null"
                 ).maybe_single().execute()
 
                 if result.data:
                     return {
-                        "number": result.data.get("number"),
+                        "number": result.data.get("wo_number"),
                         "title": result.data.get("title"),
                         "equipment_id": result.data.get("equipment_id"),
                         "fault_id": result.data.get("fault_id"),
@@ -730,6 +730,14 @@ class RelatedHandlers:
         - target exists (404)
         - unique constraint (409)
         """
+        # 0. Role check - only HOD/chief/captain/manager can add links
+        can_add = await self._is_hod_or_manager(user_id, yacht_id)
+        if not can_add:
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to create links (HOD/manager required)"
+            )
+
         # 1. Validate entity types
         if source_entity_type not in VALID_ENTITY_TYPES:
             raise HTTPException(
@@ -779,8 +787,27 @@ class RelatedHandlers:
                 detail=f"Target {target_entity_type.replace('_', ' ')} not found"
             )
 
+        # 6.5. Check for duplicate link
+        existing = self.db.table("pms_entity_links").select("id").eq(
+            "yacht_id", yacht_id
+        ).eq(
+            "source_entity_type", source_entity_type
+        ).eq(
+            "source_entity_id", source_entity_id
+        ).eq(
+            "target_entity_type", target_entity_type
+        ).eq(
+            "target_entity_id", target_entity_id
+        ).limit(1).execute()
+
+        if existing.data and len(existing.data) > 0:
+            raise HTTPException(
+                status_code=409,
+                detail="Link already exists"
+            )
+
         try:
-            # 7. Insert link (unique constraint will catch duplicates)
+            # 7. Insert link
             link_data = {
                 "yacht_id": yacht_id,
                 "source_entity_type": source_entity_type,
