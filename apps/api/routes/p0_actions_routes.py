@@ -4500,6 +4500,17 @@ async def execute_action(
     except HTTPException:
         # Let HTTPExceptions propagate with their original status code
         raise
+    except Exception as e:
+        # Check if it's a SignatureRequiredError (custom exception from part_handlers)
+        if e.__class__.__name__ == "SignatureRequiredError":
+            logger.warning(f"Signature validation failed: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+        # Check if it's a ConflictError (custom exception from part_handlers)
+        elif e.__class__.__name__ == "ConflictError":
+            logger.warning(f"Conflict detected: {e}")
+            raise HTTPException(status_code=409, detail=str(e))
+        # Re-raise for next handler
+        raise
     except ValueError as e:
         # Validation errors from handlers should return 400
         logger.warning(f"Action validation failed: {e}")
