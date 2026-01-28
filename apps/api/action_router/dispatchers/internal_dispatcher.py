@@ -26,6 +26,21 @@ from handlers.p1_purchasing_handlers import P1PurchasingHandlers
 from handlers.p2_mutation_light_handlers import P2MutationLightHandlers
 from handlers.certificate_handlers import get_certificate_handlers as _get_certificate_handlers
 from handlers.equipment_handlers import get_equipment_handlers as _get_equipment_handlers_raw
+from handlers.shopping_list_handlers import get_shopping_list_handlers as _get_shopping_list_handlers_raw
+from handlers.document_handlers import get_document_handlers as _get_document_handlers_raw
+from handlers.receiving_handlers import (
+    ReceivingHandlers,
+    _create_receiving_adapter,
+    _attach_receiving_image_with_comment_adapter,
+    _extract_receiving_candidates_adapter,
+    _update_receiving_fields_adapter,
+    _add_receiving_item_adapter,
+    _adjust_receiving_item_adapter,
+    _link_invoice_document_adapter,
+    _accept_receiving_adapter,
+    _reject_receiving_adapter,
+    _view_receiving_history_adapter,
+)
 
 # Lazy-initialized handler instances
 _p3_handlers = None
@@ -33,6 +48,8 @@ _p1_compliance_handlers = None
 _p1_purchasing_handlers = None
 _p2_handlers = None
 _equipment_handlers = None
+_shopping_list_handlers = None
+_document_handlers = None
 
 
 def _get_p3_handlers():
@@ -73,6 +90,43 @@ def _get_equipment_handlers():
     if _equipment_handlers is None:
         _equipment_handlers = _get_equipment_handlers_raw(get_supabase_client())
     return _equipment_handlers
+
+
+def _get_receiving_handlers():
+    """Get lazy-initialized Receiving Lens v1 handlers."""
+    global _receiving_handlers
+
+
+def _get_shopping_list_handlers():
+    """Get lazy-initialized Shopping List Lens v1 handlers."""
+    global _shopping_list_handlers
+    if _shopping_list_handlers is None:
+        _shopping_list_handlers = _get_shopping_list_handlers_raw(get_supabase_client())
+    return _shopping_list_handlers
+
+
+def _get_document_handlers():
+    """Get lazy-initialized Document Lens v2 handlers."""
+    global _document_handlers
+    if _document_handlers is None:
+        _document_handlers = _get_document_handlers_raw(get_supabase_client())
+    return _document_handlers
+    if _receiving_handlers is None:
+        handlers_instance = ReceivingHandlers(get_supabase_client())
+        # Build handler dictionary
+        _receiving_handlers = {
+            "create_receiving": _create_receiving_adapter(handlers_instance),
+            "attach_receiving_image_with_comment": _attach_receiving_image_with_comment_adapter(handlers_instance),
+            "extract_receiving_candidates": _extract_receiving_candidates_adapter(handlers_instance),
+            "update_receiving_fields": _update_receiving_fields_adapter(handlers_instance),
+            "add_receiving_item": _add_receiving_item_adapter(handlers_instance),
+            "adjust_receiving_item": _adjust_receiving_item_adapter(handlers_instance),
+            "link_invoice_document": _link_invoice_document_adapter(handlers_instance),
+            "accept_receiving": _accept_receiving_adapter(handlers_instance),
+            "reject_receiving": _reject_receiving_adapter(handlers_instance),
+            "view_receiving_history": _view_receiving_history_adapter(handlers_instance),
+        }
+    return _receiving_handlers
 
 
 def get_supabase_client() -> Client:
@@ -308,6 +362,56 @@ async def _cert_supersede_certificate(params: Dict[str, Any]) -> Dict[str, Any]:
     if not fn:
         raise ValueError("supersede_certificate handler not registered")
     return await fn(**params)
+
+
+# ============================================================================
+# DOCUMENT WRAPPERS (bridge to document handlers - Document Lens v2)
+# ============================================================================
+
+async def _doc_upload_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_handlers()
+    fn = handlers.get("upload_document")
+    if not fn:
+        raise ValueError("upload_document handler not registered")
+    return await fn(**params)
+
+
+async def _doc_update_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_handlers()
+    fn = handlers.get("update_document")
+    if not fn:
+        raise ValueError("update_document handler not registered")
+    return await fn(**params)
+
+
+async def _doc_add_document_tags(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_handlers()
+    fn = handlers.get("add_document_tags")
+    if not fn:
+        raise ValueError("add_document_tags handler not registered")
+    return await fn(**params)
+
+
+async def _doc_delete_document(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_handlers()
+    fn = handlers.get("delete_document")
+    if not fn:
+        raise ValueError("delete_document handler not registered")
+    # Validate signature is present for SIGNED action
+    if not params.get("signature") or params.get("signature") == {}:
+        raise ValueError("signature payload is required for delete_document (signed action)")
+    return await fn(**params)
+
+
+async def _doc_get_document_url(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_handlers()
+    fn = handlers.get("get_document_url")
+    if not fn:
+        raise ValueError("get_document_url handler not registered")
+    # Extract entity_id from params for READ handler
+    entity_id = params.get("document_id")
+    yacht_id = params.get("yacht_id")
+    return await fn(entity_id=entity_id, yacht_id=yacht_id, params=params)
 
 
 async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -2499,9 +2603,154 @@ async def _eq_decommission_and_replace(params: Dict[str, Any]) -> Dict[str, Any]
     return await fn(**params)
 
 
+# =========================================================================
+# Receiving Lens v1 Handlers
+# =========================================================================
+
+async def _recv_create_receiving(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for create_receiving handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("create_receiving")
+    if not fn:
+        raise ValueError("create_receiving handler not registered")
+    return await fn(**params)
+
+
+async def _recv_attach_image_with_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for attach_receiving_image_with_comment handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("attach_receiving_image_with_comment")
+    if not fn:
+        raise ValueError("attach_receiving_image_with_comment handler not registered")
+    return await fn(**params)
+
+
+async def _recv_extract_candidates(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for extract_receiving_candidates handler (PREPARE only - advisory)."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("extract_receiving_candidates")
+    if not fn:
+        raise ValueError("extract_receiving_candidates handler not registered")
+    return await fn(**params)
+
+
+async def _recv_update_fields(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for update_receiving_fields handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("update_receiving_fields")
+    if not fn:
+        raise ValueError("update_receiving_fields handler not registered")
+    return await fn(**params)
+
+
+async def _recv_add_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for add_receiving_item handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("add_receiving_item")
+    if not fn:
+        raise ValueError("add_receiving_item handler not registered")
+    return await fn(**params)
+
+
+async def _recv_adjust_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for adjust_receiving_item handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("adjust_receiving_item")
+    if not fn:
+        raise ValueError("adjust_receiving_item handler not registered")
+    return await fn(**params)
+
+
+async def _recv_link_invoice(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for link_invoice_document handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("link_invoice_document")
+    if not fn:
+        raise ValueError("link_invoice_document handler not registered")
+    return await fn(**params)
+
+
+async def _recv_accept(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for accept_receiving handler (SIGNED)."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("accept_receiving")
+    if not fn:
+        raise ValueError("accept_receiving handler not registered")
+    return await fn(**params)
+
+
+async def _recv_reject(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for reject_receiving handler."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("reject_receiving")
+    if not fn:
+        raise ValueError("reject_receiving handler not registered")
+    return await fn(**params)
+
+
+async def _recv_view_history(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrapper for view_receiving_history handler (READ)."""
+    handlers = _get_receiving_handlers()
+    fn = handlers.get("view_receiving_history")
+    if not fn:
+        raise ValueError("view_receiving_history handler not registered")
+    return await fn(**params)
+
+
 # ============================================================================
 # HANDLER REGISTRY
 # ============================================================================
+
+
+# ========================================================================
+# SHOPPING LIST LENS V1 WRAPPERS (from shopping_list_handlers.py)
+# ========================================================================
+
+async def _sl_create_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Create shopping list item wrapper."""
+    handlers = _get_shopping_list_handlers()
+    return await handlers.create_shopping_list_item(
+        entity_id=None,
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _sl_approve_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Approve shopping list item wrapper."""
+    handlers = _get_shopping_list_handlers()
+    return await handlers.approve_shopping_list_item(
+        entity_id=params["item_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _sl_reject_item(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Reject shopping list item wrapper."""
+    handlers = _get_shopping_list_handlers()
+    return await handlers.reject_shopping_list_item(
+        entity_id=params["item_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _sl_promote_candidate(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Promote candidate to part wrapper."""
+    handlers = _get_shopping_list_handlers()
+    return await handlers.promote_candidate_to_part(
+        entity_id=params["item_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _sl_view_history(params: Dict[str, Any]) -> Dict[str, Any]:
+    """View shopping list history wrapper."""
+    handlers = _get_shopping_list_handlers()
+    return await handlers.view_shopping_list_history(
+        entity_id=params["item_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
 
 INTERNAL_HANDLERS: Dict[str, Callable] = {
     # Original handlers
@@ -2620,6 +2869,15 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "supersede_certificate": _cert_supersede_certificate,
 
     # =========================================================================
+    # Document Lens v2 Handlers (from document_handlers.py)
+    # =========================================================================
+    "upload_document": _doc_upload_document,
+    "update_document": _doc_update_document,
+    "add_document_tags": _doc_add_document_tags,
+    "delete_document": _doc_delete_document,
+    "get_document_url": _doc_get_document_url,
+
+    # =========================================================================
     # Equipment Lens v2 Handlers (from equipment_handlers.py)
     # =========================================================================
     # READ handlers
@@ -2652,6 +2910,29 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     # Equipment Lens v2 - Spec completion
     "attach_image_with_comment": _eq_attach_image_with_comment,
     "decommission_and_replace_equipment": _eq_decommission_and_replace,
+
+    # =========================================================================
+    # Receiving Lens v1 Handlers (from receiving_handlers.py)
+    # =========================================================================
+    "create_receiving": _recv_create_receiving,
+    "attach_receiving_image_with_comment": _recv_attach_image_with_comment,
+    "extract_receiving_candidates": _recv_extract_candidates,
+    "update_receiving_fields": _recv_update_fields,
+    "add_receiving_item": _recv_add_item,
+    "adjust_receiving_item": _recv_adjust_item,
+    "link_invoice_document": _recv_link_invoice,
+    "accept_receiving": _recv_accept,
+    "reject_receiving": _recv_reject,
+    "view_receiving_history": _recv_view_history,
+
+    # =========================================================================
+    # Shopping List Lens v1 Handlers (from shopping_list_handlers.py)
+    # =========================================================================
+    "create_shopping_list_item": _sl_create_item,
+    "approve_shopping_list_item": _sl_approve_item,
+    "reject_shopping_list_item": _sl_reject_item,
+    "promote_candidate_to_part": _sl_promote_candidate,
+    "view_shopping_list_history": _sl_view_history,
 }
 
 
