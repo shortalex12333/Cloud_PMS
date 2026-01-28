@@ -449,15 +449,50 @@ class PartHandlers:
             raise ValueError("quantity must be > 0")
 
         # Get stock_id from canonical pms_part_stock view
-        stock_result = self.db.table("pms_part_stock").select(
-            "on_hand, location, stock_id, part_name"
-        ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        # Wrap in try/except to handle PostgREST 204 on views
+        try:
+            stock_result = self.db.table("pms_part_stock").select(
+                "on_hand, location, stock_id, part_name"
+            ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
-        if not stock_result or not stock_result.data:
-            raise HTTPException(status_code=404, detail=f"No stock record for part {part_id}")
+            if not stock_result or not stock_result.data:
+                raise ValueError(f"No stock record for part {part_id}")
 
-        stock = stock_result.data
-        stock_id = stock.get("stock_id")
+            stock = stock_result.data
+            stock_id = stock.get("stock_id")
+        except Exception as e:
+            error_str = str(e).lower()
+            # If PostgREST 204 on view, fall back to base tables
+            if "204" in error_str or "missing response" in error_str:
+                logger.warning(f"PostgREST 204 on pms_part_stock view - falling back to base tables")
+                try:
+                    # Query base tables directly
+                    part_base = self.db.table("pms_parts").select(
+                        "part_name"
+                    ).eq("id", part_id).maybe_single().execute()
+
+                    stock_base = self.db.table("pms_inventory_stock").select(
+                        "id, quantity, location"
+                    ).eq("part_id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                    if not part_base or not part_base.data:
+                        raise ValueError(f"Part {part_id} not found")
+                    if not stock_base or not stock_base.data:
+                        raise ValueError(f"No stock record for part {part_id}")
+
+                    stock = {
+                        "part_name": part_base.data.get("part_name"),
+                        "on_hand": stock_base.data.get("quantity", 0),
+                        "location": stock_base.data.get("location"),
+                        "stock_id": stock_base.data.get("id")
+                    }
+                    stock_id = stock.get("stock_id")
+                except Exception as fallback_e:
+                    logger.error(f"Fallback query also failed: {fallback_e}")
+                    raise ConflictError("Database temporarily unavailable - please retry")
+            else:
+                # Not a 204 error - re-raise original
+                raise
 
         # Get or create stock record if needed
         if not stock_id:
