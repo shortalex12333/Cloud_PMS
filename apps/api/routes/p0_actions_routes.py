@@ -4520,11 +4520,18 @@ async def execute_action(
 
             from action_router.dispatchers import internal_dispatcher
 
+            # Extract JWT token for RLS enforcement (remove "Bearer " prefix)
+            user_jwt = authorization
+            if user_jwt and user_jwt.startswith("Bearer "):
+                user_jwt = user_jwt[7:]
+
             # Merge context and payload for internal dispatcher
+            # CRITICAL: Pass user_jwt so handlers can create RLS-enforced clients
             handler_params = {
                 "yacht_id": yacht_id,
                 "user_id": user_id,
                 "user_context": user_context,
+                "user_jwt": user_jwt,  # For RLS enforcement
                 **payload
             }
 
