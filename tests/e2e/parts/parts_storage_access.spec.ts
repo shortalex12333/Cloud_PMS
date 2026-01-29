@@ -2,7 +2,7 @@
  * E2E Tests: Part Storage Access & RLS
  *
  * Validates Supabase Storage RLS policies for part photos and receiving labels:
- * - HOD: Can view photos/labels, CANNOT delete (403)
+ * - Chief Engineer: Can view photos/labels, CANNOT delete (403)
  * - Manager: Can view AND delete labels (204)
  * - Cross-yacht: Cannot access other yacht's storage paths (403)
  * - All paths must include yacht_id for yacht-scoped access
@@ -140,19 +140,19 @@ async function navigateToParts(page: Page, role: string): Promise<void> {
   }
 }
 
-test.describe('Storage Access: HOD Role', () => {
-  let hodAuthState: RoleAuthState;
+test.describe('Storage Access: Chief Engineer Role', () => {
+  let chiefEngineerAuthState: RoleAuthState;
 
   test.beforeAll(async () => {
-    hodAuthState = await loginAsRole('hod');
+    chiefEngineerAuthState = await loginAsRole('chief_engineer');
   });
 
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
   });
 
-  test('HOD: Can list part photos with yacht_id in path', async ({ page }) => {
-    await navigateToParts(page, 'hod');
+  test('Chief Engineer: Can list part photos with yacht_id in path', async ({ page }) => {
+    await navigateToParts(page, 'chief_engineer');
     const jwt = await getJWTFromPage(page);
 
     // List objects in yacht-scoped path
@@ -160,16 +160,16 @@ test.describe('Storage Access: HOD Role', () => {
     const response = await listStorageObjects(jwt, 'part-images', partPhotosPath);
 
     // Should succeed (200) or return empty list
-    // RLS allows HOD to LIST within their yacht
+    // RLS allows Chief Engineer to LIST within their yacht
     expect([200, 404]).toContain(response.statusCode);
 
     // Verify yacht_id is in the path prefix
     expect(partPhotosPath).toContain(TEST_YACHT_ID);
 
     // Save evidence
-    const evidencePath = path.join(ARTIFACTS_DIR, 'hod_list_photos_yacht_scoped.json');
+    const evidencePath = path.join(ARTIFACTS_DIR, 'chief_engineer_list_photos_yacht_scoped.json');
     fs.writeFileSync(evidencePath, JSON.stringify({
-      test: 'HOD list part photos (yacht-scoped)',
+      test: 'Chief Engineer list part photos (yacht-scoped)',
       path: partPhotosPath,
       statusCode: response.statusCode,
       response: response.data,
@@ -177,7 +177,7 @@ test.describe('Storage Access: HOD Role', () => {
     }, null, 2));
   });
 
-  test('HOD: Can view receiving label images', async ({ page }) => {
+  test('Chief Engineer: Can view receiving label images', async ({ page }) => {
     const jwt = await getJWTFromPage(page);
 
     // List objects in receiving labels path
@@ -191,9 +191,9 @@ test.describe('Storage Access: HOD Role', () => {
     expect(labelsPath).toContain(TEST_YACHT_ID);
 
     // Save evidence
-    const evidencePath = path.join(ARTIFACTS_DIR, 'hod_list_labels_yacht_scoped.json');
+    const evidencePath = path.join(ARTIFACTS_DIR, 'chief_engineer_list_labels_yacht_scoped.json');
     fs.writeFileSync(evidencePath, JSON.stringify({
-      test: 'HOD list receiving labels (yacht-scoped)',
+      test: 'Chief Engineer list receiving labels (yacht-scoped)',
       path: labelsPath,
       statusCode: response.statusCode,
       response: response.data,
@@ -201,26 +201,26 @@ test.describe('Storage Access: HOD Role', () => {
     }, null, 2));
   });
 
-  test('HOD: CANNOT delete receiving label (403)', async ({ page }) => {
+  test('Chief Engineer: CANNOT delete receiving label (403)', async ({ page }) => {
     const jwt = await getJWTFromPage(page);
 
     // Attempt to delete a label (should fail with 403)
     const labelPath = `${TEST_YACHT_ID}/receiving/labels/test-label-e2e.jpg`;
 
-    // First, try to upload a test file as HOD (may also fail if HOD can't upload)
+    // First, try to upload a test file as Chief Engineer (may also fail if Chief Engineer can't upload)
     const uploadResponse = await uploadStorageObject(jwt, 'part-images', labelPath);
 
     // If upload succeeded, try to delete it
     if (uploadResponse.statusCode === 200 || uploadResponse.statusCode === 201) {
       const deleteResponse = await deleteStorageObject(jwt, 'part-images', labelPath);
 
-      // HOD should NOT be able to delete (403 Forbidden)
+      // Chief Engineer should NOT be able to delete (403 Forbidden)
       expect(deleteResponse.statusCode).toBe(403);
 
       // Save evidence
-      const evidencePath = path.join(ARTIFACTS_DIR, 'hod_delete_label_403.json');
+      const evidencePath = path.join(ARTIFACTS_DIR, 'chief_engineer_delete_label_403.json');
       fs.writeFileSync(evidencePath, JSON.stringify({
-        test: 'HOD cannot delete label (RLS blocks)',
+        test: 'Chief Engineer cannot delete label (RLS blocks)',
         labelPath,
         uploadStatusCode: uploadResponse.statusCode,
         deleteStatusCode: deleteResponse.statusCode,
@@ -230,18 +230,18 @@ test.describe('Storage Access: HOD Role', () => {
 
       // Take screenshot
       await page.screenshot({
-        path: path.join(ARTIFACTS_DIR, 'hod_delete_label_403.png'),
+        path: path.join(ARTIFACTS_DIR, 'chief_engineer_delete_label_403.png'),
         fullPage: true,
       });
     } else {
-      // If HOD can't even upload, document that
-      const evidencePath = path.join(ARTIFACTS_DIR, 'hod_cannot_upload_labels.json');
+      // If Chief Engineer can't even upload, document that
+      const evidencePath = path.join(ARTIFACTS_DIR, 'chief_engineer_cannot_upload_labels.json');
       fs.writeFileSync(evidencePath, JSON.stringify({
-        test: 'HOD cannot upload labels (expected)',
+        test: 'Chief Engineer cannot upload labels (expected)',
         labelPath,
         uploadStatusCode: uploadResponse.statusCode,
         uploadResponse: uploadResponse.data,
-        note: 'HOD lacks INSERT permission on storage, so delete test is moot',
+        note: 'Chief Engineer lacks INSERT permission on storage, so delete test is moot',
         timestamp: new Date().toISOString(),
       }, null, 2));
     }
@@ -327,18 +327,18 @@ test.describe('Storage Access: Manager Role', () => {
 });
 
 test.describe('Storage Access: Cross-Yacht RLS', () => {
-  let hodAuthState: RoleAuthState;
+  let chiefEngineerAuthState: RoleAuthState;
 
   test.beforeAll(async () => {
-    hodAuthState = await loginAsRole('hod');
+    chiefEngineerAuthState = await loginAsRole('chief_engineer');
   });
 
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
   });
 
   test('Cross-yacht path access is BLOCKED (403)', async ({ page }) => {
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
     const jwt = await getJWTFromPage(page);
 
     // Attempt to access another yacht's storage path

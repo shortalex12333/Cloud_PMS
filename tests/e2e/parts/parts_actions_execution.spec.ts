@@ -1,7 +1,7 @@
 /**
  * E2E Tests: Part Actions Execution
  *
- * Validates that HOD can execute part actions (receive_part, consume_part)
+ * Validates that Chief Engineer can execute part actions (receive_part, consume_part)
  * with correct status codes and UI feedback:
  * - receive_part: 201 success, 409 duplicate idempotency_key
  * - consume_part: 200 sufficient stock, 409 insufficient stock
@@ -189,22 +189,22 @@ async function getJWTFromPage(page: Page): Promise<string> {
   return token;
 }
 
-test.describe('Part Actions Execution (HOD)', () => {
-  let hodAuthState: RoleAuthState;
+test.describe('Part Actions Execution (Chief Engineer)', () => {
+  let chiefEngineerAuthState: RoleAuthState;
 
   test.beforeAll(async () => {
-    // Login as HOD once for all tests
-    hodAuthState = await loginAsRole('hod');
+    // Login as Chief Engineer once for all tests
+    chiefEngineerAuthState = await loginAsRole('chief_engineer');
   });
 
   test.use({
-    // Use HOD storage state (saved by global-setup)
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
+    // Use Chief Engineer storage state (saved by global-setup)
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
   });
 
   test('receive_part: Success with unique idempotency_key (201)', async ({ page, context }) => {
     // Navigate to parts page
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Get JWT for direct API calls
     const jwt = await getJWTFromPage(page);
@@ -307,7 +307,7 @@ test.describe('Part Actions Execution (HOD)', () => {
 
   test('consume_part: Sufficient stock (200)', async ({ page }) => {
     // Navigate to parts page
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Get JWT
     const jwt = await getJWTFromPage(page);
