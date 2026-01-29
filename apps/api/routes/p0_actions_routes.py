@@ -168,7 +168,14 @@ async def create_work_order_from_fault_prefill(
     # Validate JWT
     jwt_result = validate_jwt(authorization)
     if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": "UNAUTHORIZED",
+                "message": jwt_result.error.message
+            }
+        )
 
     user_context = jwt_result.context
     yacht_id = user_context["yacht_id"]
@@ -365,7 +372,14 @@ async def create_work_order_from_fault_preview(
     # Validate JWT
     jwt_result = validate_jwt(authorization)
     if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": "UNAUTHORIZED",
+                "message": jwt_result.error.message
+            }
+        )
 
     user_context = jwt_result.context
 
@@ -418,7 +432,14 @@ async def execute_action(
     # Validate JWT
     jwt_result = validate_jwt(authorization)
     if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": "UNAUTHORIZED",
+                "message": jwt_result.error.message
+            }
+        )
 
     user_context = jwt_result.context
 
@@ -433,16 +454,34 @@ async def execute_action(
             if not tenant_info.get("role"):
                 raise HTTPException(
                     status_code=403,
-                    detail="User has no active role on yacht"
+                    detail={
+                        "status": "error",
+                        "error_code": "RLS_DENIED",
+                        "message": "User has no active role on yacht"
+                    }
                 )
             user_context["role"] = tenant_info["role"]
         else:
-            raise HTTPException(status_code=403, detail="User is not assigned to any yacht/tenant")
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "status": "error",
+                    "error_code": "RLS_DENIED",
+                    "message": "User is not assigned to any yacht/tenant"
+                }
+            )
 
     # Validate yacht isolation
     yacht_result = validate_yacht_isolation(request.context, user_context)
     if not yacht_result.valid:
-        raise HTTPException(status_code=403, detail=yacht_result.error.message)
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "error",
+                "error_code": "RLS_DENIED",
+                "message": yacht_result.error.message
+            }
+        )
 
     action = request.action
     yacht_id = request.context["yacht_id"]
@@ -583,7 +622,11 @@ async def execute_action(
         if missing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Missing required field(s): {', '.join(missing)}"
+                detail={
+                    "status": "error",
+                    "error_code": "MISSING_REQUIRED_FIELD",
+                    "message": f"Missing required field(s): {', '.join(missing)}"
+                }
             )
 
     # ========================================================================
@@ -618,14 +661,22 @@ async def execute_action(
         if not user_role:
             raise HTTPException(
                 status_code=403,
-                detail=f"User role not found"
+                detail={
+                    "status": "error",
+                    "error_code": "RLS_DENIED",
+                    "message": "User role not found"
+                }
             )
 
         if user_role not in allowed_roles:
             logger.warning(f"[SECURITY] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
             raise HTTPException(
                 status_code=403,
-                detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
+                detail={
+                    "status": "error",
+                    "error_code": "INSUFFICIENT_PERMISSIONS",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'"
+                }
             )
 
     # PART LENS SIGNED ACTIONS - Role validation (canon-critical for Part Lens v2)
@@ -636,14 +687,22 @@ async def execute_action(
         if not user_role:
             raise HTTPException(
                 status_code=403,
-                detail=f"User role not found for signed action"
+                detail={
+                    "status": "error",
+                    "error_code": "RLS_DENIED",
+                    "message": "User role not found for signed action"
+                }
             )
 
         if user_role not in allowed_roles:
             logger.warning(f"[SECURITY] Role '{user_role}' denied for SIGNED action '{action}'. Allowed: {allowed_roles}")
             raise HTTPException(
                 status_code=403,
-                detail=f"Role '{user_role}' forbidden: not authorized to perform signed action '{action}'"
+                detail={
+                    "status": "error",
+                    "error_code": "INSUFFICIENT_PERMISSIONS",
+                    "message": f"Role '{user_role}' forbidden: not authorized to perform signed action '{action}'"
+                }
             )
 
     # Route to handler based on action name
@@ -4756,7 +4815,14 @@ async def get_handover_items(
     # Validate JWT
     jwt_result = validate_jwt(authorization)
     if not jwt_result.valid:
-        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "error",
+                "error_code": "UNAUTHORIZED",
+                "message": jwt_result.error.message
+            }
+        )
 
     user_context = jwt_result.context
 
