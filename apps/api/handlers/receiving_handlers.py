@@ -1248,8 +1248,8 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         # Query only pms_audit_log as specified - no JOIN to auth tables
         try:
             audit_result = db.table("pms_audit_log").select(
-                "action, user_id, created_at, signature, metadata"
-            ).eq("entity_type", "receiving").eq("entity_id", receiving_id).order("created_at", desc=False).execute()
+                "*"
+            ).eq("entity_type", "receiving").eq("entity_id", receiving_id).order("created_at").execute()
             audit_trail = audit_result.data or []
         except Exception as e:
             logger.warning(f"Failed to fetch audit trail: {e}")
