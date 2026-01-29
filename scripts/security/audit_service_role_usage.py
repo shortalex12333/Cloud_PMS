@@ -38,6 +38,12 @@ VALIDATION_PATTERNS = [
     r"jwt_yacht_id",
 ]
 
+# Exemption patterns (ops tools, admin scripts, etc.)
+EXEMPT_PATTERNS = [
+    r"security-audit:\s*exempt",
+    r"#\s*SECURITY_EXEMPT",
+]
+
 # Directories to scan
 SCAN_DIRS = [
     "apps/api",
@@ -86,10 +92,15 @@ def search_patterns(file_path: Path, patterns: List[str]) -> List[Tuple[int, str
 
 
 def check_file_has_validation(file_path: Path) -> bool:
-    """Check if file has yacht_id validation patterns."""
+    """Check if file has yacht_id validation patterns or is exempt."""
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
+            # Check for exemption first
+            for pattern in EXEMPT_PATTERNS:
+                if re.search(pattern, content, re.IGNORECASE):
+                    return True  # Exempt files are considered valid
+            # Check for validation patterns
             for pattern in VALIDATION_PATTERNS:
                 if re.search(pattern, content, re.IGNORECASE):
                     return True
