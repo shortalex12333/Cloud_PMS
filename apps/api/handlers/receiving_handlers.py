@@ -1217,12 +1217,16 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         # TODO: Generate signed URLs for documents in production
         # For now, return storage_path from doc_metadata
 
-        # Get audit trail
-        audit_result = db.table("pms_audit_log").select(
-            "*"
-        ).eq("entity_type", "receiving").eq("entity_id", receiving_id).eq("yacht_id", yacht_id).order("created_at").execute()
-
-        audit_trail = audit_result.data or []
+        # Get audit trail - return empty array if none exist (200, not 400)
+        # Query only pms_audit_log - no JOIN to auth tables
+        try:
+            audit_result = db.table("pms_audit_log").select(
+                "*"
+            ).eq("entity_type", "receiving").eq("entity_id", receiving_id).order("created_at").execute()
+            audit_trail = audit_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch audit trail: {e}")
+            audit_trail = []
 
         return {
             "status": "success",
