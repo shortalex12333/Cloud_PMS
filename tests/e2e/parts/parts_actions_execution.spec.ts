@@ -7,6 +7,12 @@
  * - consume_part: 200 sufficient stock, 409 insufficient stock
  *
  * Evidence: Network intercepts, screenshots of success/error states
+ *
+ * SECURITY MODEL (New):
+ * - yacht_id is server-resolved from JWT auth (MASTER membership → TENANT role)
+ * - NO client-provided yacht_id in action payloads
+ * - All requests use Authorization: Bearer <JWT>
+ * - Action Router enforces ownership, idempotency, and audit
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -145,12 +151,13 @@ async function executeActionViaAPI(
     headers['Idempotency-Key'] = idempotencyKey;
   }
 
+  // NOTE: New security model - yacht_id derived from JWT auth, not client payload
+  // Server resolves: MASTER membership → TENANT role → yacht_id from auth context
   const response = await fetch(`${API_BASE}/v1/actions/execute`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       action,
-      context: { yacht_id: TEST_YACHT_ID },
       payload,
     }),
   });
