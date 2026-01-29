@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# security-audit: exempt-ops-tool (schema introspection only, no user data)
 """
 Preflight Schema Check: doc_metadata
 
