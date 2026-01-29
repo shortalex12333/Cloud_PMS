@@ -9,6 +9,9 @@ slowapi==0.1.9
 # Supabase Integration
 supabase==2.12.0
 
+# PostgreSQL Direct Access (for tenant_pg_gateway)
+psycopg2-binary==2.9.10
+
 # JWT Authentication
 pyjwt==2.10.1
 cryptography==44.0.0
