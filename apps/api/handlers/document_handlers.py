@@ -77,11 +77,11 @@ class DocumentHandlers:
             params = params or {}
             expires_in = params.get("expires_in", 3600)  # Default 1 hour
 
-            # Get document metadata
+            # Get document metadata (exclude soft-deleted)
             try:
                 result = self.db.table("doc_metadata").select(
-                    "id, filename, storage_path, content_type, yacht_id"
-                ).eq("yacht_id", yacht_id).eq("id", entity_id).maybe_single().execute()
+                    "id, filename, storage_path, content_type, yacht_id, deleted_at"
+                ).eq("yacht_id", yacht_id).eq("id", entity_id).is_("deleted_at", "null").maybe_single().execute()
             except Exception:
                 result = None
 
@@ -90,6 +90,11 @@ class DocumentHandlers:
                 return builder.build()
 
             doc = result.data
+
+            # Additional check for deleted documents (in case column doesn't exist)
+            if doc.get("deleted_at"):
+                builder.set_error("NOT_FOUND", f"Document has been deleted: {entity_id}")
+                return builder.build()
 
             # Generate signed URL
             if not self.url_generator:
@@ -105,7 +110,7 @@ class DocumentHandlers:
                 expires_in_minutes=expires_in // 60
             )
 
-            if file_ref:
+            if file_ref and file_ref.signed_url:
                 builder.set_data({
                     "document_id": entity_id,
                     "filename": doc.get("filename"),
@@ -115,7 +120,12 @@ class DocumentHandlers:
                 })
                 builder.add_files([file_ref.to_dict()])
             else:
-                builder.set_error("STORAGE_ERROR", "Failed to generate signed URL")
+                # Map missing storage object to NOT_FOUND for clean front-end messaging
+                storage_path = doc.get("storage_path", "")
+                builder.set_error(
+                    "NOT_FOUND",
+                    f"Document file not found in storage: {storage_path}"
+                )
 
             return builder.build()
 

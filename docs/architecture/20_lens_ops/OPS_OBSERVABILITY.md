@@ -6,6 +6,40 @@ This document describes how to monitor lens health using the ops infrastructure.
 
 ---
 
+## Service Level Objectives (SLOs)
+
+### Health Targets
+
+| Metric | Target | Alert Threshold |
+|--------|--------|-----------------|
+| P95 Latency | < 500ms | > 500ms for 2 consecutive checks |
+| Error Rate | < 1% | > 1% for 2 consecutive checks |
+| Health Status | `healthy` | 2 consecutive `unhealthy` checks |
+
+### Alert Criteria
+
+**Trigger alert when:**
+- 2 consecutive health checks return `unhealthy` status
+- P95 latency exceeds 500ms for 2 consecutive checks
+- Error rate exceeds 1% for 2 consecutive checks
+
+**Query for alerting:**
+```sql
+-- Check for consecutive unhealthy
+SELECT lens_id, COUNT(*) as unhealthy_count
+FROM (
+    SELECT lens_id, status,
+           ROW_NUMBER() OVER (PARTITION BY lens_id ORDER BY observed_at DESC) as rn
+    FROM pms_health_checks
+    WHERE observed_at > now() - interval '1 hour'
+) recent
+WHERE rn <= 2 AND status = 'unhealthy'
+GROUP BY lens_id
+HAVING COUNT(*) = 2;
+```
+
+---
+
 ## Health Check Tables
 
 **Database:** Tenant Supabase
