@@ -1207,15 +1207,15 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
 
         items = items_result.data or []
 
-        # Get documents with metadata (for signed URL generation)
+        # Get documents (no foreign key join - may not exist or violate "no FK to tenant auth.users" rule)
         docs_result = db.table("pms_receiving_documents").select(
-            "*, doc:doc_metadata(*)"
+            "*"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
         documents = docs_result.data or []
 
         # TODO: Generate signed URLs for documents in production
-        # For now, return storage_path from doc_metadata
+        # For now, document_id and storage_path should be sufficient
 
         # Get audit trail
         audit_result = db.table("pms_audit_log").select(
