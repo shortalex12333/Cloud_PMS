@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from postgrest import PostgrestClient
+from supabase import Client
 from handlers.db_client import get_user_db, map_postgrest_error
 from utils.errors import error_response, success_response
 
@@ -129,7 +129,7 @@ def _write_audit_log(db, payload: Dict):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    db.from_("pms_audit_log").insert(audit_payload).execute()
+    db.table("pms_audit_log").insert(audit_payload).execute()
 
 
 # ============================================================================
@@ -198,7 +198,7 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
             "created_by": user_id,
         }
 
-        result = db.from_("pms_receiving").insert(receiving_payload).execute()
+        result = db.table("pms_receiving").insert(receiving_payload).execute()
 
         if not result.data or len(result.data) == 0:
             return {
@@ -273,7 +273,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Verify receiving exists
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -309,7 +309,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.from_("pms_receiving_documents").insert(doc_payload).execute()
+        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -383,7 +383,7 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Verify receiving exists
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -419,7 +419,7 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        extract_result = db.from_("pms_receiving_extractions").insert(extraction_record).execute()
+        extract_result = db.table("pms_receiving_extractions").insert(extraction_record).execute()
 
         if not extract_result.data or len(extract_result.data) == 0:
             return {
@@ -500,7 +500,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Get current receiving
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, vendor_name, vendor_reference, currency, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -542,7 +542,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
             }
 
         # Update receiving
-        db.from_("pms_receiving").update(update_payload).eq(
+        db.table("pms_receiving").update(update_payload).eq(
             "id", receiving_id
         ).execute()
 
@@ -618,7 +618,7 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             }
 
         # Verify receiving exists
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -651,7 +651,7 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        item_result = db.from_("pms_receiving_items").insert(item_payload).execute()
+        item_result = db.table("pms_receiving_items").insert(item_payload).execute()
 
         if not item_result.data or len(item_result.data) == 0:
             return {
@@ -727,7 +727,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Get current item
-        item_result = db.from_("pms_receiving_items").select(
+        item_result = db.table("pms_receiving_items").select(
             "id, quantity_received, unit_price, description"
         ).eq("id", receiving_item_id).eq("yacht_id", yacht_id).eq("receiving_id", receiving_id).maybe_single().execute()
 
@@ -763,7 +763,7 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
             }
 
         # Update item
-        db.from_("pms_receiving_items").update(update_payload).eq(
+        db.table("pms_receiving_items").update(update_payload).eq(
             "id", receiving_item_id
         ).execute()
 
@@ -828,7 +828,7 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Verify receiving exists
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -864,7 +864,7 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.from_("pms_receiving_documents").insert(doc_payload).execute()
+        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -936,7 +936,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
         request_context = params.get("request_context")
 
         # Get receiving record
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, vendor_name, vendor_reference, status, subtotal, tax_total, total"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -958,7 +958,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
             }
 
         # Get line items
-        items_result = db.from_("pms_receiving_items").select(
+        items_result = db.table("pms_receiving_items").select(
             "id, quantity_received, unit_price, currency"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
@@ -1023,7 +1023,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
         # Accept receiving
         now = datetime.now(timezone.utc).isoformat()
 
-        db.from_("pms_receiving").update({
+        db.table("pms_receiving").update({
             "status": "accepted",
             "subtotal": subtotal,
             "tax_total": tax_total,
@@ -1100,7 +1100,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
             }
 
         # Get receiving record
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "id, status"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1122,7 +1122,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
             }
 
         # Update status to rejected
-        db.from_("pms_receiving").update({
+        db.table("pms_receiving").update({
             "status": "rejected",
             "notes": reason,  # Store reason in notes
         }).eq("id", receiving_id).execute()
@@ -1186,7 +1186,7 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
             return map_postgrest_error(e, "RLS_CLIENT_ERROR")
 
         # Get receiving record (NO JOIN to auth tables - violates "no FK to tenant auth.users" rule)
-        recv_result = db.from_("pms_receiving").select(
+        recv_result = db.table("pms_receiving").select(
             "*"
         ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
@@ -1201,14 +1201,14 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         # received_by field contains user_id - frontend can look up name/role if needed
 
         # Get line items
-        items_result = db.from_("pms_receiving_items").select(
+        items_result = db.table("pms_receiving_items").select(
             "*"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
         items = items_result.data or []
 
         # Get documents with metadata (for signed URL generation)
-        docs_result = db.from_("pms_receiving_documents").select(
+        docs_result = db.table("pms_receiving_documents").select(
             "*, doc:doc_metadata(*)"
         ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
 
@@ -1218,7 +1218,7 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         # For now, return storage_path from doc_metadata
 
         # Get audit trail
-        audit_result = db.from_("pms_audit_log").select(
+        audit_result = db.table("pms_audit_log").select(
             "*"
         ).eq("entity_type", "receiving").eq("entity_id", receiving_id).eq("yacht_id", yacht_id).order("created_at").execute()
 
