@@ -134,11 +134,13 @@ def map_postgrest_error(error: Exception, default_code: str = "DATABASE_ERROR") 
     error_str = str(error).lower()
 
     # PostgREST 401/403 -> RLS denial
-    if "401" in error_str or "403" in error_str or "permission denied" in error_str:
+    # Also catch PostgreSQL error code 42501 (insufficient_privilege) and RLS policy violations
+    if ("401" in error_str or "403" in error_str or "permission denied" in error_str or
+        "42501" in error_str or "row-level security" in error_str or "policy" in error_str):
         return {
             "status": "error",
             "error_code": "RLS_DENIED",
-            "message": "Access denied by row-level security",
+            "message": "Access denied by row-level security policy",
             "hint": "Verify your role has permission for this yacht"
         }
 
