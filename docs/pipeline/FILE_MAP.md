@@ -1,6 +1,6 @@
-# File Map (Verified After Certificates Lens)
+# File Map (Updated: Document Lens v2)
 
-This map reflects ACTUAL file locations after completing the Certificates lens. Previous version had incorrect assumptions.
+This map reflects ACTUAL file locations. Updated after Document Lens v2 and ops infrastructure.
 
 ---
 
@@ -11,6 +11,7 @@ This map reflects ACTUAL file locations after completing the Certificates lens. 
 | `apps/api/routes/p0_actions_routes.py` | **All action endpoints** including `/v1/actions/list` | NOT action_router/router.py |
 | `apps/api/action_router/registry.py` | Action definitions, search, storage config | Extended with ActionVariant, domain, search_keywords |
 | `apps/api/handlers/certificate_handlers.py` | Certificate CRUD handlers | Called by dispatcher |
+| `apps/api/handlers/document_handlers.py` | Document CRUD handlers | Soft delete enabled |
 | `apps/api/action_router/dispatchers/internal_dispatcher.py` | Routes to handlers | Bridge between router and handlers |
 
 ## Backend (Tests)
@@ -19,7 +20,11 @@ This map reflects ACTUAL file locations after completing the Certificates lens. 
 |------|---------|-------|
 | `tests/docker/run_rls_tests.py` | Docker-based role-gating tests | 18 tests including action list |
 | `tests/ci/staging_certificates_acceptance.py` | Staging CI assertions | Real JWT validation |
+| `tests/ci/staging_documents_acceptance.py` | Document lens staging tests | 17 tests, role-gated |
+| `tests/stress/documents_actions_endpoints.py` | Document lens stress tests | P50/P95/P99 metrics |
 | `.github/workflows/staging-certificates-acceptance.yml` | CI workflow | Mark as required on main |
+| `.github/workflows/staging-documents-acceptance.yml` | Document lens CI | Mark as required on main |
+| `.github/workflows/documents-stress.yml` | Nightly stress test | 2 AM UTC |
 
 ## Backend (Migrations)
 
@@ -31,6 +36,8 @@ This map reflects ACTUAL file locations after completing the Certificates lens. 
 | `supabase/migrations/20260125_011_documents_storage_write_policies.sql` | Storage bucket policies |
 | `supabase/migrations/20260125_012_doc_metadata_write_rls.sql` | Document metadata RLS |
 | `supabase/migrations/20260126_013_drop_pms_audit_log_user_fk.sql` | Audit FK fix (MASTER/TENANT split) |
+| `supabase/migrations/20260128_doc_metadata_soft_delete.sql` | Document soft delete columns |
+| `docs/architecture/20_lens_ops/migrations/ops_health_tables.sql` | Health monitoring tables |
 
 ---
 
@@ -66,7 +73,19 @@ This map reflects ACTUAL file locations after completing the Certificates lens. 
 | `docs/pipeline/GUARDRAILS.md` | Non-negotiable rules |
 | `docs/pipeline/ACCEPTANCE_MATRIX.md` | Test expectations |
 | `docs/pipeline/RUNBOOK.md` | Commands to run |
+| `docs/pipeline/DOCUMENTS_FEATURE_FLAGS.md` | Document lens feature flags |
+| `docs/architecture/19_HOLISTIC_ACTIONS_LENS/DOCUMENT_LENS_V2/` | Document lens architecture |
+| `docs/architecture/20_lens_ops/DOCUMENTS_LENS_OPS.md` | Document lens ops guide |
+| `docs/architecture/20_lens_ops/WORKER_DEPLOYMENT_GUIDE.md` | Health worker deployment |
+| `docs/architecture/20_lens_ops/OPS_OBSERVABILITY.md` | Monitoring and alerting |
 | `CHANGELOG.md` | Release notes |
+
+## Ops (Health Workers)
+
+| File | Purpose |
+|------|---------|
+| `tools/ops/monitors/documents_health_worker.py` | Documents lens health worker |
+| `render.yaml` | Render blueprint (includes health workers) |
 
 ---
 

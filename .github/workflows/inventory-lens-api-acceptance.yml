@@ -58,6 +58,74 @@ jobs:
         run: |
           python tests/ci/generate_fresh_jwts.py
 
+      - name: Wait for deployment and verify API readiness
+        run: |
+          echo "=== Waiting for Render deployment to complete ==="
+
+          # Get current commit SHA
+          EXPECTED_COMMIT=$(git rev-parse --short=7 HEAD)
+          echo "Expected commit: $EXPECTED_COMMIT"
+
+          # Poll /version endpoint until commit matches (max 5 minutes)
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          SLEEP_INTERVAL=5
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking /version..."
+
+            # Get current deployed commit
+            DEPLOYED_COMMIT=$(curl -sf https://pipeline-core.int.celeste7.ai/version | jq -r '.git_commit' | cut -c1-7)
+
+            if [ -z "$DEPLOYED_COMMIT" ]; then
+              echo "⚠️  Failed to fetch /version, retrying in ${SLEEP_INTERVAL}s..."
+              sleep $SLEEP_INTERVAL
+              continue
+            fi
+
+            echo "Deployed commit: $DEPLOYED_COMMIT"
+
+            if [ "$DEPLOYED_COMMIT" = "$EXPECTED_COMMIT" ]; then
+              echo "✅ Deployment complete! Commit $EXPECTED_COMMIT is live."
+              break
+            fi
+
+            echo "Waiting for commit $EXPECTED_COMMIT (currently at $DEPLOYED_COMMIT)..."
+            sleep $SLEEP_INTERVAL
+          done
+
+          if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
+            echo "❌ Timeout waiting for deployment to reach commit $EXPECTED_COMMIT"
+            echo "Current deployed commit: $DEPLOYED_COMMIT"
+            exit 1
+          fi
+
+          # Health check
+          echo ""
+          echo "=== Checking /health endpoint ==="
+          HEALTH_RESPONSE=$(curl -sf https://pipeline-core.int.celeste7.ai/health)
+
+          if [ $? -ne 0 ]; then
+            echo "❌ Health check failed - API is not responding"
+            exit 1
+          fi
+
+          echo "Health response: $HEALTH_RESPONSE"
+
+          # Verify health status is ok/healthy
+          HEALTH_STATUS=$(echo "$HEALTH_RESPONSE" | jq -r '.status // .health // "unknown"')
+
+          if [ "$HEALTH_STATUS" != "ok" ] && [ "$HEALTH_STATUS" != "healthy" ] && [ "$HEALTH_STATUS" != "ready" ]; then
+            echo "⚠️  Health status is: $HEALTH_STATUS (expected: ok/healthy/ready)"
+            echo "Proceeding anyway as API responded..."
+          else
+            echo "✅ Health check passed: $HEALTH_STATUS"
+          fi
+
+          echo ""
+          echo "=== API is ready for testing ==="
+
       - name: Run API acceptance tests against Render staging
         working-directory: tests/inventory_lens
         env:

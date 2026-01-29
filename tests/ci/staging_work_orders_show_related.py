@@ -28,7 +28,8 @@ import os
 import sys
 import json
 import time
-from typing import Dict, Any, Tuple
+import base64
+from typing import Dict, Any, Tuple, Optional
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -172,6 +173,168 @@ def api_post(endpoint: str, jwt: str, data: Dict[str, Any]) -> Tuple[int, Dict[s
         return e.code, body
     except URLError as e:
         return 0, {"error": str(e)}
+
+# =============================================================================
+# Preflight Checks
+# =============================================================================
+
+def decode_jwt(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Decode JWT payload (no signature verification - just inspect claims).
+
+    Returns:
+        JWT payload dict or None if decode fails
+    """
+    try:
+        # JWT structure: header.payload.signature
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None
+
+        # Decode payload (base64url)
+        payload_b64 = parts[1]
+        # Add padding if needed (base64url doesn't include padding)
+        padding = 4 - (len(payload_b64) % 4)
+        if padding != 4:
+            payload_b64 += '=' * padding
+
+        payload_bytes = base64.urlsafe_b64decode(payload_b64)
+        payload = json.loads(payload_bytes)
+
+        return payload
+
+    except Exception as e:
+        print(f"⚠️  JWT decode failed: {e}")
+        return None
+
+
+def validate_jwt_payload(payload: Dict[str, Any], jwt_name: str) -> bool:
+    """
+    Validate JWT payload structure and claims.
+
+    Checks:
+    - exp (expiration) is in future
+    - sub (user_id) is present
+    - email is present
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not payload:
+        print(f"❌ {jwt_name}: Invalid payload (empty or malformed)")
+        return False
+
+    # Check expiration
+    exp = payload.get('exp')
+    if not exp:
+        print(f"❌ {jwt_name}: Missing 'exp' claim")
+        return False
+
+    now = time.time()
+    if exp < now:
+        expiry_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(exp))
+        print(f"❌ {jwt_name}: Token EXPIRED (exp: {expiry_date})")
+        return False
+
+    # Check user_id (sub)
+    user_id = payload.get('sub')
+    if not user_id:
+        print(f"❌ {jwt_name}: Missing 'sub' (user_id) claim")
+        return False
+
+    # Check email
+    email = payload.get('email')
+    if not email:
+        print(f"❌ {jwt_name}: Missing 'email' claim")
+        return False
+
+    # Print summary
+    expiry_date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(exp))
+    ttl_hours = (exp - now) / 3600
+    print(f"✅ {jwt_name}: Valid (user_id={user_id[:8]}..., email={email}, expires={expiry_date}, TTL={ttl_hours:.1f}h)")
+
+    return True
+
+
+def preflight_check_jwt_tokens():
+    """
+    Preflight: Decode and validate JWT tokens.
+
+    Exit with code 1 if any JWT is invalid or expired.
+    """
+    print("\n" + "="*80)
+    print("PREFLIGHT: JWT Token Validation")
+    print("="*80)
+
+    all_valid = True
+
+    # Decode and validate CREW JWT
+    crew_payload = decode_jwt(STAGING_JWT_CREW)
+    if not validate_jwt_payload(crew_payload, "STAGING_JWT_CREW"):
+        all_valid = False
+
+    # Decode and validate HOD JWT
+    hod_payload = decode_jwt(STAGING_JWT_HOD)
+    if not validate_jwt_payload(hod_payload, "STAGING_JWT_HOD"):
+        all_valid = False
+
+    if not all_valid:
+        print("\n❌ PREFLIGHT FAILED: One or more JWTs are invalid or expired")
+        print("   Regenerate JWTs using:")
+        print("   python tools/auth/generate_staging_jwts.py")
+        sys.exit(1)
+
+    print("✅ All JWTs valid\n")
+
+
+def preflight_check_work_order():
+    """
+    Preflight: Fetch test work order to verify it exists.
+
+    Exit with code 1 if work order not found.
+    """
+    print("="*80)
+    print("PREFLIGHT: Work Order Fetch")
+    print("="*80)
+
+    params = {
+        "entity_type": "work_order",
+        "entity_id": STAGING_WORK_ORDER_ID,
+        "limit": 1
+    }
+
+    code, body = api_get("/v1/related", STAGING_JWT_CREW, params)
+
+    if code == 404:
+        print(f"❌ Work order not found: {STAGING_WORK_ORDER_ID}")
+        print("   Check STAGING_WORK_ORDER_ID or seed staging database")
+        sys.exit(1)
+    elif code == 500:
+        print(f"❌ 500 error fetching work order (API may be down)")
+        print(f"   Response: {body}")
+        sys.exit(1)
+    elif code != 200:
+        print(f"⚠️  Unexpected status code: {code}")
+        print(f"   Response: {body}")
+        print("   Proceeding with tests...")
+    else:
+        # Extract WO details from response
+        wo_number = "unknown"
+        wo_title = "unknown"
+
+        # Try to find work order details in groups (V1 response structure)
+        for group in body.get('groups', []):
+            for item in group.get('items', []):
+                if item.get('entity_id') == STAGING_WORK_ORDER_ID:
+                    wo_title = item.get('title', 'unknown')
+                    break
+
+        print(f"✅ Work order found: {STAGING_WORK_ORDER_ID}")
+        print(f"   Title: {wo_title[:60]}")
+        print(f"   Groups returned: {len(body.get('groups', []))}")
+
+    print()
+
 
 # =============================================================================
 # Test Data Generators
@@ -400,7 +563,16 @@ def main():
     # Validate environment
     validate_environment()
 
+    # Preflight checks (JWT decode + WO fetch)
+    preflight_check_jwt_tokens()
+    preflight_check_work_order()
+
     # Run test suite (subset of Docker matrix)
+    print("="*80)
+    print("RUNNING TESTS")
+    print("="*80)
+    print()
+
     test_crew_view_related_200()
     test_crew_cannot_add_link_403()
     test_hod_can_add_link_200()

@@ -664,11 +664,207 @@ async def generate_access_review_data(
 
 
 # ============================================================================
+# Synthetic Data Generator
+# ============================================================================
+
+
+def _generate_synthetic_data(yacht_id: str, start_ts: str, end_ts: str) -> Dict[str, List[Dict]]:
+    """Generate synthetic audit data for demo bundles."""
+    import uuid as uuid_mod
+    from datetime import datetime as dt, timedelta as td
+
+    start = dt.fromisoformat(start_ts.replace("Z", "+00:00"))
+
+    def ts(offset_hours: int) -> str:
+        return (start + td(hours=offset_hours)).isoformat()
+
+    user_ids = [str(uuid_mod.uuid4()) for _ in range(3)]
+    membership_ids = [str(uuid_mod.uuid4()) for _ in range(3)]
+
+    memberships = [
+        {"id": membership_ids[0], "user_id": user_ids[0], "yacht_id": yacht_id,
+         "status": "ACTIVE", "invited_at": ts(0), "accepted_at": ts(1), "provisioned_at": ts(2),
+         "invited_by": user_ids[1], "approved_by": user_ids[2]},
+        {"id": membership_ids[1], "user_id": user_ids[1], "yacht_id": yacht_id,
+         "status": "ACTIVE", "invited_at": ts(5), "accepted_at": ts(6), "provisioned_at": ts(7),
+         "invited_by": user_ids[0], "approved_by": user_ids[2]},
+        {"id": membership_ids[2], "user_id": user_ids[2], "yacht_id": yacht_id,
+         "status": "REVOKED", "invited_at": ts(10), "accepted_at": ts(11),
+         "provisioned_at": ts(12), "revoked_at": ts(20),
+         "invited_by": user_ids[0], "approved_by": user_ids[1], "revoked_by": user_ids[0]},
+    ]
+
+    role_changes = [
+        {"id": str(uuid_mod.uuid4()), "event_type": "role_change_success",
+         "user_id": user_ids[0], "yacht_id": yacht_id, "old_role": "crew",
+         "new_role": "hod", "changed_by": user_ids[1], "created_at": ts(8)},
+        {"id": str(uuid_mod.uuid4()), "event_type": "role_change_denied",
+         "user_id": user_ids[2], "yacht_id": yacht_id, "old_role": "crew",
+         "new_role": "captain", "attempted_by": user_ids[0],
+         "reason": "two_person_rule_violation", "created_at": ts(15)},
+    ]
+
+    admin_actions = [
+        {"id": str(uuid_mod.uuid4()), "event_type": "invite_user",
+         "actor_id": user_ids[0], "yacht_id": yacht_id,
+         "target_user_email_hash": _hash_value("user@example.com"), "created_at": ts(0)},
+        {"id": str(uuid_mod.uuid4()), "event_type": "approve_membership",
+         "actor_id": user_ids[2], "yacht_id": yacht_id,
+         "membership_id": membership_ids[0], "created_at": ts(2)},
+        {"id": str(uuid_mod.uuid4()), "event_type": "revoke_membership",
+         "actor_id": user_ids[0], "yacht_id": yacht_id,
+         "membership_id": membership_ids[2], "reason": "employment_ended", "created_at": ts(20)},
+        {"id": str(uuid_mod.uuid4()), "event_type": "freeze_yacht",
+         "actor_id": user_ids[0], "yacht_id": yacht_id,
+         "reason": "security_investigation", "created_at": ts(25)},
+    ]
+
+    router_audits = [
+        {"id": str(uuid_mod.uuid4()), "action": "list_equipment",
+         "yacht_id": yacht_id, "user_id": user_ids[0], "role": "hod",
+         "outcome": "allowed", "request_id": str(uuid_mod.uuid4())[:8], "created_at": ts(30)},
+        {"id": str(uuid_mod.uuid4()), "action": "update_fault",
+         "yacht_id": yacht_id, "user_id": user_ids[0], "role": "hod",
+         "outcome": "allowed", "entity_id": str(uuid_mod.uuid4()),
+         "idempotency_key": f"idem-{uuid_mod.uuid4().hex[:12]}",
+         "payload_hash": hashlib.sha256(b"demo").hexdigest()[:32], "created_at": ts(31)},
+        {"id": str(uuid_mod.uuid4()), "action": "update_fault",
+         "yacht_id": yacht_id, "user_id": user_ids[2], "role": "crew",
+         "outcome": "denied", "entity_id": str(uuid_mod.uuid4()),
+         "reason": "role_not_allowed", "created_at": ts(32)},
+    ]
+
+    storage_events = [
+        {"id": str(uuid_mod.uuid4()), "event_type": "signed_url_generated",
+         "user_id": user_ids[0], "yacht_id": yacht_id,
+         "document_id": str(uuid_mod.uuid4()),
+         "storage_path_hash": hashlib.sha256(
+             f"{yacht_id}/docs/file.pdf".encode()).hexdigest()[:32],
+         "ttl_seconds": 600, "created_at": ts(35)},
+        {"id": str(uuid_mod.uuid4()), "event_type": "signed_url_denied",
+         "user_id": user_ids[2], "yacht_id": yacht_id,
+         "document_id": str(uuid_mod.uuid4()),
+         "reason": "document_not_found", "created_at": ts(36)},
+    ]
+
+    incident_events = [
+        {"id": str(uuid_mod.uuid4()), "event_type": "incident_mode_enabled",
+         "actor_id": user_ids[0], "yacht_id": yacht_id,
+         "reason": "drill_exercise", "disable_streaming": True,
+         "disable_signed_urls": True, "disable_writes": True, "created_at": ts(40)},
+        {"id": str(uuid_mod.uuid4()), "event_type": "incident_mode_disabled",
+         "actor_id": user_ids[0], "yacht_id": yacht_id,
+         "reason": "drill_complete", "created_at": ts(41)},
+    ]
+
+    cache_events = [
+        {"id": str(uuid_mod.uuid4()), "event_type": "cache_cleared_user",
+         "user_id": user_ids[2], "yacht_id": yacht_id,
+         "trigger": "membership_revoked", "created_at": ts(20)},
+    ]
+
+    return {
+        "memberships": memberships,
+        "role_changes": role_changes,
+        "admin_actions": admin_actions,
+        "router_audits": router_audits,
+        "storage_events": storage_events,
+        "incident_events": incident_events,
+        "cache_events": cache_events,
+    }
+
+
+async def export_synthetic_bundle(
+    yacht_id: str,
+    start_ts: str,
+    end_ts: str,
+    out_dir: str,
+    git_commit: Optional[str] = None,
+    command_args: Optional[str] = None,
+) -> str:
+    """Export synthetic demo bundle without database connection."""
+    export_timestamp = datetime.now(timezone.utc).isoformat()
+    data = _generate_synthetic_data(yacht_id, start_ts, end_ts)
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    summary = _generate_summary(
+        data["memberships"], data["role_changes"], data["admin_actions"],
+        data["router_audits"], data["storage_events"],
+        data["incident_events"], data["cache_events"],
+    )
+
+    _write_jsonl(out_path / "memberships.jsonl", data["memberships"])
+    _write_jsonl(out_path / "role_changes.jsonl", data["role_changes"])
+    _write_jsonl(out_path / "admin_actions.jsonl", data["admin_actions"])
+    _write_jsonl(out_path / "router_audits.jsonl", data["router_audits"])
+    _write_jsonl(out_path / "storage_signing.jsonl", data["storage_events"])
+    _write_jsonl(out_path / "incident_events.jsonl", data["incident_events"])
+    _write_jsonl(out_path / "cache_invalidations.jsonl", data["cache_events"])
+
+    _write_csv(
+        out_path / "summary.csv", summary,
+        columns=["category", "total_records", "active_count", "revoked_count",
+                 "successful", "denied", "error", "invites", "approvals",
+                 "revocations", "freezes", "allowed", "enabled_count", "disabled_count"],
+    )
+
+    index = {
+        "exporter_version": EXPORTER_VERSION,
+        "export_timestamp": export_timestamp,
+        "git_commit": git_commit,
+        "command_args": command_args,
+        "mode": "SYNTHETIC",
+        "parameters": {
+            "yacht_id": yacht_id,
+            "start_ts": start_ts,
+            "end_ts": end_ts,
+        },
+        "files": [
+            "memberships.jsonl", "role_changes.jsonl", "admin_actions.jsonl",
+            "router_audits.jsonl", "storage_signing.jsonl",
+            "incident_events.jsonl", "cache_invalidations.jsonl",
+            "summary.csv", "README.md",
+        ],
+        "record_counts": {s["category"]: s["total_records"] for s in summary},
+        "clock_source": "synthetic",
+        "timezone": "UTC",
+    }
+
+    with open(out_path / "index.json", "w") as f:
+        json.dump(index, f, indent=2)
+
+    readme = f"""# Audit Evidence Bundle (SYNTHETIC)
+
+## NOTICE
+This bundle contains SYNTHETIC data for demonstration purposes.
+
+- **Yacht ID**: {yacht_id}
+- **Period**: {start_ts} to {end_ts}
+- **Exported**: {export_timestamp}
+- **Exporter Version**: {EXPORTER_VERSION}
+- **Mode**: SYNTHETIC
+"""
+    with open(out_path / "README.md", "w") as f:
+        f.write(readme)
+
+    bundle_path = out_path / "bundle.zip"
+    with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file in out_path.iterdir():
+            if file.name != "bundle.zip" and file.is_file():
+                zf.write(file, file.name)
+
+    logger.info(f"[AuditExport] Synthetic: {bundle_path}")
+    return str(bundle_path)
+
+
+# ============================================================================
 # Exports
 # ============================================================================
 
 __all__ = [
     "export_audit_trace",
+    "export_synthetic_bundle",
     "generate_access_review_data",
     "EXPORTER_VERSION",
 ]
