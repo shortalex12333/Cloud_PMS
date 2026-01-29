@@ -1173,70 +1173,67 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
     Returns: receiving header, line items, documents, audit trail
     """
     async def _fn(**params):
-        # Extract required params
+        # Extract required params - yacht_id comes from JWT context
         yacht_id = params["yacht_id"]
         receiving_id = params["receiving_id"]
         user_jwt = params.get("user_jwt")
+
+        # Validate required fields (400 for invalid payload)
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "INVALID_REQUEST",
+                "message": "receiving_id is required"
+            }
 
         # Create RLS-enforced client with user's JWT
         try:
             db = get_user_db(user_jwt, yacht_id)
         except Exception as e:
             logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            return {
+                "status": "error",
+                "error_code": "RLS_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
 
-        # Get receiving record (NO JOIN to auth tables - violates "no FK to tenant auth.users" rule)
-        try:
-            recv_result = db.table("pms_receiving").select(
-                "*"
-            ).eq("id", receiving_id).eq("yacht_id", yacht_id).execute()
+        # Get receiving record - RLS automatically filters by yacht_id
+        # If receiving_id not in user's yacht scope → RLS returns 0 rows → 404
+        recv_result = db.table("pms_receiving").select(
+            "*"
+        ).eq("id", receiving_id).execute()
 
-            if not recv_result.data or len(recv_result.data) == 0:
-                return {
-                    "status": "error",
-                    "error_code": "NOT_FOUND",
-                    "message": "Receiving record not found"
-                }
+        if not recv_result.data or len(recv_result.data) == 0:
+            # Receiving not found in yacht scope → 404 (not 400)
+            return {
+                "status": "error",
+                "error_code": "NOT_FOUND",
+                "message": "Receiving record not found"
+            }
 
-            receiving = recv_result.data[0]  # Get first record
-        except Exception as e:
-            logger.error(f"Failed to fetch receiving record: {e}")
-            return map_postgrest_error(e, "RECEIVING_FETCH_ERROR")
+        receiving = recv_result.data[0]
         # received_by field contains user_id - frontend can look up name/role if needed
 
-        # Get line items (gracefully handle if table doesn't exist)
-        try:
-            items_result = db.table("pms_receiving_items").select(
-                "*"
-            ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
-            items = items_result.data or []
-        except Exception as e:
-            logger.warning(f"Failed to fetch receiving items: {e}")
-            items = []
+        # Get line items - return empty array if none exist (200, not 400)
+        items_result = db.table("pms_receiving_items").select(
+            "*"
+        ).eq("receiving_id", receiving_id).execute()
+        items = items_result.data or []
 
-        # Get documents (no foreign key join - may not exist or violate "no FK to tenant auth.users" rule)
-        try:
-            docs_result = db.table("pms_receiving_documents").select(
-                "*"
-            ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
-            documents = docs_result.data or []
-        except Exception as e:
-            logger.warning(f"Failed to fetch receiving documents: {e}")
-            documents = []
+        # Get documents - return empty array if none exist (200, not 400)
+        docs_result = db.table("pms_receiving_documents").select(
+            "*"
+        ).eq("receiving_id", receiving_id).execute()
+        documents = docs_result.data or []
 
-        # TODO: Generate signed URLs for documents in production
-        # For now, document_id and storage_path should be sufficient
+        # Get audit trail - return empty array if none exist (200, not 400)
+        # Query only pms_audit_log as specified - no JOIN to auth tables
+        audit_result = db.table("pms_audit_log").select(
+            "action, user_id, created_at, signature, metadata"
+        ).eq("entity_type", "receiving").eq("entity_id", receiving_id).order("created_at", desc=False).execute()
+        audit_trail = audit_result.data or []
 
-        # Get audit trail (gracefully handle if table doesn't exist)
-        try:
-            audit_result = db.table("pms_audit_log").select(
-                "*"
-            ).eq("entity_type", "receiving").eq("entity_id", receiving_id).eq("yacht_id", yacht_id).order("created_at").execute()
-            audit_trail = audit_result.data or []
-        except Exception as e:
-            logger.warning(f"Failed to fetch audit trail: {e}")
-            audit_trail = []
-
+        # Always return 200 success if receiving exists, even with empty arrays
         return {
             "status": "success",
             "receiving": receiving,
