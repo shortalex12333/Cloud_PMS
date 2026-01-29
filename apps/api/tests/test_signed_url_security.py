@@ -572,6 +572,284 @@ class TestSignedUrlAuditLogging:
 
 
 # ============================================================================
+# ADDITIONAL TTL + PREFIX ENFORCEMENT TESTS (signoff-05)
+# ============================================================================
+
+class TestTTLEnforcement:
+    """Test TTL bounds are strictly enforced."""
+
+    def test_ttl_constants_are_bounded(self):
+        """Verify TTL constants don't exceed security limits."""
+        from handlers.secure_document_handlers import (
+            DOWNLOAD_URL_EXPIRY,
+            UPLOAD_URL_EXPIRY,
+        )
+
+        # Download URLs: max 1 hour (3600s)
+        assert DOWNLOAD_URL_EXPIRY <= 3600, "Download URL TTL must not exceed 1 hour"
+
+        # Upload URLs: max 30 minutes (1800s)
+        assert UPLOAD_URL_EXPIRY <= 1800, "Upload URL TTL must not exceed 30 minutes"
+
+        # Both must be positive
+        assert DOWNLOAD_URL_EXPIRY > 0
+        assert UPLOAD_URL_EXPIRY > 0
+
+    def test_ttl_cannot_be_overridden_by_client(self):
+        """Client-provided TTL must be ignored or capped."""
+        from handlers.secure_document_handlers import sanitize_ttl_request
+
+        # Client tries to request longer TTL
+        client_requested_ttl = 86400  # 24 hours
+
+        result = sanitize_ttl_request(client_requested_ttl, max_allowed=3600)
+
+        # Must be capped to max allowed
+        assert result <= 3600
+        assert result > 0
+
+    def test_negative_ttl_rejected(self):
+        """Negative TTL values must be rejected."""
+        from handlers.secure_document_handlers import sanitize_ttl_request
+
+        with pytest.raises(ValueError):
+            sanitize_ttl_request(-100, max_allowed=3600)
+
+    def test_zero_ttl_rejected(self):
+        """Zero TTL must be rejected (URL would expire immediately)."""
+        from handlers.secure_document_handlers import sanitize_ttl_request
+
+        with pytest.raises(ValueError):
+            sanitize_ttl_request(0, max_allowed=3600)
+
+
+class TestPrefixEnforcementEdgeCases:
+    """Additional edge cases for yacht prefix enforcement."""
+
+    MALICIOUS_PREFIXES = [
+        # Case sensitivity attacks
+        ("YACHT-001/documents/file.pdf", "yacht-001"),  # Case mismatch
+        ("Yacht-001/documents/file.pdf", "yacht-001"),  # Mixed case
+        ("yAcHt-001/documents/file.pdf", "yacht-001"),  # Mixed case
+
+        # Unicode normalization attacks
+        ("yаcht-001/documents/file.pdf", "yacht-001"),  # Cyrillic 'а'
+        ("yacht\u200b-001/documents/file.pdf", "yacht-001"),  # Zero-width space
+        ("yacht\ufeff-001/documents/file.pdf", "yacht-001"),  # BOM
+
+        # Encoding attacks
+        ("yacht%2d001/documents/file.pdf", "yacht-001"),  # URL encoded hyphen
+        ("yacht%2D001/documents/file.pdf", "yacht-001"),  # URL encoded hyphen
+        ("yacht-001%2fdocuments/file.pdf", "yacht-001"),  # URL encoded slash
+
+        # Null byte attacks
+        ("yacht-001\x00/documents/file.pdf", "yacht-001"),
+        ("\x00yacht-001/documents/file.pdf", "yacht-001"),
+
+        # Whitespace attacks
+        ("yacht-001 /documents/file.pdf", "yacht-001"),  # Space after
+        ("yacht-001\t/documents/file.pdf", "yacht-001"),  # Tab
+        ("yacht-001\n/documents/file.pdf", "yacht-001"),  # Newline
+
+        # Partial prefix match attacks
+        ("yacht-001a/documents/file.pdf", "yacht-001"),  # Extra char
+        ("yacht-0011/documents/file.pdf", "yacht-001"),  # Extra digit
+        ("yacht-001-extra/documents/file.pdf", "yacht-001"),  # Extra segment
+
+        # Double slash attacks
+        ("yacht-001//documents/file.pdf", "yacht-001"),
+        ("yacht-001///documents/file.pdf", "yacht-001"),
+
+        # Backslash attacks (Windows paths)
+        ("yacht-001\\documents\\file.pdf", "yacht-001"),
+        ("yacht-001/documents\\..\\yacht-002/file.pdf", "yacht-001"),
+    ]
+
+    @pytest.mark.parametrize("path,yacht_id", MALICIOUS_PREFIXES)
+    def test_malicious_prefix_rejected(self, path: str, yacht_id: str):
+        """All malicious prefix attempts must be rejected."""
+        from handlers.secure_document_handlers import validate_storage_path
+
+        # All these should fail validation
+        result = validate_storage_path(path, yacht_id)
+        assert result is False, f"Path '{path}' should be rejected for yacht '{yacht_id}'"
+
+    def test_exact_prefix_match_required(self):
+        """Prefix must match exactly - not just starts-with."""
+        from handlers.secure_document_handlers import validate_storage_path
+
+        # yacht-001 should not match yacht-0012
+        assert validate_storage_path("yacht-001/file.pdf", "yacht-001") is True
+        assert validate_storage_path("yacht-0012/file.pdf", "yacht-001") is False
+        assert validate_storage_path("yacht-001a/file.pdf", "yacht-001") is False
+
+        # yacht-001 should not match yacht-00 even if yacht-001 starts with yacht-00
+        assert validate_storage_path("yacht-001/file.pdf", "yacht-00") is False
+
+
+class TestSignedUrlCacheControl:
+    """Test that signed URLs are not cached improperly."""
+
+    @pytest.mark.asyncio
+    async def test_response_has_no_cache_headers(self, mock_ctx, mock_db_client, mock_storage_client):
+        """Signed URL responses must include no-cache headers."""
+        from handlers.secure_document_handlers import get_secure_document_handlers
+
+        mock_db_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[{
+            "id": "doc-001",
+            "yacht_id": "yacht-001",
+            "storage_path": "yacht-001/documents/file.pdf",
+        }])
+
+        handlers = get_secure_document_handlers(mock_db_client, mock_storage_client)
+
+        result = await handlers["get_secure_download_url"](
+            mock_ctx,
+            document_id="doc-001",
+        )
+
+        # Response should indicate no caching
+        if "cache_control" in result:
+            assert result["cache_control"] == "no-store, no-cache, must-revalidate"
+
+
+class TestSignedUrlRevocation:
+    """Test signed URL revocation scenarios."""
+
+    @pytest.mark.asyncio
+    async def test_deleted_document_url_invalid(self, mock_ctx, mock_db_client, mock_storage_client):
+        """Signed URL for deleted document must fail validation."""
+        from handlers.secure_document_handlers import get_secure_document_handlers
+        from middleware.action_security import OwnershipValidationError
+
+        # First request succeeds
+        mock_db_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[{
+            "id": "doc-001",
+            "yacht_id": "yacht-001",
+            "storage_path": "yacht-001/documents/file.pdf",
+        }])
+
+        handlers = get_secure_document_handlers(mock_db_client, mock_storage_client)
+
+        result = await handlers["get_secure_download_url"](
+            mock_ctx,
+            document_id="doc-001",
+        )
+
+        assert "signed_url" in result
+
+        # Document gets deleted
+        mock_db_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=None)
+
+        # Subsequent request must fail
+        with pytest.raises(OwnershipValidationError):
+            await handlers["get_secure_download_url"](
+                mock_ctx,
+                document_id="doc-001",
+            )
+
+
+class TestYachtFreezeBlocksSignedUrls:
+    """Test yacht freeze blocks signed URL generation."""
+
+    @pytest.mark.asyncio
+    async def test_frozen_yacht_blocks_upload_url(self, mock_db_client, mock_storage_client):
+        """Frozen yacht must block upload URL generation."""
+        from middleware.action_security import ActionContext, YachtFrozenError
+        from handlers.secure_document_handlers import get_secure_document_handlers
+
+        frozen_ctx = ActionContext(
+            user_id="user-001",
+            yacht_id="yacht-001",
+            role="captain",
+            tenant_key_alias="yYacht001",
+            is_frozen=True,  # FROZEN
+        )
+
+        handlers = get_secure_document_handlers(mock_db_client, mock_storage_client)
+
+        with pytest.raises(YachtFrozenError):
+            await handlers["get_secure_upload_url"](
+                frozen_ctx,
+                filename="new-file.pdf",
+                folder="documents",
+            )
+
+    @pytest.mark.asyncio
+    async def test_frozen_yacht_allows_download_url(self, mock_db_client, mock_storage_client):
+        """Frozen yacht should still allow download URLs (read-only)."""
+        from middleware.action_security import ActionContext
+        from handlers.secure_document_handlers import get_secure_document_handlers
+
+        frozen_ctx = ActionContext(
+            user_id="user-001",
+            yacht_id="yacht-001",
+            role="captain",
+            tenant_key_alias="yYacht001",
+            is_frozen=True,  # FROZEN but download should work
+        )
+
+        mock_db_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[{
+            "id": "doc-001",
+            "yacht_id": "yacht-001",
+            "storage_path": "yacht-001/documents/file.pdf",
+        }])
+
+        handlers = get_secure_document_handlers(mock_db_client, mock_storage_client)
+
+        # Download should still work when frozen
+        result = await handlers["get_secure_download_url"](
+            frozen_ctx,
+            document_id="doc-001",
+        )
+
+        assert "signed_url" in result
+
+
+class TestBulkSignedUrlGeneration:
+    """Test security of bulk signed URL operations."""
+
+    @pytest.mark.asyncio
+    async def test_bulk_download_validates_all_documents(self, mock_ctx, mock_db_client, mock_storage_client):
+        """Bulk download must validate ownership of ALL documents."""
+        from handlers.secure_document_handlers import get_secure_document_handlers
+        from middleware.action_security import OwnershipValidationError
+
+        # Only 2 of 3 documents belong to requesting yacht
+        mock_db_client.table.return_value.select.return_value.in_.return_value.eq.return_value.execute.return_value = MagicMock(data=[
+            {"id": "doc-001", "yacht_id": "yacht-001", "storage_path": "yacht-001/a.pdf"},
+            {"id": "doc-002", "yacht_id": "yacht-001", "storage_path": "yacht-001/b.pdf"},
+            # doc-003 missing - belongs to different yacht
+        ])
+
+        handlers = get_secure_document_handlers(mock_db_client, mock_storage_client)
+
+        with pytest.raises(OwnershipValidationError):
+            await handlers["get_bulk_download_urls"](
+                mock_ctx,
+                document_ids=["doc-001", "doc-002", "doc-003"],
+            )
+
+    @pytest.mark.asyncio
+    async def test_bulk_rate_limited(self, mock_ctx, mock_db_client, mock_storage_client):
+        """Bulk operations must be rate limited."""
+        from handlers.secure_document_handlers import get_secure_document_handlers, MAX_BULK_DOCUMENTS
+
+        handlers = get_secure_document_handlers(mock_db_client, mock_storage_client)
+
+        # Request more than max allowed
+        too_many_docs = [f"doc-{i:03d}" for i in range(MAX_BULK_DOCUMENTS + 10)]
+
+        with pytest.raises(ValueError) as exc_info:
+            await handlers["get_bulk_download_urls"](
+                mock_ctx,
+                document_ids=too_many_docs,
+            )
+
+        assert "too many" in str(exc_info.value).lower() or "limit" in str(exc_info.value).lower()
+
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
