@@ -62,14 +62,25 @@ def get_user_db(user_jwt: str, yacht_id: Optional[str] = None) -> Client:
 
         # Set user JWT as authorization header for RLS enforcement
         # This overrides the service key for actual requests
-        client.postgrest.auth(user_jwt)
+        # Use direct header setting instead of auth() method
+        if hasattr(client, 'postgrest') and hasattr(client.postgrest, 'session'):
+            # Set Authorization header directly
+            client.postgrest.session.headers.update({"Authorization": f"Bearer {user_jwt}"})
+        else:
+            # Fallback: try auth() method if session not available
+            try:
+                client.postgrest.auth(user_jwt)
+            except AttributeError:
+                # If neither works, set headers on the client itself
+                client.headers.update({"Authorization": f"Bearer {user_jwt}"})
 
         logger.debug(f"Created RLS-enforced Supabase client for tenant: {default_yacht}")
         return client
 
     except Exception as e:
-        logger.error(f"Failed to create user-scoped Supabase client: {e}")
-        raise ValueError(f"Failed to create database client: {str(e)}")
+        logger.error(f"Failed to create user-scoped Supabase client: {e}", exc_info=True)
+        # Don't raise ValueError - return error dict instead to avoid router's 400 handler
+        raise RuntimeError(f"Failed to create database client: {str(e)}")
 
 
 def get_service_db(yacht_id: Optional[str] = None) -> Client:
