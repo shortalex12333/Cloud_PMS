@@ -224,8 +224,6 @@ test.describe('Part Suggestions - CAPTAIN Role', () => {
   });
 });
 
-});
-
 // Role-Specific Action Tests: CREW
 test.describe('Part Suggestions - CREW Action Restrictions', () => {
   test.use({
