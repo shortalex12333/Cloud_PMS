@@ -512,6 +512,9 @@ class PartHandlers:
                 # Empty response but no exception → may be 204
                 rpc_succeeded_with_204 = True
         except Exception as rpc_err:
+            # Log error class/type for debugging
+            logger.warning(f"RPC deduct exception: type={type(rpc_err).__name__}, msg={str(rpc_err)[:100]}")
+
             error_str = str(rpc_err).lower()
             if "204" in error_str or "missing response" in error_str:
                 logger.info(f"[consume_part] RPC returned 204, treating as success and confirming via SQL")
@@ -683,9 +686,12 @@ class PartHandlers:
             error_str = str(e)
             error_str_lower = error_str.lower()
 
+            # Log error class/type for debugging
+            logger.warning(f"RPC add exception: type={type(e).__name__}, msg={str(e)[:100]}")
+
             # Check if PostgREST 204 (No Content) - RPC succeeded but no data returned
             if "204" in error_str or "missing response" in error_str_lower or "postgrest" in error_str_lower:
-                logger.info(f"PostgREST 204 detected on RPC add_stock_inventory (stock_id={stock_id}) - performing read-after-write")
+                logger.info(f"Receive fallback used for stock_id={stock_id}, qty={quantity_received} - performing read-after-write")
                 rpc_exception_caught = True
 
                 # READ-AFTER-WRITE: Query actual stock to get qty_after
