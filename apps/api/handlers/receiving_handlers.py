@@ -1200,29 +1200,38 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
         receiving = recv_result.data
         # received_by field contains user_id - frontend can look up name/role if needed
 
-        # Get line items
-        items_result = db.table("pms_receiving_items").select(
-            "*"
-        ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
-
-        items = items_result.data or []
+        # Get line items (gracefully handle if table doesn't exist)
+        try:
+            items_result = db.table("pms_receiving_items").select(
+                "*"
+            ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
+            items = items_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch receiving items: {e}")
+            items = []
 
         # Get documents (no foreign key join - may not exist or violate "no FK to tenant auth.users" rule)
-        docs_result = db.table("pms_receiving_documents").select(
-            "*"
-        ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
-
-        documents = docs_result.data or []
+        try:
+            docs_result = db.table("pms_receiving_documents").select(
+                "*"
+            ).eq("receiving_id", receiving_id).eq("yacht_id", yacht_id).execute()
+            documents = docs_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch receiving documents: {e}")
+            documents = []
 
         # TODO: Generate signed URLs for documents in production
         # For now, document_id and storage_path should be sufficient
 
-        # Get audit trail
-        audit_result = db.table("pms_audit_log").select(
-            "*"
-        ).eq("entity_type", "receiving").eq("entity_id", receiving_id).eq("yacht_id", yacht_id).order("created_at").execute()
-
-        audit_trail = audit_result.data or []
+        # Get audit trail (gracefully handle if table doesn't exist)
+        try:
+            audit_result = db.table("pms_audit_log").select(
+                "*"
+            ).eq("entity_type", "receiving").eq("entity_id", receiving_id).eq("yacht_id", yacht_id).order("created_at").execute()
+            audit_trail = audit_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch audit trail: {e}")
+            audit_trail = []
 
         return {
             "status": "success",
