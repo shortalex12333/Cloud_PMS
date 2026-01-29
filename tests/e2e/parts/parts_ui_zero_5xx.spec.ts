@@ -11,6 +11,12 @@
  * This is a critical acceptance gate: ANY 5xx error is a deployment blocker.
  *
  * Evidence: Network monitoring logs, HAR files, 5xx scan results
+ *
+ * SECURITY MODEL (New):
+ * - yacht_id is server-resolved from JWT auth (MASTER membership → TENANT role)
+ * - NO client-provided yacht_id in action payloads
+ * - All requests use Authorization: Bearer <JWT>
+ * - Monitors for server errors (5xx) as deployment gate
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -219,6 +225,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     });
 
     if (jwt) {
+      // NOTE: New security model - yacht_id derived from JWT auth
       const response = await fetch(`${API_BASE}/v1/actions/execute`, {
         method: 'POST',
         headers: {
@@ -227,7 +234,6 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
         },
         body: JSON.stringify({
           action: 'receive_part',
-          context: { yacht_id: process.env.TEST_USER_YACHT_ID },
           payload: {
             part_id: process.env.TEST_PART_ID,
             quantity: 1,
@@ -277,6 +283,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     });
 
     if (jwt) {
+      // NOTE: New security model - yacht_id derived from JWT auth
       const response = await fetch(`${API_BASE}/v1/actions/execute`, {
         method: 'POST',
         headers: {
@@ -285,7 +292,6 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
         },
         body: JSON.stringify({
           action: 'consume_part',
-          context: { yacht_id: process.env.TEST_USER_YACHT_ID },
           payload: {
             part_id: process.env.TEST_PART_ID,
             quantity: 1,

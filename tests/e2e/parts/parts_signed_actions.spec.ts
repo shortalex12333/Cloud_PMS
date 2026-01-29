@@ -7,6 +7,12 @@
  * - With valid signature (PIN/TOTP): 200 success
  *
  * Evidence: Network intercepts, screenshots of signature flows
+ *
+ * SECURITY MODEL (New):
+ * - yacht_id is server-resolved from JWT auth (MASTER membership → TENANT role)
+ * - NO client-provided yacht_id in action payloads
+ * - SIGNED actions require signature (PIN/TOTP) from Captain/Manager
+ * - Action Router enforces group permissions (READ/MUTATE/SIGNED/ADMIN)
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -38,13 +44,14 @@ async function executeActionViaAPI(
     'Content-Type': 'application/json',
   };
 
+  // NOTE: New security model - yacht_id derived from JWT auth, not client payload
+  // Server resolves: MASTER membership → TENANT role → yacht_id from auth context
   const requestBody: any = {
     action,
-    context: { yacht_id: TEST_YACHT_ID },
     payload,
   };
 
-  // Add signature if provided
+  // Add signature if provided (for SIGNED-level actions)
   if (signature) {
     requestBody.signature = signature;
   }
