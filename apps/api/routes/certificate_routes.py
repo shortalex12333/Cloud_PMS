@@ -320,11 +320,21 @@ async def debug_certificate_pipeline(
         raise HTTPException(status_code=404, detail="Certificate feature not enabled")
 
     # Check for debug mode - only allow in development
-    if os.getenv("ENVIRONMENT", "production") == "production":
+    # SECURITY: This endpoint is explicitly disabled in production
+    env = os.getenv("ENVIRONMENT", "production")
+    if env == "production":
+        logger.warning(f"[CertDebug] Blocked production access attempt: user={auth['user_id'][:8]}...")
         raise HTTPException(status_code=403, detail="Debug endpoint disabled in production")
 
+    # Log debug endpoint access for audit trail
+    logger.info(f"[CertDebug] Debug access: user={auth['user_id'][:8]}..., env={env}")
+
     query = request.query
-    yacht_id = request.yacht_id or auth["yacht_id"]
+    # SECURITY: Always use auth yacht_id - never trust request payload
+    # Even in dev mode, maintain yacht isolation invariant
+    yacht_id = auth["yacht_id"]
+    if request.yacht_id and str(request.yacht_id) != yacht_id:
+        logger.warning(f"[CertDebug] yacht_id mismatch ignored: request={request.yacht_id}, auth={yacht_id}")
 
     debug_info = {
         "feature_flag": "FEATURE_CERTIFICATES=true",
