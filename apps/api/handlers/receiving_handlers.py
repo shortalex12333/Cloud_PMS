@@ -198,7 +198,11 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
             "created_by": user_id,
         }
 
-        result = db.table("pms_receiving").insert(receiving_payload).execute()
+        try:
+            result = db.table("pms_receiving").insert(receiving_payload).execute()
+        except Exception as e:
+            logger.error(f"Failed to insert receiving: {e}", exc_info=True)
+            return map_postgrest_error(e, "INSERT_FAILED")
 
         if not result.data or len(result.data) == 0:
             return {
