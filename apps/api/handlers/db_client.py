@@ -17,12 +17,12 @@ Usage:
 import os
 import logging
 from typing import Optional
-from postgrest import PostgrestClient
+from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
 
 
-def get_user_db(user_jwt: str, yacht_id: Optional[str] = None) -> PostgrestClient:
+def get_user_db(user_jwt: str, yacht_id: Optional[str] = None) -> Client:
     """
     Create PostgREST client with user JWT for RLS enforcement.
 
@@ -50,28 +50,29 @@ def get_user_db(user_jwt: str, yacht_id: Optional[str] = None) -> PostgrestClien
     # Get tenant database URL (default to TEST_YACHT_001)
     default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
     tenant_url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    # Use service key for API key parameter (NOT for auth - just for client creation)
+    service_key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 
-    if not tenant_url:
-        raise ValueError(f"{default_yacht}_SUPABASE_URL must be set")
-
-    # Create PostgREST client with user JWT
-    # This sets Authorization: Bearer <jwt> header, enabling RLS
-    rest_url = f"{tenant_url}/rest/v1"
+    if not tenant_url or not service_key:
+        raise ValueError(f"{default_yacht}_SUPABASE_URL and SERVICE_KEY must be set")
 
     try:
-        client = PostgrestClient(rest_url)
-        # Set Authorization header with user JWT for RLS enforcement
-        client = client.auth(f"Bearer {user_jwt}")
+        # Create supabase client with service key
+        client = create_client(tenant_url, service_key)
 
-        logger.debug(f"Created RLS-enforced PostgREST client for tenant: {default_yacht}")
+        # Set user JWT as authorization header for RLS enforcement
+        # This overrides the service key for actual requests
+        client.postgrest.auth(user_jwt)
+
+        logger.debug(f"Created RLS-enforced Supabase client for tenant: {default_yacht}")
         return client
 
     except Exception as e:
-        logger.error(f"Failed to create user-scoped PostgREST client: {e}")
+        logger.error(f"Failed to create user-scoped Supabase client: {e}")
         raise ValueError(f"Failed to create database client: {str(e)}")
 
 
-def get_service_db(yacht_id: Optional[str] = None) -> PostgrestClient:
+def get_service_db(yacht_id: Optional[str] = None) -> Client:
     """
     Create PostgREST client with service key (bypasses RLS).
 
@@ -98,16 +99,13 @@ def get_service_db(yacht_id: Optional[str] = None) -> PostgrestClient:
     if not tenant_url or not service_key:
         raise ValueError(f"{default_yacht}_SUPABASE_URL and SERVICE_KEY must be set")
 
-    rest_url = f"{tenant_url}/rest/v1"
-
-    logger.warning("Creating service-key PostgREST client - RLS BYPASSED. Only use for admin tasks!")
+    logger.warning("Creating service-key Supabase client - RLS BYPASSED. Only use for admin tasks!")
 
     try:
-        client = PostgrestClient(rest_url)
-        client = client.auth(f"Bearer {service_key}")
+        client = create_client(tenant_url, service_key)
         return client
     except Exception as e:
-        logger.error(f"Failed to create service PostgREST client: {e}")
+        logger.error(f"Failed to create service Supabase client: {e}")
         raise ValueError(f"Failed to create service database client: {str(e)}")
 
 
