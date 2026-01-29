@@ -117,6 +117,37 @@ function detectShoppingListActionIntent(query: string): boolean {
   return SHOPPING_LIST_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
 }
 
+// Document action keywords - Document Lens v2
+const DOCUMENT_ACTION_KEYWORDS = [
+  'add document',
+  'upload document',
+  'create document',
+  'new document',
+  'upload file',
+  'add file',
+  'attach file',
+  'upload pdf',
+  'add doc',
+  'upload doc',
+  'document upload',
+  'file upload',
+  'update document',
+  'tag document',
+  'add document tag',
+  'delete document',
+  'remove document',
+  'get document',
+  'download document',
+  'view document',
+  'document url',
+  'link document',
+];
+
+function detectDocumentActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return DOCUMENT_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
 // Types
 interface SearchState {
   query: string;
@@ -493,24 +524,27 @@ export function useCelesteSearch(yachtId: string | null = null) {
   }, []);
 
   /**
-   * Fetch action suggestions if query has action intent (cert, WO, fault, shopping list)
+   * Fetch action suggestions if query has action intent (cert, WO, fault, shopping list, documents)
    */
   const fetchActionSuggestionsIfNeeded = useCallback(async (query: string) => {
     const wantsCert = detectCertActionIntent(query);
     const wantsWO = detectWorkOrderActionIntent(query);
     const wantsFault = detectFaultActionIntent(query);
     const wantsShoppingList = detectShoppingListActionIntent(query);
+    const wantsDocument = detectDocumentActionIntent(query);
 
-    if (!wantsCert && !wantsWO && !wantsFault && !wantsShoppingList) {
+    if (!wantsCert && !wantsWO && !wantsFault && !wantsShoppingList && !wantsDocument) {
       // Clear action suggestions if no intent
       setState(prev => ({ ...prev, actionSuggestions: [] }));
       return;
     }
 
     try {
-      // Determine domain - priority order: fault > shopping_list > cert > work_orders
+      // Determine domain - priority order: document > fault > shopping_list > cert > work_orders
       let domain: string;
-      if (wantsFault) {
+      if (wantsDocument) {
+        domain = 'documents';
+      } else if (wantsFault) {
         domain = 'faults';
       } else if (wantsShoppingList) {
         domain = 'shopping_list';
