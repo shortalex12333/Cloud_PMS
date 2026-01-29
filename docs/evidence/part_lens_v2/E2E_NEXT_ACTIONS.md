@@ -1,9 +1,9 @@
 # Part Lens v2 - E2E Tests: Next Actions Required
 
-**Date**: 2026-01-29 16:15 UTC (Updated)
+**Date**: 2026-01-29 18:45 UTC (Updated)
 **Branch**: e2e/parts-lens-playwright
-**Latest Commit**: TBD (storage state config fix pending commit)
-**Status**: ⚠️ **2 BLOCKERS FIXED - 2 BLOCKERS REMAIN**
+**Latest Commit**: 62d443c (role naming refactored: hod → chief_engineer)
+**Status**: ⚠️ **1 CRITICAL BLOCKER - Database Schema Issue**
 
 ---
 
@@ -77,25 +77,44 @@ test.describe('CREW Role', () => {
 
 ---
 
-## What You Need to Fix ❌
+## Critical Blocker ❌
 
-### Blocker 2: Test Account Roles Incorrect ❌ MANUAL FIX REQUIRED (UNCHANGED)
+### BLOCKER: MASTER Database Schema Issue - user_accounts Table
 
-**Problem**: All test accounts have role "member" instead of their expected roles.
+**Problem**: Cannot UPDATE user_accounts table due to missing column referenced by trigger.
 
-**Evidence**:
+**Error**:
 ```
-[WARNING] Expected role 'crew', but user has role 'member'
-[WARNING] Expected role 'hod', but user has role 'member'
-[WARNING] Expected role 'captain', but user has role 'member'
+{"code":"42703","message":"record \"new\" has no field \"updated_at\""}
 ```
+
+**Root Cause**:
+- Table `user_accounts` in MASTER database has an UPDATE trigger
+- Trigger tries to set `NEW.updated_at` timestamp
+- Column `updated_at` doesn't exist in table schema
+- All UPDATE operations fail via REST API
+
+**Current Test Account Roles** (MASTER database):
+```json
+[
+  {"email": "crew.tenant@alex-short.com", "role": "member"},
+  {"email": "hod.tenant@alex-short.com", "role": "member"},
+  {"email": "captain.tenant@alex-short.com", "role": "member"}
+]
+```
+
+**Required Roles**:
+- crew.tenant@alex-short.com → role='crew'
+- hod.tenant@alex-short.com → role='chief_engineer'
+- captain.tenant@alex-short.com → role='captain'
 
 **Impact**:
-- Action Router will filter actions based on role
-- Users with role "member" may not see MUTATE or SIGNED actions
-- Tests expecting specific actions will fail
+- `get_my_bootstrap` RPC returns role='member' for all test users
+- Backend API validates JWT + bootstrap → returns 422 validation error
+- All 7 suggestion tests failing with "Backend suggestions failed: 422"
+- Cannot fix roles until schema issue is resolved
 
-**Fix Required**: Update TENANT DB
+**Fix Required**: Update MASTER database schema (see SQL file below)
 
 #### Step 1: Verify Current State
 ```sql
