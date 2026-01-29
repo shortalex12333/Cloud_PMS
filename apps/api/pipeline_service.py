@@ -140,6 +140,12 @@ app.add_middleware(SlowAPIMiddleware)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTPException with structured error response"""
+    # If detail is already a structured error dict (has error_code), return it directly
+    # This prevents double-wrapping errors from receiving handlers
+    if isinstance(exc.detail, dict) and "error_code" in exc.detail:
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+    # Otherwise wrap in standard format
     return JSONResponse(
         status_code=exc.status_code,
         content={
