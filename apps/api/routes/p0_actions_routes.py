@@ -4642,11 +4642,7 @@ async def execute_action(
         if "hint" in result:
             error_response["hint"] = result["hint"]
 
-<<<<<<< HEAD
         return JSONResponse(status_code=status_code, content=error_response)
-=======
-        return JSONResponse(status_code=status_code, content=error_detail)
->>>>>>> 0a9d2a1 (fix(receiving): Use JSONResponse for error returns to avoid detail wrapping)
 
     # Add execution_id to response for E2E test tracing
     import uuid
