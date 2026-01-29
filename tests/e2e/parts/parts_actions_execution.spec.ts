@@ -31,12 +31,16 @@ if (!fs.existsSync(ARTIFACTS_DIR)) {
 }
 
 /**
- * Helper: Navigate to parts page and authenticate
+ * Helper: Navigate to base app and trigger part entity via search
+ *
+ * ARCHITECTURE: Intent-first, search-driven UI
+ * - NO /parts page exists (by design)
+ * - Navigate to base URL, use search to surface part entities
+ * - Actions appear when part entity is focused
  */
 async function navigateToParts(page: Page, role: string): Promise<void> {
-  await page.goto('/parts', { waitUntil: 'networkidle' });
-
-  // Wait for app to be ready (either parts list or login redirect)
+  // Navigate to base URL (NO /parts route)
+  await page.goto('/', { waitUntil: 'networkidle' });
   await page.waitForLoadState('domcontentloaded');
 
   // If redirected to login, auth should handle it via storage state
@@ -44,6 +48,10 @@ async function navigateToParts(page: Page, role: string): Promise<void> {
   if (currentUrl.includes('/login')) {
     throw new Error(`Unexpected redirect to login for ${role} - storage state may be invalid`);
   }
+
+  // Wait for search input to be ready
+  const searchInput = page.locator('[data-testid="search-input"], input[placeholder*="Search"]').first();
+  await searchInput.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 /**
@@ -246,6 +254,9 @@ test.describe('Part Actions Execution (Chief Engineer)', () => {
   });
 
   test('receive_part: Duplicate idempotency_key (409)', async ({ page }) => {
+    // Navigate to app
+    await navigateToParts(page, 'chief_engineer');
+
     // Get JWT
     const jwt = await getJWTFromPage(page);
 
@@ -359,6 +370,9 @@ test.describe('Part Actions Execution (Chief Engineer)', () => {
   });
 
   test('consume_part: Insufficient stock (409)', async ({ page }) => {
+    // Navigate to app
+    await navigateToParts(page, 'chief_engineer');
+
     // Get JWT
     const jwt = await getJWTFromPage(page);
 
@@ -404,6 +418,9 @@ test.describe('Part Actions Execution (Chief Engineer)', () => {
   });
 
   test('All action executions: Zero 5xx errors', async ({ page }) => {
+    // Navigate to app
+    await navigateToParts(page, 'chief_engineer');
+
     // Get JWT
     const jwt = await getJWTFromPage(page);
 
