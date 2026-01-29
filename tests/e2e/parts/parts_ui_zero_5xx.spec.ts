@@ -456,68 +456,185 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
   });
 });
 
-test.describe('Zero 5xx Errors: Multi-Role Validation', () => {
-  const roles: Array<'crew' | 'hod' | 'captain'> = ['crew', 'hod', 'captain'];
+// Multi-Role Validation: CREW
+test.describe('Zero 5xx Errors: CREW Role', () => {
+  test.use({
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'crew-state.json'),
+  });
 
-  for (const role of roles) {
-    test(`${role.toUpperCase()}: Zero 5xx across basic flows`, async ({ page }) => {
-      // Login as role
-      const authState = await loginAsRole(role);
+  test('CREW: Zero 5xx across basic flows', async ({ page }) => {
+    const monitor = new NetworkMonitor();
+    monitor.attach(page);
 
-      // Set storage state
-      await page.context().addCookies([]);
+    // Navigate to parts
+    await navigateToParts(page, 'crew');
 
-      const monitor = new NetworkMonitor();
-      monitor.attach(page);
+    // Search
+    await searchForPart(page);
 
-      // Navigate to parts
-      await navigateToParts(page, role);
+    // Wait for network activity
+    await page.waitForTimeout(2000);
 
-      // Search
-      await searchForPart(page);
-
-      // Wait for network activity
-      await page.waitForTimeout(2000);
-
-      // Make API calls
-      const jwt = await page.evaluate(() => {
-        const authKey = Object.keys(localStorage).find((key) => key.includes('auth-token'));
-        if (!authKey) return null;
-        const authData = JSON.parse(localStorage.getItem(authKey) || '{}');
-        return authData.access_token || null;
-      });
-
-      if (jwt) {
-        // Test suggestions endpoint
-        const response = await fetch(
-          `${API_BASE}/v1/parts/suggestions?part_id=${process.env.TEST_PART_ID}`,
-          {
-            headers: { 'Authorization': `Bearer ${jwt}` },
-          }
-        );
-
-        monitor.getResponses().push({
-          url: `${API_BASE}/v1/parts/suggestions`,
-          status: response.status,
-          timestamp: new Date().toISOString(),
-        });
-
-        // Assert not 5xx
-        expect(response.status).toBeLessThan(500);
-      }
-
-      // Save evidence
-      monitor.saveEvidence(`zero_5xx_${role}_flows.json`);
-
-      // Assert zero 5xx
-      const errors5xx = monitor.get5xxErrors();
-      expect(errors5xx).toHaveLength(0);
-
-      // Take screenshot
-      await page.screenshot({
-        path: path.join(ARTIFACTS_DIR, `zero_5xx_${role}_flows.png`),
-        fullPage: true,
-      });
+    // Make API calls
+    const jwt = await page.evaluate(() => {
+      const authKey = Object.keys(localStorage).find((key) => key.includes('auth-token'));
+      if (!authKey) return null;
+      const authData = JSON.parse(localStorage.getItem(authKey) || '{}');
+      return authData.access_token || null;
     });
-  }
+
+    if (jwt) {
+      // Test suggestions endpoint
+      const response = await fetch(
+        `${API_BASE}/v1/parts/suggestions?part_id=${process.env.TEST_PART_ID}`,
+        {
+          headers: { 'Authorization': `Bearer ${jwt}` },
+        }
+      );
+
+      monitor.getResponses().push({
+        url: `${API_BASE}/v1/parts/suggestions`,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Assert not 5xx
+      expect(response.status).toBeLessThan(500);
+    }
+
+    // Save evidence
+    monitor.saveEvidence(`zero_5xx_crew_flows.json`);
+
+    // Assert zero 5xx
+    const errors5xx = monitor.get5xxErrors();
+    expect(errors5xx).toHaveLength(0);
+
+    // Take screenshot
+    await page.screenshot({
+      path: path.join(ARTIFACTS_DIR, `zero_5xx_crew_flows.png`),
+      fullPage: true,
+    });
+  });
+});
+
+// Multi-Role Validation: HOD
+test.describe('Zero 5xx Errors: HOD Role', () => {
+  test.use({
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
+  });
+
+  test('HOD: Zero 5xx across basic flows', async ({ page }) => {
+    const monitor = new NetworkMonitor();
+    monitor.attach(page);
+
+    // Navigate to parts
+    await navigateToParts(page, 'hod');
+
+    // Search
+    await searchForPart(page);
+
+    // Wait for network activity
+    await page.waitForTimeout(2000);
+
+    // Make API calls
+    const jwt = await page.evaluate(() => {
+      const authKey = Object.keys(localStorage).find((key) => key.includes('auth-token'));
+      if (!authKey) return null;
+      const authData = JSON.parse(localStorage.getItem(authKey) || '{}');
+      return authData.access_token || null;
+    });
+
+    if (jwt) {
+      // Test suggestions endpoint
+      const response = await fetch(
+        `${API_BASE}/v1/parts/suggestions?part_id=${process.env.TEST_PART_ID}`,
+        {
+          headers: { 'Authorization': `Bearer ${jwt}` },
+        }
+      );
+
+      monitor.getResponses().push({
+        url: `${API_BASE}/v1/parts/suggestions`,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Assert not 5xx
+      expect(response.status).toBeLessThan(500);
+    }
+
+    // Save evidence
+    monitor.saveEvidence(`zero_5xx_hod_flows.json`);
+
+    // Assert zero 5xx
+    const errors5xx = monitor.get5xxErrors();
+    expect(errors5xx).toHaveLength(0);
+
+    // Take screenshot
+    await page.screenshot({
+      path: path.join(ARTIFACTS_DIR, `zero_5xx_hod_flows.png`),
+      fullPage: true,
+    });
+  });
+});
+
+// Multi-Role Validation: CAPTAIN
+test.describe('Zero 5xx Errors: CAPTAIN Role', () => {
+  test.use({
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'captain-state.json'),
+  });
+
+  test('CAPTAIN: Zero 5xx across basic flows', async ({ page }) => {
+    const monitor = new NetworkMonitor();
+    monitor.attach(page);
+
+    // Navigate to parts
+    await navigateToParts(page, 'captain');
+
+    // Search
+    await searchForPart(page);
+
+    // Wait for network activity
+    await page.waitForTimeout(2000);
+
+    // Make API calls
+    const jwt = await page.evaluate(() => {
+      const authKey = Object.keys(localStorage).find((key) => key.includes('auth-token'));
+      if (!authKey) return null;
+      const authData = JSON.parse(localStorage.getItem(authKey) || '{}');
+      return authData.access_token || null;
+    });
+
+    if (jwt) {
+      // Test suggestions endpoint
+      const response = await fetch(
+        `${API_BASE}/v1/parts/suggestions?part_id=${process.env.TEST_PART_ID}`,
+        {
+          headers: { 'Authorization': `Bearer ${jwt}` },
+        }
+      );
+
+      monitor.getResponses().push({
+        url: `${API_BASE}/v1/parts/suggestions`,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Assert not 5xx
+      expect(response.status).toBeLessThan(500);
+    }
+
+    // Save evidence
+    monitor.saveEvidence(`zero_5xx_captain_flows.json`);
+
+    // Assert zero 5xx
+    const errors5xx = monitor.get5xxErrors();
+    expect(errors5xx).toHaveLength(0);
+
+    // Take screenshot
+    await page.screenshot({
+      path: path.join(ARTIFACTS_DIR, `zero_5xx_captain_flows.png`),
+      fullPage: true,
+    });
+  });
 });

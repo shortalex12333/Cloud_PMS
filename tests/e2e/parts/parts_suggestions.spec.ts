@@ -95,72 +95,147 @@ const ROLE_ACTION_MATRIX = {
   },
 };
 
-test.describe('Part Suggestions - Role-Based Visibility', () => {
-  test.use({ baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai' });
+// Backend-Frontend Parity: CREW
+test.describe('Part Suggestions - CREW Role', () => {
+  test.use({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
+    storageState: './test-results/.auth-states/crew-state.json',
+  });
 
-  for (const role of ['crew', 'hod', 'captain'] as Role[]) {
-    test(`${role.toUpperCase()}: Backend-frontend parity`, async ({ page, context }) => {
-      // Step 1: Login as role
-      console.log(`[TEST] Logging in as ${role}...`);
-      const authState = await loginAsRole(role);
-      await context.addCookies([
-        {
-          name: 'auth-token',
-          value: authState.tokens.accessToken,
-          domain: new URL(process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai').hostname,
-          path: '/',
-        },
-      ]);
+  test('CREW: Backend-frontend parity', async ({ page }) => {
+    // Navigate to app (already authenticated via storage state)
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
 
-      // Step 2: Navigate to app
-      await navigateWithAuth(page, role);
+    // Get backend suggestions
+    const jwt = await getJWTFromPage(page);
+    const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
 
-      // Step 3: Get backend suggestions
-      const jwt = await getJWTFromPage(page);
-      const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
+    console.log(`[BACKEND] crew sees actions:`, backendActions);
 
-      console.log(`[BACKEND] ${role} sees actions:`, backendActions);
+    // Get UI rendered actions
+    const uiActions = await getUIRenderedActions(page);
 
-      // Step 4: Get UI rendered actions
-      const uiActions = await getUIRenderedActions(page);
+    console.log(`[UI] crew sees actions:`, uiActions);
 
-      console.log(`[UI] ${role} sees actions:`, uiActions);
+    // Assert backend-frontend parity
+    expect(new Set(uiActions)).toEqual(new Set(backendActions));
 
-      // Step 5: Assert backend-frontend parity
-      // UI should show exactly what backend returns (set equality)
-      expect(new Set(uiActions)).toEqual(new Set(backendActions));
+    // Verify role-specific expectations
+    const expectations = ROLE_ACTION_MATRIX['crew'];
+    for (const action of expectations.shouldHave) {
+      expect(backendActions).toContain(action);
+    }
+    for (const action of expectations.shouldNotHave) {
+      expect(backendActions).not.toContain(action);
+    }
 
-      // Step 6: Verify role-specific expectations
-      const expectations = ROLE_ACTION_MATRIX[role];
-
-      for (const action of expectations.shouldHave) {
-        expect(backendActions).toContain(action);
-      }
-
-      for (const action of expectations.shouldNotHave) {
-        expect(backendActions).not.toContain(action);
-      }
-
-      // Take screenshot for evidence
-      await page.screenshot({
-        path: `test-results/artifacts/parts-suggestions-${role}.png`,
-        fullPage: true,
-      });
+    // Take screenshot
+    await page.screenshot({
+      path: `test-results/artifacts/parts-suggestions-crew.png`,
+      fullPage: true,
     });
-  }
+  });
+});
 
-  test('CREW: Cannot see MUTATE actions', async ({ page, context }) => {
-    const authState = await loginAsRole('crew');
-    await context.addCookies([
-      {
-        name: 'auth-token',
-        value: authState.tokens.accessToken,
-        domain: new URL(process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai').hostname,
-        path: '/',
-      },
-    ]);
+// Backend-Frontend Parity: HOD
+test.describe('Part Suggestions - HOD Role', () => {
+  test.use({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
+    storageState: './test-results/.auth-states/hod-state.json',
+  });
 
-    await navigateWithAuth(page, 'crew');
+  test('HOD: Backend-frontend parity', async ({ page }) => {
+    // Navigate to app (already authenticated via storage state)
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Get backend suggestions
+    const jwt = await getJWTFromPage(page);
+    const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
+
+    console.log(`[BACKEND] hod sees actions:`, backendActions);
+
+    // Get UI rendered actions
+    const uiActions = await getUIRenderedActions(page);
+
+    console.log(`[UI] hod sees actions:`, uiActions);
+
+    // Assert backend-frontend parity
+    expect(new Set(uiActions)).toEqual(new Set(backendActions));
+
+    // Verify role-specific expectations
+    const expectations = ROLE_ACTION_MATRIX['hod'];
+    for (const action of expectations.shouldHave) {
+      expect(backendActions).toContain(action);
+    }
+    for (const action of expectations.shouldNotHave) {
+      expect(backendActions).not.toContain(action);
+    }
+
+    // Take screenshot
+    await page.screenshot({
+      path: `test-results/artifacts/parts-suggestions-hod.png`,
+      fullPage: true,
+    });
+  });
+});
+
+// Backend-Frontend Parity: CAPTAIN
+test.describe('Part Suggestions - CAPTAIN Role', () => {
+  test.use({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
+    storageState: './test-results/.auth-states/captain-state.json',
+  });
+
+  test('CAPTAIN: Backend-frontend parity', async ({ page }) => {
+    // Navigate to app (already authenticated via storage state)
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Get backend suggestions
+    const jwt = await getJWTFromPage(page);
+    const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
+
+    console.log(`[BACKEND] captain sees actions:`, backendActions);
+
+    // Get UI rendered actions
+    const uiActions = await getUIRenderedActions(page);
+
+    console.log(`[UI] captain sees actions:`, uiActions);
+
+    // Assert backend-frontend parity
+    expect(new Set(uiActions)).toEqual(new Set(backendActions));
+
+    // Verify role-specific expectations
+    const expectations = ROLE_ACTION_MATRIX['captain'];
+    for (const action of expectations.shouldHave) {
+      expect(backendActions).toContain(action);
+    }
+    for (const action of expectations.shouldNotHave) {
+      expect(backendActions).not.toContain(action);
+    }
+
+    // Take screenshot
+    await page.screenshot({
+      path: `test-results/artifacts/parts-suggestions-captain.png`,
+      fullPage: true,
+    });
+  });
+});
+
+});
+
+// Role-Specific Action Tests: CREW
+test.describe('Part Suggestions - CREW Action Restrictions', () => {
+  test.use({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
+    storageState: './test-results/.auth-states/crew-state.json',
+  });
+
+  test('CREW: Cannot see MUTATE actions', async ({ page }) => {
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
 
     const jwt = await getJWTFromPage(page);
     const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
@@ -177,19 +252,18 @@ test.describe('Part Suggestions - Role-Based Visibility', () => {
       expect(backendActions).not.toContain(action);
     }
   });
+});
 
-  test('HOD: Can see MUTATE but not SIGNED actions', async ({ page, context }) => {
-    const authState = await loginAsRole('hod');
-    await context.addCookies([
-      {
-        name: 'auth-token',
-        value: authState.tokens.accessToken,
-        domain: new URL(process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai').hostname,
-        path: '/',
-      },
-    ]);
+// Role-Specific Action Tests: HOD
+test.describe('Part Suggestions - HOD Action Permissions', () => {
+  test.use({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
+    storageState: './test-results/.auth-states/hod-state.json',
+  });
 
-    await navigateWithAuth(page, 'hod');
+  test('HOD: Can see MUTATE but not SIGNED actions', async ({ page }) => {
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
 
     const jwt = await getJWTFromPage(page);
     const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
@@ -203,44 +277,9 @@ test.describe('Part Suggestions - Role-Based Visibility', () => {
     expect(backendActions).not.toContain('adjust_stock_quantity');
   });
 
-  test('CAPTAIN: Can see SIGNED actions', async ({ page, context }) => {
-    const authState = await loginAsRole('captain');
-    await context.addCookies([
-      {
-        name: 'auth-token',
-        value: authState.tokens.accessToken,
-        domain: new URL(process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai').hostname,
-        path: '/',
-      },
-    ]);
-
-    await navigateWithAuth(page, 'captain');
-
-    const jwt = await getJWTFromPage(page);
-    const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
-
-    // Assert CAPTAIN sees SIGNED actions
-    expect(backendActions).toContain('write_off_part');
-    expect(backendActions).toContain('adjust_stock_quantity');
-
-    // Assert CAPTAIN also sees MUTATE actions (role hierarchy)
-    expect(backendActions).toContain('receive_part');
-    expect(backendActions).toContain('consume_part');
-  });
-
-  test('UI does not invent actions not in backend response', async ({ page, context }) => {
-    // Login as HOD
-    const authState = await loginAsRole('hod');
-    await context.addCookies([
-      {
-        name: 'auth-token',
-        value: authState.tokens.accessToken,
-        domain: new URL(process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai').hostname,
-        path: '/',
-      },
-    ]);
-
-    await navigateWithAuth(page, 'hod');
+  test('UI does not invent actions not in backend response', async ({ page }) => {
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
 
     // Intercept backend API call
     let backendResponse: string[] = [];
@@ -282,5 +321,29 @@ test.describe('Part Suggestions - Role-Based Visibility', () => {
     for (const backendAction of backendResponse) {
       expect(uiActions).toContain(backendAction);
     }
+  });
+});
+
+// Role-Specific Action Tests: CAPTAIN
+test.describe('Part Suggestions - CAPTAIN Action Permissions', () => {
+  test.use({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
+    storageState: './test-results/.auth-states/captain-state.json',
+  });
+
+  test('CAPTAIN: Can see SIGNED actions', async ({ page }) => {
+    await page.goto('/parts');
+    await page.waitForLoadState('domcontentloaded');
+
+    const jwt = await getJWTFromPage(page);
+    const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
+
+    // Assert CAPTAIN sees SIGNED actions
+    expect(backendActions).toContain('write_off_part');
+    expect(backendActions).toContain('adjust_stock_quantity');
+
+    // Assert CAPTAIN also sees MUTATE actions (role hierarchy)
+    expect(backendActions).toContain('receive_part');
+    expect(backendActions).toContain('consume_part');
   });
 });
