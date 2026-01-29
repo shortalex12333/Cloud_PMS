@@ -148,7 +148,7 @@ test.describe('Storage Access: HOD Role', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), '.playwright', 'storage', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
   });
 
   test('HOD: Can list part photos with yacht_id in path', async ({ page }) => {
@@ -262,7 +262,7 @@ test.describe('Storage Access: Manager Role', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), '.playwright', 'storage', 'manager-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'manager-state.json'),
   });
 
   test('Manager: Can delete receiving label (204)', async ({ page }) => {
@@ -334,7 +334,7 @@ test.describe('Storage Access: Cross-Yacht RLS', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), '.playwright', 'storage', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
   });
 
   test('Cross-yacht path access is BLOCKED (403)', async ({ page }) => {

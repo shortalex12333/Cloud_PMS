@@ -125,8 +125,8 @@ test.describe('Signed Actions (Captain)', () => {
   });
 
   test.use({
-    // Use Captain storage state
-    storageState: path.join(process.cwd(), '.playwright', 'storage', 'captain-state.json'),
+    // Use Captain storage state (saved by global-setup)
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'captain-state.json'),
   });
 
   test('write_off_part: Without signature (400)', async ({ page }) => {

@@ -135,7 +135,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), '.playwright', 'storage', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
   });
 
   test('Flow 1: Search → View Details (Zero 5xx)', async ({ page }) => {
