@@ -128,14 +128,14 @@ async function searchForPart(page: Page, partName: string = 'Engine Oil Filter')
 }
 
 test.describe('Zero 5xx Errors: Core User Flows', () => {
-  let hodAuthState: RoleAuthState;
+  let chiefEngineerAuthState: RoleAuthState;
 
   test.beforeAll(async () => {
-    hodAuthState = await loginAsRole('hod');
+    chiefEngineerAuthState = await loginAsRole('chief_engineer');
   });
 
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
   });
 
   test('Flow 1: Search → View Details (Zero 5xx)', async ({ page }) => {
@@ -143,7 +143,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     monitor.attach(page);
 
     // Navigate to parts
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Search for part
     await searchForPart(page, 'Engine Oil Filter');
@@ -179,7 +179,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     const monitor = new NetworkMonitor();
     monitor.attach(page);
 
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
     await searchForPart(page);
 
     // Wait for suggestions to load
@@ -214,7 +214,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     const monitor = new NetworkMonitor();
     monitor.attach(page);
 
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Make a direct API call to receive part (to avoid UI dependencies)
     const jwt = await page.evaluate(() => {
@@ -272,7 +272,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     const monitor = new NetworkMonitor();
     monitor.attach(page);
 
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Make direct API call to consume part
     const jwt = await page.evaluate(() => {
@@ -328,7 +328,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     const monitor = new NetworkMonitor();
     monitor.attach(page);
 
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Make API call to low stock endpoint
     const jwt = await page.evaluate(() => {
@@ -379,7 +379,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
     const harPath = path.join(ARTIFACTS_DIR, 'comprehensive_flow.har');
 
     // Navigate to parts
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Search for part
     await searchForPart(page, 'Engine Oil Filter');
@@ -518,17 +518,17 @@ test.describe('Zero 5xx Errors: CREW Role', () => {
 });
 
 // Multi-Role Validation: HOD
-test.describe('Zero 5xx Errors: HOD Role', () => {
+test.describe('Zero 5xx Errors: Chief Engineer Role', () => {
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
   });
 
-  test('HOD: Zero 5xx across basic flows', async ({ page }) => {
+  test('Chief Engineer: Zero 5xx across basic flows', async ({ page }) => {
     const monitor = new NetworkMonitor();
     monitor.attach(page);
 
     // Navigate to parts
-    await navigateToParts(page, 'hod');
+    await navigateToParts(page, 'chief_engineer');
 
     // Search
     await searchForPart(page);
@@ -564,7 +564,7 @@ test.describe('Zero 5xx Errors: HOD Role', () => {
     }
 
     // Save evidence
-    monitor.saveEvidence(`zero_5xx_hod_flows.json`);
+    monitor.saveEvidence(`zero_5xx_chief_engineer_flows.json`);
 
     // Assert zero 5xx
     const errors5xx = monitor.get5xxErrors();
@@ -572,7 +572,7 @@ test.describe('Zero 5xx Errors: HOD Role', () => {
 
     // Take screenshot
     await page.screenshot({
-      path: path.join(ARTIFACTS_DIR, `zero_5xx_hod_flows.png`),
+      path: path.join(ARTIFACTS_DIR, `zero_5xx_chief_engineer_flows.png`),
       fullPage: true,
     });
   });

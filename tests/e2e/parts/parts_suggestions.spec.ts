@@ -5,7 +5,7 @@
  *
  * Validates:
  * - Crew: Only READ actions visible (no MUTATE/SIGNED)
- * - HOD: MUTATE actions visible (receive_part, consume_part)
+ * - Chief Engineer: MUTATE actions visible (receive_part, consume_part)
  * - Captain: SIGNED actions visible (write_off_part, adjust_stock_quantity)
  * - Backend-frontend parity: UI shows exactly what backend returns (no invented actions)
  */
@@ -79,7 +79,7 @@ const ROLE_ACTION_MATRIX = {
     shouldHave: ['view_part_details'],
     shouldNotHave: ['receive_part', 'consume_part', 'write_off_part', 'adjust_stock_quantity'],
   },
-  hod: {
+  chief_engineer: {
     shouldHave: ['view_part_details', 'receive_part', 'consume_part'],
     shouldNotHave: ['write_off_part', 'adjust_stock_quantity'],
   },
@@ -139,13 +139,13 @@ test.describe('Part Suggestions - CREW Role', () => {
 });
 
 // Backend-Frontend Parity: HOD
-test.describe('Part Suggestions - HOD Role', () => {
+test.describe('Part Suggestions - Chief Engineer Role', () => {
   test.use({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
-    storageState: './test-results/.auth-states/hod-state.json',
+    storageState: './test-results/.auth-states/chief-engineer-state.json',
   });
 
-  test('HOD: Backend-frontend parity', async ({ page }) => {
+  test('Chief Engineer: Backend-frontend parity', async ({ page }) => {
     // Navigate to app (already authenticated via storage state)
     await page.goto('/parts');
     await page.waitForLoadState('domcontentloaded');
@@ -154,18 +154,18 @@ test.describe('Part Suggestions - HOD Role', () => {
     const jwt = await getJWTFromPage(page);
     const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
 
-    console.log(`[BACKEND] hod sees actions:`, backendActions);
+    console.log(`[BACKEND] chief_engineer sees actions:`, backendActions);
 
     // Get UI rendered actions
     const uiActions = await getUIRenderedActions(page);
 
-    console.log(`[UI] hod sees actions:`, uiActions);
+    console.log(`[UI] chief_engineer sees actions:`, uiActions);
 
     // Assert backend-frontend parity
     expect(new Set(uiActions)).toEqual(new Set(backendActions));
 
     // Verify role-specific expectations
-    const expectations = ROLE_ACTION_MATRIX['hod'];
+    const expectations = ROLE_ACTION_MATRIX['chief_engineer'];
     for (const action of expectations.shouldHave) {
       expect(backendActions).toContain(action);
     }
@@ -253,24 +253,24 @@ test.describe('Part Suggestions - CREW Action Restrictions', () => {
 });
 
 // Role-Specific Action Tests: HOD
-test.describe('Part Suggestions - HOD Action Permissions', () => {
+test.describe('Part Suggestions - Chief Engineer Action Permissions', () => {
   test.use({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
-    storageState: './test-results/.auth-states/hod-state.json',
+    storageState: './test-results/.auth-states/chief-engineer-state.json',
   });
 
-  test('HOD: Can see MUTATE but not SIGNED actions', async ({ page }) => {
+  test('Chief Engineer: Can see MUTATE but not SIGNED actions', async ({ page }) => {
     await page.goto('/parts');
     await page.waitForLoadState('domcontentloaded');
 
     const jwt = await getJWTFromPage(page);
     const backendActions = await getBackendSuggestions(jwt, TEST_PART_ID);
 
-    // Assert HOD sees MUTATE actions
+    // Assert Chief Engineer sees MUTATE actions
     expect(backendActions).toContain('receive_part');
     expect(backendActions).toContain('consume_part');
 
-    // Assert HOD does NOT see SIGNED actions
+    // Assert Chief Engineer does NOT see SIGNED actions
     expect(backendActions).not.toContain('write_off_part');
     expect(backendActions).not.toContain('adjust_stock_quantity');
   });

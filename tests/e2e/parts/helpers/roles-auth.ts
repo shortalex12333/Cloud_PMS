@@ -3,7 +3,7 @@
  * =======================================================
  * Provides login and storage state management for different roles:
  * - Crew: Read-only, no MUTATE/SIGNED actions
- * - HOD: Can execute MUTATE actions
+ * - Chief Engineer: Can execute MUTATE actions (head of engineering dept)
  * - Captain: Can execute SIGNED actions
  * - Manager: Storage delete permissions
  */
@@ -13,7 +13,7 @@ import { login, getBootstrap, AuthTokens, UserBootstrap } from '../../../helpers
 import * as fs from 'fs';
 import * as path from 'path';
 
-export type Role = 'crew' | 'hod' | 'captain' | 'manager';
+export type Role = 'crew' | 'chief_engineer' | 'captain' | 'manager';
 
 export interface RoleAuthState {
   tokens: AuthTokens;
@@ -170,7 +170,7 @@ export async function getJWTFromPage(page: Page): Promise<string> {
  * Setup all role storage states (run once in global setup)
  */
 export async function setupAllRoleStorageStates(): Promise<void> {
-  const roles: Role[] = ['crew', 'hod', 'captain'];
+  const roles: Role[] = ['crew', 'chief_engineer', 'captain'];
 
   // Try manager, but don't fail if not available
   const managerEmail = process.env.MANAGER_EMAIL;
