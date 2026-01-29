@@ -1186,18 +1186,22 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
             return map_postgrest_error(e, "RLS_CLIENT_ERROR")
 
         # Get receiving record (NO JOIN to auth tables - violates "no FK to tenant auth.users" rule)
-        recv_result = db.table("pms_receiving").select(
-            "*"
-        ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "*"
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).execute()
 
-        if not recv_result.data:
-            return {
-                "status": "error",
-                "error_code": "NOT_FOUND",
-                "message": "Receiving record not found"
-            }
+            if not recv_result.data or len(recv_result.data) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "NOT_FOUND",
+                    "message": "Receiving record not found"
+                }
 
-        receiving = recv_result.data
+            receiving = recv_result.data[0]  # Get first record
+        except Exception as e:
+            logger.error(f"Failed to fetch receiving record: {e}")
+            return map_postgrest_error(e, "RECEIVING_FETCH_ERROR")
         # received_by field contains user_id - frontend can look up name/role if needed
 
         # Get line items (gracefully handle if table doesn't exist)
