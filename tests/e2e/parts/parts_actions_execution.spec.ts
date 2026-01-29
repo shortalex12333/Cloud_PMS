@@ -199,7 +199,7 @@ test.describe('Part Actions Execution (Chief Engineer)', () => {
 
   test.use({
     // Use Chief Engineer storage state (saved by global-setup)
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief_engineer-state.json'),
   });
 
   test('receive_part: Success with unique idempotency_key (201)', async ({ page, context }) => {

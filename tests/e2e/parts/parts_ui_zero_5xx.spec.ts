@@ -135,7 +135,7 @@ test.describe('Zero 5xx Errors: Core User Flows', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief_engineer-state.json'),
   });
 
   test('Flow 1: Search → View Details (Zero 5xx)', async ({ page }) => {
@@ -520,7 +520,7 @@ test.describe('Zero 5xx Errors: CREW Role', () => {
 // Multi-Role Validation: HOD
 test.describe('Zero 5xx Errors: Chief Engineer Role', () => {
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief_engineer-state.json'),
   });
 
   test('Chief Engineer: Zero 5xx across basic flows', async ({ page }) => {

@@ -148,7 +148,7 @@ test.describe('Storage Access: Chief Engineer Role', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief_engineer-state.json'),
   });
 
   test('Chief Engineer: Can list part photos with yacht_id in path', async ({ page }) => {
@@ -334,7 +334,7 @@ test.describe('Storage Access: Cross-Yacht RLS', () => {
   });
 
   test.use({
-    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief-engineer-state.json'),
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'chief_engineer-state.json'),
   });
 
   test('Cross-yacht path access is BLOCKED (403)', async ({ page }) => {

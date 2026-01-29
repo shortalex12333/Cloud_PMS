@@ -142,7 +142,7 @@ test.describe('Part Suggestions - CREW Role', () => {
 test.describe('Part Suggestions - Chief Engineer Role', () => {
   test.use({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
-    storageState: './test-results/.auth-states/chief-engineer-state.json',
+    storageState: './test-results/.auth-states/chief_engineer-state.json',
   });
 
   test('Chief Engineer: Backend-frontend parity', async ({ page }) => {
@@ -256,7 +256,7 @@ test.describe('Part Suggestions - CREW Action Restrictions', () => {
 test.describe('Part Suggestions - Chief Engineer Action Permissions', () => {
   test.use({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://app.celeste7.ai',
-    storageState: './test-results/.auth-states/chief-engineer-state.json',
+    storageState: './test-results/.auth-states/chief_engineer-state.json',
   });
 
   test('Chief Engineer: Can see MUTATE but not SIGNED actions', async ({ page }) => {
