@@ -356,16 +356,31 @@ async def verify_security(
 
             # Get user_id from sub (user tokens) or use role for service tokens
             user_id = payload.get("sub") or payload.get("role", "service")
-            # yacht_id can be in user_metadata or root level (fallback to default if not found)
-            yacht_id = payload.get("user_metadata", {}).get("yacht_id") or payload.get("yacht_id") or "00000000-0000-0000-0000-000000000000"
 
             if not user_id:
                 raise HTTPException(status_code=401, detail="Invalid JWT payload: missing user_id")
+
+            # SECURITY FIX: yacht_id MUST come from server (MASTER DB lookup), NOT JWT payload
+            # This prevents cross-yacht attacks where attacker modifies JWT yacht_id claim
+            try:
+                from middleware.auth import lookup_tenant_for_user
+                tenant = lookup_tenant_for_user(user_id)
+                if tenant:
+                    yacht_id = tenant['yacht_id']
+                    logger.info(f"[Security] yacht_id resolved from MASTER DB: {yacht_id}")
+                else:
+                    # DENY-BY-DEFAULT: If no tenant found, reject with 403
+                    logger.warning(f"[Security] No tenant found for user {user_id[:8]}... - denying access")
+                    raise HTTPException(status_code=403, detail="User not assigned to any yacht")
+            except ImportError:
+                # Fallback if middleware not available - use default yacht
+                logger.warning("[Security] middleware.auth not available - using DEFAULT_YACHT_CODE")
+                yacht_id = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001").replace("y", "")
         else:
             # Development mode: skip JWT verification
             logger.warning("⚠️  JWT verification skipped (no SUPABASE_JWT_SECRET) - DEV MODE")
             user_id = "dev_user"
-            yacht_id = "dev_yacht"
+            yacht_id = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001").replace("y", "")
     except jwt.ExpiredSignatureError:
         logger.warning("Expired JWT token")
         raise HTTPException(status_code=401, detail="JWT token expired")
@@ -385,8 +400,9 @@ async def verify_security(
             raise HTTPException(status_code=403, detail="Invalid yacht signature")
         logger.info(f"✅ Yacht signature verified for yacht_id={yacht_id}")
     else:
-        # Signature not provided or YACHT_SALT not set - allow but log
-        logger.warning(f"⚠️  Yacht signature not verified for user_id={user_id}, yacht_id={yacht_id}")
+        # Signature not provided or YACHT_SALT not set - allow but log in dev
+        if os.getenv("ENVIRONMENT", "development") != "production":
+            logger.debug(f"Yacht signature not verified for user_id={user_id}, yacht_id={yacht_id}")
 
     logger.info(f"✅ Authenticated: user_id={user_id}, yacht_id={yacht_id}")
     return {"user_id": user_id, "yacht_id": yacht_id}

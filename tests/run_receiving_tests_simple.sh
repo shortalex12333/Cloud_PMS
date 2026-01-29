@@ -45,25 +45,28 @@ fi
 echo "✅ Got real JWT (${#REAL_JWT} chars)"
 echo ""
 
-# Export same JWT for all personas (simplified approach)
-# This user has chief_engineer + captain roles so can perform all actions
-export CREW_JWT="$REAL_JWT"
-export DECKHAND_JWT="$REAL_JWT"
-export STEWARD_JWT="$REAL_JWT"
-export ENGINEER_JWT="$REAL_JWT"
-export ETO_JWT="$REAL_JWT"
+# Use real crew-only JWT for crew tests (user 57e82f78 has ONLY crew role, is_hod=False)
+export CREW_JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3Z6c29oYXZ0dW90b2NncmZrZnlkLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJzdWIiOiI1N2U4MmY3OC0wYTJkLTRhN2MtYTQyOC02Mjg3NjIxZDA2YzUiLCJpYXQiOjE3Njk2OTc5MTcsImV4cCI6MTc2OTc4NDMxNywiZW1haWwiOiJjcmV3LnRlc3RAYWxleC1zaG9ydC5jb20iLCJ1c2VyX21ldGFkYXRhIjp7InlhY2h0X2lkIjoiODVmZTExMTktYjA0Yy00MWFjLTgwZjEtODI5ZDIzMzIyNTk4Iiwicm9sZSI6ImNyZXcifX0.n1bamLhaADvdRBtad4qKY-9L9C8iUfFwaTBBI5JN_KA"
+
+# Use real HOD JWT (x@alex-short.com has chief_engineer role, is_hod=True)
 export CHIEF_ENGINEER_JWT="$REAL_JWT"
-export CHIEF_OFFICER_JWT="$REAL_JWT"
-export CHIEF_STEWARD_JWT="$REAL_JWT"
-export PURSER_JWT="$REAL_JWT"
 export CAPTAIN_JWT="$REAL_JWT"
+export PURSER_JWT="$REAL_JWT"
 export MANAGER_JWT="$REAL_JWT"
 
-# For edge cases, use same JWT (tests will verify behavior, not just auth)
-export INACTIVE_JWT="$REAL_JWT"
-export EXPIRED_JWT="$REAL_JWT"
-export WRONG_YACHT_JWT="$REAL_JWT"
-export MIXED_ROLE_JWT="$REAL_JWT"
+# Other personas use same JWTs
+export DECKHAND_JWT="$CREW_JWT"
+export STEWARD_JWT="$CREW_JWT"
+export ENGINEER_JWT="$CREW_JWT"
+export ETO_JWT="$CREW_JWT"
+export CHIEF_OFFICER_JWT="$CHIEF_ENGINEER_JWT"
+export CHIEF_STEWARD_JWT="$CHIEF_ENGINEER_JWT"
+
+# Edge cases
+export INACTIVE_JWT="$CREW_JWT"
+export EXPIRED_JWT="$CREW_JWT"
+export WRONG_YACHT_JWT="$CREW_JWT"
+export MIXED_ROLE_JWT="$CAPTAIN_JWT"
 
 echo "✅ All JWTs configured"
 echo ""
