@@ -1199,39 +1199,61 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
 
         # Get receiving record - RLS automatically filters by yacht_id
         # If receiving_id not in user's yacht scope → RLS returns 0 rows → 404
-        recv_result = db.table("pms_receiving").select(
-            "*"
-        ).eq("id", receiving_id).execute()
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "*"
+            ).eq("id", receiving_id).execute()
 
-        if not recv_result.data or len(recv_result.data) == 0:
-            # Receiving not found in yacht scope → 404 (not 400)
+            if not recv_result.data or len(recv_result.data) == 0:
+                # Receiving not found in yacht scope → 404 (not 400)
+                return {
+                    "status": "error",
+                    "error_code": "NOT_FOUND",
+                    "message": "Receiving record not found"
+                }
+
+            receiving = recv_result.data[0]
+        except Exception as e:
+            # Database error - log and return as internal error (not 400)
+            logger.error(f"Database error fetching receiving: {e}", exc_info=True)
             return {
                 "status": "error",
-                "error_code": "NOT_FOUND",
-                "message": "Receiving record not found"
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to fetch receiving record"
             }
 
-        receiving = recv_result.data[0]
         # received_by field contains user_id - frontend can look up name/role if needed
 
         # Get line items - return empty array if none exist (200, not 400)
-        items_result = db.table("pms_receiving_items").select(
-            "*"
-        ).eq("receiving_id", receiving_id).execute()
-        items = items_result.data or []
+        try:
+            items_result = db.table("pms_receiving_items").select(
+                "*"
+            ).eq("receiving_id", receiving_id).execute()
+            items = items_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch items: {e}")
+            items = []
 
         # Get documents - return empty array if none exist (200, not 400)
-        docs_result = db.table("pms_receiving_documents").select(
-            "*"
-        ).eq("receiving_id", receiving_id).execute()
-        documents = docs_result.data or []
+        try:
+            docs_result = db.table("pms_receiving_documents").select(
+                "*"
+            ).eq("receiving_id", receiving_id).execute()
+            documents = docs_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch documents: {e}")
+            documents = []
 
         # Get audit trail - return empty array if none exist (200, not 400)
         # Query only pms_audit_log as specified - no JOIN to auth tables
-        audit_result = db.table("pms_audit_log").select(
-            "action, user_id, created_at, signature, metadata"
-        ).eq("entity_type", "receiving").eq("entity_id", receiving_id).order("created_at", desc=False).execute()
-        audit_trail = audit_result.data or []
+        try:
+            audit_result = db.table("pms_audit_log").select(
+                "action, user_id, created_at, signature, metadata"
+            ).eq("entity_type", "receiving").eq("entity_id", receiving_id).order("created_at", desc=False).execute()
+            audit_trail = audit_result.data or []
+        except Exception as e:
+            logger.warning(f"Failed to fetch audit trail: {e}")
+            audit_trail = []
 
         # Always return 200 success if receiving exists, even with empty arrays
         return {
