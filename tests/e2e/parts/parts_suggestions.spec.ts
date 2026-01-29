@@ -43,6 +43,11 @@ async function getBackendSuggestions(jwt: string, partId: string): Promise<strin
 
 /**
  * Search for part in UI and extract rendered suggestions
+ *
+ * ARCHITECTURE: Search-first, entity extraction, action surfacing
+ * - Query triggers entity extraction
+ * - Part entity card appears with focused state
+ * - Actions surface based on entity type + user role
  */
 async function getUIRenderedActions(page: Page, partName: string = 'Engine Oil Filter'): Promise<string[]> {
   // Search for part
@@ -50,10 +55,19 @@ async function getUIRenderedActions(page: Page, partName: string = 'Engine Oil F
   await searchInput.fill(partName);
   await searchInput.press('Enter');
 
-  // Wait for suggestions panel
-  await page.waitForSelector('[data-testid="suggestions-list"], [role="list"]', {
+  // Wait for entity extraction and card rendering
+  await page.waitForSelector('[data-entity-type="part"], [data-testid="part-card"]', {
     timeout: 5000,
     state: 'visible',
+  });
+
+  // Wait for action buttons to appear (based on focused entity + role)
+  await page.waitForSelector('[data-testid="action-button"], button[data-action-id]', {
+    timeout: 3000,
+    state: 'visible',
+  }).catch(() => {
+    // No actions visible (expected for crew role)
+    console.log('No action buttons visible (may be expected for role)');
   });
 
   // Extract all rendered action buttons
@@ -104,7 +118,7 @@ test.describe('Part Suggestions - CREW Role', () => {
 
   test('CREW: Backend-frontend parity', async ({ page }) => {
     // Navigate to app (already authenticated via storage state)
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     // Get backend suggestions
@@ -147,7 +161,7 @@ test.describe('Part Suggestions - Chief Engineer Role', () => {
 
   test('Chief Engineer: Backend-frontend parity', async ({ page }) => {
     // Navigate to app (already authenticated via storage state)
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     // Get backend suggestions
@@ -190,7 +204,7 @@ test.describe('Part Suggestions - CAPTAIN Role', () => {
 
   test('CAPTAIN: Backend-frontend parity', async ({ page }) => {
     // Navigate to app (already authenticated via storage state)
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     // Get backend suggestions
@@ -232,7 +246,7 @@ test.describe('Part Suggestions - CREW Action Restrictions', () => {
   });
 
   test('CREW: Cannot see MUTATE actions', async ({ page }) => {
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     const jwt = await getJWTFromPage(page);
@@ -260,7 +274,7 @@ test.describe('Part Suggestions - Chief Engineer Action Permissions', () => {
   });
 
   test('Chief Engineer: Can see MUTATE but not SIGNED actions', async ({ page }) => {
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     const jwt = await getJWTFromPage(page);
@@ -276,7 +290,7 @@ test.describe('Part Suggestions - Chief Engineer Action Permissions', () => {
   });
 
   test('UI does not invent actions not in backend response', async ({ page }) => {
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     // Intercept backend API call
@@ -330,7 +344,7 @@ test.describe('Part Suggestions - CAPTAIN Action Permissions', () => {
   });
 
   test('CAPTAIN: Can see SIGNED actions', async ({ page }) => {
-    await page.goto('/parts');
+    await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     const jwt = await getJWTFromPage(page);

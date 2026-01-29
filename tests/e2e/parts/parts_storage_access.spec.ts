@@ -128,16 +128,26 @@ async function uploadStorageObject(
 }
 
 /**
- * Helper: Navigate to parts page
+ * Helper: Navigate to base app (NO /parts page)
+ *
+ * ARCHITECTURE: Intent-first, search-driven UI
+ * - NO /parts page exists (by design)
+ * - Navigate to base URL for authenticated session
+ * - Storage tests use direct API calls (no UI navigation required)
  */
 async function navigateToParts(page: Page, role: string): Promise<void> {
-  await page.goto('/parts', { waitUntil: 'networkidle' });
+  // Navigate to base URL (NO /parts route)
+  await page.goto('/', { waitUntil: 'networkidle' });
   await page.waitForLoadState('domcontentloaded');
 
   const currentUrl = page.url();
   if (currentUrl.includes('/login')) {
     throw new Error(`Unexpected redirect to login for ${role}`);
   }
+
+  // Wait for app to be ready (search input visible)
+  const searchInput = page.locator('[data-testid="search-input"], input[placeholder*="Search"]').first();
+  await searchInput.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 test.describe('Storage Access: Chief Engineer Role', () => {
