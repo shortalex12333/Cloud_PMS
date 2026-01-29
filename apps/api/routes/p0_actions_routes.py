@@ -4609,7 +4609,7 @@ async def execute_action(
             error = result["error"]
             error_code = error.get("error_code", "UNKNOWN_ERROR")
             status_code = error.get("status_code", 500)
-            # Return error dict directly (not wrapped in detail)
+            # Preserve full error structure - use JSONResponse to avoid wrapping in {detail: {}}
             return JSONResponse(status_code=status_code, content=error)
     elif "status" in result and result["status"] == "error":
         # Old format - preserve full error structure including error_code
@@ -4642,7 +4642,11 @@ async def execute_action(
         if "hint" in result:
             error_response["hint"] = result["hint"]
 
+<<<<<<< HEAD
         return JSONResponse(status_code=status_code, content=error_response)
+=======
+        return JSONResponse(status_code=status_code, content=error_detail)
+>>>>>>> 0a9d2a1 (fix(receiving): Use JSONResponse for error returns to avoid detail wrapping)
 
     # Add execution_id to response for E2E test tracing
     import uuid
