@@ -91,6 +91,32 @@ function detectFaultActionIntent(query: string): boolean {
   return FAULT_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
 }
 
+// Shopping List action keywords - Shopping List Lens v1
+const SHOPPING_LIST_ACTION_KEYWORDS = [
+  'add to shopping list',
+  'create shopping list',
+  'new shopping list item',
+  'request part',
+  'need to order',
+  'order part',
+  'add shopping item',
+  'shopping list item',
+  'approve shopping',
+  'reject shopping',
+  'promote to part',
+  'promote shopping',
+  'shopping list',
+  'parts request',
+  'order request',
+  'need part',
+  'requisition',
+];
+
+function detectShoppingListActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return SHOPPING_LIST_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
 // Types
 interface SearchState {
   query: string;
@@ -467,24 +493,27 @@ export function useCelesteSearch(yachtId: string | null = null) {
   }, []);
 
   /**
-   * Fetch action suggestions if query has action intent (cert, WO, fault)
+   * Fetch action suggestions if query has action intent (cert, WO, fault, shopping list)
    */
   const fetchActionSuggestionsIfNeeded = useCallback(async (query: string) => {
     const wantsCert = detectCertActionIntent(query);
     const wantsWO = detectWorkOrderActionIntent(query);
     const wantsFault = detectFaultActionIntent(query);
+    const wantsShoppingList = detectShoppingListActionIntent(query);
 
-    if (!wantsCert && !wantsWO && !wantsFault) {
+    if (!wantsCert && !wantsWO && !wantsFault && !wantsShoppingList) {
       // Clear action suggestions if no intent
       setState(prev => ({ ...prev, actionSuggestions: [] }));
       return;
     }
 
     try {
-      // Determine domain - fault takes precedence if query matches multiple
+      // Determine domain - priority order: fault > shopping_list > cert > work_orders
       let domain: string;
       if (wantsFault) {
         domain = 'faults';
+      } else if (wantsShoppingList) {
+        domain = 'shopping_list';
       } else if (wantsCert) {
         domain = 'certificates';
       } else {
