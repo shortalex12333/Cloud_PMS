@@ -4633,16 +4633,16 @@ async def execute_action(
         else:
             status_code = 400  # Default to 400 for unknown error codes
 
-        # Preserve full error structure in detail (don't just pass message string)
-        error_detail = {
+        # Return error structure directly at top level (not wrapped in detail)
+        error_response = {
             "status": "error",
             "error_code": error_code,
             "message": result.get("message", "Unknown error")
         }
         if "hint" in result:
-            error_detail["hint"] = result["hint"]
+            error_response["hint"] = result["hint"]
 
-        return JSONResponse(status_code=status_code, content=error_detail)
+        return JSONResponse(status_code=status_code, content=error_response)
 
     # Add execution_id to response for E2E test tracing
     import uuid
