@@ -198,8 +198,8 @@ test.describe('Part Actions Execution (HOD)', () => {
   });
 
   test.use({
-    // Use HOD storage state
-    storageState: path.join(process.cwd(), '.playwright', 'storage', 'hod-state.json'),
+    // Use HOD storage state (saved by global-setup)
+    storageState: path.join(process.cwd(), 'test-results', '.auth-states', 'hod-state.json'),
   });
 
   test('receive_part: Success with unique idempotency_key (201)', async ({ page, context }) => {
