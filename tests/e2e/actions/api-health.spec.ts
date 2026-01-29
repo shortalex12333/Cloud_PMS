@@ -8,7 +8,7 @@
 import { test, expect } from '@playwright/test';
 import { saveArtifact } from '../../helpers/artifacts';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://celeste-pipeline-v1.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 test.describe('Actions API - Health Check', () => {
   test('Health endpoint returns 200 OK', async () => {
@@ -35,12 +35,9 @@ test.describe('Actions API - Health Check', () => {
     // Assertions
     expect(response.status).toBe(200);
     expect(data.status).toBe('healthy');
-    expect(data).toHaveProperty('handlers_loaded');
-    expect(data).toHaveProperty('total_handlers');
-
-    // Ensure Shopping List handlers are loaded
-    expect(data.handlers_loaded).toBeGreaterThanOrEqual(5); // At least 5 shopping list actions
-    expect(data.total_handlers).toBeGreaterThanOrEqual(data.handlers_loaded);
+    expect(data).toHaveProperty('version');
+    expect(data).toHaveProperty('pipeline_ready');
+    expect(data.pipeline_ready).toBe(true);
   });
 
   test('V1 Actions health endpoint returns 200 OK', async () => {

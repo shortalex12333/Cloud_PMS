@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 import { getAccessToken } from '../../helpers/auth';
 import { saveArtifact } from '../../helpers/artifacts';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://celeste-pipeline-v1.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 test.describe('Actions API - Documents Domain', () => {
   test('List endpoint returns documents actions', async () => {

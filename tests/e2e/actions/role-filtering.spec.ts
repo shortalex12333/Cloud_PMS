@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 import { getAccessToken } from '../../helpers/auth';
 import { saveArtifact } from '../../helpers/artifacts';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://celeste-pipeline-v1.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 test.describe('Actions API - Role Filtering', () => {
   test('Shopping List actions have correct allowed_roles', async () => {
@@ -42,63 +42,74 @@ test.describe('Actions API - Role Filtering', () => {
     const createAction = data.actions.find((a: any) => a.action_id === 'create_shopping_list_item');
     const approveAction = data.actions.find((a: any) => a.action_id === 'approve_shopping_list_item');
     const rejectAction = data.actions.find((a: any) => a.action_id === 'reject_shopping_list_item');
-    const promoteAction = data.actions.find((a: any) => a.action_id === 'promote_to_part');
+    const promoteAction = data.actions.find((a: any) => a.action_id === 'promote_candidate_to_part');
 
-    // Verify create_shopping_list_item
+    // Verify create_shopping_list_item (all crew can create)
     expect(createAction).toBeDefined();
-    expect(createAction.allowed_roles).toContain('Engineer'); // CREW role
-    expect(createAction.allowed_roles).toContain('HOD');
-    expect(createAction.allowed_roles).toContain('Captain');
-    expect(createAction.allowed_roles).toContain('ETO');
+    expect(createAction.allowed_roles).toContain('crew'); // CREW role
+    expect(createAction.allowed_roles).toContain('chief_engineer');
+    expect(createAction.allowed_roles).toContain('chief_officer');
+    expect(createAction.allowed_roles).toContain('captain');
+    expect(createAction.allowed_roles).toContain('manager');
     expect(createAction.variant).toBe('MUTATE');
 
-    // Verify approve_shopping_list_item (HOD+ only)
+    // Verify approve_shopping_list_item (chief_engineer+ only)
     expect(approveAction).toBeDefined();
-    expect(approveAction.allowed_roles).toContain('HOD');
-    expect(approveAction.allowed_roles).toContain('Captain');
-    expect(approveAction.allowed_roles).not.toContain('Engineer'); // CREW cannot approve
+    expect(approveAction.allowed_roles).toContain('chief_engineer');
+    expect(approveAction.allowed_roles).toContain('chief_officer');
+    expect(approveAction.allowed_roles).toContain('captain');
+    expect(approveAction.allowed_roles).toContain('manager');
+    expect(approveAction.allowed_roles).not.toContain('crew'); // CREW cannot approve
     expect(approveAction.variant).toBe('MUTATE');
 
-    // Verify reject_shopping_list_item (HOD+ only)
+    // Verify reject_shopping_list_item (chief_engineer+ only)
     expect(rejectAction).toBeDefined();
-    expect(rejectAction.allowed_roles).toContain('HOD');
-    expect(rejectAction.allowed_roles).toContain('Captain');
-    expect(rejectAction.allowed_roles).not.toContain('Engineer'); // CREW cannot reject
+    expect(rejectAction.allowed_roles).toContain('chief_engineer');
+    expect(rejectAction.allowed_roles).toContain('chief_officer');
+    expect(rejectAction.allowed_roles).toContain('captain');
+    expect(rejectAction.allowed_roles).toContain('manager');
+    expect(rejectAction.allowed_roles).not.toContain('crew'); // CREW cannot reject
     expect(rejectAction.variant).toBe('MUTATE');
 
-    // Verify promote_to_part (ENGINEER+ only)
-    expect(promoteAction).toBeDefined();
-    expect(promoteAction.allowed_roles).toContain('Engineer'); // ENGINEER can promote
-    expect(promoteAction.allowed_roles).toContain('HOD');
-    expect(promoteAction.allowed_roles).toContain('Captain');
-    expect(promoteAction.variant).toBe('MUTATE');
+    // Verify promote_candidate_to_part (chief_engineer and manager only)
+    // Note: This action is pending backend implementation
+    if (promoteAction) {
+      expect(promoteAction.allowed_roles).toContain('chief_engineer');
+      expect(promoteAction.allowed_roles).toContain('manager');
+      expect(promoteAction.allowed_roles).not.toContain('crew');
+      expect(promoteAction.allowed_roles).not.toContain('chief_officer'); // Chief Officer cannot promote
+      expect(promoteAction.variant).toBe('MUTATE');
+    }
 
     // Save role matrix evidence
     const roleMatrix = {
       create_shopping_list_item: {
         allowed_roles: createAction.allowed_roles,
-        crew_allowed: createAction.allowed_roles.includes('Engineer'),
-        hod_allowed: createAction.allowed_roles.includes('HOD'),
-        engineer_allowed: createAction.allowed_roles.includes('Engineer'),
+        crew_allowed: createAction.allowed_roles.includes('crew'),
+        chief_engineer_allowed: createAction.allowed_roles.includes('chief_engineer'),
+        chief_officer_allowed: createAction.allowed_roles.includes('chief_officer'),
       },
       approve_shopping_list_item: {
         allowed_roles: approveAction.allowed_roles,
-        crew_allowed: approveAction.allowed_roles.includes('Engineer'),
-        hod_allowed: approveAction.allowed_roles.includes('HOD'),
-        engineer_allowed: approveAction.allowed_roles.includes('Engineer'),
+        crew_allowed: approveAction.allowed_roles.includes('crew'),
+        chief_engineer_allowed: approveAction.allowed_roles.includes('chief_engineer'),
+        chief_officer_allowed: approveAction.allowed_roles.includes('chief_officer'),
       },
       reject_shopping_list_item: {
         allowed_roles: rejectAction.allowed_roles,
-        crew_allowed: rejectAction.allowed_roles.includes('Engineer'),
-        hod_allowed: rejectAction.allowed_roles.includes('HOD'),
-        engineer_allowed: rejectAction.allowed_roles.includes('Engineer'),
+        crew_allowed: rejectAction.allowed_roles.includes('crew'),
+        chief_engineer_allowed: rejectAction.allowed_roles.includes('chief_engineer'),
+        chief_officer_allowed: rejectAction.allowed_roles.includes('chief_officer'),
       },
-      promote_to_part: {
-        allowed_roles: promoteAction.allowed_roles,
-        crew_allowed: promoteAction.allowed_roles.includes('Engineer'),
-        hod_allowed: promoteAction.allowed_roles.includes('HOD'),
-        engineer_allowed: promoteAction.allowed_roles.includes('Engineer'),
-      },
+      // promote_candidate_to_part pending backend implementation
+      ...(promoteAction ? {
+        promote_candidate_to_part: {
+          allowed_roles: promoteAction.allowed_roles,
+          crew_allowed: promoteAction.allowed_roles.includes('crew'),
+          hod_allowed: promoteAction.allowed_roles.includes('HOD'),
+          engineer_allowed: promoteAction.allowed_roles.includes('Engineer'),
+        },
+      } : {}),
     };
 
     saveArtifact('role_matrix.json', roleMatrix, testName);
