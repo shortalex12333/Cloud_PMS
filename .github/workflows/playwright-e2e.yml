@@ -1,0 +1,165 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+
+jobs:
+  playwright-e2e:
+    name: Playwright E2E - Receiving Journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # API Configuration
+      API_BASE_URL: ${{ secrets.API_BASE_URL || 'https://pipeline-core.int.celeste7.ai' }}
+      WEB_BASE_URL: ${{ secrets.WEB_BASE_URL || 'https://app.celeste7.ai' }}
+      IMAGE_PROCESSOR_URL: ${{ secrets.IMAGE_PROCESSOR_URL || 'https://image-processing-givq.onrender.com' }}
+
+      # Test Yacht and Users
+      TEST_YACHT_ID: ${{ secrets.TEST_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598' }}
+
+      # JWT Tokens (from repository secrets)
+      HOD_JWT: ${{ secrets.HOD_JWT }}
+      CHIEF_ENGINEER_JWT: ${{ secrets.CHIEF_ENGINEER_JWT }}
+      CAPTAIN_JWT: ${{ secrets.CAPTAIN_JWT }}
+      CREW_JWT: ${{ secrets.CREW_JWT }}
+      WRONG_YACHT_JWT: ${{ secrets.WRONG_YACHT_JWT }}
+
+      # Supabase (for direct DB verification)
+      TENANT_1_SUPABASE_URL: ${{ secrets.TENANT_1_SUPABASE_URL }}
+      TENANT_1_SUPABASE_SERVICE_KEY: ${{ secrets.TENANT_1_SUPABASE_SERVICE_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify environment variables
+        run: |
+          echo "API_BASE_URL: $API_BASE_URL"
+          echo "WEB_BASE_URL: $WEB_BASE_URL"
+          echo "IMAGE_PROCESSOR_URL: $IMAGE_PROCESSOR_URL"
+          echo "TEST_YACHT_ID: $TEST_YACHT_ID"
+          echo "HOD_JWT: ${HOD_JWT:0:20}..." # Print first 20 chars only
+
+          # Fail if critical secrets missing
+          if [ -z "$HOD_JWT" ]; then
+            echo "Error: HOD_JWT secret is not set"
+            exit 1
+          fi
+
+      - name: Run Playwright E2E tests
+        working-directory: apps/web
+        run: |
+          npx playwright test tests/e2e/receiving.journey.spec.ts \
+            --project=chromium \
+            --reporter=html,json,list \
+            --output=test-results/playwright
+        continue-on-error: true
+        id: playwright_tests
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_number }}
+          path: apps/web/playwright-report/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results-${{ github.run_number }}
+          path: apps/web/test-results/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload traces (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ github.run_number }}
+          path: apps/web/test-results/*/trace.zip
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const resultsPath = 'apps/web/test-results/results.json';
+
+            if (!fs.existsSync(resultsPath)) {
+              console.log('No results file found');
+              return;
+            }
+
+            const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+            const { stats } = results;
+            const passed = stats.expected || 0;
+            const failed = stats.unexpected || 0;
+            const skipped = stats.skipped || 0;
+            const total = passed + failed + skipped;
+            const successRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+            const emoji = failed === 0 ? '✅' : '⚠️';
+            const status = failed === 0 ? 'PASSED' : 'FAILED';
+
+            const comment = `## ${emoji} Playwright E2E Tests - ${status}
+
+            **Results Summary:**
+            - Total Tests: ${total}
+            - Passed: ✅ ${passed}
+            - Failed: ❌ ${failed}
+            - Skipped: ⏭️ ${skipped}
+            - Success Rate: **${successRate}%**
+
+            **Test Suites:**
+            - Smoke Tests
+            - HOD Flow: Create Receiving
+            - Image Upload (proxy to image-processing)
+            - Extraction (advisory-only prepare mode)
+            - Signed Acceptance (PIN+TOTP)
+            - Crew Flow (read-only access)
+            - Cross-Yacht Isolation
+            - View History
+            - Storage Path Validation
+            - Error Contract Validation
+
+            [View full report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Fail workflow if tests failed
+        if: steps.playwright_tests.outcome == 'failure'
+        run: |
+          echo "Playwright E2E tests failed"
+          exit 1

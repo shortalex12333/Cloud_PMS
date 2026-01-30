@@ -308,6 +308,18 @@ except Exception as e:
     logger.error("Streaming Search endpoints will not be available")
 
 # ============================================================================
+# RECEIVING UPLOAD PROXY (Receiving Lens v1)
+# ============================================================================
+
+try:
+    from routes.receiving_upload import router as receiving_upload_router
+    app.include_router(receiving_upload_router)
+    logger.info("✅ Receiving Upload Proxy registered at /api/receiving/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Receiving Upload Proxy: {e}")
+    logger.error("Receiving image upload endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
