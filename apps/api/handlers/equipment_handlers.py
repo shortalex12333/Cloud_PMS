@@ -456,6 +456,31 @@ class EquipmentHandlers:
             pass
         return 0.0
 
+    def _get_bucket_for_attachment(self, entity_type: str, category: str, mime_type: str) -> str:
+        """
+        Determine storage bucket based on entity type and attachment category.
+
+        CRITICAL: Table name is pms_attachments (NOT attachments).
+        Bucket strategy until pms_attachments.bucket column added:
+        - equipment + photo/image → pms-work-order-photos
+        - equipment + manual/document/pdf → documents
+        - Default → attachments
+        """
+        category = (category or "").lower()
+        mime_type = (mime_type or "").lower()
+
+        # Photo/image categories for equipment
+        if entity_type == "equipment":
+            if category in ("photo", "image") or mime_type.startswith("image/"):
+                return "pms-work-order-photos"
+
+        # Manuals and documents
+        if category in ("manual", "document", "pdf") or mime_type == "application/pdf":
+            return "documents"
+
+        # Default: generic attachments bucket
+        return "attachments"
+
     async def _get_equipment_files(
         self,
         equipment_id: str,
@@ -468,14 +493,23 @@ class EquipmentHandlers:
             return files
 
         try:
-            # Get attachments
-            result = self.db.table("attachments").select(
+            # CRITICAL: Use pms_attachments (NOT attachments) - see soft delete migration
+            result = self.db.table("pms_attachments").select(
                 "id, filename, mime_type, storage_path, category"
-            ).eq("entity_type", "equipment").eq("entity_id", equipment_id).execute()
+            ).eq("entity_type", "equipment").eq("entity_id", equipment_id).is_(
+                "deleted_at", "null"  # Soft delete filter required
+            ).execute()
 
             for att in (result.data or []):
+                # Determine bucket based on entity type and category
+                bucket = self._get_bucket_for_attachment(
+                    entity_type="equipment",
+                    category=att.get("category"),
+                    mime_type=att.get("mime_type")
+                )
+
                 file_ref = self.url_generator.create_file_reference(
-                    bucket="attachments",
+                    bucket=bucket,
                     path=att.get("storage_path", ""),
                     filename=att.get("filename", "file"),
                     file_id=att["id"],

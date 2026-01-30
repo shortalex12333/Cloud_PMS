@@ -25,6 +25,10 @@ from datetime import datetime, timezone
 from typing import Dict, Optional, List, Any
 from fastapi import HTTPException
 import logging
+import os
+
+# V2 Shadow Logger - DO NOT REMOVE (used conditionally via SHOW_RELATED_SHADOW env var)
+from services.embedding_shadow_logger import shadow_log_rerank_scores  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +139,19 @@ class RelatedHandlers:
 
             # 7. Calculate total items
             total_items = sum(g["count"] for g in groups)
+
+            # 8. Shadow logging for V2 validation (Phase 2: alpha=0.0, FK-only)
+            # CRITICAL: Do not remove - enables production embedding validation
+            if os.getenv("SHOW_RELATED_SHADOW", "false").lower() == "true":
+                focused_embedding = focused.get("embedding") if isinstance(focused, dict) else None
+                shadow_log_rerank_scores(
+                    groups=groups,
+                    focused_embedding=focused_embedding,
+                    yacht_id=yacht_id,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    alpha=0.0  # Phase 2: shadow mode (FK-only, no reordering)
+                )
 
             return {
                 "status": "success",
