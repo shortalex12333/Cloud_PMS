@@ -53,6 +53,9 @@ END $$;
 ALTER TABLE pms_hours_of_rest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pms_hours_of_rest FORCE ROW LEVEL SECURITY;
 
-RAISE NOTICE 'RLS enabled with FORCE mode - no access until new policies created';
+DO $$
+BEGIN
+    RAISE NOTICE 'RLS enabled with FORCE mode - no access until new policies created';
+END $$;
 
 COMMIT;
