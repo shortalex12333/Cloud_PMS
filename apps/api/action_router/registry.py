@@ -2059,6 +2059,238 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
             FieldMetadata("claim_id", FieldClassification.REQUIRED),
         ],
     ),
+
+    # ========================================================================
+    # HOURS OF REST ACTIONS (Crew Lens v3) - 12 actions
+    # ========================================================================
+    # Maritime Labour Convention (MLC 2006) & STCW Convention compliance
+
+    # READ: Daily Hours of Rest
+    "get_hours_of_rest": ActionDefinition(
+        action_id="get_hours_of_rest",
+        label="View Hours of Rest",
+        endpoint="/v1/hours-of-rest",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.READ,
+        search_keywords=["hours", "rest", "hor", "compliance", "mlc", "stcw", "crew", "view"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.OPTIONAL),
+            FieldMetadata("start_date", FieldClassification.OPTIONAL),
+            FieldMetadata("end_date", FieldClassification.OPTIONAL),
+        ],
+    ),
+
+    # MUTATE: Daily Hours of Rest
+    "upsert_hours_of_rest": ActionDefinition(
+        action_id="upsert_hours_of_rest",
+        label="Log Hours of Rest",
+        endpoint="/v1/hours-of-rest/upsert",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "record_date", "rest_periods", "total_rest_hours"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["log", "hours", "rest", "create", "update", "daily", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("record_date", FieldClassification.REQUIRED),
+            FieldMetadata("rest_periods", FieldClassification.REQUIRED),
+            FieldMetadata("total_rest_hours", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    # READ: Monthly Sign-offs
+    "list_monthly_signoffs": ActionDefinition(
+        action_id="list_monthly_signoffs",
+        label="List Monthly Sign-offs",
+        endpoint="/v1/hours-of-rest/signoffs",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.READ,
+        search_keywords=["signoff", "monthly", "approval", "list", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+        ],
+    ),
+
+    "get_monthly_signoff": ActionDefinition(
+        action_id="get_monthly_signoff",
+        label="View Monthly Sign-off",
+        endpoint="/v1/hours-of-rest/signoffs/details",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "signoff_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.READ,
+        search_keywords=["signoff", "monthly", "view", "details", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("signoff_id", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    # MUTATE: Monthly Sign-offs
+    "create_monthly_signoff": ActionDefinition(
+        action_id="create_monthly_signoff",
+        label="Create Monthly Sign-off",
+        endpoint="/v1/hours-of-rest/signoffs/create",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "month", "department"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["create", "signoff", "monthly", "initiate", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("month", FieldClassification.REQUIRED),
+            FieldMetadata("department", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    "sign_monthly_signoff": ActionDefinition(
+        action_id="sign_monthly_signoff",
+        label="Sign Monthly Sign-off",
+        endpoint="/v1/hours-of-rest/signoffs/sign",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "signoff_id", "signature_level", "signature_data"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["sign", "signoff", "monthly", "approve", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("signoff_id", FieldClassification.REQUIRED),
+            FieldMetadata("signature_level", FieldClassification.REQUIRED),
+            FieldMetadata("signature_data", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    # READ: Schedule Templates
+    "list_crew_templates": ActionDefinition(
+        action_id="list_crew_templates",
+        label="List Schedule Templates",
+        endpoint="/v1/hours-of-rest/templates",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.READ,
+        search_keywords=["template", "schedule", "watch", "list", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+        ],
+    ),
+
+    # MUTATE: Schedule Templates
+    "create_crew_template": ActionDefinition(
+        action_id="create_crew_template",
+        label="Create Schedule Template",
+        endpoint="/v1/hours-of-rest/templates/create",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "schedule_name", "schedule_template"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["create", "template", "schedule", "watch", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("schedule_name", FieldClassification.REQUIRED),
+            FieldMetadata("schedule_template", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    "apply_crew_template": ActionDefinition(
+        action_id="apply_crew_template",
+        label="Apply Schedule Template",
+        endpoint="/v1/hours-of-rest/templates/apply",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "week_start_date"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["apply", "template", "schedule", "week", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("week_start_date", FieldClassification.REQUIRED),
+            FieldMetadata("template_id", FieldClassification.OPTIONAL),
+        ],
+    ),
+
+    # READ: Warnings
+    "list_crew_warnings": ActionDefinition(
+        action_id="list_crew_warnings",
+        label="List Compliance Warnings",
+        endpoint="/v1/hours-of-rest/warnings",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.READ,
+        search_keywords=["warning", "compliance", "violation", "list", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+        ],
+    ),
+
+    # MUTATE: Warnings
+    "acknowledge_warning": ActionDefinition(
+        action_id="acknowledge_warning",
+        label="Acknowledge Warning",
+        endpoint="/v1/hours-of-rest/warnings/acknowledge",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],
+        required_fields=["yacht_id", "warning_id"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["acknowledge", "warning", "accept", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("warning_id", FieldClassification.REQUIRED),
+        ],
+    ),
+
+    "dismiss_warning": ActionDefinition(
+        action_id="dismiss_warning",
+        label="Dismiss Warning",
+        endpoint="/v1/hours-of-rest/warnings/dismiss",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "captain", "manager"],  # HOD+ only
+        required_fields=["yacht_id", "warning_id", "hod_justification", "dismissed_by_role"],
+        domain="hours_of_rest",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["dismiss", "warning", "clear", "hor"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("user_id", FieldClassification.CONTEXT),
+            FieldMetadata("warning_id", FieldClassification.REQUIRED),
+            FieldMetadata("hod_justification", FieldClassification.REQUIRED),
+            FieldMetadata("dismissed_by_role", FieldClassification.REQUIRED),
+        ],
+    ),
 }
 
 
