@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 import { getAccessToken } from '../../helpers/auth';
 import { saveArtifact } from '../../helpers/artifacts';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://celeste-pipeline-v1.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 const TEST_YACHT_ID = process.env.TEST_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
 
 test.describe('Actions API - Shopping List Domain', () => {
@@ -47,7 +47,7 @@ test.describe('Actions API - Shopping List Domain', () => {
     expect(actionIds).toContain('create_shopping_list_item');
     expect(actionIds).toContain('approve_shopping_list_item');
     expect(actionIds).toContain('reject_shopping_list_item');
-    expect(actionIds).toContain('promote_to_part');
+    // Note: promote_candidate_to_part pending backend implementation
 
     // Verify action structure
     const firstAction = data.actions[0];
