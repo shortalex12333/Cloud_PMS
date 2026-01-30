@@ -64,12 +64,12 @@ export function middleware(request: NextRequest) {
 
   // App domain (app.celeste7.ai) - serves everything
   if (hostname.includes('app.celeste7.ai')) {
-    // Root redirect: / → /app (if authenticated) or / → /login (if not)
-    if (pathname === '/') {
-      const hasSession = request.cookies.has('sb-access-token');
-      const target = hasSession ? '/app' : '/login';
-      const url = new URL(target, request.url);
-      return addCorsHeaders(NextResponse.redirect(url), origin);
+    // DEPRECATED: /app → / (backwards compatibility)
+    // Single surface moved from /app to / (root) per cd952ef deployment
+    if (pathname === '/app') {
+      const url = new URL('/', request.url);
+      url.search = request.nextUrl.search; // Preserve query params
+      return addCorsHeaders(NextResponse.redirect(url, 308), origin);
     }
 
     const response = NextResponse.next();
@@ -77,12 +77,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Localhost or other domains - allow everything for development
-  // Apply same root redirect for consistency
-  if (pathname === '/') {
-    const hasSession = request.cookies.has('sb-access-token');
-    const target = hasSession ? '/app' : '/login';
-    const url = new URL(target, request.url);
-    return addCorsHeaders(NextResponse.redirect(url), origin);
+  // Apply same /app → / redirect for consistency
+  if (pathname === '/app') {
+    const url = new URL('/', request.url);
+    url.search = request.nextUrl.search;
+    return addCorsHeaders(NextResponse.redirect(url, 308), origin);
   }
 
   const response = NextResponse.next();
