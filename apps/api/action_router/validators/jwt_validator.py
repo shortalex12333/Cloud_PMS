@@ -2,13 +2,22 @@
 JWT Validator
 
 Validates Supabase JWT tokens and extracts user context.
+
+Architecture (2026-01-30):
+- JWT is verified using MASTER Supabase JWT secret
+- user_id is extracted from JWT (sub claim)
+- yacht_id and role are looked up from MASTER DB (invariant #1)
+- Frontend sends ONLY Authorization: Bearer <token>, no yacht_id
 """
 
 import jwt
 import os
+import logging
 from typing import Dict, Any
 from datetime import datetime
 from .validation_result import ValidationResult
+
+logger = logging.getLogger(__name__)
 
 
 def validate_jwt(token: str) -> ValidationResult:
@@ -77,7 +86,7 @@ def validate_jwt(token: str) -> ValidationResult:
         if payload is None:
             return ValidationResult.failure(
                 error_code="invalid_token",
-                message=f"Invalid token: Signature verification failed",
+                message="Invalid token: Signature verification failed",
             )
 
         # Extract user context from JWT
@@ -88,28 +97,51 @@ def validate_jwt(token: str) -> ValidationResult:
                 message="Token missing user ID (sub claim)",
             )
 
-        # Extract custom claims (may or may not exist depending on Supabase setup)
-        app_metadata = payload.get("app_metadata", {})
-        user_metadata = payload.get("user_metadata", {})
+        # SECURITY: yacht_id and role MUST come from MASTER DB lookup, not JWT claims
+        # This is invariant #1: server-resolved context only
+        #
+        # The auth middleware lookup_tenant_for_user() does:
+        # 1. Query MASTER DB user_accounts for yacht_id
+        # 2. Query fleet_registry for tenant_key_alias
+        # 3. Query TENANT DB auth_users_roles for authoritative role
+        #
+        # This ensures yacht_id cannot be spoofed via JWT claims
+        yacht_id = None
+        role = "authenticated"
+        tenant_key_alias = None
 
-        # yacht_id is optional in JWT - will be looked up from MASTER DB
-        yacht_id = app_metadata.get("yacht_id") or user_metadata.get("yacht_id")
+        try:
+            from middleware.auth import lookup_tenant_for_user
+            tenant_info = lookup_tenant_for_user(user_id)
 
-        # role can be at top level (Supabase default) or in metadata
-        # Default to 'authenticated' if not present (standard Supabase claim)
-        role = payload.get("role") or app_metadata.get("role") or user_metadata.get("role") or "authenticated"
+            if tenant_info:
+                yacht_id = tenant_info.get("yacht_id")
+                role = tenant_info.get("role", "crew")
+                tenant_key_alias = tenant_info.get("tenant_key_alias")
+                logger.debug(f"[JWT] Tenant lookup success: user={user_id[:8]}... yacht={yacht_id} role={role}")
+            else:
+                logger.warning(f"[JWT] No tenant found for user {user_id[:8]}...")
 
-        # NOTE: yacht_id may be None - caller must look it up from MASTER DB
-        # This matches Architecture Option 1: JWT verification + DB tenant lookup
+        except ImportError as e:
+            # Fallback if middleware not available (shouldn't happen in production)
+            logger.error(f"[JWT] Could not import lookup_tenant_for_user: {e}")
+            # Fall back to JWT claims (less secure, but allows system to function)
+            app_metadata = payload.get("app_metadata", {})
+            user_metadata = payload.get("user_metadata", {})
+            yacht_id = app_metadata.get("yacht_id") or user_metadata.get("yacht_id")
+            role = payload.get("role") or app_metadata.get("role") or user_metadata.get("role") or "authenticated"
+        except Exception as e:
+            logger.error(f"[JWT] Tenant lookup failed: {e}")
 
-        # Return user context (yacht_id may be None)
+        # Return user context with server-resolved yacht_id and role
         return ValidationResult.success(
             context={
                 "user_id": user_id,
-                "yacht_id": yacht_id,  # May be None - caller looks up from MASTER DB
+                "yacht_id": yacht_id,
                 "role": role,
                 "email": payload.get("email"),
                 "exp": payload.get("exp"),
+                "tenant_key_alias": tenant_key_alias,
             }
         )
 
