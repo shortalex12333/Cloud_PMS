@@ -25,16 +25,16 @@ CREATE OR REPLACE FUNCTION public.rpc_insert_shopping_list_item(
     p_urgency TEXT DEFAULT 'normal',
     p_part_id UUID DEFAULT NULL,
     p_part_number TEXT DEFAULT NULL,
+    p_manufacturer TEXT DEFAULT NULL,
     p_requested_by UUID DEFAULT NULL,
-    p_source_notes TEXT DEFAULT NULL,
-    p_idempotency_key TEXT DEFAULT NULL
+    p_source_notes TEXT DEFAULT NULL
 ) RETURNS TABLE (
     id UUID,
     yacht_id UUID,
     part_name TEXT,
     quantity_requested NUMERIC,
     source_type TEXT,
-    state TEXT,
+    status TEXT,
     created_at TIMESTAMPTZ
 ) AS $$
 BEGIN
@@ -42,10 +42,10 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM auth_users_roles
-        WHERE user_id = p_user_id
-          AND yacht_id = p_yacht_id
-          AND role IN ('crew', 'chief_engineer', 'captain', 'manager', 'chief_officer', 'purser')
-          AND is_active = TRUE
+        WHERE auth_users_roles.user_id = p_user_id
+          AND auth_users_roles.yacht_id = p_yacht_id
+          AND auth_users_roles.role IN ('crew', 'chief_engineer', 'captain', 'manager', 'chief_officer', 'purser')
+          AND auth_users_roles.is_active = TRUE
     ) THEN
         RAISE EXCEPTION 'Permission denied: User % is not active crew for yacht %', p_user_id, p_yacht_id
             USING ERRCODE = '42501';  -- insufficient_privilege
@@ -61,11 +61,13 @@ BEGIN
         urgency,
         part_id,
         part_number,
+        manufacturer,
         requested_by,
         source_notes,
-        idempotency_key,
-        state,
-        created_at
+        status,
+        created_by,
+        created_at,
+        updated_at
     ) VALUES (
         p_yacht_id,
         p_part_name,
@@ -74,10 +76,12 @@ BEGIN
         p_urgency,
         p_part_id,
         p_part_number,
+        p_manufacturer,
         COALESCE(p_requested_by, p_user_id),
         p_source_notes,
-        p_idempotency_key,
-        'pending',
+        'candidate',
+        p_user_id,
+        NOW(),
         NOW()
     ) RETURNING
         pms_shopping_list_items.id,
@@ -85,12 +89,12 @@ BEGIN
         pms_shopping_list_items.part_name,
         pms_shopping_list_items.quantity_requested,
         pms_shopping_list_items.source_type,
-        pms_shopping_list_items.state,
+        pms_shopping_list_items.status,
         pms_shopping_list_items.created_at;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execute to service_role
-GRANT EXECUTE ON FUNCTION public.rpc_insert_shopping_list_item TO service_role;
+-- Grant execute to service_role (specify signature to avoid ambiguity)
+GRANT EXECUTE ON FUNCTION public.rpc_insert_shopping_list_item(UUID, UUID, TEXT, NUMERIC, TEXT, TEXT, UUID, TEXT, TEXT, UUID, TEXT) TO service_role;
 
 COMMIT;

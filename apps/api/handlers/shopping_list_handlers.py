@@ -224,9 +224,9 @@ class ShoppingListHandlers:
                 "p_urgency": urgency,
                 "p_part_id": part_id,
                 "p_part_number": part_number,
+                "p_manufacturer": manufacturer,
                 "p_requested_by": user_id,
                 "p_source_notes": params.get("source_notes"),
-                "p_idempotency_key": params.get("idempotency_key"),
             }
 
             # Call RPC function (SECURITY DEFINER bypasses RLS)
