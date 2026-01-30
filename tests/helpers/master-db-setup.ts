@@ -273,6 +273,69 @@ async function loginAndGetUserId(): Promise<string> {
 }
 
 /**
+ * Get TENANT DB client with service key (admin access)
+ */
+function getTenantAdminClient(): SupabaseClient | null {
+  const tenantKeyAlias = process.env.TEST_USER_TENANT_KEY || 'yTEST_YACHT_001';
+  const url = process.env[`${tenantKeyAlias}_SUPABASE_URL`] || process.env.SUPABASE_URL;
+  const serviceKey = process.env[`${tenantKeyAlias}_SUPABASE_SERVICE_KEY`] || process.env.SUPABASE_SERVICE_KEY;
+
+  if (!url || !serviceKey) {
+    console.log(`[Setup] TENANT credentials not found for ${tenantKeyAlias}`);
+    return null;
+  }
+
+  return createClient(url, serviceKey);
+}
+
+/**
+ * Ensure auth_users_roles has entry for test user in TENANT DB
+ * CRITICAL: This is required for the auth middleware to work!
+ */
+async function ensureTenantRole(
+  client: SupabaseClient,
+  userId: string,
+  role: string
+): Promise<any> {
+  const yachtId = process.env.TEST_USER_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
+
+  // Check if exists
+  const { data: existing } = await client
+    .from('auth_users_roles')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('yacht_id', yachtId)
+    .eq('is_active', true)
+    .single();
+
+  if (existing) {
+    console.log(`[Setup] TENANT auth_users_roles row exists for ${userId.slice(0, 8)}... role=${existing.role}`);
+    return existing;
+  }
+
+  // Insert new row
+  const { data, error } = await client
+    .from('auth_users_roles')
+    .upsert({
+      user_id: userId,
+      yacht_id: yachtId,
+      role: role,
+      is_active: true,
+      valid_from: new Date().toISOString(),
+    }, { onConflict: 'user_id,yacht_id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.log(`[Setup] TENANT auth_users_roles upsert failed: ${error.message}`);
+    return null;
+  }
+
+  console.log(`[Setup] Created TENANT auth_users_roles row for ${userId.slice(0, 8)}... role=${role}`);
+  return data;
+}
+
+/**
  * Main setup function - call before running tests
  */
 export async function setupMasterDb(): Promise<SetupResult> {
@@ -316,6 +379,21 @@ export async function setupMasterDb(): Promise<SetupResult> {
         success: false,
         message: `user_accounts setup failed: ${error.message}`,
       };
+    }
+
+    // CRITICAL: Also ensure TENANT auth_users_roles exists
+    // Without this, the auth middleware will return 403
+    const tenantClient = getTenantAdminClient();
+    if (tenantClient) {
+      const role = process.env.TEST_USER_ROLE || 'chief_engineer';
+      try {
+        await ensureTenantRole(tenantClient, userId, role);
+      } catch (error: any) {
+        console.log(`[Setup] TENANT role setup failed: ${error.message}`);
+        // Non-fatal - tests may still work if role already exists
+      }
+    } else {
+      console.log('[Setup] Skipping TENANT role setup - no tenant client');
     }
 
     console.log('[Setup] MASTER DB setup complete!');
