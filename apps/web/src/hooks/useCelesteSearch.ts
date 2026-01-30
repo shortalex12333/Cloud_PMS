@@ -540,7 +540,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
     }
 
     try {
-      // Determine domain - priority order: document > fault > shopping_list > cert > work_orders
+      // Determine domain - priority order: documents > fault > shopping_list > cert > work_orders
       let domain: string;
       if (wantsDocument) {
         domain = 'documents';

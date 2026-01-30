@@ -1,0 +1,101 @@
+name: Playwright E2E - Documents Lens
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/handlers/document_handlers.py'
+      - '.github/workflows/playwright-documents-e2e.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/handlers/document_handlers.py'
+
+env:
+  CI: true
+  BASE_URL: https://app.celeste7.ai
+  RENDER_API_URL: https://pipeline-core.int.celeste7.ai
+
+jobs:
+  playwright-e2e:
+    name: Playwright Documents E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify API is reachable
+        run: |
+          echo "Checking CORS preflight..."
+          curl -s -X OPTIONS "$RENDER_API_URL/v1/actions/execute" \
+            -H "Origin: https://app.celeste7.ai" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: Authorization,Content-Type" \
+            -w "\nHTTP Status: %{http_code}\n"
+
+      - name: Run Playwright tests
+        working-directory: apps/web
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+          RENDER_API_URL: ${{ env.RENDER_API_URL }}
+          STAGING_CREW_EMAIL: ${{ secrets.STAGING_CREW_EMAIL }}
+          STAGING_HOD_EMAIL: ${{ secrets.STAGING_HOD_EMAIL }}
+          STAGING_CAPTAIN_EMAIL: ${{ secrets.STAGING_CAPTAIN_EMAIL }}
+          STAGING_USER_PASSWORD: ${{ secrets.STAGING_USER_PASSWORD }}
+          TEST_YACHT_ID: ${{ secrets.TEST_USER_YACHT_ID }}
+        run: npx playwright test --project=chromium
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-documents-results
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 14
+
+      - name: Upload failure screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failure-screenshots
+          path: apps/web/test-results/artifacts/**/*.png
+          retention-days: 7
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Playwright E2E Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f apps/web/test-results/results.json ]; then
+            echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+            cat apps/web/test-results/results.json | jq -r '
+              "- **Total**: \(.stats.total // 0)",
+              "- **Passed**: \(.stats.passed // 0)",
+              "- **Failed**: \(.stats.failed // 0)",
+              "- **Duration**: \(.stats.duration // 0)ms"
+            ' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "Could not parse results" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Results file not found" >> $GITHUB_STEP_SUMMARY
+          fi
