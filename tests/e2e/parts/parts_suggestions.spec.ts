@@ -52,7 +52,8 @@ async function getBackendSuggestions(jwt: string, partId: string): Promise<strin
   }
 
   // Extract action IDs from response
-  const actions = response.data.data?.actions || response.data.actions || [];
+  // Backend returns "suggested_actions" not "actions"
+  const actions = response.data.suggested_actions || [];
   return actions.map((action: any) => action.action_id || action.id);
 }
 
