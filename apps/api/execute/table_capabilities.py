@@ -96,7 +96,7 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
         description="Search for parts by part number, name, manufacturer, or category",
         status=CapabilityStatus.ACTIVE,
         entity_triggers=["PART_NUMBER", "PART_NAME", "MANUFACTURER"],
-        available_actions=["view_details", "check_stock", "order_part"],
+        available_actions=["create_shopping_list_item", "receive_part", "consume_part", "view_details", "check_stock", "order_part"],
         tables=[
             TableSpec(
                 name="pms_parts",
