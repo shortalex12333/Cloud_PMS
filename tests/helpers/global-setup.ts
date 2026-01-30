@@ -105,7 +105,8 @@ async function globalSetup() {
         throw new Error('Failed to get captain access token');
       }
 
-      // Call action execution endpoint (receive_part handler may not be implemented yet)
+      // Call action execution endpoint
+      // Format: { action, context: {yacht_id}, payload: {action-specific fields} }
       const response = await fetch(`${API_BASE_URL}/v1/actions/execute`, {
         method: 'POST',
         headers: {
@@ -115,9 +116,12 @@ async function globalSetup() {
         body: JSON.stringify({
           action: 'receive_part',
           context: {
-            yacht_id: TEST_YACHT_ID,
+            yacht_id: TEST_YACHT_ID
+          },
+          payload: {
             part_id: TEST_PART_ID,
-            quantity_received: 10,
+            to_location_id: 'engine_room',
+            quantity: 10,
             idempotency_key: `e2e-setup-${Date.now()}`,
             notes: 'E2E test setup - seeding stock'
           }
