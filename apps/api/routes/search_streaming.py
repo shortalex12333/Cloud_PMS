@@ -69,6 +69,7 @@ from services.rate_limit import (
     STREAM_PHASE2_TTL,
 )
 from integrations.supabase import get_supabase_client
+from execute.table_capabilities import TABLE_CAPABILITIES
 
 logger = logging.getLogger(__name__)
 
@@ -404,6 +405,10 @@ async def stream_search(
             # Role-based redaction
             snippets_redacted = ctx.role in REDACTED_ROLES
 
+            # Get available actions for parts from capability definition
+            part_capability = TABLE_CAPABILITIES.get("part_by_part_number_or_name")
+            part_actions = part_capability.available_actions if part_capability else []
+
             # Format results for frontend
             formatted_results = []
             for part in parts_results:
@@ -415,6 +420,8 @@ async def stream_search(
                     "category": part.get("category"),
                     "manufacturer": part.get("manufacturer"),
                     "location": part.get("location"),
+                    # Include available actions from capability definition
+                    "available_actions": part_actions,
                 }
 
                 # Include description unless redacted

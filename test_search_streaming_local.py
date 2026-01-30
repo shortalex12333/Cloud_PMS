@@ -78,6 +78,31 @@ async def test_search():
         except Exception as e:
             print(f"✗ '{query}': ERROR - {str(e)[:60]}")
 
+    # Test that results include available_actions
+    print()
+    print("Testing Actions Inclusion:")
+    print("-" * 80)
+
+    from execute.table_capabilities import TABLE_CAPABILITIES
+    part_capability = TABLE_CAPABILITIES.get("part_by_part_number_or_name")
+
+    if part_capability:
+        actions = part_capability.available_actions
+        print(f"✓ Part capability has {len(actions)} actions: {actions}")
+
+        # Check if receive_part and consume_part are included
+        if "receive_part" in actions:
+            print("✓ receive_part action is available")
+        else:
+            print("✗ receive_part action is MISSING")
+
+        if "consume_part" in actions:
+            print("✓ consume_part action is available")
+        else:
+            print("✗ consume_part action is MISSING")
+    else:
+        print("✗ Part capability not found in TABLE_CAPABILITIES")
+
 asyncio.run(test_search())
 
 print()
