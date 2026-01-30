@@ -42,6 +42,7 @@ from handlers.receiving_handlers import (
     _reject_receiving_adapter,
     _view_receiving_history_adapter,
 )
+from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 
 # Lazy-initialized handler instances
 _p3_handlers = None
@@ -49,6 +50,7 @@ _p1_compliance_handlers = None
 _p1_purchasing_handlers = None
 _p2_handlers = None
 _equipment_handlers = None
+_hours_of_rest_handlers = None
 _part_handlers = None
 _receiving_handlers = None
 _shopping_list_handlers = None
@@ -137,6 +139,14 @@ def _get_document_handlers():
     if _document_handlers is None:
         _document_handlers = _get_document_handlers_raw(get_supabase_client())
     return _document_handlers
+
+
+def _get_hours_of_rest_handlers():
+    """Get lazy-initialized Hours of Rest (Crew Lens v3) handlers."""
+    global _hours_of_rest_handlers
+    if _hours_of_rest_handlers is None:
+        _hours_of_rest_handlers = HoursOfRestHandlers(get_supabase_client())
+    return _hours_of_rest_handlers
 
 
 def get_supabase_client() -> Client:
@@ -2910,7 +2920,127 @@ async def _sl_view_history(params: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-INTERNAL_HANDLERS: Dict[str, Callable] = {
+# =============================================================================
+# Hours of Rest Handlers (Crew Lens v3) - Maritime Compliance
+# =============================================================================
+
+async def _hor_get_records(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Get hours of rest records wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.get_hours_of_rest(
+        entity_id=params.get("user_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _hor_upsert_record(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Upsert hours of rest record wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.upsert_hours_of_rest(
+        entity_id=params["user_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+async def _hor_list_signoffs(params: Dict[str, Any]) -> Dict[str, Any]:
+    """List monthly signoffs wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.list_monthly_signoffs(
+        entity_id=params.get("user_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _hor_get_signoff(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Get monthly signoff details wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.get_monthly_signoff(
+        entity_id=params["signoff_id"],
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _hor_create_signoff(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Create monthly signoff wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.create_monthly_signoff(
+        entity_id=params["user_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+async def _hor_sign_signoff(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Sign monthly signoff wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.sign_monthly_signoff(
+        entity_id=params["signoff_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+async def _hor_list_templates(params: Dict[str, Any]) -> Dict[str, Any]:
+    """List crew templates wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.list_crew_templates(
+        entity_id=params.get("user_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _hor_create_template(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Create crew template wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.create_crew_template(
+        entity_id=params["user_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+async def _hor_apply_template(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply crew template wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.apply_crew_template(
+        entity_id=params["user_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+async def _hor_list_warnings(params: Dict[str, Any]) -> Dict[str, Any]:
+    """List crew warnings wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.list_crew_warnings(
+        entity_id=params.get("user_id") or params.get("entity_id"),
+        yacht_id=params["yacht_id"],
+        params=params
+    )
+
+async def _hor_acknowledge_warning(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Acknowledge warning wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.acknowledge_warning(
+        entity_id=params["warning_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+async def _hor_dismiss_warning(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Dismiss warning wrapper."""
+    handlers = _get_hours_of_rest_handlers()
+    return await handlers.dismiss_warning(
+        entity_id=params["warning_id"],
+        yacht_id=params["yacht_id"],
+        user_id=params["user_id"],
+        payload=params
+    )
+
+
+INTERNAL_HANDLERS: Dict[str, Any] = {
     # Original handlers
     "add_note": add_note,
     "add_note_to_work_order": add_note_to_work_order,
@@ -3111,6 +3241,22 @@ INTERNAL_HANDLERS: Dict[str, Callable] = {
     "reject_shopping_list_item": _sl_reject_item,
     "promote_candidate_to_part": _sl_promote_candidate,
     "view_shopping_list_history": _sl_view_history,
+
+    # =========================================================================
+    # Hours of Rest Handlers (Crew Lens v3) - MLC 2006 & STCW Compliance
+    # =========================================================================
+    "get_hours_of_rest": _hor_get_records,
+    "upsert_hours_of_rest": _hor_upsert_record,
+    "list_monthly_signoffs": _hor_list_signoffs,
+    "get_monthly_signoff": _hor_get_signoff,
+    "create_monthly_signoff": _hor_create_signoff,
+    "sign_monthly_signoff": _hor_sign_signoff,
+    "list_crew_templates": _hor_list_templates,
+    "create_crew_template": _hor_create_template,
+    "apply_crew_template": _hor_apply_template,
+    "list_crew_warnings": _hor_list_warnings,
+    "acknowledge_warning": _hor_acknowledge_warning,
+    "dismiss_warning": _hor_dismiss_warning,
 }
 
 
