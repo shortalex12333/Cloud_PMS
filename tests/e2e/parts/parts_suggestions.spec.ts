@@ -30,10 +30,25 @@ async function getBackendSuggestions(jwt: string, partId: string): Promise<strin
   const apiClient = new ApiClient();
   apiClient.setAccessToken(jwt);
 
-  const response = await apiClient.get(`/v1/parts/suggestions?part_id=${partId}`);
+  // TODO: TEMPORARY WORKAROUND - Deployed API (main branch) requires yacht_id as query param
+  // This branch has the correct implementation (yacht_id from JWT only), but it's not deployed yet
+  // Once the fix is merged to main and deployed, remove yacht_id from this URL
+  const yachtId = TEST_YACHT_ID;
+  const response = await apiClient.get(`/v1/parts/suggestions?part_id=${partId}&yacht_id=${yachtId}`);
 
   if (response.status !== 200) {
-    throw new Error(`Backend suggestions failed: ${response.status}`);
+    // Capture full error details for debugging
+    console.error('=== Backend Suggestions Error ===');
+    console.error('Status:', response.status);
+    console.error('Status Text:', response.statusText);
+    console.error('Response Data:', JSON.stringify(response.data, null, 2));
+    console.error('Request URL:', response.request.url);
+    console.error('Request Headers:', JSON.stringify(response.request.headers, null, 2));
+
+    const errorDetail = typeof response.data === 'object'
+      ? JSON.stringify(response.data)
+      : response.data;
+    throw new Error(`Backend suggestions failed: ${response.status} - ${errorDetail}`);
   }
 
   // Extract action IDs from response
