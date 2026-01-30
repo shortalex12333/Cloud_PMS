@@ -17,9 +17,17 @@ class AIExtractor:
     """AI-based extraction using OpenAI GPT-4 Turbo."""
 
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        self._client = None
         self.model = "gpt-4-turbo-preview"
         self.timeout = 30
+        self.api_key = os.getenv('OPENAI_API_KEY')
+
+    @property
+    def client(self):
+        """Lazy-load OpenAI client only when needed."""
+        if self._client is None and self.api_key:
+            self._client = OpenAI(api_key=self.api_key)
+        return self._client
 
     def extract(self, full_text: str, uncovered_spans: List[Tuple[int, int]] = None) -> Dict:
         """
@@ -33,6 +41,11 @@ class AIExtractor:
             Dict with entities following schema v0.2.2
         """
         if not full_text or not full_text.strip():
+            return self._empty_response()
+
+        # Check if API key is available
+        if not self.is_available():
+            logger.debug("OpenAI API not available (no API key), skipping AI extraction")
             return self._empty_response()
 
         try:
@@ -285,9 +298,13 @@ Output ONLY valid JSON, no explanation."""
 
     def is_available(self) -> bool:
         """Check if OpenAI API is available."""
+        if not self.api_key:
+            return False
         try:
             # Quick test - list models
-            self.client.models.list()
-            return True
+            if self.client:
+                self.client.models.list()
+                return True
+            return False
         except:
             return False

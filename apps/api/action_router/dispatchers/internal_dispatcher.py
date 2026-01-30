@@ -28,6 +28,7 @@ from handlers.certificate_handlers import get_certificate_handlers as _get_certi
 from handlers.equipment_handlers import get_equipment_handlers as _get_equipment_handlers_raw
 from handlers.shopping_list_handlers import get_shopping_list_handlers as _get_shopping_list_handlers_raw
 from handlers.document_handlers import get_document_handlers as _get_document_handlers_raw
+from handlers.document_comment_handlers import get_document_comment_handlers as _get_document_comment_handlers_raw
 from handlers.part_handlers import get_part_handlers as _get_part_handlers_raw
 from handlers.receiving_handlers import (
     ReceivingHandlers,
@@ -55,6 +56,7 @@ _part_handlers = None
 _receiving_handlers = None
 _shopping_list_handlers = None
 _document_handlers = None
+_document_comment_handlers = None
 
 
 def _get_p3_handlers():
@@ -139,6 +141,14 @@ def _get_document_handlers():
     if _document_handlers is None:
         _document_handlers = _get_document_handlers_raw(get_supabase_client())
     return _document_handlers
+
+
+def _get_document_comment_handlers():
+    """Get lazy-initialized Document Comment handlers (Document Lens v2)."""
+    global _document_comment_handlers
+    if _document_comment_handlers is None:
+        _document_comment_handlers = _get_document_comment_handlers_raw(get_supabase_client())
+    return _document_comment_handlers
 
 
 def _get_hours_of_rest_handlers():
@@ -432,6 +442,42 @@ async def _doc_get_document_url(params: Dict[str, Any]) -> Dict[str, Any]:
     entity_id = params.get("document_id")
     yacht_id = params.get("yacht_id")
     return await fn(entity_id=entity_id, yacht_id=yacht_id, params=params)
+
+
+# ============================================================================
+# DOCUMENT COMMENT WRAPPERS (Document Lens v2 - Comments MVP)
+# ============================================================================
+
+async def _doc_add_document_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_comment_handlers()
+    fn = handlers.get("add_document_comment")
+    if not fn:
+        raise ValueError("add_document_comment handler not registered")
+    return await fn(**params)
+
+
+async def _doc_update_document_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_comment_handlers()
+    fn = handlers.get("update_document_comment")
+    if not fn:
+        raise ValueError("update_document_comment handler not registered")
+    return await fn(**params)
+
+
+async def _doc_delete_document_comment(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_comment_handlers()
+    fn = handlers.get("delete_document_comment")
+    if not fn:
+        raise ValueError("delete_document_comment handler not registered")
+    return await fn(**params)
+
+
+async def _doc_list_document_comments(params: Dict[str, Any]) -> Dict[str, Any]:
+    handlers = _get_document_comment_handlers()
+    fn = handlers.get("list_document_comments")
+    if not fn:
+        raise ValueError("list_document_comments handler not registered")
+    return await fn(**params)
 
 
 async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -3164,6 +3210,14 @@ INTERNAL_HANDLERS: Dict[str, Any] = {
     "add_document_tags": _doc_add_document_tags,
     "delete_document": _doc_delete_document,
     "get_document_url": _doc_get_document_url,
+
+    # =========================================================================
+    # Document Comment Handlers (Document Lens v2 - Comments MVP)
+    # =========================================================================
+    "add_document_comment": _doc_add_document_comment,
+    "update_document_comment": _doc_update_document_comment,
+    "delete_document_comment": _doc_delete_document_comment,
+    "list_document_comments": _doc_list_document_comments,
 
     # =========================================================================
     # Equipment Lens v2 Handlers (from equipment_handlers.py)

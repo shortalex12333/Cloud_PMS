@@ -3,7 +3,7 @@
  * ==================================================
  *
  * Tests that various user queries correctly surface the create_work_order action
- * Tests the full pipeline: User query → /v1/search → Action suggestions
+ * Tests the full pipeline: User query → /search → Action suggestions
  *
  * Categories:
  * 1. Direct commands (20 queries)
@@ -62,7 +62,7 @@ test.describe('Direct Commands', () => {
     test(`should surface create_work_order for: "${query}"`, async () => {
       console.log(`\n[${index + 1}/20] Testing query: "${query}"\n`);
 
-      const response = await apiClient.request('POST', '/v1/search', {
+      const response = await apiClient.request('POST', '/search', {
         query: query,
         yacht_id: TEST_YACHT_ID,
         user_id: TEST_USER_ID
@@ -112,7 +112,7 @@ test.describe('Equipment-Specific Queries', () => {
     test(`should surface create_work_order and extract equipment: "${query}"`, async () => {
       console.log(`\n[${index + 1}/15] Testing query: "${query}"\n`);
 
-      const response = await apiClient.request('POST', '/v1/search', {
+      const response = await apiClient.request('POST', '/search', {
         query: query,
         yacht_id: TEST_YACHT_ID,
         user_id: TEST_USER_ID
@@ -158,7 +158,7 @@ test.describe('Fault-Related Queries', () => {
     test(`should surface create_work_order for fault: "${query}"`, async () => {
       console.log(`\n[${index + 1}/10] Testing query: "${query}"\n`);
 
-      const response = await apiClient.request('POST', '/v1/search', {
+      const response = await apiClient.request('POST', '/search', {
         query: query,
         yacht_id: TEST_YACHT_ID,
         user_id: TEST_USER_ID
@@ -198,7 +198,7 @@ test.describe('Scheduled Maintenance Queries', () => {
     test(`should surface create_work_order for PM: "${query}"`, async () => {
       console.log(`\n[${index + 1}/10] Testing query: "${query}"\n`);
 
-      const response = await apiClient.request('POST', '/v1/search', {
+      const response = await apiClient.request('POST', '/search', {
         query: query,
         yacht_id: TEST_YACHT_ID,
         user_id: TEST_USER_ID
@@ -220,7 +220,7 @@ test.describe('Scheduled Maintenance Queries', () => {
 // ============================================================================
 
 function checkForCreateWorkOrderAction(responseData: any): boolean {
-  // /v1/search can return different structures
+  // /search can return different structures
   // Check for actions in various possible locations
 
   // Structure 1: { actions: [...] }
