@@ -99,7 +99,7 @@ async function getRenderedActionIds(page: Page): Promise<string[]> {
  * NOTE: yacht_id is NEVER sent - server resolves from JWT
  */
 async function callBackendSearch(jwt: string, query: string): Promise<any> {
-  const response = await fetch(`${API_BASE}/v1/search`, {
+  const response = await fetch(`${API_BASE}/search`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${jwt}`,

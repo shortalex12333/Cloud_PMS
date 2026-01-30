@@ -97,7 +97,7 @@ async function getRenderedActionIds(page: Page): Promise<string[]> {
  * Helper: Call backend search API
  */
 async function callBackendSearch(jwt: string, query: string): Promise<any> {
-  const response = await fetch(`${API_BASE}/v1/search`, {
+  const response = await fetch(`${API_BASE}/search`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${jwt}`,
