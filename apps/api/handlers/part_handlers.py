@@ -617,7 +617,7 @@ class PartHandlers:
             metadata={
                 "work_order_id": work_order_id,
                 "transaction_id": txn_id,
-                "location": stock.get("location"),
+                "location": stock_before.get("location"),
                 "notes": notes,
             },
         )
