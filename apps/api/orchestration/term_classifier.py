@@ -122,6 +122,32 @@ class TermClassifier:
         'manual': ['documents'],
         'manuals': ['documents'],
         'schematic': ['documents'],
+        # Hours of Rest (Crew Lens v3)
+        'hours of rest': ['hours_of_rest'],
+        'hor': ['hours_of_rest'],
+        'rest hours': ['hours_of_rest'],
+        'rest periods': ['hours_of_rest'],
+        'compliance': ['hours_of_rest'],
+        'overtime': ['hours_of_rest'],
+        'sign month': ['hours_of_rest'],
+        'rest warning': ['hours_of_rest'],
+        'rest warnings': ['hours_of_rest'],
+        'normal hours': ['hours_of_rest'],
+        'department hours': ['hours_of_rest'],
+        'my hours': ['hours_of_rest'],
+        'my rest': ['hours_of_rest'],
+        # Certificates (Certificate Lens only - NOT Crew Lens)
+        'certificate': ['certificates'],
+        'certificates': ['certificates'],
+        'cert': ['certificates'],
+        'certs': ['certificates'],
+        'expiring': ['certificates'],
+        'eng1': ['certificates'],
+        'stcw': ['certificates'],
+        'port certs': ['certificates'],
+        'medical': ['certificates'],
+        'license': ['certificates'],
+        'licenses': ['certificates'],
     }
 
     # Time keywords → days mapping

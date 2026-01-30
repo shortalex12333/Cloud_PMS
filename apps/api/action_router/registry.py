@@ -1623,6 +1623,91 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
+    # DOCUMENT COMMENT ACTIONS (Document Lens v2 - MVP)
+    # ========================================================================
+    # Domain: documents
+    # Tables: doc_metadata_comments
+    # Handlers: apps/api/handlers/document_comment_handlers.py
+    # MVP Scope: Document-level comments only (no page/section-specific)
+    # ========================================================================
+
+    "add_document_comment": ActionDefinition(
+        action_id="add_document_comment",
+        label="Add Comment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "document_id", "comment"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["comment", "note", "document", "add", "remark", "annotation"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
+            FieldMetadata("comment", FieldClassification.REQUIRED, description="Comment text"),
+            FieldMetadata("parent_comment_id", FieldClassification.OPTIONAL, description="Parent comment UUID for threading"),
+        ],
+    ),
+
+    "update_document_comment": ActionDefinition(
+        action_id="update_document_comment",
+        label="Edit Comment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "comment_id", "comment"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["edit", "update", "modify", "comment", "document"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("comment_id", FieldClassification.REQUIRED, description="Comment UUID to edit"),
+            FieldMetadata("comment", FieldClassification.REQUIRED, description="New comment text"),
+        ],
+    ),
+
+    "delete_document_comment": ActionDefinition(
+        action_id="delete_document_comment",
+        label="Delete Comment",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "comment_id"],
+        domain="documents",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["delete", "remove", "comment", "document"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("comment_id", FieldClassification.REQUIRED, description="Comment UUID to delete"),
+        ],
+    ),
+
+    "list_document_comments": ActionDefinition(
+        action_id="list_document_comments",
+        label="View Comments",
+        endpoint="/v1/actions/execute",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        required_fields=["yacht_id", "document_id"],
+        domain="documents",
+        variant=ActionVariant.READ,
+        search_keywords=["list", "view", "comments", "document", "notes"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
+            FieldMetadata("include_threads", FieldClassification.OPTIONAL, description="Include threaded replies (default: true)"),
+        ],
+    ),
+
+    # ========================================================================
     # PARTS/INVENTORY ACTIONS (Part Lens v2)
     # ========================================================================
     # 10 actions: 2 READ, 6 MUTATE, 2 SIGNED
