@@ -471,6 +471,11 @@ async def execute_action(
                 }
             )
 
+    # Populate context.yacht_id from server-resolved user_context (invariant #1)
+    # SECURITY: Client cannot send yacht_id - always use server-resolved value
+    if not request.context.get("yacht_id") and user_context.get("yacht_id"):
+        request.context["yacht_id"] = user_context["yacht_id"]
+
     # Validate yacht isolation
     yacht_result = validate_yacht_isolation(request.context, user_context)
     if not yacht_result.valid:
