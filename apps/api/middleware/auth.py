@@ -422,7 +422,27 @@ def decode_jwt(token: str) -> dict:
 def extract_yacht_id(token: str) -> str:
     """
     Extract yacht_id from JWT token.
+
+    DEPRECATED: DO NOT USE FOR APP ROUTES.
+
+    SECURITY WARNING: This function trusts JWT claims for yacht_id.
+    For app routes, use get_authenticated_user() which performs server-side
+    tenant lookup from MASTER DB (invariant #1: yacht_id from server, not client).
+
+    Only use for:
+    - Agent token validation (machine-to-machine)
+    - Legacy endpoints being migrated
+
+    Migration: Replace with get_authenticated_user() dependency.
     """
+    import warnings
+    warnings.warn(
+        "extract_yacht_id() trusts JWT claims - use get_authenticated_user() for app routes",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    logger.warning("[SECURITY] extract_yacht_id() called - this trusts JWT claims, not server context")
+
     payload = decode_jwt(token)
     yacht_id = payload.get('yacht_id')
 
@@ -448,7 +468,23 @@ def extract_user_id(token: str) -> str:
 def extract_role(token: str) -> str:
     """
     Extract user role from JWT token.
+
+    DEPRECATED: DO NOT USE FOR APP ROUTES.
+
+    SECURITY WARNING: This function trusts JWT claims for role.
+    For app routes, use get_authenticated_user() which looks up the
+    authoritative role from TENANT DB auth_users_roles table.
+
+    JWT role can be stale or manipulated. TENANT DB role is authoritative.
     """
+    import warnings
+    warnings.warn(
+        "extract_role() trusts JWT claims - use get_authenticated_user() for app routes",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    logger.warning("[SECURITY] extract_role() called - role from JWT is NOT authoritative")
+
     payload = decode_jwt(token)
     role = payload.get('role', 'crew')
     return role
@@ -551,11 +587,26 @@ async def inject_yacht_context(
     """
     FastAPI dependency to extract and return yacht_id.
 
-    Usage:
-        @app.get('/endpoint')
+    DEPRECATED: DO NOT USE FOR APP ROUTES.
+
+    SECURITY WARNING: This function trusts JWT claims for yacht_id.
+    For app routes, use get_authenticated_user() which performs server-side
+    tenant lookup from MASTER DB (invariant #1: yacht_id from server, not client).
+
+    Migration:
+        # Old (INSECURE):
         async def endpoint(yacht_id: str = Depends(inject_yacht_context)):
-            # yacht_id is guaranteed to exist
+
+        # New (SECURE):
+        async def endpoint(auth: dict = Depends(get_authenticated_user)):
+            yacht_id = auth['yacht_id']  # Server-resolved
     """
+    import warnings
+    warnings.warn(
+        "inject_yacht_context() trusts JWT claims - use get_authenticated_user() for app routes",
+        DeprecationWarning,
+        stacklevel=2
+    )
     token = authorization.credentials
     return extract_yacht_id(token)
 

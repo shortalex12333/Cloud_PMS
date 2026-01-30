@@ -1,0 +1,217 @@
+name: E2E Tests - Part Lens v2 (Staging)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Target environment for E2E tests'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - suggestions
+          - actions
+          - signed-actions
+          - storage
+          - zero-5xx
+  push:
+    branches:
+      - e2e/parts-lens-playwright
+    paths:
+      - 'tests/e2e/parts/**'
+      - '.github/workflows/e2e_parts_staging.yml'
+
+env:
+  NODE_VERSION: '20'
+  PLAYWRIGHT_VERSION: '1.40.0'
+
+jobs:
+  e2e-tests:
+    name: E2E Tests - Part Lens v2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium]
+        # Future: add firefox, webkit for cross-browser testing
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Create E2E environment file
+        run: |
+          cat > .env.e2e.local <<EOF
+          # E2E Test Environment Configuration
+          PLAYWRIGHT_BASE_URL=https://app.celeste7.ai
+          RENDER_API_URL=https://pipeline-core.int.celeste7.ai
+
+          # Master Supabase (for authentication)
+          MASTER_SUPABASE_URL=${{ secrets.MASTER_SUPABASE_URL }}
+          MASTER_SUPABASE_ANON_KEY=${{ secrets.MASTER_SUPABASE_ANON_KEY }}
+
+          # Test Yacht
+          TEST_USER_YACHT_ID=${{ secrets.TEST_USER_YACHT_ID }}
+
+          # Test Accounts
+          CREW_EMAIL=${{ secrets.CREW_EMAIL }}
+          CREW_PASSWORD=${{ secrets.CREW_PASSWORD }}
+
+          HOD_EMAIL=${{ secrets.HOD_EMAIL }}
+          HOD_PASSWORD=${{ secrets.HOD_PASSWORD }}
+
+          CAPTAIN_EMAIL=${{ secrets.CAPTAIN_EMAIL }}
+          CAPTAIN_PASSWORD=${{ secrets.CAPTAIN_PASSWORD }}
+
+          MANAGER_EMAIL=${{ secrets.MANAGER_EMAIL }}
+          MANAGER_PASSWORD=${{ secrets.MANAGER_PASSWORD }}
+
+          # Test Data
+          TEST_PART_ID=${{ secrets.TEST_PART_ID }}
+          EOF
+
+      - name: Run E2E tests
+        id: e2e_tests
+        run: |
+          # Determine which tests to run
+          TEST_SUITE="${{ github.event.inputs.test_suite || 'all' }}"
+
+          if [ "$TEST_SUITE" = "all" ]; then
+            npx playwright test tests/e2e/parts/ --project=e2e-${{ matrix.browser }}
+          elif [ "$TEST_SUITE" = "suggestions" ]; then
+            npx playwright test tests/e2e/parts/parts_suggestions.spec.ts --project=e2e-${{ matrix.browser }}
+          elif [ "$TEST_SUITE" = "actions" ]; then
+            npx playwright test tests/e2e/parts/parts_actions_execution.spec.ts --project=e2e-${{ matrix.browser }}
+          elif [ "$TEST_SUITE" = "signed-actions" ]; then
+            npx playwright test tests/e2e/parts/parts_signed_actions.spec.ts --project=e2e-${{ matrix.browser }}
+          elif [ "$TEST_SUITE" = "storage" ]; then
+            npx playwright test tests/e2e/parts/parts_storage_access.spec.ts --project=e2e-${{ matrix.browser }}
+          elif [ "$TEST_SUITE" = "zero-5xx" ]; then
+            npx playwright test tests/e2e/parts/parts_ui_zero_5xx.spec.ts --project=e2e-${{ matrix.browser }}
+          fi
+        env:
+          CI: true
+        continue-on-error: true
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 30
+
+      - name: Upload Artifacts (Screenshots, Traces, Evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-${{ matrix.browser }}
+          path: test-results/artifacts/
+          retention-days: 30
+
+      - name: Analyze 5xx Errors
+        if: always()
+        run: |
+          echo "Scanning for 5xx errors in test artifacts..."
+
+          # Check if any 5xx errors were detected
+          if [ -f "test-results/artifacts/comprehensive_flow_zero_5xx.json" ]; then
+            FIVE_XX_COUNT=$(jq '.stats.by5xx // 0' test-results/artifacts/comprehensive_flow_zero_5xx.json)
+            echo "5xx error count: $FIVE_XX_COUNT"
+
+            if [ "$FIVE_XX_COUNT" -gt 0 ]; then
+              echo "❌ CRITICAL: $FIVE_XX_COUNT 5xx errors detected in E2E tests"
+              echo "::error::5xx errors detected in E2E tests - deployment blocker"
+              exit 1
+            else
+              echo "✅ Zero 5xx errors - acceptance gate passed"
+            fi
+          else
+            echo "⚠️  Warning: Zero 5xx test artifact not found"
+          fi
+
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "# E2E Test Summary - Part Lens v2" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.target_environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Browser:** ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Suite:** ${{ github.event.inputs.test_suite || 'all' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for test results
+          if [ -f "test-results/artifacts/comprehensive_flow_zero_5xx.json" ]; then
+            TOTAL_REQUESTS=$(jq '.stats.total // 0' test-results/artifacts/comprehensive_flow_zero_5xx.json)
+            FIVE_XX_COUNT=$(jq '.stats.by5xx // 0' test-results/artifacts/comprehensive_flow_zero_5xx.json)
+
+            echo "## Network Statistics" >> $GITHUB_STEP_SUMMARY
+            echo "- Total Requests: $TOTAL_REQUESTS" >> $GITHUB_STEP_SUMMARY
+            echo "- 5xx Errors: $FIVE_XX_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FIVE_XX_COUNT" -eq 0 ]; then
+              echo "✅ **Zero 5xx Errors - PASSED**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **5xx Errors Detected - FAILED**" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Playwright Report: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Screenshots: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Network Traces: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail job if tests failed
+        if: steps.e2e_tests.outcome == 'failure'
+        run: |
+          echo "❌ E2E tests failed"
+          exit 1
+
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          # Placeholder for notification logic
+          # In production, integrate with Slack, Discord, email, etc.
+
+          if [ "${{ needs.e2e-tests.result }}" = "success" ]; then
+            echo "✅ E2E tests PASSED - Part Lens v2 ready for deployment"
+          else
+            echo "❌ E2E tests FAILED - Part Lens v2 has issues"
+          fi
