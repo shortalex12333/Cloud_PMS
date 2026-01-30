@@ -4795,7 +4795,6 @@ async def list_my_work_orders_endpoint(
 
 @router.get("/handover")
 async def get_handover_items(
-    yacht_id: Optional[str] = None,
     limit: int = 20,
     category: Optional[str] = None,
     authorization: str = Header(None)
@@ -4804,13 +4803,14 @@ async def get_handover_items(
     Get handover items for a yacht, sorted by priority and recency.
 
     Query Parameters:
-    - yacht_id: Optional (uses JWT yacht_id if not provided)
     - limit: Maximum number of items to return (default: 20)
     - category: Optional filter by category
 
     Returns:
     - List of handover items with user names
     - Sorted by priority (desc) and added_at (desc)
+
+    Note: yacht_id is always from JWT auth context (invariant #1).
     """
     # Validate JWT
     jwt_result = validate_jwt(authorization)
@@ -4826,16 +4826,10 @@ async def get_handover_items(
 
     user_context = jwt_result.context
 
-    # Use yacht_id from JWT if not provided in query
+    # SECURITY: yacht_id ONLY from auth context - invariant #1
+    yacht_id = user_context.get("yacht_id")
     if not yacht_id:
-        yacht_id = user_context.get("yacht_id")
-
-    if not yacht_id:
-        raise HTTPException(status_code=400, detail="yacht_id is required")
-
-    # Validate yacht isolation
-    if yacht_id != user_context.get("yacht_id"):
-        raise HTTPException(status_code=403, detail="Access denied: yacht isolation violation")
+        raise HTTPException(status_code=403, detail="No yacht context in token")
 
     try:
         # Build query

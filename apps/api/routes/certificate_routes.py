@@ -63,7 +63,8 @@ class ExpiringCertificatesParams(BaseModel):
 class CertificatePipelineTestRequest(BaseModel):
     """Request body for debug pipeline test."""
     query: str = Field(..., description="User query to test through pipeline")
-    yacht_id: Optional[str] = Field(default=None, description="Override yacht_id for testing")
+    # SECURITY: yacht_id removed from request schema per invariant #1
+    # yacht_id MUST come from server-resolved auth context, never client payload
 
 
 class CertificatePipelineTestResponse(BaseModel):
@@ -330,11 +331,8 @@ async def debug_certificate_pipeline(
     logger.info(f"[CertDebug] Debug access: user={auth['user_id'][:8]}..., env={env}")
 
     query = request.query
-    # SECURITY: Always use auth yacht_id - never trust request payload
-    # Even in dev mode, maintain yacht isolation invariant
+    # SECURITY: yacht_id ONLY from auth context - invariant #1
     yacht_id = auth["yacht_id"]
-    if request.yacht_id and str(request.yacht_id) != yacht_id:
-        logger.warning(f"[CertDebug] yacht_id mismatch ignored: request={request.yacht_id}, auth={yacht_id}")
 
     debug_info = {
         "feature_flag": "FEATURE_CERTIFICATES=true",
