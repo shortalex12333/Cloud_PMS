@@ -53,7 +53,8 @@ router = APIRouter(prefix="/v1/related", tags=["related-entities"])
 
 class AddEntityLinkRequest(BaseModel):
     """Request to add an explicit entity link."""
-    yacht_id: Optional[UUID] = Field(default=None, description="Yacht UUID (optional, uses auth yacht_id if not provided)")
+    # SECURITY: yacht_id removed from request schema per invariant #1
+    # yacht_id MUST come from server-resolved auth context, never client payload
     source_entity_type: str = Field(..., description="Source entity type (e.g., 'work_order')")
     source_entity_id: UUID = Field(..., description="Source entity UUID")
     target_entity_type: str = Field(..., description="Target entity type")
@@ -233,10 +234,8 @@ async def add_entity_link(
         supabase = get_supabase_client()
         handlers = RelatedHandlers(supabase)
 
-        # Validate yacht_id matches auth (if provided)
-        if request.yacht_id and str(request.yacht_id) != auth["yacht_id"]:
-            raise HTTPException(status_code=403, detail="Yacht ID mismatch")
-
+        # SECURITY: yacht_id ONLY from auth context - invariant #1
+        # No payload yacht_id validation needed - field removed from schema
         result = await handlers.add_related(
             yacht_id=auth["yacht_id"],
             user_id=auth["user_id"],

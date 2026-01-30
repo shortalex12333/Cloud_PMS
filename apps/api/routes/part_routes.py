@@ -197,10 +197,7 @@ def compute_urgency(on_hand: int, min_level: int) -> str:
 @router.get("/suggestions")
 async def get_part_suggestions(
     part_id: str = Query(..., description="Part UUID"),
-    yacht_id: str = Query(..., description="Yacht UUID"),
-    user_id: str = Query(None, description="User UUID for suppression check"),
-    role: str = Query(None, description="User role for action filtering"),
-    authorization: str = Header(None),
+    authorization: str = Header(..., description="Bearer token"),
 ) -> PartSuggestionsResponse:
     """
     Get context-valid actions for a part with prefill data.
@@ -219,10 +216,21 @@ async def get_part_suggestions(
 
     Stock computation:
       suggested_qty = round_up(max(min_level - on_hand, 1), reorder_multiple)
+
+    Note: yacht_id, user_id, and role are from JWT auth context (invariant #1).
     """
-    # Validate JWT (optional for now, depends on deployment)
-    # TODO: Enable JWT validation in production
-    # jwt_payload = validate_jwt(authorization)
+    # SECURITY: Validate JWT and get auth context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
+
+    # SECURITY: yacht_id, user_id, role ONLY from auth context - invariant #1
+    yacht_id = jwt_result.context.get("yacht_id")
+    user_id = jwt_result.context.get("user_id")
+    role = jwt_result.context.get("role")
+
+    if not yacht_id:
+        raise HTTPException(status_code=403, detail="No yacht context in token")
 
     db = get_default_supabase_client()
     if not db:
@@ -344,7 +352,7 @@ async def get_part_suggestions(
             prefill = {
                 "part_id": part_id,
                 "part_name": part.get("name"),
-                "from_location_id": stock_info["location_id"],
+                "from_location_id": stock_info["location"],  # FIX: stock_info has "location" not "location_id"
             }
             if is_out_of_stock:
                 # Don't suggest transfer if out of stock
@@ -407,9 +415,8 @@ async def get_part_suggestions(
 
 @router.post("/shopping-list/prefill")
 async def prefill_add_to_shopping_list(
-    yacht_id: str = Query(...),
     part_id: str = Query(...),
-    authorization: str = Header(None),
+    authorization: str = Header(..., description="Bearer token"),
 ) -> PrefillResponse:
     """
     Prefill values for add_to_shopping_list action.
@@ -417,7 +424,19 @@ async def prefill_add_to_shopping_list(
     Computes:
     - quantity_requested = round_up(max(min_level - on_hand, 1), reorder_multiple)
     - urgency based on stock level
+
+    Note: yacht_id is from JWT auth context (invariant #1).
     """
+    # SECURITY: Validate JWT and get auth context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
+
+    # SECURITY: yacht_id ONLY from auth context - invariant #1
+    yacht_id = jwt_result.context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=403, detail="No yacht context in token")
+
     db = get_default_supabase_client()
     if not db:
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -483,16 +502,27 @@ async def prefill_add_to_shopping_list(
 
 @router.post("/adjust-stock/prefill")
 async def prefill_adjust_stock(
-    yacht_id: str = Query(...),
     part_id: str = Query(...),
-    authorization: str = Header(None),
+    authorization: str = Header(..., description="Bearer token"),
 ) -> PrefillResponse:
     """
     Prefill values for adjust_stock_quantity action.
 
     Returns current quantity for user reference.
     This is a SIGNED action - requires PIN+TOTP signature.
+
+    Note: yacht_id is from JWT auth context (invariant #1).
     """
+    # SECURITY: Validate JWT and get auth context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
+
+    # SECURITY: yacht_id ONLY from auth context - invariant #1
+    yacht_id = jwt_result.context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=403, detail="No yacht context in token")
+
     db = get_default_supabase_client()
     if not db:
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -563,12 +593,11 @@ async def prefill_adjust_stock(
 
 @router.get("/low-stock")
 async def get_low_stock(
-    yacht_id: str = Query(...),
     department: str = Query(None, description="Filter by department"),
     threshold_percent: float = Query(None, description="Filter by % of min_level"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    authorization: str = Header(None),
+    authorization: str = Header(..., description="Bearer token"),
 ) -> LowStockResponse:
     """
     View parts below minimum stock level.
@@ -579,7 +608,19 @@ async def get_low_stock(
 
     Includes suggested_order_qty for each part using the formula:
       round_up(max(min_level - on_hand, 1), reorder_multiple)
+
+    Note: yacht_id is from JWT auth context (invariant #1).
     """
+    # SECURITY: Validate JWT and get auth context
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message if jwt_result.error else "Invalid token")
+
+    # SECURITY: yacht_id ONLY from auth context - invariant #1
+    yacht_id = jwt_result.context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=403, detail="No yacht context in token")
+
     db = get_default_supabase_client()
     if not db:
         raise HTTPException(status_code=503, detail="Database unavailable")

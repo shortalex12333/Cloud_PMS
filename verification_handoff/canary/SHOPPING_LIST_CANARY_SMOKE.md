@@ -1,6 +1,6 @@
 # Shopping List Lens v1 - Canary Smoke Test Results
 
-**Date**: 2026-01-29T03:26:42.397355+00:00
+**Date**: 2026-01-29T14:43:22.998181+00:00
 **API Base**: https://celeste-pipeline-v1.onrender.com
 **Yacht ID**: 85fe1119-b04c-41ac-80f1-829d23322598
 
@@ -56,7 +56,7 @@ Content-Type: application/json
     "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
   },
   "payload": {
-    "item_name": "Smoke Test Item 3f818af3",
+    "item_name": "Smoke Test Item bfc8c50d",
     "quantity": 5,
     "source_type": "manual",
     "is_candidate_part": false,
@@ -87,7 +87,7 @@ Content-Type: application/json
     "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
   },
   "payload": {
-    "item_name": "Smoke Test Item 2 5f855ed2",
+    "item_name": "Smoke Test Item 2 3de4a60c",
     "quantity": 3,
     "source_type": "manual",
     "is_candidate_part": false
@@ -117,7 +117,7 @@ Content-Type: application/json
     "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
   },
   "payload": {
-    "item_name": "Candidate Part 3349f574",
+    "item_name": "Candidate Part 66b7aa05",
     "quantity": 2,
     "source_type": "manual",
     "is_candidate_part": true,
