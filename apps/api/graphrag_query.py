@@ -333,6 +333,24 @@ class GraphRAGQueryService:
             logger.warning(f"GPT extractor not available: {e}. Falling back to basic search.")
             self.gpt = None
 
+        # Initialize lens registries for capability-based search and microactions
+        self.capability_registry = None
+        self.microaction_registry = None
+        if self.client:
+            try:
+                from prepare.capability_registry import CapabilityRegistry
+                from microactions.microaction_registry import MicroactionRegistry
+
+                self.capability_registry = CapabilityRegistry(self.client)
+                self.capability_registry.discover_and_register()
+
+                self.microaction_registry = MicroactionRegistry(self.client)
+                self.microaction_registry.discover_and_register()
+
+                logger.info("✅ Lens registries initialized")
+            except Exception as e:
+                logger.warning(f"Lens registries not available: {e}. Microactions disabled.")
+
     def query(self, yacht_id: str, query_text: str) -> Dict:
         """
         Execute GraphRAG query using GPT extraction + vector search.
@@ -375,6 +393,10 @@ class GraphRAGQueryService:
 
         # Step 5: Build cards
         cards = self._execute_query(yacht_id, intent, query_text, entities, similar_docs, person_filter)
+
+        # Step 6: Add microactions to cards (lens-based action suggestions)
+        if self.microaction_registry:
+            cards = self._enrich_cards_with_microactions(yacht_id, cards, intent.value, query_text)
 
         return {
             "query": query_text,
@@ -974,6 +996,89 @@ class GraphRAGQueryService:
             ).limit(5).execute().data or []
         except Exception:
             return []
+
+    def _enrich_cards_with_microactions(self, yacht_id: str, cards: List[Dict],
+                                         query_intent: str, query_text: str,
+                                         user_role: str = "chief_engineer") -> List[Dict]:
+        """Enrich cards with lens-based microaction suggestions."""
+        import asyncio
+
+        async def enrich_card(card: Dict) -> Dict:
+            # Get lens name from card type
+            lens_name = self._get_lens_name_from_card_type(card.get("type", ""))
+            if not lens_name:
+                return card
+
+            # Get entity type and ID
+            entity_type = self._get_entity_type_from_card_type(card.get("type", ""))
+            entity_id = card.get("primary_id") or card.get("id")
+
+            if not entity_id:
+                return card
+
+            # Get microaction suggestions
+            try:
+                suggestions = await self.microaction_registry.get_suggestions(
+                    lens_name=lens_name,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    entity_data=card,
+                    user_role=user_role,
+                    yacht_id=yacht_id,
+                    query_intent=query_intent
+                )
+
+                # Convert to dict format
+                card["suggested_actions"] = [
+                    {
+                        "action_id": s.action_id,
+                        "label": s.label,
+                        "variant": s.variant,
+                        "priority": s.priority,
+                        "prefill_data": s.prefill_data
+                    }
+                    for s in suggestions
+                ]
+            except Exception as e:
+                logger.warning(f"Failed to get microactions for card {entity_id}: {e}")
+                card["suggested_actions"] = []
+
+            return card
+
+        # Run async enrichment
+        try:
+            loop = asyncio.get_event_loop()
+            enriched_cards = loop.run_until_complete(
+                asyncio.gather(*[enrich_card(card) for card in cards])
+            )
+            return list(enriched_cards)
+        except Exception as e:
+            logger.error(f"Failed to enrich cards with microactions: {e}")
+            return cards
+
+    def _get_lens_name_from_card_type(self, card_type: str) -> Optional[str]:
+        """Map card type to lens name."""
+        type_to_lens = {
+            "pms_parts": "part_lens",
+            "part": "part_lens",
+            "crew": "crew_lens",
+            "certificate": "certificate_lens",
+            "equipment": "equipment_lens",
+            "work_order": "work_order_lens",
+        }
+        return type_to_lens.get(card_type)
+
+    def _get_entity_type_from_card_type(self, card_type: str) -> str:
+        """Map card type to entity type for microaction lookup."""
+        type_to_entity = {
+            "pms_parts": "part",
+            "part": "part",
+            "crew": "crew_member",
+            "certificate": "certificate",
+            "equipment": "equipment",
+            "work_order": "work_order",
+        }
+        return type_to_entity.get(card_type, card_type)
 
     def get_graph_stats(self, yacht_id: str) -> Dict:
         """Admin: Get graph stats from v_graph_stats"""
