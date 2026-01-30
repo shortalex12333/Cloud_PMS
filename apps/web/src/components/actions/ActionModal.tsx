@@ -54,6 +54,16 @@ const CERTIFICATE_TYPE_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+// Shopping list source_type options
+const SOURCE_TYPE_OPTIONS = [
+  { value: 'manual_add', label: 'Manual Add' },
+  { value: 'inventory_low', label: 'Inventory Low' },
+  { value: 'inventory_oos', label: 'Inventory Out of Stock' },
+  { value: 'work_order_usage', label: 'Work Order Usage' },
+  { value: 'receiving_missing', label: 'Receiving Missing' },
+  { value: 'receiving_damaged', label: 'Receiving Damaged' },
+];
+
 export default function ActionModal({
   action,
   yachtId,
@@ -263,6 +273,7 @@ export default function ActionModal({
                   ) : fieldType === 'select' && field === 'certificate_type' ? (
                     <select
                       id={field}
+                      name={field}
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
@@ -281,10 +292,33 @@ export default function ActionModal({
                         </option>
                       ))}
                     </select>
+                  ) : fieldType === 'select' && field === 'source_type' ? (
+                    <select
+                      id={field}
+                      name={field}
+                      value={formData[field] || 'manual_add'}
+                      onChange={(e) => handleFieldChange(field, e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-lg',
+                        'bg-[#1c1c1e] border border-[#3d3d3f]',
+                        'text-[15px] text-white',
+                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'transition-colors'
+                      )}
+                      required
+                      data-testid="source_type-select"
+                    >
+                      {SOURCE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <input
-                      type="text"
+                      type={field.includes('quantity') || field.includes('price') ? 'number' : 'text'}
                       id={field}
+                      name={field}
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
@@ -295,7 +329,10 @@ export default function ActionModal({
                         'transition-colors'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
+                      min={field.includes('quantity') ? '1' : undefined}
+                      step={field.includes('quantity') ? '1' : field.includes('price') ? '0.01' : undefined}
                       required
+                      data-testid={`${field}-input`}
                     />
                   )}
                 </div>

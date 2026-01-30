@@ -34,10 +34,10 @@ export default function LoginContent() {
         return;
       }
 
-      // If fully activated, redirect to the single surface app
+      // If fully activated, redirect to the single surface (root)
       if (isFullyActivated(user)) {
-        console.log('[LoginPage] User fully activated, redirecting to /app');
-        router.replace('/app');
+        console.log('[LoginPage] User fully activated, redirecting to /');
+        router.replace('/');
         return;
       }
 
