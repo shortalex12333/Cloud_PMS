@@ -1,0 +1,83 @@
+Subject: PR #26 Ready - Attachment Infrastructure for Work Order Lens V2
+
+Hi team,
+
+PR #26 is ready to merge. This adds the attachment infrastructure for Work Order Lens V2 Embeddings Phase 2.
+
+---
+
+BRANCH: fix/attachment-table-handlers
+COMMIT: 34b083d
+STATUS: ✅ Ready for main
+
+---
+
+WHAT'S INCLUDED:
+
+1. Bug Fixes
+   - Work order photos now write to correct table (pms_attachments)
+   - Fault photos now write to correct table (was broken)
+
+2. New Infrastructure
+   - 4 entity-based storage buckets (work_order, fault, equipment, checklist)
+   - Comments table with department-based RLS
+   - Handler updates for bucket routing
+
+3. Migrations
+   - 20260130_109_create_attachment_storage_buckets.sql
+   - 20260130_110_create_attachment_comments_table.sql
+
+---
+
+AFTER MERGE:
+
+1. Apply migrations to production:
+   psql $SUPABASE_DB_URL < supabase/migrations/20260130_109_*.sql
+   psql $SUPABASE_DB_URL < supabase/migrations/20260130_110_*.sql
+
+2. Render will auto-deploy (~5-10 min)
+
+---
+
+WHAT YOU CAN BUILD:
+
+Upload Endpoints:
+  - POST /api/work_orders/{id}/upload
+  - POST /api/faults/{id}/upload
+  - POST /api/equipment/{id}/upload
+
+Pattern: Clone apps/api/routes/receiving_upload.py
+
+Frontend:
+  - Add upload button to WorkOrderCard.tsx
+  - Use multipart form upload
+  - Display with signed URLs
+
+Image-Processing Extension:
+  - Add upload_type: "work_order", "fault", "equipment"
+  - Route to pms_attachments table
+
+---
+
+REFERENCE DOCS (in repo):
+
+  - PR_26_MERGE_DETAILS.md (full technical spec)
+  - PR_26_QUICK_SUMMARY.md (quick reference)
+  - docs/ATTACHMENT_UPLOAD_ENDPOINTS_NEEDED.md (implementation guide)
+  - docs/UPLOAD_PROCESSING_WORKFLOW.md (queue strategy)
+
+---
+
+TESTING:
+
+After merge, verify:
+  1. Migrations applied (check pms_attachment_comments table exists)
+  2. Buckets created (SELECT * FROM storage.buckets WHERE id LIKE '%attachments')
+  3. Handlers work (test add_work_order_photo action)
+
+---
+
+Ready to proceed! Let me know if you have questions.
+
+Best,
+[Your Name]

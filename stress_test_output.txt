@@ -1,0 +1,243 @@
+================================================================================
+PART LENS - COMPREHENSIVE STRESS TEST WITH REAL DATA
+================================================================================
+
+✓ Supabase client initialized
+
+Fetching ALL real parts from database...
+--------------------------------------------------------------------------------
+✓ Found 701 total parts in database
+
+Categories: 22
+  - Bridge: 38 parts
+  - Consumables: 1 parts
+  - Deck: 39 parts
+  - Deck Hardware: 1 parts
+  - Electrical: 24 parts
+  - Engine Room: 39 parts
+  - Filters: 3 parts
+  - Galley: 47 parts
+  - Hardware: 1 parts
+  - Hydraulic: 21 parts
+  ... and 12 more
+
+Manufacturers: 77
+  - 3M: 6 parts
+  - ABB: 10 parts
+  - ACR: 5 parts
+  - B&G: 3 parts
+  - Besenzoni: 1 parts
+  - Blue Sea Systems: 9 parts
+  - Bosch: 2 parts
+  - Bosch Rexroth: 3 parts
+  - CAT: 1 parts
+  - CRC: 4 parts
+  ... and 67 more
+
+Locations: 83
+  - Bridge - Storage Locker: 1 parts
+  - Engine Room - Shelf A: 1 parts
+  - Engine Room - Shelf B: 1 parts
+  - Engine Room Storage A: 1 parts
+  - HVAC Storage B: 1 parts
+  - LOC-04e6: 1 parts
+  - LOC-05dd: 1 parts
+  - LOC-0b91: 1 parts
+  - LOC-0f32: 1 parts
+  - LOC-0fc8: 1 parts
+  ... and 73 more
+
+Sample real parts for test generation:
+--------------------------------------------------------------------------------
+1. Part A
+   PN: None | Cat: None | Mfr: None
+2. Turbocharger Gasket Set
+   PN: ENG-0012-584 | Cat: Galley | Mfr: Volvo Penta
+3. Raw Water Pump Seal Kit
+   PN: PMP-0018-280 | Cat: Engine Room | Mfr: Grundfos
+4. Cylinder Liner O-Ring Kit
+   PN: ENG-0029-432 | Cat: Safety | Mfr: Yanmar
+5. Fuel Filter Generator
+   PN: FLT-0033-146 | Cat: Engine Room | Mfr: Fleetguard
+6. Starter Motor Solenoid
+   PN: ELC-0041-489 | Cat: Deck | Mfr: Blue Sea Systems
+7. Navigation Light Bulb 12V 25W
+   PN: ELC-0053-760 | Cat: Safety | Mfr: Blue Sea Systems
+8. Wire Marine Grade 10AWG Red (100ft)
+   PN: ELC-0059-108 | Cat: Bridge | Mfr: Blue Sea Systems
+9. Hydraulic Oil Filter
+   PN: HYD-0066-515 | Cat: Safety | Mfr: Danfoss
+10. V-Belt Sea Water Pump
+   PN: ENG-0206-977 | Cat: Deck | Mfr: Volvo Penta
+11. V-Belt Alternator
+   PN: ENG-0218-897 | Cat: Interior | Mfr: MTU
+12. Temp Part for Delete Test - 1768410410300
+   PN: TEMP-DEL-1768410410300 | Cat: None | Mfr: None
+13. Temp Part for Delete Test - 1768410498441
+   PN: TEMP-DEL-1768410498441 | Cat: None | Mfr: None
+14. Temp Part for Delete Test - 1768505526756
+   PN: TEMP-DEL-1768505526756 | Cat: None | Mfr: None
+15. Temp Part for Delete Test - 1768571381060
+   PN: TEMP-DEL-1768571381060 | Cat: None | Mfr: None
+16. Anchor Chain Shackle 16mm
+   PN: DCK-0076-515 | Cat: Engine Room | Mfr: Lewmar
+17. Windlass Gypsy Wildcat
+   PN: DCK-0079-204 | Cat: Interior | Mfr: Lofrans
+18. Fire Extinguisher 6kg Dry Powder
+   PN: SAF-0092-318 | Cat: Interior | Mfr: Survitec
+19. AC Compressor Clutch
+   PN: HVC-0106-314 | Cat: Deck | Mfr: Marine Air
+20. Watermaker Membrane
+   PN: PMP-0116-528 | Cat: Deck | Mfr: Grundfos
+
+================================================================================
+GENERATING STRESS TEST QUERIES
+================================================================================
+
+Generating stress test cases...
+✓ Generated 95 stress test cases
+
+Test Distribution:
+  - easy: 46 tests
+  - extreme: 3 tests
+  - hard: 18 tests
+  - medium: 28 tests
+
+================================================================================
+RUNNING STRESS TESTS
+================================================================================
+
+Test 1/95: [misspelling] [easy]
+  Query: "filtr"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 2/95: [misspelling] [medium]
+  Query: "fillter"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 3/95: [misspelling] [hard]
+  Query: "fiter"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 4/95: [misspelling] [hard]
+  Query: "flter"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 5/95: [misspelling] [hard]
+  Query: "pmp"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 6/95: [misspelling] [easy]
+  Query: "pumpp"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 7/95: [misspelling] [medium]
+  Query: "pomp"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 8/95: [misspelling] [easy]
+  Query: "hydrualic"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 9/95: [misspelling] [medium]
+  Query: "hydralic"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 10/95: [misspelling] [medium]
+  Query: "hydrulic"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 20/95: [lowercase] [easy]
+  Query: "raw water pump seal kit"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 40/95: [category_misspelled] [medium]
+  Query: "Bridgg"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 60/95: [functional] [hard]
+  Query: "thing that filters oil"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 67/95: [extreme_typo] [extreme]
+  Query: "fltrs"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 68/95: [extreme_typo] [extreme]
+  Query: "pmps"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 69/95: [extreme_typo] [extreme]
+  Query: "hydr"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+Test 80/95: [exact_real_part] [easy]
+  Query: "Raw Water Pump Seal Kit"
+  ✗ ERROR: 'SyncSelectRequestBuilder' object has no attribute 'or_'
+
+================================================================================
+STRESS TEST RESULTS
+================================================================================
+
+Total Tests: 95
+Passed: 0 (0.0%)
+Failed: 0 (0.0%)
+Errors: 95 (100.0%)
+
+Results by Test Type:
+--------------------------------------------------------------------------------
+all_caps                  | Pass:   0 | Fail:   0 | Error:   5 |   0.0%
+category                  | Pass:   0 | Fail:   0 | Error:   5 |   0.0%
+category_misspelled       | Pass:   0 | Fail:   0 | Error:   4 |   0.0%
+contradictory             | Pass:   0 | Fail:   0 | Error:   3 |   0.0%
+equipment                 | Pass:   0 | Fail:   0 | Error:   3 |   0.0%
+exact_real_part           | Pass:   0 | Fail:   0 | Error:  10 |   0.0%
+extreme_typo              | Pass:   0 | Fail:   0 | Error:   3 |   0.0%
+functional                | Pass:   0 | Fail:   0 | Error:   4 |   0.0%
+lazy_typing               | Pass:   0 | Fail:   0 | Error:   2 |   0.0%
+location                  | Pass:   0 | Fail:   0 | Error:   5 |   0.0%
+location_partial          | Pass:   0 | Fail:   0 | Error:   2 |   0.0%
+lowercase                 | Pass:   0 | Fail:   0 | Error:   5 |   0.0%
+manufacturer              | Pass:   0 | Fail:   0 | Error:   5 |   0.0%
+misspelling               | Pass:   0 | Fail:   0 | Error:  10 |   0.0%
+mixed                     | Pass:   0 | Fail:   0 | Error:   3 |   0.0%
+natural_language          | Pass:   0 | Fail:   0 | Error:   8 |   0.0%
+partial_real_part         | Pass:   0 | Fail:   0 | Error:  10 |   0.0%
+vague                     | Pass:   0 | Fail:   0 | Error:   5 |   0.0%
+whitespace                | Pass:   0 | Fail:   0 | Error:   3 |   0.0%
+
+Results by Difficulty:
+--------------------------------------------------------------------------------
+easy            | Pass:   0 | Fail:   0 | Error:  46 |   0.0%
+extreme         | Pass:   0 | Fail:   0 | Error:   3 |   0.0%
+hard            | Pass:   0 | Fail:   0 | Error:  18 |   0.0%
+medium          | Pass:   0 | Fail:   0 | Error:  28 |   0.0%
+
+================================================================================
+CRITICAL FAILURES
+================================================================================
+
+Found 46 CRITICAL failures (easy tests that should pass):
+
+✗ [misspelling] "filtr"
+✗ [misspelling] "pumpp"
+✗ [misspelling] "hydrualic"
+✗ [lazy_typing] "Cylinder Liner ORing Kit"
+✗ [lazy_typing] "VBelt Sea Water Pump"
+✗ [all_caps] "PART A"
+✗ [all_caps] "TURBOCHARGER GASKET SET"
+✗ [all_caps] "RAW WATER PUMP SEAL KIT"
+✗ [all_caps] "CYLINDER LINER O-RING KIT"
+✗ [all_caps] "FUEL FILTER GENERATOR"
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Overall Success Rate: 0.0%
+
+✗ POOR: Part Lens fails too many real-world queries
+
+Recommendations:
+  - Fix 95 query errors
+

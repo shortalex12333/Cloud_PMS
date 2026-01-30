@@ -1,0 +1,85 @@
+Subject: PR Ready: Shopping List RLS Fix (RPC Pattern Migration)
+
+Hi team,
+
+I've fixed the 500 errors in shopping list actions and the PR is ready to merge.
+
+---
+WHAT'S FIXED
+---
+
+1. 403 FORBIDDEN error - User ID mismatch in auth_users_profiles corrected
+2. 500 RLS violation - Converted shopping list handler to RPC pattern (same as receiving/fault handlers from PR #27)
+3. Schema corrections - Function matches actual table columns
+
+Root cause: TENANT Supabase can't verify MASTER-signed JWTs, so auth.uid() returns NULL and RLS blocks INSERTs.
+
+Solution: Created rpc_insert_shopping_list_item() with embedded authorization that bypasses RLS using SECURITY DEFINER.
+
+---
+WHAT'S READY
+---
+
+✅ TENANT DB migration applied and verified
+✅ Handler updated to use RPC
+✅ Test successful (created item via RPC: 4402a14f-7652-448e-993b-f9b14f1f3af4)
+✅ Branch pushed: fix/shopping-list-rpc
+
+---
+ACTION ITEMS
+---
+
+1. Merge PR (triggers Render auto-deploy, ~5-10 min)
+   https://github.com/shortalex12333/Cloud_PMS/pull/new/fix/shopping-list-rpc
+
+2. After deployment, test endpoint:
+   curl -X POST "https://pipeline-core.int.celeste7.ai/v1/actions/execute" \
+     -H "Authorization: Bearer $JWT" \
+     -d '{"action":"create_shopping_list_item","context":{"yacht_id":"85fe1119-b04c-41ac-80f1-829d23322598"},"payload":{"part_name":"Test","quantity_requested":1,"source_type":"manual_add"}}'
+
+   Expected: 200 OK {"status":"success","shopping_list_item_id":"..."}
+
+3. Run E2E tests:
+   npx playwright test tests/e2e/shopping_list/shopping_list_search_driven.e2e.spec.ts
+
+   Expected: All 4 tests passing
+
+---
+FILES CHANGED
+---
+
+- apps/api/handlers/shopping_list_handlers.py (RPC call replaces direct INSERT)
+- supabase/migrations/20260130_108_shopping_list_rpc_functions.sql (new RPC function)
+
+---
+TECHNICAL DETAILS
+---
+
+Migration: 20260130_108_shopping_list_rpc_functions.sql
+Function: rpc_insert_shopping_list_item(p_user_id, p_yacht_id, p_part_name, ...)
+Authorization: Checks auth_users_roles before INSERT
+Pattern: Same as rpc_insert_receiving from PR #27
+
+Security maintained:
+✅ Server authority (yacht_id from MASTER)
+✅ Yacht isolation
+✅ Role-based access
+✅ DENY-BY-DEFAULT
+
+---
+FOLLOW-UP (OPTIONAL)
+---
+
+- Convert remaining shopping list mutations (approve, reject, promote) to RPC
+- Add idempotency_key column if needed
+- Verify auth_users_profiles seeding for all test users
+
+---
+REFERENCES
+---
+
+Full spec: PR_SHOPPING_LIST_RPC_MERGE_DETAILS.md
+Quick ref: PR_SHOPPING_LIST_RPC_QUICK_SUMMARY.md
+Related: PR #27 (RLS + JWT architecture - established RPC pattern)
+
+Let me know if you have questions!

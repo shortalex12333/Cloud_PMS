@@ -325,17 +325,23 @@ class WorkOrderHandlers:
         Determine storage bucket based on entity type and attachment category.
 
         CRITICAL: Table name is pms_attachments (NOT attachments).
+        DO NOT change to table("attachments"). Linter guard enforced.
+
         Bucket strategy until pms_attachments.bucket column added:
         - work_order + photo/image → pms-work-order-photos
-        - work_order + manual/document/pdf → documents
+        - fault + photo/image → pms-discrepancy-photos
+        - equipment + photo/image → pms-work-order-photos (shared)
+        - manual/document/pdf → documents
         - Default → attachments
         """
         category = (category or "").lower()
         mime_type = (mime_type or "").lower()
 
-        # Photo/image categories for work orders and faults
-        if entity_type in ("work_order", "fault"):
-            if category in ("photo", "image") or mime_type.startswith("image/"):
+        # Photo/image categories - route by entity type
+        if category in ("photo", "image") or mime_type.startswith("image/"):
+            if entity_type == "fault":
+                return "pms-discrepancy-photos"
+            elif entity_type in ("work_order", "equipment"):
                 return "pms-work-order-photos"
 
         # Manuals and documents
