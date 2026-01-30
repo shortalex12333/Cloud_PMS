@@ -240,7 +240,8 @@ class ShoppingListHandlers:
 
             # Insert (NOTE: Using service key, so RLS is bypassed and we set created_by manually)
             # Constraint has been dropped, so this should work now
-            insert_result = self.db.table("pms_shopping_list_items").insert(payload).execute()
+            # .select() is required to get the inserted row data back (prevents 204 No Content)
+            insert_result = self.db.table("pms_shopping_list_items").insert(payload).select().execute()
 
             if not insert_result.data or len(insert_result.data) == 0:
                 builder.set_error("EXECUTION_FAILED", "Failed to create shopping list item", 500)
