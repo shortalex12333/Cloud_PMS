@@ -51,7 +51,7 @@ test.describe('ACTION ROUTER: Search → Focus → Act Pattern', () => {
     await apiClient.authenticate(user.email, user.password);
 
     // Search for a common term
-    const response = await apiClient.post('/v1/search', {
+    const response = await apiClient.post('/search', {
       query: 'work order',
       limit: 5,
     });
