@@ -1083,7 +1083,8 @@ class FaultMutationHandlers:
                     "message": f"Fault not found: {fault_id}",
                 }
 
-            # Create attachment record
+            # CRITICAL FIX: Use pms_attachments table (NOT pms_fault_attachments which doesn't exist)
+            # pms_attachments is the polymorphic table for all entity attachments
             now = datetime.now(timezone.utc).isoformat()
             attachment_data = {
                 "yacht_id": yacht_id,
@@ -1091,13 +1092,19 @@ class FaultMutationHandlers:
                 "entity_id": fault_id,
                 "storage_path": photo_url,
                 "filename": photo_url.split("/")[-1] if "/" in photo_url else photo_url,
+                "original_filename": photo_url.split("/")[-1] if "/" in photo_url else photo_url,
                 "mime_type": "image/jpeg",  # Assume JPEG, can be enhanced
+                "category": "photo",  # Default category for fault photos
+                "description": caption,  # Map caption to description field
                 "uploaded_by": user_id,
-                "caption": caption,
-                "created_at": now,
+                "uploaded_at": now,
+                "metadata": {
+                    "fault_code": fault.data.get("fault_code"),
+                    "action": "add_fault_photo"
+                }
             }
 
-            result = self.db.table("pms_fault_attachments").insert(attachment_data).execute()
+            result = self.db.table("pms_attachments").insert(attachment_data).execute()
 
             if not result.data:
                 return {
