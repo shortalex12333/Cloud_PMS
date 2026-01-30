@@ -82,51 +82,41 @@ test.describe('Document Lens v2 - Browser E2E', () => {
     test('Search "upload document" triggers /v1/actions/list and shows action chips', async ({ page }) => {
       const testName = 'documents/hod-search-upload';
 
-      // Intercept network to verify API call
-      const apiCalls: { url: string; method: string; status: number }[] = [];
-
-      page.on('request', (request) => {
-        if (request.url().includes('/v1/actions/list')) {
-          apiCalls.push({
-            url: request.url(),
-            method: request.method(),
-            status: 0,
-          });
-        }
-      });
-
-      page.on('response', (response) => {
-        if (response.url().includes('/v1/actions/list')) {
-          const call = apiCalls.find(c => c.url === response.url() && c.status === 0);
-          if (call) call.status = response.status();
-        }
-      });
-
       // Login as HOD
       await login(page, TEST_ACCOUNTS.HOD);
+
+      // Set up response promise BEFORE triggering the search
+      const actionListResponsePromise = page.waitForResponse(
+        response => response.url().includes('/v1/actions/list'),
+        { timeout: 10000 }
+      ).catch(() => null);
 
       // Search for document action
       await searchFor(page, 'upload document');
 
-      // Wait for action suggestions to appear
-      await page.waitForTimeout(1000);
+      // Wait for the API response
+      const actionListResponse = await actionListResponsePromise;
 
-      // Verify /v1/actions/list was called
-      const actionListCalls = apiCalls.filter(c => c.url.includes('/v1/actions/list'));
+      // Build apiCalls for artifact
+      const apiCalls = actionListResponse ? [{
+        url: actionListResponse.url(),
+        method: 'GET',
+        status: actionListResponse.status(),
+      }] : [];
 
       // Save evidence
       saveArtifact('hod_search_upload_network.json', {
         query: 'upload document',
-        apiCalls: actionListCalls,
+        apiCalls,
         timestamp: new Date().toISOString(),
       }, testName);
 
       // Take screenshot
       await page.screenshot({ path: `test-results/artifacts/${testName}/search_results.png` });
 
-      // Assert /v1/actions/list was called
-      expect(actionListCalls.length).toBeGreaterThan(0);
-      expect(actionListCalls.some(c => c.status === 200)).toBe(true);
+      // Assert /v1/actions/list was called with 200
+      expect(actionListResponse).not.toBeNull();
+      expect(actionListResponse?.status()).toBe(200);
 
       // Check for action chips/buttons in UI
       // Look for common action button patterns
