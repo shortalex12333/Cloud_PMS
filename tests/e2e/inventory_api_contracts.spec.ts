@@ -48,8 +48,8 @@ test.describe('Inventory Lens - Frontend User Experience', () => {
       sameSite: 'Lax',
     }]);
 
-    // Navigate to /app (single surface)
-    await page.goto(`${BASE_URL}/app`, { waitUntil: 'networkidle' });
+    // Navigate to / (single surface at root per cd952ef)
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   });
 
   test('loads main page without console errors', async () => {
@@ -61,7 +61,7 @@ test.describe('Inventory Lens - Frontend User Experience', () => {
       }
     });
 
-    await page.goto(`${BASE_URL}/app`, { waitUntil: 'networkidle' });
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 
     // Wait for page to settle
     await page.waitForTimeout(2000);
