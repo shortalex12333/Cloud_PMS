@@ -64,11 +64,27 @@ export function middleware(request: NextRequest) {
 
   // App domain (app.celeste7.ai) - serves everything
   if (hostname.includes('app.celeste7.ai')) {
+    // Root redirect: / → /app (if authenticated) or / → /login (if not)
+    if (pathname === '/') {
+      const hasSession = request.cookies.has('sb-access-token');
+      const target = hasSession ? '/app' : '/login';
+      const url = new URL(target, request.url);
+      return addCorsHeaders(NextResponse.redirect(url), origin);
+    }
+
     const response = NextResponse.next();
     return addCorsHeaders(response, origin);
   }
 
   // Localhost or other domains - allow everything for development
+  // Apply same root redirect for consistency
+  if (pathname === '/') {
+    const hasSession = request.cookies.has('sb-access-token');
+    const target = hasSession ? '/app' : '/login';
+    const url = new URL(target, request.url);
+    return addCorsHeaders(NextResponse.redirect(url), origin);
+  }
+
   const response = NextResponse.next();
   return addCorsHeaders(response, origin);
 }

@@ -88,6 +88,59 @@ async function globalSetup() {
     }
 
     console.log('Multi-role authentication complete.\n');
+
+    // Seed test part stock using receive_part to ensure on_hand > 0
+    // This allows consume_part, transfer_part, write_off_part actions to appear in suggestions
+    console.log('Seeding test part stock...');
+    try {
+      const TEST_PART_ID = process.env.TEST_PART_ID || 'fa10ad48-5f51-41ee-9ef3-c2127e77b06a';
+      const TEST_YACHT_ID = process.env.TEST_USER_YACHT_ID || '85fe1119-b04c-41ac-80f1-829d23322598';
+      const API_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.replace('app.', 'pipeline-core.int.') || 'https://pipeline-core.int.celeste7.ai';
+
+      // Get captain JWT for receive_part (requires captain/manager role)
+      const captainAuthState = await loginAsRole('captain');
+      const captainJWT = captainAuthState.origins[0]?.localStorage?.find((item: any) =>
+        item.name.includes('supabase.auth.token')
+      )?.value;
+
+      if (!captainJWT) {
+        throw new Error('Failed to get captain JWT from storage state');
+      }
+
+      const parsedToken = JSON.parse(captainJWT);
+      const accessToken = parsedToken.access_token || parsedToken.currentSession?.access_token;
+
+      if (!accessToken) {
+        throw new Error('Failed to extract access_token from captain JWT');
+      }
+
+      // Call receive_part endpoint to add stock
+      const response = await fetch(`${API_BASE_URL}/v1/parts/receive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          yacht_id: TEST_YACHT_ID,
+          part_id: TEST_PART_ID,
+          quantity_received: 10,
+          idempotency_key: `e2e-setup-${Date.now()}`,
+          notes: 'E2E test setup - seeding stock'
+        })
+      });
+
+      if (response.ok) {
+        console.log(`  ✓ Test part stock seeded (on_hand += 10)`);
+      } else {
+        const errorText = await response.text();
+        console.log(`  ⚠ Stock seeding failed (${response.status}): ${errorText}`);
+        console.log('  Tests may see limited actions due to on_hand = 0');
+      }
+    } catch (error: any) {
+      console.log('  ⚠ Stock seeding error:', error.message);
+      console.log('  Tests may see limited actions due to on_hand = 0');
+    }
   }
 
   console.log('========================================');

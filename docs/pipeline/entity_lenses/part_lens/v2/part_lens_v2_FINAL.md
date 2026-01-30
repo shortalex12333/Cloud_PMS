@@ -274,13 +274,14 @@ Links parts to equipment (Bill of Materials).
 | # | Action | Tables Written | Signature | Status |
 |---|--------|---------------|-----------|--------|
 | 1 | `record_part_consumption` | part_usage, parts, inv_transactions, audit | NO | ⚠️ B1/B2 |
-| 2 | `adjust_stock_quantity` | parts, inv_transactions, audit | CONDITIONAL | ⚠️ B1/B3 |
+| 2 | `adjust_stock_quantity` | parts, inv_transactions, audit | YES (SIGNED) | ⚠️ B1/B3 |
 | 3 | `add_to_shopping_list` | shopping_list_items, audit | NO | ⚠️ B4 |
 | 4 | `receive_parts` | parts, inv_stock, inv_transactions, receiving, audit | NO | ⚠️ B1 |
 | 5 | `transfer_parts` | inv_stock (x2), inv_transactions (x2), audit | NO | ⚠️ B1 |
-| 6 | `create_part` | parts, audit | NO | ✅ READY |
-| 7 | `view_part_history` | None (read) | NO | ✅ READY |
-| 8 | `view_compatible_equipment` | None (read) | NO | ✅ READY |
+| 6 | `write_off_part` | parts, inv_transactions, audit | YES (SIGNED) | ⚠️ B1 |
+| 7 | `create_part` | parts, audit | NO | ✅ READY |
+| 8 | `view_part_history` | None (read) | NO | ✅ READY |
+| 9 | `view_compatible_equipment` | None (read) | NO | ✅ READY |
 
 ## Role Permissions Matrix
 
@@ -291,9 +292,11 @@ Links parts to equipment (Bill of Materials).
 | steward | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | bosun | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | eto | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| chief_engineer | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (signed) | ✅ | ❌ |
-| captain | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (signed) | ✅ | ✅ |
-| manager | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (signed) | ✅ | ✅ |
+| chief_engineer | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| captain | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (signed) | ✅ | ✅ (signed) |
+| manager | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (signed) | ✅ | ✅ (signed) |
+
+**Note**: SIGNED actions (Adjust large stock, Write-off/Delete) require Captain/Manager role with PIN+TOTP signature. Chief Engineer and below cannot execute signed actions.
 
 ---
 
@@ -340,9 +343,9 @@ Links parts to equipment (Bill of Materials).
 
 **Purpose**: Manual stock count adjustment after physical inventory
 
-**Allowed Roles**: eto, chief_engineer, captain, manager
+**Allowed Roles**: captain, manager
 
-**Signature Required**: YES if |new - old| > (old * 0.5) OR new = 0
+**Signature Required**: YES (always - SIGNED action variant)
 
 **Tables Written**:
 - `pms_parts` (UPDATE quantity_on_hand, last_counted_at, last_counted_by)
@@ -447,7 +450,39 @@ requires_signature = change_pct > 0.5 or new_qty == 0
 
 ---
 
-## Action 6: `create_part`
+## Action 6: `write_off_part`
+
+**Purpose**: Write off damaged, expired, lost, or obsolete parts (SIGNED action)
+
+**Allowed Roles**: captain, manager
+
+**Signature Required**: YES (always - SIGNED action variant with PIN+TOTP)
+
+**Tables Written**:
+- `pms_parts` (UPDATE quantity_on_hand)
+- `pms_inventory_transactions` (INSERT)
+- `pms_audit_log` (INSERT with signature payload)
+
+**Field Classification**:
+
+| Field | Table.Column | Classification | Source |
+|-------|--------------|----------------|--------|
+| `part_id` | - | CONTEXT | From focused part |
+| `quantity` | - | REQUIRED | User input |
+| `reason` | pms_inventory_transactions.metadata | REQUIRED | User select: damaged, expired, obsolete, lost, contaminated, other |
+| `location_id` | pms_inventory_transactions.location_id | OPTIONAL | Backend auto-populates from part primary location |
+| `notes` | pms_inventory_transactions.notes | OPTIONAL | User input |
+| `signature` | pms_audit_log.signature | REQUIRED | PIN+TOTP signature payload |
+
+**Business Rules**:
+- Cannot write off more than on_hand quantity
+- Signature payload must include reason, old_quantity, new_quantity, role_at_signing
+- Creates irreversible transaction record
+- On_hand = 0 disables this action in suggestions (cannot write off what you don't have)
+
+---
+
+## Action 7: `create_part`
 
 **Purpose**: Add new part to inventory
 
@@ -500,10 +535,10 @@ All part mutations are executed via the Action Router at `/v1/actions/execute`.
     endpoint="/v1/parts/adjust-stock",
     handler_type=HandlerType.INTERNAL,
     method="POST",
-    allowed_roles=["eto", "chief_engineer", "captain", "manager"],
-    required_fields=["part_id", "new_quantity", "reason"],
+    allowed_roles=["captain", "manager"],  # SIGNED actions: Captain/Manager only
+    required_fields=["part_id", "new_quantity", "reason", "signature"],
     domain="parts",
-    variant=ActionVariant.MUTATE,  # Changes to SIGNED dynamically
+    variant=ActionVariant.SIGNED,  # Requires PIN+TOTP signature
     search_keywords=["count", "adjust", "inventory", "physical count", "stock"],
 ),
 
@@ -544,6 +579,19 @@ All part mutations are executed via the Action Router at `/v1/actions/execute`.
     domain="parts",
     variant=ActionVariant.MUTATE,
     search_keywords=["transfer", "move", "relocate"],
+),
+
+"write_off_part": ActionDefinition(
+    action_id="write_off_part",
+    label="Write Off Part",
+    endpoint="/v1/parts/write-off",
+    handler_type=HandlerType.INTERNAL,
+    method="POST",
+    allowed_roles=["captain", "manager"],  # SIGNED actions: Captain/Manager only
+    required_fields=["part_id", "quantity", "reason", "signature"],
+    domain="parts",
+    variant=ActionVariant.SIGNED,  # Requires PIN+TOTP signature
+    search_keywords=["write", "off", "scrap", "dispose", "discard", "damaged", "expired", "lost"],
 ),
 
 "create_part": ActionDefinition(

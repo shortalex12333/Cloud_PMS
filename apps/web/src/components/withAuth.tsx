@@ -71,10 +71,10 @@ export function withAuth<P extends object>(
         return;
       }
 
-      // HOD required but user is not HOD → redirect to app
+      // HOD required but user is not HOD → redirect to root
       if (options?.requireHOD && !isHOD(user)) {
-        console.log('[withAuth] HOD required, redirecting to /app');
-        router.replace('/app');
+        console.log('[withAuth] HOD required, redirecting to /');
+        router.replace('/');
         return;
       }
 

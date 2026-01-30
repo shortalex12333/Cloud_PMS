@@ -648,16 +648,27 @@ export default function SpotlightSearch({
             className="px-4 py-2"
           />
 
-          {/* Entity Line - what Celeste understood (placeholder for NLP extraction) */}
-          {hasQuery && hasResults && (
-            <EntityLine
-              entities={[
-                // These would come from NLP extraction in the search hook
-                // For now, extract type from first result as demonstration
-                ...(results[0]?.type ? [{ label: 'Type', value: results[0].type.replace('_', ' ') }] : []),
-              ]}
-            />
-          )}
+          {/* Entity Line - what Celeste understood (shown for ALL queries per UX doctrine) */}
+          {hasQuery && (() => {
+            // MVP: Simple tokenization - extract meaningful terms from query
+            // Remove common stop words for clarity
+            const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'to', 'of', 'in', 'for', 'on', 'at', 'by', 'with', 'from']);
+            const terms = query.toLowerCase()
+              .split(/\s+/)
+              .filter(term => term.length > 0 && !stopWords.has(term))
+              .map(term => term.replace(/[^a-z0-9-]/g, '')) // Remove punctuation
+              .filter(term => term.length > 0);
+
+            const uniqueTerms = Array.from(new Set(terms));
+
+            return (
+              <EntityLine
+                entities={uniqueTerms.length > 0 ? [
+                  { label: 'Understood', value: uniqueTerms.join(', ') }
+                ] : []}
+              />
+            );
+          })()}
 
           {/* Suggested Actions - backend-provided action buttons */}
           {hasQuery && actionSuggestions.length > 0 && (
