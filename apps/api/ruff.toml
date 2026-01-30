@@ -1,0 +1,13 @@
+# Ruff Configuration
+# Prevents auto-formatter from breaking bucket routing logic
+
+[lint]
+ignore = [
+    "SIM102",  # Don't combine if branches (breaks bucket routing semantics)
+]
+
+[format]
+# Don't format specific functions where order matters
+exclude = [
+    "handlers/*_handlers.py:*_get_bucket_for_attachment",
+]
