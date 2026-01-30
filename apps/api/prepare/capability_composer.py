@@ -35,14 +35,14 @@ from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
-from execute.table_capabilities import (
+from ..execute.table_capabilities import (
     TABLE_CAPABILITIES,
     CapabilityStatus,
     get_capability_for_entity,
     get_active_capabilities,
 )
-from execute.capability_executor import CapabilityExecutor, QueryResult
-from execute.result_normalizer import (
+from ..execute.capability_executor import CapabilityExecutor, QueryResult
+from ..execute.result_normalizer import (
     normalize_results,
     NormalizedResult,
     NormalizedResponse,
@@ -109,41 +109,114 @@ class ComposedResponse:
 # ENTITY TO CAPABILITY MAPPING
 # =============================================================================
 
+# Try to use new capability registry (auto-discovery from lens files)
+# Falls back to legacy dict if registry not available
+try:
+    from .capability_registry import CapabilityRegistry
+
+    # Flag to indicate registry is available
+    _REGISTRY_AVAILABLE = True
+    _registry_instance = None
+
+    def _get_registry(db_client=None):
+        """Get or create registry singleton."""
+        global _registry_instance
+        if _registry_instance is None and db_client is not None:
+            _registry_instance = CapabilityRegistry(db_client)
+            _registry_instance.discover_and_register()
+        return _registry_instance
+
+except ImportError:
+    _REGISTRY_AVAILABLE = False
+    _registry_instance = None
+
+    def _get_registry(db_client=None):
+        return None
+
+# Legacy mapping dict (used as fallback if registry not available)
 # Map entity types to search columns in their target capability
 ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     # (entity_type) -> (capability_name, search_column)
+    # Part Lens mappings
+    "PART": ("part_by_part_number_or_name", "name"),  # Free-text fallback
     "PART_NUMBER": ("part_by_part_number_or_name", "part_number"),
     "PART_NAME": ("part_by_part_number_or_name", "name"),
+    "PART_CATEGORY": ("part_by_part_number_or_name", "category"),
     "MANUFACTURER": ("part_by_part_number_or_name", "manufacturer"),
     "LOCATION": ("inventory_by_location", "location"),
     "STOCK_QUERY": ("inventory_by_location", "name"),
+    # Fault Lens
     "FAULT_CODE": ("fault_by_fault_code", "code"),
     "SYMPTOM": ("fault_by_fault_code", "name"),
     "EQUIPMENT_TYPE": ("fault_by_fault_code", "equipment_type"),
+    # Document Lens
     "DOCUMENT_QUERY": ("documents_search", "content"),
     "MANUAL_SEARCH": ("documents_search", "content"),
     "PROCEDURE_SEARCH": ("documents_search", "content"),
+    # Graph Lens
     "ENTITY_LOOKUP": ("graph_node_search", "label"),
     "SYSTEM_NAME": ("graph_node_search", "label"),
     "COMPONENT_NAME": ("graph_node_search", "label"),
-    # Blocked capabilities (table empty)
+    # Work Order Lens
     "WORK_ORDER_ID": ("work_order_by_id", "wo_number"),
     "WO_NUMBER": ("work_order_by_id", "wo_number"),
+    # Equipment Lens
     "EQUIPMENT_NAME": ("equipment_by_name_or_model", "name"),
     "MODEL_NUMBER": ("equipment_by_name_or_model", "model"),
-    # Email transport layer (evidence search)
+    # Email Lens
     "EMAIL_SUBJECT": ("email_threads_search", "latest_subject"),
     "EMAIL_SEARCH": ("email_threads_search", "latest_subject"),
 }
 
 
-def plan_capabilities(entities: List[Dict[str, Any]]) -> List[CapabilityPlan]:
+def plan_capabilities(entities: List[Dict[str, Any]], db_client=None) -> List[CapabilityPlan]:
     """
     Map entities to capability execution plans.
 
+    Args:
+        entities: List of entity dicts with type and value
+        db_client: Optional database client for registry (if using new system)
+
     Returns list of plans, some may be blocked.
+
+    New behavior (if registry available):
+    - Uses capability_registry for entity-to-capability mapping
+    - Auto-discovers lens capabilities from files
+    - Falls back to legacy dict if registry not initialized
+
+    Legacy behavior (registry not available):
+    - Uses ENTITY_TO_SEARCH_COLUMN dict
     """
     plans = []
+    registry = _get_registry(db_client) if _REGISTRY_AVAILABLE else None
+
+    # If registry is available and initialized, use it
+    if registry is not None:
+        for entity in entities:
+            entity_type = entity.get("type", "")
+            entity_value = entity.get("value", "")
+
+            if not entity_type or not entity_value:
+                continue
+
+            # Look up in registry
+            if entity_type not in registry.entity_mappings:
+                # Unknown entity type - skip silently
+                continue
+
+            mapping = registry.entity_mappings[entity_type]
+
+            plans.append(CapabilityPlan(
+                capability_name=mapping.capability_name,
+                entity_type=entity_type,
+                entity_value=entity_value,
+                search_column=mapping.search_column,
+                blocked=False,  # Registry only tracks active capabilities
+            ))
+
+        return plans
+
+    # Legacy path: Use hardcoded dict
     active_caps = get_active_capabilities()
 
     for entity in entities:
@@ -366,8 +439,8 @@ def compose_search(
     """
     total_start = time.time()
 
-    # Plan execution
-    plans = plan_capabilities(entities)
+    # Plan execution (pass db_client to enable registry if available)
+    plans = plan_capabilities(entities, db_client=supabase_client)
 
     if not plans:
         return ComposedResponse(
