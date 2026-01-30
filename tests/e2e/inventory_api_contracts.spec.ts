@@ -1,20 +1,16 @@
 /**
- * Inventory Lens - Frontend E2E Test
+ * Inventory Lens - API Contract Tests (Track 1)
  *
- * Tests the complete user experience for inventory operations:
- * - Authentication and page load
- * - Part search and display
- * - Action availability by role
- * - Execute receive_part action
- * - Idempotency enforcement in UI
- * - Error handling and display
- *
- * This validates:
+ * Direct HTTP API validation (not UI-driven):
+ * - Backend action execution via /v1/actions/execute
+ * - Error contract structure (flat {error_code, message})
+ * - Idempotency enforcement (409 on duplicate)
+ * - HTTP status codes (200/400/404/409, never 500)
  * - CORS configuration
- * - RLS enforcement through browser
- * - Frontend-backend integration
- * - Error contract consistency
- * - UI rendering of actions
+ * - RLS enforcement
+ *
+ * NOTE: This is NOT true E2E. For UI-driven "search → focus → act" tests,
+ * see inventory_e2e_flow.spec.ts (Track 2).
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -52,8 +48,8 @@ test.describe('Inventory Lens - Frontend User Experience', () => {
       sameSite: 'Lax',
     }]);
 
-    // Navigate to main page
-    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    // Navigate to /app (single surface)
+    await page.goto(`${BASE_URL}/app`, { waitUntil: 'networkidle' });
   });
 
   test('loads main page without console errors', async () => {
@@ -65,7 +61,7 @@ test.describe('Inventory Lens - Frontend User Experience', () => {
       }
     });
 
-    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/app`, { waitUntil: 'networkidle' });
 
     // Wait for page to settle
     await page.waitForTimeout(2000);
