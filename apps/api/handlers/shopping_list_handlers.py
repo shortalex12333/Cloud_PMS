@@ -208,44 +208,41 @@ class ShoppingListHandlers:
                 is_candidate_part = False  # Existing part
 
             # ============================================================
-            # INSERT SHOPPING LIST ITEM
+            # INSERT SHOPPING LIST ITEM (via RPC)
             # ============================================================
+            # NOTE: Using RPC function with SECURITY DEFINER to bypass RLS
+            #       TENANT Supabase cannot verify JWTs from MASTER, so auth.uid() = NULL
+            #       RPC validates user_id against auth_users_roles before INSERT
 
-            new_item_id = str(uuid.uuid4())
-            now = datetime.now(timezone.utc).isoformat()
-
-            payload = {
-                "id": new_item_id,
-                "yacht_id": yacht_id,
-                "part_id": part_id,
-                "part_name": part_name,
-                "part_number": part_number,
-                "manufacturer": manufacturer,
-                "is_candidate_part": is_candidate_part,
-                "quantity_requested": quantity_requested,
-                "unit": params.get("unit"),
-                "preferred_supplier": params.get("preferred_supplier"),
-                "estimated_unit_price": params.get("estimated_unit_price"),
-                "status": "candidate",  # Initial state (enforced by RLS policy)
-                "source_type": source_type,
-                "source_work_order_id": params.get("source_work_order_id"),
-                "source_receiving_id": params.get("source_receiving_id"),
-                "source_notes": params.get("source_notes"),
-                "urgency": urgency,
-                "required_by_date": params.get("required_by_date"),
-                "created_by": user_id,  # Must set manually when using service key
-                "created_at": now,
-                "updated_at": now,
+            # Prepare RPC parameters
+            rpc_params = {
+                "p_user_id": user_id,
+                "p_yacht_id": yacht_id,
+                "p_part_name": part_name,
+                "p_quantity_requested": float(quantity_requested),
+                "p_source_type": source_type,
+                "p_urgency": urgency,
+                "p_part_id": part_id,
+                "p_part_number": part_number,
+                "p_requested_by": user_id,
+                "p_source_notes": params.get("source_notes"),
+                "p_idempotency_key": params.get("idempotency_key"),
             }
 
-            # Insert (NOTE: Using service key, so RLS is bypassed and we set created_by manually)
-            # Constraint has been dropped, so this should work now
-            # .select() is required to get the inserted row data back (prevents 204 No Content)
-            insert_result = self.db.table("pms_shopping_list_items").insert(payload).select().execute()
+            # Call RPC function (SECURITY DEFINER bypasses RLS)
+            try:
+                insert_result = self.db.rpc("rpc_insert_shopping_list_item", rpc_params).execute()
+            except Exception as e:
+                logger.error(f"Failed to insert shopping list item via RPC: {e}", exc_info=True)
+                builder.set_error("EXECUTION_FAILED", f"Failed to create shopping list item: {str(e)}", 500)
+                return builder.build()
 
             if not insert_result.data or len(insert_result.data) == 0:
                 builder.set_error("EXECUTION_FAILED", "Failed to create shopping list item", 500)
                 return builder.build()
+
+            # Extract new_item_id from RPC result
+            new_item_id = insert_result.data[0]["id"]
 
             # ============================================================
             # AUDIT LOG
