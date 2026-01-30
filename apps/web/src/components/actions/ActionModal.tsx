@@ -66,9 +66,12 @@ export default function ActionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter out yacht_id from visible fields (it's handled automatically)
+  // Auto-generate idempotency key on mount (stable per modal instance)
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  // Filter out yacht_id, signature, and idempotency_key from visible fields (handled automatically)
   const visibleFields = action.required_fields.filter(
-    (f) => f !== 'yacht_id' && f !== 'signature'
+    (f) => f !== 'yacht_id' && f !== 'signature' && f !== 'idempotency_key'
   );
 
   const handleFieldChange = useCallback((field: string, value: string) => {
@@ -110,6 +113,11 @@ export default function ActionModal({
       // Build payload from form data
       const payload: Record<string, any> = { ...formData };
 
+      // Add auto-generated idempotency key (if action requires it)
+      if (action.required_fields.includes('idempotency_key')) {
+        payload.idempotency_key = idempotencyKey;
+      }
+
       // For SIGNED actions, add signature placeholder (real signature would come from auth flow)
       if (action.variant === 'SIGNED') {
         payload.signature = {
@@ -143,7 +151,7 @@ export default function ActionModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [action, formData, yachtId, entityId, visibleFields, onSuccess]);
+  }, [action, formData, yachtId, entityId, visibleFields, idempotencyKey, onSuccess]);
 
   // Build storage path preview
   const storagePathPreview = action.storage_options?.path_preview
@@ -197,8 +205,16 @@ export default function ActionModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} data-testid={`action-form-${action.action_id}`}>
           <div className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* Hidden idempotency key for testability */}
+            <input
+              type="hidden"
+              data-testid="idempotency-key"
+              value={idempotencyKey}
+              readOnly
+            />
+
             {/* Dynamic fields from required_fields */}
             {visibleFields.map((field) => {
               const fieldType = inferFieldType(field);
@@ -370,6 +386,7 @@ export default function ActionModal({
             </button>
             <button
               type="submit"
+              data-testid="action-submit"
               disabled={isSubmitting}
               className={cn(
                 'px-4 py-2 rounded-lg',

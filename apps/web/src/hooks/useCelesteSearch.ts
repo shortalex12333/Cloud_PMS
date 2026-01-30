@@ -148,6 +148,102 @@ function detectDocumentActionIntent(query: string): boolean {
   return DOCUMENT_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
 }
 
+// Part/Inventory action keywords - Part Lens (Inventory Item)
+const PART_ACTION_KEYWORDS = [
+  'receive part',
+  'consume part',
+  'transfer part',
+  'adjust stock',
+  'write off part',
+  'view part',
+  'part details',
+  'check stock',
+  'inventory',
+];
+
+function detectPartActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return PART_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
+// Receiving action keywords - Receiving Lens v1
+const RECEIVING_ACTION_KEYWORDS = [
+  'upload invoice',
+  'create receiving',
+  'new receiving',
+  'accept receiving',
+  'view receiving history',
+  'receiving history',
+  'attach packing slip',
+  'upload packing slip',
+  'add receiving item',
+  'add item to receiving',
+  'link invoice',
+  'attach invoice',
+  'reject receiving',
+  'update receiving',
+  'extract receiving',
+  'receiving document',
+  'view receiving',
+  'show receiving',
+];
+
+function detectReceivingActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return RECEIVING_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
+// Crew action keywords - Crew Lens v2
+const CREW_ACTION_KEYWORDS = [
+  'my profile',
+  'view profile',
+  'own profile',
+  'profile details',
+  'view my profile',
+  'show my profile',
+  'update my profile',
+  'update profile',
+  'edit profile',
+  'change name',
+  'edit my profile',
+  'list crew',
+  'crew roster',
+  'crew members',
+  'all crew',
+  'view crew',
+  'show crew',
+  'crew list',
+  'assign role',
+  'promote',
+  'give role',
+  'add role',
+  'assign crew role',
+  'revoke role',
+  'remove role',
+  'take away role',
+  'revoke crew role',
+  'deactivate crew',
+  'activate crew',
+  'crew status',
+  'disable crew',
+  'enable crew',
+  'crew certificates',
+  'view certs',
+  'crew certs',
+  'certificate status',
+  'crew work history',
+  'work history',
+  'assigned work orders',
+  'my work orders',
+  'crew details',
+  'view crew member',
+];
+
+function detectCrewActionIntent(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  return CREW_ACTION_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+}
+
 // Types
 interface SearchState {
   query: string;
@@ -524,7 +620,7 @@ export function useCelesteSearch(yachtId: string | null = null) {
   }, []);
 
   /**
-   * Fetch action suggestions if query has action intent (cert, WO, fault, shopping list, documents)
+   * Fetch action suggestions if query has action intent (cert, WO, fault, shopping list, documents, receiving, crew)
    */
   const fetchActionSuggestionsIfNeeded = useCallback(async (query: string) => {
     const wantsCert = detectCertActionIntent(query);
@@ -532,17 +628,26 @@ export function useCelesteSearch(yachtId: string | null = null) {
     const wantsFault = detectFaultActionIntent(query);
     const wantsShoppingList = detectShoppingListActionIntent(query);
     const wantsDocument = detectDocumentActionIntent(query);
+    const wantsReceiving = detectReceivingActionIntent(query);
+    const wantsPart = detectPartActionIntent(query);
+    const wantsCrew = detectCrewActionIntent(query);
 
-    if (!wantsCert && !wantsWO && !wantsFault && !wantsShoppingList && !wantsDocument) {
+    if (!wantsCert && !wantsWO && !wantsFault && !wantsShoppingList && !wantsDocument && !wantsReceiving && !wantsPart && !wantsCrew) {
       // Clear action suggestions if no intent
       setState(prev => ({ ...prev, actionSuggestions: [] }));
       return;
     }
 
     try {
-      // Determine domain - priority order: documents > fault > shopping_list > cert > work_orders
+      // Determine domain - priority order: crew > parts > receiving > documents > fault > shopping_list > cert > work_orders
       let domain: string;
-      if (wantsDocument) {
+      if (wantsCrew) {
+        domain = 'crew';
+      } else if (wantsPart) {
+        domain = 'parts';
+      } else if (wantsReceiving) {
+        domain = 'receiving';
+      } else if (wantsDocument) {
         domain = 'documents';
       } else if (wantsFault) {
         domain = 'faults';
