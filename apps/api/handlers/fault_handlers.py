@@ -513,24 +513,41 @@ class FaultHandlers:
 
     def _get_bucket_for_attachment(self, entity_type: str, category: str, mime_type: str) -> str:
         """
-        Determine storage bucket based on entity type and attachment category.
+        Determine storage bucket based on entity type.
 
         CRITICAL: Table name is pms_attachments (NOT attachments).
-        Bucket strategy until pms_attachments.bucket column added:
-        - fault + photo/image → pms-work-order-photos
-        - fault + manual/document/pdf → documents
-        - Default → attachments
+
+        Entity-based bucket strategy (created 2026-01-30):
+        - work_order → pms-work-order-attachments
+        - fault → pms-fault-attachments
+        - equipment → pms-equipment-attachments
+        - checklist_item → pms-checklist-attachments
+
+        Legacy buckets maintained for backwards compatibility:
+        - pms-work-order-photos (read-only, old photos)
+        - documents (NAS manuals, separate system)
         """
         category = (category or "").lower()
         mime_type = (mime_type or "").lower()
 
-        # Photo/image categories for faults and work orders
+        # Entity-based buckets (NEW - 2026-01-30)
+        if entity_type == "work_order":
+            return "pms-work-order-attachments"
+        elif entity_type == "fault":
+            return "pms-fault-attachments"
+        elif entity_type == "equipment":
+            return "pms-equipment-attachments"
+        elif entity_type == "checklist_item":
+            return "pms-checklist-attachments"
+
+        # Legacy fallback for old attachments
+        # Check old pms-work-order-photos bucket first
         if entity_type in ("work_order", "fault"):
             if category in ("photo", "image") or mime_type.startswith("image/"):
                 return "pms-work-order-photos"
 
-        # Manuals and documents
-        if category in ("manual", "document", "pdf") or mime_type == "application/pdf":
+        # NAS documents bucket (separate system)
+        if category in ("manual", "document") and mime_type == "application/pdf":
             return "documents"
 
         # Default: generic attachments bucket
