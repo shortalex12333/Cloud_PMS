@@ -206,20 +206,18 @@ class PartHandlers:
         builder = ResponseBuilder("view_part_details", entity_id, "part", yacht_id)
 
         try:
-            # Get part with stock from canonical pms_part_stock view
-            # Use DIRECT SQL to bypass PostgREST 204 issues with views
-            logger.info(f"[view_part_details] Querying pms_part_stock via SQL for part_id={entity_id}, yacht_id={yacht_id}")
+            # Get part with stock from canonical pms_part_stock view via Supabase REST API
+            logger.info(f"[view_part_details] Querying pms_part_stock via REST API for part_id={entity_id}, yacht_id={yacht_id}")
 
-            from db.tenant_pg_gateway import get_part_stock
-            stock = get_part_stock(
-                tenant_key_alias=tenant_key_alias or "",
-                yacht_id=yacht_id,
-                part_id=entity_id,
-            )
+            stock_result = self.db.table("pms_part_stock").select(
+                "on_hand, min_level, reorder_multiple, part_name, part_number, category, is_critical"
+            ).eq("part_id", entity_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-            if not stock:
+            if not stock_result or not stock_result.data or len(stock_result.data) == 0:
                 builder.set_error("NOT_FOUND", f"Part not found: {entity_id}")
                 return builder.build()
+
+            stock = stock_result.data[0]
             on_hand = stock.get("on_hand", 0) or 0
             min_level = stock.get("min_level", 0) or 0
             reorder_multiple = stock.get("reorder_multiple", 1) or 1
@@ -469,18 +467,19 @@ class PartHandlers:
         if quantity <= 0:
             raise ValueError("quantity must be > 0")
 
-        # Get stock_id from canonical pms_part_stock view (DIRECT SQL to avoid PostgREST 204)
-        from db.tenant_pg_gateway import get_part_stock
+        # Get stock from canonical pms_part_stock view via Supabase REST API
+        stock_result = self.db.table("pms_part_stock").select(
+            "on_hand, location, part_name, stock_id"
+        ).eq("part_id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
 
-        stock_before = get_part_stock(
-            tenant_key_alias=tenant_key_alias or "",
-            yacht_id=yacht_id,
-            part_id=part_id,
-        )
+        if not stock_result or not stock_result.data or len(stock_result.data) == 0:
+            raise HTTPException(status_code=404, detail={
+                "status": "error",
+                "error_code": "NOT_FOUND",
+                "message": f"Part {part_id} not found"
+            })
 
-        if not stock_before:
-            raise HTTPException(status_code=404, detail=f"Part {part_id} not found")
-
+        stock_before = stock_result.data[0]
         stock_id = stock_before.get("stock_id")
         qty_before = stock_before.get("on_hand", 0)
 
@@ -523,14 +522,14 @@ class PartHandlers:
                 # Real error, re-raise
                 raise
 
-        # If RPC gave 204, confirm via direct SQL
+        # If RPC gave 204, confirm via Supabase REST API
         if rpc_succeeded_with_204:
-            logger.info(f"[consume_part] Confirming deduction via SQL query to pms_part_stock")
-            stock_after = get_part_stock(
-                tenant_key_alias=tenant_key_alias or "",
-                yacht_id=yacht_id,
-                part_id=part_id,
-            )
+            logger.info(f"[consume_part] Confirming deduction via REST API query to pms_part_stock")
+            stock_after_result = self.db.table("pms_part_stock").select(
+                "on_hand"
+            ).eq("stock_id", stock_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            stock_after = stock_after_result.data[0] if stock_after_result and stock_after_result.data else {}
 
             if not stock_after:
                 raise ValueError(f"Stock record vanished after RPC: {stock_id}")
@@ -618,7 +617,7 @@ class PartHandlers:
             metadata={
                 "work_order_id": work_order_id,
                 "transaction_id": txn_id,
-                "location": stock.get("location"),
+                "location": stock_before.get("location"),
                 "notes": notes,
             },
         )

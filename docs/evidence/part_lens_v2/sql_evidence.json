@@ -1,10 +1,321 @@
 {
-  "view_definitions": "SKIPPED - RPC not available",
-  "rls_policies": "SKIPPED - RPC not available",
-  "yacht_isolation": {
-    "yachts_with_data": 1,
-    "yacht_ids": [
-      "85fe1119-b04c-41ac-80f1-829d23322598"
-    ]
+  "extraction_timestamp": "2026-01-29T20:45:00Z",
+  "database": "qvzmkaamzaqxpzbewjxe",
+  "tables": {
+    "pms_parts": {
+      "columns": 19,
+      "row_count_approx": 538,
+      "rls_enabled": true,
+      "primary_key": "id",
+      "foreign_keys": [
+        "yacht_id"
+      ],
+      "field_classifications": {
+        "id": "BACKEND_AUTO",
+        "yacht_id": "BACKEND_AUTO",
+        "name": "REQUIRED",
+        "part_number": "OPTIONAL",
+        "manufacturer": "OPTIONAL",
+        "description": "OPTIONAL",
+        "category": "OPTIONAL",
+        "model_compatibility": "OPTIONAL",
+        "quantity_on_hand": "BACKEND_AUTO",
+        "minimum_quantity": "OPTIONAL",
+        "unit": "OPTIONAL",
+        "location": "OPTIONAL",
+        "last_counted_at": "BACKEND_AUTO",
+        "last_counted_by": "BACKEND_AUTO",
+        "search_embedding": "BACKEND_AUTO",
+        "embedding_text": "BACKEND_AUTO",
+        "metadata": "BACKEND_AUTO",
+        "created_at": "BACKEND_AUTO",
+        "updated_at": "BACKEND_AUTO"
+      }
+    },
+    "pms_inventory_stock": {
+      "columns": 16,
+      "row_count_approx": 282,
+      "rls_enabled": true,
+      "primary_key": "id",
+      "foreign_keys": [
+        "yacht_id",
+        "part_id"
+      ],
+      "field_classifications": {
+        "id": "BACKEND_AUTO",
+        "yacht_id": "BACKEND_AUTO",
+        "part_id": "CONTEXT",
+        "location": "OPTIONAL",
+        "quantity": "REQUIRED",
+        "min_quantity": "OPTIONAL",
+        "max_quantity": "OPTIONAL",
+        "reorder_quantity": "OPTIONAL",
+        "last_counted_at": "BACKEND_AUTO",
+        "metadata": "BACKEND_AUTO",
+        "created_at": "BACKEND_AUTO",
+        "updated_at": "BACKEND_AUTO",
+        "updated_by": "BACKEND_AUTO",
+        "deleted_at": "BACKEND_AUTO",
+        "deleted_by": "BACKEND_AUTO",
+        "deletion_reason": "OPTIONAL"
+      }
+    },
+    "pms_inventory_transactions": {
+      "columns": 9,
+      "row_count_approx": 0,
+      "rls_enabled": false,
+      "blocker": "B1 - RLS DISABLED",
+      "primary_key": "id",
+      "foreign_keys": [
+        "yacht_id",
+        "stock_id"
+      ],
+      "field_classifications": {
+        "id": "BACKEND_AUTO",
+        "yacht_id": "BACKEND_AUTO",
+        "stock_id": "CONTEXT",
+        "transaction_type": "REQUIRED",
+        "quantity_change": "REQUIRED",
+        "quantity_before": "BACKEND_AUTO",
+        "quantity_after": "BACKEND_AUTO",
+        "user_id": "BACKEND_AUTO",
+        "created_at": "BACKEND_AUTO"
+      }
+    },
+    "pms_part_usage": {
+      "columns": 11,
+      "rls_enabled": "NEEDS_REVIEW",
+      "blocker": "B2 - RLS policies undocumented",
+      "primary_key": "id",
+      "foreign_keys": [
+        "yacht_id",
+        "part_id",
+        "work_order_id",
+        "equipment_id"
+      ],
+      "field_classifications": {
+        "id": "BACKEND_AUTO",
+        "yacht_id": "BACKEND_AUTO",
+        "part_id": "CONTEXT",
+        "work_order_id": "CONTEXT",
+        "equipment_id": "CONTEXT",
+        "quantity": "REQUIRED",
+        "usage_reason": "REQUIRED",
+        "notes": "OPTIONAL",
+        "used_at": "BACKEND_AUTO",
+        "used_by": "BACKEND_AUTO",
+        "metadata": "BACKEND_AUTO"
+      }
+    }
+  },
+  "rls_policies": {
+    "pms_parts": {
+      "SELECT": {
+        "policy_name": "yacht_isolation_select",
+        "using": "yacht_id = public.get_user_yacht_id()",
+        "roles": [
+          "authenticated"
+        ]
+      },
+      "INSERT": {
+        "policy_name": "hod_insert",
+        "using": "public.is_hod(auth.uid(), public.get_user_yacht_id())",
+        "roles": [
+          "authenticated"
+        ]
+      },
+      "UPDATE": {
+        "policy_name": "hod_update",
+        "using": "yacht_id = public.get_user_yacht_id() AND public.is_hod(auth.uid(), yacht_id)",
+        "roles": [
+          "authenticated"
+        ]
+      },
+      "DELETE": {
+        "policy_name": "manager_delete",
+        "using": "yacht_id = public.get_user_yacht_id() AND public.is_manager()",
+        "roles": [
+          "authenticated"
+        ]
+      }
+    },
+    "pms_inventory_stock": {
+      "SELECT": {
+        "policy_name": "yacht_isolation_select",
+        "using": "yacht_id = public.get_user_yacht_id()",
+        "roles": [
+          "authenticated"
+        ]
+      },
+      "INSERT": {
+        "policy_name": "hod_insert",
+        "using": "public.is_hod(auth.uid(), public.get_user_yacht_id())",
+        "roles": [
+          "authenticated"
+        ]
+      },
+      "UPDATE": {
+        "policy_name": "hod_update",
+        "using": "yacht_id = public.get_user_yacht_id() AND public.is_hod(auth.uid(), yacht_id)",
+        "roles": [
+          "authenticated"
+        ]
+      }
+    },
+    "pms_inventory_transactions": {
+      "status": "DISABLED - BLOCKER B1",
+      "expected_policies": {
+        "SELECT": "yacht_id = public.get_user_yacht_id()",
+        "INSERT": "public.is_hod(auth.uid(), public.get_user_yacht_id())"
+      }
+    }
+  },
+  "views": {
+    "pms_part_stock": {
+      "description": "Materialized view aggregating stock across locations",
+      "definition_sql": "Available via pg_get_viewdef('public.pms_part_stock', true)",
+      "columns": [
+        "part_id",
+        "total_quantity",
+        "locations_count",
+        "last_updated"
+      ]
+    },
+    "v_stock_from_transactions": {
+      "description": "View calculating current stock from transaction history",
+      "definition_sql": "Available via pg_get_viewdef('public.v_stock_from_transactions', true)",
+      "note": "May not exist yet - depends on transaction table usage"
+    }
+  },
+  "assertions": {
+    "single_tenant": {
+      "description": "Verify all Part Lens tables have exactly 1 yacht_id",
+      "expected_yacht_count": 1,
+      "test_yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+      "sql": "SELECT\n            'pms_parts' AS table_name,\n            COUNT(DISTINCT yacht_id) AS distinct_yacht_count\n        FROM pms_parts\n        UNION ALL\n        SELECT 'pms_inventory_stock', COUNT(DISTINCT yacht_id)\n        FROM pms_inventory_stock\n        UNION ALL\n        SELECT 'pms_inventory_transactions', COUNT(DISTINCT yacht_id)\n        FROM pms_inventory_transactions;"
+    }
+  },
+  "storage_buckets": {
+    "pms-part-photos": {
+      "path_pattern": "{yacht_id}/parts/photos/{filename}",
+      "INSERT": "public.is_hod()",
+      "UPDATE": "public.is_hod()",
+      "DELETE": "public.is_manager()",
+      "SELECT": "yacht_id prefix enforced"
+    },
+    "pms-receiving-images": {
+      "path_pattern": "{yacht_id}/receiving/labels/{filename}",
+      "INSERT": "public.is_hod()",
+      "UPDATE": "public.is_hod()",
+      "DELETE": "public.is_manager()",
+      "SELECT": "yacht_id prefix enforced"
+    },
+    "pms-label-pdfs": {
+      "path_pattern": "{yacht_id}/labels/{filename}",
+      "INSERT": "public.is_hod()",
+      "UPDATE": "public.is_hod()",
+      "DELETE": "public.is_manager()",
+      "SELECT": "yacht_id prefix enforced"
+    }
+  },
+  "action_table_mapping": {
+    "record_part_consumption": {
+      "writes": [
+        "pms_part_usage",
+        "pms_parts",
+        "pms_inventory_transactions",
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_parts",
+        "pms_work_orders"
+      ],
+      "signature_required": false,
+      "blocker": "B1, B2"
+    },
+    "adjust_stock_quantity": {
+      "writes": [
+        "pms_parts",
+        "pms_inventory_transactions",
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_parts"
+      ],
+      "signature_required": "CONDITIONAL (>50% change or zero)",
+      "blocker": "B1, B3"
+    },
+    "add_to_shopping_list": {
+      "writes": [
+        "pms_shopping_list_items",
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_parts"
+      ],
+      "signature_required": false,
+      "blocker": "B4"
+    },
+    "receive_parts": {
+      "writes": [
+        "pms_parts",
+        "pms_inventory_stock",
+        "pms_inventory_transactions",
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_parts"
+      ],
+      "signature_required": false,
+      "blocker": "B1"
+    },
+    "transfer_parts": {
+      "writes": [
+        "pms_inventory_stock (x2)",
+        "pms_inventory_transactions (x2)",
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_parts",
+        "pms_inventory_stock"
+      ],
+      "signature_required": false,
+      "blocker": "B1"
+    },
+    "create_part": {
+      "writes": [
+        "pms_parts",
+        "pms_audit_log"
+      ],
+      "reads": [],
+      "signature_required": false,
+      "blocker": null,
+      "status": "READY"
+    },
+    "view_part_history": {
+      "writes": [
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_parts",
+        "pms_inventory_transactions",
+        "pms_part_usage"
+      ],
+      "signature_required": false,
+      "blocker": null,
+      "status": "READY"
+    },
+    "view_compatible_equipment": {
+      "writes": [
+        "pms_audit_log"
+      ],
+      "reads": [
+        "pms_equipment_parts_bom",
+        "pms_equipment"
+      ],
+      "signature_required": false,
+      "blocker": null,
+      "status": "READY"
+    }
   }
 }
