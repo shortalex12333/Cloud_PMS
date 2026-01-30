@@ -54,6 +54,16 @@ const CERTIFICATE_TYPE_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+// Shopping list source_type options
+const SOURCE_TYPE_OPTIONS = [
+  { value: 'manual_add', label: 'Manual Add' },
+  { value: 'inventory_low', label: 'Inventory Low' },
+  { value: 'inventory_oos', label: 'Inventory Out of Stock' },
+  { value: 'work_order_usage', label: 'Work Order Usage' },
+  { value: 'receiving_missing', label: 'Receiving Missing' },
+  { value: 'receiving_damaged', label: 'Receiving Damaged' },
+];
+
 export default function ActionModal({
   action,
   yachtId,
@@ -66,9 +76,12 @@ export default function ActionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter out yacht_id from visible fields (it's handled automatically)
+  // Auto-generate idempotency key on mount (stable per modal instance)
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  // Filter out yacht_id, signature, and idempotency_key from visible fields (handled automatically)
   const visibleFields = action.required_fields.filter(
-    (f) => f !== 'yacht_id' && f !== 'signature'
+    (f) => f !== 'yacht_id' && f !== 'signature' && f !== 'idempotency_key'
   );
 
   const handleFieldChange = useCallback((field: string, value: string) => {
@@ -110,6 +123,11 @@ export default function ActionModal({
       // Build payload from form data
       const payload: Record<string, any> = { ...formData };
 
+      // Add auto-generated idempotency key (if action requires it)
+      if (action.required_fields.includes('idempotency_key')) {
+        payload.idempotency_key = idempotencyKey;
+      }
+
       // For SIGNED actions, add signature placeholder (real signature would come from auth flow)
       if (action.variant === 'SIGNED') {
         payload.signature = {
@@ -143,7 +161,7 @@ export default function ActionModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [action, formData, yachtId, entityId, visibleFields, onSuccess]);
+  }, [action, formData, yachtId, entityId, visibleFields, idempotencyKey, onSuccess]);
 
   // Build storage path preview
   const storagePathPreview = action.storage_options?.path_preview
@@ -197,8 +215,16 @@ export default function ActionModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} data-testid={`action-form-${action.action_id}`}>
           <div className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* Hidden idempotency key for testability */}
+            <input
+              type="hidden"
+              data-testid="idempotency-key"
+              value={idempotencyKey}
+              readOnly
+            />
+
             {/* Dynamic fields from required_fields */}
             {visibleFields.map((field) => {
               const fieldType = inferFieldType(field);
@@ -247,6 +273,7 @@ export default function ActionModal({
                   ) : fieldType === 'select' && field === 'certificate_type' ? (
                     <select
                       id={field}
+                      name={field}
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
@@ -265,10 +292,33 @@ export default function ActionModal({
                         </option>
                       ))}
                     </select>
+                  ) : fieldType === 'select' && field === 'source_type' ? (
+                    <select
+                      id={field}
+                      name={field}
+                      value={formData[field] || 'manual_add'}
+                      onChange={(e) => handleFieldChange(field, e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2.5 rounded-lg',
+                        'bg-[#1c1c1e] border border-[#3d3d3f]',
+                        'text-[15px] text-white',
+                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'transition-colors'
+                      )}
+                      required
+                      data-testid="source_type-select"
+                    >
+                      {SOURCE_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <input
-                      type="text"
+                      type={field.includes('quantity') || field.includes('price') ? 'number' : 'text'}
                       id={field}
+                      name={field}
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
@@ -279,7 +329,10 @@ export default function ActionModal({
                         'transition-colors'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
+                      min={field.includes('quantity') ? '1' : undefined}
+                      step={field.includes('quantity') ? '1' : field.includes('price') ? '0.01' : undefined}
                       required
+                      data-testid={`${field}-input`}
                     />
                   )}
                 </div>
@@ -370,6 +423,7 @@ export default function ActionModal({
             </button>
             <button
               type="submit"
+              data-testid="action-submit"
               disabled={isSubmitting}
               className={cn(
                 'px-4 py-2 rounded-lg',
