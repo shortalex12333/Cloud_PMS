@@ -1,7 +1,1 @@
-"""
-Lens Microactions
-================
-This directory contains lens-specific microaction implementations.
-
-Auto-discovered by MicroactionRegistry at startup.
-"""
+"""Lens Microactions - Auto-discovered by MicroactionRegistry"""
