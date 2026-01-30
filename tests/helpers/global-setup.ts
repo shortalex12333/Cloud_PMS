@@ -99,34 +99,28 @@ async function globalSetup() {
 
       // Get captain JWT for receive_part (requires captain/manager role)
       const captainAuthState = await loginAsRole('captain');
-      const captainJWT = captainAuthState.origins[0]?.localStorage?.find((item: any) =>
-        item.name.includes('supabase.auth.token')
-      )?.value;
-
-      if (!captainJWT) {
-        throw new Error('Failed to get captain JWT from storage state');
-      }
-
-      const parsedToken = JSON.parse(captainJWT);
-      const accessToken = parsedToken.access_token || parsedToken.currentSession?.access_token;
+      const accessToken = captainAuthState.tokens.accessToken;
 
       if (!accessToken) {
-        throw new Error('Failed to extract access_token from captain JWT');
+        throw new Error('Failed to get captain access token');
       }
 
-      // Call receive_part endpoint to add stock
-      const response = await fetch(`${API_BASE_URL}/v1/parts/receive`, {
+      // Call action execution endpoint (receive_part handler may not be implemented yet)
+      const response = await fetch(`${API_BASE_URL}/v1/actions/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          yacht_id: TEST_YACHT_ID,
-          part_id: TEST_PART_ID,
-          quantity_received: 10,
-          idempotency_key: `e2e-setup-${Date.now()}`,
-          notes: 'E2E test setup - seeding stock'
+          action: 'receive_part',
+          context: {
+            yacht_id: TEST_YACHT_ID,
+            part_id: TEST_PART_ID,
+            quantity_received: 10,
+            idempotency_key: `e2e-setup-${Date.now()}`,
+            notes: 'E2E test setup - seeding stock'
+          }
         })
       });
 
