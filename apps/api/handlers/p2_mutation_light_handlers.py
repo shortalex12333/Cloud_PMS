@@ -414,27 +414,28 @@ class P2MutationLightHandlers:
             wo = wo_result.data[0]
             now = datetime.now(timezone.utc).isoformat()
 
-            # Create document record (using 'documents' table)
+            # CRITICAL FIX: Use pms_attachments table (NOT documents)
+            # documents table is for NAS-indexed manuals, not user uploads
+            # pms_attachments is the correct table for work order photos
             attachment_data = {
                 "yacht_id": yacht_id,
+                "entity_type": "work_order",
+                "entity_id": work_order_id,
                 "filename": filename,
-                "content_type": mime_type,
+                "original_filename": filename,
+                "mime_type": mime_type,
                 "storage_path": storage_path,
-                "source": "work_order_photo",
-                "doc_type": category,
-                "tags": [f"work_order:{work_order_id}", f"wo_number:{wo.get('wo_number', '')}"],
+                "category": category,
+                "description": description,
+                "uploaded_by": user_id,
+                "uploaded_at": now,
                 "metadata": {
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "description": description,
                     "wo_number": wo.get("wo_number"),
-                    "uploaded_by": user_id,
-                    "category": category
-                },
-                "created_at": now
+                    "action": "add_work_order_photo"
+                }
             }
 
-            attach_result = self.db.table("documents").insert(attachment_data).execute()
+            attach_result = self.db.table("pms_attachments").insert(attachment_data).execute()
 
             if not attach_result.data:
                 return {

@@ -152,7 +152,8 @@ test.describe('Action Render Diagnostic', () => {
 
     await loginFresh(page);
 
-    const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="search"]').first();
+    const searchInput = page.locator('[data-testid="search-input"], .spotlight-search input, input[placeholder*="Search"]').first();
+    await expect(searchInput).toBeVisible({ timeout: 15000 });
     await searchInput.click();
     await searchInput.fill('upload document');
 
