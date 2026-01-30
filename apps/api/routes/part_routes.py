@@ -352,7 +352,7 @@ async def get_part_suggestions(
             prefill = {
                 "part_id": part_id,
                 "part_name": part.get("name"),
-                "from_location_id": stock_info["location_id"],
+                "from_location_id": stock_info["location"],  # FIX: stock_info has "location" not "location_id"
             }
             if is_out_of_stock:
                 # Don't suggest transfer if out of stock
