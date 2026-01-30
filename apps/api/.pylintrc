@@ -1,0 +1,12 @@
+[MESSAGES CONTROL]
+# Disable simplification rules that break bucket routing
+disable=
+    simplifiable-if-statement,
+    no-else-return,
+    consider-using-in,
+
+
+[FORMAT]
+# Don't reformat handler files
+ignore-patterns=
+    .*_handlers\.py:_get_bucket_for_attachment

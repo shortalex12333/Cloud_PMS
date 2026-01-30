@@ -516,25 +516,55 @@ class FaultHandlers:
         Determine storage bucket based on entity type and attachment category.
 
         CRITICAL: Table name is pms_attachments (NOT attachments).
-        Bucket strategy until pms_attachments.bucket column added:
-        - fault + photo/image → pms-work-order-photos
-        - fault + manual/document/pdf → documents
-        - Default → attachments
+        CRITICAL: DO NOT REFACTOR - entity types use DIFFERENT buckets.
+
+        Bucket routing (DO NOT COMBINE CONDITIONS):
+        - fault photos     → pms-discrepancy-photos  (compliance/audit bucket)
+        - work_order photos → pms-work-order-photos  (maintenance bucket)
+        - equipment photos  → pms-work-order-photos  (shared with maintenance)
+        - documents/manuals → documents              (documentation bucket)
         """
         category = (category or "").lower()
         mime_type = (mime_type or "").lower()
 
-        # Photo/image categories for faults and work orders
-        if entity_type in ("work_order", "fault"):
-            if category in ("photo", "image") or mime_type.startswith("image/"):
-                return "pms-work-order-photos"
+        # Bucket mapping - DO NOT SIMPLIFY (different buckets per entity type)
+        FAULT_PHOTO_BUCKET = "pms-discrepancy-photos"  # Faults use discrepancy bucket
+        WORK_ORDER_PHOTO_BUCKET = "pms-work-order-photos"  # Work orders use maintenance bucket
+        DOCUMENT_BUCKET = "documents"
+        DEFAULT_BUCKET = "attachments"
 
-        # Manuals and documents
-        if category in ("manual", "document", "pdf") or mime_type == "application/pdf":
-            return "documents"
+        is_photo = category in ("photo", "image") or mime_type.startswith("image/")
+        is_document = category in ("manual", "document", "pdf") or mime_type == "application/pdf"
 
-        # Default: generic attachments bucket
-        return "attachments"
+        # FAULT photos go to DISCREPANCY bucket (different from work orders!)
+        if entity_type == "fault":
+            if is_photo:
+                return FAULT_PHOTO_BUCKET  # pms-discrepancy-photos
+            if is_document:
+                return DOCUMENT_BUCKET
+            return DEFAULT_BUCKET
+
+        # WORK ORDER photos go to WORK-ORDER bucket
+        if entity_type == "work_order":
+            if is_photo:
+                return WORK_ORDER_PHOTO_BUCKET  # pms-work-order-photos
+            if is_document:
+                return DOCUMENT_BUCKET
+            return DEFAULT_BUCKET
+
+        # EQUIPMENT photos SHARE work-order bucket
+        if entity_type == "equipment":
+            if is_photo:
+                return WORK_ORDER_PHOTO_BUCKET  # pms-work-order-photos
+            if is_document:
+                return DOCUMENT_BUCKET
+            return DEFAULT_BUCKET
+
+        # All other documents
+        if is_document:
+            return DOCUMENT_BUCKET
+
+        return DEFAULT_BUCKET
 
     async def _get_fault_files(self, fault_id: str) -> List[Dict]:
         """Get files attached to fault"""
