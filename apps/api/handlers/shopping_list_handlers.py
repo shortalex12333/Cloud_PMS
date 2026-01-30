@@ -244,6 +244,9 @@ class ShoppingListHandlers:
             # Extract new_item_id from RPC result
             new_item_id = insert_result.data[0]["id"]
 
+            # Timestamp for audit log
+            now = datetime.now(timezone.utc).isoformat()
+
             # ============================================================
             # AUDIT LOG
             # ============================================================
