@@ -182,26 +182,21 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
         linked_work_order_id = params.get("linked_work_order_id")
         request_context = params.get("request_context")
 
-        # Insert receiving record
-        receiving_payload = {
-            "yacht_id": yacht_id,
-            "vendor_name": vendor_name,
-            "vendor_reference": vendor_reference,
-            "received_date": received_date if received_date else datetime.now(timezone.utc).date().isoformat(),
-            "received_by": user_id,  # Track who received/created
-            "status": "draft",
-            "currency": currency,
-            "linked_work_order_id": linked_work_order_id,
-            "notes": notes,
-            "properties": {},
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "created_by": user_id,
+        # Insert receiving record via RPC function (bypasses MASTER/TENANT JWT issue)
+        # The RPC function uses SECURITY DEFINER and checks auth_users_roles internally
+        rpc_params = {
+            "p_user_id": user_id,
+            "p_yacht_id": yacht_id,
+            "p_vendor_name": vendor_name,
+            "p_vendor_reference": vendor_reference,
+            "p_received_date": received_date if received_date else datetime.now(timezone.utc).date().isoformat(),
+            "p_notes": notes,
         }
 
         try:
-            result = db.table("pms_receiving").insert(receiving_payload).execute()
+            result = db.rpc("rpc_insert_receiving", rpc_params).execute()
         except Exception as e:
-            logger.error(f"Failed to insert receiving: {e}", exc_info=True)
+            logger.error(f"Failed to insert receiving via RPC: {e}", exc_info=True)
             return map_postgrest_error(e, "INSERT_FAILED")
 
         if not result.data or len(result.data) == 0:
