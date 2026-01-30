@@ -166,12 +166,15 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Create database client for RPC call
+        # RPC function uses SECURITY DEFINER and checks permissions internally
+        # so we use service role client (RPC does its own authorization)
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
 
         # Optional fields
         vendor_name = params.get("vendor_name")
