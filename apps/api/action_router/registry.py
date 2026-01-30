@@ -1641,7 +1641,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "document_id", "comment"],
         domain="documents",
         variant=ActionVariant.MUTATE,
-        search_keywords=["comment", "note", "document", "add", "remark"],
+        search_keywords=["comment", "note", "document", "add", "remark", "write", "leave", "post", "annotation"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
@@ -1661,7 +1661,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "comment_id", "comment"],
         domain="documents",
         variant=ActionVariant.MUTATE,
-        search_keywords=["edit", "update", "modify", "comment"],
+        search_keywords=["edit", "update", "modify", "comment", "change", "fix", "correct", "revise", "alter", "note"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("comment_id", FieldClassification.REQUIRED, description="Comment UUID to edit"),
@@ -1680,7 +1680,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "comment_id"],
         domain="documents",
         variant=ActionVariant.MUTATE,
-        search_keywords=["delete", "remove", "comment"],
+        search_keywords=["delete", "remove", "comment", "erase", "trash", "discard", "clear", "note"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("comment_id", FieldClassification.REQUIRED, description="Comment UUID to delete"),
@@ -1698,7 +1698,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         required_fields=["yacht_id", "document_id"],
         domain="documents",
         variant=ActionVariant.READ,
-        search_keywords=["list", "view", "comments", "document"],
+        search_keywords=["list", "view", "comments", "document", "show", "see", "read", "notes", "what", "said", "wrote", "recent"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("document_id", FieldClassification.REQUIRED, description="doc_metadata.id UUID"),
@@ -2561,10 +2561,125 @@ def get_storage_options(action_id: str, yacht_id: str = None, entity_id: str = N
 # ACTION SEARCH
 # ============================================================================
 
+# Synonym dictionary - maps natural language terms to canonical keywords
+_SYNONYMS = {
+    # Comment synonyms
+    "note": "comment",
+    "notes": "comments",
+    "remark": "comment",
+    "remarks": "comments",
+    "annotation": "comment",
+    "say": "comment",
+    "said": "comment",
+    "wrote": "comment",
+    "write": "comment",
+    "writing": "comment",
+    # Action synonyms
+    "remove": "delete",
+    "erase": "delete",
+    "trash": "delete",
+    "edit": "update",
+    "change": "update",
+    "modify": "update",
+    "show": "list",
+    "view": "list",
+    "see": "list",
+    "get": "list",
+    "fetch": "list",
+    "leave": "add",
+    "post": "add",
+    "put": "add",
+    # Document synonyms
+    "doc": "document",
+    "docs": "documents",
+    "file": "document",
+    "files": "documents",
+    "manual": "document",
+    "manuals": "documents",
+}
+
+# Stopwords to filter out
+_STOPWORDS = {
+    "a", "an", "the", "to", "of", "in", "on", "at", "for", "with", "by",
+    "is", "it", "this", "that", "or", "and", "but", "if", "my", "i",
+    "me", "can", "you", "uhh", "uh", "um", "like", "just", "idk", "wait",
+    "no", "what", "did", "do", "was", "were", "be", "been", "being",
+    "have", "has", "had", "from", "about", "thing", "things", "whatever",
+    "stuff", "something", "someone", "people", "all", "recent", "last",
+}
+
+
+def _normalize_token(token: str) -> str:
+    """Normalize a token using synonym dictionary."""
+    return _SYNONYMS.get(token, token)
+
+
+def _fuzzy_match(query: str, target: str, threshold: int = 2) -> bool:
+    """
+    Simple fuzzy match using Levenshtein distance.
+    Returns True if edit distance <= threshold.
+    """
+    # Quick length check
+    if abs(len(query) - len(target)) > threshold:
+        return False
+
+    # Simple Levenshtein distance
+    m, n = len(query), len(target)
+    if m == 0:
+        return n <= threshold
+    if n == 0:
+        return m <= threshold
+
+    # Create distance matrix
+    prev = list(range(n + 1))
+    curr = [0] * (n + 1)
+
+    for i in range(1, m + 1):
+        curr[0] = i
+        for j in range(1, n + 1):
+            cost = 0 if query[i - 1] == target[j - 1] else 1
+            curr[j] = min(
+                prev[j] + 1,      # deletion
+                curr[j - 1] + 1,  # insertion
+                prev[j - 1] + cost  # substitution
+            )
+        prev, curr = curr, prev
+
+    return prev[n] <= threshold
+
+
 def _tokenize(text: str) -> List[str]:
-    """Tokenize text into lowercase words."""
+    """Tokenize text, apply synonyms, filter stopwords."""
     import re
-    return re.findall(r'\w+', text.lower())
+    tokens = re.findall(r'\w+', text.lower())
+    # Apply synonyms and filter stopwords
+    result = []
+    for t in tokens:
+        if t in _STOPWORDS:
+            continue
+        normalized = _normalize_token(t)
+        result.append(normalized)
+    return result
+
+
+def _token_matches(query_token: str, target_set: set, fuzzy: bool = True) -> bool:
+    """Check if a query token matches any target (exact or fuzzy)."""
+    # Exact match
+    if query_token in target_set:
+        return True
+
+    # Fuzzy match for longer tokens (to avoid false positives on short words)
+    if fuzzy and len(query_token) >= 4:
+        for target in target_set:
+            if len(target) >= 4 and _fuzzy_match(query_token, target, threshold=2):
+                return True
+
+    return False
+
+
+def _count_matches(query_tokens: List[str], target_set: set, fuzzy: bool = True) -> int:
+    """Count how many query tokens match the target set."""
+    return sum(1 for qt in query_tokens if _token_matches(qt, target_set, fuzzy))
 
 
 def _match_score(query_tokens: List[str], action: ActionDefinition) -> float:
@@ -2574,8 +2689,9 @@ def _match_score(query_tokens: List[str], action: ActionDefinition) -> float:
     Scoring:
     - 1.0: Exact match on action_id
     - 0.9: All query tokens in label
-    - 0.8: All query tokens in search_keywords
-    - 0.5-0.7: Partial matches
+    - 0.85: All query tokens in search_keywords
+    - 0.75-0.84: High fuzzy match (most tokens match)
+    - 0.5-0.74: Partial matches
     - 0.0: No match
     """
     if not query_tokens:
@@ -2584,32 +2700,52 @@ def _match_score(query_tokens: List[str], action: ActionDefinition) -> float:
     action_id_lower = action.action_id.lower()
     label_tokens = _tokenize(action.label)
     keyword_set = set(kw.lower() for kw in action.search_keywords)
+    label_set = set(label_tokens)
 
-    # Check exact action_id match
+    # Also include normalized keywords
+    normalized_keywords = set()
+    for kw in action.search_keywords:
+        normalized_keywords.add(kw.lower())
+        normalized_keywords.add(_normalize_token(kw.lower()))
+
+    # Check exact action_id match (handles underscores)
     query_str = "_".join(query_tokens)
-    if query_str == action_id_lower or query_str.replace("_", "") == action_id_lower.replace("_", ""):
+    query_no_underscore = query_str.replace("_", "")
+    action_no_underscore = action_id_lower.replace("_", "")
+    if query_str == action_id_lower or query_no_underscore == action_no_underscore:
         return 1.0
 
-    # Check if all query tokens appear in label
-    label_set = set(label_tokens)
+    # Check if all query tokens appear in label (exact)
     if all(qt in label_set for qt in query_tokens):
         return 0.9
 
-    # Check if all query tokens appear in keywords
-    if all(qt in keyword_set for qt in query_tokens):
+    # Check if all query tokens appear in keywords (exact)
+    if all(qt in normalized_keywords for qt in query_tokens):
         return 0.85
 
-    # Partial matches
-    label_hits = sum(1 for qt in query_tokens if qt in label_set)
-    keyword_hits = sum(1 for qt in query_tokens if qt in keyword_set)
-    combined_hits = max(label_hits, keyword_hits)
+    # Count exact + fuzzy matches
+    label_hits = _count_matches(query_tokens, label_set, fuzzy=True)
+    keyword_hits = _count_matches(query_tokens, normalized_keywords, fuzzy=True)
 
-    if combined_hits == 0:
+    # Use the better of the two
+    best_hits = max(label_hits, keyword_hits)
+
+    if best_hits == 0:
         return 0.0
 
-    # Scale from 0.5 to 0.7 based on hit ratio
-    hit_ratio = combined_hits / len(query_tokens)
-    return 0.5 + (hit_ratio * 0.2)
+    # Calculate hit ratio
+    hit_ratio = best_hits / len(query_tokens)
+
+    # Score based on match quality
+    if hit_ratio >= 0.8:
+        # High match - most tokens matched
+        return 0.75 + (hit_ratio * 0.1)  # 0.75-0.85
+    elif hit_ratio >= 0.5:
+        # Medium match
+        return 0.55 + (hit_ratio * 0.2)  # 0.55-0.75
+    else:
+        # Low match
+        return 0.5 + (hit_ratio * 0.1)  # 0.5-0.55
 
 
 def search_actions(

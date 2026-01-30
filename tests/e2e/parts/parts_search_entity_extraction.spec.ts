@@ -69,10 +69,24 @@ async function performSearch(page: Page, query: string): Promise<void> {
  * Helper: Check if part entity card is visible
  */
 async function isPartEntityVisible(page: Page): Promise<boolean> {
-  return await page.locator('[data-entity-type="part"], [data-testid="part-card"]')
-    .first()
-    .isVisible({ timeout: 3000 })
-    .catch(() => false);
+  // Post-Lens migration: Check for normalized entity types
+  const selectors = [
+    '[data-entity-type="PART_NUMBER"]',
+    '[data-entity-type="PART_NAME"]',
+    '[data-entity-type="EQUIPMENT_NAME"]',
+    '[data-entity-type="MANUFACTURER"]',
+    '[data-testid="part-card"]',
+    '[data-testid="equipment-card"]'
+  ];
+
+  for (const selector of selectors) {
+    const isVisible = await page.locator(selector)
+      .first()
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    if (isVisible) return true;
+  }
+  return false;
 }
 
 /**
@@ -219,8 +233,12 @@ test.describe('Search & Entity Extraction - Chief Engineer', () => {
     const backendResponse = await callBackendSearch(jwt, 'Engine Oil Filter');
 
     // Extract backend action IDs
+    // Post-Lens migration: Backend returns normalized entity types
     const backendEntities = backendResponse.data.entities || [];
-    const partEntity = backendEntities.find((e: any) => e.type === 'part');
+    const partEntity = backendEntities.find((e: any) =>
+      e.type === 'PART_NUMBER' || e.type === 'PART_NAME' ||
+      e.type === 'EQUIPMENT_NAME' || e.type === 'MANUFACTURER'
+    );
 
     let backendActionIds: string[] = [];
     if (partEntity && partEntity.actions) {
