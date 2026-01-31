@@ -126,9 +126,13 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "ENTITY_LOOKUP": ("graph_node_search", "label"),
     "SYSTEM_NAME": ("graph_node_search", "label"),
     "COMPONENT_NAME": ("graph_node_search", "label"),
-    # Blocked capabilities (table empty)
+    # Work Order Lens (multiple search strategies)
     "WORK_ORDER_ID": ("work_order_by_id", "wo_number"),
     "WO_NUMBER": ("work_order_by_id", "wo_number"),
+    "WORK_ORDER_TITLE": ("work_order_by_id", "title"),
+    "WORK_ORDER_DESCRIPTION": ("work_order_by_id", "description"),
+    "WORK_ORDER_EQUIPMENT": ("work_order_by_id", "title"),
+    # Equipment Lens
     "EQUIPMENT_NAME": ("equipment_by_name_or_model", "name"),
     "MODEL_NUMBER": ("equipment_by_name_or_model", "model"),
     # Email transport layer (evidence search)
