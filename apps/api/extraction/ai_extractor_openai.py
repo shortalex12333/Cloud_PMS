@@ -8,7 +8,7 @@ import json
 import os
 import logging
 from typing import Dict, List, Tuple
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -18,20 +18,20 @@ class AIExtractor:
 
     def __init__(self):
         self._client = None
-        self.model = "gpt-4o"
+        self.model = os.getenv("AI_MODEL", "gpt-4o-mini")
         self.timeout = 30
         self.api_key = os.getenv('OPENAI_API_KEY')
 
     @property
     def client(self):
-        """Lazy-load OpenAI client only when needed."""
+        """Lazy-load AsyncOpenAI client only when needed."""
         if self._client is None and self.api_key:
-            self._client = OpenAI(api_key=self.api_key)
+            self._client = AsyncOpenAI(api_key=self.api_key)
         return self._client
 
-    def extract(self, full_text: str, uncovered_spans: List[Tuple[int, int]] = None) -> Dict:
+    async def extract(self, full_text: str, uncovered_spans: List[Tuple[int, int]] = None) -> Dict:
         """
-        Extract entities using OpenAI GPT-4.
+        Extract entities using OpenAI GPT-4o-mini (async).
 
         Args:
             full_text: Complete normalized text
@@ -50,7 +50,7 @@ class AIExtractor:
 
         try:
             prompt = self._build_prompt(full_text)
-            response = self._call_openai(prompt)
+            response = await self._call_openai(prompt)
             result = self._parse_response(response)
 
             if result and 'entities' in result:
@@ -142,10 +142,10 @@ Return JSON with these entity types (use empty array if none found):
 
 Output ONLY valid JSON, no explanation."""
 
-    def _call_openai(self, prompt: str) -> str:
-        """Call OpenAI API with structured output."""
+    async def _call_openai(self, prompt: str) -> str:
+        """Call OpenAI API with structured output (async)."""
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {

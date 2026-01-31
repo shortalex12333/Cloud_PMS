@@ -52,9 +52,9 @@ class ExtractionOrchestrator:
         # Metrics tracking
         self.metrics = ExtractionMetrics()
 
-    def extract(self, text: str) -> Dict:
+    async def extract(self, text: str) -> Dict:
         """
-        Main extraction method - orchestrates the full pipeline.
+        Main extraction method - orchestrates the full pipeline (async).
 
         Args:
             text: Raw input text
@@ -90,7 +90,7 @@ class ExtractionOrchestrator:
 
         if decision.needs_ai:
             stage_start = time.time()
-            ai_result = self.ai_extractor.extract(
+            ai_result = await self.ai_extractor.extract(
                 cleaned['normalized'],
                 decision.uncovered_spans
             )
