@@ -138,6 +138,13 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "REST_COMPLIANCE": ("crew_hours_of_rest_search", "compliance_status"),
     "WARNING_SEVERITY": ("crew_warnings_search", "severity"),
     "WARNING_STATUS": ("crew_warnings_search", "status"),
+    # Shopping List Lens (6 types)
+    "SHOPPING_LIST_ITEM": ("shopping_list_by_item_or_status", "part_name"),
+    "REQUESTED_PART": ("shopping_list_by_item_or_status", "part_name"),
+    "REQUESTER_NAME": ("shopping_list_by_item_or_status", "requested_by"),
+    "URGENCY_LEVEL": ("shopping_list_by_item_or_status", "urgency"),
+    "APPROVAL_STATUS": ("shopping_list_by_item_or_status", "status"),
+    "SOURCE_TYPE": ("shopping_list_by_item_or_status", "source_type"),
 }
 
 

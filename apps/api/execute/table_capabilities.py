@@ -514,6 +514,87 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
             ),
         ],
     ),
+
+    # =========================================================================
+    # SHOPPING LIST LENS
+    # =========================================================================
+
+    "shopping_list_by_item_or_status": Capability(
+        name="shopping_list_by_item_or_status",
+        description="Search shopping list items by part name, status, urgency, or requester",
+        status=CapabilityStatus.ACTIVE,
+        entity_triggers=[
+            "SHOPPING_LIST_ITEM",
+            "REQUESTED_PART",
+            "REQUESTER_NAME",
+            "URGENCY_LEVEL",
+            "APPROVAL_STATUS",
+            "SOURCE_TYPE"
+        ],
+        available_actions=[
+            "create_shopping_list_item",
+            "approve_shopping_list_item",
+            "reject_shopping_list_item",
+            "promote_candidate_to_part",
+            "view_shopping_list_history"
+        ],
+        tables=[
+            TableSpec(
+                name="pms_shopping_list_items",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="part_name",
+                        match_types=[MatchType.ILIKE],
+                        description="Part name or description",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="part_number",
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],
+                        description="Part number",
+                    ),
+                    SearchableColumn(
+                        name="status",
+                        match_types=[MatchType.EXACT],
+                        description="Item status (candidate, under_review, approved, rejected)",
+                    ),
+                    SearchableColumn(
+                        name="urgency",
+                        match_types=[MatchType.EXACT],
+                        description="Urgency level (low, normal, high, critical)",
+                    ),
+                    SearchableColumn(
+                        name="requested_by",
+                        match_types=[MatchType.EXACT],
+                        description="User ID who requested the item",
+                    ),
+                    SearchableColumn(
+                        name="source_type",
+                        match_types=[MatchType.EXACT],
+                        description="Source type (manual_add, inventory_low, work_order_usage, etc.)",
+                    ),
+                ],
+                response_columns=[
+                    "id",
+                    "part_name",
+                    "part_number",
+                    "manufacturer",
+                    "quantity_requested",
+                    "quantity_approved",
+                    "status",
+                    "urgency",
+                    "requested_by",
+                    "approved_by",
+                    "rejected_by",
+                    "source_type",
+                    "created_at",
+                    "required_by_date",
+                ],
+            )
+        ],
+    ),
 }
 
 
