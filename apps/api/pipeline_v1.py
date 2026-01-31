@@ -310,6 +310,70 @@ class Pipeline:
             # Add work order entities to the list
             entities.extend(work_order_entities)
 
+            # Shopping List Lens: Create shopping list entities when context indicates procurement/ordering
+            # Detects shopping list queries and transforms generic entities into shopping list-specific types
+            shopping_list_entities = []
+            shopping_list_keywords = {'shopping list', 'procurement', 'order', 'purchase', 'request', 'approve', 'reject'}
+            query_lower = query.lower()
+            is_shopping_list_context = any(keyword in query_lower for keyword in shopping_list_keywords)
+
+            if is_shopping_list_context:
+                for entity in entities:
+                    entity_type = entity.get('type', '')
+                    entity_value = entity.get('value', '').lower()
+                    entity_conf = entity.get('confidence', 0.8)
+
+                    # Status words in shopping list context → APPROVAL_STATUS
+                    status_keywords = {'pending', 'approved', 'rejected', 'under review', 'candidate'}
+                    if entity_type in ['SYMPTOM', 'STATUS', 'OPERATIONAL_STATE'] and entity_value in status_keywords:
+                        shopping_list_entities.append({
+                            'type': 'APPROVAL_STATUS',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.95,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                    # Urgency indicators → URGENCY_LEVEL
+                    urgency_keywords = {'urgent', 'critical', 'asap', 'high', 'low', 'normal', 'priority'}
+                    if any(keyword in entity_value for keyword in urgency_keywords):
+                        shopping_list_entities.append({
+                            'type': 'URGENCY_LEVEL',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.9,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                    # Part names in shopping list context → REQUESTED_PART
+                    if entity_type in ['PART_NAME', 'EQUIPMENT_NAME', 'VESSEL_EQUIPMENT']:
+                        shopping_list_entities.append({
+                            'type': 'REQUESTED_PART',
+                            'value': entity.get('value', ''),  # Preserve original casing
+                            'confidence': entity_conf * 0.9,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                    # Source type indicators → SOURCE_TYPE
+                    source_keywords = {'manual', 'inventory', 'work order', 'receiving', 'damaged'}
+                    if any(keyword in entity_value for keyword in source_keywords):
+                        shopping_list_entities.append({
+                            'type': 'SOURCE_TYPE',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.85,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                # If no specific entities but shopping list keywords present, create generic SHOPPING_LIST_ITEM
+                if not shopping_list_entities and is_shopping_list_context:
+                    shopping_list_entities.append({
+                        'type': 'SHOPPING_LIST_ITEM',
+                        'value': 'shopping list',
+                        'confidence': 0.75,
+                        'source': 'shopping_list_lens_transformation',
+                    })
+
+            # Add shopping list entities to the list
+            entities.extend(shopping_list_entities)
+
             return {
                 'entities': entities,
                 'unknown_terms': result.get('unknown_term', []),
@@ -368,6 +432,19 @@ class Pipeline:
             'email_search': 'EMAIL_SEARCH',
             'email': 'EMAIL_SEARCH',
             'email_subject': 'EMAIL_SUBJECT',
+            # Shopping List types (context-aware)
+            # Note: These are extracted by maritime NER as generic types,
+            # but in shopping list context they map to shopping list entity types
+            'shopping_list_item': 'SHOPPING_LIST_ITEM',
+            'shopping_list': 'SHOPPING_LIST_ITEM',
+            'procurement_list': 'SHOPPING_LIST_ITEM',
+            'parts_request': 'REQUESTED_PART',
+            'request': 'REQUESTED_PART',
+            'urgency': 'URGENCY_LEVEL',
+            'priority': 'URGENCY_LEVEL',
+            'approval_status': 'APPROVAL_STATUS',
+            'source': 'SOURCE_TYPE',
+            'requester': 'REQUESTER_NAME',
             # Other
             'date': 'DATE',
             'date_range': 'DATE_RANGE',
