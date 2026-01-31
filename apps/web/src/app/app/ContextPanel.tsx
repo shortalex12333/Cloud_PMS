@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { FaultCard } from '@/components/cards/FaultCard';
 import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
 import { EquipmentCard } from '@/components/cards/EquipmentCard';
+import { PartCard } from '@/components/cards/PartCard';
 
 export default function ContextPanel() {
   const { contextPanel, hideContext } = useSurface();
@@ -29,6 +30,7 @@ export default function ContextPanel() {
     equipment: 'Equipment',
     fault: 'Fault',
     part: 'Part',
+    inventory: 'Inventory',
     purchase_order: 'Purchase Order',
     supplier: 'Supplier',
     document: 'Document',
@@ -110,6 +112,31 @@ export default function ContextPanel() {
         return (
           <div data-testid="context-panel-equipment-card">
             <EquipmentCard equipment={equipmentData} />
+          </div>
+        );
+
+      case 'part':
+      case 'inventory':
+        const partData = {
+          id: entityId,
+          part_name: (data.name as string) || (data.part_name as string) || 'Part',
+          part_number: (data.part_number as string) || '',
+          stock_quantity: (data.quantity_on_hand as number) || (data.stock_quantity as number) || 0,
+          min_stock_level: (data.minimum_quantity as number) || (data.min_stock_level as number) || 0,
+          location: (data.location as string) || 'Unknown',
+          unit_cost: data.unit_cost as number | undefined,
+          supplier: data.supplier as string | undefined,
+          category: data.category as string | undefined,
+          last_counted_at: data.last_counted_at as string | undefined,
+          last_counted_by: data.last_counted_by as string | undefined,
+          unit: data.unit as string | undefined,
+        };
+        return (
+          <div data-testid={`context-panel-${entityType}-card`}>
+            <PartCard
+              part={partData}
+              entityType={entityType as 'part' | 'inventory'}
+            />
           </div>
         );
 
