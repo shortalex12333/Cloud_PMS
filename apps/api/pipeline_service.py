@@ -723,6 +723,8 @@ async def webhook_search(
             "error": response.error,
             "request_id": request_id,
             "ok": response.success,
+            # DEBUG: Include prepare debug info
+            "prepare_debug": response.prepare.get("debug", {}),
         }
 
         json_str = json.dumps(response_data) + "\n"
