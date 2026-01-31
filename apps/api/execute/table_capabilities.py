@@ -420,6 +420,100 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
             ),
         ],
     ),
+
+    # =========================================================================
+    # CREW LENS - Hours of Rest Compliance
+    # =========================================================================
+
+    "crew_hours_of_rest_search": Capability(
+        name="crew_hours_of_rest_search",
+        description="Search crew hours of rest records by compliance status",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
+        entity_triggers=["REST_COMPLIANCE"],
+        available_actions=["view_details", "log_hours", "view_warnings", "monthly_signoff"],
+        tables=[
+            TableSpec(
+                name="pms_hours_of_rest",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="user_id",
+                        match_types=[MatchType.EXACT],
+                        description="User UUID (for exact user lookups)",
+                    ),
+                    SearchableColumn(
+                        name="record_date",
+                        match_types=[MatchType.EXACT, MatchType.DATE_RANGE],
+                        description="Record date (YYYY-MM-DD)",
+                    ),
+                    SearchableColumn(
+                        name="is_daily_compliant",
+                        match_types=[MatchType.EXACT],
+                        description="Daily compliance status (boolean)",
+                    ),
+                    SearchableColumn(
+                        name="compliance_status",
+                        match_types=[MatchType.EXACT],
+                        description="Compliance status (compliant/non_compliant)",
+                        is_primary=True,
+                    ),
+                ],
+                response_columns=[
+                    "id", "user_id", "record_date", "rest_periods",
+                    "total_rest_hours", "total_work_hours",
+                    "is_daily_compliant", "is_weekly_compliant",
+                    "compliance_status", "daily_compliance_notes"
+                ],
+            ),
+        ],
+    ),
+
+    "crew_warnings_search": Capability(
+        name="crew_warnings_search",
+        description="Search crew compliance warnings by severity or status",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
+        entity_triggers=["WARNING_SEVERITY", "WARNING_STATUS"],
+        available_actions=["view_warning", "acknowledge_warning", "dismiss_warning"],
+        tables=[
+            TableSpec(
+                name="pms_crew_hours_warnings",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="user_id",
+                        match_types=[MatchType.EXACT],
+                        description="User UUID (for exact user lookups)",
+                    ),
+                    SearchableColumn(
+                        name="severity",
+                        match_types=[MatchType.EXACT],
+                        description="Warning severity (warning/critical)",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="status",
+                        match_types=[MatchType.EXACT],
+                        description="Warning status (active/acknowledged/dismissed)",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="warning_type",
+                        match_types=[MatchType.EXACT],
+                        description="Warning type (DAILY_REST/WEEKLY_REST)",
+                    ),
+                ],
+                response_columns=[
+                    "id", "user_id", "warning_type", "severity",
+                    "record_date", "message", "violation_data",
+                    "status", "acknowledged_at", "dismissed_at"
+                ],
+            ),
+        ],
+    ),
 }
 
 
