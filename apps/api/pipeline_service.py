@@ -725,6 +725,8 @@ async def webhook_search(
             "ok": response.success,
             # DEBUG: Include prepare debug info
             "prepare_debug": response.prepare.get("debug", {}),
+            # Deployment verification
+            "code_version": "2026-01-31T02:30:00Z",
         }
 
         json_str = json.dumps(response_data) + "\n"
