@@ -351,9 +351,9 @@ class GraphRAGQueryService:
             except Exception as e:
                 logger.warning(f"Lens registries not available: {e}. Microactions disabled.")
 
-    def query(self, yacht_id: str, query_text: str) -> Dict:
+    async def query(self, yacht_id: str, query_text: str) -> Dict:
         """
-        Execute GraphRAG query using GPT extraction + vector search.
+        Execute GraphRAG query using GPT extraction + vector search (async).
 
         Pipeline:
         1. GPT-4o-mini extracts entities and detects action
@@ -396,7 +396,7 @@ class GraphRAGQueryService:
 
         # Step 6: Add microactions to cards (lens-based action suggestions)
         if self.microaction_registry:
-            cards = self._enrich_cards_with_microactions(yacht_id, cards, intent.value, query_text)
+            cards = await self._enrich_cards_with_microactions(yacht_id, cards, intent.value, query_text)
 
         return {
             "query": query_text,
@@ -997,10 +997,10 @@ class GraphRAGQueryService:
         except Exception:
             return []
 
-    def _enrich_cards_with_microactions(self, yacht_id: str, cards: List[Dict],
+    async def _enrich_cards_with_microactions(self, yacht_id: str, cards: List[Dict],
                                          query_intent: str, query_text: str,
                                          user_role: str = "chief_engineer") -> List[Dict]:
-        """Enrich cards with lens-based microaction suggestions."""
+        """Enrich cards with lens-based microaction suggestions (async)."""
         import asyncio
 
         async def enrich_card(card: Dict) -> Dict:
@@ -1047,10 +1047,7 @@ class GraphRAGQueryService:
 
         # Run async enrichment
         try:
-            loop = asyncio.get_event_loop()
-            enriched_cards = loop.run_until_complete(
-                asyncio.gather(*[enrich_card(card) for card in cards])
-            )
+            enriched_cards = await asyncio.gather(*[enrich_card(card) for card in cards])
             return list(enriched_cards)
         except Exception as e:
             logger.error(f"Failed to enrich cards with microactions: {e}")
