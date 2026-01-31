@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class AIExtractor:
-    """AI-based extraction using OpenAI GPT-4 Turbo."""
+    """AI-based extraction using OpenAI GPT-4o."""
 
     def __init__(self):
         self._client = None
-        self.model = "gpt-4-turbo-preview"
+        self.model = "gpt-4o"
         self.timeout = 30
         self.api_key = os.getenv('OPENAI_API_KEY')
 
