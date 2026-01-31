@@ -213,6 +213,17 @@ class Pipeline:
             # ================================================================
             response.results_by_domain = self._group_by_domain(ranked_results)
 
+            # ================================================================
+            # STAGE 8: TRANSLATE ENTITY TYPES FOR FRONTEND
+            # ================================================================
+            # Backend uses specific extraction types (EQUIPMENT_NAME, PART_NUMBER)
+            # for capability mapping. Translate to frontend domain types (equipment,
+            # part) for card rendering and action surfacing.
+            if response.extraction.get('entities'):
+                response.extraction['entities'] = self._translate_entity_types_for_frontend(
+                    response.extraction['entities']
+                )
+
             response.success = True
             response.total_ms = (time.time() - start_total) * 1000
 
@@ -334,6 +345,94 @@ class Pipeline:
         }
         normalized = entity_type.lower().strip()
         return type_mapping.get(normalized, normalized.upper().replace(' ', '_'))
+
+    def _translate_entity_types_for_frontend(
+        self,
+        entities: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Translate Lens extraction types to frontend domain types.
+
+        Backend uses specific extraction types (EQUIPMENT_NAME, PART_NUMBER, etc.)
+        for capability mapping. Frontend expects simpler domain types (equipment,
+        part, fault, etc.) for card rendering and action surfacing.
+
+        This preserves extraction_type for debugging while setting type to
+        the frontend-expected value.
+        """
+        EXTRACTION_TO_FRONTEND = {
+            # Parts & Inventory
+            'PART_NUMBER': 'part',
+            'PART_NAME': 'part',
+            'MANUFACTURER': 'part',
+            'LOCATION': 'inventory',
+            'STOCK_QUERY': 'inventory',
+            # Equipment
+            'EQUIPMENT_NAME': 'equipment',
+            'MODEL_NUMBER': 'equipment',
+            'SYSTEM_NAME': 'equipment',
+            'COMPONENT_NAME': 'equipment',
+            'EQUIPMENT_TYPE': 'equipment',
+            # Faults
+            'FAULT_CODE': 'fault',
+            'SYMPTOM': 'fault',
+            # Work Orders
+            'WORK_ORDER_ID': 'work_order',
+            'WO_NUMBER': 'work_order',
+            # Documents
+            'DOCUMENT_QUERY': 'document',
+            'MANUAL_SEARCH': 'document',
+            'PROCEDURE_SEARCH': 'document',
+            'EMAIL_SUBJECT': 'email_thread',
+            'EMAIL_SEARCH': 'email_thread',
+            # Certificates (new)
+            'CERTIFICATE_NAME': 'certificate',
+            'CERTIFICATE_NUMBER': 'certificate',
+            'CERTIFICATE_TYPE': 'certificate',
+            'ISSUING_AUTHORITY': 'certificate',
+            'VESSEL_CERTIFICATE': 'certificate',
+            'CREW_CERTIFICATE': 'certificate',
+            'EXPIRY_DATE': 'certificate',
+            # Receiving (new)
+            'PO_NUMBER': 'receiving',
+            'RECEIVING_ID': 'receiving',
+            'SUPPLIER_NAME': 'receiving',
+            'INVOICE_NUMBER': 'receiving',
+            'DELIVERY_DATE': 'receiving',
+            'RECEIVER_NAME': 'receiving',
+            'RECEIVING_STATUS': 'receiving',
+            # Shopping List (new)
+            'SHOPPING_LIST_ITEM': 'shopping_list',
+            'REQUESTED_PART': 'shopping_list',
+            'REQUESTER_NAME': 'shopping_list',
+            'URGENCY_LEVEL': 'shopping_list',
+            'APPROVAL_STATUS': 'shopping_list',
+            'SOURCE_TYPE': 'shopping_list',
+            # Crew (new)
+            'CREW_NAME': 'crew',
+            'CREW_ROLE': 'crew',
+            'CREW_ID': 'crew',
+            'CERTIFICATION_STATUS': 'crew',
+            'WATCHKEEPING_SCHEDULE': 'crew',
+            'CREW_QUALIFICATION': 'crew',
+        }
+
+        translated = []
+        for entity in entities:
+            extraction_type = entity.get('type', '')
+            frontend_type = EXTRACTION_TO_FRONTEND.get(
+                extraction_type,
+                extraction_type.lower().replace('_', ' ')  # Fallback: lowercase with spaces
+            )
+
+            translated_entity = {
+                **entity,
+                'extraction_type': extraction_type,  # Preserve for debugging
+                'type': frontend_type,               # Frontend-friendly type
+            }
+            translated.append(translated_entity)
+
+        return translated
 
     def _prepare(self, entities: List[Dict]) -> Dict[str, Any]:
         """
