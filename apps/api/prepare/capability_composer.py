@@ -134,6 +134,25 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     # Email transport layer (evidence search)
     "EMAIL_SUBJECT": ("email_threads_search", "latest_subject"),
     "EMAIL_SEARCH": ("email_threads_search", "latest_subject"),
+    # Crew Lens - Hours of Rest (only types that map to actual columns)
+    "REST_COMPLIANCE": ("crew_hours_of_rest_search", "compliance_status"),
+    "WARNING_SEVERITY": ("crew_warnings_search", "severity"),
+    "WARNING_STATUS": ("crew_warnings_search", "status"),
+    # Shopping List Lens (6 types)
+    "SHOPPING_LIST_ITEM": ("shopping_list_by_item_or_status", "part_name"),
+    "REQUESTED_PART": ("shopping_list_by_item_or_status", "part_name"),
+    "REQUESTER_NAME": ("shopping_list_by_item_or_status", "requested_by"),
+    "URGENCY_LEVEL": ("shopping_list_by_item_or_status", "urgency"),
+    "APPROVAL_STATUS": ("shopping_list_by_item_or_status", "status"),
+    "SOURCE_TYPE": ("shopping_list_by_item_or_status", "source_type"),
+    # Receiving Lens (7 types)
+    "PO_NUMBER": ("receiving_by_po_or_supplier", "vendor_reference"),
+    "RECEIVING_ID": ("receiving_by_po_or_supplier", "id"),
+    "SUPPLIER_NAME": ("receiving_by_po_or_supplier", "vendor_name"),
+    "INVOICE_NUMBER": ("receiving_by_po_or_supplier", "vendor_reference"),
+    "DELIVERY_DATE": ("receiving_by_po_or_supplier", "received_date"),
+    "RECEIVER_NAME": ("receiving_by_po_or_supplier", "received_by"),
+    "RECEIVING_STATUS": ("receiving_by_po_or_supplier", "status"),
 }
 
 

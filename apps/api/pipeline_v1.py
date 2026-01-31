@@ -106,6 +106,16 @@ class Pipeline:
         self._extractor = None
         self._composer = None
         self._executor = None
+        self._microaction_registry = None
+
+        # Initialize microaction registry for lens-based action suggestions
+        try:
+            from microactions.microaction_registry import MicroactionRegistry
+            self._microaction_registry = MicroactionRegistry(self.client)
+            self._microaction_registry.discover_and_register()
+            logger.info("✅ MicroactionRegistry initialized")
+        except Exception as e:
+            logger.warning(f"MicroactionRegistry not available: {e}. Microactions disabled.")
 
     def _get_extractor(self):
         """Lazy-load extraction orchestrator."""
@@ -204,14 +214,40 @@ class Pipeline:
             response.total_count = len(ranked_results)
 
             # ================================================================
-            # STAGE 6: ATTACH ACTIONS
+            # STAGE 6: ENRICH RESULTS WITH MICROACTIONS
+            # ================================================================
+            start = time.time()
+            enriched_results = self._enrich_results_with_microactions(
+                ranked_results,
+                user_role="chief_engineer",  # TODO: Get from auth context
+                query_intent="general_search"  # TODO: Derive from query/entities
+            )
+            microaction_ms = (time.time() - start) * 1000
+            logger.info(f"Microaction enrichment completed in {microaction_ms:.2f}ms")
+
+            response.results = enriched_results
+            response.total_count = len(enriched_results)
+
+            # ================================================================
+            # STAGE 7: ATTACH ACTIONS (Global Action List)
             # ================================================================
             response.available_actions = self._get_available_actions(plans)
 
             # ================================================================
-            # STAGE 7: GROUP RESULTS BY DOMAIN
+            # STAGE 8: GROUP RESULTS BY DOMAIN
             # ================================================================
-            response.results_by_domain = self._group_by_domain(ranked_results)
+            response.results_by_domain = self._group_by_domain(enriched_results)
+
+            # ================================================================
+            # STAGE 9: TRANSLATE ENTITY TYPES FOR FRONTEND
+            # ================================================================
+            # Backend uses specific extraction types (EQUIPMENT_NAME, PART_NUMBER)
+            # for capability mapping. Translate to frontend domain types (equipment,
+            # part) for card rendering and action surfacing.
+            if response.extraction.get('entities'):
+                response.extraction['entities'] = self._translate_entity_types_for_frontend(
+                    response.extraction['entities']
+                )
 
             response.success = True
             response.total_ms = (time.time() - start_total) * 1000
@@ -267,6 +303,118 @@ class Pipeline:
                             'value': entity.get('text', entity.get('value', '')),
                             'confidence': entity.get('confidence', 0.8),
                         })
+
+            # Work Order Lens: Create additional entities for work order title/description search
+            # When equipment or action entities are extracted, also search work orders that mention them
+            work_order_entities = []
+            for entity in entities:
+                entity_type = entity.get('type', '')
+                entity_value = entity.get('value', '')
+
+                # Equipment entities (e.g., "generator") should also search work order titles/descriptions
+                if entity_type == 'EQUIPMENT_NAME':
+                    work_order_entities.append({
+                        'type': 'WORK_ORDER_EQUIPMENT',
+                        'value': entity_value,
+                        'confidence': entity.get('confidence', 0.8) * 0.9,  # Slightly lower confidence for cross-lens search
+                        'source': 'work_order_lens_transformation',
+                    })
+
+                # Action entities related to maintenance (e.g., "maintenance", "service", "repair")
+                # should search work order titles
+                elif entity_type in ['ACTION', 'MAINTENANCE_ACTION']:
+                    maintenance_keywords = {'maintenance', 'service', 'repair', 'change', 'replace', 'inspect', 'check'}
+                    if entity_value.lower() in maintenance_keywords:
+                        work_order_entities.append({
+                            'type': 'WORK_ORDER_TITLE',
+                            'value': entity_value,
+                            'confidence': entity.get('confidence', 0.8) * 0.85,  # Lower confidence for action-based search
+                            'source': 'work_order_lens_transformation',
+                        })
+
+            # Add work order entities to the list
+            entities.extend(work_order_entities)
+
+            # Shopping List Lens: Create shopping list entities when context indicates procurement/ordering
+            # Detects shopping list queries and transforms generic entities into shopping list-specific types
+            shopping_list_entities = []
+            # Expanded keywords to catch paraphrases and common misspellings
+            shopping_list_keywords = {
+                'shopping list', 'shoping list', 'shop list',  # Common misspellings
+                'procurement', 'procure',
+                'order', 'ordering',
+                'purchase', 'purchasing',
+                'request', 'requested', 'requesting',
+                'approve', 'approval', 'approved', 'approving',
+                'reject', 'rejected', 'rejecting',
+                'waiting', 'pending',
+                'priority', 'urgent', 'critical',
+                'add', 'adding', 'create',
+                'candidate', 'parts list',
+            }
+            query_lower = query.lower()
+            # Check keywords or partial match for "shop" + "list" to catch more misspellings
+            is_shopping_list_context = (
+                any(keyword in query_lower for keyword in shopping_list_keywords) or
+                ('shop' in query_lower and 'list' in query_lower)
+            )
+
+            if is_shopping_list_context:
+                for entity in entities:
+                    entity_type = entity.get('type', '')
+                    entity_value = entity.get('value', '').lower()
+                    entity_conf = entity.get('confidence', 0.8)
+
+                    # Status words in shopping list context → APPROVAL_STATUS
+                    status_keywords = {'pending', 'approved', 'rejected', 'under review', 'candidate', 'waiting', 'approval'}
+                    if entity_type in ['SYMPTOM', 'STATUS', 'OPERATIONAL_STATE'] and entity_value in status_keywords:
+                        shopping_list_entities.append({
+                            'type': 'APPROVAL_STATUS',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.95,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                    # Urgency indicators → URGENCY_LEVEL
+                    urgency_keywords = {'urgent', 'critical', 'asap', 'high', 'low', 'normal', 'priority'}
+                    if any(keyword in entity_value for keyword in urgency_keywords):
+                        shopping_list_entities.append({
+                            'type': 'URGENCY_LEVEL',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.9,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                    # Part names in shopping list context → REQUESTED_PART
+                    if entity_type in ['PART_NAME', 'EQUIPMENT_NAME', 'VESSEL_EQUIPMENT']:
+                        shopping_list_entities.append({
+                            'type': 'REQUESTED_PART',
+                            'value': entity.get('value', ''),  # Preserve original casing
+                            'confidence': entity_conf * 0.9,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                    # Source type indicators → SOURCE_TYPE
+                    source_keywords = {'manual', 'inventory', 'work order', 'receiving', 'damaged'}
+                    if any(keyword in entity_value for keyword in source_keywords):
+                        shopping_list_entities.append({
+                            'type': 'SOURCE_TYPE',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.85,
+                            'source': 'shopping_list_lens_transformation',
+                        })
+
+                # If no specific entities but shopping list keywords present, create generic SHOPPING_LIST_ITEM
+                if not shopping_list_entities and is_shopping_list_context:
+                    shopping_list_entities.append({
+                        'type': 'SHOPPING_LIST_ITEM',
+                        'value': 'shopping list',
+                        'confidence': 0.75,
+                        'source': 'shopping_list_lens_transformation',
+                    })
+
+            # Add shopping list entities to the list
+            entities.extend(shopping_list_entities)
 
             return {
                 'entities': entities,
@@ -326,6 +474,19 @@ class Pipeline:
             'email_search': 'EMAIL_SEARCH',
             'email': 'EMAIL_SEARCH',
             'email_subject': 'EMAIL_SUBJECT',
+            # Shopping List types (context-aware)
+            # Note: These are extracted by maritime NER as generic types,
+            # but in shopping list context they map to shopping list entity types
+            'shopping_list_item': 'SHOPPING_LIST_ITEM',
+            'shopping_list': 'SHOPPING_LIST_ITEM',
+            'procurement_list': 'SHOPPING_LIST_ITEM',
+            'parts_request': 'REQUESTED_PART',
+            'request': 'REQUESTED_PART',
+            'urgency': 'URGENCY_LEVEL',
+            'priority': 'URGENCY_LEVEL',
+            'approval_status': 'APPROVAL_STATUS',
+            'source': 'SOURCE_TYPE',
+            'requester': 'REQUESTER_NAME',
             # Other
             'date': 'DATE',
             'date_range': 'DATE_RANGE',
@@ -334,6 +495,234 @@ class Pipeline:
         }
         normalized = entity_type.lower().strip()
         return type_mapping.get(normalized, normalized.upper().replace(' ', '_'))
+
+    def _translate_entity_types_for_frontend(
+        self,
+        entities: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Translate Lens extraction types to frontend domain types.
+
+        Backend uses specific extraction types (EQUIPMENT_NAME, PART_NUMBER, etc.)
+        for capability mapping. Frontend expects simpler domain types (equipment,
+        part, fault, etc.) for card rendering and action surfacing.
+
+        This preserves extraction_type for debugging while setting type to
+        the frontend-expected value.
+        """
+        EXTRACTION_TO_FRONTEND = {
+            # Parts & Inventory
+            'PART_NUMBER': 'part',
+            'PART_NAME': 'part',
+            'MANUFACTURER': 'part',
+            'LOCATION': 'inventory',
+            'STOCK_QUERY': 'inventory',
+            # Inventory - Stock Status (7 new types)
+            'STOCK_STATUS': 'inventory',
+            'REORDER_NEEDED': 'inventory',
+            'CRITICAL_PART': 'inventory',
+            'RECENT_USAGE': 'inventory',
+            'PART_CATEGORY': 'inventory',
+            'LOW_STOCK': 'inventory',
+            'OUT_OF_STOCK': 'inventory',
+            # Equipment
+            'EQUIPMENT_NAME': 'equipment',
+            'MODEL_NUMBER': 'equipment',
+            'SYSTEM_NAME': 'equipment',
+            'COMPONENT_NAME': 'equipment',
+            'EQUIPMENT_TYPE': 'equipment',
+            # Faults
+            'FAULT_CODE': 'fault',
+            'SYMPTOM': 'fault',
+            # Work Orders
+            'WORK_ORDER_ID': 'work_order',
+            'WO_NUMBER': 'work_order',
+            # Documents
+            'DOCUMENT_QUERY': 'document',
+            'MANUAL_SEARCH': 'document',
+            'PROCEDURE_SEARCH': 'document',
+            'EMAIL_SUBJECT': 'email_thread',
+            'EMAIL_SEARCH': 'email_thread',
+            # Certificates (new)
+            'CERTIFICATE_NAME': 'certificate',
+            'CERTIFICATE_NUMBER': 'certificate',
+            'CERTIFICATE_TYPE': 'certificate',
+            'ISSUING_AUTHORITY': 'certificate',
+            'VESSEL_CERTIFICATE': 'certificate',
+            'CREW_CERTIFICATE': 'certificate',
+            'EXPIRY_DATE': 'certificate',
+            # Receiving (new)
+            'PO_NUMBER': 'receiving',
+            'RECEIVING_ID': 'receiving',
+            'SUPPLIER_NAME': 'receiving',
+            'INVOICE_NUMBER': 'receiving',
+            'DELIVERY_DATE': 'receiving',
+            'RECEIVER_NAME': 'receiving',
+            'RECEIVING_STATUS': 'receiving',
+            # Shopping List (new)
+            'SHOPPING_LIST_ITEM': 'shopping_list',
+            'REQUESTED_PART': 'shopping_list',
+            'REQUESTER_NAME': 'shopping_list',
+            'URGENCY_LEVEL': 'shopping_list',
+            'APPROVAL_STATUS': 'shopping_list',
+            'SOURCE_TYPE': 'shopping_list',
+            # Crew (new)
+            'CREW_NAME': 'crew',
+            'CREW_ROLE': 'crew',
+            'CREW_ID': 'crew',
+            'CERTIFICATION_STATUS': 'crew',
+            'WATCHKEEPING_SCHEDULE': 'crew',
+            'CREW_QUALIFICATION': 'crew',
+            # Crew - Hours of Rest (only types that map to actual columns)
+            'REST_COMPLIANCE': 'crew',
+            'WARNING_SEVERITY': 'crew',
+            'WARNING_STATUS': 'crew',
+        }
+
+        translated = []
+        for entity in entities:
+            extraction_type = entity.get('type', '')
+            frontend_type = EXTRACTION_TO_FRONTEND.get(
+                extraction_type,
+                extraction_type.lower().replace('_', ' ')  # Fallback: lowercase with spaces
+            )
+
+            translated_entity = {
+                **entity,
+                'extraction_type': extraction_type,  # Preserve for debugging
+                'type': frontend_type,               # Frontend-friendly type
+            }
+            translated.append(translated_entity)
+
+        return translated
+
+    def _enrich_results_with_microactions(
+        self,
+        results: List[Dict[str, Any]],
+        user_role: str = "chief_engineer",
+        query_intent: str = "general_search"
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich search results with lens-based microaction suggestions.
+
+        For each result, queries the MicroactionRegistry to get relevant action
+        suggestions based on:
+        - Lens type (part_lens, equipment_lens, etc.)
+        - Entity type and ID
+        - User role
+        - Query intent
+
+        Args:
+            results: List of search results
+            user_role: User's role (captain, chief_engineer, crew)
+            query_intent: Search intent (general_search, troubleshoot, etc.)
+
+        Returns:
+            Results enriched with 'actions' field containing microaction suggestions
+        """
+        if not self._microaction_registry:
+            logger.debug("Microaction registry not available, skipping enrichment")
+            return results
+
+        import asyncio
+
+        async def enrich_result(result: Dict[str, Any]) -> Dict[str, Any]:
+            """Enrich a single result with microactions."""
+            # Get lens name from result source table
+            source_table = result.get('source_table') or result.get('type', '')
+            lens_name = self._get_lens_name_from_source_table(source_table)
+
+            if not lens_name:
+                result['actions'] = []
+                return result
+
+            # Get entity type and ID
+            entity_type = self._get_entity_type_from_source_table(source_table)
+            entity_id = result.get('primary_id') or result.get('id')
+
+            if not entity_id:
+                result['actions'] = []
+                return result
+
+            # Get microaction suggestions
+            try:
+                suggestions = await self._microaction_registry.get_suggestions(
+                    lens_name=lens_name,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    entity_data=result,
+                    user_role=user_role,
+                    yacht_id=self.yacht_id,
+                    query_intent=query_intent
+                )
+
+                # Convert to dict format
+                result['actions'] = [
+                    {
+                        'action_id': s.action_id,
+                        'label': s.label,
+                        'variant': s.variant,
+                        'priority': s.priority,
+                        'prefill_data': s.prefill_data
+                    }
+                    for s in suggestions
+                ]
+            except Exception as e:
+                logger.warning(f"Failed to get microactions for result {entity_id}: {e}")
+                result['actions'] = []
+
+            return result
+
+        # Run async enrichment
+        try:
+            loop = asyncio.get_event_loop()
+            enriched_results = loop.run_until_complete(
+                asyncio.gather(*[enrich_result(result) for result in results])
+            )
+            return list(enriched_results)
+        except Exception as e:
+            logger.error(f"Failed to enrich results with microactions: {e}")
+            # Return results without enrichment if anything fails
+            for result in results:
+                if 'actions' not in result:
+                    result['actions'] = []
+            return results
+
+    def _get_lens_name_from_source_table(self, source_table: str) -> Optional[str]:
+        """Map source table to lens name."""
+        table_to_lens = {
+            'pms_parts': 'part_lens',
+            'part': 'part_lens',
+            'crew': 'crew_lens',
+            'pms_crew': 'crew_lens',
+            'certificates': 'certificate_lens',
+            'pms_equipment': 'equipment_lens',
+            'equipment': 'equipment_lens',
+            'pms_work_orders': 'work_order_lens',
+            'work_order': 'work_order_lens',
+            'receiving': 'receiving_lens',
+            'shopping_list': 'shopping_list_lens',
+            'documents': 'document_lens',
+        }
+        return table_to_lens.get(source_table)
+
+    def _get_entity_type_from_source_table(self, source_table: str) -> str:
+        """Map source table to entity type for microaction lookup."""
+        table_to_entity = {
+            'pms_parts': 'part',
+            'part': 'part',
+            'crew': 'crew_member',
+            'pms_crew': 'crew_member',
+            'certificates': 'certificate',
+            'pms_equipment': 'equipment',
+            'equipment': 'equipment',
+            'pms_work_orders': 'work_order',
+            'work_order': 'work_order',
+            'receiving': 'receiving_item',
+            'shopping_list': 'shopping_list_item',
+            'documents': 'document',
+        }
+        return table_to_entity.get(source_table, source_table)
 
     def _prepare(self, entities: List[Dict]) -> Dict[str, Any]:
         """

@@ -22,11 +22,15 @@ interface PartCardProps {
     unit_cost?: number;
     supplier?: string;
     category?: string;
+    last_counted_at?: string;
+    last_counted_by?: string;
+    unit?: string;
   };
   actions?: MicroAction[];
+  entityType?: 'part' | 'inventory';
 }
 
-export function PartCard({ part, actions = [] }: PartCardProps) {
+export function PartCard({ part, actions = [], entityType = 'part' }: PartCardProps) {
   const isLowStock = part.stock_quantity <= part.min_stock_level;
   const isOutOfStock = part.stock_quantity === 0;
 
@@ -43,7 +47,12 @@ export function PartCard({ part, actions = [] }: PartCardProps) {
   const stockStatus = getStockStatus();
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+    <div
+      className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+      data-testid={entityType === 'inventory' ? 'inventory-card' : 'part-card'}
+      data-entity-type={entityType}
+      data-entity-id={part.id}
+    >
       <div className="flex items-start gap-3">
         {/* Part Icon */}
         <div className={cn('mt-1', isOutOfStock ? 'text-red-600' : 'text-primary')}>
@@ -85,14 +94,28 @@ export function PartCard({ part, actions = [] }: PartCardProps) {
           <div className="flex items-center gap-4 mb-2">
             <div className="text-sm">
               <span className="font-medium">Stock:</span>{' '}
-              <span className={cn(isLowStock && 'text-orange-600 font-bold')}>
+              <span className={cn(
+                isLowStock && 'text-orange-600 font-bold',
+                isOutOfStock && 'text-red-600 font-bold'
+              )}>
                 {part.stock_quantity}
-              </span>{' '}
+              </span>
+              {part.unit && <span className="text-muted-foreground ml-1">{part.unit}</span>}
+              {' '}
               <span className="text-muted-foreground">
                 (min: {part.min_stock_level})
               </span>
             </div>
           </div>
+
+          {/* Last Counted (Inventory-specific info) */}
+          {part.last_counted_at && (
+            <div className="text-xs text-muted-foreground mb-2">
+              <span className="font-medium">Last counted:</span>{' '}
+              {new Date(part.last_counted_at).toLocaleDateString()}{' '}
+              {part.last_counted_by && <span>by {part.last_counted_by}</span>}
+            </div>
+          )}
 
           {/* Location */}
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
@@ -110,20 +133,22 @@ export function PartCard({ part, actions = [] }: PartCardProps) {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            {isLowStock && !actions.includes('order_part') && (
+            {/* Auto-suggest shopping list action for low stock */}
+            {isLowStock && !actions.some(a => typeof a === 'object' ? a.action_id === 'create_shopping_list_item' : a === 'create_shopping_list_item') && (
               <ActionButton
-                action="order_part"
+                action="create_shopping_list_item"
                 context={{ part_id: part.id }}
                 variant="default"
                 size="sm"
                 showIcon={true}
               />
             )}
+            {/* Render backend-provided actions */}
             {actions.map((action) => (
               <ActionButton
-                key={action}
-                action={action}
-                context={{ part_id: part.id }}
+                key={typeof action === 'object' ? action.action_id || action.label : action}
+                action={typeof action === 'object' ? action.action_id : action}
+                context={{ part_id: part.id, entity_type: entityType }}
                 variant="secondary"
                 size="sm"
                 showIcon={true}

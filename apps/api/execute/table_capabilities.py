@@ -420,6 +420,269 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
             ),
         ],
     ),
+
+    # =========================================================================
+    # CREW LENS - Hours of Rest Compliance
+    # =========================================================================
+
+    "crew_hours_of_rest_search": Capability(
+        name="crew_hours_of_rest_search",
+        description="Search crew hours of rest records by compliance status",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
+        entity_triggers=["REST_COMPLIANCE"],
+        available_actions=["view_details", "log_hours", "view_warnings", "monthly_signoff"],
+        tables=[
+            TableSpec(
+                name="pms_hours_of_rest",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="user_id",
+                        match_types=[MatchType.EXACT],
+                        description="User UUID (for exact user lookups)",
+                    ),
+                    SearchableColumn(
+                        name="record_date",
+                        match_types=[MatchType.EXACT, MatchType.DATE_RANGE],
+                        description="Record date (YYYY-MM-DD)",
+                    ),
+                    SearchableColumn(
+                        name="is_daily_compliant",
+                        match_types=[MatchType.EXACT],
+                        description="Daily compliance status (boolean)",
+                    ),
+                    SearchableColumn(
+                        name="compliance_status",
+                        match_types=[MatchType.EXACT],
+                        description="Compliance status (compliant/non_compliant)",
+                        is_primary=True,
+                    ),
+                ],
+                response_columns=[
+                    "id", "user_id", "record_date", "rest_periods",
+                    "total_rest_hours", "total_work_hours",
+                    "is_daily_compliant", "is_weekly_compliant",
+                    "compliance_status", "daily_compliance_notes"
+                ],
+            ),
+        ],
+    ),
+
+    "crew_warnings_search": Capability(
+        name="crew_warnings_search",
+        description="Search crew compliance warnings by severity or status",
+        status=CapabilityStatus.ACTIVE,
+        blocked_reason=None,
+        entity_triggers=["WARNING_SEVERITY", "WARNING_STATUS"],
+        available_actions=["view_warning", "acknowledge_warning", "dismiss_warning"],
+        tables=[
+            TableSpec(
+                name="pms_crew_hours_warnings",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="user_id",
+                        match_types=[MatchType.EXACT],
+                        description="User UUID (for exact user lookups)",
+                    ),
+                    SearchableColumn(
+                        name="severity",
+                        match_types=[MatchType.EXACT],
+                        description="Warning severity (warning/critical)",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="status",
+                        match_types=[MatchType.EXACT],
+                        description="Warning status (active/acknowledged/dismissed)",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="warning_type",
+                        match_types=[MatchType.EXACT],
+                        description="Warning type (DAILY_REST/WEEKLY_REST)",
+                    ),
+                ],
+                response_columns=[
+                    "id", "user_id", "warning_type", "severity",
+                    "record_date", "message", "violation_data",
+                    "status", "acknowledged_at", "dismissed_at"
+                ],
+            ),
+        ],
+    ),
+
+    # =========================================================================
+    # SHOPPING LIST LENS
+    # =========================================================================
+
+    "shopping_list_by_item_or_status": Capability(
+        name="shopping_list_by_item_or_status",
+        description="Search shopping list items by part name, status, urgency, or requester",
+        status=CapabilityStatus.ACTIVE,
+        entity_triggers=[
+            "SHOPPING_LIST_ITEM",
+            "REQUESTED_PART",
+            "REQUESTER_NAME",
+            "URGENCY_LEVEL",
+            "APPROVAL_STATUS",
+            "SOURCE_TYPE"
+        ],
+        available_actions=[
+            "create_shopping_list_item",
+            "approve_shopping_list_item",
+            "reject_shopping_list_item",
+            "promote_candidate_to_part",
+            "view_shopping_list_history"
+        ],
+        tables=[
+            TableSpec(
+                name="pms_shopping_list_items",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="part_name",
+                        match_types=[MatchType.ILIKE],
+                        description="Part name or description",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="part_number",
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],
+                        description="Part number",
+                    ),
+                    SearchableColumn(
+                        name="status",
+                        match_types=[MatchType.EXACT],
+                        description="Item status (candidate, under_review, approved, rejected)",
+                    ),
+                    SearchableColumn(
+                        name="urgency",
+                        match_types=[MatchType.EXACT],
+                        description="Urgency level (low, normal, high, critical)",
+                    ),
+                    SearchableColumn(
+                        name="requested_by",
+                        match_types=[MatchType.EXACT],
+                        description="User ID who requested the item",
+                    ),
+                    SearchableColumn(
+                        name="source_type",
+                        match_types=[MatchType.EXACT],
+                        description="Source type (manual_add, inventory_low, work_order_usage, etc.)",
+                    ),
+                ],
+                response_columns=[
+                    "id",
+                    "part_name",
+                    "part_number",
+                    "manufacturer",
+                    "quantity_requested",
+                    "quantity_approved",
+                    "status",
+                    "urgency",
+                    "requested_by",
+                    "approved_by",
+                    "rejected_by",
+                    "source_type",
+                    "created_at",
+                    "required_by_date",
+                ],
+            )
+        ],
+    ),
+
+    # =========================================================================
+    # RECEIVING LENS
+    # =========================================================================
+
+    "receiving_by_po_or_supplier": Capability(
+        name="receiving_by_po_or_supplier",
+        description="Search receiving records by PO number, invoice number, supplier name, delivery date, or status",
+        status=CapabilityStatus.ACTIVE,
+        entity_triggers=[
+            "PO_NUMBER",
+            "RECEIVING_ID",
+            "SUPPLIER_NAME",
+            "INVOICE_NUMBER",
+            "DELIVERY_DATE",
+            "RECEIVER_NAME",
+            "RECEIVING_STATUS"
+        ],
+        available_actions=[
+            "create_receiving",
+            "attach_receiving_image_with_comment",
+            "extract_receiving_candidates",
+            "update_receiving_fields",
+            "add_receiving_item",
+            "adjust_receiving_item",
+            "link_invoice_document",
+            "accept_receiving",
+            "reject_receiving",
+            "view_receiving_history"
+        ],
+        tables=[
+            TableSpec(
+                name="pms_receiving",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="vendor_reference",
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],
+                        description="PO number, invoice number, AWB, packing slip number",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="vendor_name",
+                        match_types=[MatchType.ILIKE],
+                        description="Supplier/vendor name",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="id",
+                        match_types=[MatchType.EXACT],
+                        description="Receiving record ID (UUID)",
+                    ),
+                    SearchableColumn(
+                        name="received_date",
+                        match_types=[MatchType.EXACT, MatchType.DATE_RANGE],
+                        description="Date goods were received",
+                    ),
+                    SearchableColumn(
+                        name="status",
+                        match_types=[MatchType.EXACT],
+                        description="Status: draft, in_review, accepted, rejected",
+                    ),
+                    SearchableColumn(
+                        name="received_by",
+                        match_types=[MatchType.EXACT],
+                        description="User ID who received the goods",
+                    ),
+                ],
+                response_columns=[
+                    "id",
+                    "vendor_name",
+                    "vendor_reference",
+                    "received_date",
+                    "received_by",
+                    "status",
+                    "currency",
+                    "subtotal",
+                    "tax_total",
+                    "total",
+                    "linked_work_order_id",
+                    "notes",
+                    "created_at",
+                    "created_by"
+                ],
+            )
+        ],
+    ),
 }
 
 

@@ -16,10 +16,18 @@ Usage:
 
 import os
 import logging
-from typing import Optional
+import threading
+from typing import Optional, Dict
 from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
+
+# Connection Pooling
+# ==================
+# Reuse database connections across requests to avoid 280-980ms connection overhead
+_connection_pools: Dict[str, Client] = {}
+_pool_lock = threading.Lock()
+_pool_stats = {"service_hits": 0, "service_misses": 0}
 
 
 def get_user_db(user_jwt: str, yacht_id: Optional[str] = None) -> Client:
@@ -92,6 +100,9 @@ def get_service_db(yacht_id: Optional[str] = None) -> Client:
     Service key bypasses RLS policies. Using it for tenant data access is a
     security violation and breaks yacht isolation.
 
+    CONNECTION POOLING: This function reuses connections across requests to avoid
+    280-980ms connection overhead per request.
+
     Args:
         yacht_id: Optional yacht ID for tenant routing
 
@@ -110,14 +121,57 @@ def get_service_db(yacht_id: Optional[str] = None) -> Client:
     if not tenant_url or not service_key:
         raise ValueError(f"{default_yacht}_SUPABASE_URL and SERVICE_KEY must be set")
 
-    logger.warning("Creating service-key Supabase client - RLS BYPASSED. Only use for admin tasks!")
+    # Connection pooling: Check if we already have a connection for this tenant
+    pool_key = f"{default_yacht}_service"
 
-    try:
-        client = create_client(tenant_url, service_key)
-        return client
-    except Exception as e:
-        logger.error(f"Failed to create service Supabase client: {e}")
-        raise ValueError(f"Failed to create service database client: {str(e)}")
+    # Fast path: Check if pool exists (no lock needed for read)
+    if pool_key in _connection_pools:
+        _pool_stats["service_hits"] += 1
+        logger.debug(f"[Connection Pool] HIT for {pool_key} (hits: {_pool_stats['service_hits']})")
+        return _connection_pools[pool_key]
+
+    # Slow path: Create new connection (with lock to prevent race conditions)
+    with _pool_lock:
+        # Double-check after acquiring lock (another thread might have created it)
+        if pool_key in _connection_pools:
+            _pool_stats["service_hits"] += 1
+            return _connection_pools[pool_key]
+
+        logger.warning("Creating service-key Supabase client - RLS BYPASSED. Only use for admin tasks!")
+        _pool_stats["service_misses"] += 1
+
+        try:
+            client = create_client(tenant_url, service_key)
+            _connection_pools[pool_key] = client
+            logger.info(f"[Connection Pool] MISS - Created new pool for {pool_key} (total pools: {len(_connection_pools)})")
+            return client
+        except Exception as e:
+            logger.error(f"Failed to create service Supabase client: {e}")
+            raise ValueError(f"Failed to create service database client: {str(e)}")
+
+
+def get_pool_stats() -> dict:
+    """
+    Get connection pool statistics for monitoring.
+
+    Returns:
+        dict: Pool statistics including hits, misses, hit rate, active pools
+    """
+    total = _pool_stats["service_hits"] + _pool_stats["service_misses"]
+    hit_rate = (_pool_stats["service_hits"] / total * 100) if total > 0 else 0
+
+    return {
+        "connection_pools": {
+            "active_pools": len(_connection_pools),
+            "pool_keys": list(_connection_pools.keys())
+        },
+        "service_connections": {
+            "hits": _pool_stats["service_hits"],
+            "misses": _pool_stats["service_misses"],
+            "total_requests": total,
+            "hit_rate": f"{hit_rate:.1f}%"
+        }
+    }
 
 
 def map_postgrest_error(error: Exception, default_code: str = "DATABASE_ERROR") -> dict:
