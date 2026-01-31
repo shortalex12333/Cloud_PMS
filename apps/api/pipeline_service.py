@@ -773,7 +773,7 @@ async def webhook_search(
 
 @app.post("/extract", response_model=ExtractResponse)
 @limiter.limit("100/minute")
-async def extract(request: ExtractRequest):
+async def extract(extract_request: ExtractRequest, request: Request):
     """
     Entity extraction only (no database query).
 
@@ -786,7 +786,7 @@ async def extract(request: ExtractRequest):
         raise HTTPException(status_code=503, detail="Extractor not available")
 
     try:
-        result = await extractor.extract(request.query)
+        result = await extractor.extract(extract_request.query)
 
         # Normalize entities
         entities = []
