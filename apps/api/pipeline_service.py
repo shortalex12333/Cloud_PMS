@@ -335,6 +335,7 @@ class Entity(BaseModel):
     type: str
     value: str
     confidence: float = 0.8
+    extraction_type: Optional[str] = None  # Backend extraction type (PART_NUMBER, EQUIPMENT_NAME, etc.)
 
 class SearchResponse(BaseModel):
     success: bool
