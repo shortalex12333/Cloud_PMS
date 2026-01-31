@@ -145,6 +145,14 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "URGENCY_LEVEL": ("shopping_list_by_item_or_status", "urgency"),
     "APPROVAL_STATUS": ("shopping_list_by_item_or_status", "status"),
     "SOURCE_TYPE": ("shopping_list_by_item_or_status", "source_type"),
+    # Receiving Lens (7 types)
+    "PO_NUMBER": ("receiving_by_po_or_supplier", "vendor_reference"),
+    "RECEIVING_ID": ("receiving_by_po_or_supplier", "id"),
+    "SUPPLIER_NAME": ("receiving_by_po_or_supplier", "vendor_name"),
+    "INVOICE_NUMBER": ("receiving_by_po_or_supplier", "vendor_reference"),
+    "DELIVERY_DATE": ("receiving_by_po_or_supplier", "received_date"),
+    "RECEIVER_NAME": ("receiving_by_po_or_supplier", "received_by"),
+    "RECEIVING_STATUS": ("receiving_by_po_or_supplier", "status"),
 }
 
 

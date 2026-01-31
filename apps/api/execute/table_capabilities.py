@@ -595,6 +595,94 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
             )
         ],
     ),
+
+    # =========================================================================
+    # RECEIVING LENS
+    # =========================================================================
+
+    "receiving_by_po_or_supplier": Capability(
+        name="receiving_by_po_or_supplier",
+        description="Search receiving records by PO number, invoice number, supplier name, delivery date, or status",
+        status=CapabilityStatus.ACTIVE,
+        entity_triggers=[
+            "PO_NUMBER",
+            "RECEIVING_ID",
+            "SUPPLIER_NAME",
+            "INVOICE_NUMBER",
+            "DELIVERY_DATE",
+            "RECEIVER_NAME",
+            "RECEIVING_STATUS"
+        ],
+        available_actions=[
+            "create_receiving",
+            "attach_receiving_image_with_comment",
+            "extract_receiving_candidates",
+            "update_receiving_fields",
+            "add_receiving_item",
+            "adjust_receiving_item",
+            "link_invoice_document",
+            "accept_receiving",
+            "reject_receiving",
+            "view_receiving_history"
+        ],
+        tables=[
+            TableSpec(
+                name="pms_receiving",
+                yacht_id_column="yacht_id",
+                primary_key="id",
+                searchable_columns=[
+                    SearchableColumn(
+                        name="vendor_reference",
+                        match_types=[MatchType.ILIKE, MatchType.EXACT],
+                        description="PO number, invoice number, AWB, packing slip number",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="vendor_name",
+                        match_types=[MatchType.ILIKE],
+                        description="Supplier/vendor name",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="id",
+                        match_types=[MatchType.EXACT],
+                        description="Receiving record ID (UUID)",
+                    ),
+                    SearchableColumn(
+                        name="received_date",
+                        match_types=[MatchType.EXACT, MatchType.DATE_RANGE],
+                        description="Date goods were received",
+                    ),
+                    SearchableColumn(
+                        name="status",
+                        match_types=[MatchType.EXACT],
+                        description="Status: draft, in_review, accepted, rejected",
+                    ),
+                    SearchableColumn(
+                        name="received_by",
+                        match_types=[MatchType.EXACT],
+                        description="User ID who received the goods",
+                    ),
+                ],
+                response_columns=[
+                    "id",
+                    "vendor_name",
+                    "vendor_reference",
+                    "received_date",
+                    "received_by",
+                    "status",
+                    "currency",
+                    "subtotal",
+                    "tax_total",
+                    "total",
+                    "linked_work_order_id",
+                    "notes",
+                    "created_at",
+                    "created_by"
+                ],
+            )
+        ],
+    ),
 }
 
 

@@ -18,6 +18,7 @@ import { FaultCard } from '@/components/cards/FaultCard';
 import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
 import { EquipmentCard } from '@/components/cards/EquipmentCard';
 import { PartCard } from '@/components/cards/PartCard';
+import { ReceivingCard } from '@/components/cards/ReceivingCard';
 
 export default function ContextPanel() {
   const { contextPanel, hideContext } = useSurface();
@@ -35,6 +36,7 @@ export default function ContextPanel() {
     supplier: 'Supplier',
     document: 'Document',
     email_thread: 'Email Thread',
+    receiving: 'Receiving',
   };
 
   const displayName = entityType ? entityTypeNames[entityType] || entityType : 'Details';
@@ -137,6 +139,24 @@ export default function ContextPanel() {
               part={partData}
               entityType={entityType as 'part' | 'inventory'}
             />
+          </div>
+        );
+
+      case 'receiving':
+        const receivingData = {
+          id: entityId,
+          vendor_name: data.vendor_name as string | undefined,
+          vendor_reference: data.vendor_reference as string | undefined,
+          received_date: data.received_date as string | undefined,
+          status: (data.status as 'draft' | 'in_review' | 'accepted' | 'rejected') || 'draft',
+          total: data.total as number | undefined,
+          currency: data.currency as string | undefined,
+          notes: data.notes as string | undefined,
+          received_by: data.received_by as string | undefined,
+        };
+        return (
+          <div data-testid="context-panel-receiving-card">
+            <ReceivingCard receiving={receivingData} />
           </div>
         );
 
