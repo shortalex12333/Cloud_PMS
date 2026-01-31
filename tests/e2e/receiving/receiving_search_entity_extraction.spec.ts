@@ -344,6 +344,35 @@ test.describe('Role-Based Action Surfacing - CREW (Read-Only)', () => {
       }, null, 2)
     );
   });
+
+  test('CREW cannot create receiving (403 RLS_DENIED)', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    const jwt = await getJWTFromPage(page);
+
+    // Attempt create_receiving as CREW (should fail with 403)
+    const result = await executeAction(jwt, 'create_receiving', {
+      vendor_reference: `CREW-SHOULD-FAIL-${Date.now()}`,
+      received_date: new Date().toISOString().split('T')[0],
+    });
+
+    // Assert 403 Forbidden
+    expect(result.statusCode).toBe(403);
+    expect(result.data.error_code).toBe('RLS_DENIED');
+
+    console.log('[CREW] Denied as expected:', result.data);
+
+    fs.writeFileSync(
+      path.join(ARTIFACTS_DIR, 'crew_create_receiving_denied.json'),
+      JSON.stringify({
+        test: 'CREW cannot create receiving (403 RLS_DENIED)',
+        action: 'create_receiving',
+        statusCode: result.statusCode,
+        errorCode: result.data.error_code,
+        timestamp: new Date().toISOString(),
+      }, null, 2)
+    );
+  });
 });
 
 test.describe('Role-Based Action Surfacing - CAPTAIN (Signed Actions)', () => {
@@ -414,41 +443,6 @@ test.describe('Action Execution - HOD', () => {
         action: 'create_receiving',
         statusCode: result.statusCode,
         receivingId: result.data.receiving_id,
-        timestamp: new Date().toISOString(),
-      }, null, 2)
-    );
-  });
-
-  test('CREW cannot create receiving (403 RLS_DENIED)', async ({ page }) => {
-    // Use CREW storage state
-    await page.context().clearCookies();
-    await page.context().addCookies([
-      // Load CREW cookies here or use separate test setup
-    ]);
-
-    await page.goto('/', { waitUntil: 'networkidle' });
-
-    const jwt = await getJWTFromPage(page);
-
-    // Attempt create_receiving as CREW
-    const result = await executeAction(jwt, 'create_receiving', {
-      vendor_reference: `CREW-SHOULD-FAIL-${Date.now()}`,
-      received_date: new Date().toISOString().split('T')[0],
-    });
-
-    // Assert 403 Forbidden
-    expect(result.statusCode).toBe(403);
-    expect(result.data.error_code).toBe('RLS_DENIED');
-
-    console.log('[CREW] Denied as expected:', result.data);
-
-    fs.writeFileSync(
-      path.join(ARTIFACTS_DIR, 'crew_create_receiving_denied.json'),
-      JSON.stringify({
-        test: 'CREW cannot create receiving (403 RLS_DENIED)',
-        action: 'create_receiving',
-        statusCode: result.statusCode,
-        errorCode: result.data.error_code,
         timestamp: new Date().toISOString(),
       }, null, 2)
     );
