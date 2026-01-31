@@ -279,6 +279,37 @@ class Pipeline:
                             'confidence': entity.get('confidence', 0.8),
                         })
 
+            # Work Order Lens: Create additional entities for work order title/description search
+            # When equipment or action entities are extracted, also search work orders that mention them
+            work_order_entities = []
+            for entity in entities:
+                entity_type = entity.get('type', '')
+                entity_value = entity.get('value', '')
+
+                # Equipment entities (e.g., "generator") should also search work order titles/descriptions
+                if entity_type == 'EQUIPMENT_NAME':
+                    work_order_entities.append({
+                        'type': 'WORK_ORDER_EQUIPMENT',
+                        'value': entity_value,
+                        'confidence': entity.get('confidence', 0.8) * 0.9,  # Slightly lower confidence for cross-lens search
+                        'source': 'work_order_lens_transformation',
+                    })
+
+                # Action entities related to maintenance (e.g., "maintenance", "service", "repair")
+                # should search work order titles
+                elif entity_type in ['ACTION', 'MAINTENANCE_ACTION']:
+                    maintenance_keywords = {'maintenance', 'service', 'repair', 'change', 'replace', 'inspect', 'check'}
+                    if entity_value.lower() in maintenance_keywords:
+                        work_order_entities.append({
+                            'type': 'WORK_ORDER_TITLE',
+                            'value': entity_value,
+                            'confidence': entity.get('confidence', 0.8) * 0.85,  # Lower confidence for action-based search
+                            'source': 'work_order_lens_transformation',
+                        })
+
+            # Add work order entities to the list
+            entities.extend(work_order_entities)
+
             return {
                 'entities': entities,
                 'unknown_terms': result.get('unknown_term', []),
@@ -367,6 +398,14 @@ class Pipeline:
             'MANUFACTURER': 'part',
             'LOCATION': 'inventory',
             'STOCK_QUERY': 'inventory',
+            # Inventory - Stock Status (7 new types)
+            'STOCK_STATUS': 'inventory',
+            'REORDER_NEEDED': 'inventory',
+            'CRITICAL_PART': 'inventory',
+            'RECENT_USAGE': 'inventory',
+            'PART_CATEGORY': 'inventory',
+            'LOW_STOCK': 'inventory',
+            'OUT_OF_STOCK': 'inventory',
             # Equipment
             'EQUIPMENT_NAME': 'equipment',
             'MODEL_NUMBER': 'equipment',
@@ -415,6 +454,12 @@ class Pipeline:
             'CERTIFICATION_STATUS': 'crew',
             'WATCHKEEPING_SCHEDULE': 'crew',
             'CREW_QUALIFICATION': 'crew',
+            # Crew - Hours of Rest (new)
+            'DEPARTMENT': 'crew',
+            'REST_COMPLIANCE': 'crew',
+            'WARNING_SEVERITY': 'crew',
+            'WARNING_STATUS': 'crew',
+            'CREW_WARNING': 'crew',
         }
 
         translated = []
