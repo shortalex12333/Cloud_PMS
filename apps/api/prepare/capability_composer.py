@@ -171,23 +171,38 @@ def plan_capabilities(entities: List[Dict[str, Any]]) -> List[CapabilityPlan]:
 
     Returns list of plans, some may be blocked.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     plans = []
     active_caps = get_active_capabilities()
+
+    logger.info(f"[DEBUG] plan_capabilities called with {len(entities)} entities")
+    logger.info(f"[DEBUG] Active capabilities: {len(active_caps)} total")
+    logger.info(f"[DEBUG] ENTITY_TO_SEARCH_COLUMN has {len(ENTITY_TO_SEARCH_COLUMN)} mappings")
 
     for entity in entities:
         entity_type = entity.get("type", "")
         entity_value = entity.get("value", "")
 
+        logger.info(f"[DEBUG] Processing entity: type={entity_type}, value={entity_value}")
+
         if not entity_type or not entity_value:
+            logger.info(f"[DEBUG] Skipping entity: missing type or value")
             continue
 
         # Look up capability and column
         mapping = ENTITY_TO_SEARCH_COLUMN.get(entity_type)
+        logger.info(f"[DEBUG] Mapping lookup for {entity_type}: {mapping}")
+
         if not mapping:
             # Unknown entity type - skip silently
+            logger.info(f"[DEBUG] No mapping found for entity type: {entity_type}")
             continue
 
         cap_name, search_col = mapping
+        logger.info(f"[DEBUG] Mapped to capability: {cap_name}, column: {search_col}")
+        logger.info(f"[DEBUG] Is {cap_name} in active_caps? {cap_name in active_caps}")
 
         # Check if capability is active
         if cap_name not in active_caps:
@@ -200,6 +215,7 @@ def plan_capabilities(entities: List[Dict[str, Any]]) -> List[CapabilityPlan]:
                 blocked=True,
                 blocked_reason=cap.blocked_reason if cap else "Unknown capability",
             ))
+            logger.info(f"[DEBUG] Added BLOCKED plan for {cap_name}")
         else:
             plans.append(CapabilityPlan(
                 capability_name=cap_name,
@@ -208,7 +224,9 @@ def plan_capabilities(entities: List[Dict[str, Any]]) -> List[CapabilityPlan]:
                 search_column=search_col,
                 blocked=False,
             ))
+            logger.info(f"[DEBUG] Added ACTIVE plan for {cap_name}")
 
+    logger.info(f"[DEBUG] Returning {len(plans)} plans")
     return plans
 
 
