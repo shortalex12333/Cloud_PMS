@@ -451,6 +451,49 @@ class Pipeline:
             # Add shopping list entities to the list
             entities.extend(shopping_list_entities)
 
+            # Receiving Lens: Transform generic entities in receiving context
+            # Detects receiving/PO/invoice queries and transforms org → SUPPLIER_NAME
+            receiving_entities = []
+            receiving_keywords = {
+                'receiving', 'recieving', 'reciving',  # Common misspellings
+                'receive', 'received',
+                'delivery', 'delivered',
+                'supplier', 'vendor',
+                'invoice', 'invoices',
+                'po', 'purchase order', 'p.o.', 'p/o',
+                'shipment', 'shipped',
+                'goods received',
+            }
+            is_receiving_context = any(keyword in query_lower for keyword in receiving_keywords)
+
+            if is_receiving_context:
+                for entity in entities:
+                    entity_type = entity.get('type', '')
+                    entity_value = entity.get('value', '')
+                    entity_conf = entity.get('confidence', 0.8)
+
+                    # ORG entities in receiving context → SUPPLIER_NAME
+                    if entity_type in ['ORG', 'MANUFACTURER', 'ORGANIZATION']:
+                        receiving_entities.append({
+                            'type': 'SUPPLIER_NAME',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.95,
+                            'source': 'receiving_lens_transformation',
+                        })
+
+                    # Status words in receiving context → RECEIVING_STATUS
+                    status_keywords = {'draft', 'in review', 'accepted', 'rejected', 'pending', 'approved'}
+                    if entity_type in ['SYMPTOM', 'STATUS', 'OPERATIONAL_STATE'] and entity_value.lower() in status_keywords:
+                        receiving_entities.append({
+                            'type': 'RECEIVING_STATUS',
+                            'value': entity_value,
+                            'confidence': entity_conf * 0.9,
+                            'source': 'receiving_lens_transformation',
+                        })
+
+            # Add receiving entities to the list
+            entities.extend(receiving_entities)
+
             return {
                 'entities': entities,
                 'unknown_terms': result.get('unknown_term', []),
@@ -482,10 +525,8 @@ class Pipeline:
             'product_name': 'EQUIPMENT_NAME',  # "Perkins AC" extracted as PRODUCT_NAME
             # Part types
             'part_number': 'PART_NUMBER',
-            'po_number': 'PART_NUMBER',
             'part_name': 'PART_NAME',
             'manufacturer': 'MANUFACTURER',
-            'org': 'MANUFACTURER',  # "Racor" extracted as ORG
             # Fault types
             'fault_code': 'FAULT_CODE',
             'model': 'FAULT_CODE',  # "E122" extracted as MODEL
@@ -509,6 +550,15 @@ class Pipeline:
             'email_search': 'EMAIL_SEARCH',
             'email': 'EMAIL_SEARCH',
             'email_subject': 'EMAIL_SUBJECT',
+            # Receiving Lens types (PR #47 - Receiving Lens)
+            # FIX: po_number maps to PO_NUMBER for receiving, not PART_NUMBER
+            'po_number': 'PO_NUMBER',
+            'receiving_id': 'RECEIVING_ID',
+            'supplier_name': 'SUPPLIER_NAME',
+            'invoice_number': 'INVOICE_NUMBER',
+            'delivery_date': 'DELIVERY_DATE',
+            'receiver_name': 'RECEIVER_NAME',
+            'receiving_status': 'RECEIVING_STATUS',
             # Shopping List types (context-aware)
             # Note: These are extracted by maritime NER as generic types,
             # but in shopping list context they map to shopping list entity types
