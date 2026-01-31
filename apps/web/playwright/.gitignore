@@ -1,0 +1,4 @@
+# Playwright Auth Directory
+# Don't commit auth state or tokens (contains JWTs)
+
+.auth/
