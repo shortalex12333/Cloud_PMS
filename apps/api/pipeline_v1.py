@@ -454,12 +454,10 @@ class Pipeline:
             'CERTIFICATION_STATUS': 'crew',
             'WATCHKEEPING_SCHEDULE': 'crew',
             'CREW_QUALIFICATION': 'crew',
-            # Crew - Hours of Rest (new)
-            'DEPARTMENT': 'crew',
+            # Crew - Hours of Rest (only types that map to actual columns)
             'REST_COMPLIANCE': 'crew',
             'WARNING_SEVERITY': 'crew',
             'WARNING_STATUS': 'crew',
-            'CREW_WARNING': 'crew',
         }
 
         translated = []
