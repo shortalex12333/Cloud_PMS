@@ -143,7 +143,7 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
         name="inventory_by_location",
         description="Search inventory stock by location, quantity, or reorder status",
         status=CapabilityStatus.ACTIVE,
-        entity_triggers=["LOCATION", "STOCK_QUERY"],
+        entity_triggers=["LOCATION", "STOCK_QUERY", "STOCK_STATUS", "LOW_STOCK", "OUT_OF_STOCK", "REORDER_NEEDED"],
         available_actions=["view_stock", "reorder", "transfer_stock", "adjust_quantity"],
         tables=[
             # NOTE: v_inventory VIEW may not exist on all deployments
