@@ -331,11 +331,11 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
 
     "work_order_by_id": Capability(
         name="work_order_by_id",
-        description="Search work orders by ID, status, or equipment",
+        description="Search work orders by number, title, description, status, or related equipment",
         status=CapabilityStatus.ACTIVE,
         blocked_reason=None,
-        entity_triggers=["WORK_ORDER_ID", "WO_NUMBER"],
-        available_actions=["view_details", "update_status", "assign_crew", "close_order"],
+        entity_triggers=["WORK_ORDER_ID", "WO_NUMBER", "EQUIPMENT_NAME", "WORK_ORDER_TITLE", "WORK_ORDER_EQUIPMENT"],
+        available_actions=["view_details", "update_status", "assign_crew", "close_order", "show_related"],
         tables=[
             TableSpec(
                 name="pms_work_orders",
@@ -345,16 +345,27 @@ TABLE_CAPABILITIES: Dict[str, Capability] = {
                     SearchableColumn(
                         name="wo_number",
                         match_types=[MatchType.EXACT],
-                        description="Work order number",
+                        description="Work order number (e.g., WO-12345)",
                         is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="title",
+                        match_types=[MatchType.ILIKE],
+                        description="Work order title (natural language search)",
+                        is_primary=True,
+                    ),
+                    SearchableColumn(
+                        name="description",
+                        match_types=[MatchType.ILIKE],
+                        description="Work order description (natural language search)",
                     ),
                     SearchableColumn(
                         name="status",
                         match_types=[MatchType.EXACT],
-                        description="Work order status",
+                        description="Work order status (planned, in_progress, completed, closed)",
                     ),
                 ],
-                response_columns=["id", "wo_number", "status", "title", "description"],
+                response_columns=["id", "wo_number", "status", "title", "description", "equipment_id", "created_at", "updated_at", "due_date", "priority", "type"],
             ),
         ],
     ),
