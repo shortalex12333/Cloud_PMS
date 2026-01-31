@@ -107,6 +107,15 @@ Output: {{"action": ["do not start"], "equipment": ["main engine"], "status": ["
 Input: "What voltage does Northern Lights M843W require"
 Output: {{"org": ["Northern Lights"], "model": ["M843W"], "measurement": ["voltage"]}}
 
+Input: "low stock parts in engine room"
+Output: {{"stock_status": ["low stock"], "subcomponent": ["parts"], "location_on_board": ["engine room"]}}
+
+Input: "out of stock oil filters"
+Output: {{"stock_status": ["out of stock"], "subcomponent": ["oil filters"]}}
+
+Input: "parts below minimum quantity"
+Output: {{"stock_status": ["below minimum"]}}
+
 TEXT TO EXTRACT FROM:
 "{text}"
 
@@ -128,6 +137,8 @@ Return JSON with these entity types (use empty array if none found):
 - org (manufacturer/brand - ONLY if explicitly mentioned!)
 - network_id (IP addresses, MAC addresses)
 - identifier (serial numbers, part numbers)
+- stock_status (CRITICAL for inventory: low stock, out of stock, below minimum, critically low, needs reorder)
+- part_category (filters, bearings, seals, electronics - part classifications)
 
 Output ONLY valid JSON, no explanation."""
 
@@ -198,7 +209,8 @@ Output ONLY valid JSON, no explanation."""
             'equipment', 'subcomponent', 'system', 'location_on_board',
             'action', 'status', 'symptom', 'measurement', 'fault_code',
             'time', 'date', 'person', 'document_id', 'document_type',
-            'model', 'org', 'network_id', 'identifier'
+            'model', 'org', 'network_id', 'identifier',
+            'stock_status', 'part_category'
         }
 
         normalized = {}

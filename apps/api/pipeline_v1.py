@@ -304,6 +304,41 @@ class Pipeline:
                             'confidence': entity.get('confidence', 0.8),
                         })
 
+            # Inventory Lens: Refine STOCK_STATUS entities into specific types based on value
+            # When AI extracts stock_status: ["low stock"], convert to LOW_STOCK entity
+            inventory_entities = []
+            for entity in entities[:]:  # Iterate over copy to allow modification
+                entity_type = entity.get('type', '')
+                entity_value = entity.get('value', '').lower()
+                entity_conf = entity.get('confidence', 0.8)
+
+                if entity_type == 'STOCK_STATUS':
+                    # Map stock status values to specific entity types
+                    if any(keyword in entity_value for keyword in ['low stock', 'low', 'below minimum', 'critically low']):
+                        inventory_entities.append({
+                            'type': 'LOW_STOCK',
+                            'value': entity.get('value'),
+                            'confidence': entity_conf,
+                            'source': 'inventory_lens_transformation',
+                        })
+                    elif any(keyword in entity_value for keyword in ['out of stock', 'out', 'no stock', 'zero']):
+                        inventory_entities.append({
+                            'type': 'OUT_OF_STOCK',
+                            'value': entity.get('value'),
+                            'confidence': entity_conf,
+                            'source': 'inventory_lens_transformation',
+                        })
+                    elif any(keyword in entity_value for keyword in ['reorder', 'needs reorder', 'order']):
+                        inventory_entities.append({
+                            'type': 'REORDER_NEEDED',
+                            'value': entity.get('value'),
+                            'confidence': entity_conf,
+                            'source': 'inventory_lens_transformation',
+                        })
+
+            # Add inventory entities to the list
+            entities.extend(inventory_entities)
+
             # Work Order Lens: Create additional entities for work order title/description search
             # When equipment or action entities are extracted, also search work orders that mention them
             work_order_entities = []
@@ -487,6 +522,11 @@ class Pipeline:
             'approval_status': 'APPROVAL_STATUS',
             'source': 'SOURCE_TYPE',
             'requester': 'REQUESTER_NAME',
+            # Inventory types (PR #44 - Inventory Lens fix)
+            'stock_status': 'STOCK_STATUS',
+            'low_stock': 'LOW_STOCK',
+            'out_of_stock': 'OUT_OF_STOCK',
+            'part_category': 'PART_CATEGORY',
             # Other
             'date': 'DATE',
             'date_range': 'DATE_RANGE',
