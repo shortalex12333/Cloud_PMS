@@ -217,7 +217,7 @@ class Pipeline:
             # STAGE 6: ENRICH RESULTS WITH MICROACTIONS
             # ================================================================
             start = time.time()
-            enriched_results = self._enrich_results_with_microactions(
+            enriched_results = await self._enrich_results_with_microactions(
                 ranked_results,
                 user_role="chief_engineer",  # TODO: Get from auth context
                 query_intent="general_search"  # TODO: Derive from query/entities
@@ -636,7 +636,7 @@ class Pipeline:
 
         return translated
 
-    def _enrich_results_with_microactions(
+    async def _enrich_results_with_microactions(
         self,
         results: List[Dict[str, Any]],
         user_role: str = "chief_engineer",
@@ -715,10 +715,7 @@ class Pipeline:
 
         # Run async enrichment
         try:
-            loop = asyncio.get_event_loop()
-            enriched_results = loop.run_until_complete(
-                asyncio.gather(*[enrich_result(result) for result in results])
-            )
+            enriched_results = await asyncio.gather(*[enrich_result(result) for result in results])
             return list(enriched_results)
         except Exception as e:
             logger.error(f"Failed to enrich results with microactions: {e}")

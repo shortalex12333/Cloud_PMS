@@ -186,7 +186,7 @@ async def orchestrated_search(
         execute_start = time.time()
         client = get_tenant_client(tenant_key_alias)
         executor = PlanExecutor(client, yacht_id)
-        execution_result = executor.execute_sync(result.plan)
+        execution_result = await executor.execute(result.plan)
         execute_time = (time.time() - execute_start) * 1000
 
         total_time = (time.time() - start_time) * 1000

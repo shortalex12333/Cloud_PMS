@@ -20,7 +20,6 @@ class ExtractionConfig:
                 'regex': 1.0,
                 'gazetteer': 0.95,
                 'proper_noun': 0.85,
-                'spacy': 0.80,
                 'ai': 0.70,
                 'fallback_py': 0.90
             }

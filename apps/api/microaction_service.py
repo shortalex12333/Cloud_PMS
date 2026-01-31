@@ -1715,7 +1715,7 @@ async def search(
         yacht_id = auth.get("yacht_id")
 
         # Call GraphRAG query service internally
-        result = graphrag_query.query(yacht_id, search_request.query)
+        result = await graphrag_query.query(yacht_id, search_request.query)
 
         logger.info(
             f"/v1/search: yacht={yacht_id}, query='{search_request.query}', "
@@ -2006,7 +2006,7 @@ async def situational_search(
                     )
 
         # 5. Run standard search
-        search_result = graphrag_query.query(yacht_id, search_request.query)
+        search_result = await graphrag_query.query(yacht_id, search_request.query)
         cards = search_result.get('cards', [])
 
         # 6. Log suggestion and get suggestion_id
@@ -2379,7 +2379,7 @@ async def graphrag_query_endpoint(
     try:
         yacht_id = auth.get("yacht_id")
 
-        result = graphrag_query.query(yacht_id, query_request.query)
+        result = await graphrag_query.query(yacht_id, query_request.query)
 
         logger.info(
             f"GraphRAG query: yacht={yacht_id}, query='{query_request.query}', "
