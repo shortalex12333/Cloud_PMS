@@ -157,6 +157,7 @@ class RegexExtractor:
     # "3512C" should match model first, not part_number pattern
     PRECEDENCE_ORDER = [
         'fault_code',          # CRITICAL: Must be before po_number to prevent "SPN-1234" being extracted as PO
+        'location_on_board',   # LOCATION: Multi-word locations (engine room) before equipment names
         'stock_status',        # INVENTORY: Must be before measurements to catch "low stock" before "low" as symptom
         'measurement',         # MOVED UP: Process measurements (230V, 50Hz, 45W) BEFORE model patterns
         'measurement_range',   # MOVED UP: Process ranges before models
@@ -202,9 +203,13 @@ class RegexExtractor:
         """Load regex patterns for each entity type."""
         patterns = {
             # Inventory stock status patterns (HIGH PRIORITY - extract before symptoms)
+            # Multi-word location phrases (must extract as complete phrases)
+            'location_on_board': [
+                re.compile(r'\b(engine\s+room|machinery\s+space|pump\s+room|generator\s+room|battery\s+room|control\s+room|chart\s+table|helm\s+station|nav\s+station|wing\s+station|main\s+deck|upper\s+deck|lower\s+deck|sun\s+deck|boat\s+deck|crew\s+quarters|anchor\s+locker|lazarette|bilge\s+area)\b', re.IGNORECASE),
+            ],
             'stock_status': [
                 # Multi-word stock status phrases (must come BEFORE single-word patterns)
-                re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+reorder|reorder\s+needed|minimum\s+stock|stock\s+level)\b', re.IGNORECASE),
+                re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+reorder|reorder\s+needed|minimum\s+stock|stock\s+level|running\s+low|need\s+restocking|needs?\s+restocking|restock|below\s+reorder\s+point|reorder\s+point)\b', re.IGNORECASE),
                 # Single keyword variants (only if not part of equipment name)
                 re.compile(r'\b(inventory|stock)\b(?!\s+(?:pump|valve|filter|sensor))', re.IGNORECASE),
             ],
