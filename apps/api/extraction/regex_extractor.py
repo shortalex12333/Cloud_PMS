@@ -228,6 +228,7 @@ class RegexExtractor:
     # "3512C" should match model first, not part_number pattern
     PRECEDENCE_ORDER = [
         'fault_code',          # CRITICAL: Must be before po_number to prevent "SPN-1234" being extracted as PO
+        'stock_status',        # INVENTORY: Must be before measurements to catch "low stock" before "low" as symptom
         'measurement',         # MOVED UP: Process measurements (230V, 50Hz, 45W) BEFORE model patterns
         'measurement_range',   # MOVED UP: Process ranges before models
         'setpoint',            # MOVED UP: Setpoints before models
@@ -271,6 +272,13 @@ class RegexExtractor:
     def _load_patterns(self) -> Dict[str, List[re.Pattern]]:
         """Load regex patterns for each entity type."""
         patterns = {
+            # Inventory stock status patterns (HIGH PRIORITY - extract before symptoms)
+            'stock_status': [
+                # Multi-word stock status phrases (must come BEFORE single-word patterns)
+                re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+reorder|reorder\s+needed|minimum\s+stock|stock\s+level)\b', re.IGNORECASE),
+                # Single keyword variants (only if not part of equipment name)
+                re.compile(r'\b(inventory|stock)\b(?!\s+(?:pump|valve|filter|sensor))', re.IGNORECASE),
+            ],
             'measurement': [
                 # Temperature patterns
                 re.compile(r'\b(\d+(?:[.,]\d+)?)\s*°\s*([CF])\b', re.IGNORECASE),
