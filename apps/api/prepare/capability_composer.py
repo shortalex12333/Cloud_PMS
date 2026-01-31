@@ -117,6 +117,11 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "MANUFACTURER": ("part_by_part_number_or_name", "manufacturer"),
     "LOCATION": ("inventory_by_location", "location"),
     "STOCK_QUERY": ("inventory_by_location", "name"),
+    # Inventory Lens - Stock Status (PR #44 + PR #51 + PR #54)
+    "STOCK_STATUS": ("inventory_by_location", "name"),
+    "LOW_STOCK": ("inventory_by_location", "name"),
+    "OUT_OF_STOCK": ("inventory_by_location", "name"),
+    "REORDER_NEEDED": ("inventory_by_location", "name"),
     "FAULT_CODE": ("fault_by_fault_code", "code"),
     "SYMPTOM": ("fault_by_fault_code", "name"),
     "EQUIPMENT_TYPE": ("fault_by_fault_code", "equipment_type"),
