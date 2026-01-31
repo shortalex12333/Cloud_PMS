@@ -822,6 +822,15 @@ class Pipeline:
         """
         try:
             from prepare.capability_composer import plan_capabilities, ENTITY_TO_SEARCH_COLUMN
+            from execute.table_capabilities import get_active_capabilities
+
+            # DEBUG: Collect diagnostic info
+            entity_types = [e.get('type') for e in entities]
+            active_caps = get_active_capabilities()
+            mappings_for_entities = {
+                et: ENTITY_TO_SEARCH_COLUMN.get(et)
+                for et in entity_types
+            }
 
             plans = plan_capabilities(entities)
 
@@ -839,11 +848,22 @@ class Pipeline:
                 ],
                 'active_plans': [p for p in plans if not p.blocked],
                 'blocked_plans': [p for p in plans if p.blocked],
+                # DEBUG INFO
+                'debug': {
+                    'entity_count': len(entities),
+                    'entity_types': entity_types,
+                    'total_mappings': len(ENTITY_TO_SEARCH_COLUMN),
+                    'mappings_for_entities': mappings_for_entities,
+                    'active_capabilities_count': len(active_caps),
+                    'inventory_by_location_active': 'inventory_by_location' in active_caps,
+                    'plans_returned': len(plans),
+                },
             }
 
         except Exception as e:
             logger.error(f"Prepare failed: {e}")
-            return {'plans': [], 'error': str(e)}
+            import traceback
+            return {'plans': [], 'error': str(e), 'traceback': traceback.format_exc()}
 
     def _execute(self, plans: List[Dict], limit: int) -> Dict[str, Any]:
         """
