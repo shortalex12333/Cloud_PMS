@@ -134,6 +134,10 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     # Email transport layer (evidence search)
     "EMAIL_SUBJECT": ("email_threads_search", "latest_subject"),
     "EMAIL_SEARCH": ("email_threads_search", "latest_subject"),
+    # Crew Lens - Hours of Rest (only types that map to actual columns)
+    "REST_COMPLIANCE": ("crew_hours_of_rest_search", "compliance_status"),
+    "WARNING_SEVERITY": ("crew_warnings_search", "severity"),
+    "WARNING_STATUS": ("crew_warnings_search", "status"),
 }
 
 
