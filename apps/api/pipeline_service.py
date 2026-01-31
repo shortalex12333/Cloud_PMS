@@ -609,7 +609,7 @@ async def search(
         from pipeline_v1 import Pipeline
 
         pipeline = Pipeline(client, yacht_id)
-        response = pipeline.search(request.query, limit=request.limit)
+        response = await pipeline.search(request.query, limit=request.limit)
 
         return SearchResponse(
             success=response.success,
@@ -700,7 +700,7 @@ async def webhook_search(
         # Execute search with tenant's DB
         from pipeline_v1 import Pipeline
         pipeline = Pipeline(client, yacht_id)
-        response = pipeline.search(query, limit=limit)
+        response = await pipeline.search(query, limit=limit)
 
         # Frontend expects newline-delimited JSON for streaming parser
         import json
@@ -786,7 +786,7 @@ async def extract(request: ExtractRequest):
         raise HTTPException(status_code=503, detail="Extractor not available")
 
     try:
-        result = extractor.extract(request.query)
+        result = await extractor.extract(request.query)
 
         # Normalize entities
         entities = []

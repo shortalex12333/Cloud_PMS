@@ -131,9 +131,9 @@ class Pipeline:
             self._executor = CapabilityExecutor(self.client, self.yacht_id)
         return self._executor
 
-    def search(self, query: str, limit: int = 20) -> PipelineResponse:
+    async def search(self, query: str, limit: int = 20) -> PipelineResponse:
         """
-        Execute a search query through the full pipeline.
+        Execute a search query through the full pipeline (async).
 
         Args:
             query: Natural language query
@@ -156,7 +156,7 @@ class Pipeline:
             # STAGE 1: EXTRACTION
             # ================================================================
             start = time.time()
-            extraction_result = self._extract(query)
+            extraction_result = await self._extract(query)
             response.extraction_ms = (time.time() - start) * 1000
             response.extraction = extraction_result
 
@@ -259,16 +259,16 @@ class Pipeline:
 
         return response
 
-    def _extract(self, query: str) -> Dict[str, Any]:
+    async def _extract(self, query: str) -> Dict[str, Any]:
         """
-        Stage 1: Extract entities from query.
+        Stage 1: Extract entities from query (async).
 
         Uses the 5-stage extraction pipeline:
         clean → regex → coverage check → AI (conditional) → merge
         """
         try:
             extractor = self._get_extractor()
-            result = extractor.extract(query)
+            result = await extractor.extract(query)
 
             # Normalize entity format for downstream stages
             # Orchestrator returns: {'entities': {'location_on_board': ['Deck'], 'equipment': ['Pump']}}
