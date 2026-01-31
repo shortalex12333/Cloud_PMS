@@ -47,7 +47,15 @@ class ExtractionConfig:
                 'subcomponent': 0.75,
                 'date': 0.90,
                 'time': 0.90,
-                'action': 0.70
+                'action': 0.70,
+                # Receiving Lens entity types (PR #47)
+                'po_number': 0.80,
+                'invoice_number': 0.80,
+                'receiving_id': 0.85,
+                'supplier_name': 0.75,
+                'delivery_date': 0.85,
+                'receiver_name': 0.75,
+                'receiving_status': 0.75,
             }
         )
 
