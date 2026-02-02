@@ -115,6 +115,10 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "PART_NUMBER": ("part_by_part_number_or_name", "part_number"),
     "PART_NAME": ("part_by_part_number_or_name", "name"),
     "MANUFACTURER": ("part_by_part_number_or_name", "manufacturer"),
+    # Part Lens - Brand/Manufacturer routing (PR #69)
+    "BRAND": ("part_by_part_number_or_name", "manufacturer"),              # From ENTITY_EXTRACTION_EXPORT
+    "EQUIPMENT_BRAND": ("part_by_part_number_or_name", "manufacturer"),    # From ENTITY_EXTRACTION_EXPORT
+    "ORG": ("part_by_part_number_or_name", "manufacturer"),                # From REGEX_PRODUCTION
     "LOCATION": ("inventory_by_location", "location"),
     "STOCK_QUERY": ("inventory_by_location", "name"),
     # Inventory Lens - Stock Status (PR #44 + PR #51 + PR #54)
@@ -148,8 +152,9 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "REST_COMPLIANCE": ("crew_hours_of_rest_search", "compliance_status"),
     "WARNING_SEVERITY": ("crew_warnings_search", "severity"),
     "WARNING_STATUS": ("crew_warnings_search", "status"),
-    # Shopping List Lens (6 types)
+    # Shopping List Lens (7 types)
     "SHOPPING_LIST_ITEM": ("shopping_list_by_item_or_status", "part_name"),
+    "SHOPPING_LIST_TERM": ("shopping_list_by_item_or_status", "part_name"),    # From ENTITY_EXTRACTION_EXPORT
     "REQUESTED_PART": ("shopping_list_by_item_or_status", "part_name"),
     "REQUESTER_NAME": ("shopping_list_by_item_or_status", "requested_by"),
     "URGENCY_LEVEL": ("shopping_list_by_item_or_status", "urgency"),
