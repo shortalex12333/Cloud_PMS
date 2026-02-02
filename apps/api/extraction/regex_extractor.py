@@ -1228,6 +1228,15 @@ class RegexExtractor:
             if t not in ordered_types:
                 ordered_types.append(t)
 
+        # CREW LENS FIX (2026-01-31): Apply ENTITY_EXTRACTION_EXPORT patterns FIRST
+        # This ensures compound crew terms (e.g., "critical warnings") are extracted
+        # BEFORE single-word regex patterns can claim individual words (e.g., "critical")
+        # Priority order: entity_extraction → regex → proper_nouns → gazetteer
+        ee_entities, ee_spans = self._entity_extraction_extract(text, extracted_texts, extracted_spans)
+        entities.extend(ee_entities)
+        covered_spans.extend(ee_spans)
+        extracted_spans.extend(ee_spans)  # Track ENTITY_EXTRACTION spans to prevent overlaps
+
         # Apply regex patterns in precedence order
         for entity_type in ordered_types:
             patterns = self.patterns[entity_type]
@@ -1341,13 +1350,8 @@ class RegexExtractor:
         covered_spans.extend(gaz_spans)
         extracted_spans.extend(gaz_spans)  # Track gazetteer spans too
 
-        # Apply ENTITY_EXTRACTION_EXPORT patterns (1,955 patterns from Groups 1-16)
-        ee_entities, ee_spans = self._entity_extraction_extract(text, extracted_texts, extracted_spans)
-        entities.extend(ee_entities)
-        covered_spans.extend(ee_spans)
-        extracted_spans.extend(ee_spans)  # Track ENTITY_EXTRACTION spans too
-
         # spaCy/NER removed - using regex + gazetteer + AI only
+        # NOTE: entity_extraction now runs FIRST (moved to line ~1232 for crew lens fix)
 
         return entities, covered_spans
 
