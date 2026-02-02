@@ -533,6 +533,11 @@ async def execute_action(
         "delete_document": ["document_id", "reason", "signature"],
         "add_document_tags": ["document_id", "tags"],
         "get_document_url": ["document_id"],
+        # Document Comment Actions (Document Lens v2 - Comments MVP)
+        "add_document_comment": ["document_id", "comment"],
+        "update_document_comment": ["comment_id", "comment"],
+        "delete_document_comment": ["comment_id"],
+        "list_document_comments": ["document_id"],
         "delete_shopping_item": ["item_id"],
         # Add_wo_* variants
         "add_wo_hours": ["work_order_id", "hours"],
@@ -4569,6 +4574,49 @@ async def execute_action(
 
             # Call the handler (async handlers)
             result = await handler_fn(**handler_params)
+
+        # ===== DOCUMENT COMMENT ACTIONS (Document Lens v2 - Comments MVP) =====
+        elif action in ("add_document_comment", "update_document_comment",
+                        "delete_document_comment", "list_document_comments"):
+            # All roles can view/add comments; update/delete restricted to owner or admin
+            COMMENT_ALLOWED_ROLES = {
+                "add_document_comment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                         "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "update_document_comment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "delete_document_comment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+                "list_document_comments": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                           "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+            }
+            user_role = user_context.get("role", "")
+            allowed_roles = COMMENT_ALLOWED_ROLES.get(action, [])
+            if user_role not in allowed_roles:
+                logger.warning(f"[RLS] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
+                )
+
+            # Dispatch to internal_dispatcher
+            logger.info(f"[DOCUMENT_COMMENT] Dispatching action '{action}' to internal_dispatcher")
+
+            from action_router.dispatchers import internal_dispatcher
+
+            # Merge context and payload for internal dispatcher
+            handler_params = {
+                "yacht_id": yacht_id,
+                "user_id": user_id,
+                "user_context": user_context,
+                **payload
+            }
+
+            try:
+                result = await internal_dispatcher.dispatch(action, handler_params)
+                logger.info(f"[DOCUMENT_COMMENT] Action '{action}' completed successfully")
+            except Exception as e:
+                logger.error(f"[DOCUMENT_COMMENT] Action '{action}' failed: {type(e).__name__}: {e}")
+                raise
 
         # ===== RECEIVING LENS V1 ACTIONS =====
         elif action in ["create_receiving", "attach_receiving_image_with_comment",
