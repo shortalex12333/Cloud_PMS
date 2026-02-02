@@ -22,13 +22,21 @@ services:
 
     # Environment variables (CRITICAL - set in Render dashboard for security)
     envVars:
+      # MASTER Supabase (auth + tenant lookup) - REQUIRED FOR JWT VALIDATION
+      - key: MASTER_SUPABASE_URL
+        sync: false  # Set manually: https://qvzmkaamzaqxpzbewjxe.supabase.co
+      - key: MASTER_SUPABASE_SERVICE_KEY
+        sync: false  # Set manually from MASTER Supabase project settings
+      - key: MASTER_SUPABASE_JWT_SECRET
+        sync: false  # CRITICAL: JWT secret from MASTER Supabase (Settings > API > JWT Secret)
+
       # Tenant-specific (for CI pattern)
       - key: TENANT_1_SUPABASE_URL
         sync: false  # Set manually: https://vzsohavtuotocgrfkfyd.supabase.co
       - key: TENANT_1_SUPABASE_SERVICE_KEY
         sync: false  # Set manually from Supabase project settings
-      - key: TENANT_1_SUPABASE_JWT_SECRET
-        sync: false  # Set manually from Supabase project settings
+      - key: TENANT_SUPABASE_JWT_SECRET
+        sync: false  # Set manually from TENANT Supabase project settings
       - key: TENANT_1_DB_PASSWORD
         sync: false  # Set manually
 
