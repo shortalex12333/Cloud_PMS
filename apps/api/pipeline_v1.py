@@ -577,6 +577,14 @@ class Pipeline:
             'low_stock': 'LOW_STOCK',
             'out_of_stock': 'OUT_OF_STOCK',
             'part_category': 'PART_CATEGORY',
+            # Crew Lens types (PR #64)
+            'rest_compliance': 'REST_COMPLIANCE',
+            'warning_severity': 'WARNING_SEVERITY',
+            # Work Order Lens types (PR #64)
+            'work_order_status': 'WORK_ORDER_STATUS',
+            # Receiving Lens types (PR #64)
+            'delivery_date': 'DELIVERY_DATE',
+            'receiving_status': 'RECEIVING_STATUS',
             # Other
             'date': 'DATE',
             'date_range': 'DATE_RANGE',
