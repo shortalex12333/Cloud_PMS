@@ -1161,6 +1161,26 @@ class RegexExtractor:
                 'checklist', 'procedure', 'work order', 'service report', 'inspection report',
                 'survey report', 'deficiency list', 'spare parts list',
                 'maintenance schedule', 'pms report', 'job card'
+            },
+
+            # Inventory Lens - Stock status terms (Added 2026-02-02)
+            'stock_status': {
+                # Compound stock status phrases (must match BEFORE single words)
+                'low stock', 'stock low', 'low inventory', 'inventory low',
+                'out of stock', 'stock out', 'out of inventory',
+                'critically low', 'critically low stock', 'critically low inventory',
+                'below minimum', 'below minimum stock', 'stock below minimum',
+                'need to reorder', 'needs to reorder', 'need reorder', 'needs reorder',
+                'reorder needed', 'restock needed', 'needs restocking', 'need restocking',
+                'running low', 'running low on stock', 'stock running low',
+                'stock alert', 'inventory alert', 'low stock alert',
+                'reorder point', 'below reorder point', 'at reorder point',
+                'minimum stock', 'minimum stock level',
+                # Additional stock level descriptors
+                'adequate stock', 'sufficient stock', 'well stocked', 'good stock levels',
+                'excess stock', 'overstocked', 'surplus stock', 'too much stock',
+                'zero stock', 'no stock', 'empty stock', 'depleted', 'exhausted',
+                'stock depleted', 'inventory depleted', 'stock exhausted'
             }
         }
 
