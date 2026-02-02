@@ -745,13 +745,14 @@ class RegexExtractor:
         gazetteer = {
             'equipment': {
                 # Propulsion & Power (existing + expansions)
-                'engine', 'motor', 'generator', 'pump', 'compressor', 'turbine',
-                'thruster', 'bow thruster', 'stern thruster', 'propeller', 'shaft',
-                'gear', 'gearbox', 'transmission', 'clutch', 'bearing', 'seal',
-                'valve', 'safety valve', 'actuator', 'sensor', 'transducer', 'gauge', 'meter',
-                'filter', 'strainer', 'cooler', 'heat exchanger', 'radiator', 'coolant', 'engine coolant',
-                'battery', 'battery bank', 'charger', 'inverter', 'converter', 'transformer',
-                'breaker', 'circuit', 'switch', 'relay', 'contactor', 'controller', 'plc',
+                'engine', 'engines', 'motor', 'motors', 'generator', 'generators',
+                'pump', 'pumps', 'compressor', 'compressors', 'turbine', 'turbines',
+                'thruster', 'thrusters', 'bow thruster', 'stern thruster', 'propeller', 'propellers', 'shaft', 'shafts',
+                'gear', 'gears', 'gearbox', 'gearboxes', 'transmission', 'clutch', 'bearing', 'bearings', 'seal', 'seals',
+                'valve', 'valves', 'safety valve', 'actuator', 'actuators', 'sensor', 'sensors', 'transducer', 'transducers', 'gauge', 'gauges', 'meter', 'meters',
+                'filter', 'filters', 'strainer', 'strainers', 'cooler', 'coolers', 'heat exchanger', 'radiator', 'radiators', 'coolant', 'engine coolant',
+                'battery', 'batteries', 'battery bank', 'charger', 'chargers', 'inverter', 'inverters', 'converter', 'converters', 'transformer', 'transformers',
+                'breaker', 'breakers', 'circuit', 'circuits', 'switch', 'switches', 'relay', 'relays', 'contactor', 'contactors', 'controller', 'controllers', 'plc',
 
                 # Navigation & Electronics (existing + expansions)
                 'radar', 'gps', 'chart plotter', 'chartplotter', 'vhf', 'vhf radio', 'ais', 'epirb', 'sart', 'navtex',

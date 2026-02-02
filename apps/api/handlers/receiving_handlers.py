@@ -543,10 +543,15 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
                 "message": "No fields provided for update"
             }
 
-        # Update receiving
-        db.table("pms_receiving").update(update_payload).eq(
-            "id", receiving_id
-        ).execute()
+        # Update receiving - wrap in try/catch to properly handle RLS denials
+        try:
+            db.table("pms_receiving").update(update_payload).eq(
+                "id", receiving_id
+            ).execute()
+        except Exception as e:
+            # Map database errors (including RLS denials) to proper error responses
+            logger.error(f"Failed to update receiving fields: {e}", exc_info=True)
+            return map_postgrest_error(e, "UPDATE_FAILED")
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -1199,12 +1204,12 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
                 "message": "Failed to create database client"
             }
 
-        # Get receiving record - RLS automatically filters by yacht_id
-        # If receiving_id not in user's yacht scope → RLS returns 0 rows → 404
+        # Get receiving record - explicitly filter by yacht_id for clarity
+        # RLS also enforces yacht_id, but explicit filter reduces edge cases
         try:
             recv_result = db.table("pms_receiving").select(
                 "*"
-            ).eq("id", receiving_id).execute()
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).execute()
 
             if not recv_result.data or len(recv_result.data) == 0:
                 # Receiving not found in yacht scope → 404 (not 400)
