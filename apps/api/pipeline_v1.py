@@ -472,9 +472,10 @@ class Pipeline:
                     entity_value = entity.get('value', '')
                     entity_conf = entity.get('confidence', 0.8)
 
-                    # ORG entities in receiving context → SUPPLIER_NAME
+                    # ORG/BRAND entities in receiving context → SUPPLIER_NAME
                     # Fix: Use lowercase comparison (entity extraction returns lowercase types)
-                    if entity_type.lower() in ['org', 'manufacturer', 'organization']:
+                    # Fix: Add 'brand' - Racor, Caterpillar extracted as 'brand' not 'org'
+                    if entity_type.lower() in ['org', 'brand', 'manufacturer', 'organization']:
                         receiving_entities.append({
                             'type': 'SUPPLIER_NAME',
                             'value': entity_value,
