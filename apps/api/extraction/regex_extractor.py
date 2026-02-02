@@ -168,8 +168,10 @@ class RegexExtractor:
         'measurement_range',   # MOVED UP: Process ranges before models
         'setpoint',            # MOVED UP: Setpoints before models
         'limit',               # MOVED UP: Limits before models
+        'document_id',         # DOCUMENT LENS: Extract document IDs (CERT-, IMO-, DNV-) BEFORE part_number
+        'document_type',       # DOCUMENT LENS: Extract document types BEFORE generic terms
         'model',               # Model codes after measurements to prevent false matches
-        'part_number',         # After model to avoid matching model numbers as parts
+        'part_number',         # After model and document_id to avoid matching doc IDs as parts
         'serial_number',       # Serial numbers should be before po_number
         'designation',         # Manual/doc codes (SEBU6250-30)
         'po_number',           # Business docs - but lower priority than parts/faults
@@ -181,9 +183,7 @@ class RegexExtractor:
         'time',
         'date',
         'network_id',
-        'document_id',
         'identifier',
-        'document_type',
         'email_search',
         'time_ref',
         'duration',
@@ -407,9 +407,42 @@ class RegexExtractor:
 
             'document_id': [
                 # NOTE: PO, WO, SR, Invoice patterns moved to 'po_number' section
-                # Only keep generic/uncommon document IDs here
+                # Document Lens v2 - Enhanced patterns for maritime document references
+
+                # Original patterns
                 re.compile(r'\b(DOC-[A-Z]-\d{2,4})\b'),  # Generic documents
                 re.compile(r'\b(REF-\d{5,8})\b'),  # Reference numbers
+
+                # Certificate Reference Numbers
+                re.compile(r'\b(CERT[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(CRT[-/]?\d{4,8})\b', re.IGNORECASE),
+
+                # Maritime Authority Document Numbers (7-digit IMO is standard)
+                re.compile(r'\b(IMO[-/]?\d{7})\b', re.IGNORECASE),
+                re.compile(r'\b(USCG[-/]?\d{4,10})\b', re.IGNORECASE),
+                re.compile(r'\b(MCA[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(MARAD[-/]?\d{4,8})\b', re.IGNORECASE),
+
+                # Class Society Document References
+                re.compile(r'\b(LR[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(DNV[-/]?[A-Z]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(ABS[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(BV[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(RINA[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(NK[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(CCS[-/]?\d{4,8})\b', re.IGNORECASE),
+
+                # Safety Management Document References
+                re.compile(r'\b(ISM[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(ISPS[-/]?\d{4,8})\b', re.IGNORECASE),
+                re.compile(r'\b(SMC[-/]?\d{4,8})\b', re.IGNORECASE),
+
+                # Document Revision/Version References
+                re.compile(r'\b(REV[-.]?\d{1,3}(?:\.\d{1,2})?)\b', re.IGNORECASE),
+                re.compile(r'\b(ISSUE[-.]?\d{1,3})\b', re.IGNORECASE),
+
+                # Generic Document Reference Patterns
+                re.compile(r'\b([A-Z]{2,4}-\d{4}-\d{2,4})\b'),
             ],
 
 
@@ -595,13 +628,34 @@ class RegexExtractor:
             ],
 
             'document_type': [
-                re.compile(r'\b(manual|manuals|handbook|handbooks|guide|guides|instructions|documentation|spec|specs|specification|specifications|procedure|procedures|checklist|checklists|report|reports|log|logs|diagram|diagrams|schematic|schematics|invoice|invoices|receipt|receipts|pdf|xlsx|docx|csv|txt|xls|doc)\b', re.IGNORECASE),
-                re.compile(r'\b(maintenance\s+(?:manual|guide|schedule))\b', re.IGNORECASE),
+                # Multi-word document types (must be first to prevent word-by-word extraction)
+                re.compile(r'\b(ballast\s+water\s+record\s+book)\b', re.IGNORECASE),
+                re.compile(r'\b(continuous\s+synopsis\s+record)\b', re.IGNORECASE),
+                re.compile(r'\b(cargo\s+record\s+book)\b', re.IGNORECASE),
+                re.compile(r'\b(oil\s+record\s+book)\b', re.IGNORECASE),
+                re.compile(r'\b(garbage\s+record\s+book)\b', re.IGNORECASE),
+                re.compile(r'\b(fire\s+control\s+plan)\b', re.IGNORECASE),
+                re.compile(r'\b(damage\s+control\s+plan)\b', re.IGNORECASE),
+                re.compile(r'\b(safety\s+management\s+certificate)\b', re.IGNORECASE),
+                re.compile(r'\b(loadline\s+certificate)\b', re.IGNORECASE),
+                re.compile(r'\b(annual\s+survey)\b', re.IGNORECASE),
+                re.compile(r'\b(special\s+survey)\b', re.IGNORECASE),
+                re.compile(r'\b(class\s+survey)\b', re.IGNORECASE),
+
+                # Compound document types
+                re.compile(r'\b(maintenance\s+(?:manual|guide|schedule|log))\b', re.IGNORECASE),
                 re.compile(r'\b(user\s+(?:manual|guide))\b', re.IGNORECASE),
                 re.compile(r'\b(service\s+(?:manual|bulletin|report))\b', re.IGNORECASE),
                 re.compile(r'\b(installation\s+(?:manual|guide))\b', re.IGNORECASE),
                 re.compile(r'\b(operating\s+(?:manual|instructions))\b', re.IGNORECASE),
                 re.compile(r'\b(technical\s+(?:manual|specification|data))\b', re.IGNORECASE),
+                re.compile(r'\b(parts\s+(?:manual|catalog|list))\b', re.IGNORECASE),
+                re.compile(r'\b(safety\s+(?:certificate|plan))\b', re.IGNORECASE),
+                re.compile(r'\b(survey\s+report)\b', re.IGNORECASE),
+                re.compile(r'\b(inspection\s+report)\b', re.IGNORECASE),
+
+                # Single-word document types (last, as fallback)
+                re.compile(r'\b(manual|manuals|handbook|handbooks|guide|guides|instructions|documentation|spec|specs|specification|specifications|procedure|procedures|checklist|checklists|report|reports|log|logs|diagram|diagrams|schematic|schematics|invoice|invoices|receipt|receipts|certificate|certificates|pdf|xlsx|docx|csv|txt|xls|doc)\b', re.IGNORECASE),
             ],
 
             # Email search patterns (evidence transport layer)
@@ -1084,15 +1138,28 @@ class RegexExtractor:
                 # Plans & Diagrams
                 'schematic', 'wiring diagram', 'diagram', 'blueprint', 'drawing',
                 'general arrangement', 'ga plan', 'stability booklet',
+                'fire control plan', 'damage control plan', 'safety plan',
+                'piping diagram', 'electrical diagram', 'hydraulic diagram',
 
                 # Compliance & Safety
                 'clearance', 'customs declaration', 'cruising permit', 'fishing license',
                 'passport', 'crew passport', 'seamans book', 'medical certificate',
                 'solas certificate', 'isps certificate', 'ism certificate',
+                'loadline certificate', 'marpol certificate', 'iopp certificate',
+                'ballast water certificate', 'safety management certificate',
+
+                # Records & Logs
+                'ballast water record book', 'cargo record book',
+                'continuous synopsis record', 'csr',
+
+                # Surveys
+                'annual survey', 'intermediate survey', 'special survey',
+                'class survey', 'psc report', 'sire report', 'vetting report',
 
                 # Operational
                 'checklist', 'procedure', 'work order', 'service report', 'inspection report',
-                'survey report', 'deficiency list', 'spare parts list'
+                'survey report', 'deficiency list', 'spare parts list',
+                'maintenance schedule', 'pms report', 'job card'
             }
         }
 
@@ -1228,17 +1295,54 @@ class RegexExtractor:
             if t not in ordered_types:
                 ordered_types.append(t)
 
-        # CREW LENS FIX (2026-01-31): Apply ENTITY_EXTRACTION_EXPORT patterns FIRST
+        # DOCUMENT LENS FIX (2026-02-02): Extract document_id and document_type FIRST
+        # These patterns are highly specific (e.g., DNV-123456) and should not be blocked
+        # by generic brand extraction (e.g., "DNV" alone)
+        # Priority: document patterns → entity_extraction → other regex → gazetteer
+        doc_priority_types = ['document_id', 'document_type']
+        for entity_type in doc_priority_types:
+            if entity_type in self.patterns:
+                patterns = self.patterns[entity_type]
+                for pattern in patterns:
+                    for match in pattern.finditer(text):
+                        span = (match.start(), match.end())
+                        matched_text = match.group()
+
+                        if matched_text.lower() in extracted_texts:
+                            continue
+
+                        is_overlapping = False
+                        for existing_span in extracted_spans:
+                            if span[0] < existing_span[1] and existing_span[0] < span[1]:
+                                is_overlapping = True
+                                break
+
+                        if not is_overlapping:
+                            entities.append(Entity(
+                                text=matched_text,
+                                entity_type=entity_type,
+                                confidence=0.85,
+                                source='regex',
+                                span=span
+                            ))
+                            extracted_texts.add(matched_text.lower())
+                            extracted_spans.append(span)
+                            covered_spans.append(span)
+
+        # CREW LENS FIX (2026-01-31): Apply ENTITY_EXTRACTION_EXPORT patterns AFTER doc patterns
         # This ensures compound crew terms (e.g., "critical warnings") are extracted
         # BEFORE single-word regex patterns can claim individual words (e.g., "critical")
-        # Priority order: entity_extraction → regex → proper_nouns → gazetteer
+        # Priority order: document patterns → entity_extraction → regex → proper_nouns → gazetteer
         ee_entities, ee_spans = self._entity_extraction_extract(text, extracted_texts, extracted_spans)
         entities.extend(ee_entities)
         covered_spans.extend(ee_spans)
         extracted_spans.extend(ee_spans)  # Track ENTITY_EXTRACTION spans to prevent overlaps
 
-        # Apply regex patterns in precedence order
+        # Apply remaining regex patterns in precedence order (skip document patterns, already processed)
         for entity_type in ordered_types:
+            # Skip document patterns - already processed above
+            if entity_type in doc_priority_types:
+                continue
             patterns = self.patterns[entity_type]
             for pattern in patterns:
                 for match in pattern.finditer(text):
