@@ -48,6 +48,14 @@ class ExtractionConfig:
                 'date': 0.90,
                 'time': 0.90,
                 'action': 0.70,
+                # Parts Lens - Brand/Manufacturer entity types (PR #69 - commit 772337c)
+                # Note: Entity types can be lowercase (from regex_extractor) or uppercase (from capability_composer)
+                'brand': 0.35,              # From gazetteer (28,834 brands) - lowercase
+                'BRAND': 0.35,              # Uppercase variant
+                'equipment_brand': 0.35,    # From ENTITY_EXTRACTION_EXPORT - lowercase
+                'EQUIPMENT_BRAND': 0.35,    # Uppercase variant
+                'manufacturer': 0.35,       # Core manufacturer names - lowercase
+                'MANUFACTURER': 0.35,       # Uppercase variant
                 # Receiving Lens entity types (PR #47)
                 'po_number': 0.80,
                 'invoice_number': 0.80,
