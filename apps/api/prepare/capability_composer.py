@@ -134,6 +134,7 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     # Work Order Lens (multiple search strategies)
     "WORK_ORDER_ID": ("work_order_by_id", "wo_number"),
     "WO_NUMBER": ("work_order_by_id", "wo_number"),
+    "WORK_ORDER_STATUS": ("work_order_by_status", "status"),
     "WORK_ORDER_TITLE": ("work_order_by_id", "title"),
     "WORK_ORDER_DESCRIPTION": ("work_order_by_id", "description"),
     "WORK_ORDER_EQUIPMENT": ("work_order_by_id", "title"),

@@ -158,6 +158,11 @@ class RegexExtractor:
     PRECEDENCE_ORDER = [
         'fault_code',          # CRITICAL: Must be before po_number to prevent "SPN-1234" being extracted as PO
         'location_on_board',   # LOCATION: Multi-word locations (engine room) before equipment names
+        'work_order_status',   # WORK ORDERS: Extract "open work orders" BEFORE "open" becomes symptom
+        'rest_compliance',     # CREW: Extract "non-compliant" BEFORE "compliant" becomes status
+        'warning_severity',    # CREW: Extract "critical warning" BEFORE "critical" becomes symptom
+        'delivery_date',       # RECEIVING: Extract "recent deliveries" as single phrase
+        'receiving_status',    # RECEIVING: Extract "pending receipt" vs generic "pending"
         'stock_status',        # INVENTORY: Must be before measurements to catch "low stock" before "low" as symptom
         'measurement',         # MOVED UP: Process measurements (230V, 50Hz, 45W) BEFORE model patterns
         'measurement_range',   # MOVED UP: Process ranges before models
@@ -212,6 +217,25 @@ class RegexExtractor:
                 re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+reorder|reorder\s+needed|minimum\s+stock|stock\s+level|running\s+low|need\s+restocking|needs?\s+restocking|restock|below\s+reorder\s+point|reorder\s+point)\b', re.IGNORECASE),
                 # Single keyword variants (only if not part of equipment name)
                 re.compile(r'\b(inventory|stock)\b(?!\s+(?:pump|valve|filter|sensor))', re.IGNORECASE),
+            ],
+            # Crew Lens - Hours of Rest & Warnings (PR #64)
+            'rest_compliance': [
+                re.compile(r'\b(non-compliant|non\s+compliant|compliant|rest\s+hours|work\s+hours|hours\s+of\s+rest|duty\s+hours|fatigue|rest\s+period)\b', re.IGNORECASE),
+            ],
+            'warning_severity': [
+                re.compile(r'\b(critical\s+warning|warning|alert|severe|moderate\s+warning)\b', re.IGNORECASE),
+            ],
+            # Work Order Lens (PR #64) - Must extract BEFORE symptom patterns
+            'work_order_status': [
+                re.compile(r'\b(open\s+(?:work\s+)?orders?|closed\s+(?:work\s+)?orders?|in\s+progress|overdue\s+(?:tasks?|orders?)|completed\s+(?:work\s+)?orders?|pending\s+(?:work\s+)?orders?)\b', re.IGNORECASE),
+                re.compile(r'\b(work\s+orders?)\b', re.IGNORECASE),
+            ],
+            # Receiving Lens (PR #64)
+            'delivery_date': [
+                re.compile(r'\b(recent\s+deliver(?:y|ies)|last\s+deliver(?:y|ies)|deliver(?:y|ies)\s+(?:today|yesterday|this\s+week))\b', re.IGNORECASE),
+            ],
+            'receiving_status': [
+                re.compile(r'\b(pending\s+receipt|received|in\s+transit|delivered|awaiting\s+delivery)\b', re.IGNORECASE),
             ],
             'measurement': [
                 # Temperature patterns

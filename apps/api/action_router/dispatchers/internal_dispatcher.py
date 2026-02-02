@@ -453,7 +453,14 @@ async def _doc_add_document_comment(params: Dict[str, Any]) -> Dict[str, Any]:
     fn = handlers.get("add_document_comment")
     if not fn:
         raise ValueError("add_document_comment handler not registered")
-    return await fn(**params)
+    # Extract context from merged params (yacht_id, user_id)
+    context = {
+        "yacht_id": params.get("yacht_id"),
+        "user_id": params.get("user_id"),
+    }
+    # Remaining params are the action payload
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
 
 
 async def _doc_update_document_comment(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -461,7 +468,12 @@ async def _doc_update_document_comment(params: Dict[str, Any]) -> Dict[str, Any]
     fn = handlers.get("update_document_comment")
     if not fn:
         raise ValueError("update_document_comment handler not registered")
-    return await fn(**params)
+    context = {
+        "yacht_id": params.get("yacht_id"),
+        "user_id": params.get("user_id"),
+    }
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
 
 
 async def _doc_delete_document_comment(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -469,7 +481,12 @@ async def _doc_delete_document_comment(params: Dict[str, Any]) -> Dict[str, Any]
     fn = handlers.get("delete_document_comment")
     if not fn:
         raise ValueError("delete_document_comment handler not registered")
-    return await fn(**params)
+    context = {
+        "yacht_id": params.get("yacht_id"),
+        "user_id": params.get("user_id"),
+    }
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
 
 
 async def _doc_list_document_comments(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -477,7 +494,12 @@ async def _doc_list_document_comments(params: Dict[str, Any]) -> Dict[str, Any]:
     fn = handlers.get("list_document_comments")
     if not fn:
         raise ValueError("list_document_comments handler not registered")
-    return await fn(**params)
+    context = {
+        "yacht_id": params.get("yacht_id"),
+        "user_id": params.get("user_id"),
+    }
+    payload = {k: v for k, v in params.items() if k not in ("yacht_id", "user_id", "user_context")}
+    return await fn(payload, context)
 
 
 async def edit_handover_section(params: Dict[str, Any]) -> Dict[str, Any]:
