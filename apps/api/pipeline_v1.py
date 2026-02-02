@@ -473,7 +473,8 @@ class Pipeline:
                     entity_conf = entity.get('confidence', 0.8)
 
                     # ORG entities in receiving context → SUPPLIER_NAME
-                    if entity_type in ['ORG', 'MANUFACTURER', 'ORGANIZATION']:
+                    # Fix: Use lowercase comparison (entity extraction returns lowercase types)
+                    if entity_type.lower() in ['org', 'manufacturer', 'organization']:
                         receiving_entities.append({
                             'type': 'SUPPLIER_NAME',
                             'value': entity_value,
@@ -482,8 +483,9 @@ class Pipeline:
                         })
 
                     # Status words in receiving context → RECEIVING_STATUS
+                    # Fix: Use lowercase comparison (entity extraction returns lowercase types)
                     status_keywords = {'draft', 'in review', 'accepted', 'rejected', 'pending', 'approved'}
-                    if entity_type in ['SYMPTOM', 'STATUS', 'OPERATIONAL_STATE'] and entity_value.lower() in status_keywords:
+                    if entity_type.lower() in ['symptom', 'status', 'operational_state'] and entity_value.lower() in status_keywords:
                         receiving_entities.append({
                             'type': 'RECEIVING_STATUS',
                             'value': entity_value,
@@ -613,6 +615,10 @@ class Pipeline:
             'PART_NUMBER': 'part',
             'PART_NAME': 'part',
             'MANUFACTURER': 'part',
+            # Part Lens - Brand/Manufacturer types (PR #69)
+            'BRAND': 'part',              # From ENTITY_EXTRACTION_EXPORT
+            'EQUIPMENT_BRAND': 'part',    # From ENTITY_EXTRACTION_EXPORT
+            'ORG': 'part',                # From REGEX_PRODUCTION (fallback)
             'LOCATION': 'inventory',
             'STOCK_QUERY': 'inventory',
             # Inventory - Stock Status (7 new types)
@@ -659,6 +665,7 @@ class Pipeline:
             'RECEIVING_STATUS': 'receiving',
             # Shopping List (new)
             'SHOPPING_LIST_ITEM': 'shopping_list',
+            'SHOPPING_LIST_TERM': 'shopping_list',     # From ENTITY_EXTRACTION_EXPORT
             'REQUESTED_PART': 'shopping_list',
             'REQUESTER_NAME': 'shopping_list',
             'URGENCY_LEVEL': 'shopping_list',
