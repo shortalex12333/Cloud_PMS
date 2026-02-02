@@ -409,6 +409,39 @@ class RegexExtractor:
                 # Only keep generic/uncommon document IDs here
                 re.compile(r'\b(DOC-[A-Z]-\d{2,4})\b'),  # Generic documents
                 re.compile(r'\b(REF-\d{5,8})\b'),  # Reference numbers
+
+                # === Document Lens v2 - Enhanced Patterns ===
+
+                # Certificate/Document Reference Numbers
+                re.compile(r'\b(CERT[-/]?\d{4,8})\b', re.IGNORECASE),  # CERT-12345
+                re.compile(r'\b(CRT[-/]?\d{4,8})\b', re.IGNORECASE),  # CRT-12345
+
+                # Maritime Authority Document Numbers
+                re.compile(r'\b(IMO[-/]?\d{7})\b', re.IGNORECASE),  # IMO-1234567 (7-digit)
+                re.compile(r'\b(USCG[-/]?\d{4,10})\b', re.IGNORECASE),  # USCG-1234567
+                re.compile(r'\b(MCA[-/]?\d{4,8})\b', re.IGNORECASE),  # MCA-12345
+                re.compile(r'\b(MARAD[-/]?\d{4,8})\b', re.IGNORECASE),  # MARAD-12345
+
+                # Class Society Document References
+                re.compile(r'\b(LR[-/]?\d{4,8})\b', re.IGNORECASE),  # Lloyd's Register
+                re.compile(r'\b(DNV[-/]?[A-Z]?\d{4,8})\b', re.IGNORECASE),  # DNV-12345
+                re.compile(r'\b(ABS[-/]?\d{4,8})\b', re.IGNORECASE),  # American Bureau of Shipping
+                re.compile(r'\b(BV[-/]?\d{4,8})\b', re.IGNORECASE),  # Bureau Veritas
+                re.compile(r'\b(RINA[-/]?\d{4,8})\b', re.IGNORECASE),  # RINA
+                re.compile(r'\b(NK[-/]?\d{4,8})\b', re.IGNORECASE),  # Nippon Kaiji Kyokai
+                re.compile(r'\b(CCS[-/]?\d{4,8})\b', re.IGNORECASE),  # China Classification Society
+
+                # Safety Management Document References
+                re.compile(r'\b(ISM[-/]?\d{4,8})\b', re.IGNORECASE),  # ISM Code documents
+                re.compile(r'\b(ISPS[-/]?\d{4,8})\b', re.IGNORECASE),  # ISPS Code documents
+                re.compile(r'\b(SMC[-/]?\d{4,8})\b', re.IGNORECASE),  # Safety Management Certificate
+
+                # Document Revision/Version References
+                re.compile(r'\b(REV[-.]?\d{1,3}(?:\.\d{1,2})?)\b', re.IGNORECASE),  # REV-1, REV.2.1
+                re.compile(r'\b(ISSUE[-.]?\d{1,3})\b', re.IGNORECASE),  # ISSUE-1
+
+                # Generic Document Reference Patterns (last - less specific)
+                re.compile(r'\b([A-Z]{2,4}-\d{4}-\d{2,4})\b'),  # XX-1234-56 format
             ],
 
 
