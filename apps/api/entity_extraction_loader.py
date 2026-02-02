@@ -1819,6 +1819,39 @@ CORE_SOURCE_TYPES = {
 }
 
 # =============================================================================
+# INVENTORY LENS - STOCK STATUS TERMS (Added 2026-02-02)
+# =============================================================================
+# These terms support entity extraction for inventory stock status queries.
+# Critical for: stock level monitoring, reorder alerts, inventory management.
+#
+# Entity type: STOCK_STATUS
+# Purpose: Compound phrases that should match BEFORE single-word patterns
+#
+# Why needed:
+# - "critically low" should match as STOCK_STATUS, not "critical" as URGENCY_LEVEL
+# - "low stock" should match as compound phrase, not just "stock"
+# - "out of stock" should match as status phrase, not individual words
+
+CORE_STOCK_STATUS = {
+    # Compound stock status phrases
+    'low stock', 'stock low', 'low inventory', 'inventory low',
+    'out of stock', 'stock out', 'out of inventory',
+    'critically low', 'critically low stock', 'critically low inventory',
+    'below minimum', 'below minimum stock', 'stock below minimum',
+    'need to reorder', 'needs to reorder', 'need reorder', 'needs reorder',
+    'reorder needed', 'restock needed', 'needs restocking', 'need restocking',
+    'running low', 'running low on stock', 'stock running low',
+    'stock alert', 'inventory alert', 'low stock alert',
+    'reorder point', 'below reorder point', 'at reorder point',
+    'minimum stock', 'minimum stock level',
+    # Additional stock level descriptors
+    'adequate stock', 'sufficient stock', 'well stocked', 'good stock levels',
+    'excess stock', 'overstocked', 'surplus stock', 'too much stock',
+    'zero stock', 'no stock', 'empty stock', 'depleted', 'exhausted',
+    'stock depleted', 'inventory depleted', 'stock exhausted',
+}
+
+# =============================================================================
 # CREW LENS - HOURS OF REST COMPLIANCE TERMS (Added 2026-01-31)
 # =============================================================================
 # These terms support entity extraction for crew hours of rest compliance queries.
@@ -2120,6 +2153,8 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
         'approval_status': set(),     # Approval states
         'urgency_level': set(),       # Urgency indicators
         'source_type': set(),         # Source of shopping list items
+        # Inventory Lens - Stock Status (Added 2026-02-02)
+        'stock_status': set(),        # Stock level status phrases
         # Crew Lens - Hours of Rest (Added 2026-01-31)
         'REST_COMPLIANCE': set(),     # Rest compliance status
         'WARNING_SEVERITY': set(),    # Warning severity levels
@@ -2149,6 +2184,9 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
     gazetteer['approval_status'].update(CORE_APPROVAL_STATUSES)
     gazetteer['urgency_level'].update(CORE_URGENCY_LEVELS)
     gazetteer['source_type'].update(CORE_SOURCE_TYPES)
+
+    # Add inventory lens terms (Added 2026-02-02 for fast-path stock status extraction)
+    gazetteer['stock_status'].update(CORE_STOCK_STATUS)
 
     # Add crew lens terms (Added 2026-01-31 for fast-path crew extraction)
     gazetteer['REST_COMPLIANCE'].update(CORE_REST_COMPLIANCE)
@@ -2246,6 +2284,7 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
     print(f"   - {len(gazetteer['approval_status']):,} approval statuses")
     print(f"   - {len(gazetteer['urgency_level']):,} urgency levels")
     print(f"   - {len(gazetteer['source_type']):,} source types")
+    print(f"   - {len(gazetteer['stock_status']):,} stock status terms")
     print(f"   - {len(gazetteer['REST_COMPLIANCE']):,} rest compliance terms")
     print(f"   - {len(gazetteer['WARNING_SEVERITY']):,} warning severity levels")
     print(f"   - {len(gazetteer['WARNING_STATUS']):,} warning status terms")
@@ -2418,8 +2457,12 @@ def calculate_weight(entity_type: str, metadata: Dict, text_length: int = 0) -> 
         'sensor_reading': 3.5,      # Measurement terms
         'sensor_language': 3.3,     # Sensor terminology
         'equipment_brand': 3.2,     # Brand names
+        'equipment': 3.2,           # Equipment items (FIXED 2026-02-02: was missing, defaulted to 2.0)
         'human_report': 3.0,        # Human observations
+        'shopping_list_term': 3.0,  # Shopping list queries (FIXED 2026-02-02)
+        'approval_status': 3.0,     # Approval status (pending, approved, etc.) (FIXED 2026-02-02)
         'equipment_type': 2.8,      # Equipment types
+        'part': 2.8,                # Parts and components (FIXED 2026-02-02: was missing, defaulted to 2.0)
         'action': 2.5,              # Action verbs
         'system_type': 2.3          # System categories
     }

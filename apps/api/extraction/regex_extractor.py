@@ -214,7 +214,8 @@ class RegexExtractor:
             ],
             'stock_status': [
                 # Multi-word stock status phrases (must come BEFORE single-word patterns)
-                re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+reorder|reorder\s+needed|minimum\s+stock|stock\s+level|running\s+low|need\s+restocking|needs?\s+restocking|restock|below\s+reorder\s+point|reorder\s+point)\b', re.IGNORECASE),
+                # Fix: Added optional "to" in "needs? to reorder" pattern
+                re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+(?:to\s+)?reorder|reorder\s+needed|minimum\s+stock|stock\s+level|running\s+low|need\s+restocking|needs?\s+restocking|restock|below\s+reorder\s+point|reorder\s+point)\b', re.IGNORECASE),
                 # Single keyword variants (only if not part of equipment name)
                 re.compile(r'\b(inventory|stock)\b(?!\s+(?:pump|valve|filter|sensor))', re.IGNORECASE),
             ],
