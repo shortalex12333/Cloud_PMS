@@ -1818,6 +1818,63 @@ CORE_SOURCE_TYPES = {
     'damaged', 'damage report', 'damaged part',
 }
 
+# =============================================================================
+# CREW LENS - HOURS OF REST COMPLIANCE TERMS (Added 2026-01-31)
+# =============================================================================
+# These terms support entity extraction for crew hours of rest compliance queries.
+# Critical for: compliance monitoring, crew rest violations, warning management.
+#
+# Entity types:
+# - REST_COMPLIANCE: Compliance status (compliant, non-compliant, violations)
+# - WARNING_SEVERITY: Severity levels (critical, high, medium, low)
+# - WARNING_STATUS: Warning states (active, acknowledged, dismissed)
+
+# Rest compliance terms
+CORE_REST_COMPLIANCE = {
+    # Compliance states
+    'compliant', 'non-compliant', 'non compliant', 'noncompliant',
+    'in compliance', 'complies', 'complying',
+    # Violations
+    'violations', 'violation', 'violating', 'violated',
+    'rest violation', 'rest violations', 'compliance violation',
+    'non compliant rest', 'non-compliant rest',
+    # Natural language paraphrases
+    'didn\'t sleep enough', 'didnt sleep enough', 'not enough sleep',
+    'not enough rest', 'insufficient rest', 'inadequate rest',
+    'crew who didn\'t sleep', 'people not getting enough rest',
+    'not getting enough rest', 'didn\'t get enough rest',
+}
+
+# Warning severity levels
+CORE_WARNING_SEVERITY = {
+    # Severity levels
+    'critical', 'high', 'medium', 'low',
+    # Compound severity terms
+    'high severity', 'critical severity', 'medium severity', 'low severity',
+    'high priority', 'critical priority', 'medium priority', 'low priority',
+    # Compound with "warnings" (user queries)
+    'critical warnings', 'high warnings', 'medium warnings', 'low warnings',
+    'high severity warnings', 'critical severity warnings',
+    # Compound with "alerts" (user queries)
+    'critical alerts', 'high alerts', 'medium alerts', 'low alerts',
+    # Paraphrases
+    'serious', 'severe', 'minor', 'major',
+    'important', 'urgent',
+}
+
+# Warning status terms
+CORE_WARNING_STATUS = {
+    # Status states
+    'active', 'acknowledged', 'dismissed', 'resolved', 'closed',
+    'open', 'pending', 'snoozed',
+    # Compound status terms
+    'active warnings', 'open warnings', 'pending warnings',
+    'acknowledged warnings', 'dismissed warnings', 'resolved warnings',
+    # Paraphrases (alerts instead of warnings)
+    'active alerts', 'open alerts', 'pending alerts',
+}
+
+
 
 # =============================================================================
 # DATE/TIME PATTERNS - For temporal entity extraction
@@ -2063,6 +2120,10 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
         'approval_status': set(),     # Approval states
         'urgency_level': set(),       # Urgency indicators
         'source_type': set(),         # Source of shopping list items
+        # Crew Lens - Hours of Rest (Added 2026-01-31)
+        'REST_COMPLIANCE': set(),     # Rest compliance status
+        'WARNING_SEVERITY': set(),    # Warning severity levels
+        'WARNING_STATUS': set(),      # Warning status states
     }
 
     # =========================================================================
@@ -2088,6 +2149,11 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
     gazetteer['approval_status'].update(CORE_APPROVAL_STATUSES)
     gazetteer['urgency_level'].update(CORE_URGENCY_LEVELS)
     gazetteer['source_type'].update(CORE_SOURCE_TYPES)
+
+    # Add crew lens terms (Added 2026-01-31 for fast-path crew extraction)
+    gazetteer['REST_COMPLIANCE'].update(CORE_REST_COMPLIANCE)
+    gazetteer['WARNING_SEVERITY'].update(CORE_WARNING_SEVERITY)
+    gazetteer['WARNING_STATUS'].update(CORE_WARNING_STATUS)
 
     # =========================================================================
     # STEP 2: Add compound terms from EQUIPMENT_PATTERNS
@@ -2180,6 +2246,9 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
     print(f"   - {len(gazetteer['approval_status']):,} approval statuses")
     print(f"   - {len(gazetteer['urgency_level']):,} urgency levels")
     print(f"   - {len(gazetteer['source_type']):,} source types")
+    print(f"   - {len(gazetteer['REST_COMPLIANCE']):,} rest compliance terms")
+    print(f"   - {len(gazetteer['WARNING_SEVERITY']):,} warning severity levels")
+    print(f"   - {len(gazetteer['WARNING_STATUS']):,} warning status terms")
 
     return gazetteer
 
@@ -2337,6 +2406,11 @@ def calculate_weight(entity_type: str, metadata: Dict, text_length: int = 0) -> 
     # Base weights by entity type
     type_weights = {
         'fault_code': 4.5,          # Fault codes are very specific
+        # Crew Lens - Hours of Rest (Added 2026-01-31)
+        # HIGH PRIORITY: Crew-specific entity types must override generic types
+        'REST_COMPLIANCE': 4.3,      # Rest compliance status (higher than symptom)
+        'WARNING_SEVERITY': 4.2,     # Warning severity (higher than fault_classification)
+        'WARNING_STATUS': 4.2,       # Warning status (higher than fault_classification)
         'symptom': 4.0,             # Symptoms are key for diagnosis
         'model': 4.0,               # Model numbers are very specific
         'fault_classification': 3.8,# Fault types
