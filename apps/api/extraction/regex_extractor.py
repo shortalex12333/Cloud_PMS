@@ -226,8 +226,9 @@ class RegexExtractor:
                 re.compile(r'\b(critical\s+warning|warning|alert|severe|moderate\s+warning)\b', re.IGNORECASE),
             ],
             # Work Order Lens (PR #64) - Must extract BEFORE symptom patterns
+            # FIX Issue #2: Require "work" keyword for order phrases to prevent capturing shopping list queries
             'work_order_status': [
-                re.compile(r'\b(open\s+(?:work\s+)?orders?|closed\s+(?:work\s+)?orders?|in\s+progress|overdue\s+(?:tasks?|orders?)|completed\s+(?:work\s+)?orders?|pending\s+(?:work\s+)?orders?)\b', re.IGNORECASE),
+                re.compile(r'\b(open\s+work\s+orders?|closed\s+work\s+orders?|in\s+progress|overdue\s+(?:tasks?|work\s+orders?)|completed\s+work\s+orders?|pending\s+work\s+orders?)\b', re.IGNORECASE),
                 re.compile(r'\b(work\s+orders?)\b', re.IGNORECASE),
             ],
             # Receiving Lens (PR #64)

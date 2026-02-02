@@ -1,0 +1,12 @@
+# Gitleaks ignore file
+# Supabase anon keys are public by design (used in frontend code)
+# These are NOT secrets - they're client-side API keys with RLS enforcement
+
+# Test files with public anon keys for CI testing
+tests/docker/run_document_lens_comprehensive.py
+tests/docker/run_document_lens_tests.py
+tests/docker/run_rls_tests.py
+
+# Files with intentionally committed public Supabase anon keys
+# The MASTER_SUPABASE_ANON_KEY is the public key from Supabase dashboard
+# RLS policies enforce security, not the anon key
