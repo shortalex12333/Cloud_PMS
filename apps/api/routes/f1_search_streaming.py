@@ -62,6 +62,11 @@ tracer = get_tracer("f1.search")
 # Feature flags
 RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "false").lower() == "true"
 
+# Org UUIDs allowed to use F1 streaming search (CSV)
+# Example: STREAMING_ENABLED_ORGS=85fe1119-b04c-41ac-80f1-829d23322598,uuid2,uuid3
+STREAMING_ENABLED_ORGS = set(filter(None, os.getenv("STREAMING_ENABLED_ORGS", "").split(",")))
+logger.info(f"[F1] STREAMING_ENABLED_ORGS: {len(STREAMING_ENABLED_ORGS)} orgs configured")
+
 router = APIRouter(prefix="/api/f1/search", tags=["f1-search"])
 
 # ============================================================================
@@ -283,6 +288,14 @@ async def f1_search_stream(
     """
     # Build UserContext from auth; fail 400 if org_id missing
     ctx = build_user_context(auth)
+
+    # Feature gate: only allow whitelisted orgs
+    if STREAMING_ENABLED_ORGS and ctx.org_id not in STREAMING_ENABLED_ORGS:
+        logger.warning(f"[F1Search] Org not enabled: {ctx.org_id[:8]}...")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "f1_search_not_enabled", "message": "F1 Search not enabled for this organization"}
+        )
 
     # Generate search_id
     search_id = str(uuid.uuid4())
