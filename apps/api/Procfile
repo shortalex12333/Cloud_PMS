@@ -1,0 +1,6 @@
+# Render service definitions
+# Main API service (web)
+web: uvicorn pipeline_service:app --host 0.0.0.0 --port $PORT
+
+# Cache invalidation listener (background worker)
+worker: python cache/invalidation_listener.py
