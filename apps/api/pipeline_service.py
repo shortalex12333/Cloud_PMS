@@ -133,6 +133,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+# Per-org rate limiting for F1 search (Redis-backed)
+try:
+    from middleware.rate_limit import OrgRateLimitMiddleware
+    app.add_middleware(OrgRateLimitMiddleware)
+    logger.info("✅ [Pipeline] Org rate limiting middleware added (F1 search)")
+except Exception as e:
+    logger.warning(f"⚠️ [Pipeline] Org rate limiting not available: {e}")
+
 # ============================================================================
 # EXCEPTION HANDLERS
 # ============================================================================
@@ -308,6 +316,18 @@ except Exception as e:
     logger.error("Streaming Search endpoints will not be available")
 
 # ============================================================================
+# F1 SEARCH STREAMING (Phase 0 - Parallel with Prepare)
+# ============================================================================
+
+try:
+    from routes.f1_search_streaming import router as f1_search_router
+    app.include_router(f1_search_router)
+    logger.info("✅ F1 Search Streaming routes registered at /api/f1/search/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register F1 Search routes: {e}")
+    logger.error("F1 Search endpoints will not be available")
+
+# ============================================================================
 # RECEIVING UPLOAD PROXY (Receiving Lens v1)
 # ============================================================================
 
@@ -318,6 +338,18 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to register Receiving Upload Proxy: {e}")
     logger.error("Receiving image upload endpoints will not be available")
+
+# ============================================================================
+# HANDOVER EXPORT ROUTES
+# ============================================================================
+
+try:
+    from routes.handover_export_routes import router as handover_export_router
+    app.include_router(handover_export_router)
+    logger.info("✅ Handover Export routes registered at /v1/handover/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Handover Export routes: {e}")
+    logger.error("Handover Export endpoints will not be available")
 
 # ============================================================================
 # REQUEST/RESPONSE MODELS

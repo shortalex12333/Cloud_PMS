@@ -119,6 +119,10 @@ ENTITY_TO_SEARCH_COLUMN: Dict[str, Tuple[str, str]] = {
     "BRAND": ("part_by_part_number_or_name", "manufacturer"),              # From ENTITY_EXTRACTION_EXPORT
     "EQUIPMENT_BRAND": ("part_by_part_number_or_name", "manufacturer"),    # From ENTITY_EXTRACTION_EXPORT
     "ORG": ("part_by_part_number_or_name", "manufacturer"),                # From REGEX_PRODUCTION
+    # Fix 2026-02-02: Add missing entity type mappings from regex_extractor
+    "PART": ("part_by_part_number_or_name", "name"),                       # Generic part name search
+    "EQUIPMENT": ("equipment_by_name_or_model", "name"),                   # Equipment name search
+    "LOCATION_ON_BOARD": ("inventory_by_location", "location"),            # Location-based inventory search
     "LOCATION": ("inventory_by_location", "location"),
     "STOCK_QUERY": ("inventory_by_location", "name"),
     # Inventory Lens - Stock Status (PR #44 + PR #51 + PR #54)

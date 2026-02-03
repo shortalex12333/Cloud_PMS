@@ -50,6 +50,10 @@ class TextCleaner:
         # Normalize degree symbols and special chars
         normalized = self._normalize_special_chars(normalized)
 
+        # Split CamelCase words (Fix 2026-02-02: "activewarnings" → "active warnings")
+        # This helps extract entities from concatenated words
+        normalized = self._split_camelcase(normalized)
+
         # Normalize whitespace
         normalized = re.sub(r'\s+', ' ', normalized).strip()
 
@@ -217,3 +221,88 @@ class TextCleaner:
                 merged.append((start, end))
 
         return merged
+
+    def _split_camelcase(self, text: str) -> str:
+        """
+        Split CamelCase and concatenated words for better entity extraction.
+
+        Examples:
+            'activewarnings' → 'active warnings'
+            'CriticalWarnings' → 'Critical Warnings'
+            'lowStock' → 'low Stock'
+            'RESTCompliance' → 'REST Compliance'
+
+        This helps extract entities from concatenated user input.
+        """
+        # Known brand names that should NOT be split (preserve weird casing)
+        # Handle "RaCoR", "CaTerPillar", "YaNMar" etc.
+        known_brands_lower = {
+            'racor', 'caterpillar', 'cat', 'yanmar', 'volvo', 'cummins', 'mtu',
+            'man', 'kohler', 'onan', 'perkins', 'deutz', 'kubota', 'honda',
+            'suzuki', 'yamaha', 'mercury', 'furuno', 'garmin', 'raymarine',
+            'simrad', 'lowrance', 'flir', 'lewmar', 'maxwell', 'vetus',
+            'webasto', 'dometic', 'grundfos', 'jabsco', 'groco', 'parker',
+            'bosch', 'danfoss', 'siemens', 'abb', 'westinghouse', 'alfa',
+        }
+
+        # Split text into words and process each
+        words = text.split()
+        processed_words = []
+
+        for word in words:
+            # If word (lowercased) is a known brand, don't split it
+            if word.lower() in known_brands_lower:
+                processed_words.append(word.lower())  # Normalize to lowercase
+                continue
+
+            # Pattern 1: Insert space before uppercase letters that follow lowercase
+            # 'activeWarnings' → 'active Warnings'
+            word = re.sub(r'([a-z])([A-Z])', r'\1 \2', word)
+
+            # Pattern 2: Insert space between consecutive uppercase and following lowercase
+            # 'RESTCompliance' → 'REST Compliance'
+            word = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', word)
+
+            processed_words.append(word)
+
+        text = ' '.join(processed_words)
+
+        # Pattern 3: Handle all-lowercase concatenated words (common typos)
+        # 'activewarnings' → 'active warnings'
+        # Use a dictionary of known word boundaries
+        known_splits = {
+            'activewarnings': 'active warnings',
+            'criticalwarnings': 'critical warnings',
+            'activewarning': 'active warning',
+            'criticalwarning': 'critical warning',
+            'lowstock': 'low stock',
+            'outofstock': 'out of stock',
+            'instock': 'in stock',
+            'restcompliance': 'rest compliance',
+            'hourcompliance': 'hour compliance',
+            'restviolation': 'rest violation',
+            'restviolations': 'rest violations',
+            'engineroom': 'engine room',
+            'mainengine': 'main engine',
+            'bowthruster': 'bow thruster',
+            'sternthruster': 'stern thruster',
+            'fuelfilter': 'fuel filter',
+            'oilfilter': 'oil filter',
+            'airfilter': 'air filter',
+            'shoppinglist': 'shopping list',
+            'buylist': 'buy list',
+            'workorder': 'work order',
+            'workorders': 'work orders',
+            'partslist': 'parts list',
+            'spareslist': 'spares list',
+        }
+
+        # Apply known splits (case-insensitive)
+        text_lower = text.lower()
+        for concat, split in known_splits.items():
+            if concat in text_lower:
+                # Preserve original case for first character
+                pattern = re.compile(re.escape(concat), re.IGNORECASE)
+                text = pattern.sub(split, text)
+
+        return text

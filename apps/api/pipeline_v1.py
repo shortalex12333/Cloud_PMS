@@ -32,6 +32,10 @@ import logging
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 
+# Vector fallback imports (Fix #5: Zero-entity semantic search - 2026-02-02)
+from gpt_extractor import GPTExtractor
+from integrations.supabase import vector_search
+
 logger = logging.getLogger(__name__)
 
 
@@ -107,6 +111,7 @@ class Pipeline:
         self._composer = None
         self._executor = None
         self._microaction_registry = None
+        self._gpt_extractor = None  # For embedding generation (vector fallback)
 
         # Initialize microaction registry for lens-based action suggestions
         try:
@@ -130,6 +135,68 @@ class Pipeline:
             from execute.capability_executor import CapabilityExecutor
             self._executor = CapabilityExecutor(self.client, self.yacht_id)
         return self._executor
+
+    def _get_gpt_extractor(self):
+        """Lazy-load GPT extractor for embedding generation."""
+        if self._gpt_extractor is None:
+            self._gpt_extractor = GPTExtractor()
+        return self._gpt_extractor
+
+    async def _vector_fallback(self, query: str, limit: int = 10) -> Dict[str, Any]:
+        """
+        Fix #5: Vector search fallback when entity extraction yields zero entities.
+
+        When we can't extract any entities from the query, we fall back to
+        semantic vector search against document chunks. This handles:
+        - Completely unknown terms (not in gazetteer or fuzzy match)
+        - Heavily misspelled queries
+        - Queries in other languages
+        - Very vague natural language queries
+
+        Args:
+            query: The original user query
+            limit: Max results to return
+
+        Returns:
+            Dict with vector search results and metadata
+        """
+        try:
+            # Generate embedding for the query
+            start = time.time()
+            gpt = self._get_gpt_extractor()
+            query_embedding = gpt.embed(query)
+            embed_ms = (time.time() - start) * 1000
+
+            # Perform vector search
+            start = time.time()
+            results = await vector_search(
+                yacht_id=self.yacht_id,
+                query_embedding=query_embedding,
+                limit=limit
+            )
+            search_ms = (time.time() - start) * 1000
+
+            logger.info(f"Vector fallback: query='{query}', results={len(results)}, "
+                       f"embed_ms={embed_ms:.1f}, search_ms={search_ms:.1f}")
+
+            return {
+                'success': True,
+                'fallback_type': 'vector_search',
+                'results': results,
+                'count': len(results),
+                'embed_ms': embed_ms,
+                'search_ms': search_ms,
+            }
+
+        except Exception as e:
+            logger.error(f"Vector fallback failed: {e}")
+            return {
+                'success': False,
+                'fallback_type': 'vector_search',
+                'results': [],
+                'count': 0,
+                'error': str(e),
+            }
 
     async def search(self, query: str, limit: int = 20) -> PipelineResponse:
         """
@@ -162,9 +229,27 @@ class Pipeline:
 
             entities = extraction_result.get('entities', [])
             if not entities:
-                # No entities extracted - return empty with suggestion
-                response.success = True
-                response.error = "No entities extracted from query"
+                # ================================================================
+                # FIX #5: VECTOR FALLBACK (2026-02-02)
+                # No entities extracted - try semantic vector search
+                # ================================================================
+                logger.info(f"Zero entities for '{query}' - trying vector fallback")
+                vector_result = await self._vector_fallback(query, limit)
+
+                if vector_result.get('success') and vector_result.get('results'):
+                    # Vector search found results
+                    response.success = True
+                    response.results = vector_result['results']
+                    response.total_count = vector_result['count']
+                    response.extraction['fallback'] = vector_result
+                    response.error = None  # Clear error - we found results via fallback
+                    logger.info(f"Vector fallback returned {vector_result['count']} results")
+                else:
+                    # Vector search also failed - return empty
+                    response.success = True
+                    response.error = "No entities extracted and vector search returned no results"
+                    logger.info(f"Vector fallback returned no results")
+
                 response.total_ms = (time.time() - start_total) * 1000
                 return response
 
