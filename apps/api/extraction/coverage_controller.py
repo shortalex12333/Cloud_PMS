@@ -273,11 +273,24 @@ class CoverageController:
                                     return True
 
         # Check for overlapping entities of different types
+        # Only flag PARTIAL overlaps as conflicts, not subspan containment
         for i, e1 in enumerate(entities):
             for e2 in entities[i+1:]:
                 if e1.span and e2.span and e1.type != e2.type:
                     # Check for overlap
                     if (e1.span[0] < e2.span[1] and e2.span[0] < e1.span[1]):
+                        e1_start, e1_end = e1.span
+                        e2_start, e2_end = e2.span
+
+                        # Subspan containment is normal gazetteer behavior, not a conflict
+                        # e1 fully contains e2
+                        if e1_start <= e2_start and e1_end >= e2_end:
+                            continue
+                        # e2 fully contains e1
+                        if e2_start <= e1_start and e2_end >= e1_end:
+                            continue
+
+                        # Partial overlap IS a conflict
                         return True
 
         return False

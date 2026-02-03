@@ -28,7 +28,11 @@ try:
         get_equipment_gazetteer,
         get_diagnostic_patterns,
         calculate_weight as calculate_entity_weight,
-        get_pattern_metadata
+        get_pattern_metadata,
+        CORE_BRANDS,
+        CORE_EQUIPMENT,
+        CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching
+        BRAND_ALIASES,     # Phase 2 (2026-02-03): Brand alias normalization
     )
 except ModuleNotFoundError:
     from regex_production_data import load_manufacturers, load_equipment_terms
@@ -36,8 +40,35 @@ except ModuleNotFoundError:
         get_equipment_gazetteer,
         get_diagnostic_patterns,
         calculate_weight as calculate_entity_weight,
-        get_pattern_metadata
+        get_pattern_metadata,
+        CORE_BRANDS,
+        CORE_EQUIPMENT,
+        CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching
+        BRAND_ALIASES,     # Phase 2 (2026-02-03): Brand alias normalization
     )
+
+# Fuzzy matching for brand misspellings (Fix #4 - 2026-02-02)
+try:
+    from rapidfuzz import process as fuzz_process, fuzz
+    RAPIDFUZZ_AVAILABLE = True
+except ImportError:
+    RAPIDFUZZ_AVAILABLE = False
+    logger.warning("rapidfuzz not available - fuzzy brand matching disabled")
+
+# Text normalizer for intelligent matching (Phase 2 - 2026-02-03)
+try:
+    from extraction.text_normalizer import TextNormalizer
+    TEXT_NORMALIZER = TextNormalizer()
+    NORMALIZER_AVAILABLE = True
+except ImportError:
+    try:
+        from text_normalizer import TextNormalizer
+        TEXT_NORMALIZER = TextNormalizer()
+        NORMALIZER_AVAILABLE = True
+    except ImportError:
+        TEXT_NORMALIZER = None
+        NORMALIZER_AVAILABLE = False
+        logger.warning("text_normalizer not available - using basic matching")
 
 # spaCy/NER removed - system uses regex + gazetteer + AI only
 # Reason: Reduces memory footprint, eliminates import errors, simplifies deployment
@@ -158,19 +189,30 @@ class RegexExtractor:
     PRECEDENCE_ORDER = [
         'fault_code',          # CRITICAL: Must be before po_number to prevent "SPN-1234" being extracted as PO
         'location_on_board',   # LOCATION: Multi-word locations (engine room) before equipment names
+        'certificate_type',    # NEW: Extract "class certificates" before "class" becomes generic
+        'voyage_type',         # NEW: Extract "at sea", "in port" for crew queries
+        'work_order_type',     # NEW: Extract "corrective maintenance" before "corrective"
+        'equipment',           # NEW: Extract "gen 1", "genset 2" numbered equipment
         'work_order_status',   # WORK ORDERS: Extract "open work orders" BEFORE "open" becomes symptom
+        'approval_status',     # FIX 2026-02-03: Shopping list approval status
+        'shopping_list_term',  # FIX 2026-02-03: Shopping list terms BEFORE document_type
         'rest_compliance',     # CREW: Extract "non-compliant" BEFORE "compliant" becomes status
         'warning_severity',    # CREW: Extract "critical warning" BEFORE "critical" becomes symptom
         'delivery_date',       # RECEIVING: Extract "recent deliveries" as single phrase
         'receiving_status',    # RECEIVING: Extract "pending receipt" vs generic "pending"
         'stock_status',        # INVENTORY: Must be before measurements to catch "low stock" before "low" as symptom
+        'equipment_status',    # NEW: Equipment operational status (operational, failed, degraded)
+        'exclusion',           # NEW: Exclusion patterns (except, excluding)
+        'quantity_comparison', # NEW: Quantity comparisons (below 5, more than 10)
         'measurement',         # MOVED UP: Process measurements (230V, 50Hz, 45W) BEFORE model patterns
         'measurement_range',   # MOVED UP: Process ranges before models
         'setpoint',            # MOVED UP: Setpoints before models
         'limit',               # MOVED UP: Limits before models
         'document_id',         # DOCUMENT LENS: Extract document IDs (CERT-, IMO-, DNV-) BEFORE part_number
         'document_type',       # DOCUMENT LENS: Extract document types BEFORE generic terms
+        'work_order_id',       # FIX 2026-02-03: Extract WO-12345 BEFORE part_number/po_number
         'model',               # Model codes after measurements to prevent false matches
+        'part_number_prefix',  # NEW: Extract "starting with FLT" before generic patterns
         'part_number',         # After model and document_id to avoid matching doc IDs as parts
         'serial_number',       # Serial numbers should be before po_number
         'designation',         # Manual/doc codes (SEBU6250-30)
@@ -208,29 +250,128 @@ class RegexExtractor:
         """Load regex patterns for each entity type."""
         patterns = {
             # Inventory stock status patterns (HIGH PRIORITY - extract before symptoms)
-            # Multi-word location phrases (must extract as complete phrases)
+            # Location phrases - both multi-word AND single-word locations (Fix 2026-02-03)
+            # Must extract BEFORE equipment patterns claim spans like "galley refrigerator"
             'location_on_board': [
-                re.compile(r'\b(engine\s+room|machinery\s+space|pump\s+room|generator\s+room|battery\s+room|control\s+room|chart\s+table|helm\s+station|nav\s+station|wing\s+station|main\s+deck|upper\s+deck|lower\s+deck|sun\s+deck|boat\s+deck|crew\s+quarters|anchor\s+locker|lazarette|bilge\s+area)\b', re.IGNORECASE),
+                # Multi-word location phrases (must extract as complete phrases)
+                re.compile(r'\b(engine\s+room|machinery\s+space|pump\s+room|generator\s+room|battery\s+room|control\s+room|chart\s+table|helm\s+station|nav\s+station|wing\s+station|main\s+deck|upper\s+deck|lower\s+deck|sun\s+deck|boat\s+deck|aft\s+deck|fore\s+deck|crew\s+quarters|crew\s+mess|anchor\s+locker|chain\s+locker|bilge\s+area|swim\s+platform|tender\s+garage|port\s+side|starboard\s+side|master\s+cabin|guest\s+cabin|vip\s+cabin|crew\s+cabin|cold\s+room|steering\s+gear\s+room|bow\s+thruster\s+room)\b', re.IGNORECASE),
+                # Single-word locations (Fix 2026-02-03 - were only in gazetteer, not regex)
+                re.compile(r'\b(galley|bridge|bilge|bow|stern|foredeck|flybridge|wheelhouse|helm|cockpit|salon|saloon|pantry|laundry|lazarette|forepeak|afterpeak|midship|midships|locker|storage|gangway|passerelle|transom)\b', re.IGNORECASE),
+                # Directional terms as standalone locations (but NOT when part of equipment like "port engine")
+                # Use negative lookahead to avoid matching "port engine", "starboard generator", etc.
+                re.compile(r'\b(port|starboard|fore|aft)(?!\s+(?:engine|generator|thruster|pump|side\s+(?:engine|generator)))\b', re.IGNORECASE),
             ],
             'stock_status': [
                 # Multi-word stock status phrases (must come BEFORE single-word patterns)
                 # Fix: Added optional "to" in "needs? to reorder" pattern
+                # Phase 2 (2026-02-03): Added negative stock patterns
                 re.compile(r'\b(low\s+stock|out\s+of\s+stock|below\s+minimum|critically\s+low|needs?\s+(?:to\s+)?reorder|reorder\s+needed|minimum\s+stock|stock\s+level|running\s+low|need\s+restocking|needs?\s+restocking|restock|below\s+reorder\s+point|reorder\s+point)\b', re.IGNORECASE),
+                # NEW: Negative stock patterns
+                re.compile(r'\b(not\s+in\s+stock|no\s+stock|zero\s+stock|empty\s+stock|depleted|exhausted|none\s+(?:in\s+)?stock)\b', re.IGNORECASE),
+                # NEW: Stock availability positive
+                re.compile(r'\b(in\s+stock|available|on\s+hand|stocked)\b', re.IGNORECASE),
                 # Single keyword variants (only if not part of equipment name)
                 re.compile(r'\b(inventory|stock)\b(?!\s+(?:pump|valve|filter|sensor))', re.IGNORECASE),
             ],
             # Crew Lens - Hours of Rest & Warnings (PR #64)
+            # Phase 2 (2026-02-03): Enhanced compliance patterns
             'rest_compliance': [
                 re.compile(r'\b(non-compliant|non\s+compliant|compliant|rest\s+hours|work\s+hours|hours\s+of\s+rest|duty\s+hours|fatigue|rest\s+period)\b', re.IGNORECASE),
+                # NEW: Violation patterns
+                re.compile(r'\b(violation|violations|breach|breaches|infringement|non-compliance|noncompliance)\b', re.IGNORECASE),
+                # NEW: MLC compliance terms
+                re.compile(r'\b(mlc|mlc\s+2006|mlc\s+compliant|stcw|stcw\s+compliant)\b', re.IGNORECASE),
             ],
             'warning_severity': [
                 re.compile(r'\b(critical\s+warning|warning|alert|severe|moderate\s+warning)\b', re.IGNORECASE),
             ],
+            # Phase 2 (2026-02-03): Numbered equipment abbreviations
+            # Extracts "gen 1" → "generator 1", "eng 2" → "engine 2"
+            'equipment': [
+                re.compile(r'\b(gen(?:erator)?\s*[#]?\s*[12])\b', re.IGNORECASE),  # gen 1, gen 2, generator 1
+                re.compile(r'\b(eng(?:ine)?\s*[#]?\s*[12])\b', re.IGNORECASE),     # eng 1, engine 1
+                re.compile(r'\b(genset\s*[#]?\s*[12])\b', re.IGNORECASE),          # genset 1, genset 2
+                re.compile(r'\b(aux\s*[#]?\s*[12])\b', re.IGNORECASE),             # aux 1, aux 2
+                re.compile(r'\b(chiller\s*[#]?\s*[12])\b', re.IGNORECASE),         # chiller 1, chiller 2
+                re.compile(r'\b(pump\s*[#]?\s*[12])\b', re.IGNORECASE),            # pump 1, pump 2
+            ],
+
+            # Phase 2 (2026-02-03): Voyage type patterns
+            # For crew hours of rest queries: "at sea", "in port"
+            'voyage_type': [
+                re.compile(r'\b(at\s+sea|at\s+anchor|in\s+port|underway|moored|docked|berthed|alongside)\b', re.IGNORECASE),
+                re.compile(r'\b(sea\s+passage|coastal\s+waters|port\s+stay)\b', re.IGNORECASE),
+            ],
+
+            # Phase 2 (2026-02-03): Certificate type patterns
+            # For document queries: "class certificates", "environmental certificates"
+            'certificate_type': [
+                re.compile(r'\b(class|classification)\s+certificate', re.IGNORECASE),
+                re.compile(r'\b(safety)\s+certificate', re.IGNORECASE),
+                re.compile(r'\b(environmental)\s+certificate', re.IGNORECASE),
+                re.compile(r'\b(loadline|load\s+line)\s+certificate', re.IGNORECASE),
+                re.compile(r'\b(manning)\s+certificate', re.IGNORECASE),
+                re.compile(r'\b(ism|isps|iopp|ispp|solas)\s+certificate', re.IGNORECASE),
+                # Standalone certificate types (must be followed by "certificate" context in query)
+                re.compile(r'\b(class|environmental|safety|loadline|manning|registration)\b(?=.*certificate)', re.IGNORECASE),
+            ],
+
+            # Phase 2 (2026-02-03): Work order type patterns
+            'work_order_type': [
+                re.compile(r'\b(corrective|preventive|scheduled|emergency|planned|unplanned)\s+(?:maintenance|work|task)', re.IGNORECASE),
+                re.compile(r'\b(pm|cm)\b', re.IGNORECASE),  # PM = preventive maintenance, CM = corrective
+            ],
+
             # Work Order Lens (PR #64) - Must extract BEFORE symptom patterns
             # FIX Issue #2: Require "work" keyword for order phrases to prevent capturing shopping list queries
+            # Phase 2 (2026-02-03): Added negative status patterns
+            # FIX 2026-02-03: Removed standalone "pending" - conflicts with approval_status for shopping lists
             'work_order_status': [
                 re.compile(r'\b(open\s+work\s+orders?|closed\s+work\s+orders?|in\s+progress|overdue\s+(?:tasks?|work\s+orders?)|completed\s+work\s+orders?|pending\s+work\s+orders?)\b', re.IGNORECASE),
                 re.compile(r'\b(work\s+orders?)\b', re.IGNORECASE),
+                # NEW: Negative completion patterns (expanded for systemic coverage)
+                # NOTE: Removed standalone "pending" - use "pending work order" instead
+                re.compile(r'\b(not\s+(?:completed|complete|finished|done)|incomplete|unfinished|uncompleted)\b', re.IGNORECASE),
+                # NEW: Status patterns (no standalone "pending" - conflicts with shopping list approval_status)
+                re.compile(r'\b(planned|scheduled|in_progress|cancelled|deferred)\b', re.IGNORECASE),
+            ],
+            # FIX 2026-02-03: Shopping List approval_status patterns
+            # "pending", "approved", "rejected" in shopping list context
+            'approval_status': [
+                # Compound patterns with shopping list context
+                re.compile(r'\b(pending|approved|rejected|needs\s+approval|pending\s+approval|awaiting\s+approval)\s+(?:items?|parts?|orders?|list|shopping)?\b', re.IGNORECASE),
+                # Standalone statuses (will be used when shopping list context detected)
+                re.compile(r'\b(pending|approved|rejected|draft|submitted|cancelled)\b', re.IGNORECASE),
+            ],
+            # FIX 2026-02-03: Shopping list term patterns
+            # Extracts BEFORE document_type to prevent "parts list" → document_type conflict
+            'shopping_list_term': [
+                # Explicit shopping list terms
+                re.compile(r'\b(shopping\s+list|buy\s+list|purchase\s+list|order\s+list)\b', re.IGNORECASE),
+                # "parts list" when NOT followed by "manual", "document", "pdf", "file"
+                re.compile(r'\b(parts\s+list)(?!\s+(?:manual|document|pdf|file))\b', re.IGNORECASE),
+                # Requisition terms
+                re.compile(r'\b(requisition|req\s+list|spare\s+parts\s+list)\b', re.IGNORECASE),
+            ],
+            # NEW: Equipment operational status (Phase 2 - 2026-02-03)
+            'equipment_status': [
+                re.compile(r'\b(operational|not\s+operational|inoperative|non-operational|out\s+of\s+service|in\s+service)\b', re.IGNORECASE),
+                re.compile(r'\b(failed|failing|degraded|under\s+maintenance|being\s+serviced|offline|online)\b', re.IGNORECASE),
+            ],
+            # NEW: Exclusion patterns (Phase 2 - 2026-02-03)
+            # For queries like "all parts except filters", "everything but pumps"
+            'exclusion': [
+                re.compile(r'\b(?:except|excluding|except\s+for|not\s+including|other\s+than|but\s+not)\s+(\w+(?:\s+\w+)?)\b', re.IGNORECASE),
+                re.compile(r'\b(?:without|minus)\s+(\w+(?:\s+\w+)?)\b', re.IGNORECASE),
+            ],
+            # NEW: Quantity comparison patterns (Phase 2 - 2026-02-03)
+            # For queries like "parts with quantity below 5", "more than 10 in stock"
+            'quantity_comparison': [
+                re.compile(r'\b(?:below|under|less\s+than|fewer\s+than|<)\s*(\d+)\b', re.IGNORECASE),
+                re.compile(r'\b(?:above|over|more\s+than|greater\s+than|>)\s*(\d+)\b', re.IGNORECASE),
+                re.compile(r'\b(?:at\s+least|minimum|>=)\s*(\d+)\b', re.IGNORECASE),
+                re.compile(r'\b(?:at\s+most|maximum|<=)\s*(\d+)\b', re.IGNORECASE),
+                re.compile(r'\b(zero|0)\s*(?:stock|quantity|in\s+stock|on\s+hand)?\b', re.IGNORECASE),
             ],
             # Receiving Lens (PR #64)
             'delivery_date': [
@@ -597,6 +738,14 @@ class RegexExtractor:
                 # NOTE: Generic supplier SKUs, S/N labels, and accessory patterns moved to TOP of list for priority
             ],
 
+            # Part number prefix patterns (ID-007 fix - 2026-02-03)
+            # For queries like "parts starting with FLT", "part numbers beginning with CAT"
+            'part_number_prefix': [
+                re.compile(r'\b(?:starting|beginning|starts?|begins?)\s+with\s+([A-Z]{2,5})\b', re.IGNORECASE),
+                re.compile(r'\bprefix\s+([A-Z]{2,5})\b', re.IGNORECASE),
+                re.compile(r'\b([A-Z]{2,5})\s+(?:prefix|prefixed)\b', re.IGNORECASE),
+            ],
+
             # Serial numbers (SN, S/N, Serial No.)
             'serial_number': [
                 re.compile(r"\b(SN|S/N|SERIAL)\s*[:#]?\s*[A-Z0-9\-]{5,20}\b", re.I),
@@ -626,6 +775,10 @@ class RegexExtractor:
                 re.compile(r'\b([345]G|LTE|Wi-?Fi)\b', re.IGNORECASE),
                 # Generic identifiers (less specific)
                 re.compile(r'\b([A-Z]{3}\d{3}-\d{3}-[A-Z0-9]{3})\b'),  # Generic IDs
+                # Phase 2 Fix: Pure numeric identifiers (2026-02-02)
+                # 4-8 digit numbers that could be part_number, work_order_id, po_number
+                re.compile(r'^(\d{4,8})$'),  # Standalone 4-8 digit numbers
+                re.compile(r'\b(0\d{2,7})\b'),  # Numbers with leading zeros
             ],
 
             'document_type': [
@@ -639,6 +792,8 @@ class RegexExtractor:
                 re.compile(r'\b(damage\s+control\s+plan)\b', re.IGNORECASE),
                 re.compile(r'\b(safety\s+management\s+certificate)\b', re.IGNORECASE),
                 re.compile(r'\b(loadline\s+certificate)\b', re.IGNORECASE),
+                re.compile(r'\b(loadline)\b', re.IGNORECASE),  # Fix 2026-02-03: Single word loadline
+                re.compile(r'\b(class\s+certificate)\b', re.IGNORECASE),  # Fix 2026-02-03: DNV class certificate
                 re.compile(r'\b(annual\s+survey)\b', re.IGNORECASE),
                 re.compile(r'\b(special\s+survey)\b', re.IGNORECASE),
                 re.compile(r'\b(class\s+survey)\b', re.IGNORECASE),
@@ -650,7 +805,10 @@ class RegexExtractor:
                 re.compile(r'\b(installation\s+(?:manual|guide))\b', re.IGNORECASE),
                 re.compile(r'\b(operating\s+(?:manual|instructions))\b', re.IGNORECASE),
                 re.compile(r'\b(technical\s+(?:manual|specification|data))\b', re.IGNORECASE),
-                re.compile(r'\b(parts\s+(?:manual|catalog|list))\b', re.IGNORECASE),
+                # FIX 2026-02-03: "parts list" moved to shopping_list_term
+                # Only match "parts manual", "parts catalog", "parts list manual/document/pdf"
+                re.compile(r'\b(parts\s+(?:manual|catalog))\b', re.IGNORECASE),
+                re.compile(r'\b(parts\s+list\s+(?:manual|document|pdf|file))\b', re.IGNORECASE),
                 re.compile(r'\b(safety\s+(?:certificate|plan))\b', re.IGNORECASE),
                 re.compile(r'\b(survey\s+report)\b', re.IGNORECASE),
                 re.compile(r'\b(inspection\s+report)\b', re.IGNORECASE),
@@ -670,13 +828,39 @@ class RegexExtractor:
             ],
 
             # Phase 1 additions: Temporal extensions
+            # Phase 2 enhancements (2026-02-03): Added overdue, expiring, due, future refs
             'time_ref': [
+                # Basic day references
                 re.compile(r'\b(yesterday\s*(?:morning|afternoon|evening)?)\b', re.IGNORECASE),
                 re.compile(r'\b(today)\b', re.IGNORECASE),
                 re.compile(r'\b(tomorrow)\b', re.IGNORECASE),
+
+                # Relative past periods
                 re.compile(r'\b(last\s+(?:night|week|month|year))\b', re.IGNORECASE),
-                re.compile(r'\b(this\s+(?:morning|afternoon|evening|week|month))\b', re.IGNORECASE),
-                re.compile(r'\b(\d+\s+(?:hours?|minutes?|days?|weeks?)\s+ago)\b', re.IGNORECASE),
+                re.compile(r'\b(this\s+(?:morning|afternoon|evening|week|month|year))\b', re.IGNORECASE),
+                re.compile(r'\b(\d+\s+(?:hours?|minutes?|days?|weeks?|months?)\s+ago)\b', re.IGNORECASE),
+
+                # NEW: "last N days/weeks" patterns (e.g., "last 7 days", "last 30 days")
+                re.compile(r'\b(last\s+\d+\s+(?:days?|weeks?|months?))\b', re.IGNORECASE),
+
+                # NEW: Overdue/late patterns for work orders and certificates
+                re.compile(r'\b(overdue)\b', re.IGNORECASE),
+                re.compile(r'\b(past\s+due)\b', re.IGNORECASE),
+                re.compile(r'\b(late)\b', re.IGNORECASE),
+
+                # NEW: Expiring/expiration patterns for certificates
+                re.compile(r'\b(expiring\s+soon)\b', re.IGNORECASE),
+                re.compile(r'\b(expiring\s+in\s+\d+\s+(?:days?|weeks?|months?))\b', re.IGNORECASE),
+                re.compile(r'\b(expires?\s+(?:in\s+)?\d+\s+(?:days?|weeks?|months?))\b', re.IGNORECASE),
+                re.compile(r'\b(expir(?:es?|ing|ation)\s+(?:this|next)\s+(?:week|month|year))\b', re.IGNORECASE),
+
+                # NEW: Future period references
+                re.compile(r'\b(next\s+(?:week|month|year))\b', re.IGNORECASE),
+                re.compile(r'\b(in\s+\d+\s+(?:days?|weeks?|months?))\b', re.IGNORECASE),
+                re.compile(r'\b(within\s+\d+\s+(?:days?|weeks?|months?))\b', re.IGNORECASE),
+
+                # NEW: Due date patterns
+                re.compile(r'\b(due\s+(?:today|tomorrow|this\s+week|this\s+month|next\s+week))\b', re.IGNORECASE),
             ],
 
             'duration': [
@@ -707,7 +891,19 @@ class RegexExtractor:
                 re.compile(r'\b(?:limit|max(?:imum)?|min(?:imum)?)\s+(\d+(?:[.,]\d+)?\s*(?:°?[CF]|[kmM]?V|[mM]?A|[kM]?Hz|RPM|bar|psi|kPa|MPa|%)?)\b', re.IGNORECASE),
             ],
 
-            # Business document IDs (PO, Invoice, Quote, WO, SR, Job numbers)
+            # FIX 2026-02-03: Dedicated work_order_id pattern (extracts BEFORE po_number)
+            # This prevents WO-12345 from being misclassified as part_number or po_number
+            'work_order_id': [
+                # WO-12345, WO#12345, WO 12345
+                re.compile(r'\b(WO\s*[#:\-/]?\s*\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # WORK-ORDER-12345, WORK ORDER-12345, WORKORDER-12345
+                re.compile(r'\b(WORK[- ]?ORDER\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # "work order 12345" (natural language)
+                re.compile(r'\b(work\s+order\s*[:#-]?\s*\d{3,8}(?:-\d{1,3})?)\b', re.I),
+            ],
+
+            # Business document IDs (PO, Invoice, Quote, SR, Job numbers)
+            # NOTE: WO patterns moved to dedicated work_order_id above
             # Captures: LETTERS + SEPARATOR + NUMBERS with flexible formatting
             'po_number': [
                 # COMPREHENSIVE: 1-10 letters + optional separator + 3-8 digits + optional sub-number
@@ -725,8 +921,7 @@ class RegexExtractor:
                 # Quote: "QUOTE-12345", "Q-98765", "Quote #12345"
                 re.compile(r'\b((?:QUOTE|Q)\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
 
-                # Work Order: "WO-12345", "WORK-ORDER-12345"
-                re.compile(r'\b((?:WO|WORK[- ]?ORDER)\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # NOTE: Work Order patterns moved to dedicated 'work_order_id' type above
 
                 # Service Request: "SR-12345", "SERVICE-REQ-12345"
                 re.compile(r'\b((?:SR|SERVICE[- ]?REQ(?:UEST)?)\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
@@ -736,7 +931,7 @@ class RegexExtractor:
 
                 # Long-form natural language WITH digits
                 re.compile(r'\b(purchase\s+order\s*[:#-]?\s?\d{3,8}(?:-\d{1,3})?)\b', re.I),
-                re.compile(r'\b(work\s+order\s*[:#-]?\s?\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # NOTE: "work order" pattern moved to 'work_order_id' type
                 re.compile(r'\b(invoice\s+(?:number|#)?\s*[:#-]?\s?\d{3,8}(?:-\d{1,4})?)\b', re.I),
 
                 # P0 FIX: REMOVED literal patterns that extracted question keywords
@@ -1015,6 +1210,8 @@ class RegexExtractor:
                 # Procurement actions
                 'order', 'ordering', 'request', 'requesting', 'purchase', 'purchasing',
                 'procure', 'procuring', 'requisition', 'requisitioning', 'buy', 'buying', 'source', 'sourcing',
+                # Phase 2 (2026-02-03): Added inventory actions
+                'restock', 'restocking', 'replenish', 'replenishing', 'resupply', 'resupplying',
 
                 # Approval/Authorization actions
                 'approve', 'approving', 'authorize', 'authorizing', 'certify', 'certifying',
@@ -1256,11 +1453,78 @@ class RegexExtractor:
         # Org: Add FILTERED manufacturers from REGEX_PRODUCTION
         gazetteer['org'] = gazetteer['org'] | filtered_manufacturers
 
+        # Fix 2026-02-02: Merge entity_extraction_gazetteer for crew/inventory/receiving lens entity types
+        # These types (REST_COMPLIANCE, WARNING_STATUS, etc.) are defined in entity_extraction_loader.py
+        # but were missing from the manual gazetteer, causing zero-entity extraction for "MLC compliance" etc.
+        eeg = get_equipment_gazetteer()
+        for key in ['REST_COMPLIANCE', 'WARNING_SEVERITY', 'WARNING_STATUS', 'stock_status',
+                    'shopping_list_term', 'approval_status', 'source_type', 'urgency_level',
+                    'receiving_status']:  # Added for receiving lens
+            if key in eeg:
+                if key not in gazetteer:
+                    gazetteer[key] = set()
+                gazetteer[key] = gazetteer[key] | eeg[key]
+
         # Convert to lowercase for case-insensitive matching
         for entity_type in gazetteer:
             gazetteer[entity_type] = {term.lower() for term in gazetteer[entity_type]}
 
+        # Phase 2 (2026-02-03): Auto-expand gazetteer with plurals and abbreviations
+        # Instead of manually adding "gaskets", we generate it from "gasket"
+        if NORMALIZER_AVAILABLE and TEXT_NORMALIZER:
+            self._expand_gazetteer_variations(gazetteer)
+
         return gazetteer
+
+    def _expand_gazetteer_variations(self, gazetteer: Dict[str, Set[str]]):
+        """
+        Automatically expand gazetteer with plurals and common variations.
+
+        This eliminates the need to manually add:
+        - gaskets (plural of gasket)
+        - generators (plural of generator)
+        - gen, genset (abbreviations of generator)
+
+        Uses TextNormalizer to generate variations intelligently.
+        """
+        # Types that benefit from plural/variation expansion
+        # COMP-007 FIX (2026-02-03): Added 'subcomponent' for gaskets → gasket normalization
+        expandable_types = {'equipment', 'equipment_type', 'part', 'brand', 'subcomponent'}
+
+        for entity_type in expandable_types:
+            if entity_type not in gazetteer:
+                continue
+
+            original_terms = list(gazetteer[entity_type])
+            new_terms = set()
+
+            for term in original_terms:
+                # Get all variations (plurals, abbreviations, synonyms)
+                variations = TEXT_NORMALIZER.get_variations(term)
+                new_terms.update(variations)
+
+            # Add new terms to gazetteer
+            gazetteer[entity_type] = gazetteer[entity_type] | new_terms
+
+        # Also add common abbreviation patterns
+        abbrev_mappings = {
+            'equipment': [
+                ('gen', 'generator'),
+                ('genset', 'generator'),
+                ('genny', 'generator'),
+                ('watermaker', 'watermaker'),
+                ('desalinator', 'watermaker'),
+            ],
+        }
+
+        for entity_type, mappings in abbrev_mappings.items():
+            if entity_type not in gazetteer:
+                continue
+            for abbrev, canonical in mappings:
+                if canonical in gazetteer[entity_type]:
+                    gazetteer[entity_type].add(abbrev)
+
+        logger.debug(f"Expanded gazetteer with variations for {expandable_types}")
 
     def _normalize_unicode(self, text: str) -> str:
         """
@@ -1319,8 +1583,20 @@ class RegexExtractor:
         # DOCUMENT LENS FIX (2026-02-02): Extract document_id and document_type FIRST
         # These patterns are highly specific (e.g., DNV-123456) and should not be blocked
         # by generic brand extraction (e.g., "DNV" alone)
-        # Priority: document patterns → entity_extraction → other regex → gazetteer
-        doc_priority_types = ['document_id', 'document_type']
+        # LOCATION FIX (2026-02-02): Extract location_on_board BEFORE equipment_brand gazetteer
+        # "engine room" was incorrectly matching equipment_brand instead of location
+        # NEG-003 FIX (2026-02-03): Extract work_order_status BEFORE entity_extraction
+        # "not completed" must be extracted before "completed" gets matched as fault_classification
+        # ID-007 FIX (2026-02-03): Extract part_number_prefix BEFORE brand gazetteer
+        # "beginning with CAT" must be extracted before "CAT" gets matched as brand
+        # WO-12345 FIX (2026-02-03): Extract work_order_id BEFORE part_number/po_number
+        # "WO-12345" must be extracted as work_order_id, not part_number
+        # SHOPPING LIST FIX (2026-02-03): shopping_list_term BEFORE document_type
+        # "parts list" should be shopping_list_term, not document_type
+        # APPROVAL_STATUS FIX (2026-02-03): work_order_status FIRST to catch "pending work orders"
+        # Then approval_status catches standalone "pending" for shopping lists
+        # Priority: doc_id → shopping_list → doc_type → wo_id → location → wo_status → approval → prefix
+        doc_priority_types = ['document_id', 'shopping_list_term', 'document_type', 'work_order_id', 'location_on_board', 'work_order_status', 'approval_status', 'part_number_prefix']
         for entity_type in doc_priority_types:
             if entity_type in self.patterns:
                 patterns = self.patterns[entity_type]
@@ -1474,6 +1750,12 @@ class RegexExtractor:
         entities.extend(gaz_entities)
         covered_spans.extend(gaz_spans)
         extracted_spans.extend(gaz_spans)  # Track gazetteer spans too
+
+        # Fix #4: Fuzzy matching for brand misspellings (2026-02-02)
+        # Runs LAST as fallback for tokens that weren't matched exactly
+        fuzzy_entities, fuzzy_spans = self._fuzzy_brand_extract(text, extracted_texts, extracted_spans)
+        entities.extend(fuzzy_entities)
+        covered_spans.extend(fuzzy_spans)
 
         # spaCy/NER removed - using regex + gazetteer + AI only
         # NOTE: entity_extraction now runs FIRST (moved to line ~1232 for crew lens fix)
@@ -1630,6 +1912,224 @@ class RegexExtractor:
                         break  # Only take first occurrence of each term
 
                     start = pos + 1
+
+        return entities, spans
+
+    def _fuzzy_brand_extract(self, text: str, already_extracted: Set[str], existing_spans: List[Tuple[int, int]]) -> Tuple[List[Entity], List[Tuple[int, int]]]:
+        """
+        Fix #4 + Phase 2+3: Fuzzy matching for misspellings (2026-02-02).
+
+        Uses rapidfuzz to match misspelled terms against:
+        1. CORE_BRANDS (brand names)
+        2. CORE_EQUIPMENT (equipment terms like generator, pump, etc.)
+        3. CORE_FUZZY_TERMS (stock, inventory, warning terms, etc.)
+
+        Examples:
+        - "Caterpiller" → "caterpillar" (brand)
+        - "genaratur" → "generator" (equipment)
+        - "stok" → "stock" (stock_status)
+        - "warrnings" → "warnings" (WARNING_STATUS)
+
+        Conservative thresholds:
+        - Score cutoff: 75-82 (based on word length)
+        - Min token length: 4 chars
+        """
+        if not RAPIDFUZZ_AVAILABLE:
+            return [], []
+
+        entities = []
+        spans = []
+
+        # Phase 2 (2026-02-03): Pre-process multi-word aliases first
+        text_lower = text.lower()
+        for alias, canonical in BRAND_ALIASES.items():
+            if ' ' in alias and alias in text_lower:
+                pos = text_lower.find(alias)
+                if pos != -1:
+                    span = (pos, pos + len(alias))
+                    # Check span overlap
+                    is_overlapping = any(span[0] < es[1] and es[0] < span[1] for es in existing_spans)
+                    if not is_overlapping:
+                        entity = Entity(
+                            text=canonical,
+                            entity_type='brand',
+                            confidence=0.95,  # High confidence for known aliases
+                            source='alias',
+                            span=span,
+                            negated=False,
+                            metadata={
+                                'source_file': 'BRAND_ALIAS',
+                                'original': alias,
+                                'matched': canonical
+                            }
+                        )
+                        entities.append(entity)
+                        spans.append(span)
+                        existing_spans.append(span)  # Add to existing spans to prevent overlaps
+                        logger.debug(f"Multi-word brand alias: '{alias}' → '{canonical}'")
+
+        # Tokenize text
+        words = re.findall(r'\b\w+\b', text)
+        core_brands_list = list(CORE_BRANDS)
+        core_equipment_list = list(CORE_EQUIPMENT)
+        core_fuzzy_terms_list = list(CORE_FUZZY_TERMS.keys())
+
+        for word in words:
+            word_lower = word.lower()
+
+            # Skip if already extracted
+            if word_lower in already_extracted:
+                continue
+
+            # Skip short words (too many false positives)
+            if len(word) < 4:
+                continue
+
+            # Skip if exact match exists
+            if word_lower in CORE_BRANDS or word_lower in CORE_EQUIPMENT or word_lower in CORE_FUZZY_TERMS:
+                continue
+
+            # Phase 2 (2026-02-03): Check BRAND_ALIASES for known misspellings/variations
+            if word_lower in BRAND_ALIASES:
+                canonical = BRAND_ALIASES[word_lower]
+                pos = text.lower().find(word_lower)
+                if pos != -1:
+                    span = (pos, pos + len(word))
+                    # Check span overlap
+                    is_overlapping = any(span[0] < es[1] and es[0] < span[1] for es in existing_spans)
+                    if not is_overlapping:
+                        entity = Entity(
+                            text=canonical,
+                            entity_type='brand',
+                            confidence=0.95,  # High confidence for known aliases
+                            source='alias',
+                            span=span,
+                            negated=False,
+                            metadata={
+                                'source_file': 'BRAND_ALIAS',
+                                'original': word,
+                                'matched': canonical
+                            }
+                        )
+                        entities.append(entity)
+                        spans.append(span)
+                        logger.debug(f"Brand alias: '{word}' → '{canonical}'")
+                        continue
+
+            # Find position in text
+            pos = text.lower().find(word_lower)
+            if pos == -1:
+                continue
+
+            end_pos = pos + len(word)
+            span = (pos, end_pos)
+
+            # Check for span overlap
+            is_overlapping = False
+            for existing_span in existing_spans:
+                if span[0] < existing_span[1] and existing_span[0] < span[1]:
+                    is_overlapping = True
+                    break
+            if is_overlapping:
+                continue
+
+            # Dynamic score cutoff based on word length
+            # Longer words can have more typos, so lower threshold
+            if len(word) >= 8:
+                score_cutoff = 75  # "genaratur" → "generator" (77.8%)
+            elif len(word) >= 6:
+                score_cutoff = 78
+            else:
+                score_cutoff = 82  # Stricter for short words
+
+            # Try fuzzy match against brands first
+            brand_result = fuzz_process.extractOne(
+                word_lower,
+                core_brands_list,
+                scorer=fuzz.ratio,
+                score_cutoff=score_cutoff
+            )
+
+            # Try fuzzy match against equipment
+            equipment_result = fuzz_process.extractOne(
+                word_lower,
+                core_equipment_list,
+                scorer=fuzz.ratio,
+                score_cutoff=score_cutoff
+            )
+
+            # Try fuzzy match against CORE_FUZZY_TERMS (stock, warning, compliance terms)
+            fuzzy_terms_result = fuzz_process.extractOne(
+                word_lower,
+                core_fuzzy_terms_list,
+                scorer=fuzz.ratio,
+                score_cutoff=score_cutoff
+            )
+
+            # Pick the best match from all three sources
+            matched_term = None
+            entity_type = None
+            score = 0
+
+            # Collect all results with their scores
+            results = []
+            if brand_result:
+                results.append(('brand', brand_result[0], brand_result[1]))
+            if equipment_result:
+                results.append(('equipment', equipment_result[0], equipment_result[1]))
+            if fuzzy_terms_result:
+                # Get entity type from CORE_FUZZY_TERMS mapping
+                ft_term = fuzzy_terms_result[0]
+                ft_type = CORE_FUZZY_TERMS.get(ft_term, 'unknown')
+                results.append((ft_type, ft_term, fuzzy_terms_result[1]))
+
+            # Pick highest scoring result
+            if results:
+                results.sort(key=lambda x: -x[2])  # Sort by score descending
+                entity_type, matched_term, score = results[0]
+
+            if matched_term and entity_type:
+                # Additional validation for short words
+                if len(word) <= 5 and score < 85:
+                    continue
+
+                # Confidence based on entity type
+                # Different types have different thresholds, so we set confidence accordingly
+                # Note: fuzzy source multiplier is 0.92, so we need to account for that:
+                # adjusted_conf = confidence * 0.92 must be >= threshold
+                if entity_type == 'brand':
+                    fuzzy_confidence = 0.39  # 0.39 * 0.92 = 0.359 >= 0.35 threshold
+                elif entity_type == 'equipment':
+                    fuzzy_confidence = 0.78  # 0.78 * 0.92 = 0.718 >= 0.70 threshold
+                elif entity_type in ('stock_status', 'WARNING_STATUS', 'WARNING_SEVERITY',
+                                      'REST_COMPLIANCE', 'receiving_status'):
+                    fuzzy_confidence = 0.62  # 0.62 * 0.92 = 0.570 >= 0.55 threshold (raised from 0.58)
+                elif entity_type in ('action', 'system'):
+                    fuzzy_confidence = 0.78  # Standard confidence for action/system
+                else:
+                    fuzzy_confidence = 0.78  # Default for unknown types
+
+                metadata = {
+                    'source_file': 'FUZZY_MATCH',
+                    'original': word,
+                    'matched': matched_term,
+                    'score': score
+                }
+
+                entity = Entity(
+                    text=matched_term.title(),
+                    entity_type=entity_type,
+                    confidence=fuzzy_confidence,
+                    source='fuzzy',
+                    span=span,
+                    negated=False,
+                    metadata=metadata
+                )
+
+                entities.append(entity)
+                spans.append(span)
+                already_extracted.add(word_lower)
+                logger.debug(f"Fuzzy match: '{word}' → '{matched_term}' ({entity_type}, score={score})")
 
         return entities, spans
 

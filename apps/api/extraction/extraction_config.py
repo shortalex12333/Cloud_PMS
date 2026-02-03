@@ -21,7 +21,9 @@ class ExtractionConfig:
                 'gazetteer': 0.95,
                 'proper_noun': 0.85,
                 'ai': 0.70,
-                'fallback_py': 0.90
+                'fallback_py': 0.90,
+                'fuzzy': 0.92,  # Fix #4: Fuzzy brand matching (validated by 80% score cutoff)
+                'stitched': 1.0  # Phase 2: Adjacency-stitched compounds (high confidence)
             }
         )
 
@@ -29,16 +31,16 @@ class ExtractionConfig:
         self.confidence_thresholds = self._load_json_or_default(
             'CONFIDENCE_THRESHOLDS_JSON',
             {
-                'equipment': 0.70,
+                'equipment': 0.55,  # Fix 2026-02-02: Lowered from 0.70 to allow gazetteer matches (0.64*0.95=0.608)
                 'measurement': 0.75,
                 'fault_code': 0.70,
                 'model': 0.75,
                 'org': 0.75,
                 'org_ai': 0.85,  # AI-sourced ORGs need higher confidence
                 'status': 0.75,
-                'symptom': 0.80,
-                'system': 0.75,
-                'location_on_board': 0.75,
+                'symptom': 0.70,  # Fix 2026-02-02: Lowered from 0.80 to catch more symptom extractions
+                'system': 0.65,   # Fix 2026-02-02: Lowered from 0.75 to allow system extractions
+                'location_on_board': 0.55,  # Fix 2026-02-02: Lowered to allow gazetteer matches
                 'person': 0.75,
                 'document_type': 0.75,
                 'document_id': 0.80,
@@ -63,33 +65,72 @@ class ExtractionConfig:
                 'supplier_name': 0.75,
                 'delivery_date': 0.85,
                 'receiver_name': 0.75,
-                'receiving_status': 0.75,
+                'receiving_status': 0.35,  # Fix 2026-02-02: Lowered from 0.75 to allow weight-based gazetteer matches (0.40*0.95=0.38)
+                # Shopping List & Inventory Lens (Root Cause #2 Fix - 2026-02-02)
+                # These were missing, causing entities to be shadow-filtered by default 0.75 threshold
+                'shopping_list_term': 0.55,  # Allows 0.60 confidence matches (lowered for "buy list" etc.)
+                'approval_status': 0.55,     # Allows 0.60 confidence matches
+                'stock_status': 0.45,        # Fix: Lowered from 0.55 to allow 0.50 confidence gazetteer matches
+                'source_type': 0.45,         # Low confidence source types
+                # Fix #3: Part/Equipment Type thresholds (2026-02-02)
+                # Base weight=2.8 → conf=0.56, was defaulting to 0.75 and filtering out
+                # Common terms like "filter", "pump", "valve", "seal" were being discarded
+                'part': 0.50,                # Allows 0.56 confidence matches
+                'equipment_type': 0.50,      # Allows 0.56 confidence matches
+                # Crew & Compliance Lens
+                'REST_COMPLIANCE': 0.55,     # Allows 0.60+ confidence matches
+                'WARNING_STATUS': 0.55,      # Allows 0.60+ confidence matches
+                'WARNING_SEVERITY': 0.80,    # Kept high for accuracy
+                # Time references
+                'time_ref': 0.70,            # Time-based queries
+                # Note: location_on_board threshold defined above at 0.55 (line 43)
+                # Removed duplicate 0.70 entry that was overriding it (Fix 2026-02-03)
+                # Phase 2: Generic numeric identifiers (2026-02-02)
+                'identifier': 0.90,          # High threshold - only confident matches
             }
         )
 
         # Overlap resolution scoring weights
+        # Fix (2026-02-02): Increased span_length weight to favor compound phrases over single words
+        # "low stock" should beat "low" even though "low" has higher confidence
         self.overlap_weights = self._load_json_or_default(
             'OVERLAP_WEIGHTS_JSON',
             {
-                'adjusted_confidence': 0.5,
-                'span_length_norm': 0.3,
-                'type_priority': 0.2
+                'adjusted_confidence': 0.30,  # Reduced from 0.5 - confidence less important than specificity
+                'span_length_norm': 0.55,     # Increased from 0.3 - longer spans (compounds) win overlaps
+                'type_priority': 0.15         # Reduced from 0.2
             }
         )
 
         # Entity type precedence (higher value = higher priority in overlaps)
+        # Fix 2026-02-03: Added missing types that were defaulting to 10
+        # This caused brand→equipment conversion, approval_status loss, etc.
         self.type_precedence = self._load_json_or_default(
             'TYPE_PRECEDENCE_JSON',
             {
                 'fault_code': 100,
+                'work_order_id': 95,       # NEW: Extract WO-12345 before part_number
+                'document_id': 92,         # NEW: Extract DNV-123456 before part_number
                 'model': 90,
                 'part_number': 85,
+                'brand': 82,               # NEW: Beat equipment (80) in overlaps
+                'equipment_brand': 82,     # NEW: Beat equipment (80) in overlaps
                 'equipment': 80,
+                'document_type': 78,       # NEW: Document types have priority
+                'document': 75,            # NEW: Generic document reference
                 'org': 70,
+                'approval_status': 68,     # NEW: Shopping list approval status
+                'shopping_list_term': 66,  # NEW: Shopping list terms
                 'measurement': 60,
                 'location_on_board': 50,
                 'action': 40,
+                'work_order_status': 35,   # NEW: Work order status (below action)
                 'status': 30,
+                'receiving_status': 28,    # NEW: Receiving lens status
+                'stock_status': 28,        # NEW: Inventory lens status
+                'WARNING_SEVERITY': 65,    # NEW: Crew lens warning severity
+                'WARNING_STATUS': 63,      # NEW: Crew lens warning status
+                'urgency_level': 60,       # NEW: Shopping list urgency
                 'other': 10
             }
         )
@@ -141,7 +182,7 @@ class ExtractionConfig:
         """Get type precedence score for overlap resolution"""
         return self.type_precedence.get(entity_type, self.type_precedence.get('other', 10))
 
-    def calculate_overlap_score(self, entity, max_span_length: int = 100) -> float:
+    def calculate_overlap_score(self, entity, max_span_length: int = 30) -> float:
         """
         Calculate overlap resolution score for an entity
 
