@@ -194,6 +194,8 @@ class RegexExtractor:
         'work_order_type',     # NEW: Extract "corrective maintenance" before "corrective"
         'equipment',           # NEW: Extract "gen 1", "genset 2" numbered equipment
         'work_order_status',   # WORK ORDERS: Extract "open work orders" BEFORE "open" becomes symptom
+        'approval_status',     # FIX 2026-02-03: Shopping list approval status
+        'shopping_list_term',  # FIX 2026-02-03: Shopping list terms BEFORE document_type
         'rest_compliance',     # CREW: Extract "non-compliant" BEFORE "compliant" becomes status
         'warning_severity',    # CREW: Extract "critical warning" BEFORE "critical" becomes symptom
         'delivery_date',       # RECEIVING: Extract "recent deliveries" as single phrase
@@ -208,6 +210,7 @@ class RegexExtractor:
         'limit',               # MOVED UP: Limits before models
         'document_id',         # DOCUMENT LENS: Extract document IDs (CERT-, IMO-, DNV-) BEFORE part_number
         'document_type',       # DOCUMENT LENS: Extract document types BEFORE generic terms
+        'work_order_id',       # FIX 2026-02-03: Extract WO-12345 BEFORE part_number/po_number
         'model',               # Model codes after measurements to prevent false matches
         'part_number_prefix',  # NEW: Extract "starting with FLT" before generic patterns
         'part_number',         # After model and document_id to avoid matching doc IDs as parts
@@ -322,13 +325,33 @@ class RegexExtractor:
             # Work Order Lens (PR #64) - Must extract BEFORE symptom patterns
             # FIX Issue #2: Require "work" keyword for order phrases to prevent capturing shopping list queries
             # Phase 2 (2026-02-03): Added negative status patterns
+            # FIX 2026-02-03: Removed standalone "pending" - conflicts with approval_status for shopping lists
             'work_order_status': [
                 re.compile(r'\b(open\s+work\s+orders?|closed\s+work\s+orders?|in\s+progress|overdue\s+(?:tasks?|work\s+orders?)|completed\s+work\s+orders?|pending\s+work\s+orders?)\b', re.IGNORECASE),
                 re.compile(r'\b(work\s+orders?)\b', re.IGNORECASE),
                 # NEW: Negative completion patterns (expanded for systemic coverage)
-                re.compile(r'\b(not\s+(?:completed|complete|finished|done)|incomplete|unfinished|uncompleted|unfinished|pending)\b', re.IGNORECASE),
-                # NEW: Status patterns
+                # NOTE: Removed standalone "pending" - use "pending work order" instead
+                re.compile(r'\b(not\s+(?:completed|complete|finished|done)|incomplete|unfinished|uncompleted)\b', re.IGNORECASE),
+                # NEW: Status patterns (no standalone "pending" - conflicts with shopping list approval_status)
                 re.compile(r'\b(planned|scheduled|in_progress|cancelled|deferred)\b', re.IGNORECASE),
+            ],
+            # FIX 2026-02-03: Shopping List approval_status patterns
+            # "pending", "approved", "rejected" in shopping list context
+            'approval_status': [
+                # Compound patterns with shopping list context
+                re.compile(r'\b(pending|approved|rejected|needs\s+approval|pending\s+approval|awaiting\s+approval)\s+(?:items?|parts?|orders?|list|shopping)?\b', re.IGNORECASE),
+                # Standalone statuses (will be used when shopping list context detected)
+                re.compile(r'\b(pending|approved|rejected|draft|submitted|cancelled)\b', re.IGNORECASE),
+            ],
+            # FIX 2026-02-03: Shopping list term patterns
+            # Extracts BEFORE document_type to prevent "parts list" → document_type conflict
+            'shopping_list_term': [
+                # Explicit shopping list terms
+                re.compile(r'\b(shopping\s+list|buy\s+list|purchase\s+list|order\s+list)\b', re.IGNORECASE),
+                # "parts list" when NOT followed by "manual", "document", "pdf", "file"
+                re.compile(r'\b(parts\s+list)(?!\s+(?:manual|document|pdf|file))\b', re.IGNORECASE),
+                # Requisition terms
+                re.compile(r'\b(requisition|req\s+list|spare\s+parts\s+list)\b', re.IGNORECASE),
             ],
             # NEW: Equipment operational status (Phase 2 - 2026-02-03)
             'equipment_status': [
@@ -782,7 +805,10 @@ class RegexExtractor:
                 re.compile(r'\b(installation\s+(?:manual|guide))\b', re.IGNORECASE),
                 re.compile(r'\b(operating\s+(?:manual|instructions))\b', re.IGNORECASE),
                 re.compile(r'\b(technical\s+(?:manual|specification|data))\b', re.IGNORECASE),
-                re.compile(r'\b(parts\s+(?:manual|catalog|list))\b', re.IGNORECASE),
+                # FIX 2026-02-03: "parts list" moved to shopping_list_term
+                # Only match "parts manual", "parts catalog", "parts list manual/document/pdf"
+                re.compile(r'\b(parts\s+(?:manual|catalog))\b', re.IGNORECASE),
+                re.compile(r'\b(parts\s+list\s+(?:manual|document|pdf|file))\b', re.IGNORECASE),
                 re.compile(r'\b(safety\s+(?:certificate|plan))\b', re.IGNORECASE),
                 re.compile(r'\b(survey\s+report)\b', re.IGNORECASE),
                 re.compile(r'\b(inspection\s+report)\b', re.IGNORECASE),
@@ -865,7 +891,19 @@ class RegexExtractor:
                 re.compile(r'\b(?:limit|max(?:imum)?|min(?:imum)?)\s+(\d+(?:[.,]\d+)?\s*(?:°?[CF]|[kmM]?V|[mM]?A|[kM]?Hz|RPM|bar|psi|kPa|MPa|%)?)\b', re.IGNORECASE),
             ],
 
-            # Business document IDs (PO, Invoice, Quote, WO, SR, Job numbers)
+            # FIX 2026-02-03: Dedicated work_order_id pattern (extracts BEFORE po_number)
+            # This prevents WO-12345 from being misclassified as part_number or po_number
+            'work_order_id': [
+                # WO-12345, WO#12345, WO 12345
+                re.compile(r'\b(WO\s*[#:\-/]?\s*\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # WORK-ORDER-12345, WORK ORDER-12345, WORKORDER-12345
+                re.compile(r'\b(WORK[- ]?ORDER\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # "work order 12345" (natural language)
+                re.compile(r'\b(work\s+order\s*[:#-]?\s*\d{3,8}(?:-\d{1,3})?)\b', re.I),
+            ],
+
+            # Business document IDs (PO, Invoice, Quote, SR, Job numbers)
+            # NOTE: WO patterns moved to dedicated work_order_id above
             # Captures: LETTERS + SEPARATOR + NUMBERS with flexible formatting
             'po_number': [
                 # COMPREHENSIVE: 1-10 letters + optional separator + 3-8 digits + optional sub-number
@@ -883,8 +921,7 @@ class RegexExtractor:
                 # Quote: "QUOTE-12345", "Q-98765", "Quote #12345"
                 re.compile(r'\b((?:QUOTE|Q)\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
 
-                # Work Order: "WO-12345", "WORK-ORDER-12345"
-                re.compile(r'\b((?:WO|WORK[- ]?ORDER)\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # NOTE: Work Order patterns moved to dedicated 'work_order_id' type above
 
                 # Service Request: "SR-12345", "SERVICE-REQ-12345"
                 re.compile(r'\b((?:SR|SERVICE[- ]?REQ(?:UEST)?)\s*[#:\-\s]?\d{3,8}(?:-\d{1,3})?)\b', re.I),
@@ -894,7 +931,7 @@ class RegexExtractor:
 
                 # Long-form natural language WITH digits
                 re.compile(r'\b(purchase\s+order\s*[:#-]?\s?\d{3,8}(?:-\d{1,3})?)\b', re.I),
-                re.compile(r'\b(work\s+order\s*[:#-]?\s?\d{3,8}(?:-\d{1,3})?)\b', re.I),
+                # NOTE: "work order" pattern moved to 'work_order_id' type
                 re.compile(r'\b(invoice\s+(?:number|#)?\s*[:#-]?\s?\d{3,8}(?:-\d{1,4})?)\b', re.I),
 
                 # P0 FIX: REMOVED literal patterns that extracted question keywords
@@ -1552,8 +1589,14 @@ class RegexExtractor:
         # "not completed" must be extracted before "completed" gets matched as fault_classification
         # ID-007 FIX (2026-02-03): Extract part_number_prefix BEFORE brand gazetteer
         # "beginning with CAT" must be extracted before "CAT" gets matched as brand
-        # Priority: document patterns → location → status → prefix → entity_extraction → other regex → gazetteer
-        doc_priority_types = ['document_id', 'document_type', 'location_on_board', 'work_order_status', 'part_number_prefix']
+        # WO-12345 FIX (2026-02-03): Extract work_order_id BEFORE part_number/po_number
+        # "WO-12345" must be extracted as work_order_id, not part_number
+        # SHOPPING LIST FIX (2026-02-03): shopping_list_term BEFORE document_type
+        # "parts list" should be shopping_list_term, not document_type
+        # APPROVAL_STATUS FIX (2026-02-03): work_order_status FIRST to catch "pending work orders"
+        # Then approval_status catches standalone "pending" for shopping lists
+        # Priority: doc_id → shopping_list → doc_type → wo_id → location → wo_status → approval → prefix
+        doc_priority_types = ['document_id', 'shopping_list_term', 'document_type', 'work_order_id', 'location_on_board', 'work_order_status', 'approval_status', 'part_number_prefix']
         for entity_type in doc_priority_types:
             if entity_type in self.patterns:
                 patterns = self.patterns[entity_type]
