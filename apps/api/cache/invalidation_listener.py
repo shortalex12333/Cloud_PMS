@@ -18,7 +18,7 @@ import json
 import logging
 import signal
 
-import aioredis
+import redis.asyncio as aioredis  # redis-py async API (aioredis is deprecated)
 import asyncpg
 
 logging.basicConfig(
