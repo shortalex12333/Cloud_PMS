@@ -14,6 +14,43 @@ from .extraction_config import config as extraction_config
 class EntityMerger:
     """Merges and validates entities from multiple sources with configurable thresholds."""
 
+    # ==========================================================================
+    # ADJACENCY STITCHING - Compound Entity Assembly (Phase 2 - 2026-02-03)
+    # ==========================================================================
+    # Defines which entity type pairs can be stitched into compound entities.
+    # Example: "Main" (qualifier) + "Engine" (equipment) → "Main Engine" (equipment)
+    #
+    # Format: {(type1, type2): result_type}
+    # The pair is checked both ways (A,B) and (B,A)
+
+    STITCHABLE_PAIRS = {
+        # Qualifier + Equipment → Equipment (e.g., "Main Engine", "Auxiliary Generator")
+        ('qualifier', 'equipment'): 'equipment',
+
+        # Equipment + Subcomponent → Equipment (e.g., "Engine Cylinder", "Pump Impeller")
+        ('equipment', 'subcomponent'): 'equipment',
+
+        # Equipment + System → Equipment (e.g., "Cooling System Pump")
+        ('system', 'equipment'): 'equipment',
+
+        # Location + Location → Location (e.g., "Port Side", "Aft Deck")
+        ('location_on_board', 'location_on_board'): 'location_on_board',
+
+        # NOTE: The following pairs are DISABLED because ground truth expects
+        # these entity types to remain SEPARATE for proper search/filtering:
+        #
+        # Location + Equipment - DISABLED (2026-02-03)
+        # Ground truth wants both location AND equipment as separate entities.
+        # "bilge pump" should extract as {location: "bilge", equipment: "pump"}
+        # ('location_on_board', 'equipment'): 'equipment',
+        #
+        # Brand + Equipment/Part - DISABLED (2026-02-03)
+        # "Racor filter" should extract as {brand: "Racor", part: "filter"}
+        # ('brand', 'equipment'): 'equipment',
+        # ('brand', 'part'): 'part',
+        # ('equipment', 'part'): 'equipment',
+    }
+
     def __init__(self, config: Dict = None):
         self.config = config or {}
 
@@ -28,6 +65,7 @@ class EntityMerger:
             'entities_filtered': 0,
             'entities_kept': 0,
             'overlaps_resolved': 0,
+            'compounds_stitched': 0,
             'reason_codes': {}
         }
 
@@ -46,8 +84,12 @@ class EntityMerger:
         # Combine all entities
         all_entities = regex_entities + ai_entities
 
-        # Remove duplicates and overlaps
-        deduplicated = self._deduplicate(all_entities)
+        # Phase 2 (2026-02-03): Stitch adjacent entities into compounds BEFORE dedup
+        # This allows compounds like "Main Engine" to win overlap resolution over "Engine"
+        stitched = self._stitch_compounds(all_entities, full_text)
+
+        # Remove duplicates and overlaps (compounds now win due to longer spans + higher confidence)
+        deduplicated = self._deduplicate(stitched)
 
         # Apply confidence thresholds
         filtered = self._filter_by_confidence(deduplicated)
@@ -92,6 +134,120 @@ class EntityMerger:
             seen_texts.add(text_key)
 
         return deduplicated
+
+    def _stitch_compounds(self, entities: List[Entity], full_text: str) -> List[Entity]:
+        """
+        Stitch adjacent entities into compound entities (Phase 2 - 2026-02-03).
+
+        Algorithm:
+        1. Sort entities by span start position
+        2. Check each pair for adjacency (gap ≤ 2 characters)
+        3. If pair types are in STITCHABLE_PAIRS, merge into compound
+        4. Compound gets boosted confidence (max of both + 0.05 bonus)
+
+        This runs BEFORE deduplication so compounds win overlap resolution.
+
+        Example:
+            Input:  [Entity("Main", qualifier, (0,4)), Entity("Engine", equipment, (5,11))]
+            Output: [Entity("Main Engine", equipment, (0,11))]  # Stitched!
+        """
+        if not entities or len(entities) < 2:
+            return entities
+
+        # Filter to entities with valid spans
+        entities_with_spans = [e for e in entities if e.span and len(e.span) == 2]
+        entities_without_spans = [e for e in entities if not e.span or len(e.span) != 2]
+
+        if len(entities_with_spans) < 2:
+            return entities
+
+        # Sort by span start
+        sorted_entities = sorted(entities_with_spans, key=lambda e: e.span[0])
+
+        stitched = []
+        skip_indices = set()
+
+        for i, ent in enumerate(sorted_entities):
+            if i in skip_indices:
+                continue
+
+            # Look for adjacent entity to stitch with
+            stitched_entity = ent
+            j = i + 1
+
+            while j < len(sorted_entities) and j not in skip_indices:
+                next_ent = sorted_entities[j]
+
+                # Check adjacency: gap between end of current and start of next
+                gap = next_ent.span[0] - stitched_entity.span[1]
+
+                # Allow gap of 0-2 characters (space, hyphen, or directly adjacent)
+                if gap < 0 or gap > 2:
+                    break  # No more adjacent entities
+
+                # Check if types can be stitched
+                result_type = self._get_stitch_result(stitched_entity.type, next_ent.type)
+
+                if result_type:
+                    # Stitch the entities
+                    # Get the text from original source for accuracy
+                    start_pos = stitched_entity.span[0]
+                    end_pos = next_ent.span[1]
+                    stitched_text = full_text[start_pos:end_pos] if full_text else f"{stitched_entity.text} {next_ent.text}"
+
+                    # Boost confidence for compound (max + bonus)
+                    compound_confidence = max(stitched_entity.confidence, next_ent.confidence) + 0.05
+                    compound_confidence = min(compound_confidence, 1.0)  # Cap at 1.0
+
+                    # Create compound entity
+                    stitched_entity = Entity(
+                        text=stitched_text.strip(),
+                        entity_type=result_type,
+                        confidence=compound_confidence,
+                        source='stitched',  # Mark as stitched for tracking
+                        span=(start_pos, end_pos),
+                        negated=getattr(stitched_entity, 'negated', False) or getattr(next_ent, 'negated', False),
+                        qualifier=getattr(stitched_entity, 'qualifier', None) or getattr(next_ent, 'qualifier', None),
+                        metadata={'stitched_from': [stitched_entity.type, next_ent.type]}
+                    )
+
+                    skip_indices.add(j)
+                    self.metrics['compounds_stitched'] += 1
+                    self._track_reason('entity_stitch', f'{stitched_entity.type}+{next_ent.type}')
+
+                    if extraction_config.debug_mode:
+                        print(f"[STITCH] '{stitched_entity.text}' + '{next_ent.text}' → "
+                              f"'{stitched_entity.text}' ({result_type}, conf={compound_confidence:.3f})")
+
+                    j += 1
+                else:
+                    break  # Types not stitchable
+
+            stitched.append(stitched_entity)
+
+        # Add back entities without spans (unchanged)
+        stitched.extend(entities_without_spans)
+
+        return stitched
+
+    def _get_stitch_result(self, type1: str, type2: str) -> str:
+        """
+        Check if two entity types can be stitched and return the result type.
+
+        Checks both (type1, type2) and (type2, type1) in STITCHABLE_PAIRS.
+
+        Returns:
+            Result entity type if stitchable, None otherwise.
+        """
+        # Check direct pair
+        if (type1, type2) in self.STITCHABLE_PAIRS:
+            return self.STITCHABLE_PAIRS[(type1, type2)]
+
+        # Check reverse pair
+        if (type2, type1) in self.STITCHABLE_PAIRS:
+            return self.STITCHABLE_PAIRS[(type2, type1)]
+
+        return None
 
     def _deduplicate(self, entities: List[Entity]) -> List[Entity]:
         """

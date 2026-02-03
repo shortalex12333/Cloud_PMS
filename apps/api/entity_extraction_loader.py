@@ -338,6 +338,8 @@ CORE_BRANDS = {
     'flojet',           # Pressure pumps
     'groco',            # US seacocks and strainers
     'racor',            # Fuel filtration (Parker)
+    'fleetguard',       # Filtration systems (Cummins)
+    'grundfos',         # Danish pumps (industrial/marine)
     'aqualarm',         # Bilge alarms
     'johnson',          # Pumps (SPX)
     'attwood',          # Marine accessories
@@ -1524,6 +1526,190 @@ CORE_BRANDS = {
     'auckland',         # New Zealand
 }
 
+# =============================================================================
+# BRAND BLACKLIST - Terms to exclude from brand extraction (Added 2026-02-03)
+# =============================================================================
+# PROBLEM: Some terms in the brand gazetteer conflict with other entity types.
+# EXAMPLE: "draft" is a brand but also an approval_status
+# EXAMPLE: "starboard" is a brand but also a location
+# SOLUTION: Exclude these from brand matching to prevent misclassification.
+#
+# These terms will be REMOVED from the brand and equipment_brand sets
+# after the gazetteer is built, allowing other entity types to match them.
+
+BRAND_BLACKLIST = {
+    # Approval statuses (shopping_list lens)
+    'draft',            # Matches approval_status, not a real maritime brand
+
+    # Location terms (work_order, inventory lens)
+    'starboard',        # Location, not a brand
+    'port',             # Location (note: also equipment like "port main")
+    'deck',             # Location, not a brand
+
+    # Classification societies (document lens) - these are ORG, not brands
+    'dnv',              # Det Norske Veritas (classification society)
+    'abs',              # American Bureau of Shipping
+    'lr',               # Lloyd's Register
+    'gl',               # Germanischer Lloyd (now DNV GL)
+    'nk',               # Nippon Kaiji Kyokai
+    'rina',             # Registro Italiano Navale
+    'kr',               # Korean Register
+    'bv',               # Bureau Veritas
+    'ccs',              # China Classification Society
+
+    # False positives from common words
+    'good',             # Common adjective, not a brand
+    'moth',             # Matches inside "month"
+    'log',              # Common word, matches inside "logs"
+}
+
+# =============================================================================
+# BRAND ALIASES - Common misspellings and variations (Added 2026-02-03)
+# =============================================================================
+# Maps common variations/misspellings to canonical brand names.
+# Used in preprocessing to normalize brand names before fuzzy matching.
+#
+# Format: 'variation': 'canonical_form'
+
+BRAND_ALIASES = {
+    # MTU variations
+    'm.t.u.': 'mtu',
+    'm t u': 'mtu',
+    'm-t-u': 'mtu',
+    'mtu ': 'mtu',
+
+    # Volvo Penta variations
+    'volvopenta': 'volvo penta',
+    'volvo-penta': 'volvo penta',
+    'vp': 'volvo penta',
+
+    # Caterpillar variations (common misspellings)
+    'catterpillar': 'caterpillar',
+    'catterpiller': 'caterpillar',
+    'caterpiller': 'caterpillar',
+    'catepillar': 'caterpillar',
+    'cattepillar': 'caterpillar',
+
+    # Northern Lights variations
+    'northen lights': 'northern lights',
+    'northern light': 'northern lights',
+    'northernlights': 'northern lights',
+
+    # Fleetguard variations
+    'fleetgard': 'fleetguard',
+    'fleet guard': 'fleetguard',
+    'fleet-guard': 'fleetguard',
+
+    # Racor variations
+    'rackor': 'racor',
+    'raycor': 'racor',
+
+    # Grundfos variations
+    'grundfoss': 'grundfos',
+    'grundfas': 'grundfos',
+
+    # Blue Sea Systems variations
+    'bluesea': 'blue sea systems',
+    'blue sea': 'blue sea systems',
+    'blue-sea': 'blue sea systems',
+
+    # Simrad variations
+    'simard': 'simrad',
+    'simrand': 'simrad',
+}
+
+# =============================================================================
+# CORE LOCATIONS - Maritime locations on board (Added 2026-02-03)
+# =============================================================================
+# These terms support entity extraction for location-based queries.
+# Critical for: work orders, inventory, crew assignments, document locations.
+#
+# Entity type: location_on_board
+# Impact: Without these, 25+ test queries fail due to missing location extraction.
+
+CORE_LOCATIONS = {
+    # ============= PRIMARY YACHT AREAS =============
+    'bridge',           # Navigation/command center
+    'galley',           # Kitchen
+    'engine room',      # Main machinery space
+    'crew quarters',    # Crew accommodation
+    'guest cabin',      # Guest accommodation
+    'master cabin',     # Owner's cabin
+    'salon',            # Main living area
+    'saloon',           # Alternative spelling
+
+    # ============= DECK AREAS =============
+    'deck',             # Generic deck reference
+    'main deck',        # Primary deck level
+    'upper deck',       # Above main deck
+    'lower deck',       # Below main deck
+    'sun deck',         # Top deck with sun loungers
+    'aft deck',         # Rear outdoor area
+    'fore deck',        # Forward outdoor area
+    'foredeck',         # Alternative spelling
+    'flybridge',        # Upper helm station
+    'fly bridge',       # Alternative spelling
+
+    # ============= DIRECTIONAL LOCATIONS =============
+    'bow',              # Forward end of vessel
+    'stern',            # Aft end of vessel
+    'port',             # Left side (facing forward)
+    'port side',        # Left side
+    'starboard',        # Right side (facing forward)
+    'starboard side',   # Right side
+    'midship',          # Middle of vessel
+    'midships',         # Alternative spelling
+    'fore',             # Forward area
+    'aft',              # Rear area
+
+    # ============= BELOW DECK SPACES =============
+    'bilge',            # Lowest point in hull
+    'lazarette',        # Aft storage compartment
+    'chain locker',     # Anchor chain storage
+    'anchor locker',    # Anchor storage
+    'forepeak',         # Forward storage area
+    'afterpeak',        # Aft storage area
+    'tank deck',        # Tank level
+    'void space',       # Empty compartment
+
+    # ============= TECHNICAL SPACES =============
+    'pump room',        # Pump machinery space
+    'control room',     # Monitoring/control area
+    'steering gear room',  # Steering machinery
+    'bow thruster room',   # Forward thruster space
+    'generator room',   # Generator compartment
+    'electrical room',  # Electrical distribution
+    'ac room',          # Air conditioning plant
+    'laundry',          # Laundry room
+    'cold room',        # Refrigerated storage
+    'freezer',          # Frozen storage
+
+    # ============= STORAGE AREAS =============
+    'locker',           # Storage compartment
+    'storage',          # Generic storage
+    'pantry',           # Food storage near galley
+    'wine cellar',      # Wine storage
+    'bosun locker',     # Deck equipment storage
+    'bosun\'s locker',  # Alternative spelling
+
+    # ============= CREW AREAS =============
+    'mess',             # Crew dining
+    'mess room',        # Crew dining room
+    'crew mess',        # Crew dining area
+    'captain cabin',    # Captain's quarters
+    'officer cabin',    # Officer accommodation
+    'crew cabin',       # Crew accommodation
+
+    # ============= EXTERIOR LOCATIONS =============
+    'swim platform',    # Aft swimming platform
+    'tender garage',    # Tender storage
+    'beach club',       # Aft water-level area
+    'passerelle',       # Boarding gangway
+    'gangway',          # Boarding ramp
+    'side deck',        # Side walkways
+    'cockpit',          # Helm area on smaller yachts
+}
+
 # CORE EQUIPMENT - Essential equipment types
 # These must always be recognized regardless of context
 CORE_EQUIPMENT = {
@@ -1791,6 +1977,15 @@ CORE_SHOPPING_LIST_TERMS = {
     'parts request', 'parts order', 'parts list',
     'order list', 'ordering', 'parts ordering',
     'buy list', 'purchase list', 'purchase order',
+    # Phase 1 additions (2026-02-02)
+    'materials list', 'supply list', 'supply request',
+    'shopping items', 'list items', 'order items',
+    'to order', 'to buy', 'needs ordering',
+    # Phase 2 additions (2026-02-03) - Common synonyms
+    'requisition', 'requisitions', 'purchase requisition',
+    'request', 'inventory request', 'parts requisition',
+    'reorder list', 'order request', 'supply order',
+    'procurement order', 'items to order', 'items to buy',
 }
 
 # Approval status terms (contextual: shopping list approval states)
@@ -1810,12 +2005,42 @@ CORE_URGENCY_LEVELS = {
 }
 
 # Source type terms
+# Note: 'receiving' removed (2026-02-03) - conflicts with receiving_status
+# Keep 'from receiving' as explicit source phrase
 CORE_SOURCE_TYPES = {
     'manual add', 'manually added', 'manual entry',
     'inventory low', 'low inventory', 'inventory alert',
     'work order', 'work order usage', 'from work order',
-    'receiving', 'from receiving', 'receiving report',
+    'from receiving',  # Explicit source phrase (not just 'receiving')
     'damaged', 'damage report', 'damaged part',
+}
+
+# =============================================================================
+# RECEIVING LENS - RECEIVING STATUS TERMS (Added 2026-02-02)
+# =============================================================================
+# These terms support entity extraction for receiving/delivery queries.
+# Critical for: tracking shipments, delivery status, backordered items.
+#
+# Entity type: receiving_status
+CORE_RECEIVING_STATUS = {
+    # Delivery status terms
+    'delivery', 'delivered', 'shipment', 'shipped', 'shipping',
+    'incomplete delivery', 'partial delivery', 'complete delivery',
+    # Single-word status terms (Fix 2026-02-03: "incomplete Yanmar parts delivery")
+    'incomplete', 'partial', 'complete',
+    'received', 'receiving', 'reception',
+    'backordered', 'backorder', 'back order', 'back ordered',
+    'verified', 'verified shipment', 'shipment verified',
+    'processing', 'processing delivery', 'in processing',
+    'pending', 'pending delivery', 'pending shipment',
+    'waiting', 'waiting for delivery', 'awaiting delivery',
+    'arrived', 'has arrived', 'arrival',
+    'missing', 'missing items', 'missing parts',
+    'damaged delivery', 'damaged shipment', 'damage report',
+    'rejected', 'rejected delivery', 'rejected shipment',
+    'accepted', 'accepted delivery',
+    'inspected', 'inspection complete',
+    'on hold', 'held', 'holding',
 }
 
 # =============================================================================
@@ -1849,6 +2074,14 @@ CORE_STOCK_STATUS = {
     'excess stock', 'overstocked', 'surplus stock', 'too much stock',
     'zero stock', 'no stock', 'empty stock', 'depleted', 'exhausted',
     'stock depleted', 'inventory depleted', 'stock exhausted',
+    # Additional inventory/stock terms (Fix 2026-02-02: Zero entity queries)
+    'supply shortage', 'shortage', 'supply issue', 'supply issues',
+    'empty shelves', 'shelves empty', 'nothing left',
+    'reorder', 'to reorder', 'urgent reorder', 'reorder soon',
+    'reorder not urgent', 'needs reordering',
+    'inventory status', 'stock status', 'supplies low', 'supplies running out',
+    # Single-word stock status terms (Fix 2026-02-03: failing ground truth tests)
+    'empty', 'insufficient', 'stock shortage',
 }
 
 # =============================================================================
@@ -1867,6 +2100,11 @@ CORE_REST_COMPLIANCE = {
     # Compliance states
     'compliant', 'non-compliant', 'non compliant', 'noncompliant',
     'in compliance', 'complies', 'complying',
+    # Single-word compliance (Fix 2026-02-03: "good compliance" query)
+    'compliance',
+    # Direct "rest compliance" queries (Fix: 2026-02-02)
+    'rest compliance', 'rest compliance issues', 'compliance issues',
+    'hours of rest', 'hours of rest compliance', 'rest hours',
     # Violations
     'violations', 'violation', 'violating', 'violated',
     'rest violation', 'rest violations', 'compliance violation',
@@ -1876,6 +2114,11 @@ CORE_REST_COMPLIANCE = {
     'not enough rest', 'insufficient rest', 'inadequate rest',
     'crew who didn\'t sleep', 'people not getting enough rest',
     'not getting enough rest', 'didn\'t get enough rest',
+    # Additional rest/compliance terms (Fix 2026-02-02: Zero entity queries)
+    'bad rest', 'poor rest', 'rest issues', 'rest problems',
+    'MLC', 'MLC compliance', 'MLC violation', 'MLC violations',
+    'maritime labour convention', 'maritime labor convention',
+    'crew rest', 'rest requirements', 'rest regulations',
 }
 
 # Warning severity levels
@@ -1900,6 +2143,8 @@ CORE_WARNING_STATUS = {
     # Status states
     'active', 'acknowledged', 'dismissed', 'resolved', 'closed',
     'open', 'pending', 'snoozed',
+    # Single-word terms (Phase 1 additions 2026-02-02)
+    'warnings', 'alerts', 'issues', 'problems',
     # Compound status terms
     'active warnings', 'open warnings', 'pending warnings',
     'acknowledged warnings', 'dismissed warnings', 'resolved warnings',
@@ -1907,6 +2152,82 @@ CORE_WARNING_STATUS = {
     'active alerts', 'open alerts', 'pending alerts',
 }
 
+
+# =============================================================================
+# FUZZY MATCHING TERMS (Phase 2 Fix - 2026-02-02)
+# =============================================================================
+# Terms that are commonly misspelled and should be fuzzy matched.
+# Maps canonical term → entity type for fuzzy matching fallback.
+# These terms are NOT in CORE_BRANDS or CORE_EQUIPMENT.
+
+CORE_FUZZY_TERMS = {
+    # Stock/Inventory terms (commonly misspelled)
+    'stock': 'stock_status',
+    'inventory': 'stock_status',
+    'reorder': 'stock_status',
+    'minimum': 'stock_status',
+    'maximum': 'stock_status',
+    'depleted': 'stock_status',
+    'overstocked': 'stock_status',
+    'shortage': 'stock_status',
+    'running': 'stock_status',  # "running low"
+    'below': 'stock_status',  # "below minimum"
+    # Warning/Alert terms
+    'warnings': 'WARNING_STATUS',
+    'warning': 'WARNING_STATUS',
+    'alerts': 'WARNING_STATUS',
+    'alert': 'WARNING_STATUS',
+    'critical': 'WARNING_SEVERITY',
+    'urgent': 'WARNING_SEVERITY',
+    'active': 'WARNING_STATUS',
+    # Compliance terms
+    'compliance': 'REST_COMPLIANCE',
+    'compliant': 'REST_COMPLIANCE',
+    'violations': 'REST_COMPLIANCE',
+    'violation': 'REST_COMPLIANCE',
+    # Equipment/System terms
+    'auxiliary': 'equipment',
+    'cooling': 'system',
+    'heating': 'system',
+    'ventilation': 'system',
+    'hydraulic': 'system',
+    'electrical': 'system',
+    # Work order terms
+    'maintenance': 'action',
+    'inspection': 'action',
+    'repair': 'action',
+    'replacement': 'action',
+    'service': 'action',
+    # Receiving/Delivery terms
+    'delivery': 'receiving_status',
+    'shipment': 'receiving_status',
+    'backordered': 'receiving_status',
+    'incomplete': 'receiving_status',
+    'verified': 'receiving_status',
+    'processing': 'receiving_status',
+    'received': 'receiving_status',
+    'pending': 'receiving_status',
+    'waiting': 'receiving_status',
+    'arrived': 'receiving_status',
+    # Action terms (Fix 2026-02-02: Zero entity queries)
+    'rebuild': 'action',
+    'survey': 'action',
+    'fixing': 'action',
+    'check': 'action',
+    'adjust': 'action',
+    'calibrate': 'action',
+    'overhaul': 'action',
+    'replace': 'action',
+    # Symptom terms
+    'broken': 'symptom',
+    'leak': 'symptom',
+    'leaking': 'symptom',
+    'stuck': 'symptom',
+    'faulty': 'symptom',
+    'damaged': 'symptom',
+    'failing': 'symptom',
+    'failed': 'symptom',
+}
 
 
 # =============================================================================
@@ -2148,6 +2469,8 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
         'equipment_brand': set(), # All brand terms (backward compatibility)
         'equipment_type': set(),  # All equipment terms
         'system_type': set(),     # System categories
+        # Location on board (Added 2026-02-03)
+        'location_on_board': set(),   # Maritime locations/areas on vessel
         # Shopping list categories (Added 2026-01-30)
         'shopping_list_term': set(),  # Shopping list keywords
         'approval_status': set(),     # Approval states
@@ -2155,6 +2478,8 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
         'source_type': set(),         # Source of shopping list items
         # Inventory Lens - Stock Status (Added 2026-02-02)
         'stock_status': set(),        # Stock level status phrases
+        # Receiving Lens - Receiving Status (Added 2026-02-02)
+        'receiving_status': set(),    # Delivery/receiving status terms
         # Crew Lens - Hours of Rest (Added 2026-01-31)
         'REST_COMPLIANCE': set(),     # Rest compliance status
         'WARNING_SEVERITY': set(),    # Warning severity levels
@@ -2179,6 +2504,9 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
     gazetteer['part'].update(CORE_PARTS)
     gazetteer['symptom'].update(CORE_SYMPTOMS)
 
+    # Add core locations (Added 2026-02-03)
+    gazetteer['location_on_board'].update(CORE_LOCATIONS)
+
     # Add shopping list terms (Added 2026-01-30 for fast-path extraction)
     gazetteer['shopping_list_term'].update(CORE_SHOPPING_LIST_TERMS)
     gazetteer['approval_status'].update(CORE_APPROVAL_STATUSES)
@@ -2187,6 +2515,9 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
 
     # Add inventory lens terms (Added 2026-02-02 for fast-path stock status extraction)
     gazetteer['stock_status'].update(CORE_STOCK_STATUS)
+
+    # Add receiving lens terms (Added 2026-02-02 for delivery/receiving status extraction)
+    gazetteer['receiving_status'].update(CORE_RECEIVING_STATUS)
 
     # Add crew lens terms (Added 2026-01-31 for fast-path crew extraction)
     gazetteer['REST_COMPLIANCE'].update(CORE_REST_COMPLIANCE)
@@ -2272,14 +2603,29 @@ def load_equipment_gazetteer() -> Dict[str, Set[str]]:
             clean_domain = re.sub(r'^\d+:\s*', '', domain)
             gazetteer['system_type'].add(clean_domain.lower())
 
+    # =========================================================================
+    # STEP 3: Apply Brand Blacklist (Added 2026-02-03)
+    # =========================================================================
+    # Remove terms that conflict with other entity types (e.g., "draft" as brand
+    # when it should be approval_status, "starboard" as brand when it's a location)
+    blacklist_count = 0
+    for blacklisted_term in BRAND_BLACKLIST:
+        term_lower = blacklisted_term.lower()
+        if term_lower in gazetteer['brand']:
+            gazetteer['brand'].discard(term_lower)
+            blacklist_count += 1
+        if term_lower in gazetteer['equipment_brand']:
+            gazetteer['equipment_brand'].discard(term_lower)
+
     # Print summary of what was loaded
     print(f"✅ Loaded {total_terms:,} terms from {len(EQUIPMENT_PATTERNS)} equipment patterns")
-    print(f"   - {len(gazetteer['brand']):,} core brands")
+    print(f"   - {len(gazetteer['brand']):,} core brands (after {blacklist_count} blacklisted)")
     print(f"   - {len(gazetteer['equipment']):,} core equipment types")
     print(f"   - {len(gazetteer['part']):,} core parts")
     print(f"   - {len(gazetteer['symptom']):,} core symptoms")
     print(f"   - {len(gazetteer['equipment_brand']):,} total brand terms (incl. compound)")
     print(f"   - {len(gazetteer['system_type']):,} unique system types")
+    print(f"   - {len(gazetteer['location_on_board']):,} location terms")
     print(f"   - {len(gazetteer['shopping_list_term']):,} shopping list terms")
     print(f"   - {len(gazetteer['approval_status']):,} approval statuses")
     print(f"   - {len(gazetteer['urgency_level']):,} urgency levels")
@@ -2461,6 +2807,17 @@ def calculate_weight(entity_type: str, metadata: Dict, text_length: int = 0) -> 
         'human_report': 3.0,        # Human observations
         'shopping_list_term': 3.0,  # Shopping list queries (FIXED 2026-02-02)
         'approval_status': 3.0,     # Approval status (pending, approved, etc.) (FIXED 2026-02-02)
+        # Inventory Lens - Stock Status (FIXED 2026-02-03: was missing, defaulted to 2.0)
+        # threshold=0.45 → need weight>=2.25 → conf=weight/5.0
+        'stock_status': 2.5,        # Stock level status (reorder, depleted, shortage)
+        # Receiving Lens - Receiving Status (FIXED 2026-02-03)
+        # threshold=0.35 → need weight>=1.75
+        'receiving_status': 2.5,    # Delivery/receiving status
+        'source_type': 2.5,         # Source of inventory items
+        'urgency_level': 4.0,       # Urgency indicators (urgent, critical, ASAP)
+        # Location on board (FIXED 2026-02-03: was missing, defaulted to 2.0)
+        # threshold=0.55 → need weight>=2.75 → conf=weight/5.0
+        'location_on_board': 3.0,   # Maritime locations (deck, galley, bridge, etc.)
         'equipment_type': 2.8,      # Equipment types
         'part': 2.8,                # Parts and components (FIXED 2026-02-02: was missing, defaulted to 2.0)
         'action': 2.5,              # Action verbs
