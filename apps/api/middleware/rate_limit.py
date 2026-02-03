@@ -19,7 +19,7 @@ import os
 import time
 import logging
 
-import aioredis
+import redis.asyncio as aioredis  # redis-py async API (aioredis is deprecated)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
