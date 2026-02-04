@@ -7,9 +7,9 @@
  */
 
 import { X, Settings, Mail, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { getAuthHeaders } from '@/lib/authHelpers';
+import { useAuthSession, waitForSession } from '@/hooks/useAuthSession';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,20 +21,30 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [outlookStatus, setOutlookStatus] = useState<'loading' | 'connected' | 'disconnected'>('loading');
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Check OAuth status when integrations tab is active
-  useEffect(() => {
-    if (isOpen && activeTab === 'integrations') {
-      checkOutlookStatus();
-    }
-  }, [isOpen, activeTab]);
+  // Use auth session hook to get valid access token
+  const { accessToken, isReady } = useAuthSession();
 
-  const checkOutlookStatus = async () => {
+  const checkOutlookStatus = useCallback(async () => {
     try {
-      console.log('[SettingsModal] Checking Outlook status...');
-      const headers = await getAuthHeaders();
-      console.log('[SettingsModal] Got auth headers, making request');
-      const response = await fetch('/api/integrations/outlook/status', { headers });
+      // Wait for token if not ready
+      let token = accessToken;
+      if (!token) {
+        console.log('[SettingsModal] No token yet, waiting for session...');
+        token = await waitForSession(5000);
+      }
+
+      if (!token) {
+        console.error('[SettingsModal] No auth token available');
+        setOutlookStatus('disconnected');
+        return;
+      }
+
+      console.log('[SettingsModal] Checking Outlook status with token...');
+      const response = await fetch('/api/integrations/outlook/status', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       console.log('[SettingsModal] Status response:', response.status);
+
       if (response.ok) {
         const data = await response.json();
         console.log('[SettingsModal] Status data:', data);
@@ -48,21 +58,40 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       console.error('[SettingsModal] checkOutlookStatus failed:', error);
       setOutlookStatus('disconnected');
     }
-  };
+  }, [accessToken]);
+
+  // Check OAuth status when integrations tab is active AND auth is ready
+  useEffect(() => {
+    if (isOpen && activeTab === 'integrations' && isReady) {
+      checkOutlookStatus();
+    }
+  }, [isOpen, activeTab, isReady, checkOutlookStatus]);
 
   const handleConnectOutlook = async () => {
     setIsConnecting(true);
     try {
-      console.log('[SettingsModal] Connect clicked, getting auth headers...');
-      const headers = await getAuthHeaders();
-      console.log('[SettingsModal] Got headers, requesting auth-url...');
+      // Wait for token if not ready
+      let token = accessToken;
+      if (!token) {
+        console.log('[SettingsModal] Connect: No token yet, waiting...');
+        token = await waitForSession(5000);
+      }
+
+      if (!token) {
+        console.error('[SettingsModal] Connect: No auth token available');
+        setIsConnecting(false);
+        return;
+      }
+
+      console.log('[SettingsModal] Connect: Requesting auth-url...');
       const response = await fetch('/api/integrations/outlook/auth-url', {
         headers: {
-          ...headers,
+          Authorization: `Bearer ${token}`,
           'Cache-Control': 'no-cache',
         },
       });
       console.log('[SettingsModal] auth-url response:', response.status);
+
       if (response.ok) {
         const data = await response.json();
         console.log('[SettingsModal] Got OAuth URL, redirecting...');
@@ -81,16 +110,24 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const handleDisconnectOutlook = async () => {
     try {
-      const headers = await getAuthHeaders();
+      let token = accessToken;
+      if (!token) {
+        token = await waitForSession(5000);
+      }
+      if (!token) {
+        console.error('[SettingsModal] Disconnect: No auth token');
+        return;
+      }
+
       const response = await fetch('/api/integrations/outlook/disconnect', {
         method: 'POST',
-        headers,
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
         setOutlookStatus('disconnected');
       }
     } catch (error) {
-      console.error('Failed to disconnect:', error);
+      console.error('[SettingsModal] Disconnect error:', error);
     }
   };
 
