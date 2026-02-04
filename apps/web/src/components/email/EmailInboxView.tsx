@@ -8,6 +8,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mail, Link2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, Inbox, CheckCircle } from 'lucide-react';
 import { useInboxThreads, type EmailThread } from '@/hooks/useEmailData';
 import { LinkEmailModal } from './LinkEmailModal';
@@ -19,12 +20,19 @@ interface EmailInboxViewProps {
 }
 
 export function EmailInboxView({ className }: EmailInboxViewProps) {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [showLinked, setShowLinked] = useState(false);
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useInboxThreads(page, showLinked);
+
+  // Open email in full EmailSurface view
+  const handleOpenThread = (thread: EmailThread) => {
+    // Navigate to email inbox with thread ID as query param
+    router.push(`/email/inbox?thread=${thread.id}`);
+  };
 
   const threads = data?.threads || [];
   const hasMore = data?.has_more || false;
@@ -137,6 +145,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
               key={thread.id}
               thread={thread}
               onLinkClick={() => handleLinkClick(thread)}
+              onOpenClick={() => handleOpenThread(thread)}
             />
           ))}
         </div>
@@ -191,11 +200,16 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 interface ThreadRowProps {
   thread: EmailThread;
   onLinkClick: () => void;
+  onOpenClick: () => void;
 }
 
-function ThreadRow({ thread, onLinkClick }: ThreadRowProps) {
+function ThreadRow({ thread, onLinkClick, onOpenClick }: ThreadRowProps) {
   return (
-    <div className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-testid="email-thread-item">
+    <div
+      className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+      data-testid="email-thread-item"
+      onClick={onOpenClick}
+    >
       {/* Email Icon */}
       <Mail className="h-5 w-5 text-zinc-400 flex-shrink-0" />
 
@@ -217,7 +231,10 @@ function ThreadRow({ thread, onLinkClick }: ThreadRowProps) {
       <Button
         variant="outline"
         size="sm"
-        onClick={onLinkClick}
+        onClick={(e) => {
+          e.stopPropagation(); // Don't trigger row click
+          onLinkClick();
+        }}
         className="flex-shrink-0"
         data-testid="link-email-button"
       >
