@@ -191,21 +191,38 @@ function SettingsContent() {
     setConnectingOutlook(true);
     setOutlookError(null);
 
+    // Debug: Log state at click time
+    console.log('[Settings] Connect clicked - state:', {
+      isReady,
+      hasAccessToken: !!accessToken,
+      accessTokenLength: accessToken?.length,
+      accessTokenPrefix: accessToken?.substring(0, 20),
+    });
+
     try {
       // Ensure we have a fresh token
       let token = accessToken;
       if (!token) {
-        console.log('[Settings] No token, waiting for session...');
+        console.log('[Settings] No accessToken from hook, calling waitForSession...');
         token = await waitForSession(5000);
+        console.log('[Settings] waitForSession result:', {
+          gotToken: !!token,
+          tokenLength: token?.length,
+        });
       }
 
       if (!token) {
+        console.error('[Settings] FAILED: No token available after waitForSession');
         setOutlookError('Unable to authenticate. Please sign in again.');
         setConnectingOutlook(false);
         return;
       }
 
-      console.log('[Settings] Requesting auth URL with token length:', token.length);
+      console.log('[Settings] Making request with token:', {
+        length: token.length,
+        prefix: token.substring(0, 30),
+        suffix: token.substring(token.length - 10),
+      });
 
       const res = await fetch('/api/integrations/outlook/auth-url', {
         headers: {
