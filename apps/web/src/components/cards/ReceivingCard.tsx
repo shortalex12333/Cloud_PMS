@@ -146,10 +146,10 @@ export function ReceivingCard({ receiving, actions = [] }: ReceivingCardProps) {
             <div className="flex flex-wrap gap-2 mt-3">
               {actions.map((action) => (
                 <ActionButton
-                  key={action.action}
+                  key={action}
                   action={action}
-                  entityId={receiving.id}
-                  entityType="receiving"
+                  context={{ receiving_id: receiving.id, entity_type: 'receiving' }}
+                  size="sm"
                 />
               ))}
             </div>
