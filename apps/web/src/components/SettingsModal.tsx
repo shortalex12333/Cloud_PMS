@@ -9,6 +9,7 @@
 import { X, Settings, Mail, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { getAuthHeaders } from '@/lib/authHelpers';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -29,7 +30,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const checkOutlookStatus = async () => {
     try {
-      const response = await fetch('/api/integrations/outlook/status');
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/integrations/outlook/status', { headers });
       if (response.ok) {
         const data = await response.json();
         setOutlookStatus(data.connected ? 'connected' : 'disconnected');
@@ -44,12 +46,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleConnectOutlook = async () => {
     setIsConnecting(true);
     try {
-      const response = await fetch('/api/integrations/outlook/auth-url');
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/integrations/outlook/auth-url', {
+        headers: {
+          ...headers,
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.url) {
           window.location.href = data.url;
         }
+      } else {
+        console.error('Failed to get OAuth URL:', response.status);
       }
     } catch (error) {
       console.error('Failed to get OAuth URL:', error);
@@ -59,7 +69,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const handleDisconnectOutlook = async () => {
     try {
-      const response = await fetch('/api/integrations/outlook/disconnect', { method: 'POST' });
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/integrations/outlook/disconnect', {
+        method: 'POST',
+        headers,
+      });
       if (response.ok) {
         setOutlookStatus('disconnected');
       }

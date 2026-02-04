@@ -890,12 +890,22 @@ async def get_thread(
 
     try:
         # Get thread (yacht_id enforced)
+        # Use maybe_single() to avoid exception when no row found
         thread_result = supabase.table('email_threads').select('*').eq(
             'id', thread_id
-        ).eq('yacht_id', yacht_id).single().execute()
+        ).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not thread_result.data:
-            raise HTTPException(status_code=404, detail="Thread not found")
+            logger.info(f"[email/thread] Thread not found: thread_id={thread_id}, yacht_id={yacht_id}")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "thread_not_found",
+                    "message": "Thread not found or not accessible",
+                    "thread_id": thread_id,
+                    "yacht_id": yacht_id
+                }
+            )
 
         thread = thread_result.data
 
@@ -1953,14 +1963,20 @@ async def get_inbox_threads(
             )
 
         # No search query - simple inbox scan
+        # Note: direction is on email_messages, not email_threads.
+        # Use last_inbound_at/last_outbound_at to filter by thread direction.
         base_query = supabase.table('email_threads').select(
-            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, direction',
+            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at',
             count='exact'
         ).eq('yacht_id', yacht_id)
 
-        # Apply direction filter if specified (inbound = received, outbound = sent)
-        if direction in ('inbound', 'outbound'):
-            base_query = base_query.eq('direction', direction)
+        # Apply direction filter using timestamp columns
+        # inbound = threads that have received messages (last_inbound_at not null)
+        # outbound = threads that have sent messages (last_outbound_at not null)
+        if direction == 'inbound':
+            base_query = base_query.not_.is_('last_inbound_at', 'null')
+        elif direction == 'outbound':
+            base_query = base_query.not_.is_('last_outbound_at', 'null')
 
         if linked:
             # All threads
@@ -1984,12 +2000,14 @@ async def get_inbox_threads(
             # Fallback if RPC doesn't exist or returns no data
             if not result or not result.data:
                 fallback_query = supabase.table('email_threads').select(
-                    'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, direction'
+                    'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
                 ).eq('yacht_id', yacht_id)
 
-                # Apply direction filter to fallback too
-                if direction in ('inbound', 'outbound'):
-                    fallback_query = fallback_query.eq('direction', direction)
+                # Apply direction filter to fallback using timestamp columns
+                if direction == 'inbound':
+                    fallback_query = fallback_query.not_.is_('last_inbound_at', 'null')
+                elif direction == 'outbound':
+                    fallback_query = fallback_query.not_.is_('last_outbound_at', 'null')
 
                 all_threads = fallback_query.order(
                     'last_activity_at', desc=True
