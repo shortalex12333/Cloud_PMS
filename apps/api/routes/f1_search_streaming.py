@@ -494,12 +494,13 @@ async def f1_search_stream(
             })
 
         except Exception as e:
-            # Emit error event
+            # Emit error event with full details for debugging
             logger.error(f"[F1Search] Error: {search_id[:8]}..., error={e}", exc_info=True)
             yield sse_event("error", {
                 "search_id": search_id,
                 "error": "internal_error",
-                "message": str(e) if logger.isEnabledFor(logging.DEBUG) else "Search failed",
+                "message": str(e),  # Always show error for debugging
+                "error_type": type(e).__name__,
             })
 
     # Return SSE streaming response
