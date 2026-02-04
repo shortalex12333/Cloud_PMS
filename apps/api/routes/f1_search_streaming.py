@@ -236,8 +236,14 @@ async def call_hyper_search_multi(
         else:
             vec_literals.append(None)
 
-    # Lower trigram threshold for short queries (default 0.3 is too high)
-    await conn.execute("SELECT set_limit(0.05)")
+    # Dynamic trigram threshold based on query length
+    # Short queries (IDs/codes ≤6 chars): lower threshold for recall
+    # Long queries: higher threshold to avoid flooding with weak matches
+    original_query = texts[0] if texts else ""
+    if len(original_query.strip()) <= 6:
+        await conn.execute("SELECT set_limit(0.07)")
+    else:
+        await conn.execute("SELECT set_limit(0.15)")
 
     # Single round-trip RPC call
     rows = await conn.fetch(
@@ -497,13 +503,29 @@ async def f1_search_stream(
                 "message": "Search timed out",
             })
 
+        except asyncpg.exceptions.PostgresError as e:
+            # Database error with SQLSTATE for diagnosability
+            sqlstate = getattr(e, 'sqlstate', 'UNKNOWN')
+            detail = getattr(e, 'detail', None)
+            logger.error(
+                f"[F1Search] DB Error: {search_id[:8]}..., "
+                f"SQLSTATE={sqlstate}, error={e}, detail={detail}",
+                exc_info=True
+            )
+            yield sse_event("error", {
+                "search_id": search_id,
+                "error": "database_error",
+                "message": str(e),
+                "sqlstate": sqlstate,
+            })
+
         except Exception as e:
             # Emit error event with full details for debugging
             logger.error(f"[F1Search] Error: {search_id[:8]}..., error={e}", exc_info=True)
             yield sse_event("error", {
                 "search_id": search_id,
                 "error": "internal_error",
-                "message": str(e),  # Always show error for debugging
+                "message": str(e),
                 "error_type": type(e).__name__,
             })
 
