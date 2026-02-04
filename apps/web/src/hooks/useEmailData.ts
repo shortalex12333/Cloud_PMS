@@ -42,6 +42,7 @@ export type EmailMessage = {
   sent_at: string | null;
   received_at: string | null;
   has_attachments: boolean;
+  web_link?: string | null;  // OWA link for "Open in Outlook"
   attachments?: Array<{
     id: string;
     name: string;
@@ -89,6 +90,7 @@ export type MessageContent = {
     contentType: string;
     size: number;
   }>;
+  web_link?: string | null;  // OWA link for "Open in Outlook"
 };
 
 export type RelatedThreadsResponse = {

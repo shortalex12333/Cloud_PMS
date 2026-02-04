@@ -31,9 +31,10 @@ class EmailSyncService:
     GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 
     # Fields to select (metadata only - no body)
+    # webLink is the OWA URL for "Open in Outlook" feature
     MESSAGE_SELECT = (
         "id,conversationId,subject,from,toRecipients,ccRecipients,"
-        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId"
+        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId,webLink"
     )
 
     # Attachment fields
@@ -404,6 +405,7 @@ class EmailSyncService:
             'sent_at': msg.get('sentDateTime'),
             'has_attachments': msg.get('hasAttachments', False),
             'attachments': attachments,
+            'web_link': msg.get('webLink'),  # OWA link for "Open in Outlook"
         }
 
         result = self.supabase.table('email_messages').insert(message_data).execute()

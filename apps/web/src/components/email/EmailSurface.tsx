@@ -24,6 +24,7 @@ import {
   AlertCircle,
   User,
   RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -886,6 +887,24 @@ function MessagePanel({
                   <span className="text-white">
                     {new Date(content.sent_at).toLocaleString()}
                   </span>
+                </div>
+              )}
+
+              {/* Open in Outlook button - only show if web_link is a valid OWA URL */}
+              {content.web_link && (
+                content.web_link.startsWith('https://outlook.office.com/') ||
+                content.web_link.startsWith('https://outlook.office365.com/')
+              ) && (
+                <div className="pt-2">
+                  <a
+                    href={content.web_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a84ff]/20 text-[#0a84ff] text-[12px] font-medium hover:bg-[#0a84ff]/30 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open in Outlook
+                  </a>
                 </div>
               )}
             </div>
