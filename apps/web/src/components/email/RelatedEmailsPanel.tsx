@@ -20,6 +20,7 @@ import { EmailThreadViewer } from './EmailThreadViewer';
 import { EmailLinkActions } from './EmailLinkActions';
 import { LinkEmailModal } from './LinkEmailModal';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { openSettingsModal } from '@/lib/settingsModal';
 
 interface RelatedEmailsPanelProps {
   objectType: string;
@@ -47,13 +48,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
             <Mail className="h-4 w-4" />
             <span className="text-[13px]">Email integration is off</span>
           </div>
-          <a
-            href="/settings"
+          <button
+            onClick={openSettingsModal}
             className="inline-flex items-center gap-1 text-[12px] text-blue-500 hover:text-blue-600 transition-colors"
           >
             <Settings className="h-3 w-3" />
             Connect Outlook in Settings
-          </a>
+          </button>
         </div>
       </div>
     );
@@ -68,13 +69,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
             <Mail className="h-4 w-4" />
             <span className="text-[13px]">Outlook not connected</span>
           </div>
-          <a
-            href="/settings"
+          <button
+            onClick={openSettingsModal}
             className="inline-flex items-center gap-1 text-[12px] text-blue-500 hover:text-blue-600 transition-colors"
           >
             <Settings className="h-3 w-3" />
             Connect Outlook in Settings
-          </a>
+          </button>
         </div>
       </div>
     );
@@ -125,13 +126,13 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
                       </span>
                     )}
                   </p>
-                  <a
-                    href="/settings"
+                  <button
+                    onClick={openSettingsModal}
                     className="inline-flex items-center gap-1 mt-1 text-[12px] text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
                   >
                     <RefreshCw className="h-3 w-3" />
                     Reconnect in Settings
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>

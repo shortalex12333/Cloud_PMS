@@ -179,6 +179,17 @@ export default function SpotlightSearch({
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
+
+  // Listen for global settings modal open events
+  useEffect(() => {
+    const handleOpenSettings = (e: CustomEvent) => {
+      setShowSettings(true);
+    };
+    window.addEventListener('openSettingsModal', handleOpenSettings as EventListener);
+    return () => {
+      window.removeEventListener('openSettingsModal', handleOpenSettings as EventListener);
+    };
+  }, []);
   const [emailScopeActive, setEmailScopeActive] = useState(false);
   const [emailResults, setEmailResults] = useState<any[]>([]);
   const [emailLoading, setEmailLoading] = useState(false);
