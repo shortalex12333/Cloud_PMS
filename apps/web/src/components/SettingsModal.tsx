@@ -30,15 +30,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const checkOutlookStatus = async () => {
     try {
+      console.log('[SettingsModal] Checking Outlook status...');
       const headers = await getAuthHeaders();
+      console.log('[SettingsModal] Got auth headers, making request');
       const response = await fetch('/api/integrations/outlook/status', { headers });
+      console.log('[SettingsModal] Status response:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('[SettingsModal] Status data:', data);
         setOutlookStatus(data.connected ? 'connected' : 'disconnected');
       } else {
+        const errorText = await response.text();
+        console.error('[SettingsModal] Status error:', response.status, errorText);
         setOutlookStatus('disconnected');
       }
-    } catch {
+    } catch (error) {
+      console.error('[SettingsModal] checkOutlookStatus failed:', error);
       setOutlookStatus('disconnected');
     }
   };
@@ -46,23 +53,28 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleConnectOutlook = async () => {
     setIsConnecting(true);
     try {
+      console.log('[SettingsModal] Connect clicked, getting auth headers...');
       const headers = await getAuthHeaders();
+      console.log('[SettingsModal] Got headers, requesting auth-url...');
       const response = await fetch('/api/integrations/outlook/auth-url', {
         headers: {
           ...headers,
           'Cache-Control': 'no-cache',
         },
       });
+      console.log('[SettingsModal] auth-url response:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('[SettingsModal] Got OAuth URL, redirecting...');
         if (data.url) {
           window.location.href = data.url;
         }
       } else {
-        console.error('Failed to get OAuth URL:', response.status);
+        const errorText = await response.text();
+        console.error('[SettingsModal] Failed to get OAuth URL:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Failed to get OAuth URL:', error);
+      console.error('[SettingsModal] Connect error:', error);
     }
     setIsConnecting(false);
   };
