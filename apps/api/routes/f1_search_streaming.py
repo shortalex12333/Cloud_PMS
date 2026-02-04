@@ -392,6 +392,10 @@ async def f1_search_stream(
             items = []
             for r in rows:
                 item = dict(r)
+                # Parse JSONB fields (asyncpg returns them as strings)
+                for key in ('payload', 'ranks', 'components'):
+                    if key in item and isinstance(item[key], str):
+                        item[key] = json.loads(item[key])
 
                 # Check for exact win on first item
                 if not early_win and is_exact_win(item):
