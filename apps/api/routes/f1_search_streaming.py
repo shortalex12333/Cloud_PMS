@@ -33,8 +33,17 @@ from types import SimpleNamespace
 from typing import AsyncGenerator, Optional, Dict, Any, List
 
 import asyncpg
+import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+
+# Redis for result caching (optional, graceful degradation)
+try:
+    import redis.asyncio as redis_async
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis_async = None
 from starlette.responses import StreamingResponse
 
 # Auth middleware
@@ -110,6 +119,69 @@ async def get_db_connection() -> asyncpg.Connection:
     # Set statement_timeout after connection (Supabase doesn't support as startup param)
     await conn.execute("SET statement_timeout = '800ms'")
     return conn
+
+
+# ============================================================================
+# Redis Result Cache (optional, graceful degradation)
+# ============================================================================
+
+REDIS_URL = os.getenv("REDIS_URL")
+RESULT_CACHE_TTL = 120  # 2 minutes
+EMBED_VERSION = "openai-3-small-1536"  # For cache key versioning
+
+_redis: Optional[redis_async.Redis] = None
+
+
+async def get_redis() -> Optional[redis_async.Redis]:
+    """Get or create Redis connection (lazy, graceful degradation)."""
+    global _redis
+    if not REDIS_AVAILABLE or not REDIS_URL:
+        return None
+    if _redis is None:
+        try:
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+            await _redis.ping()
+            logger.info("[F1Search] Redis connected for result caching")
+        except Exception as e:
+            logger.warning(f"[F1Search] Redis unavailable: {e}")
+            _redis = None
+    return _redis
+
+
+def make_cache_key(query: str, org_id: str, yacht_id: Optional[str]) -> str:
+    """
+    Create cache key for result cache.
+    Format: rs:{query_hash}:{org}:{yacht}:{embed_ver}
+    """
+    # Normalize query: lowercase, strip whitespace
+    norm_q = query.strip().lower()
+    q_hash = hashlib.sha256(norm_q.encode()).hexdigest()[:16]
+    yacht_part = yacht_id or ""
+    return f"rs:{q_hash}:{org_id}:{yacht_part}:{EMBED_VERSION}"
+
+
+async def get_cached_results(redis_conn, cache_key: str) -> Optional[List[Dict[str, Any]]]:
+    """Get cached results if available."""
+    if not redis_conn:
+        return None
+    try:
+        cached = await redis_conn.get(cache_key)
+        if cached:
+            return json.loads(cached)
+    except Exception as e:
+        logger.warning(f"[F1Search] Cache get error: {e}")
+    return None
+
+
+async def set_cached_results(redis_conn, cache_key: str, items: List[Dict[str, Any]]) -> None:
+    """Cache results with TTL."""
+    if not redis_conn:
+        return
+    try:
+        await redis_conn.set(cache_key, json.dumps(items), ex=RESULT_CACHE_TTL)
+        logger.debug(f"[F1Search] Cached {len(items)} results for key={cache_key[:30]}...")
+    except Exception as e:
+        logger.warning(f"[F1Search] Cache set error: {e}")
 
 
 # ============================================================================
@@ -393,19 +465,40 @@ async def f1_search_stream(
                 return
 
             # ================================================================
-            # Phase 3: Connect + call hyper_search_multi ONCE (single round-trip)
+            # Phase 3: Check cache OR call hyper_search_multi
             # ================================================================
 
-            with tracer.start_as_current_span("db.hyper_search_multi") as span:
-                span.set_attribute("search_id", search_id)
-                span.set_attribute("org_id", ctx.org_id)
-                span.set_attribute("rewrite_count", len(rewrites))
-                conn = await get_db_connection()
-                try:
-                    rows = await call_hyper_search_multi(conn, rewrites, ctx, rrf_k=60, page_limit=20)
-                finally:
-                    await conn.close()
-                span.set_attribute("result_count", len(rows))
+            cache_key = make_cache_key(q, ctx.org_id, ctx.yacht_id)
+            redis_conn = await get_redis()
+            result_cache_hit = False
+            rows = None
+
+            # Check cache first
+            if redis_conn:
+                with tracer.start_as_current_span("cache.get") as span:
+                    span.set_attribute("cache_key", cache_key[:30])
+                    cached_items = await get_cached_results(redis_conn, cache_key)
+                    if cached_items is not None:
+                        result_cache_hit = True
+                        # Convert cached items back to row format
+                        rows = cached_items
+                        span.set_attribute("cache_hit", True)
+                        logger.info(f"[F1Search] Cache HIT: {search_id[:8]}..., key={cache_key[:30]}...")
+                    else:
+                        span.set_attribute("cache_hit", False)
+
+            # Cache miss - call DB
+            if rows is None:
+                with tracer.start_as_current_span("db.hyper_search_multi") as span:
+                    span.set_attribute("search_id", search_id)
+                    span.set_attribute("org_id", ctx.org_id)
+                    span.set_attribute("rewrite_count", len(rewrites))
+                    conn = await get_db_connection()
+                    try:
+                        rows = await call_hyper_search_multi(conn, rewrites, ctx, rrf_k=60, page_limit=20)
+                    finally:
+                        await conn.close()
+                    span.set_attribute("result_count", len(rows))
 
             total_results = len(rows)
 
@@ -414,49 +507,56 @@ async def f1_search_stream(
             # ================================================================
 
             items = []
-            for r in rows:
-                item = dict(r)
-                # Parse JSONB fields (asyncpg returns them as strings)
-                for key in ('payload', 'ranks', 'components'):
-                    if key in item and isinstance(item[key], str):
-                        item[key] = json.loads(item[key])
+            if result_cache_hit:
+                # Cache hit: rows are already processed items
+                items = rows
+            else:
+                # Cache miss: process raw DB rows
+                for r in rows:
+                    item = dict(r)
+                    # Parse JSONB fields (asyncpg returns them as strings)
+                    for key in ('payload', 'ranks', 'components'):
+                        if key in item and isinstance(item[key], str):
+                            item[key] = json.loads(item[key])
 
-                # Check for exact win on first item
-                if not early_win and is_exact_win(item):
-                    early_win = True
-
-                    logger.info(
-                        f"[F1Search] Early win: search_id={search_id[:8]}..., "
-                        f"object_id={item.get('object_id')}, "
-                        f"ranks={item.get('ranks')}"
-                    )
-
-                    yield sse_event("exact_match_win", {
-                        "search_id": search_id,
+                    items.append({
                         "object_type": item.get('object_type'),
                         "object_id": str(item.get('object_id')),
                         "payload": item.get('payload'),
                         "fused_score": item.get('fused_score'),
+                        "best_rewrite_idx": item.get('best_rewrite_idx'),
                         "ranks": item.get('ranks'),
+                        "components": item.get('components'),
                     })
 
-                    # Cancel any pending tasks on exact match
-                    for t in pending_tasks:
-                        if not t.done():
-                            t.cancel()
+                # Cache the processed items (only on cache miss, successful result)
+                if redis_conn and len(items) > 0:
+                    await set_cached_results(redis_conn, cache_key, items)
 
-                    # Don't break - still emit the full batch for UX
-                    # but we've signaled the win
+            # Check for exact win on first item
+            if len(items) > 0 and is_exact_win(items[0]):
+                early_win = True
+                item = items[0]
 
-                items.append({
+                logger.info(
+                    f"[F1Search] Early win: search_id={search_id[:8]}..., "
+                    f"object_id={item.get('object_id')}, "
+                    f"ranks={item.get('ranks')}"
+                )
+
+                yield sse_event("exact_match_win", {
+                    "search_id": search_id,
                     "object_type": item.get('object_type'),
                     "object_id": str(item.get('object_id')),
                     "payload": item.get('payload'),
                     "fused_score": item.get('fused_score'),
-                    "best_rewrite_idx": item.get('best_rewrite_idx'),
                     "ranks": item.get('ranks'),
-                    "components": item.get('components'),
                 })
+
+                # Cancel any pending tasks on exact match
+                for t in pending_tasks:
+                    if not t.done():
+                        t.cancel()
 
             # ================================================================
             # Phase 4b: Optional re-ranking (feature-flagged, 80ms budget)
@@ -496,6 +596,7 @@ async def f1_search_stream(
                 "total_results": total_results,
                 "rewrites_count": len(rewrites),
                 "rewrite_cache_hit": rewrite_result.cache_hit if hasattr(rewrite_result, 'cache_hit') else False,
+                "result_cache_hit": result_cache_hit,
                 "early_win": early_win,
                 "reranked": reranked,
                 "status": "early_win" if early_win else "completed",
@@ -504,7 +605,8 @@ async def f1_search_stream(
             logger.info(
                 f"[F1Search] Complete: search_id={search_id[:8]}..., "
                 f"latency={latency_ms}ms, results={total_results}, "
-                f"rewrites={len(rewrites)}, early_win={early_win}"
+                f"rewrites={len(rewrites)}, early_win={early_win}, "
+                f"result_cache={'HIT' if result_cache_hit else 'MISS'}"
             )
 
         except asyncio.CancelledError:
