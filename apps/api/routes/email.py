@@ -14,6 +14,7 @@ Endpoints:
 - POST /email/link/remove                      - Remove a link (soft delete)
 - POST /email/evidence/save-attachment         - Save attachment to documents
 - POST /email/sync/now                         - Manual sync trigger (service role only)
+- POST /email/backfill-weblinks                - Backfill webLink for "Open in Outlook"
 
 Doctrine compliance:
 - All queries scoped by yacht_id
@@ -2875,6 +2876,94 @@ async def backfill_embeddings(
         raise
     except Exception as e:
         logger.error(f"[email/backfill-embeddings] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Backfill failed: {str(e)}")
+
+
+# ============================================================================
+# POST /email/backfill-weblinks
+# ============================================================================
+
+@router.post("/backfill-weblinks")
+async def backfill_weblinks(
+    auth: dict = Depends(get_authenticated_user),
+    limit: int = 100,
+):
+    """
+    Backfill webLink for emails missing them.
+
+    Fetches webLink from Microsoft Graph API for emails that don't have web_link set.
+    This enables "Open in Outlook" button in the UI.
+
+    Args:
+        limit: Maximum number of emails to process (default 100)
+
+    Returns:
+        Stats dict with processed/updated/skipped/failed counts
+    """
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get messages without web_link
+        messages_result = supabase.table('email_messages').select(
+            'id, provider_message_id'
+        ).eq('yacht_id', yacht_id).is_('web_link', 'null').limit(limit).execute()
+
+        messages = messages_result.data or []
+        if not messages:
+            return {
+                'success': True,
+                'yacht_id': yacht_id,
+                'stats': {'processed': 0, 'updated': 0, 'skipped': 0, 'failed': 0, 'message': 'No messages need backfill'}
+            }
+
+        # Get Graph read client
+        read_client = create_read_client(supabase, user_id, yacht_id)
+
+        stats = {'processed': 0, 'updated': 0, 'skipped': 0, 'failed': 0}
+
+        for msg in messages:
+            stats['processed'] += 1
+            provider_id = msg['provider_message_id']
+
+            try:
+                # Fetch webLink from Graph API
+                content = await read_client.get_message_content(provider_id)
+                weblink = content.get('webLink')
+
+                if weblink:
+                    # Update database
+                    supabase.table('email_messages').update({
+                        'web_link': weblink
+                    }).eq('id', msg['id']).execute()
+                    stats['updated'] += 1
+                    logger.debug(f"[email/backfill-weblinks] Updated {msg['id'][:8]}...")
+                else:
+                    stats['skipped'] += 1
+
+            except Exception as e:
+                stats['failed'] += 1
+                logger.warning(f"[email/backfill-weblinks] Failed for {provider_id[:20]}...: {e}")
+
+        logger.info(f"[email/backfill-weblinks] yacht={yacht_id[:8]}... stats={stats}")
+
+        return {
+            'success': True,
+            'yacht_id': yacht_id,
+            'stats': stats,
+        }
+
+    except TokenNotFoundError:
+        raise HTTPException(status_code=401, detail="Email not connected. Please connect Outlook first.")
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Email connection expired. Please reconnect.")
+    except TokenRevokedError:
+        raise HTTPException(status_code=401, detail="Email connection revoked. Please reconnect.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/backfill-weblinks] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Backfill failed: {str(e)}")
 
 
