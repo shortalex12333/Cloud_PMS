@@ -240,14 +240,11 @@ async def call_hyper_search_multi(
     # Short queries (IDs/codes ≤6 chars): lower threshold for recall
     # Long queries: higher threshold to avoid flooding with weak matches
     original_query = texts[0] if texts else ""
-    if len(original_query.strip()) <= 6:
-        await conn.execute("SELECT set_limit(0.07)")
-    else:
-        await conn.execute("SELECT set_limit(0.15)")
+    trgm_limit = 0.07 if len(original_query.strip()) <= 6 else 0.15
 
-    # Performance GUCs: reduce HNSW compute and disable JIT overhead
-    await conn.execute("SET LOCAL hnsw.ef_search = 32")
-    await conn.execute("SET LOCAL jit = off")
+    # Combine setup into single round-trip to minimize network latency
+    # Note: Render→Supabase cross-region adds ~200-300ms per round-trip
+    await conn.execute(f"SELECT set_limit({trgm_limit})")
 
     # Single round-trip RPC call
     rows = await conn.fetch(
