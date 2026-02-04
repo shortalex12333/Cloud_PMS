@@ -417,6 +417,7 @@ async def f1_search_stream(
         4. finalized (at end)
         """
         start = time.time()
+        first_event_ms = 0  # SSE diagnostics: time to first event
         early_win = False
         reranked = False
         total_results = 0
@@ -438,6 +439,7 @@ async def f1_search_stream(
                 "query": q,
                 "timestamp": time.time(),
             })
+            first_event_ms = int((time.time() - start) * 1000)
 
             # ================================================================
             # Phase 2: Generate rewrites and embeddings (≤3, ≤150ms, cached)
@@ -588,11 +590,13 @@ async def f1_search_stream(
             # Phase 5: Finalize
             # ================================================================
 
-            latency_ms = int((time.time() - start) * 1000)
+            finalized_ms = int((time.time() - start) * 1000)
 
             yield sse_event("finalized", {
                 "search_id": search_id,
-                "latency_ms": latency_ms,
+                "latency_ms": finalized_ms,  # Backwards compat
+                "first_event_ms": first_event_ms,
+                "finalized_ms": finalized_ms,
                 "total_results": total_results,
                 "rewrites_count": len(rewrites),
                 "rewrite_cache_hit": rewrite_result.cache_hit if hasattr(rewrite_result, 'cache_hit') else False,
@@ -604,8 +608,8 @@ async def f1_search_stream(
 
             logger.info(
                 f"[F1Search] Complete: search_id={search_id[:8]}..., "
-                f"latency={latency_ms}ms, results={total_results}, "
-                f"rewrites={len(rewrites)}, early_win={early_win}, "
+                f"first_event={first_event_ms}ms, finalized={finalized_ms}ms, "
+                f"results={total_results}, rewrites={len(rewrites)}, early_win={early_win}, "
                 f"result_cache={'HIT' if result_cache_hit else 'MISS'}"
             )
 
