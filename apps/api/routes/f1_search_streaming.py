@@ -235,11 +235,14 @@ async def call_hyper_search_multi(
         else:
             vec_literals.append(None)
 
+    # Lower trigram threshold for short queries (default 0.3 is too high)
+    await conn.execute("SELECT set_limit(0.05)")
+
     # Single round-trip RPC call
     rows = await conn.fetch(
         """
         SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-        FROM hyper_search_multi($1::text[], $2::vector(384)[], $3::uuid, $4::uuid, $5::int, $6::int)
+        FROM hyper_search_multi($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int)
         """,
         texts,
         vec_literals,
