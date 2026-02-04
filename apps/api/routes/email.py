@@ -974,6 +974,20 @@ async def render_message(
             f"type={body_type} size={body_len} yacht={yacht_id[:8]}"
         )
 
+        # Lazy backfill: Update web_link in database if we got one from Graph
+        weblink = content.get('webLink')
+        if weblink and msg_result.data:
+            try:
+                supabase.table('email_messages').update({
+                    'web_link': weblink
+                }).eq('provider_message_id', provider_message_id).eq(
+                    'yacht_id', yacht_id
+                ).execute()
+                logger.debug(f"[email/render] Updated web_link for {provider_message_id[:16]}...")
+            except Exception as e:
+                # Non-fatal: just log and continue
+                logger.warning(f"[email/render] Failed to update web_link: {e}")
+
         return {
             'id': content.get('id'),
             'subject': content.get('subject'),
