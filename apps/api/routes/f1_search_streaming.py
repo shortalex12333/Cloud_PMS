@@ -83,7 +83,7 @@ _pool: Optional[asyncpg.Pool] = None
 
 async def _init_connection(conn):
     """Initialize connection with statement_timeout (Supabase doesn't support as startup param)."""
-    await conn.execute("SET statement_timeout = '120ms'")
+    await conn.execute("SET statement_timeout = '2000ms'")
 
 
 async def get_db_pool() -> asyncpg.Pool:
@@ -108,7 +108,7 @@ async def get_db_connection() -> asyncpg.Connection:
         raise ValueError("READ_DB_DSN or DATABASE_URL not configured")
     conn = await asyncpg.connect(READ_DSN)
     # Set statement_timeout after connection (Supabase doesn't support as startup param)
-    await conn.execute("SET statement_timeout = '120ms'")
+    await conn.execute("SET statement_timeout = '2000ms'")
     return conn
 
 
