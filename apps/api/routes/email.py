@@ -2640,6 +2640,7 @@ async def save_attachment(
 @router.post("/sync/now")
 async def sync_now(
     auth: dict = Depends(get_authenticated_user),
+    full_resync: bool = False,
 ):
     """
     Manual sync trigger.
@@ -2647,6 +2648,10 @@ async def sync_now(
     Backfills 14 days of inbox + sent.
     Stores metadata into email_threads + email_messages.
     Updates email_watchers sync fields.
+
+    Args:
+        full_resync: If True, clears delta links to force full sync from scratch.
+                     Use this to fetch emails that were missed by incremental sync.
 
     Requires service role or admin.
     """
@@ -2676,11 +2681,21 @@ async def sync_now(
 
         watcher = watcher_result.data
 
+        # If full_resync, clear delta links to force full sync
+        if full_resync:
+            logger.info(f"[email/sync/now] Full resync requested - clearing delta links")
+            supabase.table('email_watchers').update({
+                'delta_link_inbox': None,
+                'delta_link_sent': None,
+            }).eq('id', watcher['id']).execute()
+            watcher['delta_link_inbox'] = None
+            watcher['delta_link_sent'] = None
+
         # Create read client
         read_client = create_read_client(supabase, user_id, yacht_id)
 
         # Sync inbox and sent
-        stats = {'threads_created': 0, 'messages_created': 0, 'errors': []}
+        stats = {'threads_created': 0, 'messages_created': 0, 'errors': [], 'full_resync': full_resync}
 
         for folder in ['inbox', 'sent']:
             delta_link = watcher.get(f'delta_link_{folder}')
