@@ -2,6 +2,9 @@
 -- Adds trgm_limit parameter to hyper_search_multi to eliminate extra round-trip
 -- Each DB call to Supabase adds ~200-300ms network latency
 
+-- Drop old 6-arg version to avoid ambiguity
+DROP FUNCTION IF EXISTS hyper_search_multi(text[], vector(1536)[], uuid, uuid, int, int);
+
 CREATE OR REPLACE FUNCTION hyper_search_multi(
     rewrite_texts text[],
     rewrite_embeddings vector(1536)[],
@@ -82,7 +85,7 @@ BEGIN
     SELECT a.object_type, a.object_id, COALESCE(s.payload, '{}'::jsonb) AS payload,
            (COALESCE(1.0/(rrf_k + a.trigram_rank),0) +
             COALESCE(1.0/(rrf_k + a.fts_rank),0) +
-            COALESCE(1.0/(rrf_k + a.vector_rank),0)) AS fused_score,
+            COALESCE(1.0/(rrf_k + a.vector_rank),0))::double precision AS fused_score,
            (array_agg(a.idx ORDER BY
                COALESCE(1.0/(rrf_k + a.trigram_rank),0) +
                COALESCE(1.0/(rrf_k + a.fts_rank),0) +
@@ -98,4 +101,4 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION hyper_search_multi IS 'Hybrid search with RRF fusion. Includes inline set_limit() to eliminate extra round-trip. Vector cap: 80.';
+COMMENT ON FUNCTION hyper_search_multi(text[], vector(1536)[], uuid, uuid, int, int, real) IS 'Hybrid search with RRF fusion. Includes inline set_limit() to eliminate extra round-trip. Vector cap: 80.';
