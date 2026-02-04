@@ -30,7 +30,7 @@ interface PartCardProps {
   entityType?: 'part' | 'inventory';
 }
 
-export function PartCard({ part, actions = [], entityType = 'part' }: PartCardProps) {
+export function PartCard({ part, actions = [] as MicroAction[], entityType = 'part' }: PartCardProps) {
   const isLowStock = part.stock_quantity <= part.min_stock_level;
   const isOutOfStock = part.stock_quantity === 0;
 
@@ -134,9 +134,9 @@ export function PartCard({ part, actions = [], entityType = 'part' }: PartCardPr
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             {/* Auto-suggest shopping list action for low stock */}
-            {isLowStock && !actions.some(a => typeof a === 'object' ? a.action_id === 'create_shopping_list_item' : a === 'create_shopping_list_item') && (
+            {isLowStock && !actions.includes('order_part' as MicroAction) && (
               <ActionButton
-                action="create_shopping_list_item"
+                action="order_part"
                 context={{ part_id: part.id }}
                 variant="default"
                 size="sm"
@@ -146,8 +146,8 @@ export function PartCard({ part, actions = [], entityType = 'part' }: PartCardPr
             {/* Render backend-provided actions */}
             {actions.map((action) => (
               <ActionButton
-                key={typeof action === 'object' ? action.action_id || action.label : action}
-                action={typeof action === 'object' ? action.action_id : action}
+                key={action}
+                action={action}
                 context={{ part_id: part.id, entity_type: entityType }}
                 variant="secondary"
                 size="sm"
