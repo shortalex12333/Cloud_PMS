@@ -909,9 +909,9 @@ async def get_thread(
 
         thread = thread_result.data
 
-        # Get messages for this thread
+        # Get messages for this thread (include web_link for "Open in Outlook")
         messages_result = supabase.table('email_messages').select(
-            'id, provider_message_id, direction, from_display_name, subject, sent_at, received_at, has_attachments, attachments'
+            'id, provider_message_id, direction, from_display_name, subject, sent_at, received_at, has_attachments, attachments, web_link'
         ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).order(
             'sent_at', desc=False
         ).execute()
@@ -985,6 +985,7 @@ async def render_message(
             'sent_at': content.get('sentDateTime'),
             'has_attachments': content.get('hasAttachments', False),
             'attachments': content.get('attachments', []),
+            'web_link': content.get('webLink'),  # OWA link for "Open in Outlook"
         }
 
     except TokenNotFoundError:
