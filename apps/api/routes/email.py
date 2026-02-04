@@ -1954,9 +1954,13 @@ async def get_inbox_threads(
 
         # No search query - simple inbox scan
         base_query = supabase.table('email_threads').select(
-            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at',
+            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, direction',
             count='exact'
         ).eq('yacht_id', yacht_id)
+
+        # Apply direction filter if specified (inbound = received, outbound = sent)
+        if direction in ('inbound', 'outbound'):
+            base_query = base_query.eq('direction', direction)
 
         if linked:
             # All threads
@@ -1979,9 +1983,15 @@ async def get_inbox_threads(
 
             # Fallback if RPC doesn't exist or returns no data
             if not result or not result.data:
-                all_threads = supabase.table('email_threads').select(
-                    'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at'
-                ).eq('yacht_id', yacht_id).order(
+                fallback_query = supabase.table('email_threads').select(
+                    'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, direction'
+                ).eq('yacht_id', yacht_id)
+
+                # Apply direction filter to fallback too
+                if direction in ('inbound', 'outbound'):
+                    fallback_query = fallback_query.eq('direction', direction)
+
+                all_threads = fallback_query.order(
                     'last_activity_at', desc=True
                 ).limit(100).execute()
 
