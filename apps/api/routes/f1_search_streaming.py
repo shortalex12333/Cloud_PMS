@@ -83,7 +83,7 @@ _pool: Optional[asyncpg.Pool] = None
 
 async def _init_connection(conn):
     """Initialize connection with statement_timeout (Supabase doesn't support as startup param)."""
-    await conn.execute("SET statement_timeout = '2000ms'")
+    await conn.execute("SET statement_timeout = '800ms'")
 
 
 async def get_db_pool() -> asyncpg.Pool:
@@ -108,7 +108,7 @@ async def get_db_connection() -> asyncpg.Connection:
         raise ValueError("READ_DB_DSN or DATABASE_URL not configured")
     conn = await asyncpg.connect(READ_DSN)
     # Set statement_timeout after connection (Supabase doesn't support as startup param)
-    await conn.execute("SET statement_timeout = '2000ms'")
+    await conn.execute("SET statement_timeout = '800ms'")
     return conn
 
 
@@ -244,6 +244,10 @@ async def call_hyper_search_multi(
         await conn.execute("SELECT set_limit(0.07)")
     else:
         await conn.execute("SELECT set_limit(0.15)")
+
+    # Performance GUCs: reduce HNSW compute and disable JIT overhead
+    await conn.execute("SET LOCAL hnsw.ef_search = 32")
+    await conn.execute("SET LOCAL jit = off")
 
     # Single round-trip RPC call
     rows = await conn.fetch(
