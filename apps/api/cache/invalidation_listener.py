@@ -18,7 +18,8 @@ import json
 import logging
 import signal
 
-import redis.asyncio as aioredis  # redis-py async API (aioredis is deprecated)
+# NOTE: Requires 'redis' package (pip install redis), NOT 'aioredis'
+import redis.asyncio as redis_async
 import asyncpg
 
 logging.basicConfig(
@@ -112,7 +113,7 @@ async def listen_and_evict():
     conn = await asyncpg.connect(READ_DSN)
 
     logger.info("Connecting to Redis...")
-    _redis = await aioredis.from_url(REDIS_URL, decode_responses=True)
+    _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
 
     # Test Redis connection
     try:

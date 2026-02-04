@@ -19,7 +19,8 @@ import os
 import time
 import logging
 
-import redis.asyncio as aioredis  # redis-py async API (aioredis is deprecated)
+# NOTE: Requires 'redis' package (pip install redis), NOT 'aioredis'
+import redis.asyncio as redis_async
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -98,7 +99,7 @@ class OrgRateLimitMiddleware(BaseHTTPMiddleware):
         # Lazy init Redis connection
         if not self.redis:
             try:
-                self.redis = await aioredis.from_url(REDIS_URL, decode_responses=True)
+                self.redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
                 logger.info("[RateLimit] Redis connected")
             except Exception as e:
                 logger.error(f"[RateLimit] Redis connection failed: {e}")
