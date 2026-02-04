@@ -66,6 +66,8 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.split(' ')[1];
     console.log(`[Outlook Auth READ][${requestId}] Token extracted, length: ${token?.length || 0}`);
+    console.log(`[Outlook Auth READ][${requestId}] Token prefix: ${token?.substring(0, 20)}...`);
+    console.log(`[Outlook Auth READ][${requestId}] Supabase URL: ${supabaseUrl?.substring(0, 40)}...`);
 
     if (!token || token.length < 10) {
       console.error(`[Outlook Auth READ][${requestId}] FAIL: Token empty or too short`);
@@ -86,8 +88,15 @@ export async function GET(request: NextRequest) {
 
     if (error || !user) {
       console.error(`[Outlook Auth READ][${requestId}] FAIL: Token validation - ${error?.message || 'no user'}`);
+      console.error(`[Outlook Auth READ][${requestId}] Supabase URL used: ${supabaseUrl}`);
       return NextResponse.json(
-        { error: 'Token validation failed', code: 'token_invalid', requestId },
+        {
+          error: 'Token validation failed',
+          code: 'token_invalid',
+          detail: error?.message || 'no user returned',
+          supabaseUrlPrefix: supabaseUrl?.substring(0, 30),
+          requestId
+        },
         { status: 401, headers: CACHE_HEADERS }
       );
     }

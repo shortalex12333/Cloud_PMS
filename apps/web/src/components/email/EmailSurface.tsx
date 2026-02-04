@@ -25,7 +25,7 @@ import {
   User,
   RefreshCw,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useInboxThreads,
   useEmailSearch,
@@ -146,6 +146,7 @@ type DirectionFilter = 'all' | 'inbound' | 'outbound';
 
 export default function EmailSurface({ className }: EmailSurfaceProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -155,6 +156,14 @@ export default function EmailSurface({ className }: EmailSurfaceProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-select thread from URL query param (e.g., /email/inbox?thread=xxx)
+  useEffect(() => {
+    const threadParam = searchParams.get('thread');
+    if (threadParam && !selectedThreadId) {
+      setSelectedThreadId(threadParam);
+    }
+  }, [searchParams, selectedThreadId]);
 
   // Fetch threads with search and direction filter
   const { data, isLoading, error, refetch } = useInboxThreads(
