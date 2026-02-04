@@ -1,0 +1,64 @@
+version: '3.8'
+
+# F1 Search Workers - Local Testing
+# Usage: docker-compose -f docker-compose.f1-workers.yml up --build
+
+services:
+  # API Service (pipeline_service with F1 search routes)
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - READ_DB_DSN=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - REDIS_URL=redis://default:DKoFPPzLU5BqZfzBZZSBiB9PspphRZkh@redis-18771.c9.us-east-1-2.ec2.cloud.redislabs.com:18771
+      - STREAMING_ENABLED_ORGS=85fe1119-b04c-41ac-80f1-829d23322598
+      - ORG_TOKENS_PER_SEC=50
+      - ORG_BURST_CAPACITY=100
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      # Supabase tenant config
+      - yTEST_YACHT_001_SUPABASE_URL=https://vzsohavtuotocgrfkfyd.supabase.co
+      - yTEST_YACHT_001_SUPABASE_SERVICE_KEY=${yTEST_YACHT_001_SUPABASE_SERVICE_KEY}
+      - DEFAULT_YACHT_CODE=yTEST_YACHT_001
+      # Master JWT secret for auth
+      - MASTER_SUPABASE_JWT_SECRET=${MASTER_SUPABASE_JWT_SECRET}
+    command: ["sh", "-c", "uvicorn pipeline_service:app --host 0.0.0.0 --port 8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Cache Invalidation Listener (pg_notify -> Redis eviction)
+  cache-listener:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      - READ_DB_DSN=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - REDIS_URL=redis://default:DKoFPPzLU5BqZfzBZZSBiB9PspphRZkh@redis-18771.c9.us-east-1-2.ec2.cloud.redislabs.com:18771
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    command: ["python", "cache/invalidation_listener.py"]
+    restart: on-failure
+
+  # Embedding Worker (process embedding jobs via OpenAI)
+  embedding-worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - EMBED_MODEL=text-embedding-3-small
+      - EMBED_DIM=1536
+      - EMBED_PROVIDER=openai
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    command: ["python", "workers/embedding_worker.py"]
+    restart: on-failure

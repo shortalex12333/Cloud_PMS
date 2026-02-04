@@ -43,6 +43,6 @@ pytest-cov==4.1.0
 black==24.1.1
 flake8==7.0.0
 mypy==1.8.0
-sentence-transformers>=2.2.0
+# sentence-transformers removed - now using OpenAI embeddings
 redis>=4.5.0
 asyncpg>=0.27.0
