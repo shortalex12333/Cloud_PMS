@@ -2699,32 +2699,49 @@ async def sync_now(
 
         for folder in ['inbox', 'sent']:
             delta_link = watcher.get(f'delta_link_{folder}')
+            total_processed = 0
+            max_messages = 500 if full_resync else 100  # Fetch more on full resync
 
             try:
-                # Get messages (using delta if available)
-                result = await read_client.list_messages(
-                    folder=folder,
-                    top=100,
-                    delta_link=delta_link,
-                    select=['id', 'conversationId', 'subject', 'from', 'toRecipients', 'ccRecipients',
-                            'receivedDateTime', 'sentDateTime', 'hasAttachments', 'internetMessageId',
-                            'bodyPreview'],  # Added for RAG embedding generation
-                )
+                # Get messages with pagination
+                while total_processed < max_messages:
+                    result = await read_client.list_messages(
+                        folder=folder,
+                        top=min(100, max_messages - total_processed),
+                        delta_link=delta_link,
+                        select=['id', 'conversationId', 'subject', 'from', 'toRecipients', 'ccRecipients',
+                                'receivedDateTime', 'sentDateTime', 'hasAttachments', 'internetMessageId',
+                                'bodyPreview'],  # Added for RAG embedding generation
+                    )
 
-                # Process messages
-                for msg in result.get('messages', []):
-                    try:
-                        await _process_message(supabase, yacht_id, msg, folder)
-                        stats['messages_created'] += 1
-                    except Exception as e:
-                        stats['errors'].append(f"Message {msg.get('id')}: {str(e)}")
+                    messages = result.get('messages', [])
+                    if not messages:
+                        break
 
-                # Save new delta link
-                new_delta = result.get('delta_link')
-                if new_delta:
-                    supabase.table('email_watchers').update({
-                        f'delta_link_{folder}': new_delta,
-                    }).eq('id', watcher['id']).execute()
+                    # Process messages
+                    for msg in messages:
+                        try:
+                            await _process_message(supabase, yacht_id, msg, folder)
+                            stats['messages_created'] += 1
+                            total_processed += 1
+                        except Exception as e:
+                            stats['errors'].append(f"Message {msg.get('id')}: {str(e)}")
+
+                    # Check for next page or delta link
+                    next_link = result.get('next_link')
+                    new_delta = result.get('delta_link')
+
+                    if new_delta:
+                        # Save delta link and exit loop
+                        supabase.table('email_watchers').update({
+                            f'delta_link_{folder}': new_delta,
+                        }).eq('id', watcher['id']).execute()
+                        break
+                    elif next_link:
+                        # Use next_link as delta_link to continue pagination
+                        delta_link = next_link
+                    else:
+                        break
 
             except Exception as e:
                 stats['errors'].append(f"Folder {folder}: {str(e)}")
