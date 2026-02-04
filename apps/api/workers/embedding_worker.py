@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
 """
-F1 Search - Embedding Worker
+F1 Search - Embedding Worker (OpenAI)
 
-Polls embedding_jobs table, generates 384-dim embeddings using local model,
+Polls embedding_jobs table, generates 1536-dim embeddings using OpenAI API,
 writes to search_index.embedding.
 
 GUARDRAILS:
 - Use service role in private worker environment only
 - Normalize embeddings (cosine sim expects normalization)
+- Rate-limit API calls to avoid billing spikes
 - Don't spawn >2 workers until pool is tuned
-- Rate-limit if CPU spikes
 
 Usage:
-    DATABASE_URL=postgresql://... python embedding_worker.py
+    DATABASE_URL=postgresql://... OPENAI_API_KEY=sk-... python embedding_worker.py
+
+Environment:
+    DATABASE_URL - PostgreSQL connection string (required)
+    OPENAI_API_KEY - OpenAI API key (required)
+    EMBED_MODEL - Model name (default: text-embedding-3-small)
+    EMBED_DIM - Embedding dimension (default: 1536)
+    EMBED_PROVIDER - Provider (default: openai)
 """
 
 import os
 import time
 import logging
+import math
 
 import psycopg2
 import psycopg2.extras
-from sentence_transformers import SentenceTransformer
+from openai import OpenAI
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,26 +41,61 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ============================================================================
 
-DB_DSN = os.getenv("DATABASE_URL")  # Use service role; never ship in code
-MODEL_NAME = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")  # 384 dims
+DB_DSN = os.getenv("DATABASE_URL")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small").replace("openai/", "")
+EMBED_DIM = int(os.getenv("EMBED_DIM", "1536"))
 BATCH_SLEEP_SEC = float(os.getenv("BATCH_SLEEP_SEC", "0.5"))
 ERROR_SLEEP_SEC = float(os.getenv("ERROR_SLEEP_SEC", "0.2"))
 
 # ============================================================================
-# Model (lazy load)
+# OpenAI Client (lazy load)
 # ============================================================================
 
-_model = None
+_client = None
 
 
-def get_model() -> SentenceTransformer:
-    """Lazy load embedding model."""
-    global _model
-    if _model is None:
-        logger.info(f"Loading embedding model: {MODEL_NAME}")
-        _model = SentenceTransformer(MODEL_NAME)
-        logger.info(f"Model loaded. Embedding dimension: {_model.get_sentence_embedding_dimension()}")
-    return _model
+def get_client() -> OpenAI:
+    """Lazy load OpenAI client."""
+    global _client
+    if _client is None:
+        if not OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY not set")
+        logger.info(f"Initializing OpenAI client for model: {EMBED_MODEL}")
+        _client = OpenAI(api_key=OPENAI_API_KEY)
+    return _client
+
+
+def normalize_vector(vec: list[float]) -> list[float]:
+    """Normalize vector to unit length for cosine similarity."""
+    norm = math.sqrt(sum(x * x for x in vec))
+    if norm == 0:
+        return vec
+    return [x / norm for x in vec]
+
+
+def embed_text(text: str) -> list[float]:
+    """
+    Generate embedding using OpenAI API.
+
+    Returns normalized 1536-dim vector.
+    """
+    client = get_client()
+
+    # Truncate text if too long (OpenAI has token limits)
+    max_chars = 8000  # Safe limit for text-embedding-3-small
+    if len(text) > max_chars:
+        text = text[:max_chars]
+
+    response = client.embeddings.create(
+        model=EMBED_MODEL,
+        input=text,
+        dimensions=EMBED_DIM
+    )
+
+    vec = response.data[0].embedding
+    # Normalize for cosine similarity
+    return normalize_vector(vec)
 
 
 # ============================================================================
@@ -98,14 +141,14 @@ def write_embedding(cur, object_type, object_id, vec):
     """
     Write embedding to search_index.
 
-    vec must be python list[float] length 384.
+    vec must be python list[float] length 1536.
     """
     # Format as PostgreSQL vector literal
     vec_str = f"[{','.join(str(x) for x in vec)}]"
-    cur.execute("""
+    cur.execute(f"""
         UPDATE search_index
-        SET embedding = %s::vector(384),
-            embedding_version = 1,
+        SET embedding = %s::vector({EMBED_DIM}),
+            embedding_version = 2,
             updated_at = now()
         WHERE object_type = %s AND object_id = %s
     """, (vec_str, object_type, str(object_id)))
@@ -151,14 +194,13 @@ def process_one(conn) -> bool:
                 logger.warning(f"Job {job_id}: missing search_text for {obj_type}/{obj_id}")
                 return True
 
-            # Generate embedding
-            model = get_model()
-            vec = model.encode([text], normalize_embeddings=True)[0].tolist()
+            # Generate embedding via OpenAI
+            vec = embed_text(text)
 
-            if len(vec) != 384:
+            if len(vec) != EMBED_DIM:
                 mark(cur, job_id, 'failed', f'bad dim {len(vec)}')
                 conn.commit()
-                logger.error(f"Job {job_id}: bad dimension {len(vec)}, expected 384")
+                logger.error(f"Job {job_id}: bad dimension {len(vec)}, expected {EMBED_DIM}")
                 return True
 
             # Write embedding
@@ -184,7 +226,13 @@ def main():
         logger.error("DATABASE_URL not set")
         return
 
+    if not OPENAI_API_KEY:
+        logger.error("OPENAI_API_KEY not set")
+        return
+
+    logger.info(f"Embedding worker starting (model={EMBED_MODEL}, dim={EMBED_DIM})")
     logger.info("Connecting to database...")
+
     with psycopg2.connect(DB_DSN) as conn:
         conn.autocommit = False
         logger.info("Connected. Starting worker loop...")
