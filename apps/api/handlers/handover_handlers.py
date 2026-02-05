@@ -264,12 +264,20 @@ class HandoverHandlers:
         """
         try:
             # Validate entity type
-            valid_types = ["fault", "work_order", "equipment", "document_chunk", "document", "part"]
+            valid_types = ["fault", "work_order", "equipment", "document_chunk", "document", "part", "note"]
             if entity_type not in valid_types:
                 return ResponseBuilder.error(
                     action="add_to_handover",
                     error_code="INVALID_ENTITY_TYPE",
                     message=f"Invalid entity type: {entity_type}. Must be one of: {', '.join(valid_types)}"
+                )
+
+            # entity_id is optional for "note" type
+            if entity_type != "note" and not entity_id:
+                return ResponseBuilder.error(
+                    action="add_to_handover",
+                    error_code="VALIDATION_ERROR",
+                    message=f"entity_id is required for entity_type: {entity_type}"
                 )
 
             # Validate summary text
@@ -296,12 +304,14 @@ class HandoverHandlers:
                     message=f"Invalid category: {category}. Must be one of: {', '.join(valid_categories)}"
                 )
 
-            # Check for duplicate entry (optional - allow override)
-            existing = self.db.table("handover_items").select(
-                "id"
-            ).eq("yacht_id", yacht_id).eq(
-                "entity_type", entity_type
-            ).eq("entity_id", entity_id).is_("deleted_at", "null").execute()
+            # Check for duplicate entry (optional - allow override) - only if entity_id present
+            if entity_id:
+                existing = self.db.table("handover_items").select(
+                    "id"
+                ).eq("yacht_id", yacht_id).eq(
+                    "entity_type", entity_type
+                ).eq("entity_id", entity_id).is_("deleted_at", "null").execute()
+                # Note: We allow duplicates for now - multiple shifts may reference same entity
 
             # Create handover item (standalone, no parent container)
             item_id = str(uuid.uuid4())
