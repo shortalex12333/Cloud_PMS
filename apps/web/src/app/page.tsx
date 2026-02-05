@@ -9,6 +9,7 @@
  * Layout:
  * - SpotlightSearch: Always visible, centered (email inline beneath search bar)
  * - ContextPanel: Slides from right when context-open
+ * - EmailOverlay: Full-width slide from left (portal to body)
  *
  * UX Doctrine:
  * - NO left sidebar inbox - email is inline beneath search bar only
@@ -25,17 +26,23 @@
  */
 
 import { Suspense } from 'react';
-import { SurfaceProvider } from '@/contexts/SurfaceContext';
+import nextDynamic from 'next/dynamic';
+import { SurfaceProvider, useSurface } from '@/contexts/SurfaceContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './app/ContextPanel';
 import DeepLinkHandler from './app/DeepLinkHandler';
 import { AuthProvider } from '@/contexts/AuthContext';
+
+// Dynamic import with SSR disabled for portal-based overlay
+const EmailOverlay = nextDynamic(() => import('./app/EmailOverlay'), { ssr: false });
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 // Inner component that uses the SurfaceContext
 function SurfaceContent() {
+  const { emailPanel, hideEmail } = useSurface();
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Deep Link Handler - processes URL query params for E2E testing */}
@@ -59,6 +66,14 @@ function SurfaceContent() {
           <ContextPanel />
         </Suspense>
       </div>
+
+      {/* Email Overlay - full-width slide from left (portal to body) */}
+      <EmailOverlay
+        open={emailPanel.visible}
+        initialThreadId={emailPanel.threadId}
+        initialFolder={emailPanel.folder}
+        onClose={hideEmail}
+      />
     </main>
   );
 }

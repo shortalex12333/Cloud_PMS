@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useCelesteSearch } from '@/hooks/useCelesteSearch';
 import { useSituationState } from '@/hooks/useSituationState';
+import { useSurfaceSafe } from '@/contexts/SurfaceContext';
 import type { SearchResult as APISearchResult } from '@/types/search';
 import type { EntityType, SituationDomain } from '@/types/situation';
 import SpotlightResultRow from './SpotlightResultRow';
@@ -174,11 +175,34 @@ export default function SpotlightSearch({
   } = useSituationState(user?.yachtId ?? null);
   const router = useRouter();
 
+  // SurfaceContext for email overlay (returns null if not in SurfaceProvider)
+  const surfaceContext = useSurfaceSafe();
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showEmailList, setShowEmailList] = useState(false);
+  // Local state fallback when not in SurfaceProvider
+  const [localShowEmailList, setLocalShowEmailList] = useState(false);
+  const [localEmailScopeActive, setLocalEmailScopeActive] = useState(false);
+
+  // Use context if available, otherwise local state
+  const emailScopeActive = surfaceContext?.emailPanel.visible ?? localEmailScopeActive;
+  const showEmailList = surfaceContext?.emailPanel.visible ?? localShowEmailList;
+
+  // Helper to toggle email state - uses context when available
+  const toggleEmailScope = useCallback((active: boolean) => {
+    if (surfaceContext) {
+      if (active) {
+        surfaceContext.showEmail({ folder: 'inbox' });
+      } else {
+        surfaceContext.hideEmail();
+      }
+    } else {
+      setLocalEmailScopeActive(active);
+      setLocalShowEmailList(active);
+    }
+  }, [surfaceContext]);
 
   // Listen for global settings modal open events
   useEffect(() => {
@@ -190,7 +214,6 @@ export default function SpotlightSearch({
       window.removeEventListener('openSettingsModal', handleOpenSettings as EventListener);
     };
   }, []);
-  const [emailScopeActive, setEmailScopeActive] = useState(false);
   const [emailResults, setEmailResults] = useState<any[]>([]);
   const [emailLoading, setEmailLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -590,7 +613,10 @@ export default function SpotlightSearch({
                 value={query}
                 onChange={(e) => {
                   handleQueryChange(e.target.value);
-                  if (e.target.value) setShowEmailList(false);
+                  if (e.target.value && showEmailList && !emailScopeActive) {
+                    // Hide inline email list when user starts typing (unless in email scope)
+                    toggleEmailScope(false);
+                  }
                   // Route to email search when in email scope
                   if (emailScopeActive) {
                     searchEmail(e.target.value);
@@ -690,8 +716,10 @@ export default function SpotlightSearch({
             />
           )}
 
-          {/* Email List (beneath search bar per UX doctrine) */}
-          {showEmailList && !hasQuery && (
+          {/* Email List (beneath search bar per UX doctrine)
+              Only render inline EmailInboxView when SurfaceContext is NOT available.
+              When SurfaceContext is available, EmailOverlay handles the email UI. */}
+          {showEmailList && !hasQuery && !surfaceContext && (
             <div
               className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-[#1c1c1e] rounded-b-2xl"
               data-testid="email-list-inline"
@@ -748,8 +776,7 @@ export default function SpotlightSearch({
           <button
             onClick={() => {
               const newEmailScope = !emailScopeActive;
-              setEmailScopeActive(newEmailScope);
-              setShowEmailList(newEmailScope);
+              toggleEmailScope(newEmailScope);
               if (!newEmailScope) {
                 setEmailResults([]);
               }
@@ -785,10 +812,9 @@ export default function SpotlightSearch({
             >
               <DropdownMenuItem
                 onClick={() => {
-                  // Show email list inline beneath search bar (per UX doctrine)
+                  // Show email overlay (uses SurfaceContext when available)
                   const newShowEmail = !showEmailList;
-                  setShowEmailList(newShowEmail);
-                  setEmailScopeActive(newShowEmail);
+                  toggleEmailScope(newShowEmail);
                   if (!newShowEmail) {
                     setEmailResults([]);
                   }

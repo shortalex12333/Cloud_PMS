@@ -163,6 +163,14 @@ export function useSurface(): SurfaceContextValue {
   return context;
 }
 
+/**
+ * Safe version of useSurface that returns null if not in SurfaceProvider
+ * Use this when the component may be rendered outside the SurfaceProvider
+ */
+export function useSurfaceSafe(): SurfaceContextValue | null {
+  return useContext(SurfaceContext);
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================

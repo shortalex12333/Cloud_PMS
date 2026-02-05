@@ -33,6 +33,8 @@ export interface ResolveResponse {
  * Error class for resolve failures
  */
 export class ResolveError extends Error {
+  public code: string;
+
   constructor(
     message: string,
     public statusCode: number,
@@ -40,6 +42,16 @@ export class ResolveError extends Error {
   ) {
     super(message);
     this.name = 'ResolveError';
+    // Map status codes to error codes
+    this.code = this.mapStatusToCode(statusCode, detail);
+  }
+
+  private mapStatusToCode(statusCode: number, detail?: string): string {
+    if (detail?.includes('expired')) return 'TOKEN_EXPIRED';
+    if (detail?.includes('invalid')) return 'TOKEN_INVALID';
+    if (detail?.includes('yacht')) return 'YACHT_MISMATCH';
+    if (statusCode === 404) return 'ENTITY_NOT_FOUND';
+    return 'UNKNOWN';
   }
 }
 
