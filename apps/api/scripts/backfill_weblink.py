@@ -103,17 +103,12 @@ async def backfill_messages(user_id: str, yacht_id: str, batch_size: int = 50, d
     if not TENANT_SUPABASE_KEY:
         logger.error("TENANT_SUPABASE_KEY not set")
         return
-    if not MASTER_SUPABASE_KEY:
-        logger.error("MASTER_SUPABASE_KEY not set")
-        return
 
-    # MASTER database for auth tokens
-    master_supabase = create_client(MASTER_SUPABASE_URL, MASTER_SUPABASE_KEY)
-    # TENANT database for email messages
+    # TENANT database has both tokens and messages
     tenant_supabase = create_client(TENANT_SUPABASE_URL, TENANT_SUPABASE_KEY)
 
-    # Get Graph token from MASTER
-    token = await get_graph_token(master_supabase, user_id, yacht_id)
+    # Get Graph token from TENANT (auth_microsoft_tokens is in tenant DB)
+    token = await get_graph_token(tenant_supabase, user_id, yacht_id)
     if not token:
         logger.error("Could not get Graph token")
         return
