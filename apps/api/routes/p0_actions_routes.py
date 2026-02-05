@@ -1295,86 +1295,88 @@ async def execute_action(
 
         # ===== HANDOVER ACTIONS (P0 Action 8) =====
         elif action == "add_to_handover":
-            from datetime import datetime, timezone
-            tenant_alias = user_context.get("tenant_key_alias", "")
-            db_client = get_tenant_supabase_client(tenant_alias)
+            # Route to proper handler
+            if not handover_handlers:
+                raise HTTPException(status_code=500, detail="Handover handlers not initialized")
 
-            # Support both payload formats:
-            # Format 1 (test): { title, description, category, priority }
-            # Format 2 (original): { entity_type, entity_id, summary_text, category, priority }
-            title = payload.get("title")
-            description = payload.get("description", "")
-            entity_type = payload.get("entity_type", "note")  # Default to note type
+            # Support multiple payload formats for backwards compatibility
+            # Format 1 (E2E test): { summary, category, is_critical, priority }
+            # Format 2 (legacy): { title, description, category, priority }
+            # Format 3 (original): { entity_type, entity_id, summary_text, category }
+            summary = payload.get("summary") or payload.get("summary_text")
+            if not summary:
+                # Fallback: construct from title + description
+                title = payload.get("title")
+                description = payload.get("description", "")
+                summary = f"{title}\n\n{description}" if title and description else (title or description or "")
+
+            if not summary or len(summary) < 10:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "error",
+                        "error_code": "VALIDATION_ERROR",
+                        "message": "Summary must be at least 10 characters"
+                    }
+                )
+
+            entity_type = payload.get("entity_type", "note")  # Default to note
             entity_id = payload.get("entity_id")
-            summary_text = payload.get("summary_text") or title or description[:200] if description else "Handover item"
             category = payload.get("category", "fyi")
-            priority_str = payload.get("priority", "normal")
-
-            # Convert string priority to integer (0-5)
-            priority_map = {"low": 1, "normal": 2, "high": 3, "urgent": 4, "critical": 5}
-            priority = priority_map.get(priority_str, 2) if isinstance(priority_str, str) else int(priority_str)
-
-            # Validate category
-            valid_categories = ("urgent", "in_progress", "completed", "watch", "fyi")
-            if category not in valid_categories:
-                category = "fyi"
-
-            # Validate entity_type
-            valid_entity_types = ("work_order", "fault", "equipment", "note")
-            if entity_type not in valid_entity_types:
-                entity_type = "note"
-
-            handover_data = {
-                "yacht_id": yacht_id,
-                "entity_type": entity_type,
-                "entity_id": entity_id,
-                "summary_text": summary_text,
-                "category": category,
-                "priority": priority,
-                "added_by": user_id,
-                "added_at": datetime.now(timezone.utc).isoformat()
-            }
+            priority = payload.get("priority", "normal")
+            is_critical = payload.get("is_critical", False)
+            requires_action = payload.get("requires_action", False)
+            action_summary = payload.get("action_summary")
+            section = payload.get("section")
 
             try:
-                handover_result = db_client.table("pms_handover").insert(handover_data).execute()
-                if handover_result.data:
-                    result = {
-                        "status": "success",
-                        "success": True,
-                        "handover_id": handover_result.data[0]["id"],
-                        "message": "Handover item added successfully"
-                    }
-                else:
-                    result = {
+                result = await handover_handlers.add_to_handover_execute(
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    summary=summary,
+                    category=category,
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    priority=priority,
+                    section=section,
+                    is_critical=is_critical,
+                    requires_action=requires_action,
+                    action_summary=action_summary
+                )
+
+                # Map handler errors to HTTP exceptions
+                if result.get("status") == "error":
+                    error_code = result.get("error_code")
+                    status_code = 400
+
+                    if error_code == "INVALID_ENTITY_TYPE":
+                        status_code = 400
+                    elif error_code == "VALIDATION_ERROR":
+                        status_code = 400
+                    elif error_code == "INTERNAL_ERROR":
+                        status_code = 500
+
+                    raise HTTPException(
+                        status_code=status_code,
+                        detail={
+                            "status": "error",
+                            "error_code": error_code,
+                            "message": result.get("message")
+                        }
+                    )
+
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.exception(f"Unexpected error in add_to_handover: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail={
                         "status": "error",
-                        "error_code": "INSERT_FAILED",
-                        "message": "Failed to create handover item"
+                        "error_code": "INTERNAL_ERROR",
+                        "message": f"Failed to add to handover: {str(e)}"
                     }
-            except Exception as db_err:
-                error_str = str(db_err)
-                if "23503" in error_str or "foreign key" in error_str.lower():
-                    # FK constraint - user doesn't exist in local users table
-                    # Try with a fallback user ID from auth_users_profiles
-                    fallback_user = db_client.table("auth_users_profiles").select("id").limit(1).execute()
-                    if fallback_user.data:
-                        handover_data["added_by"] = fallback_user.data[0]["id"]
-                        try:
-                            handover_result = db_client.table("pms_handover").insert(handover_data).execute()
-                            if handover_result.data:
-                                result = {
-                                    "status": "success",
-                                    "success": True,
-                                    "handover_id": handover_result.data[0]["id"],
-                                    "message": "Handover item added (with system user attribution)"
-                                }
-                            else:
-                                raise HTTPException(status_code=500, detail=f"Insert failed: {error_str}")
-                        except Exception as retry_err:
-                            raise HTTPException(status_code=500, detail=f"FK constraint: {error_str}. Retry: {str(retry_err)}")
-                    else:
-                        raise HTTPException(status_code=500, detail=f"FK constraint and no fallback user: {error_str}")
-                else:
-                    raise HTTPException(status_code=500, detail=f"Database error: {error_str}")
+                )
 
         # ===== MANUAL ACTIONS (P0 Action 1) =====
         elif action == "show_manual_section":
@@ -5321,7 +5323,27 @@ async def export_handover_route(
     )
 
     if result.get("status") == "error":
-        raise HTTPException(status_code=400, detail=result.get("message"))
+        # Map error codes to appropriate HTTP status codes
+        error_code = result.get("error_code")
+        status_code = 400
+
+        if error_code == "NO_ITEMS":
+            status_code = 404
+        elif error_code == "NOT_FINALIZED":
+            status_code = 409
+        elif error_code == "SERVICE_UNAVAILABLE":
+            status_code = 503
+        elif error_code in ["DATABASE_ERROR", "EXPORT_FAILED"]:
+            status_code = 500
+
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "status": "error",
+                "error_code": error_code,
+                "message": result.get("message")
+            }
+        )
 
     return result
 

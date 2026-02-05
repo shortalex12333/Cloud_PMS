@@ -268,15 +268,30 @@ class HandoverWorkflowHandlers:
         content_hash = item.get("content_hash")
 
         # Generate export (delegated to export service)
-        from services.handover_export_service import HandoverExportService
-        export_service = HandoverExportService(self.db)
+        try:
+            from apps.api.services.handover_export_service import HandoverExportService
+            export_service = HandoverExportService(self.db)
 
-        export_result = await export_service.generate_export(
-            yacht_id=yacht_id,
-            user_id=user_id,
-            export_type=export_type,
-            include_completed=False
-        )
+            export_result = await export_service.generate_export(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                export_type=export_type,
+                include_completed=False
+            )
+        except ImportError as e:
+            logger.error(f"Export service import failed: {e}")
+            return {
+                "status": "error",
+                "error_code": "SERVICE_UNAVAILABLE",
+                "message": "Export service not available"
+            }
+        except Exception as e:
+            logger.error(f"Export generation failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "EXPORT_FAILED",
+                "message": f"Failed to generate export: {str(e)}"
+            }
 
         # Calculate document hash from generated HTML
         document_bytes = export_result.html.encode('utf-8')
@@ -285,21 +300,33 @@ class HandoverWorkflowHandlers:
         export_id = export_result.export_id
 
         # Update export record with workflow fields
-        self.db.table("handover_exports").update({
-            "document_hash": document_hash,
-            "content_hash": content_hash,
-            "status": "pending_outgoing",
-            "department": department,
-            "shift_date": shift_date
-        }).eq("id", export_id).execute()
+        try:
+            self.db.table("handover_exports").update({
+                "document_hash": document_hash,
+                "content_hash": content_hash,
+                "status": "pending_outgoing",
+                "department": department,
+                "shift_date": shift_date
+            }).eq("id", export_id).execute()
+        except Exception as e:
+            logger.error(f"Failed to update export record: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to update export record"
+            }
 
         # Send notification to ledger
-        await self._notify_ledger_export_ready(
-            yacht_id=yacht_id,
-            export_id=export_id,
-            user_id=user_id,
-            notification_type="handover_ready_outgoing"
-        )
+        try:
+            await self._notify_ledger_export_ready(
+                yacht_id=yacht_id,
+                export_id=export_id,
+                user_id=user_id,
+                notification_type="handover_ready_outgoing"
+            )
+        except Exception as e:
+            # Non-fatal: export succeeded but notification failed
+            logger.warning(f"Failed to send notification: {e}")
 
         logger.info(f"Export created: export_id={export_id}, document_hash={document_hash[:16]}")
 
