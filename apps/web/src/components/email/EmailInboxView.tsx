@@ -29,9 +29,10 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
   const { data, isLoading, error, refetch } = useInboxThreads(page, showLinked);
 
   // Open email in full EmailSurface view
-  const handleOpenThread = (thread: EmailThread) => {
-    // Navigate to email inbox with thread ID as query param
-    router.push(`/email/inbox?thread=${thread.id}`);
+  // SINGLE-SURFACE: No query params, just navigate to the email surface
+  // User will see the full thread list and can select the thread there
+  const handleOpenThread = (_thread: EmailThread) => {
+    router.push('/email/inbox');
   };
 
   const threads = data?.threads || [];
