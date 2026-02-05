@@ -29,7 +29,7 @@ const nextConfig = {
               "frame-src 'self' blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co",
               "media-src 'self' blob: https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co",
               "worker-src 'self' blob:",
-              `connect-src 'self' ${localDevUrls}https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co https://pipeline-core.int.celeste7.ai https://api.celeste7.ai https://app.celeste7.ai https://auth.celeste7.ai`,
+              `connect-src 'self' ${localDevUrls}https://qvzmkaamzaqxpzbewjxe.supabase.co https://vzsohavtuotocgrfkfyd.supabase.co https://pipeline-core.int.celeste7.ai https://api.celeste7.ai https://app.celeste7.ai https://auth.celeste7.ai https://handover-export.onrender.com`,
             ].join('; '),
           },
         ],
