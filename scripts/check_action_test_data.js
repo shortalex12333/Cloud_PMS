@@ -81,18 +81,19 @@ async function checkTestData() {
   };
   console.log(`   Found: ${notesCount} note records`);
 
-  // Check handovers
-  console.log('6. Checking handovers...');
-  const { data: handovers, count: handoverCount } = await supabase
-    .from('handovers')
+  // Check handover items (consolidated schema as of 2026-02-05)
+  console.log('6. Checking handover_items...');
+  const { data: handoverItems, count: handoverCount } = await supabase
+    .from('handover_items')
     .select('*', { count: 'exact' })
     .eq('yacht_id', yacht_id)
+    .is('deleted_at', null)
     .limit(5);
-  testData.handovers = {
+  testData.handover_items = {
     count: handoverCount,
-    sample: handovers?.slice(0, 3)
+    sample: handoverItems?.slice(0, 3)
   };
-  console.log(`   Found: ${handoverCount} handover records`);
+  console.log(`   Found: ${handoverCount} handover item records`);
 
   // Check users for this yacht
   console.log('7. Checking users...');
