@@ -1052,7 +1052,7 @@ async def render_message(
             elif graph_status == 403:
                 raise HTTPException(status_code=403, detail="Access denied to this message.")
         logger.error(f"[email/render] Unexpected error ({error_type}, graph_status={graph_status}): {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch message content: {error_type} (graph_status={graph_status})")
+        raise HTTPException(status_code=500, detail="Failed to fetch message content")
 
 
 # ============================================================================
