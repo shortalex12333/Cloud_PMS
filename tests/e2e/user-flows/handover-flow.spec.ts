@@ -19,21 +19,22 @@ import { TEST_YACHT_ID, getPrimaryTestUser } from '../../fixtures/test_users';
 test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
   let apiClient: ApiClient;
   let supabase: ReturnType<typeof getTenantClient>;
-  let testHandoverId: string | null = null;
+  let testItemId: string | null = null;
 
   test.beforeAll(async () => {
     supabase = getTenantClient();
 
-    // Get or create a handover entry
-    const { data: handover } = await supabase
-      .from('pms_handover')
+    // Get an existing handover item (consolidated schema as of 2026-02-05)
+    const { data: item } = await supabase
+      .from('handover_items')
       .select('id')
       .eq('yacht_id', TEST_YACHT_ID)
+      .is('deleted_at', null)
       .limit(1)
       .single();
 
-    if (handover) {
-      testHandoverId = handover.id;
+    if (item) {
+      testItemId = item.id;
     }
   });
 
@@ -47,43 +48,43 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
 
     const response = await apiClient.executeAction('add_to_handover', {
       yacht_id: TEST_YACHT_ID,
-      section: 'engineering',
-      item: 'E2E test item - generator maintenance completed',
-      priority: 'normal',
+      section: 'Engineering',
+      summary: 'E2E test item - generator maintenance completed',
+      category: 'in_progress',
     });
 
     saveResponse('handover-flow/step1', response);
 
     if (response.status === 200 || response.status === 201) {
-      testHandoverId = response.data.handover_id || response.data.id || testHandoverId;
+      testItemId = response.data.item_id || response.data.item?.id || testItemId;
     }
 
     await createEvidenceBundle('handover-flow/step1', {
       test: 'add_to_handover',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',
-      handover_id: testHandoverId,
+      item_id: testItemId,
       response_status: response.status,
     });
 
     expect([200, 201, 400, 404]).toContain(response.status);
   });
 
-  test('Step 2: Edit handover section', async ({ page }) => {
+  test('Step 2: Edit handover item', async ({ page }) => {
     const user = getPrimaryTestUser();
     await apiClient.authenticate(user.email, user.password);
 
     const response = await apiClient.executeAction('edit_handover_section', {
       yacht_id: TEST_YACHT_ID,
-      handover_id: testHandoverId,
-      section: 'engineering',
+      item_id: testItemId,
       content: 'E2E test - updated engineering section with additional notes',
+      category: 'completed',
     });
 
     saveResponse('handover-flow/step2', response);
     await createEvidenceBundle('handover-flow/step2', {
       test: 'edit_handover_section',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',
-      handover_id: testHandoverId,
+      item_id: testItemId,
       response_status: response.status,
     });
 
@@ -96,14 +97,14 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
 
     const response = await apiClient.executeAction('regenerate_handover_summary', {
       yacht_id: TEST_YACHT_ID,
-      handover_id: testHandoverId,
+      department: 'Engineering',
     });
 
     saveResponse('handover-flow/step3', response);
     await createEvidenceBundle('handover-flow/step3', {
       test: 'regenerate_handover_summary',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',
-      handover_id: testHandoverId,
+      item_id: testItemId,
       response_status: response.status,
     });
 
@@ -116,7 +117,7 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
 
     const response = await apiClient.executeAction('export_handover', {
       yacht_id: TEST_YACHT_ID,
-      handover_id: testHandoverId,
+      department: 'Engineering',
       format: 'pdf',
     });
 
@@ -124,7 +125,7 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
     await createEvidenceBundle('handover-flow/step4', {
       test: 'export_handover',
       status: [200, 201].includes(response.status) ? 'passed' : 'documented',
-      handover_id: testHandoverId,
+      export_id: response.data?.export_id,
       response_status: response.status,
     });
 
@@ -134,13 +135,14 @@ test.describe('HANDOVER FLOW: Shift Handover Journey', () => {
   test('Handover Flow Summary', async ({ page }) => {
     await createEvidenceBundle('handover-flow/SUMMARY', {
       test_suite: 'handover_flow',
+      schema_note: 'Consolidated schema as of 2026-02-05 - standalone handover_items',
       steps: [
-        { step: 1, action: 'add_to_handover' },
-        { step: 2, action: 'edit_handover_section' },
-        { step: 3, action: 'regenerate_handover_summary' },
-        { step: 4, action: 'export_handover' },
+        { step: 1, action: 'add_to_handover', table: 'handover_items' },
+        { step: 2, action: 'edit_handover_section', table: 'handover_items' },
+        { step: 3, action: 'regenerate_handover_summary', table: 'handover_items' },
+        { step: 4, action: 'export_handover', table: 'handover_exports' },
       ],
-      handover_id: testHandoverId,
+      item_id: testItemId,
       yacht_id: TEST_YACHT_ID,
       timestamp: new Date().toISOString(),
     });

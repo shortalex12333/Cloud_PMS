@@ -190,20 +190,21 @@ export async function discoverTestData(): Promise<DiscoveredTestData> {
     console.warn('Failed to discover documents:', e.message);
   }
 
-  // Discover handover (table is plural: handovers)
+  // Discover handover items (consolidated schema as of 2026-02-05 - standalone handover_items)
   try {
-    const { data: handover } = await client
-      .from('handovers')
+    const { data: handoverItems } = await client
+      .from('handover_items')
       .select('id')
       .eq('yacht_id', yacht_id)
+      .is('deleted_at', null)
       .limit(1);
 
-    if (handover && handover.length > 0) {
-      result.found.handover = handover.length;
-      result.handover_id = handover[0].id;
+    if (handoverItems && handoverItems.length > 0) {
+      result.found.handover = handoverItems.length;
+      result.handover_id = handoverItems[0].id;
     }
   } catch (e: any) {
-    console.warn('Failed to discover handover:', e.message);
+    console.warn('Failed to discover handover items:', e.message);
   }
 
   // Discover checklists

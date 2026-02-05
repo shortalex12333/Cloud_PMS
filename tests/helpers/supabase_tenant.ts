@@ -145,8 +145,9 @@ export async function getLatestAuditLog(
 
 /**
  * Get handover items for yacht
- * Table: pms_handover (actual table name in tenant DB)
- * Columns: id, yacht_id, entity_type, entity_id, summary_text, category, priority, added_by, added_at
+ * Table: handover_items (consolidated schema as of 2026-02-05)
+ * Columns: id, yacht_id, entity_type, entity_id, summary, section, category, priority,
+ *          is_critical, requires_action, action_summary, risk_tags, added_by, created_at
  */
 export async function getHandoverItems(
   yachtId: string,
@@ -155,10 +156,11 @@ export async function getHandoverItems(
   const client = getTenantClient();
 
   const { data, error } = await client
-    .from('pms_handover')
+    .from('handover_items')
     .select('*')
     .eq('yacht_id', yachtId)
-    .order('added_at', { ascending: false })
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) {
