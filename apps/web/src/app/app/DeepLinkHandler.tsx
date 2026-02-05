@@ -28,6 +28,9 @@ import { useSurface } from '@/contexts/SurfaceContext';
 import { useAuth } from '@/hooks/useAuth';
 import type { ResolveResponse } from '@/lib/handoverExportClient';
 
+// Session storage key for preventing duplicate openEmail handling
+const OPEN_EMAIL_HANDLED_KEY = 'openEmail_handled';
+
 // Entity fetch configuration
 const PIPELINE_URL = process.env.NEXT_PUBLIC_PIPELINE_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -39,11 +42,29 @@ interface DeepLinkHandlerProps {
 export function DeepLinkHandler({ onDeepLinkProcessed }: DeepLinkHandlerProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { showContext } = useSurface();
+  const { showContext, showEmail } = useSurface();
   const { session, loading: authLoading } = useAuth();
   const processedRef = useRef(false);
   const openResolvedRef = useRef(false);
+  const openEmailRef = useRef(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  // Handle openEmail param (from /email/inbox redirect)
+  useEffect(() => {
+    if (openEmailRef.current) return;
+
+    const openEmail = searchParams.get('openEmail');
+    if (openEmail !== 'true') return;
+
+    openEmailRef.current = true;
+    console.log('[DeepLinkHandler] Opening email overlay from redirect');
+
+    // Open email overlay
+    showEmail({ folder: 'inbox' });
+
+    // Clean up URL (remove openEmail param)
+    router.replace('/', { scroll: false });
+  }, [searchParams, showEmail, router]);
 
   // Handle handover open resolution (from /open?t=... -> /app?open_resolved=1)
   useEffect(() => {
@@ -175,6 +196,7 @@ export function DeepLinkHandler({ onDeepLinkProcessed }: DeepLinkHandlerProps) {
     const entityType = searchParams.get('entity');
     const entityId = searchParams.get('id');
     const openResolved = searchParams.get('open_resolved');
+    const openEmail = searchParams.get('openEmail');
 
     if (!entityType || !entityId) {
       processedRef.current = false;
@@ -182,7 +204,10 @@ export function DeepLinkHandler({ onDeepLinkProcessed }: DeepLinkHandlerProps) {
     if (!openResolved) {
       openResolvedRef.current = false;
     }
-    if (!entityType && !entityId && !openResolved) {
+    if (!openEmail) {
+      openEmailRef.current = false;
+    }
+    if (!entityType && !entityId && !openResolved && !openEmail) {
       setStatus('idle');
     }
   }, [searchParams]);
