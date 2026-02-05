@@ -537,3 +537,173 @@ async def get_outlook_status(authorization: str = Header(None)):
     except Exception as e:
         logger.exception(f"[Auth] Unexpected error in status check: {e}")
         return OutlookStatusResponse(connected=False)
+
+
+class DisconnectResponse(BaseModel):
+    """Response from disconnect endpoint."""
+    success: bool
+    message: Optional[str] = None
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+
+
+@router.post("/outlook/disconnect", response_model=DisconnectResponse)
+async def disconnect_outlook(authorization: str = Header(None)):
+    """
+    Disconnect Outlook OAuth - revoke all tokens for the user.
+
+    Soft-deletes tokens (is_revoked=true) and marks watcher as disconnected.
+    Email history is preserved.
+
+    Headers:
+        Authorization: Bearer <supabase_jwt_token>
+    """
+    try:
+        # Extract user_id from Supabase JWT
+        if not authorization or not authorization.startswith('Bearer '):
+            return DisconnectResponse(
+                success=False,
+                error="Unauthorized",
+                error_code="unauthorized",
+            )
+
+        token = authorization.split(' ')[1]
+
+        # Decode and VERIFY JWT signature
+        import jwt
+
+        jwt_secret = (
+            os.getenv("MASTER_SUPABASE_JWT_SECRET") or
+            os.getenv("TENANT_SUPABASE_JWT_SECRET") or
+            os.getenv("SUPABASE_JWT_SECRET")
+        )
+
+        if not jwt_secret:
+            logger.error("[Auth] No JWT secret configured for disconnect")
+            return DisconnectResponse(
+                success=False,
+                error="Server configuration error",
+                error_code="no_jwt_secret",
+            )
+
+        try:
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+                options={"verify_exp": True}
+            )
+            user_id = payload.get('sub')
+        except jwt.ExpiredSignatureError:
+            return DisconnectResponse(
+                success=False,
+                error="Token expired",
+                error_code="token_expired",
+            )
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"[Auth] JWT validation failed: {e}")
+            return DisconnectResponse(
+                success=False,
+                error="Invalid token",
+                error_code="invalid_token",
+            )
+
+        if not user_id:
+            return DisconnectResponse(
+                success=False,
+                error="No user ID in token",
+                error_code="no_user_id",
+            )
+
+        logger.info(f"[Auth] Processing disconnect for user {user_id}")
+
+        # Step 1: Get yacht_id from MASTER DB
+        master_supabase = get_master_supabase()
+        if not master_supabase:
+            return DisconnectResponse(
+                success=False,
+                error="Failed to connect to authentication database",
+                error_code="master_db_connection_failed",
+            )
+
+        try:
+            user_account = master_supabase.table('user_accounts').select('yacht_id').eq('id', user_id).maybe_single().execute()
+
+            if not user_account.data:
+                return DisconnectResponse(
+                    success=False,
+                    error="User not found",
+                    error_code="user_not_found",
+                )
+
+            yacht_id = user_account.data.get('yacht_id')
+
+            if not yacht_id:
+                return DisconnectResponse(
+                    success=False,
+                    error="No yacht assigned to user",
+                    error_code="no_yacht",
+                )
+
+        except Exception as e:
+            logger.error(f"[Auth] Error querying MASTER DB: {e}")
+            return DisconnectResponse(
+                success=False,
+                error="Failed to lookup user",
+                error_code="user_lookup_failed",
+            )
+
+        # Step 2: Get TENANT DB client
+        tenant_supabase = get_yacht_supabase(yacht_id)
+        if not tenant_supabase:
+            return DisconnectResponse(
+                success=False,
+                error="Failed to connect to yacht database",
+                error_code="tenant_db_connection_failed",
+            )
+
+        # Step 3: Revoke all Microsoft tokens (soft delete)
+        try:
+            revoke_result = tenant_supabase.table('auth_microsoft_tokens').update({
+                'is_revoked': True,
+                'revoked_at': datetime.utcnow().isoformat(),
+                'updated_at': datetime.utcnow().isoformat(),
+            }).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('provider', 'microsoft_graph').eq('is_revoked', False).execute()
+
+            logger.info(f"[Auth] Revoked tokens for user {user_id}")
+
+        except Exception as e:
+            logger.error(f"[Auth] Failed to revoke tokens: {e}")
+            return DisconnectResponse(
+                success=False,
+                error="Failed to revoke tokens",
+                error_code="revoke_failed",
+            )
+
+        # Step 4: Mark watcher as disconnected
+        try:
+            tenant_supabase.table('email_watchers').update({
+                'sync_status': 'disconnected',
+                'updated_at': datetime.utcnow().isoformat(),
+            }).eq('user_id', user_id).eq('yacht_id', yacht_id).eq('provider', 'microsoft_graph').execute()
+
+            logger.info(f"[Auth] Watcher marked as disconnected for user {user_id}")
+
+        except Exception as e:
+            logger.warning(f"[Auth] Failed to update watcher (non-fatal): {e}")
+
+        logger.info(f"[Auth] Successfully disconnected Outlook for user {user_id}")
+
+        return DisconnectResponse(
+            success=True,
+            message="Disconnected successfully. Email history preserved.",
+        )
+
+    except Exception as e:
+        logger.exception(f"[Auth] Unexpected error in disconnect: {e}")
+        return DisconnectResponse(
+            success=False,
+            error=str(e),
+            error_code="unexpected",
+        )

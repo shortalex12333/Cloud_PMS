@@ -1,27 +1,25 @@
 /**
  * Microsoft OAuth - Disconnect Account
  *
- * Revokes BOTH read and write tokens (soft delete).
- * Marks email_watchers as disconnected.
- * Does NOT delete email_threads/messages/links (preserves history).
+ * Forwards disconnect request to Render backend.
+ * This keeps all secrets (Supabase service keys) in Render only.
  *
  * Per doctrine:
  * - Soft delete only - set is_revoked=true
  * - Historical email data preserved
- * - Separate "Delete all email data" endpoint for hard delete (future)
+ * - All DB operations handled by Render backend
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getServiceClient,
-  getUserYachtId,
-  revokeAllTokens,
-  disconnectWatcher,
-} from '@/lib/email/oauth-utils';
+
+export const dynamic = 'force-dynamic';
+
+// Render backend URL
+const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get JWT from Authorization header
+    // Get JWT from Authorization header - pass through to Render
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -30,56 +28,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = authHeader.split(' ')[1];
+    console.log('[Outlook Disconnect] Forwarding to Render backend');
 
-    // Verify JWT and get user_id
-    const supabase = getServiceClient();
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
+    // Forward request to Render backend
+    let renderResponse: Response;
+    try {
+      renderResponse = await fetch(`${RENDER_API_URL}/auth/outlook/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (fetchError) {
+      console.error('[Outlook Disconnect] Network error calling Render:', fetchError);
       return NextResponse.json(
-        { success: false, error: 'Invalid token' },
-        { status: 401 }
+        { success: false, error: 'Backend unreachable' },
+        { status: 503 }
       );
     }
 
-    console.log('[Outlook Disconnect] Revoking tokens for user:', user.id);
-
-    // Get user's yacht_id
-    const yachtId = await getUserYachtId(supabase, user.id);
-    if (!yachtId) {
+    // Parse response
+    let result: { success: boolean; message?: string; error?: string; error_code?: string };
+    try {
+      result = await renderResponse.json();
+    } catch {
+      console.error('[Outlook Disconnect] Invalid response from Render');
       return NextResponse.json(
-        { success: false, error: 'No yacht found for user' },
-        { status: 400 }
+        { success: false, error: 'Invalid backend response' },
+        { status: 502 }
       );
     }
 
-    // Revoke all Microsoft tokens (both read and write)
-    const revokeResult = await revokeAllTokens(supabase, user.id, yachtId, user.id);
-    if (!revokeResult.success) {
-      console.error('[Outlook Disconnect] Failed to revoke tokens:', revokeResult.error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to revoke tokens' },
-        { status: 500 }
-      );
-    }
-
-    // Mark watcher as disconnected
-    const watcherResult = await disconnectWatcher(supabase, user.id, yachtId);
-    if (!watcherResult.success) {
-      console.warn('[Outlook Disconnect] Failed to update watcher:', watcherResult.error);
-      // Non-fatal - tokens are revoked
-    }
-
-    console.log('[Outlook Disconnect] Successfully disconnected');
-
-    return NextResponse.json({
-      success: true,
-      message: 'Disconnected successfully. Email history preserved.',
+    console.log('[Outlook Disconnect] Render response:', {
+      status: renderResponse.status,
+      success: result.success,
+      error: result.error,
     });
 
+    // Return Render's response
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        message: result.message || 'Disconnected successfully. Email history preserved.',
+      });
+    } else {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'Disconnect failed',
+          error_code: result.error_code,
+        },
+        { status: renderResponse.status >= 400 ? renderResponse.status : 500 }
+      );
+    }
+
   } catch (error) {
-    console.error('[Outlook Disconnect] Error:', error);
+    console.error('[Outlook Disconnect] Unexpected error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
