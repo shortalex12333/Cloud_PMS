@@ -718,7 +718,7 @@ async def get_message_focus(
         # 1. Get message metadata (yacht_id enforced via RLS)
         msg_result = supabase.table('email_messages').select(
             'id, thread_id, subject, from_display_name, sent_at, has_attachments, attachments, preview_text'
-        ).eq('id', message_id).eq('yacht_id', yacht_id).single().execute()
+        ).eq('id', message_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not msg_result.data:
             raise HTTPException(status_code=404, detail="Message not found")
@@ -955,9 +955,9 @@ async def render_message(
     # Verify message belongs to user's yacht
     msg_result = supabase.table('email_messages').select('id').eq(
         'provider_message_id', provider_message_id
-    ).eq('yacht_id', yacht_id).single().execute()
+    ).eq('yacht_id', yacht_id).maybe_single().execute()
 
-    if not msg_result.data:
+    if not msg_result or not msg_result.data:
         raise HTTPException(status_code=404, detail="Message not found")
 
     try:
@@ -1086,7 +1086,7 @@ async def list_message_attachments(
     # Verify message exists and belongs to yacht
     msg_result = supabase.table('email_messages').select(
         'id, provider_message_id, has_attachments'
-    ).eq('id', message_id).eq('yacht_id', yacht_id).single().execute()
+    ).eq('id', message_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
     if not msg_result.data:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -1192,7 +1192,7 @@ async def download_attachment(
     # Verify message belongs to user's yacht
     msg_result = supabase.table('email_messages').select('id').eq(
         'provider_message_id', provider_message_id
-    ).eq('yacht_id', yacht_id).single().execute()
+    ).eq('yacht_id', yacht_id).maybe_single().execute()
 
     if not msg_result.data:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -1397,7 +1397,7 @@ async def add_link(
         # M8: Verify thread exists and belongs to yacht (RLS enforced)
         thread_result = supabase.table('email_threads').select('id').eq(
             'id', request.thread_id
-        ).eq('yacht_id', yacht_id).single().execute()
+        ).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not thread_result.data:
             raise HTTPException(status_code=404, detail="Thread not found or access denied")
@@ -1408,7 +1408,7 @@ async def add_link(
             try:
                 target_result = supabase.table(target_table).select('id').eq(
                     'id', request.object_id
-                ).eq('yacht_id', yacht_id).single().execute()
+                ).eq('yacht_id', yacht_id).maybe_single().execute()
 
                 if not target_result.data:
                     raise HTTPException(
@@ -1552,7 +1552,7 @@ async def accept_link(
         # Get current link state (yacht_id enforced)
         link_result = supabase.table('email_links').select('*').eq(
             'id', request.link_id
-        ).eq('yacht_id', yacht_id).eq('is_active', True).single().execute()
+        ).eq('yacht_id', yacht_id).eq('is_active', True).maybe_single().execute()
 
         if not link_result.data:
             raise HTTPException(status_code=404, detail="Link not found")
@@ -1640,7 +1640,7 @@ async def change_link(
         # Get current link state (yacht_id enforced)
         link_result = supabase.table('email_links').select('*').eq(
             'id', request.link_id
-        ).eq('yacht_id', yacht_id).eq('is_active', True).single().execute()
+        ).eq('yacht_id', yacht_id).eq('is_active', True).maybe_single().execute()
 
         if not link_result.data:
             raise HTTPException(status_code=404, detail="Link not found")
@@ -1731,7 +1731,7 @@ async def remove_link(
         # Note: We check for the link regardless of is_active for idempotency
         link_result = supabase.table('email_links').select('*').eq(
             'id', request.link_id
-        ).eq('yacht_id', yacht_id).single().execute()
+        ).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not link_result.data:
             raise HTTPException(status_code=404, detail="Link not found")
@@ -1801,7 +1801,7 @@ async def reject_link(
         # Get current link state (yacht_id enforced)
         link_result = supabase.table('email_links').select('*').eq(
             'id', request.link_id
-        ).eq('yacht_id', yacht_id).eq('is_active', True).single().execute()
+        ).eq('yacht_id', yacht_id).eq('is_active', True).maybe_single().execute()
 
         if not link_result.data:
             raise HTTPException(status_code=404, detail="Link not found")
@@ -1867,7 +1867,7 @@ async def create_link(
         # Verify thread exists and belongs to this yacht
         thread_result = supabase.table('email_threads').select('id').eq(
             'id', request.thread_id
-        ).eq('yacht_id', yacht_id).single().execute()
+        ).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not thread_result.data:
             raise HTTPException(status_code=404, detail="Thread not found")
@@ -1877,7 +1877,7 @@ async def create_link(
             'thread_id', request.thread_id
         ).eq('object_type', request.object_type).eq(
             'object_id', request.object_id
-        ).eq('is_active', True).single().execute()
+        ).eq('is_active', True).maybe_single().execute()
 
         if existing.data:
             raise HTTPException(status_code=400, detail="Link already exists")
@@ -1895,7 +1895,7 @@ async def create_link(
         if target_table:
             target_result = supabase.table(target_table).select('id').eq(
                 'id', request.object_id
-            ).eq('yacht_id', yacht_id).single().execute()
+            ).eq('yacht_id', yacht_id).maybe_single().execute()
 
             if not target_result.data:
                 raise HTTPException(status_code=404, detail=f"{request.object_type} not found")
@@ -2507,7 +2507,7 @@ async def save_attachment(
     # Verify message belongs to user's yacht
     msg_result = supabase.table('email_messages').select('id, thread_id').eq(
         'provider_message_id', request.message_id
-    ).eq('yacht_id', yacht_id).single().execute()
+    ).eq('yacht_id', yacht_id).maybe_single().execute()
 
     if not msg_result.data:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -2674,7 +2674,7 @@ async def sync_now(
         # Get watcher
         watcher_result = supabase.table('email_watchers').select('*').eq(
             'user_id', user_id
-        ).eq('yacht_id', yacht_id).eq('provider', 'microsoft_graph').single().execute()
+        ).eq('yacht_id', yacht_id).eq('provider', 'microsoft_graph').maybe_single().execute()
 
         if not watcher_result.data:
             raise HTTPException(status_code=400, detail="No email watcher configured")
@@ -3242,7 +3242,7 @@ async def execute_action(
         if request.thread_id:
             thread_check = supabase.table('email_threads').select('id').eq(
                 'id', request.thread_id
-            ).eq('yacht_id', yacht_id).single().execute()
+            ).eq('yacht_id', yacht_id).maybe_single().execute()
             if not thread_check.data:
                 precondition_errors.append("Thread not found or access denied")
 
@@ -3939,6 +3939,113 @@ async def debug_force_sync_missing(
     except Exception as e:
         logger.error(f"[email/debug/force-sync-missing] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Force sync failed: {str(e)}")
+
+
+# ============================================================================
+# GET /email/worker/status - Worker/sync status
+# ============================================================================
+
+@router.get("/worker/status")
+async def get_worker_status(
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Get email sync worker status for the current user.
+
+    Returns watcher status, last sync time, and any errors.
+    """
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get watcher status
+        watcher_result = supabase.table('email_watchers').select(
+            'sync_status, last_sync_at, subscription_expires_at, last_sync_error, delta_link, updated_at'
+        ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
+            'provider', 'microsoft_graph'
+        ).maybe_single().execute()
+
+        if not watcher_result or not watcher_result.data:
+            return {
+                'connected': False,
+                'sync_status': 'disconnected',
+                'last_sync_at': None,
+                'last_error': None,
+                'message': 'No email connection found'
+            }
+
+        watcher = watcher_result.data
+        sync_status = watcher.get('sync_status', 'unknown')
+
+        return {
+            'connected': sync_status not in ['disconnected', 'pending'],
+            'sync_status': sync_status,
+            'last_sync_at': watcher.get('last_sync_at'),
+            'subscription_expires_at': watcher.get('subscription_expires_at'),
+            'last_error': watcher.get('last_sync_error'),
+            'has_delta_link': bool(watcher.get('delta_link')),
+            'updated_at': watcher.get('updated_at'),
+        }
+
+    except Exception as e:
+        logger.error(f"[email/worker/status] Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch worker status")
+
+
+# ============================================================================
+# GET /email/thread/:thread_id/links - Get entity links for a thread
+# ============================================================================
+
+@router.get("/thread/{thread_id}/links")
+async def get_thread_links(
+    thread_id: str,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Get all entity links for a thread.
+
+    Returns linked work orders, equipment, parts, crew, etc.
+    """
+    yacht_id = auth['yacht_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Verify thread belongs to yacht
+        thread_result = supabase.table('email_threads').select('id').eq(
+            'id', thread_id
+        ).eq('yacht_id', yacht_id).maybe_single().execute()
+
+        if not thread_result or not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        # Get all links for this thread
+        links_result = supabase.table('email_entity_links').select(
+            'id, entity_type, entity_id, link_type, confidence, linked_at, linked_by, notes'
+        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).execute()
+
+        links = links_result.data or []
+
+        # Group links by entity type for easier frontend consumption
+        grouped = {}
+        for link in links:
+            entity_type = link.get('entity_type', 'other')
+            if entity_type not in grouped:
+                grouped[entity_type] = []
+            grouped[entity_type].append(link)
+
+        return {
+            'thread_id': thread_id,
+            'links': links,
+            'grouped': grouped,
+            'total_count': len(links),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/thread/links] Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch thread links")
 
 
 # ============================================================================
