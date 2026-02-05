@@ -211,11 +211,13 @@ def get_user_token(
         TokenExpiredError: Token is expired (only if check_expiry=True)
         TokenRevokedError: Token has been revoked
     """
+    # Use maybe_single() to avoid exception when no token exists
+    # This allows graceful 401 "Email not connected" instead of 500
     result = supabase.table('auth_microsoft_tokens').select(
         'id, microsoft_access_token, microsoft_refresh_token, token_expires_at, is_revoked, scopes'
     ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
         'provider', 'microsoft_graph'
-    ).eq('token_purpose', purpose).single().execute()
+    ).eq('token_purpose', purpose).maybe_single().execute()
 
     if not result.data:
         raise TokenNotFoundError(f"No {purpose} token found for user")

@@ -33,7 +33,7 @@ class EmailSyncService:
     # Fields to select (metadata only - no body)
     MESSAGE_SELECT = (
         "id,conversationId,subject,from,toRecipients,ccRecipients,"
-        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId"
+        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId,webLink"
     )
 
     # Attachment fields
@@ -388,6 +388,17 @@ class EmailSyncService:
         subject = msg.get('subject', '')
         from_display_name = msg.get('from', {}).get('emailAddress', {}).get('name', '')
 
+        # Get webLink for "Open in Outlook" feature
+        web_link = msg.get('webLink')
+        # Validate webLink host (security: only allow Microsoft domains)
+        if web_link:
+            from urllib.parse import urlparse
+            parsed = urlparse(web_link)
+            allowed_hosts = ('outlook.office.com', 'outlook.office365.com', 'outlook.live.com')
+            if parsed.netloc not in allowed_hosts:
+                logger.warning(f"[EmailSync] Rejected webLink with unexpected host: {parsed.netloc}")
+                web_link = None
+
         message_data = {
             'yacht_id': yacht_id,
             'thread_id': thread_id,
@@ -404,6 +415,7 @@ class EmailSyncService:
             'sent_at': msg.get('sentDateTime'),
             'has_attachments': msg.get('hasAttachments', False),
             'attachments': attachments,
+            'web_link': web_link,  # For "Open in Outlook" button
         }
 
         result = self.supabase.table('email_messages').insert(message_data).execute()
