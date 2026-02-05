@@ -896,7 +896,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     ),
 
     # ========================================================================
-    # HANDOVER ACTIONS (1)
+    # HANDOVER ACTIONS (8) - Dual-hash, dual-signature workflow
     # ========================================================================
     "add_to_handover": ActionDefinition(
         action_id="add_to_handover",
@@ -907,6 +907,85 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
         required_fields=["yacht_id", "title"],
         schema_file=None,
+    ),
+
+    "validate_handover_draft": ActionDefinition(
+        action_id="validate_handover_draft",
+        label="Validate Handover Draft",
+        endpoint="/v1/handover/validate",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id"],
+        variant=ActionVariant.READ,
+    ),
+
+    "finalize_handover_draft": ActionDefinition(
+        action_id="finalize_handover_draft",
+        label="Finalize Handover Draft",
+        endpoint="/v1/handover/finalize",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id"],
+        variant=ActionVariant.MUTATE,
+    ),
+
+    "export_handover": ActionDefinition(
+        action_id="export_handover",
+        label="Export Handover",
+        endpoint="/v1/handover/export",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id"],
+        variant=ActionVariant.MUTATE,
+    ),
+
+    "sign_handover_outgoing": ActionDefinition(
+        action_id="sign_handover_outgoing",
+        label="Sign Handover (Outgoing)",
+        endpoint="/v1/handover/sign/outgoing",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["export_id", "yacht_id"],
+        variant=ActionVariant.SIGNED,
+        signature_roles_required=["chief_engineer", "chief_officer", "captain", "manager"],
+    ),
+
+    "sign_handover_incoming": ActionDefinition(
+        action_id="sign_handover_incoming",
+        label="Sign Handover (Incoming)",
+        endpoint="/v1/handover/sign/incoming",
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["export_id", "yacht_id", "acknowledge_critical"],
+        variant=ActionVariant.SIGNED,
+        signature_roles_required=["chief_engineer", "chief_officer", "captain", "manager"],
+    ),
+
+    "get_pending_handovers": ActionDefinition(
+        action_id="get_pending_handovers",
+        label="Get Pending Handovers",
+        endpoint="/v1/handover/pending",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id"],
+        variant=ActionVariant.READ,
+    ),
+
+    "verify_handover_export": ActionDefinition(
+        action_id="verify_handover_export",
+        label="Verify Handover Export",
+        endpoint="/v1/handover/verify",
+        handler_type=HandlerType.INTERNAL,
+        method="GET",
+        allowed_roles=["chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["export_id", "yacht_id"],
+        variant=ActionVariant.READ,
     ),
 
     # ========================================================================
