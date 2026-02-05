@@ -121,43 +121,69 @@ async function openDocument(params: DispatchParams): Promise<DispatchResult> {
 }
 
 /**
- * Edit a handover section
+ * Edit a handover item
+ *
+ * Consolidated schema (2026-02-05): handover_items is standalone.
+ * Items are updated directly by item_id.
  */
 async function editHandoverSection(params: DispatchParams): Promise<DispatchResult> {
-  // Get current handover
-  const { data: handoverData, error: handoverError } = await supabase
-    .from('handovers')
+  // Get current handover item (standalone, no parent container)
+  const itemId = params.item_id || params.handover_id; // Support legacy param name
+
+  const { data: itemData, error: itemError } = await supabase
+    .from('handover_items')
     .select('*')
-    .eq('id', params.handover_id)
+    .eq('id', itemId)
     .eq('yacht_id', params.yacht_id)
+    .is('deleted_at', null)
     .single();
 
-  if (handoverError || !handoverData) {
+  if (itemError || !itemData) {
     throw new Error(
-      `Handover ${params.handover_id} not found or access denied`
+      `Handover item ${itemId} not found or access denied`
     );
   }
 
-  // Update section content
-  const content = (handoverData.content as Record<string, unknown>) || {};
-  content[params.section_name as string] = params.new_text;
+  // Build update object
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+    updated_by: params.user_id,
+  };
 
-  // Update handover
+  // Update summary/content if provided
+  if (params.new_text || params.content) {
+    updateData.summary = params.new_text || params.content;
+  }
+
+  // Update category if provided
+  if (params.category) {
+    updateData.category = params.category;
+  }
+
+  // Update flags if provided
+  if (params.is_critical !== undefined) {
+    updateData.is_critical = params.is_critical;
+  }
+  if (params.requires_action !== undefined) {
+    updateData.requires_action = params.requires_action;
+  }
+  if (params.action_summary !== undefined) {
+    updateData.action_summary = params.action_summary;
+  }
+
+  // Update handover item
   const { data, error } = await supabase
-    .from('handovers')
-    .update({
-      content,
-      updated_at: new Date().toISOString(),
-      updated_by: params.user_id,
-    })
-    .eq('id', params.handover_id)
-    .select('id, updated_at')
+    .from('handover_items')
+    .update(updateData)
+    .eq('id', itemId)
+    .select('id, updated_at, summary, category')
     .single();
 
-  if (error) throw new Error(`Failed to update handover section: ${error.message}`);
+  if (error) throw new Error(`Failed to update handover item: ${error.message}`);
 
   return {
-    handover_id: data.id,
+    item_id: data.id,
+    handover_id: data.id, // Legacy compatibility
     section_name: params.section_name,
     updated_at: data.updated_at,
   };

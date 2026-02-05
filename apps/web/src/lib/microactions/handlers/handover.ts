@@ -9,6 +9,9 @@ import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Add entity to handover
+ *
+ * After schema consolidation (2026-02-05), handover_items are standalone.
+ * No parent container table - items are inserted directly into handover_items.
  */
 export async function addToHandover(
   context: ActionContext,
@@ -17,9 +20,13 @@ export async function addToHandover(
     entity_type: 'fault' | 'work_order' | 'equipment' | 'part' | 'document';
     section?: string;
     summary?: string;
+    category?: string;
+    is_critical?: boolean;
+    requires_action?: boolean;
+    action_summary?: string;
   }
 ): Promise<ActionResult> {
-  
+
 
   if (!params?.entity_id || !params?.entity_type) {
     return {
@@ -32,49 +39,19 @@ export async function addToHandover(
   }
 
   try {
-    // Get or create current handover
-    let { data: handover } = await supabase
-      .from('handovers')
-      .select('id')
-      .eq('yacht_id', context.yacht_id)
-      .eq('status', 'draft')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!handover) {
-      // Create new handover
-      const { data: newHandover, error: createError } = await supabase
-        .from('handovers')
-        .insert({
-          yacht_id: context.yacht_id,
-          status: 'draft',
-          created_by: context.user_id,
-        })
-        .select()
-        .single();
-
-      if (createError || !newHandover) {
-        return {
-          success: false,
-          action_name: 'add_to_handover',
-          data: null,
-          error: { code: 'INTERNAL_ERROR', message: createError?.message || 'Failed to create handover' },
-          confirmation_required: false,
-        };
-      }
-      handover = newHandover;
-    }
-
-    // Add item to handover - handover is guaranteed non-null at this point
+    // Insert directly into handover_items (standalone, no parent container)
     const { data: item, error: itemError } = await supabase
       .from('handover_items')
       .insert({
-        handover_id: handover!.id,
+        yacht_id: context.yacht_id,
         entity_id: params.entity_id,
         entity_type: params.entity_type,
         section: params.section,
         summary: params.summary,
+        category: params.category || 'fyi',
+        is_critical: params.is_critical || false,
+        requires_action: params.requires_action || false,
+        action_summary: params.action_summary,
         added_by: context.user_id,
       })
       .select()
@@ -94,7 +71,7 @@ export async function addToHandover(
       success: true,
       action_name: 'add_to_handover',
       data: {
-        handover_id: handover!.id,
+        item_id: item.id,
         item,
       },
       error: null,
@@ -116,56 +93,75 @@ export async function addToHandover(
 
 /**
  * Export handover to PDF
+ *
+ * After schema consolidation (2026-02-05), exports are created from handover_items.
+ * Items are fetched directly from handover_items table for the yacht.
  */
 export async function exportHandover(
   context: ActionContext,
-  params?: { handover_id?: string; format?: 'pdf' | 'docx' }
+  params?: { format?: 'pdf' | 'docx'; department?: string }
 ): Promise<ActionResult> {
-  
-  const handoverId = params?.handover_id || context.entity_id;
-  const format = params?.format || 'pdf';
 
-  if (!handoverId) {
-    return {
-      success: false,
-      action_name: 'export_handover',
-      data: null,
-      error: { code: 'VALIDATION_ERROR', message: 'Handover ID is required' },
-      confirmation_required: false,
-    };
-  }
+  const format = params?.format || 'pdf';
+  const department = params?.department;
 
   try {
-    // Get handover with items
-    const { data: handover, error: hoError } = await supabase
-      .from('handovers')
-      .select(`
-        *,
-        handover_items (*)
-      `)
-      .eq('id', handoverId)
-      .single();
+    // Get handover items for this yacht (filter by department if specified)
+    let query = supabase
+      .from('handover_items')
+      .select('*')
+      .eq('yacht_id', context.yacht_id)
+      .is('deleted_at', null);
 
-    if (hoError || !handover) {
+    if (department) {
+      query = query.eq('section', department);
+    }
+
+    const { data: items, error: itemsError } = await query.order('created_at', { ascending: false });
+
+    if (itemsError) {
       return {
         success: false,
         action_name: 'export_handover',
         data: null,
-        error: { code: 'NOT_FOUND', message: `Handover not found: ${handoverId}` },
+        error: { code: 'INTERNAL_ERROR', message: itemsError.message },
+        confirmation_required: false,
+      };
+    }
+
+    // Create export record in handover_exports
+    const { data: exportRecord, error: exportError } = await supabase
+      .from('handover_exports')
+      .insert({
+        yacht_id: context.yacht_id,
+        export_type: format,
+        department,
+        exported_by_user_id: context.user_id,
+        export_status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (exportError) {
+      return {
+        success: false,
+        action_name: 'export_handover',
+        data: null,
+        error: { code: 'INTERNAL_ERROR', message: exportError.message },
         confirmation_required: false,
       };
     }
 
     // Call export service (handover_export on Render)
-    // For now, return the data that would be exported
     return {
       success: true,
       action_name: 'export_handover',
       data: {
-        handover_id: handoverId,
+        export_id: exportRecord.id,
         format,
-        export_url: `https://handover-export.onrender.com/api/v1/export/${handoverId}?format=${format}`,
-        item_count: handover.handover_items?.length || 0,
+        department,
+        export_url: `https://handover-export.onrender.com/api/v1/export/${exportRecord.id}?format=${format}`,
+        item_count: items?.length || 0,
       },
       error: null,
       confirmation_required: false,
@@ -185,38 +181,52 @@ export async function exportHandover(
 }
 
 /**
- * Edit handover section
+ * Edit handover item
+ *
+ * After schema consolidation (2026-02-05), items are standalone.
+ * Update by item_id directly, no parent handover_id needed.
  */
 export async function editHandoverSection(
   context: ActionContext,
   params: {
-    handover_id: string;
-    section_id: string;
-    content: string;
+    item_id: string;
+    content?: string;
+    category?: string;
+    is_critical?: boolean;
+    requires_action?: boolean;
+    action_summary?: string;
   }
 ): Promise<ActionResult> {
-  
 
-  if (!params?.handover_id || !params?.section_id || !params?.content) {
+
+  if (!params?.item_id) {
     return {
       success: false,
       action_name: 'edit_handover_section',
       data: null,
-      error: { code: 'VALIDATION_ERROR', message: 'Handover ID, section ID, and content are required' },
+      error: { code: 'VALIDATION_ERROR', message: 'Item ID is required' },
       confirmation_required: false,
     };
   }
 
   try {
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      updated_by: context.user_id,
+    };
+
+    if (params.content !== undefined) updateData.summary = params.content;
+    if (params.category !== undefined) updateData.category = params.category;
+    if (params.is_critical !== undefined) updateData.is_critical = params.is_critical;
+    if (params.requires_action !== undefined) updateData.requires_action = params.requires_action;
+    if (params.action_summary !== undefined) updateData.action_summary = params.action_summary;
+
     const { data: item, error } = await supabase
       .from('handover_items')
-      .update({
-        summary: params.content,
-        updated_at: new Date().toISOString(),
-        updated_by: context.user_id,
-      })
-      .eq('id', params.section_id)
-      .eq('handover_id', params.handover_id)
+      .update(updateData)
+      .eq('id', params.item_id)
+      .eq('yacht_id', context.yacht_id)
+      .is('deleted_at', null)
       .select()
       .single();
 
@@ -415,77 +425,51 @@ export async function addPredictiveInsightToHandover(
 }
 
 /**
- * Regenerate handover summary using AI
+ * Generate handover summary for current items
+ *
+ * After schema consolidation (2026-02-05), there's no parent handover record.
+ * This generates a summary from all active handover_items for the yacht.
  */
 export async function regenerateHandoverSummary(
   context: ActionContext,
-  params?: { handover_id?: string }
+  params?: { department?: string }
 ): Promise<ActionResult> {
-  const handoverId = params?.handover_id || context.entity_id;
-
-  if (!handoverId) {
-    return {
-      success: false,
-      action_name: 'regenerate_handover_summary',
-      data: null,
-      error: { code: 'VALIDATION_ERROR', message: 'Handover ID is required' },
-      confirmation_required: false,
-    };
-  }
-
   try {
-    // Get handover with items
-    const { data: handover, error: hoError } = await supabase
-      .from('handovers')
-      .select(`
-        *,
-        handover_items (*)
-      `)
-      .eq('id', handoverId)
-      .single();
+    // Get handover items for this yacht
+    let query = supabase
+      .from('handover_items')
+      .select('*')
+      .eq('yacht_id', context.yacht_id)
+      .is('deleted_at', null);
 
-    if (hoError || !handover) {
+    if (params?.department) {
+      query = query.eq('section', params.department);
+    }
+
+    const { data: items, error: itemsError } = await query;
+
+    if (itemsError) {
       return {
         success: false,
         action_name: 'regenerate_handover_summary',
         data: null,
-        error: { code: 'NOT_FOUND', message: `Handover not found: ${handoverId}` },
+        error: { code: 'INTERNAL_ERROR', message: itemsError.message },
         confirmation_required: false,
       };
     }
 
     // Generate summary from items
-    const items = handover.handover_items || [];
-    const summary = generateHandoverSummary(items);
-
-    // Update handover with new summary
-    const { data: updatedHandover, error: updateError } = await supabase
-      .from('handovers')
-      .update({
-        summary,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', handoverId)
-      .select()
-      .single();
-
-    if (updateError) {
-      return {
-        success: false,
-        action_name: 'regenerate_handover_summary',
-        data: null,
-        error: { code: 'INTERNAL_ERROR', message: updateError.message },
-        confirmation_required: false,
-      };
-    }
+    const summary = generateHandoverSummary(items || []);
 
     return {
       success: true,
       action_name: 'regenerate_handover_summary',
       data: {
-        handover: updatedHandover,
         summary,
-        item_count: items.length,
+        item_count: items?.length || 0,
+        department: params?.department || 'all',
+        critical_count: items?.filter((i) => i.is_critical).length || 0,
+        action_required_count: items?.filter((i) => i.requires_action).length || 0,
       },
       error: null,
       confirmation_required: false,
@@ -507,13 +491,25 @@ export async function regenerateHandoverSummary(
 /**
  * Generate handover summary from items
  */
-function generateHandoverSummary(items: Array<{ entity_type: string; summary?: string }>): string {
+function generateHandoverSummary(
+  items: Array<{
+    entity_type?: string;
+    summary?: string;
+    is_critical?: boolean;
+    requires_action?: boolean;
+    category?: string;
+  }>
+): string {
   const faultCount = items.filter((i) => i.entity_type === 'fault').length;
   const woCount = items.filter((i) => i.entity_type === 'work_order').length;
   const equipmentCount = items.filter((i) => i.entity_type === 'equipment').length;
   const docCount = items.filter((i) => i.entity_type === 'document').length;
+  const criticalCount = items.filter((i) => i.is_critical).length;
+  const actionCount = items.filter((i) => i.requires_action).length;
 
   const parts: string[] = [];
+  if (criticalCount > 0) parts.push(`${criticalCount} CRITICAL`);
+  if (actionCount > 0) parts.push(`${actionCount} requiring action`);
   if (faultCount > 0) parts.push(`${faultCount} fault(s)`);
   if (woCount > 0) parts.push(`${woCount} work order(s)`);
   if (equipmentCount > 0) parts.push(`${equipmentCount} equipment item(s)`);
