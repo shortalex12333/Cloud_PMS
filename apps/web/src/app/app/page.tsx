@@ -29,6 +29,7 @@ import { SurfaceProvider } from '@/contexts/SurfaceContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './ContextPanel';
 import DeepLinkHandler from './DeepLinkHandler';
+import EmailOverlay from './EmailOverlay';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 // Inner component that uses the SurfaceContext
@@ -55,6 +56,7 @@ function SurfaceContent() {
         <Suspense fallback={<div className="w-96 bg-gray-800/50" />}>
           <ContextPanel />
         </Suspense>
+
       </div>
     </main>
   );
