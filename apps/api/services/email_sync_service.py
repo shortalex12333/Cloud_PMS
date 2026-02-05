@@ -30,11 +30,12 @@ class EmailSyncService:
 
     GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 
-    # Fields to select (metadata only - no body)
+    # Fields to select (metadata only - no full body)
     # webLink is the OWA URL for "Open in Outlook" feature
+    # bodyPreview is needed for extraction trigger and search indexing
     MESSAGE_SELECT = (
         "id,conversationId,subject,from,toRecipients,ccRecipients,"
-        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId,webLink"
+        "receivedDateTime,sentDateTime,hasAttachments,internetMessageId,webLink,bodyPreview"
     )
 
     # Attachment fields
@@ -389,6 +390,10 @@ class EmailSyncService:
         subject = msg.get('subject', '')
         from_display_name = msg.get('from', {}).get('emailAddress', {}).get('name', '')
 
+        # Extract body preview (truncate to 200 chars for SOC-2 compliance)
+        body_preview = msg.get('bodyPreview', '') or ''
+        preview_text = body_preview[:200] if body_preview else None
+
         message_data = {
             'yacht_id': yacht_id,
             'thread_id': thread_id,
@@ -406,6 +411,7 @@ class EmailSyncService:
             'has_attachments': msg.get('hasAttachments', False),
             'attachments': attachments,
             'web_link': msg.get('webLink'),  # OWA link for "Open in Outlook"
+            'preview_text': preview_text,  # For extraction trigger and search indexing
         }
 
         result = self.supabase.table('email_messages').insert(message_data).execute()
