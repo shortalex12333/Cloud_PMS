@@ -3673,6 +3673,82 @@ async def sync_all_folders(
 
 
 # ============================================================================
+# GET /email/debug/graph-me - Get the actual connected Microsoft account
+# ============================================================================
+
+@router.get("/debug/graph-me")
+async def debug_graph_me(
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Debug endpoint: Get the Microsoft account profile for the connected token.
+
+    This shows which mailbox the OAuth token is actually for.
+    """
+    import httpx
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get Graph token
+        read_client = create_read_client(supabase, user_id, yacht_id)
+        token = await read_client._get_token()
+
+        async with httpx.AsyncClient() as client:
+            # Call /me endpoint
+            me_response = await client.get(
+                "https://graph.microsoft.com/v1.0/me",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30.0
+            )
+
+            if me_response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Graph /me error: {me_response.status_code}"
+                )
+
+            me_data = me_response.json()
+
+            # Get Inbox folder details
+            inbox_response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/mailFolders/inbox",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30.0
+            )
+
+            inbox_data = {}
+            if inbox_response.status_code == 200:
+                inbox_data = inbox_response.json()
+
+        return {
+            'profile': {
+                'displayName': me_data.get('displayName'),
+                'mail': me_data.get('mail'),
+                'userPrincipalName': me_data.get('userPrincipalName'),
+                'id': me_data.get('id'),
+            },
+            'inbox_folder': {
+                'displayName': inbox_data.get('displayName'),
+                'totalItemCount': inbox_data.get('totalItemCount'),
+                'unreadItemCount': inbox_data.get('unreadItemCount'),
+            },
+        }
+
+    except TokenNotFoundError:
+        raise HTTPException(status_code=401, detail="Email not connected")
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Email connection expired")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/debug/graph-me] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed: {str(e)}")
+
+
+# ============================================================================
 # GET /email/debug/inbox-compare - Compare Graph Inbox with DB
 # ============================================================================
 
