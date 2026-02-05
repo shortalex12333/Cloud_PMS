@@ -3673,6 +3673,197 @@ async def sync_all_folders(
 
 
 # ============================================================================
+# GET /email/debug/inbox-compare - Compare Graph Inbox with DB
+# ============================================================================
+
+@router.get("/debug/inbox-compare")
+async def debug_inbox_compare(
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Debug endpoint: List ALL Inbox messages from Graph API and compare with DB.
+
+    Shows:
+    - All messages in Graph Inbox
+    - Which ones exist in our database
+    - Which ones are MISSING from our database
+
+    This helps diagnose sync issues.
+    """
+    import httpx
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get Graph token
+        read_client = create_read_client(supabase, user_id, yacht_id)
+        token = await read_client._get_token()
+
+        # Get all messages from Inbox (up to 200)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages"
+                "?$select=id,conversationId,subject,from,receivedDateTime,hasAttachments,bodyPreview"
+                "&$top=200&$orderby=receivedDateTime desc",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=60.0
+            )
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Graph API error: {response.status_code} - {response.text[:200]}"
+                )
+
+            graph_messages = response.json().get('value', [])
+
+        # Get all message IDs from our database
+        db_result = supabase.table('email_messages').select(
+            'provider_message_id, subject'
+        ).eq('yacht_id', yacht_id).execute()
+
+        db_message_ids = {m['provider_message_id'] for m in db_result.data}
+
+        # Compare
+        in_graph = []
+        missing_from_db = []
+
+        for msg in graph_messages:
+            msg_id = msg.get('id')
+            subject = msg.get('subject', '(no subject)')
+            from_addr = msg.get('from', {}).get('emailAddress', {}).get('address', '')
+            received = msg.get('receivedDateTime', '')
+            has_attachments = msg.get('hasAttachments', False)
+            conversation_id = msg.get('conversationId', '')
+            preview = (msg.get('bodyPreview', '') or '')[:100]
+
+            msg_info = {
+                'id': msg_id[:30] + '...' if len(msg_id) > 30 else msg_id,
+                'subject': subject,
+                'from': from_addr,
+                'received': received,
+                'hasAttachments': has_attachments,
+                'conversationId': conversation_id[:30] + '...' if conversation_id and len(conversation_id) > 30 else conversation_id,
+                'preview': preview,
+            }
+
+            in_graph.append(msg_info)
+
+            if msg_id not in db_message_ids:
+                missing_from_db.append(msg_info)
+
+        return {
+            'graph_inbox_count': len(graph_messages),
+            'db_message_count': len(db_message_ids),
+            'missing_count': len(missing_from_db),
+            'missing_from_db': missing_from_db,
+            'all_graph_inbox': in_graph,
+        }
+
+    except TokenNotFoundError:
+        raise HTTPException(status_code=401, detail="Email not connected")
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Email connection expired")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/debug/inbox-compare] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Compare failed: {str(e)}")
+
+
+# ============================================================================
+# POST /email/debug/force-sync-missing - Force sync missing emails
+# ============================================================================
+
+@router.post("/debug/force-sync-missing")
+async def debug_force_sync_missing(
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Force sync all emails from Inbox that are missing from our database.
+
+    This bypasses delta sync and directly fetches/inserts missing messages.
+    """
+    import httpx
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get Graph token
+        read_client = create_read_client(supabase, user_id, yacht_id)
+        token = await read_client._get_token()
+
+        stats = {
+            'checked': 0,
+            'synced': 0,
+            'already_existed': 0,
+            'errors': [],
+            'synced_subjects': [],
+        }
+
+        # Get all messages from Inbox
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages"
+                "?$select=id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,hasAttachments,internetMessageId,bodyPreview,webLink"
+                "&$top=200&$orderby=receivedDateTime desc",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=60.0
+            )
+
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Graph API error")
+
+            graph_messages = response.json().get('value', [])
+            stats['checked'] = len(graph_messages)
+
+        # Get existing message IDs
+        db_result = supabase.table('email_messages').select(
+            'provider_message_id'
+        ).eq('yacht_id', yacht_id).execute()
+
+        existing_ids = {m['provider_message_id'] for m in db_result.data}
+
+        # Sync missing messages
+        for msg in graph_messages:
+            msg_id = msg.get('id')
+
+            if msg_id in existing_ids:
+                stats['already_existed'] += 1
+                continue
+
+            try:
+                await _process_message(supabase, yacht_id, msg, 'inbox')
+                stats['synced'] += 1
+                stats['synced_subjects'].append(msg.get('subject', '(no subject)'))
+            except Exception as e:
+                error_msg = str(e)
+                if 'duplicate' not in error_msg.lower():
+                    stats['errors'].append(f"{msg.get('subject', 'unknown')[:30]}: {error_msg[:50]}")
+                else:
+                    stats['already_existed'] += 1
+
+        return {
+            'success': True,
+            'stats': stats,
+        }
+
+    except TokenNotFoundError:
+        raise HTTPException(status_code=401, detail="Email not connected")
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Email connection expired")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/debug/force-sync-missing] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Force sync failed: {str(e)}")
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
