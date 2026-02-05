@@ -211,16 +211,17 @@ def get_user_token(
         TokenExpiredError: Token is expired (only if check_expiry=True)
         TokenRevokedError: Token has been revoked
     """
+    # Use limit(1) instead of single() to avoid exception when no row found
     result = supabase.table('auth_microsoft_tokens').select(
         'id, microsoft_access_token, microsoft_refresh_token, token_expires_at, is_revoked, scopes'
     ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
         'provider', 'microsoft_graph'
-    ).eq('token_purpose', purpose).single().execute()
+    ).eq('token_purpose', purpose).limit(1).execute()
 
-    if not result.data:
+    if not result.data or len(result.data) == 0:
         raise TokenNotFoundError(f"No {purpose} token found for user")
 
-    token_data = result.data
+    token_data = result.data[0]
 
     if token_data.get('is_revoked'):
         raise TokenRevokedError(f"Token has been revoked")
