@@ -1,0 +1,504 @@
+# =============================================================================
+# F1 Search Projection Mapping
+# =============================================================================
+# Authoritative spec for the projection_worker watchdog.
+# Maps source tables → search_index rows with governed column selection.
+#
+# Buckets:
+#   A (search_text): Columns concatenated for trigram+FTS+vector search
+#   B (filters): JSONB facets for filtering/sorting
+#   C (payload): Card display fields only (title, url, status)
+#
+# Rules:
+#   - Cast all text fields to text, normalize (lowercase, strip)
+#   - Dates as ISO strings 'YYYY-MM-DD'
+#   - Omit nulls from filters JSONB
+#   - Bound search_text to 8-12k chars
+#   - Never include PII unless explicitly needed
+# =============================================================================
+
+documents:
+  source_table: doc_metadata
+  object_type: document
+  search_text:
+    # Bucket A: content-first, then metadata
+    - field: chunks_keywords
+      source: search_document_chunks
+      aggregate: "string_agg(substr(content, 1, 200), ' ')"
+      join_on: document_id
+    - field: filename
+      cast: text
+    - field: original_path
+      cast: text
+      transform: "regexp_replace(%, '[/_-]', ' ', 'g')"  # path→words
+    - field: tags
+      cast: text
+      transform: "array_to_string(%, ' ')"
+  filters:
+    doc_type: doc_type
+    system_type: system_type
+    content_type: content_type
+    indexed: indexed
+  payload:
+    title: filename
+    url: storage_path
+    doc_type: doc_type
+    size: size_bytes
+
+work_orders:
+  source_table: pms_work_orders
+  object_type: work_order
+  search_text:
+    - field: title
+      cast: text
+    - field: description
+      cast: text
+    - field: related_text
+      cast: text
+    - field: completion_notes
+      cast: text
+  filters:
+    status: status
+    priority: priority
+    type: type
+    work_order_type: work_order_type
+    equipment_id: equipment_id
+    due_date:
+      source: due_date
+      transform: "to_char(%, 'YYYY-MM-DD')"
+    assigned_to: assigned_to
+  payload:
+    title: title
+    status: status
+    priority: priority
+    due_date: due_date
+    wo_number: wo_number
+
+work_order_notes:
+  source_table: pms_work_order_notes
+  object_type: work_order_note
+  search_text:
+    - field: note_text
+      cast: text
+    - field: related_text
+      cast: text
+  filters:
+    work_order_id: work_order_id
+    note_type: note_type
+    created_at:
+      source: created_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+  payload:
+    snippet: note_text
+    note_type: note_type
+    created_at: created_at
+
+notes:
+  source_table: pms_notes
+  object_type: note
+  search_text:
+    - field: text
+      cast: text
+  filters:
+    note_type: note_type
+    equipment_id: equipment_id
+    work_order_id: work_order_id
+    fault_id: fault_id
+  payload:
+    snippet: text
+    note_type: note_type
+
+equipment:
+  source_table: pms_equipment
+  object_type: equipment
+  search_text:
+    - field: name
+      cast: text
+    - field: description
+      cast: text
+    - field: related_text
+      cast: text
+    - field: code
+      cast: text
+    - field: manufacturer
+      cast: text
+    - field: model
+      cast: text
+    - field: serial_number
+      cast: text
+  filters:
+    status: status
+    criticality: criticality
+    system_type: system_type
+    location: location
+    manufacturer: manufacturer
+    attention_flag: attention_flag
+  payload:
+    name: name
+    code: code
+    status: status
+    location: location
+    manufacturer: manufacturer
+    model: model
+
+faults:
+  source_table: pms_faults
+  object_type: fault
+  search_text:
+    - field: title
+      cast: text
+    - field: description
+      cast: text
+    - field: related_text
+      cast: text
+    - field: fault_code
+      cast: text
+  filters:
+    status: status
+    severity: severity
+    equipment_id: equipment_id
+    fault_code: fault_code
+    detected_at:
+      source: detected_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+  payload:
+    title: title
+    fault_code: fault_code
+    status: status
+    severity: severity
+
+parts:
+  source_table: pms_parts
+  object_type: part
+  search_text:
+    - field: name
+      cast: text
+    - field: description
+      cast: text
+    - field: embedding_text
+      cast: text
+    - field: part_number
+      cast: text
+    - field: manufacturer
+      cast: text
+  filters:
+    category: category
+    manufacturer: manufacturer
+    is_critical: is_critical
+    location: location
+  payload:
+    name: name
+    part_number: part_number
+    manufacturer: manufacturer
+    quantity: quantity_on_hand
+    location: location
+
+inventory_stock:
+  source_table: pms_inventory_stock
+  object_type: inventory
+  search_text:
+    # Join to pms_parts for name/description
+    - field: part_name
+      source: pms_parts
+      join_on: part_id
+      source_field: name
+    - field: part_number
+      source: pms_parts
+      join_on: part_id
+      source_field: part_number
+    - field: location
+      cast: text
+  filters:
+    location: location
+    part_id: part_id
+    quantity: quantity
+  payload:
+    location: location
+    quantity: quantity
+    part_id: part_id
+
+receiving:
+  source_table: pms_receiving
+  object_type: receiving
+  search_text:
+    - field: vendor_name
+      cast: text
+    - field: vendor_reference
+      cast: text
+    - field: notes
+      cast: text
+  filters:
+    status: status
+    received_date:
+      source: received_date
+      transform: "to_char(%, 'YYYY-MM-DD')"
+    linked_work_order_id: linked_work_order_id
+  payload:
+    vendor_name: vendor_name
+    vendor_reference: vendor_reference
+    status: status
+    received_date: received_date
+    total: total
+    currency: currency
+
+certificates:
+  source_table: pms_vessel_certificates
+  object_type: certificate
+  search_text:
+    - field: certificate_name
+      cast: text
+    - field: certificate_number
+      cast: text
+    - field: issuing_authority
+      cast: text
+  filters:
+    certificate_type: certificate_type
+    status: status
+    expiry_date:
+      source: expiry_date
+      transform: "to_char(%, 'YYYY-MM-DD')"
+    issuing_authority: issuing_authority
+  payload:
+    name: certificate_name
+    number: certificate_number
+    status: status
+    expiry: expiry_date
+    authority: issuing_authority
+
+email:
+  source_table: email_messages
+  object_type: email
+  search_text:
+    - field: subject
+      cast: text
+    - field: preview_text
+      cast: text
+    - field: from_display_name
+      cast: text
+  filters:
+    thread_id: thread_id
+    direction: direction
+    folder: folder
+    has_attachments: has_attachments
+    received_at:
+      source: received_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+  payload:
+    subject: subject
+    from_display_name: from_display_name
+    preview_text: preview_text
+    received_at: received_at
+    has_attachments: has_attachments
+    folder: folder
+
+shopping_list:
+  source_table: pms_shopping_list_items
+  object_type: shopping_item
+  search_text:
+    - field: part_name
+      cast: text
+    - field: part_number
+      cast: text
+    - field: manufacturer
+      cast: text
+    - field: source_notes
+      cast: text
+  filters:
+    status: status
+    part_id: part_id
+    urgency: urgency
+    source_type: source_type
+    source_work_order_id: source_work_order_id
+  payload:
+    part_name: part_name
+    part_number: part_number
+    quantity: quantity_requested
+    status: status
+    urgency: urgency
+
+# =============================================================================
+# NEW DOMAINS (added for complete coverage)
+# =============================================================================
+
+handover_items:
+  source_table: handover_items
+  object_type: handover_item
+  # Consolidated schema (2026-02-05) - standalone items, no parent container
+  search_text:
+    - field: summary
+      cast: text
+    - field: entity_type
+      cast: text
+    - field: section
+      cast: text
+    - field: category
+      cast: text
+    - field: action_summary
+      cast: text
+    # Literal token for matching "handover" queries
+    - literal: "handover shift report notes"
+  filters:
+    status: status
+    entity_type: entity_type
+    section: section
+    priority: priority
+    category: category
+    is_critical: is_critical
+    requires_action: requires_action
+  payload:
+    summary: summary
+    entity_type: entity_type
+    entity_id: entity_id
+    section: section
+    status: status
+    priority: priority
+    category: category
+    is_critical: is_critical
+    requires_action: requires_action
+    action_summary: action_summary
+
+warranty_claims:
+  source_table: pms_warranty_claims
+  object_type: warranty_claim
+  search_text:
+    - field: title
+      cast: text
+    - field: description
+      cast: text
+    - field: claim_number
+      cast: text
+    - field: manufacturer
+      cast: text
+    - field: part_number
+      cast: text
+    - field: serial_number
+      cast: text
+    - field: vendor_name
+      cast: text
+  filters:
+    status: status
+    claim_type: claim_type
+    equipment_id: equipment_id
+    work_order_id: work_order_id
+    warranty_expiry:
+      source: warranty_expiry
+      transform: "to_char(%, 'YYYY-MM-DD')"
+  payload:
+    title: title
+    claim_number: claim_number
+    status: status
+    claim_type: claim_type
+    claimed_amount: claimed_amount
+    currency: currency
+
+purchase_orders:
+  source_table: pms_purchase_orders
+  object_type: purchase_order
+  search_text:
+    - field: po_number
+      cast: text
+    - field: supplier_name
+      source: pms_suppliers
+      join_on: supplier_id
+      source_field: name
+    - field: approval_notes
+      cast: text
+    - field: receiving_notes
+      cast: text
+  filters:
+    status: status
+    supplier_id: supplier_id
+    ordered_at:
+      source: ordered_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+    received_at:
+      source: received_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+  payload:
+    po_number: po_number
+    status: status
+    currency: currency
+    ordered_at: ordered_at
+    received_at: received_at
+
+suppliers:
+  source_table: pms_suppliers
+  object_type: supplier
+  search_text:
+    - field: name
+      cast: text
+    - field: contact_name
+      cast: text
+    - field: email
+      cast: text
+    - field: phone
+      cast: text
+  filters:
+    preferred: preferred
+  payload:
+    name: name
+    contact_name: contact_name
+    email: email
+    phone: phone
+    preferred: preferred
+
+# =============================================================================
+# Promoted Facets (indexes created in search_index.filters JSONB)
+# =============================================================================
+# These get expression indexes for fast filtering.
+# Update facet_registry when adding/removing.
+
+promoted_facets:
+  - key: status
+    domains: [work_orders, faults, equipment, receiving, certificates]
+    index_type: btree
+  - key: priority
+    domains: [work_orders]
+    index_type: btree
+  - key: due_date
+    domains: [work_orders]
+    index_type: btree
+    transform: to_date
+  - key: doc_type
+    domains: [documents]
+    index_type: btree
+  - key: certificate_type
+    domains: [certificates]
+    index_type: btree
+  - key: expiry_date
+    domains: [certificates]
+    index_type: btree
+    transform: to_date
+  - key: equipment_id
+    domains: [work_orders, faults, notes]
+    index_type: btree
+  - key: severity
+    domains: [faults]
+    index_type: btree
+  - key: manufacturer
+    domains: [parts, equipment, warranty_claims]
+    index_type: btree
+  - key: urgency
+    domains: [shopping_list]
+    index_type: btree
+  - key: claim_type
+    domains: [warranty_claims]
+    index_type: btree
+  - key: category
+    domains: [handover_items]
+    index_type: btree
+  - key: is_critical
+    domains: [handover_items]
+    index_type: btree
+  - key: supplier_id
+    domains: [purchase_orders]
+    index_type: btree
+  - key: preferred
+    domains: [suppliers]
+    index_type: btree
+  - key: direction
+    domains: [email]
+    index_type: btree
+  - key: thread_id
+    domains: [email]
+    index_type: btree
