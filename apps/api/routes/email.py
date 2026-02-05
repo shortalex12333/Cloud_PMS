@@ -887,6 +887,22 @@ async def get_thread(
         raise HTTPException(status_code=503, detail=error_msg)
 
     yacht_id = auth['yacht_id']
+
+    # Validate thread_id is a valid UUID to prevent DB errors
+    import uuid
+    try:
+        uuid.UUID(thread_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "thread_not_found",
+                "message": "Invalid thread ID format",
+                "thread_id": thread_id,
+                "yacht_id": yacht_id
+            }
+        )
+
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
