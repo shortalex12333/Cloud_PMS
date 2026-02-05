@@ -3989,8 +3989,8 @@ async def get_worker_status(
         }
 
     except Exception as e:
-        logger.error(f"[email/worker/status] Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch worker status")
+        logger.error(f"[email/worker/status] Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch worker status: {str(e)}")
 
 
 # ============================================================================
@@ -4044,8 +4044,8 @@ async def get_thread_links(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[email/thread/links] Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch thread links")
+        logger.error(f"[email/thread/links] Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch thread links: {str(e)}")
 
 
 # ============================================================================
