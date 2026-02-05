@@ -143,26 +143,34 @@ class HandoverExportService:
         if not items:
             return self._empty_export(yacht_id, user_id)
 
-        # 2. Enrich with entity details
+        # 2. Extract content_hash (all items should have same hash after finalization)
+        content_hash = items[0].get("content_hash") if items else None
+
+        # 3. Enrich with entity details
         items = await self._enrich_items(items, yacht_id)
 
-        # 3. Group by section
+        # 4. Group by section
         sections = self._group_by_section(items)
 
-        # 4. Generate HTML
-        html = self._generate_html(sections, yacht_id, date_from, date_to)
+        # 5. Pre-create export record (without document_hash)
+        export_id = str(uuid.uuid4())
 
-        # 5. Calculate hash
-        document_hash = hashlib.sha256(html.encode()).hexdigest()[:16]
+        # 6. Generate HTML with content_hash and export_id for footer
+        html = self._generate_html(sections, yacht_id, date_from, date_to, content_hash, export_id)
 
-        # 6. Create export record
-        export_id = await self._create_export_record(
+        # 7. Calculate document hash from generated HTML
+        document_hash = hashlib.sha256(html.encode()).hexdigest()
+
+        # 8. Create export record with both hashes
+        await self._create_export_record(
             yacht_id=yacht_id,
             user_id=user_id,
             handover_id=handover_id,
             export_type=export_type,
             document_hash=document_hash,
-            total_items=len(items)
+            total_items=len(items),
+            export_id=export_id,
+            content_hash=content_hash
         )
 
         return HandoverExportResult(
@@ -363,7 +371,9 @@ class HandoverExportService:
         sections: List[HandoverSection],
         yacht_id: str,
         date_from: Optional[date],
-        date_to: Optional[date]
+        date_to: Optional[date],
+        content_hash: Optional[str] = None,
+        export_id: Optional[str] = None
     ) -> str:
         """Generate HTML report."""
 
@@ -611,7 +621,13 @@ class HandoverExportService:
     {sections_html}
 
     <div class="footer">
-        Generated {generated_at} &bull; CelesteOS Handover Export
+        <div style="margin-bottom: 12px;">Generated {generated_at} &bull; CelesteOS Handover Export</div>
+        {f'''<div class="verification-hashes">
+            <div style="font-size: 11px; color: #6c757d; margin-top: 8px;">
+                <div><strong>Content Hash:</strong> <code>sha256:{content_hash[:16]}...</code></div>
+                <div style="margin-top: 4px;"><strong>Verify:</strong> <a href="/handover/{export_id}/verify" style="color: #0d6efd;">View Verification Details</a></div>
+            </div>
+        </div>''' if content_hash and export_id else ''}
     </div>
 </body>
 </html>'''
@@ -650,6 +666,8 @@ class HandoverExportService:
         export_type: str,
         document_hash: str,
         total_items: int,
+        export_id: str,
+        content_hash: Optional[str] = None,
         department: Optional[str] = None
     ) -> str:
         """
@@ -658,10 +676,10 @@ class HandoverExportService:
         Schema: Consolidated (2026-02-05)
         - draft_id is now nullable (handover_drafts table was dropped)
         - Items are standalone in handover_items
+        - content_hash links to finalized draft
+        - document_hash is SHA256 of generated export artifact
         """
-        export_id = str(uuid.uuid4())
-
-        # Insert export record directly (draft_id is nullable now)
+        # Insert export record with both hashes
         self.db.table("handover_exports").insert({
             "id": export_id,
             "draft_id": handover_id,  # Can be None now
@@ -670,6 +688,7 @@ class HandoverExportService:
             "department": department,
             "exported_by_user_id": user_id,
             "document_hash": document_hash,
+            "content_hash": content_hash,
             "export_status": "completed",
             "exported_at": datetime.now(timezone.utc).isoformat()
         }).execute()
