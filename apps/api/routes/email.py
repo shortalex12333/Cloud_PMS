@@ -1040,14 +1040,19 @@ async def render_message(
     except Exception as e:
         error_msg = str(e)
         error_type = type(e).__name__
+        graph_status = None
         # Check if it's an HTTP error from httpx
         if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
-            status = e.response.status_code
-            if status == 401:
+            graph_status = e.response.status_code
+            if graph_status == 401:
                 await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph 401: {error_msg}")
                 raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect.")
-        logger.error(f"[email/render] Unexpected error ({error_type}): {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch message content: {error_type}")
+            elif graph_status == 404:
+                raise HTTPException(status_code=404, detail="Message not found in Outlook. It may have been deleted.")
+            elif graph_status == 403:
+                raise HTTPException(status_code=403, detail="Access denied to this message.")
+        logger.error(f"[email/render] Unexpected error ({error_type}, graph_status={graph_status}): {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch message content: {error_type} (graph_status={graph_status})")
 
 
 # ============================================================================
