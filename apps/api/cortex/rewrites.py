@@ -14,17 +14,26 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import math
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any, Tuple
 from functools import lru_cache
 
 from openai import AsyncOpenAI
 
 from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
+
+# Optional Redis for cross-process caching
+try:
+    import redis.asyncio as redis_async
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis_async = None
 
 # ============================================================================
 # OpenAI Configuration
@@ -79,12 +88,36 @@ class RewriteResult:
 
 
 # ============================================================================
-# Rewrite Cache (LRU with tenant isolation)
+# Redis Connection (optional, graceful degradation)
+# ============================================================================
+
+REDIS_URL = os.getenv("REDIS_URL")
+_redis: Optional[Any] = None
+
+
+async def _get_redis():
+    """Get or create Redis connection (lazy, graceful degradation)."""
+    global _redis
+    if not REDIS_AVAILABLE or not REDIS_URL:
+        return None
+    if _redis is None:
+        try:
+            _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)
+            await _redis.ping()
+            logger.info("[Cortex] Redis connected for rewrite/embedding cache")
+        except Exception as e:
+            logger.warning(f"[Cortex] Redis unavailable: {e}")
+            _redis = False  # Mark as failed, don't retry
+    return _redis if _redis else None
+
+
+# ============================================================================
+# Rewrite Cache (Redis-first with local LRU fallback)
 # ============================================================================
 
 # In-memory cache: key -> (rewrites, timestamp)
 _rewrite_cache: Dict[str, Tuple[List[Rewrite], float]] = {}
-_CACHE_TTL_SECONDS = 300  # 5 minutes
+_CACHE_TTL_SECONDS = int(os.getenv("REWRITE_CACHE_TTL", "900"))  # 15 minutes default
 _CACHE_MAX_SIZE = 1000
 
 
@@ -115,27 +148,47 @@ def _build_cache_key(
     return hashlib.sha256(key_str.encode()).hexdigest()[:32]
 
 
-def _get_cached_rewrites(key: str) -> Optional[List[Rewrite]]:
-    """Get rewrites from cache if fresh."""
+async def _get_cached_rewrites(key: str) -> Optional[List[Rewrite]]:
+    """Get rewrites from Redis (primary) or local cache (fallback)."""
+    # Try Redis first
+    redis_conn = await _get_redis()
+    if redis_conn:
+        try:
+            raw = await redis_conn.get(f"rw:{key}")
+            if raw:
+                data = json.loads(raw)
+                return [Rewrite(**item) for item in data]
+        except Exception as e:
+            logger.debug(f"[Cortex] Redis get error: {e}")
+
+    # Fallback to local cache
     if key in _rewrite_cache:
         rewrites, timestamp = _rewrite_cache[key]
         if time.time() - timestamp < _CACHE_TTL_SECONDS:
             return rewrites
         else:
-            # Expired
             del _rewrite_cache[key]
     return None
 
 
-def _set_cached_rewrites(key: str, rewrites: List[Rewrite]) -> None:
-    """Set rewrites in cache with LRU eviction."""
+async def _set_cached_rewrites(key: str, rewrites: List[Rewrite]) -> None:
+    """Set rewrites in Redis (primary) or local cache (fallback)."""
     global _rewrite_cache
 
-    # Evict oldest if at capacity
+    # Try Redis first
+    redis_conn = await _get_redis()
+    if redis_conn:
+        try:
+            payload = json.dumps([asdict(r) for r in rewrites])
+            await redis_conn.setex(f"rw:{key}", _CACHE_TTL_SECONDS, payload)
+            return
+        except Exception as e:
+            logger.debug(f"[Cortex] Redis set error: {e}")
+
+    # Fallback to local cache
     if len(_rewrite_cache) >= _CACHE_MAX_SIZE:
         oldest_key = min(_rewrite_cache.keys(), key=lambda k: _rewrite_cache[k][1])
         del _rewrite_cache[oldest_key]
-
     _rewrite_cache[key] = (rewrites, time.time())
 
 
@@ -299,7 +352,7 @@ async def generate_rewrites(
     cache_key = _build_cache_key(query, ctx, embedding_version)
 
     # Check cache
-    cached = _get_cached_rewrites(cache_key)
+    cached = await _get_cached_rewrites(cache_key)
     if cached:
         latency_ms = int((time.time() - start_time) * 1000)
         logger.debug(f"[Cortex] Cache hit for query: {cache_key[:8]}...")
@@ -346,7 +399,7 @@ async def generate_rewrites(
     rewrites = rewrites[:3]
 
     # Cache results
-    _set_cached_rewrites(cache_key, rewrites)
+    await _set_cached_rewrites(cache_key, rewrites)
 
     latency_ms = int((time.time() - start_time) * 1000)
 
@@ -379,8 +432,19 @@ def _get_embed_cache_key(text: str, org_id: str) -> str:
     return hashlib.sha256(f"{normalized}|{org_id}|{EMBED_DIM}".encode()).hexdigest()[:32]
 
 
-def _get_cached_embedding(key: str) -> Optional[List[float]]:
-    """Get embedding from cache if fresh."""
+async def _get_cached_embedding(key: str) -> Optional[List[float]]:
+    """Get embedding from Redis (primary) or local cache (fallback)."""
+    # Try Redis first
+    redis_conn = await _get_redis()
+    if redis_conn:
+        try:
+            raw = await redis_conn.get(f"emb:{key}")
+            if raw:
+                return json.loads(raw)
+        except Exception as e:
+            logger.debug(f"[Cortex] Redis embedding get error: {e}")
+
+    # Fallback to local cache
     if key in _embedding_cache:
         embedding, timestamp = _embedding_cache[key]
         if time.time() - timestamp < _EMBED_CACHE_TTL_SECONDS:
@@ -390,9 +454,21 @@ def _get_cached_embedding(key: str) -> Optional[List[float]]:
     return None
 
 
-def _set_cached_embedding(key: str, embedding: List[float]) -> None:
-    """Set embedding in cache with LRU eviction."""
+async def _set_cached_embedding(key: str, embedding: List[float]) -> None:
+    """Set embedding in Redis (primary) or local cache (fallback)."""
     global _embedding_cache
+
+    # Try Redis first
+    redis_conn = await _get_redis()
+    if redis_conn:
+        try:
+            payload = json.dumps(embedding)
+            await redis_conn.setex(f"emb:{key}", _EMBED_CACHE_TTL_SECONDS, payload)
+            return
+        except Exception as e:
+            logger.debug(f"[Cortex] Redis embedding set error: {e}")
+
+    # Fallback to local cache
     if len(_embedding_cache) >= _EMBED_CACHE_MAX_SIZE:
         oldest_key = min(_embedding_cache.keys(), key=lambda k: _embedding_cache[k][1])
         del _embedding_cache[oldest_key]
@@ -431,7 +507,7 @@ async def generate_embeddings(
     cache_keys = []
     for rewrite in rewrites:
         cache_key = _get_embed_cache_key(rewrite.text, org_id)
-        cached = _get_cached_embedding(cache_key)
+        cached = await _get_cached_embedding(cache_key)
         if cached:
             rewrite.embedding = cached
             logger.debug(f"[Cortex] Embedding cache hit: {rewrite.text[:20]}...")
@@ -472,7 +548,7 @@ async def generate_embeddings(
             embedding = _normalize_vector(data.embedding)
             text_to_embedding[text] = embedding
             # Cache the embedding
-            _set_cached_embedding(cache_keys[i], embedding)
+            await _set_cached_embedding(cache_keys[i], embedding)
 
         # Update rewrites with embeddings
         for rewrite in rewrites:
