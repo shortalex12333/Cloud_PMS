@@ -1039,14 +1039,15 @@ async def render_message(
 
     except Exception as e:
         error_msg = str(e)
+        error_type = type(e).__name__
         # Check if it's an HTTP error from httpx
         if hasattr(e, 'response') and hasattr(e.response, 'status_code'):
             status = e.response.status_code
             if status == 401:
                 await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph 401: {error_msg}")
                 raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect.")
-        logger.error(f"[email/render] Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch message content")
+        logger.error(f"[email/render] Unexpected error ({error_type}): {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch message content: {error_type}")
 
 
 # ============================================================================
