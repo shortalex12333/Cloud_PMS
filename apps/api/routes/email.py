@@ -891,12 +891,12 @@ async def get_thread(
 
     try:
         # Get thread (yacht_id enforced)
-        # Use maybe_single() to avoid exception when no row found
+        # Use limit(1) instead of maybe_single() to avoid 204 exception issues
         thread_result = supabase.table('email_threads').select('*').eq(
             'id', thread_id
-        ).eq('yacht_id', yacht_id).maybe_single().execute()
+        ).eq('yacht_id', yacht_id).limit(1).execute()
 
-        if not thread_result.data:
+        if not thread_result.data or len(thread_result.data) == 0:
             logger.info(f"[email/thread] Thread not found: thread_id={thread_id}, yacht_id={yacht_id}")
             raise HTTPException(
                 status_code=404,
@@ -908,7 +908,7 @@ async def get_thread(
                 }
             )
 
-        thread = thread_result.data
+        thread = thread_result.data[0]
 
         # Get messages for this thread (include web_link for "Open in Outlook")
         messages_result = supabase.table('email_messages').select(
