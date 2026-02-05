@@ -2782,7 +2782,7 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
         'yacht_id', yacht_id
     ).eq('provider_conversation_id', conversation_id).maybe_single().execute()
 
-    if thread_result.data:
+    if thread_result and thread_result.data:
         thread_id = thread_result.data['id']
     else:
         # Create thread
@@ -2794,6 +2794,8 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
             'has_attachments': msg.get('hasAttachments', False),
             'source': 'external',
         }).execute()
+        if not thread_insert or not thread_insert.data:
+            raise Exception(f"Failed to create thread for conversation {conversation_id[:20]}...")
         thread_id = thread_insert.data[0]['id']
 
     # Hash email addresses
@@ -2815,7 +2817,7 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
         'yacht_id', yacht_id
     ).eq('provider_message_id', msg.get('id')).maybe_single().execute()
 
-    if existing.data:
+    if existing and existing.data:
         return  # Already processed
 
     # Extract preview text (first 200 chars per SOC-2 doctrine)
