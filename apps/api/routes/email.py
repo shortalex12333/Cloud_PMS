@@ -1179,10 +1179,24 @@ def sanitize_filename(filename: str) -> str:
     return filename
 
 
+# Safe content types for inline viewing (PDFs and images)
+INLINE_SAFE_TYPES = {
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/tiff',
+    'image/svg+xml',
+}
+
+
 @router.get("/message/{provider_message_id}/attachments/{attachment_id}/download")
 async def download_attachment(
     provider_message_id: str,
     attachment_id: str,
+    inline: bool = False,
     auth: dict = Depends(get_authenticated_user),
 ):
     """
@@ -1194,6 +1208,10 @@ async def download_attachment(
     - Size limit enforced (MAX_ATTACHMENT_SIZE_BYTES)
     - Content type whitelist enforced (ALLOWED_ATTACHMENT_TYPES)
     - Content-Disposition header with sanitized filename
+
+    Query params:
+    - inline: If true and content type is safe (PDF/images), sets Content-Disposition: inline
+              for in-browser viewing instead of download
 
     Error codes:
     - 401: Token expired/revoked/not found
@@ -1276,9 +1294,17 @@ async def download_attachment(
         # Sanitize filename for header
         safe_filename = sanitize_filename(filename)
 
+        # Determine Content-Disposition based on inline flag and content type
+        if inline and content_type.lower() in INLINE_SAFE_TYPES:
+            disposition = f'inline; filename="{safe_filename}"'
+            disposition_type = 'inline'
+        else:
+            disposition = f'attachment; filename="{safe_filename}"'
+            disposition_type = 'attachment'
+
         logger.info(
             f"[email/download] Serving: {safe_filename} ({len(file_data)} bytes) "
-            f"type={content_type} user={user_id[:8]}"
+            f"type={content_type} disposition={disposition_type} user={user_id[:8]}"
         )
 
         # Stream response (no storage)
@@ -1289,7 +1315,7 @@ async def download_attachment(
             content_generator(),
             media_type=content_type,
             headers={
-                'Content-Disposition': f'attachment; filename="{safe_filename}"',
+                'Content-Disposition': disposition,
                 'Content-Length': str(len(file_data)),
                 'X-Content-Type-Options': 'nosniff',  # Prevent MIME sniffing
             }
