@@ -2780,7 +2780,7 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
     # Get or create thread
     thread_result = supabase.table('email_threads').select('id').eq(
         'yacht_id', yacht_id
-    ).eq('provider_conversation_id', conversation_id).single().execute()
+    ).eq('provider_conversation_id', conversation_id).maybe_single().execute()
 
     if thread_result.data:
         thread_id = thread_result.data['id']
@@ -2813,7 +2813,7 @@ async def _process_message(supabase, yacht_id: str, msg: Dict, folder: str):
     # Check if message already exists
     existing = supabase.table('email_messages').select('id').eq(
         'yacht_id', yacht_id
-    ).eq('provider_message_id', msg.get('id')).single().execute()
+    ).eq('provider_message_id', msg.get('id')).maybe_single().execute()
 
     if existing.data:
         return  # Already processed
