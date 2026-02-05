@@ -3459,6 +3459,106 @@ async def execute_action(
 
 
 # ============================================================================
+# GET /email/debug/search-folders - Search all Graph folders for emails
+# ============================================================================
+
+@router.get("/debug/search-folders")
+async def debug_search_folders(
+    q: str,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Debug endpoint to search all Graph folders for emails matching a pattern.
+
+    This helps diagnose sync issues by finding emails that exist in Outlook
+    but might be in folders other than inbox/sent.
+
+    Args:
+        q: Search pattern to match against email subjects
+
+    Returns:
+        Dict with folders and matching messages in each
+    """
+    import httpx
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get Graph token
+        read_client = create_read_client(supabase, user_id, yacht_id)
+        token = read_client.access_token
+
+        results = {
+            'query': q,
+            'folders': {},
+            'total_found': 0,
+        }
+
+        async with httpx.AsyncClient() as client:
+            # List all folders
+            folders_response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/mailFolders",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30.0
+            )
+
+            if folders_response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Failed to list folders")
+
+            folders = folders_response.json().get('value', [])
+            results['folder_count'] = len(folders)
+
+            # Search each folder
+            for folder in folders:
+                folder_name = folder.get('displayName', 'Unknown')
+                folder_id = folder.get('id')
+
+                # Query messages in folder
+                messages_response = await client.get(
+                    f"https://graph.microsoft.com/v1.0/me/mailFolders/{folder_id}/messages"
+                    f"?$select=id,subject,from,receivedDateTime,conversationId&$top=100&$orderby=receivedDateTime desc",
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=30.0
+                )
+
+                if messages_response.status_code == 200:
+                    messages = messages_response.json().get('value', [])
+
+                    # Filter messages matching search pattern
+                    matching = []
+                    for msg in messages:
+                        subject = msg.get('subject', '') or ''
+                        if q.lower() in subject.lower():
+                            matching.append({
+                                'subject': subject,
+                                'from': msg.get('from', {}).get('emailAddress', {}).get('address', ''),
+                                'received': msg.get('receivedDateTime', ''),
+                                'conversationId': msg.get('conversationId', 'NONE')[:50] + '...' if msg.get('conversationId') else 'NONE',
+                            })
+
+                    if matching:
+                        results['folders'][folder_name] = {
+                            'count': len(matching),
+                            'messages': matching,
+                        }
+                        results['total_found'] += len(matching)
+
+        return results
+
+    except TokenNotFoundError:
+        raise HTTPException(status_code=401, detail="Email not connected")
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Email connection expired")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/debug/search-folders] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
