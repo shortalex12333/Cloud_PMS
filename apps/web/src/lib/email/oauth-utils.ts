@@ -187,6 +187,8 @@ export function buildAuthUrl(purpose: TokenPurpose, state: string): string {
   authUrl.searchParams.set('scope', app.scopes.join(' '));
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('response_mode', 'query');
+  // Force account picker - don't auto-select cached Microsoft session
+  authUrl.searchParams.set('prompt', 'select_account');
 
   return authUrl.toString();
 }
