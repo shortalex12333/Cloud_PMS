@@ -137,6 +137,9 @@ const PLACEHOLDER_SUGGESTIONS = [
 
 interface EmailSurfaceProps {
   className?: string;
+  initialThreadId?: string;     // Pre-select thread (overlay mode)
+  initialFolder?: 'inbox' | 'sent';
+  onClose?: () => void;         // Close callback (overlay mode)
 }
 
 type DirectionFilter = 'all' | 'inbound' | 'outbound';
@@ -145,17 +148,27 @@ type DirectionFilter = 'all' | 'inbound' | 'outbound';
 // MAIN COMPONENT
 // ============================================================================
 
-export default function EmailSurface({ className }: EmailSurfaceProps) {
+export default function EmailSurface({
+  className,
+  initialThreadId,
+  initialFolder,
+  onClose,
+}: EmailSurfaceProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(initialThreadId || null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>(
+    initialFolder === 'sent' ? 'outbound' : 'all'
+  );
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Determine if in overlay mode (has onClose callback)
+  const isOverlayMode = !!onClose;
 
   // SINGLE-SURFACE: Thread selection is state-only, no URL params
   // Users select threads from the list in the left panel
@@ -299,8 +312,12 @@ export default function EmailSurface({ className }: EmailSurfaceProps) {
   }, []);
 
   const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+    if (onClose) {
+      onClose();
+    } else {
+      router.back();
+    }
+  }, [router, onClose]);
 
   const handleThreadClick = useCallback((threadId: string) => {
     setSelectedThreadId(threadId);
@@ -316,12 +333,14 @@ export default function EmailSurface({ className }: EmailSurfaceProps) {
       if (e.key === 'Escape') {
         if (searchQuery) {
           handleClear();
+        } else if (onClose) {
+          onClose();
         } else {
           router.back();
         }
       }
     },
-    [searchQuery, handleClear, router]
+    [searchQuery, handleClear, router, onClose]
   );
 
   // Get attachments for selected message
@@ -373,12 +392,13 @@ export default function EmailSurface({ className }: EmailSurfaceProps) {
       {/* Header - Search Bar */}
       <div className="sticky top-0 z-10 bg-[#1c1c1e]/95 backdrop-blur-md border-b border-[#3d3d3f]/30 px-4 py-3">
         <div className="flex items-center gap-3">
-          {/* Back button */}
+          {/* Back/Close button */}
           <button
             onClick={handleBack}
             className="p-2 -ml-2 rounded-lg text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+            aria-label={isOverlayMode ? 'Close email' : 'Go back'}
           >
-            <ArrowLeft className="w-5 h-5" />
+            {isOverlayMode ? <X className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
           </button>
 
           {/* Search with scope indicator */}
