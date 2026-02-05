@@ -974,6 +974,71 @@ export async function downloadAttachment(
 }
 
 /**
+ * Fetch attachment blob with metadata for inline viewing
+ * Returns blob, contentType, and fileName for DocumentViewerOverlay
+ */
+export interface AttachmentBlobResult {
+  blob: Blob;
+  contentType: string;
+  fileName: string;
+}
+
+export async function fetchAttachmentBlob(
+  providerMessageId: string,
+  attachmentId: string,
+  inline: boolean = true
+): Promise<AttachmentBlobResult> {
+  const headers = await getAuthHeaders();
+  // CRITICAL: Encode both IDs - Microsoft IDs contain URL-special chars (+, /, =)
+  const encodedMessageId = encodeURIComponent(providerMessageId);
+  const encodedAttachmentId = encodeURIComponent(attachmentId);
+
+  const url = `${API_BASE}/email/message/${encodedMessageId}/attachments/${encodedAttachmentId}/download${inline ? '?inline=1' : ''}`;
+
+  const response = await fetch(url, { headers });
+
+  if (!response.ok) {
+    let errorDetail = 'Attachment fetch failed';
+    try {
+      const errorData = await response.json();
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      // Response may not be JSON
+    }
+
+    const error: DownloadError = {
+      code: 'UNKNOWN',
+      message: errorDetail,
+    };
+
+    if (response.status === 413) {
+      error.code = 'OVERSIZE';
+      error.message = 'File is too large to preview (max 50MB)';
+    } else if (response.status === 415) {
+      error.code = 'DISALLOWED_TYPE';
+      error.message = 'This file type is not permitted';
+    } else if (response.status === 404) {
+      error.code = 'NOT_FOUND';
+      error.message = 'Attachment not found';
+    }
+
+    throw error;
+  }
+
+  // Extract content type from response
+  const contentType = response.headers.get('content-type') || 'application/octet-stream';
+
+  // Extract filename from Content-Disposition header
+  const contentDisposition = response.headers.get('content-disposition') || '';
+  const filenameMatch = /filename[*]?=["']?(?:UTF-8'')?([^"';\n]+)["']?/i.exec(contentDisposition);
+  const fileName = filenameMatch ? decodeURIComponent(filenameMatch[1]) : 'attachment';
+
+  const blob = await response.blob();
+
+  return { blob, contentType, fileName };
+}
+
+/**
  * Download attachment and trigger browser save dialog
  */
 export async function downloadAndSaveAttachment(

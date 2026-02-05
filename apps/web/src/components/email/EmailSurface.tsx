@@ -35,13 +35,16 @@ import {
   useThreadLinks,
   useEmailBackfill,
   downloadAndSaveAttachment,
+  fetchAttachmentBlob,
   useWatcherStatus,
   useOutlookConnection,
   type EmailThread,
   type EmailMessage,
   type MessageContent as MessageContentType,
   type EmailSearchResult,
+  type AttachmentBlobResult,
 } from '@/hooks/useEmailData';
+import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
 
@@ -682,6 +685,7 @@ export default function EmailSurface({
           <AttachmentsPanel
             attachments={selectedAttachments}
             providerMessageId={selectedMessageId}
+            webLink={selectedContent?.web_link || undefined}
           />
         </div>
       </div>
@@ -966,36 +970,108 @@ interface AttachmentsPanelProps {
     size?: number;
   }>;
   providerMessageId: string | null;
+  /** Optional: web_link for "Open in Outlook" button */
+  webLink?: string;
 }
 
-function AttachmentsPanel({ attachments, providerMessageId }: AttachmentsPanelProps) {
+interface ViewerState {
+  open: boolean;
+  fileName: string;
+  contentType: string;
+  blobUrl: string;
+  outlookUrl?: string;
+}
+
+function AttachmentsPanel({ attachments, providerMessageId, webLink }: AttachmentsPanelProps) {
+  const [viewer, setViewer] = useState<ViewerState>({
+    open: false,
+    fileName: '',
+    contentType: '',
+    blobUrl: '',
+  });
+
+  // Handle opening attachment in viewer
+  const handleViewAttachment = useCallback(
+    async (result: AttachmentBlobResult) => {
+      // Revoke previous blob URL if any
+      if (viewer.blobUrl) {
+        URL.revokeObjectURL(viewer.blobUrl);
+      }
+
+      const blobUrl = URL.createObjectURL(result.blob);
+      setViewer({
+        open: true,
+        fileName: result.fileName,
+        contentType: result.contentType,
+        blobUrl,
+        outlookUrl: webLink,
+      });
+    },
+    [viewer.blobUrl, webLink]
+  );
+
+  // Handle closing viewer
+  const handleCloseViewer = useCallback(() => {
+    if (viewer.blobUrl) {
+      URL.revokeObjectURL(viewer.blobUrl);
+    }
+    setViewer({
+      open: false,
+      fileName: '',
+      contentType: '',
+      blobUrl: '',
+    });
+  }, [viewer.blobUrl]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (viewer.blobUrl) {
+        URL.revokeObjectURL(viewer.blobUrl);
+      }
+    };
+  }, []);
+
   return (
-    <div data-testid="attachments-panel" className="h-full flex flex-col">
-      <div className="p-4 border-b border-[#3d3d3f]/30">
-        <h3 className="text-[13px] font-medium text-[#98989f]">
-          Attachments {attachments.length > 0 && `(${attachments.length})`}
-        </h3>
+    <>
+      <div data-testid="attachments-panel" className="h-full flex flex-col">
+        <div className="p-4 border-b border-[#3d3d3f]/30">
+          <h3 className="text-[13px] font-medium text-[#98989f]">
+            Attachments {attachments.length > 0 && `(${attachments.length})`}
+          </h3>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3">
+          {attachments.length === 0 ? (
+            <div className="text-center py-8">
+              <Paperclip className="h-8 w-8 text-[#48484a] mx-auto mb-2" />
+              <p className="text-[12px] text-[#636366]">No attachments</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {attachments.map((att) => (
+                <AttachmentItem
+                  key={att.id}
+                  attachment={att}
+                  providerMessageId={providerMessageId!}
+                  onViewAttachment={handleViewAttachment}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
-        {attachments.length === 0 ? (
-          <div className="text-center py-8">
-            <Paperclip className="h-8 w-8 text-[#48484a] mx-auto mb-2" />
-            <p className="text-[12px] text-[#636366]">No attachments</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {attachments.map((att) => (
-              <AttachmentItem
-                key={att.id}
-                attachment={att}
-                providerMessageId={providerMessageId!}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      {/* Document Viewer Overlay */}
+      <DocumentViewerOverlay
+        open={viewer.open}
+        onClose={handleCloseViewer}
+        fileName={viewer.fileName}
+        contentType={viewer.contentType}
+        blobUrl={viewer.blobUrl}
+        outlookUrl={viewer.outlookUrl}
+      />
+    </>
   );
 }
 
@@ -1011,9 +1087,10 @@ interface AttachmentItemProps {
     size?: number;
   };
   providerMessageId: string;
+  onViewAttachment: (result: AttachmentBlobResult) => void;
 }
 
-function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) {
+function AttachmentItem({ attachment, providerMessageId, onViewAttachment }: AttachmentItemProps) {
   const [status, setStatus] = React.useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = React.useState<string | null>(null);
 
@@ -1028,27 +1105,11 @@ function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) 
     setError(null);
 
     try {
-      // Import dynamically to avoid circular deps
-      const { downloadAttachment } = await import('@/hooks/useEmailData');
-      const blob = await downloadAttachment(providerMessageId, attachment.id);
+      // Fetch attachment with inline flag for viewer
+      const result = await fetchAttachmentBlob(providerMessageId, attachment.id, true);
 
-      if (isViewable) {
-        // Open inline in new tab
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // Clean up URL after a delay (browser needs time to load)
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      } else {
-        // Download non-viewable files
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = attachment.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
+      // Always open in document viewer overlay (handles both viewable and non-viewable)
+      onViewAttachment(result);
       setStatus('idle');
     } catch (err) {
       setStatus('error');
