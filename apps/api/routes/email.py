@@ -3959,14 +3959,14 @@ async def get_worker_status(
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
-        # Get watcher status
+        # Get watcher status - use limit(1) instead of maybe_single() to avoid 204 issues
         watcher_result = supabase.table('email_watchers').select(
-            'sync_status, last_sync_at, subscription_expires_at, last_sync_error, delta_link, updated_at'
+            'sync_status, last_sync_at, subscription_expires_at, last_sync_error, delta_link_inbox, updated_at'
         ).eq('user_id', user_id).eq('yacht_id', yacht_id).eq(
             'provider', 'microsoft_graph'
-        ).maybe_single().execute()
+        ).limit(1).execute()
 
-        if not watcher_result or not watcher_result.data:
+        if not watcher_result.data or len(watcher_result.data) == 0:
             return {
                 'connected': False,
                 'sync_status': 'disconnected',
@@ -3975,7 +3975,7 @@ async def get_worker_status(
                 'message': 'No email connection found'
             }
 
-        watcher = watcher_result.data
+        watcher = watcher_result.data[0]
         sync_status = watcher.get('sync_status', 'unknown')
 
         return {
@@ -3984,7 +3984,7 @@ async def get_worker_status(
             'last_sync_at': watcher.get('last_sync_at'),
             'subscription_expires_at': watcher.get('subscription_expires_at'),
             'last_error': watcher.get('last_sync_error'),
-            'has_delta_link': bool(watcher.get('delta_link')),
+            'has_delta_link': bool(watcher.get('delta_link_inbox')),
             'updated_at': watcher.get('updated_at'),
         }
 
@@ -4011,28 +4011,28 @@ async def get_thread_links(
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
-        # Verify thread belongs to yacht
+        # Verify thread belongs to yacht - use limit(1) instead of maybe_single()
         thread_result = supabase.table('email_threads').select('id').eq(
             'id', thread_id
-        ).eq('yacht_id', yacht_id).maybe_single().execute()
+        ).eq('yacht_id', yacht_id).limit(1).execute()
 
-        if not thread_result or not thread_result.data:
+        if not thread_result.data or len(thread_result.data) == 0:
             raise HTTPException(status_code=404, detail="Thread not found")
 
-        # Get all links for this thread
-        links_result = supabase.table('email_entity_links').select(
-            'id, entity_type, entity_id, link_type, confidence, linked_at, linked_by, notes'
-        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).execute()
+        # Get all links for this thread (table is email_links)
+        links_result = supabase.table('email_links').select(
+            'id, object_type, object_id, confidence, suggested_reason, accepted_at, accepted_by, is_active, score'
+        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).eq('is_active', True).execute()
 
         links = links_result.data or []
 
-        # Group links by entity type for easier frontend consumption
+        # Group links by object_type for easier frontend consumption
         grouped = {}
         for link in links:
-            entity_type = link.get('entity_type', 'other')
-            if entity_type not in grouped:
-                grouped[entity_type] = []
-            grouped[entity_type].append(link)
+            obj_type = link.get('object_type', 'other')
+            if obj_type not in grouped:
+                grouped[obj_type] = []
+            grouped[obj_type].append(link)
 
         return {
             'thread_id': thread_id,
