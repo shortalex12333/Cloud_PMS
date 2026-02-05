@@ -113,9 +113,9 @@ class SearchBudget:
     """
     max_rewrites: int = 3
     rewrite_budget_ms: int = 150
-    db_timeout_ms: int = 120
-    global_timeout_ms: int = 500
-    vector_dim: int = 384
+    db_timeout_ms: int = 250  # Statement timeout for RPCs
+    global_timeout_ms: int = 800  # End-to-end SLO
+    vector_dim: int = 1536  # OpenAI text-embedding-3-small
 
     # Concurrency caps
     global_concurrency_cap: int = 8
