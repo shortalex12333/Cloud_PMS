@@ -3488,7 +3488,7 @@ async def debug_search_folders(
     try:
         # Get Graph token
         read_client = create_read_client(supabase, user_id, yacht_id)
-        token = read_client.access_token
+        token = await read_client._get_token()
 
         results = {
             'query': q,
@@ -3592,7 +3592,7 @@ async def sync_all_folders(
     try:
         # Get Graph token
         read_client = create_read_client(supabase, user_id, yacht_id)
-        token = read_client.access_token
+        token = await read_client._get_token()
 
         stats = {
             'folders_synced': 0,
