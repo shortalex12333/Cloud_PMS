@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     // Handle OAuth errors from Microsoft
     if (error) {
       console.error('[Outlook Callback WRITE] OAuth error from Microsoft:', error, errorDescription);
-      const redirectUrl = new URL('/settings', APP_URL);
+      const redirectUrl = new URL('/', APP_URL);
       redirectUrl.searchParams.set('error', error);
       redirectUrl.searchParams.set('provider', 'outlook');
       redirectUrl.searchParams.set('purpose', 'write');
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
       console.error('[Outlook Callback WRITE] No authorization code provided');
-      const redirectUrl = new URL('/settings', APP_URL);
+      const redirectUrl = new URL('/', APP_URL);
       redirectUrl.searchParams.set('error', 'no_code');
       redirectUrl.searchParams.set('provider', 'outlook');
       redirectUrl.searchParams.set('purpose', 'write');
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     if (!state) {
       console.error('[Outlook Callback WRITE] No state parameter');
-      const redirectUrl = new URL('/settings', APP_URL);
+      const redirectUrl = new URL('/', APP_URL);
       redirectUrl.searchParams.set('error', 'no_state');
       redirectUrl.searchParams.set('provider', 'outlook');
       redirectUrl.searchParams.set('purpose', 'write');
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (fetchError) {
       console.error('[Outlook Callback WRITE] FETCH_FAILED - Network error calling Render:', fetchError);
-      const redirectUrl = new URL('/settings', APP_URL);
+      const redirectUrl = new URL('/', APP_URL);
       redirectUrl.searchParams.set('error', 'render_unreachable');
       redirectUrl.searchParams.set('provider', 'outlook');
       redirectUrl.searchParams.set('purpose', 'write');
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         statusText: renderResponse.statusText,
         body: errorText.substring(0, 500),
       });
-      const redirectUrl = new URL('/settings', APP_URL);
+      const redirectUrl = new URL('/', APP_URL);
       redirectUrl.searchParams.set('error', `render_${renderResponse.status}`);
       redirectUrl.searchParams.set('provider', 'outlook');
       redirectUrl.searchParams.set('purpose', 'write');
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       result = await renderResponse.json();
     } catch (jsonError) {
       console.error('[Outlook Callback WRITE] JSON_PARSE_FAILED:', jsonError);
-      const redirectUrl = new URL('/settings', APP_URL);
+      const redirectUrl = new URL('/', APP_URL);
       redirectUrl.searchParams.set('error', 'render_invalid_response');
       redirectUrl.searchParams.set('provider', 'outlook');
       redirectUrl.searchParams.set('purpose', 'write');
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Build redirect URL based on result
-    const redirectUrl = new URL('/settings', APP_URL);
+    const redirectUrl = new URL('/', APP_URL);
     redirectUrl.searchParams.set('provider', 'outlook');
     redirectUrl.searchParams.set('purpose', 'write');
 
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[Outlook Callback WRITE] Unexpected error:', error);
-    const redirectUrl = new URL('/settings', APP_URL);
+    const redirectUrl = new URL('/', APP_URL);
     redirectUrl.searchParams.set('error', 'unexpected');
     redirectUrl.searchParams.set('provider', 'outlook');
     redirectUrl.searchParams.set('purpose', 'write');
