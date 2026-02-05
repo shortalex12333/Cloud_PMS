@@ -786,18 +786,18 @@ export function useOutlookConnection() {
         }
 
         const data = await response.json();
-        const readStatus = data.read || {};
 
+        // Backend returns flat structure: { connected, email, connectedAt }
         // Check if token is expired or expiring soon (within 5 minutes)
-        const expiresAt = readStatus.expires_at;
+        const expiresAt = data.expires_at || data.connectedAt;
         const isExpired = expiresAt
           ? new Date(expiresAt).getTime() < Date.now() + 5 * 60 * 1000
           : false;
 
         return {
-          isConnected: readStatus.connected || false,
+          isConnected: data.connected || false,
           isExpired,
-          email: readStatus.email || null,
+          email: data.email || null,
           expiresAt,
           error: null,
         };
@@ -863,37 +863,38 @@ export type WatcherStatus = {
 
 /**
  * Check email watcher status for the current yacht
- * Used to show degraded mode warnings
+ * Uses backend endpoint which handles MASTER/TENANT DB routing correctly
  */
 export function useWatcherStatus() {
   return useQuery<WatcherStatus | null>({
     queryKey: ['email', 'watcher-status'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) {
-        return null;
-      }
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE}/email/worker/status`, { headers });
 
-      // Get user's yacht
-      const { data: crew } = await supabase
-        .from('crew_members')
-        .select('yacht_id')
-        .eq('user_id', session.user.id)
-        .single();
+        if (!response.ok) {
+          // Not connected or error
+          return {
+            id: '',
+            sync_status: 'error' as const,
+            last_sync_at: null,
+            last_sync_error: null,
+            is_connected: false,
+          };
+        }
 
-      if (!crew?.yacht_id) {
-        return null;
-      }
+        const data = await response.json();
 
-      // Get watcher for this yacht
-      const { data: watcher, error } = await supabase
-        .from('email_watchers')
-        .select('id, sync_status, last_sync_at, last_sync_error')
-        .eq('yacht_id', crew.yacht_id)
-        .single();
-
-      if (error || !watcher) {
-        // No watcher = not connected
+        return {
+          id: data.id || '',
+          sync_status: (data.sync_status || 'error') as 'active' | 'degraded' | 'error',
+          last_sync_at: data.last_sync_at || null,
+          last_sync_error: data.last_error || null,
+          is_connected: data.connected || false,
+        };
+      } catch (error) {
+        debugLog('WATCHER', 'Error fetching watcher status', error);
         return {
           id: '',
           sync_status: 'error' as const,
@@ -902,12 +903,6 @@ export function useWatcherStatus() {
           is_connected: false,
         };
       }
-
-      return {
-        ...watcher,
-        sync_status: watcher.sync_status as 'active' | 'degraded' | 'error',
-        is_connected: true,
-      };
     },
     staleTime: 60000, // 1 minute
     retry: 1,
