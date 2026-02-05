@@ -444,10 +444,14 @@ class GraphReadClient:
         Get full message content for rendering.
         This is fetch-on-click - content is NOT stored.
         Includes webLink for "Open in Outlook" functionality.
+
+        IMPORTANT: When using $expand=attachments, do NOT also include 'attachments'
+        in the main $select. The $expand handles attachment metadata.
         """
         url = f"{GRAPH_API_BASE}/me/messages/{message_id}"
-        params = "$select=id,subject,body,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,hasAttachments,attachments,webLink"
-        url = f"{url}?{params}&$expand=attachments($select=id,name,contentType,size)"
+        # Note: Removed 'attachments' from $select - it's handled by $expand
+        params = "$select=id,subject,body,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,hasAttachments,webLink"
+        url = f"{url}?{params}&$expand=attachments($select=id,name,contentType,size,isInline)"
 
         response = await self._request_with_retry('GET', url)
         response.raise_for_status()

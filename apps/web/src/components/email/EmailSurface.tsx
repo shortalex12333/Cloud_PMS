@@ -994,32 +994,53 @@ interface AttachmentItemProps {
 }
 
 function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) {
-  const [status, setStatus] = React.useState<'idle' | 'downloading' | 'error'>('idle');
+  const [status, setStatus] = React.useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = React.useState<string | null>(null);
 
-  const handleDownload = async () => {
-    setStatus('downloading');
+  // Check if file can be viewed inline (images and PDFs)
+  const contentType = attachment.contentType?.toLowerCase() || '';
+  const isViewable = contentType.startsWith('image/') ||
+    contentType === 'application/pdf' ||
+    contentType.startsWith('text/');
+
+  const handleClick = async () => {
+    setStatus('loading');
     setError(null);
 
-    const result = await downloadAndSaveAttachment(
-      providerMessageId,
-      attachment.id,
-      attachment.name
-    );
+    try {
+      // Import dynamically to avoid circular deps
+      const { downloadAttachment } = await import('@/hooks/useEmailData');
+      const blob = await downloadAttachment(providerMessageId, attachment.id);
 
-    if (result.success) {
+      if (isViewable) {
+        // Open inline in new tab
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Clean up URL after a delay (browser needs time to load)
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } else {
+        // Download non-viewable files
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = attachment.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
       setStatus('idle');
-    } else {
+    } catch (err) {
       setStatus('error');
-      setError(result.error.message);
+      setError(err instanceof Error ? err.message : 'Failed to load attachment');
     }
   };
 
   return (
     <div className="flex flex-col">
       <button
-        onClick={handleDownload}
-        disabled={status === 'downloading'}
+        onClick={handleClick}
+        disabled={status === 'loading'}
         className={cn(
           'flex items-center gap-2 p-3 rounded-lg transition-colors text-left',
           status === 'error'
@@ -1027,10 +1048,12 @@ function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) 
             : 'bg-[#2c2c2e] hover:bg-[#3a3a3c]'
         )}
       >
-        {status === 'downloading' ? (
+        {status === 'loading' ? (
           <Loader2 className="w-4 h-4 text-[#98989f] animate-spin flex-shrink-0" />
         ) : status === 'error' ? (
           <AlertCircle className="w-4 h-4 text-[#ff453a] flex-shrink-0" />
+        ) : isViewable ? (
+          <ExternalLink className="w-4 h-4 text-[#30d158] flex-shrink-0" />
         ) : (
           <Download className="w-4 h-4 text-[#0a84ff] flex-shrink-0" />
         )}
@@ -1043,9 +1066,14 @@ function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) 
           >
             {attachment.name}
           </span>
-          {attachment.size && status !== 'error' && (
-            <span className="text-[11px] text-[#636366]">{formatFileSize(attachment.size)}</span>
-          )}
+          <div className="flex items-center gap-2">
+            {attachment.size && status !== 'error' && (
+              <span className="text-[11px] text-[#636366]">{formatFileSize(attachment.size)}</span>
+            )}
+            {isViewable && status !== 'error' && (
+              <span className="text-[10px] text-[#30d158]">Click to view</span>
+            )}
+          </div>
         </div>
       </button>
       {error && <p className="text-[11px] text-[#ff453a] mt-1 px-1">{error}</p>}
