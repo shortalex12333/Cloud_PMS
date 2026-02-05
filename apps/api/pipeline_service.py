@@ -340,18 +340,6 @@ except Exception as e:
     logger.error("Receiving image upload endpoints will not be available")
 
 # ============================================================================
-# HANDOVER EXPORT ROUTES
-# ============================================================================
-
-try:
-    from routes.handover_export_routes import router as handover_export_router
-    app.include_router(handover_export_router)
-    logger.info("✅ Handover Export routes registered at /v1/handover/*")
-except Exception as e:
-    logger.error(f"❌ Failed to register Handover Export routes: {e}")
-    logger.error("Handover Export endpoints will not be available")
-
-# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
