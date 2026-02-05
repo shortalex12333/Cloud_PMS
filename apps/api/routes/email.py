@@ -3559,6 +3559,120 @@ async def debug_search_folders(
 
 
 # ============================================================================
+# POST /email/sync/all-folders - Sync emails from ALL folders
+# ============================================================================
+
+@router.post("/sync/all-folders")
+async def sync_all_folders(
+    auth: dict = Depends(get_authenticated_user),
+    max_per_folder: int = 100,
+):
+    """
+    Sync emails from ALL mail folders, not just inbox/sent.
+
+    This is a one-time sync to find and import emails that may have been
+    missed because they're in folders like Junk, Archive, or Other.
+
+    Args:
+        max_per_folder: Maximum messages to sync per folder (default 100)
+
+    Returns:
+        Stats dict with messages synced per folder
+    """
+    import httpx
+
+    enabled, error_msg = check_email_feature('sync')
+    if not enabled:
+        raise HTTPException(status_code=503, detail=error_msg)
+
+    yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    try:
+        # Get Graph token
+        read_client = create_read_client(supabase, user_id, yacht_id)
+        token = read_client.access_token
+
+        stats = {
+            'folders_synced': 0,
+            'messages_created': 0,
+            'messages_skipped': 0,
+            'errors': [],
+            'folder_stats': {},
+        }
+
+        async with httpx.AsyncClient() as client:
+            # List all folders
+            folders_response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/mailFolders",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30.0
+            )
+
+            if folders_response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Failed to list folders")
+
+            folders = folders_response.json().get('value', [])
+
+            for folder in folders:
+                folder_name = folder.get('displayName', 'Unknown')
+                folder_id = folder.get('id')
+                folder_stats = {'synced': 0, 'skipped': 0, 'errors': 0}
+
+                try:
+                    # Get messages from folder
+                    messages_response = await client.get(
+                        f"https://graph.microsoft.com/v1.0/me/mailFolders/{folder_id}/messages"
+                        f"?$select=id,conversationId,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,hasAttachments,internetMessageId,bodyPreview,webLink"
+                        f"&$top={max_per_folder}&$orderby=receivedDateTime desc",
+                        headers={"Authorization": f"Bearer {token}"},
+                        timeout=60.0
+                    )
+
+                    if messages_response.status_code == 200:
+                        messages = messages_response.json().get('value', [])
+
+                        for msg in messages:
+                            try:
+                                # Determine folder type for direction
+                                is_sent = folder_name.lower() in ['sent items', 'sent', 'sentitems']
+                                folder_type = 'sent' if is_sent else 'inbox'
+
+                                await _process_message(supabase, yacht_id, msg, folder_type)
+                                folder_stats['synced'] += 1
+                                stats['messages_created'] += 1
+                            except Exception as e:
+                                if 'duplicate' in str(e).lower() or 'already exists' in str(e).lower():
+                                    folder_stats['skipped'] += 1
+                                    stats['messages_skipped'] += 1
+                                else:
+                                    folder_stats['errors'] += 1
+                                    stats['errors'].append(f"{folder_name}: {str(e)[:50]}")
+
+                    stats['folders_synced'] += 1
+                    stats['folder_stats'][folder_name] = folder_stats
+
+                except Exception as e:
+                    stats['errors'].append(f"Folder {folder_name}: {str(e)[:100]}")
+
+        return {
+            'success': True,
+            'stats': stats,
+        }
+
+    except TokenNotFoundError:
+        raise HTTPException(status_code=401, detail="Email not connected")
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Email connection expired")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/sync/all-folders] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
