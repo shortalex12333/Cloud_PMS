@@ -36,15 +36,16 @@ async function getActionContext() {
   context.pms_work_orders = workOrders;
   console.log(`   Sample: ${workOrders?.[0]?.title} (${workOrders?.[0]?.id})`);
 
-  // Get handovers
-  console.log('3. Getting handovers...');
-  const { data: handovers } = await supabase
-    .from('handovers')
-    .select('id, title, status')
+  // Get handover items (consolidated schema as of 2026-02-05)
+  console.log('3. Getting handover_items...');
+  const { data: handoverItems } = await supabase
+    .from('handover_items')
+    .select('id, summary, section, category, is_critical')
     .eq('yacht_id', yacht_id)
+    .is('deleted_at', null)
     .limit(5);
-  context.handovers = handovers;
-  console.log(`   Sample: ${handovers?.[0]?.title} (${handovers?.[0]?.id})`);
+  context.handover_items = handoverItems;
+  console.log(`   Sample: ${handoverItems?.[0]?.summary?.substring(0, 50)} (${handoverItems?.[0]?.id})`);
 
   // Get documents
   console.log('4. Getting documents...');

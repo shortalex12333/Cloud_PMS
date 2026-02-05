@@ -44,9 +44,9 @@ async function getActualTables(): Promise<string[]> {
       'pms_work_orders',
       'pms_parts',
       'pms_maintenance_schedules',
-      'pms_handover',
-      'pms_handover_items',
-      'pms_handover_sections',
+      // Handover tables (consolidated schema as of 2026-02-05)
+      'handover_items',      // Draft handover notes - standalone
+      'handover_exports',    // Exported documents with signoff tracking
       'pms_checklist_templates',
       'pms_task_checklists',
       'pms_equipment_history',
