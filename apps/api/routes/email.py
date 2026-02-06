@@ -1101,7 +1101,20 @@ async def render_message(
             await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph API 401: {error_msg}")
             raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect your Outlook account.")
         elif e.status_code == 404:
-            raise HTTPException(status_code=404, detail="Message not found in Outlook")
+            # Message deleted in Outlook - mark as soft deleted in our DB
+            from datetime import datetime, timezone
+            try:
+                supabase.table('email_messages').update({
+                    'is_deleted': True,
+                    'deleted_at': datetime.now(timezone.utc).isoformat(),
+                    'updated_at': datetime.now(timezone.utc).isoformat()
+                }).eq('provider_message_id', provider_message_id).eq(
+                    'yacht_id', yacht_id
+                ).execute()
+                logger.info(f"[email/render] ✓ Auto-marked {provider_message_id[:16]}... as deleted (404 from Graph)")
+            except Exception as mark_error:
+                logger.error(f"[email/render] Failed to mark message as deleted: {mark_error}")
+            raise HTTPException(status_code=404, detail="Message not found in Outlook. It has been removed from your inbox.")
         else:
             logger.error(f"[email/render] Graph API error {e.status_code}: {error_msg}")
             raise HTTPException(status_code=502, detail=f"Microsoft Graph error: {error_msg}")
@@ -1121,7 +1134,20 @@ async def render_message(
                 await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph 401: {error_msg}")
                 raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect.")
             elif graph_status == 404:
-                raise HTTPException(status_code=404, detail="Message not found in Outlook. It may have been deleted.")
+                # Message deleted in Outlook - mark as soft deleted in our DB
+                from datetime import datetime, timezone
+                try:
+                    supabase.table('email_messages').update({
+                        'is_deleted': True,
+                        'deleted_at': datetime.now(timezone.utc).isoformat(),
+                        'updated_at': datetime.now(timezone.utc).isoformat()
+                    }).eq('provider_message_id', provider_message_id).eq(
+                        'yacht_id', yacht_id
+                    ).execute()
+                    logger.info(f"[email/render] ✓ Auto-marked {provider_message_id[:16]}... as deleted (404 from Graph)")
+                except Exception as mark_error:
+                    logger.error(f"[email/render] Failed to mark message as deleted: {mark_error}")
+                raise HTTPException(status_code=404, detail="Message not found in Outlook. It has been removed from your inbox.")
             elif graph_status == 403:
                 raise HTTPException(status_code=403, detail="Access denied to this message.")
         logger.error(f"[email/render] Unexpected error ({error_type}, graph_status={graph_status}): {e}", exc_info=True)
