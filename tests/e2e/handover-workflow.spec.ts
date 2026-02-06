@@ -73,6 +73,7 @@ test.describe('Handover Dual-Signature Workflow', () => {
         payload: {
           entity_type: 'note',  // Required field
           entity_id: null,  // NULL for standalone notes
+          title: 'Critical: Main engine inspection overdue',
           summary_text: `[E2E Test] Critical item - Main engine inspection overdue (${DRAFT_ID})`,
           category: 'urgent',  // Valid: urgent|in_progress|completed|watch|fyi
           priority: 'high',
@@ -108,6 +109,7 @@ test.describe('Handover Dual-Signature Workflow', () => {
         payload: {
           entity_type: 'note',  // Required field
           entity_id: null,  // NULL for standalone notes
+          title: 'Completed: Weekly deck cleaning',
           summary_text: `[E2E Test] Normal item - Weekly deck cleaning completed (${DRAFT_ID})`,
           category: 'completed',  // Valid: urgent|in_progress|completed|watch|fyi
           priority: 'normal',
