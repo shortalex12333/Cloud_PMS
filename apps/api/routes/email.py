@@ -24,7 +24,7 @@ Doctrine compliance:
 - All link changes audited
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
@@ -35,6 +35,15 @@ import os  # SECURITY FIX P0-007: For path operations
 import time
 from functools import lru_cache
 from threading import Lock
+from cachetools import TTLCache
+
+# ============================================================================
+# PERFORMANCE: In-memory cache for Graph API responses
+# TTL 60s - short enough to respect doctrine (no long-term storage)
+# maxsize 500 - reasonable for typical usage patterns
+# ============================================================================
+_message_content_cache: TTLCache = TTLCache(maxsize=500, ttl=60)
+_cache_lock = Lock()
 
 # Local imports
 from middleware.auth import get_authenticated_user
@@ -941,8 +950,28 @@ async def get_thread(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[email/thread] Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch thread")
+        error_msg = str(e)
+        logger.error(f"[email/thread] Unexpected error: {error_msg}", exc_info=True)
+        # Check for common DB errors that should be 404
+        if 'not found' in error_msg.lower() or 'does not exist' in error_msg.lower():
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "thread_not_found",
+                    "message": "Thread not found",
+                    "thread_id": thread_id,
+                    "yacht_id": yacht_id
+                }
+            )
+        # Return 500 only for truly unexpected errors
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "internal_error",
+                "message": "Failed to fetch thread",
+                "thread_id": thread_id
+            }
+        )
 
 
 # ============================================================================
@@ -952,6 +981,7 @@ async def get_thread(
 @router.get("/message/{provider_message_id}/render")
 async def render_message(
     provider_message_id: str,
+    response: Response,
     auth: dict = Depends(get_authenticated_user),
 ):
     """
@@ -959,7 +989,13 @@ async def render_message(
 
     DOCTRINE: Content is NOT stored. Fetched on-click only.
     Uses READ token exclusively.
+
+    Performance: Short-lived in-memory cache (60s TTL) to reduce
+    repeated Graph API calls for same message within a session.
     """
+    start_time = time.time()
+    cache_status = "MISS"
+
     enabled, error_msg = check_email_feature('render')
     if not enabled:
         raise HTTPException(status_code=503, detail=error_msg)
@@ -976,10 +1012,25 @@ async def render_message(
     if not msg_result or not msg_result.data:
         raise HTTPException(status_code=404, detail="Message not found")
 
+    # Cache key: yacht-scoped to prevent cross-tenant leakage
+    cache_key = f"{yacht_id}:{provider_message_id}"
+
     try:
-        # Use READ client (enforces read token, auto-refreshes if needed)
-        read_client = create_read_client(supabase, user_id, yacht_id)
-        content = await read_client.get_message_content(provider_message_id)
+        # Check cache first
+        with _cache_lock:
+            content = _message_content_cache.get(cache_key)
+
+        if content is not None:
+            cache_status = "HIT"
+            logger.debug(f"[email/render] Cache HIT for {provider_message_id[:16]}...")
+        else:
+            # Cache miss - fetch from Graph API
+            read_client = create_read_client(supabase, user_id, yacht_id)
+            content = await read_client.get_message_content(provider_message_id)
+
+            # Store in cache (short TTL, yacht-scoped)
+            with _cache_lock:
+                _message_content_cache[cache_key] = content
 
         # Debug: Log render request details (no body content for security)
         body_obj = content.get('body', {})
@@ -1003,6 +1054,11 @@ async def render_message(
             except Exception as e:
                 # Non-fatal: just log and continue
                 logger.warning(f"[email/render] Failed to update web_link: {e}")
+
+        # Add performance timing headers
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        response.headers["X-Graph-Cache"] = cache_status
+        response.headers["X-Graph-Time"] = str(elapsed_ms)
 
         return {
             'id': content.get('id'),
