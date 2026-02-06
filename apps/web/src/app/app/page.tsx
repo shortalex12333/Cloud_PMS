@@ -57,6 +57,11 @@ function SurfaceContent() {
           <ContextPanel />
         </Suspense>
 
+        {/* Email Overlay - full-width slide-in from left */}
+        <Suspense fallback={null}>
+          <EmailOverlay />
+        </Suspense>
+
       </div>
     </main>
   );

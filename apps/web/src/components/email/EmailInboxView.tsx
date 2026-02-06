@@ -8,19 +8,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Mail, Link2, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, Inbox, CheckCircle } from 'lucide-react';
 import { useInboxThreads, type EmailThread } from '@/hooks/useEmailData';
 import { LinkEmailModal } from './LinkEmailModal';
 import { Button } from '@/components/ui/button';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import { useSurfaceSafe } from '@/contexts/SurfaceContext';
 
 interface EmailInboxViewProps {
   className?: string;
 }
 
 export function EmailInboxView({ className }: EmailInboxViewProps) {
-  const router = useRouter();
+  const surfaceContext = useSurfaceSafe();
   const [page, setPage] = useState(1);
   const [showLinked, setShowLinked] = useState(false);
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
@@ -28,11 +28,12 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
   const { data, isLoading, error, refetch } = useInboxThreads(page, showLinked);
 
-  // Open email in full EmailSurface view
-  // SINGLE-SURFACE: No query params, just navigate to the email surface
-  // User will see the full thread list and can select the thread there
-  const handleOpenThread = (_thread: EmailThread) => {
-    router.push('/email/inbox');
+  // Open email in full EmailSurface view via overlay
+  // SINGLE-SURFACE: Uses SurfaceContext to show email overlay (no URL change)
+  const handleOpenThread = (thread: EmailThread) => {
+    if (surfaceContext) {
+      surfaceContext.showEmail({ threadId: thread.id, folder: 'inbox' });
+    }
   };
 
   const threads = data?.threads || [];
