@@ -1137,11 +1137,20 @@ def detect_intent_from_query(query: str) -> str:
     if re.search(r'\bdocuments?\b', query_lower) and not re.search(r'\b(create|add|new|upload)\b', query_lower):
         return 'READ'
 
-    # Check longest matches first
+    # "manual" as a noun (documentation) implies READ for document domain
+    # Must be standalone word, not part of compound like "watermaker"
+    if re.search(r'\bmanual\b', query_lower) and not re.search(r'\b(create|add|new|write)\b', query_lower):
+        return 'READ'
+
+    # Check longest matches first, using word boundaries
+    # This prevents "watermaker" from matching "make"
     sorted_keywords = sorted(INTENT_KEYWORDS.keys(), key=len, reverse=True)
 
     for keyword in sorted_keywords:
-        if keyword in query_lower:
+        # Use word boundary matching to avoid partial matches
+        # e.g., "watermaker" should NOT match "make"
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, query_lower):
             return INTENT_KEYWORDS[keyword]
 
     return 'READ'  # Default intent
