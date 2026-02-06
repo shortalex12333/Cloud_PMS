@@ -284,6 +284,7 @@ export function useRelatedThreads(objectType: string, objectId: string) {
 
 /**
  * Fetch thread with messages
+ * Optimized with staleTime and no refetch on window focus for performance
  */
 export function useThread(threadId: string | null) {
   debugLog('HOOK:THREAD', `Hook called with threadId: ${threadId || 'null'}, enabled: ${!!threadId}`);
@@ -294,13 +295,16 @@ export function useThread(threadId: string | null) {
       return fetchThread(threadId!);
     },
     enabled: !!threadId,
-    staleTime: 30000,
+    staleTime: 60000, // 1 minute - threads don't change frequently
+    gcTime: 300000, // Keep in cache for 5 minutes
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 }
 
 /**
  * Fetch message content (fetch-on-click)
+ * Optimized with longer cache time - content doesn't change
  */
 export function useMessageContent(providerMessageId: string | null) {
   debugLog('HOOK:CONTENT', `Hook called with providerMessageId: ${providerMessageId?.substring(0, 30) || 'null'}..., enabled: ${!!providerMessageId}`);
@@ -311,7 +315,9 @@ export function useMessageContent(providerMessageId: string | null) {
       return fetchMessageContent(providerMessageId!);
     },
     enabled: !!providerMessageId,
-    staleTime: 60000, // 1 minute - content doesn't change
+    staleTime: 120000, // 2 minutes - content doesn't change
+    gcTime: 600000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 }
@@ -449,8 +455,66 @@ export function useInboxThreads(
       return response.json();
     },
     staleTime: 30000,
+    gcTime: 120000, // Keep in cache for 2 minutes
+    refetchOnWindowFocus: false,
     retry: 1,
   });
+}
+
+// ============================================================================
+// PREFETCH UTILITIES (Performance optimization)
+// ============================================================================
+
+/**
+ * Prefetch thread and first message content on hover/click
+ * Call this on thread row hover to pre-warm the cache
+ */
+export function usePrefetchThread() {
+  const queryClient = useQueryClient();
+
+  return async (threadId: string, firstMessageProviderMessageId?: string) => {
+    // Prefetch thread data
+    await queryClient.prefetchQuery({
+      queryKey: ['email', 'thread', threadId],
+      queryFn: () => fetchThread(threadId),
+      staleTime: 60000,
+    });
+
+    // Prefetch first message content if available
+    if (firstMessageProviderMessageId) {
+      await queryClient.prefetchQuery({
+        queryKey: ['email', 'message', firstMessageProviderMessageId],
+        queryFn: () => fetchMessageContent(firstMessageProviderMessageId),
+        staleTime: 120000,
+      });
+    }
+  };
+}
+
+/**
+ * Prefetch message content and attachments in parallel
+ * Call this when selecting a message for optimized loading
+ */
+export async function prefetchMessageData(
+  queryClient: ReturnType<typeof useQueryClient>,
+  providerMessageId: string,
+  messageId: string
+) {
+  const startTime = performance.now();
+
+  // Parallel prefetch of body and attachments
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: ['email', 'message', providerMessageId],
+      queryFn: () => fetchMessageContent(providerMessageId),
+      staleTime: 120000,
+    }),
+    // Attachments are fetched as part of message content, but we can
+    // log timing for performance tracking
+  ]);
+
+  const elapsed = performance.now() - startTime;
+  debugLog('PREFETCH', `Message data prefetched in ${elapsed.toFixed(0)}ms`);
 }
 
 // ============================================================================

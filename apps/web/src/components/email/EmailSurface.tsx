@@ -38,6 +38,7 @@ import {
   fetchAttachmentBlob,
   useWatcherStatus,
   useOutlookConnection,
+  usePrefetchThread,
   type EmailThread,
   type EmailMessage,
   type MessageContent as MessageContentType,
@@ -254,6 +255,9 @@ export default function EmailSurface({
   const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.6);
   const hasRelatedLinks = (threadLinksData?.count || 0) > 0;
 
+  // Prefetch hook for performance optimization
+  const prefetchThread = usePrefetchThread();
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -326,6 +330,14 @@ export default function EmailSurface({
     setSelectedThreadId(threadId);
     setSelectedMessageId(null); // Will be auto-set when thread loads
   }, []);
+
+  // Prefetch thread data on hover for faster perceived performance
+  const handleThreadHover = useCallback((threadId: string) => {
+    // Only prefetch if not already selected (already loaded)
+    if (threadId !== selectedThreadId) {
+      prefetchThread(threadId);
+    }
+  }, [selectedThreadId, prefetchThread]);
 
   const handleMessageClick = useCallback((providerMessageId: string) => {
     setSelectedMessageId(providerMessageId);
@@ -613,6 +625,7 @@ export default function EmailSurface({
                   thread={thread as EmailThread}
                   isSelected={selectedThreadId === thread.id}
                   onClick={() => handleThreadClick(thread.id)}
+                  onHover={() => handleThreadHover(thread.id)}
                 />
               ))}
 
@@ -701,9 +714,10 @@ interface ThreadListItemProps {
   thread: EmailThread;
   isSelected: boolean;
   onClick: () => void;
+  onHover?: () => void;
 }
 
-function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
+function ThreadListItem({ thread, isSelected, onClick, onHover }: ThreadListItemProps) {
   // Generate avatar initials from subject
   const initials = useMemo(() => {
     const subject = thread.latest_subject || 'E';
@@ -714,6 +728,7 @@ function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
     <button
       data-testid="thread-row"
       onClick={onClick}
+      onMouseEnter={onHover}
       className={cn(
         'w-full flex items-start gap-3 p-3 text-left transition-colors',
         isSelected ? 'bg-[#0a84ff]/20' : 'hover:bg-[#2c2c2e]'
