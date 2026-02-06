@@ -143,8 +143,9 @@ class HandoverExportService:
         if not items:
             return self._empty_export(yacht_id, user_id)
 
-        # 2. Extract content_hash (all items should have same hash after finalization)
-        content_hash = items[0].get("content_hash") if items else None
+        # 2. Extract content_hash (post-consolidation: items are standalone, no draft hash)
+        # TODO: If draft-based workflow is restored, fetch content_hash from handover_drafts table
+        content_hash = None  # No longer stored in items after consolidation migration
 
         # 3. Enrich with entity details
         items = await self._enrich_items(items, yacht_id)
