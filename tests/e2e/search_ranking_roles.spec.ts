@@ -40,7 +40,7 @@ const TEST_CREDENTIALS = {
     expectedRole: 'crew',
   },
   captain: {
-    email: process.env.CAPTAIN_TEST_EMAIL || process.env.CAPTAIN_EMAIL || 'captain.test@alex-short.com',
+    email: process.env.CAPTAIN_TEST_EMAIL || process.env.CAPTAIN_EMAIL || 'captain@alex-short.com',
     password: process.env.TEST_USER_PASSWORD || process.env.CAPTAIN_PASSWORD || 'Password2!',
     expectedRole: 'captain',
   },
