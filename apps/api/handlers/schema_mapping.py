@@ -19,7 +19,7 @@ DATABASE AUDIT RESULTS (2026-01-09):
 - ❌ pms_audit_log DOES NOT EXIST (created in migration 04)
 - ❌ pms_part_usage DOES NOT EXIST (created in migration 04)
 - ❌ pms_work_order_notes DOES NOT EXIST (created in migration 04)
-- ❌ pms_handover DOES NOT EXIST (created in migration 04)
+- ❌ pms_handover DROPPED (consolidated into handover_items in migration 20260205140000)
 """
 
 from typing import Dict, Any
@@ -35,7 +35,7 @@ TABLE_MAP = {
     "work_order_parts": "pms_work_order_parts",  # CONFIRMED: Exists
     "part_usage": "pms_part_usage",         # CREATED in migration 04
     "audit_log": "pms_audit_log",           # CREATED in migration 04
-    "handover": "pms_handover",             # CREATED in migration 04
+    "handover": "handover_items",           # Consolidated from pms_handover (migration 20260205140000)
     # P1 Purchasing tables (confirmed from docs/DATABASE_SCHEMA.md)
     "purchase_orders": "pms_purchase_orders",       # PO headers
     "purchase_order_items": "pms_purchase_order_items",  # PO line items
