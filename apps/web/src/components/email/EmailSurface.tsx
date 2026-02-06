@@ -38,6 +38,7 @@ import {
   fetchAttachmentBlob,
   useWatcherStatus,
   useOutlookConnection,
+  usePrefetchThread,
   type EmailThread,
   type EmailMessage,
   type MessageContent as MessageContentType,
@@ -45,6 +46,8 @@ import {
   type AttachmentBlobResult,
 } from '@/hooks/useEmailData';
 import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
+import { LinkEmailModal } from '@/components/email/LinkEmailModal';
+import { ThreadLinksPanel } from '@/components/email/ThreadLinksPanel';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
 
@@ -254,6 +257,9 @@ export default function EmailSurface({
   const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.6);
   const hasRelatedLinks = (threadLinksData?.count || 0) > 0;
 
+  // Prefetch hook for performance optimization
+  const prefetchThread = usePrefetchThread();
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -300,6 +306,14 @@ export default function EmailSurface({
     }
   }, [isLoading, isSearching, threads.length, isBackfilling, outlookStatus?.isConnected, triggerBackfill]);
 
+  // Sync selectedThreadId when initialThreadId prop changes (e.g., from search result click)
+  useEffect(() => {
+    if (initialThreadId && initialThreadId !== selectedThreadId) {
+      setSelectedThreadId(initialThreadId);
+      setSelectedMessageId(null); // Reset message selection for new thread
+    }
+  }, [initialThreadId]);
+
   // Auto-select first message when thread loads
   useEffect(() => {
     if (selectedThread?.messages?.length && !selectedMessageId) {
@@ -326,6 +340,14 @@ export default function EmailSurface({
     setSelectedThreadId(threadId);
     setSelectedMessageId(null); // Will be auto-set when thread loads
   }, []);
+
+  // Prefetch thread data on hover for faster perceived performance
+  const handleThreadHover = useCallback((threadId: string) => {
+    // Only prefetch if not already selected (already loaded)
+    if (threadId !== selectedThreadId) {
+      prefetchThread(threadId);
+    }
+  }, [selectedThreadId, prefetchThread]);
 
   const handleMessageClick = useCallback((providerMessageId: string) => {
     setSelectedMessageId(providerMessageId);
@@ -613,6 +635,7 @@ export default function EmailSurface({
                   thread={thread as EmailThread}
                   isSelected={selectedThreadId === thread.id}
                   onClick={() => handleThreadClick(thread.id)}
+                  onHover={() => handleThreadHover(thread.id)}
                 />
               ))}
 
@@ -667,8 +690,9 @@ export default function EmailSurface({
             </div>
           )}
 
-          {selectedThread && (
+          {selectedThread && selectedThreadId && (
             <MessagePanel
+              threadId={selectedThreadId}
               thread={selectedThread}
               selectedMessageId={selectedMessageId}
               onMessageSelect={handleMessageClick}
@@ -701,9 +725,10 @@ interface ThreadListItemProps {
   thread: EmailThread;
   isSelected: boolean;
   onClick: () => void;
+  onHover?: () => void;
 }
 
-function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
+function ThreadListItem({ thread, isSelected, onClick, onHover }: ThreadListItemProps) {
   // Generate avatar initials from subject
   const initials = useMemo(() => {
     const subject = thread.latest_subject || 'E';
@@ -714,6 +739,7 @@ function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
     <button
       data-testid="thread-row"
       onClick={onClick}
+      onMouseEnter={onHover}
       className={cn(
         'w-full flex items-start gap-3 p-3 text-left transition-colors',
         isSelected ? 'bg-[#0a84ff]/20' : 'hover:bg-[#2c2c2e]'
@@ -759,6 +785,7 @@ function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
 // ============================================================================
 
 interface MessagePanelProps {
+  threadId: string;
   thread: {
     latest_subject: string | null;
     message_count: number;
@@ -771,9 +798,11 @@ interface MessagePanelProps {
   contentLoading: boolean;
   relatedLinksCount: number;
   hasRelatedLinks: boolean;
+  onLinksChanged?: () => void;
 }
 
 function MessagePanel({
+  threadId,
   thread,
   selectedMessageId,
   onMessageSelect,
@@ -781,8 +810,10 @@ function MessagePanel({
   contentLoading,
   relatedLinksCount,
   hasRelatedLinks,
+  onLinksChanged,
 }: MessagePanelProps) {
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showLinksPanel, setShowLinksPanel] = useState(false);
 
   return (
     <div data-testid="message-panel" className="h-full flex flex-col">
@@ -810,6 +841,7 @@ function MessagePanel({
           <div className="flex-shrink-0">
             {hasRelatedLinks ? (
               <button
+                onClick={() => setShowLinksPanel(true)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#30d158]/20 text-[#30d158] text-[12px] font-medium hover:bg-[#30d158]/30 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -954,6 +986,22 @@ function MessagePanel({
           </div>
         )}
       </div>
+
+      {/* Link Email Modal */}
+      <LinkEmailModal
+        open={showLinkModal}
+        onOpenChange={setShowLinkModal}
+        threadId={threadId}
+        threadSubject={thread.latest_subject || undefined}
+      />
+
+      {/* Thread Links Panel (See Related) */}
+      <ThreadLinksPanel
+        open={showLinksPanel}
+        onClose={() => setShowLinksPanel(false)}
+        threadId={threadId}
+        threadSubject={thread.latest_subject || undefined}
+      />
     </div>
   );
 }

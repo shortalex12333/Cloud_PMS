@@ -1327,7 +1327,7 @@ async def execute_action(
             is_critical = payload.get("is_critical", False)
             requires_action = payload.get("requires_action", False)
             action_summary = payload.get("action_summary")
-            section = payload.get("section")
+            section = payload.get("section") or payload.get("presentation_bucket")  # Accept both aliases
 
             try:
                 result = await handover_handlers.add_to_handover_execute(
