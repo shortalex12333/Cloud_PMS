@@ -25,7 +25,12 @@ from typing import Dict, Any, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from supabase import create_client
-from integrations.graph_client import get_valid_token
+from integrations.graph_client import (
+    get_valid_token,
+    refresh_expiring_tokens,
+    acquire_refresh_lock,
+    release_refresh_lock
+)
 from services.email_sync_service import EmailSyncService
 from services.rate_limiter import MicrosoftRateLimiter
 
@@ -41,6 +46,15 @@ logger = logging.getLogger('EmailWatcher')
 POLL_INTERVAL = int(os.getenv('EMAIL_WATCHER_POLL_INTERVAL', '60'))
 WATCHER_BATCH_SIZE = int(os.getenv('EMAIL_WATCHER_BATCH_SIZE', '10'))
 ENABLED = os.getenv('EMAIL_WATCHER_ENABLED', 'false').lower() == 'true'
+
+# Token refresh heartbeat configuration
+TOKEN_REFRESH_ENABLED = os.getenv('TOKEN_REFRESH_HEARTBEAT_ENABLED', 'true').lower() == 'true'
+TOKEN_REFRESH_INTERVAL_CYCLES = int(os.getenv('TOKEN_REFRESH_INTERVAL_CYCLES', '2'))  # Run every N cycles
+TOKEN_REFRESH_LOOKAHEAD = int(os.getenv('TOKEN_REFRESH_LOOKAHEAD_SECONDS', '300'))  # 5 minutes
+TOKEN_REFRESH_COOLDOWN = int(os.getenv('TOKEN_REFRESH_COOLDOWN_SECONDS', '600'))  # 10 minutes
+TOKEN_REFRESH_ACTIVITY_DAYS = int(os.getenv('TOKEN_REFRESH_ACTIVITY_DAYS', '14'))
+TOKEN_REFRESH_BATCH_LIMIT = int(os.getenv('TOKEN_REFRESH_BATCH_LIMIT', '50'))
+TOKEN_REFRESH_JITTER_MAX = int(os.getenv('TOKEN_REFRESH_JITTER_MAX_SECONDS', '20'))
 
 
 class EmailWatcherWorker:
@@ -78,12 +92,21 @@ class EmailWatcherWorker:
         logger.info("Email Watcher Worker Starting")
         logger.info(f"Poll Interval: {POLL_INTERVAL}s")
         logger.info(f"Batch Size: {WATCHER_BATCH_SIZE}")
+        logger.info(f"Token Refresh Heartbeat: {'Enabled' if TOKEN_REFRESH_ENABLED else 'Disabled'}")
+        if TOKEN_REFRESH_ENABLED:
+            logger.info(f"  Interval: Every {TOKEN_REFRESH_INTERVAL_CYCLES} cycles")
+            logger.info(f"  Lookahead: {TOKEN_REFRESH_LOOKAHEAD}s, Cooldown: {TOKEN_REFRESH_COOLDOWN}s")
         logger.info("=" * 60)
 
         while self.running:
             try:
+                # Process pending watcher syncs
                 await self.process_pending_syncs()
                 self.stats['cycles'] += 1
+
+                # Token refresh heartbeat (every N cycles)
+                if TOKEN_REFRESH_ENABLED and self.stats['cycles'] % TOKEN_REFRESH_INTERVAL_CYCLES == 0:
+                    await self.run_token_refresh_heartbeat()
 
                 if self.stats['cycles'] % 10 == 0:
                     self._log_stats()
@@ -93,6 +116,50 @@ class EmailWatcherWorker:
                 self.stats['errors'] += 1
 
             await asyncio.sleep(POLL_INTERVAL)
+
+    async def run_token_refresh_heartbeat(self):
+        """
+        Proactive token refresh heartbeat.
+
+        Acquires distributed lock and refreshes tokens expiring soon.
+        Only one worker instance runs this at a time.
+        """
+        logger.info("[TokenRefreshHeartbeat] Starting")
+
+        # Try to acquire lock
+        lock_acquired = await acquire_refresh_lock(self.supabase)
+        if not lock_acquired:
+            logger.debug("[TokenRefreshHeartbeat] Lock held by another worker, skipping")
+            return
+
+        try:
+            # Run proactive refresh with configured params
+            stats = await refresh_expiring_tokens(
+                self.supabase,
+                lookahead_seconds=TOKEN_REFRESH_LOOKAHEAD,
+                cooldown_seconds=TOKEN_REFRESH_COOLDOWN,
+                recent_activity_days=TOKEN_REFRESH_ACTIVITY_DAYS,
+                batch_limit=TOKEN_REFRESH_BATCH_LIMIT,
+                jitter_max_seconds=TOKEN_REFRESH_JITTER_MAX
+            )
+
+            logger.info(
+                f"[TokenRefreshHeartbeat] Complete: "
+                f"{len(stats['refreshed'])} refreshed, "
+                f"{len(stats['failed'])} failed, "
+                f"{stats['skipped_inactive']} inactive"
+            )
+
+            # Log any hard failures
+            hard_fails = [f for f in stats['failed'] if f.get('error_type') == 'hard_fail']
+            if hard_fails:
+                logger.warning(f"[TokenRefreshHeartbeat] {len(hard_fails)} hard failures (reconnect required)")
+
+        except Exception as e:
+            logger.error(f"[TokenRefreshHeartbeat] Error: {e}")
+        finally:
+            # Always release lock
+            await release_refresh_lock(self.supabase)
 
     async def process_pending_syncs(self):
         """Find and process watchers due for sync."""
