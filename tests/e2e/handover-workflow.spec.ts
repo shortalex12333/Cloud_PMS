@@ -92,10 +92,10 @@ test.describe('Handover Dual-Signature Workflow', () => {
     expect(criticalResponse.ok()).toBeTruthy();
 
     const criticalData = await criticalResponse.json();
-    expect(criticalData.item_id).toBeDefined();
-    createdItems.push(criticalData.item_id);
+    expect(criticalData.result?.item_id).toBeDefined();
+    createdItems.push(criticalData.result.item_id);
 
-    console.log(`Created critical item: ${criticalData.item_id}`);
+    console.log(`Created critical item: ${criticalData.result.item_id}`);
 
     // Create normal item with valid category
     const normalResponse = await request.post(`${API_BASE}/v1/actions/execute`, {
@@ -126,10 +126,10 @@ test.describe('Handover Dual-Signature Workflow', () => {
     expect(normalResponse.ok()).toBeTruthy();
 
     const normalData = await normalResponse.json();
-    expect(normalData.item_id).toBeDefined();
-    createdItems.push(normalData.item_id);
+    expect(normalData.result?.item_id).toBeDefined();
+    createdItems.push(normalData.result.item_id);
 
-    console.log(`Created normal item: ${normalData.item_id}`);
+    console.log(`Created normal item: ${normalData.result.item_id}`);
     console.log(`Total items created: ${createdItems.length}`);
   });
 
@@ -261,14 +261,13 @@ test.describe('Handover Dual-Signature Workflow', () => {
 
   test('Step 6: Sign incoming (second signature + critical ack)', async ({ request }) => {
     const response = await request.post(
-      `${API_BASE}/v1/actions/handover/${exportData.export_id}/sign/incoming`,
+      `${API_BASE}/v1/actions/handover/${exportData.export_id}/sign/incoming?acknowledge_critical=true`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         data: {
-          acknowledge_critical: true,
           note: 'E2E Test: Critical items reviewed and understood',
           method: 'typed',
         },
