@@ -15,6 +15,8 @@ Refresh-on-demand:
 import httpx
 import logging
 import os
+import random
+import asyncio
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta, timezone
 from supabase import Client
@@ -687,61 +689,244 @@ async def clear_watcher_degraded(
 
 
 # ============================================================================
+# DISTRIBUTED LOCK (for proactive refresh coordination)
+# ============================================================================
+
+async def acquire_refresh_lock(
+    supabase: Client,
+    lock_name: str = 'token_refresh_heartbeat',
+    lease_seconds: int = 180  # 3 minutes - longer than one cycle
+) -> bool:
+    """
+    Acquire a distributed lock for token refresh heartbeat.
+
+    Uses a database row with timestamp-based lease to ensure only one
+    worker runs refresh at a time across multiple instances.
+
+    Returns:
+        True if lock acquired, False if already held by another worker
+    """
+    now = datetime.now(timezone.utc)
+    lease_expires_at = now + timedelta(seconds=lease_seconds)
+
+    try:
+        # Try to create or update lock row
+        # If row exists and lease is expired, claim it
+        # If row exists and lease is active, return False
+        result = supabase.table('worker_locks').select(
+            'lock_name, lease_expires_at, acquired_at, worker_id'
+        ).eq('lock_name', lock_name).limit(1).execute()
+
+        if result.data:
+            lock = result.data[0]
+            current_lease = datetime.fromisoformat(lock['lease_expires_at'].replace('Z', '+00:00'))
+
+            if current_lease > now:
+                # Lock held by another worker
+                logger.debug(f"[DistributedLock] Lock '{lock_name}' held by worker {lock.get('worker_id', 'unknown')}, expires in {(current_lease - now).total_seconds()}s")
+                return False
+
+        # Lock available - claim it
+        worker_id = f"{os.getenv('RENDER_SERVICE_ID', 'local')}:{os.getpid()}"
+        supabase.table('worker_locks').upsert({
+            'lock_name': lock_name,
+            'lease_expires_at': lease_expires_at.isoformat(),
+            'acquired_at': now.isoformat(),
+            'worker_id': worker_id
+        }).execute()
+
+        logger.info(f"[DistributedLock] Acquired lock '{lock_name}' (lease {lease_seconds}s)")
+        return True
+
+    except Exception as e:
+        logger.error(f"[DistributedLock] Failed to acquire lock: {e}")
+        return False
+
+
+async def release_refresh_lock(
+    supabase: Client,
+    lock_name: str = 'token_refresh_heartbeat'
+) -> None:
+    """
+    Release the distributed lock (sets lease to expired).
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        supabase.table('worker_locks').update({
+            'lease_expires_at': now.isoformat()  # Expire immediately
+        }).eq('lock_name', lock_name).execute()
+        logger.debug(f"[DistributedLock] Released lock '{lock_name}'")
+    except Exception as e:
+        logger.warning(f"[DistributedLock] Failed to release lock: {e}")
+
+
+# ============================================================================
 # PROACTIVE TOKEN REFRESH (Worker Heartbeat)
 # ============================================================================
 
 async def refresh_expiring_tokens(
     supabase: Client,
-    skew_seconds: int = TOKEN_REFRESH_SKEW_SECONDS
+    lookahead_seconds: int = 300,  # 5 minutes
+    cooldown_seconds: int = 600,  # 10 minutes - don't refresh if refreshed within this window
+    recent_activity_days: int = 14,  # Only refresh for watchers active in last N days
+    batch_limit: int = 50,  # Max tokens to refresh per cycle
+    jitter_max_seconds: int = 20,  # Random delay per token to avoid thundering herd
 ) -> Dict[str, Any]:
     """
-    Proactively refresh all tokens expiring within the skew window.
+    Proactively refresh tokens expiring soon, with smart selection and safety caps.
 
-    Call this periodically from a worker/heartbeat (e.g., every 2-3 minutes).
+    Selection criteria:
+    - Token expires within lookahead_seconds
+    - Token NOT refreshed in last cooldown_seconds (avoid hammering)
+    - Watcher is active (last_activity_at within recent_activity_days) OR sync_status='syncing'
+    - Batch limited to batch_limit per cycle
+
+    Safety:
+    - Jitter: random 0-jitter_max_seconds delay per token
+    - Batch cap: process at most batch_limit tokens per heartbeat
+    - Metrics: track attempts, success, failures, latency
+
+    Call this periodically from a worker/heartbeat (every 120s recommended).
 
     Returns:
         {
-            'refreshed': [{'user_id': ..., 'yacht_id': ..., 'purpose': ...}, ...],
-            'failed': [{'user_id': ..., 'error': ...}, ...],
-            'checked': int
+            'selected': int,
+            'refreshed': [{'user_id': ..., 'yacht_id': ..., 'purpose': ..., 'latency_ms': ...}, ...],
+            'failed': [{'user_id': ..., 'error': ..., 'error_type': ...}, ...],
+            'skipped_cooldown': int,
+            'skipped_inactive': int
         }
     """
-    refresh_threshold = datetime.now(timezone.utc) + timedelta(seconds=skew_seconds)
+    start_time = datetime.now(timezone.utc)
+    refresh_threshold = start_time + timedelta(seconds=lookahead_seconds)
+    cooldown_threshold = start_time - timedelta(seconds=cooldown_seconds)
+    activity_threshold = start_time - timedelta(days=recent_activity_days)
 
-    # Find tokens expiring soon
+    stats = {
+        'selected': 0,
+        'refreshed': [],
+        'failed': [],
+        'skipped_cooldown': 0,
+        'skipped_inactive': 0
+    }
+
+    # Find tokens expiring soon that haven't been refreshed recently
     result = supabase.table('auth_microsoft_tokens').select(
-        'id, user_id, yacht_id, token_purpose, token_expires_at'
+        'id, user_id, yacht_id, token_purpose, token_expires_at, updated_at'
     ).eq('is_revoked', False).lt(
         'token_expires_at', refresh_threshold.isoformat()
-    ).execute()
+    ).gt(
+        'updated_at', cooldown_threshold.isoformat()  # Only tokens NOT updated in last cooldown_seconds
+    ).limit(batch_limit * 2).execute()  # Over-fetch to allow filtering
 
-    stats = {'refreshed': [], 'failed': [], 'checked': len(result.data) if result.data else 0}
+    candidate_tokens = result.data or []
+    logger.info(f"[ProactiveRefresh] Found {len(candidate_tokens)} candidate tokens expiring within {lookahead_seconds}s")
 
-    for token in (result.data or []):
+    # Filter by watcher activity
+    active_tokens = []
+    for token in candidate_tokens:
+        user_id = token['user_id']
+        yacht_id = token['yacht_id']
+
+        # Check if watcher is active or syncing
+        watcher_result = supabase.table('email_watchers').select(
+            'last_activity_at, sync_status'
+        ).eq('user_id', user_id).eq('yacht_id', yacht_id).limit(1).execute()
+
+        if not watcher_result.data:
+            stats['skipped_inactive'] += 1
+            continue
+
+        watcher = watcher_result.data[0]
+        last_activity = watcher.get('last_activity_at')
+        sync_status = watcher.get('sync_status')
+
+        # Include if syncing OR recently active
+        if sync_status == 'syncing':
+            active_tokens.append(token)
+        elif last_activity:
+            try:
+                last_activity_dt = datetime.fromisoformat(last_activity.replace('Z', '+00:00'))
+                if last_activity_dt >= activity_threshold:
+                    active_tokens.append(token)
+                else:
+                    stats['skipped_inactive'] += 1
+            except Exception:
+                stats['skipped_inactive'] += 1
+        else:
+            stats['skipped_inactive'] += 1
+
+        if len(active_tokens) >= batch_limit:
+            break
+
+    stats['selected'] = len(active_tokens)
+    logger.info(f"[ProactiveRefresh] Selected {stats['selected']} active tokens to refresh (skipped {stats['skipped_inactive']} inactive)")
+
+    # Refresh selected tokens with jitter
+    for token in active_tokens:
         user_id = token['user_id']
         yacht_id = token['yacht_id']
         purpose = token['token_purpose']
 
+        # Apply jitter to avoid thundering herd
+        if jitter_max_seconds > 0:
+            jitter = random.uniform(0, jitter_max_seconds)
+            await asyncio.sleep(jitter)
+
+        token_start = datetime.now(timezone.utc)
         try:
             await refresh_access_token(supabase, user_id, yacht_id, purpose)
+            latency_ms = int((datetime.now(timezone.utc) - token_start).total_seconds() * 1000)
+
             stats['refreshed'].append({
-                'user_id': user_id,
-                'yacht_id': yacht_id,
-                'purpose': purpose
+                'user_id': user_id[:8] + '...',  # Redact for privacy
+                'yacht_id': yacht_id[:8] + '...',
+                'purpose': purpose,
+                'latency_ms': latency_ms
             })
+
             # Clear degraded if previously set
             await clear_watcher_degraded(supabase, user_id, yacht_id)
-            logger.info(f"[ProactiveRefresh] Refreshed {purpose} token for user {user_id[:8]}...")
-        except Exception as e:
+            logger.info(f"[ProactiveRefresh] ✓ Refreshed {purpose} token for user {user_id[:8]}... ({latency_ms}ms)")
+
+        except TokenRefreshError as e:
+            error_msg = str(e)
+            error_type = 'hard_fail' if 'invalid_grant' in error_msg.lower() or 'revoked' in error_msg.lower() else 'soft_fail'
+
             stats['failed'].append({
-                'user_id': user_id,
-                'yacht_id': yacht_id,
+                'user_id': user_id[:8] + '...',
+                'yacht_id': yacht_id[:8] + '...',
                 'purpose': purpose,
-                'error': str(e)
+                'error': error_msg[:100],
+                'error_type': error_type
             })
-            # Mark watcher degraded
-            await mark_watcher_degraded(supabase, user_id, yacht_id, f"refresh_failed: {str(e)[:100]}")
-            logger.error(f"[ProactiveRefresh] Failed for user {user_id[:8]}...: {e}")
+
+            # Mark watcher degraded only on hard failures
+            if error_type == 'hard_fail':
+                await mark_watcher_degraded(supabase, user_id, yacht_id, f"Token refresh failed: {error_msg[:100]}")
+                logger.error(f"[ProactiveRefresh] ✗ Hard fail for user {user_id[:8]}...: {error_msg}")
+            else:
+                logger.warning(f"[ProactiveRefresh] ⚠ Soft fail for user {user_id[:8]}...: {error_msg} (will retry)")
+
+        except Exception as e:
+            error_msg = str(e)
+            stats['failed'].append({
+                'user_id': user_id[:8] + '...',
+                'yacht_id': yacht_id[:8] + '...',
+                'purpose': purpose,
+                'error': error_msg[:100],
+                'error_type': 'unknown'
+            })
+            logger.error(f"[ProactiveRefresh] ✗ Unexpected error for user {user_id[:8]}...: {e}")
+
+    total_duration_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+    logger.info(
+        f"[ProactiveRefresh] Cycle complete: "
+        f"{len(stats['refreshed'])} refreshed, "
+        f"{len(stats['failed'])} failed, "
+        f"{stats['skipped_inactive']} skipped inactive "
+        f"({total_duration_ms}ms total)"
+    )
 
     return stats
 
@@ -765,5 +950,7 @@ __all__ = [
     'mark_watcher_degraded',
     'clear_watcher_degraded',
     'refresh_expiring_tokens',
+    'acquire_refresh_lock',
+    'release_refresh_lock',
     'TOKEN_REFRESH_SKEW_SECONDS',
 ]
