@@ -15,8 +15,8 @@ export default function EmailInboxRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to root with openEmail flag
-    router.replace('/?openEmail=true');
+    // Redirect to single surface with openEmail flag
+    router.replace('/app?openEmail=true');
   }, [router]);
 
   // Show loading while redirecting
