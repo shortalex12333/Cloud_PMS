@@ -212,6 +212,9 @@ export default function EmailSurface({
   // Determine if we need to show reconnect banner
   const needsReconnect = !outlookLoading && outlookStatus && (!outlookStatus.isConnected || outlookStatus.isExpired);
 
+  // Determine if watcher is degraded (token issues)
+  const isDegraded = watcherStatus?.sync_status === 'degraded' || watcherStatus?.sync_status === 'error';
+
   // Semantic search (uses /email/search endpoint when query present)
   const {
     data: searchData,
@@ -385,6 +388,49 @@ export default function EmailSurface({
                 </p>
                 <p className="text-[12px] text-[#98989f]">
                   Reconnect to sync and search your emails
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleReconnect}
+              disabled={reconnecting}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                reconnecting
+                  ? 'bg-[#48484a] text-[#98989f] cursor-not-allowed'
+                  : 'bg-[#ff9f0a] text-black hover:bg-[#ffb340]'
+              )}
+            >
+              {reconnecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Reconnect Outlook
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Degraded Token Banner - only show if not already showing reconnect banner */}
+      {!needsReconnect && isDegraded && (
+        <div className="bg-[#3a2a1a] border-b border-[#ff9f0a]/30 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-[#ff9f0a]" />
+              <div>
+                <p className="text-[14px] font-medium text-white">
+                  Email sync paused
+                </p>
+                <p className="text-[12px] text-[#98989f]">
+                  {watcherStatus?.last_sync_error === 'token_expired' && 'Your Outlook token has expired. Reconnect to resume syncing.'}
+                  {watcherStatus?.last_sync_error === 'token_user_mismatch' && 'Token configuration issue detected. Reconnect to fix.'}
+                  {!watcherStatus?.last_sync_error && 'Token refresh failed. Reconnect to resume syncing.'}
                 </p>
               </div>
             </div>
@@ -1216,9 +1262,10 @@ function AttachmentItem({ attachment, providerMessageId, onViewAttachment }: Att
 
 interface SyncStatusBadgeProps {
   status: {
-    sync_status?: 'active' | 'degraded' | 'error';
-    last_sync_at?: string | null;
     is_connected?: boolean;
+    sync_status?: 'active' | 'degraded' | 'error' | 'disconnected';
+    last_sync_at?: string | null;
+    last_sync_error?: string | null;
   } | null | undefined;
   onRefresh: () => void;
 }
@@ -1229,6 +1276,21 @@ function SyncStatusBadge({ status, onRefresh }: SyncStatusBadgeProps) {
     return formatRelativeTime(status.last_sync_at);
   }, [status?.last_sync_at]);
 
+  // Degraded state (token issues, need reconnect)
+  if (status?.sync_status === 'degraded' || status?.sync_status === 'error') {
+    return (
+      <button
+        onClick={onRefresh}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#3a2a1a] border border-[#ff9f0a]/30 text-[12px] text-[#ff9f0a] hover:bg-[#3a2a1a]/80 transition-colors"
+        title={status.last_sync_error || 'Sync degraded'}
+      >
+        <AlertCircle className="w-3.5 h-3.5" />
+        Sync degraded
+      </button>
+    );
+  }
+
+  // Not connected (no watcher)
   if (!status?.is_connected) {
     return (
       <button
@@ -1241,6 +1303,7 @@ function SyncStatusBadge({ status, onRefresh }: SyncStatusBadgeProps) {
     );
   }
 
+  // Active state
   return (
     <button
       onClick={onRefresh}
