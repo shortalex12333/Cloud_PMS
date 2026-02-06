@@ -357,6 +357,20 @@ class Entity(BaseModel):
     confidence: float = 0.8
     extraction_type: Optional[str] = None  # Backend extraction type (PART_NUMBER, EQUIPMENT_NAME, etc.)
 
+class SearchContext(BaseModel):
+    """Context info from domain/intent detection."""
+    domain: Optional[str] = None
+    intent: Optional[str] = None
+    mode: Optional[str] = None
+
+class MicroAction(BaseModel):
+    """Action button returned from action surfacing."""
+    action: str
+    label: str
+    side_effect: str
+    requires_confirm: bool
+    prefill: Dict[str, Any] = {}
+
 class SearchResponse(BaseModel):
     success: bool
     query: str
@@ -368,6 +382,9 @@ class SearchResponse(BaseModel):
     timing_ms: Dict[str, float]
     results_by_domain: Dict[str, Any] = {}
     error: Optional[str] = None
+    # NEW: Action surfacing fields
+    context: Optional[SearchContext] = None
+    actions: List[MicroAction] = []
 
 class ExtractResponse(BaseModel):
     success: bool
@@ -603,20 +620,26 @@ async def search(
     """
     Main search endpoint with JWT authentication.
 
-    Flow: JWT verify → Tenant lookup → Query → Extract entities → Execute SQL → Actions
+    Flow: JWT verify → Tenant lookup → Query → Extract entities → Execute SQL → Actions → Surface
 
     Auth:
         - JWT verified using MASTER_SUPABASE_JWT_SECRET
         - Tenant (yacht_id) looked up from MASTER DB user_accounts
         - Request routed to tenant's per-yacht Supabase DB
+
+    Returns:
+        - results: Search results from pipeline
+        - context: Domain/intent/mode from action_surfacing
+        - actions: Microaction buttons filtered by role
     """
     start = time.time()
 
     # Get yacht_id from auth context (override request body if present)
     yacht_id = auth['yacht_id']
     tenant_key_alias = auth['tenant_key_alias']
+    role = auth.get('role', 'crew')
 
-    logger.info(f"[search] user={auth['user_id'][:8]}..., yacht={yacht_id}, tenant={tenant_key_alias}")
+    logger.info(f"[search] user={auth['user_id'][:8]}..., yacht={yacht_id}, tenant={tenant_key_alias}, role={role}")
 
     # Get tenant-specific Supabase client
     try:
@@ -627,9 +650,41 @@ async def search(
 
     try:
         from pipeline_v1 import Pipeline
+        from action_surfacing import surface_actions_for_query, get_fusion_params_for_query
+
+        # Get fusion params for domain-aware search
+        fusion_params = get_fusion_params_for_query(request.query)
+        logger.debug(f"[search] fusion_params: {fusion_params}")
 
         pipeline = Pipeline(client, yacht_id)
         response = await pipeline.search(request.query, limit=request.limit)
+
+        # Surface actions based on query and results
+        action_data = surface_actions_for_query(
+            query=request.query,
+            role=role,
+            search_results=response.results,
+            yacht_id=yacht_id
+        )
+
+        # Build context from action surfacing
+        context = SearchContext(
+            domain=action_data.get('domain'),
+            intent=action_data.get('intent'),
+            mode=action_data.get('mode')
+        )
+
+        # Build microaction list
+        actions = [
+            MicroAction(
+                action=a['action'],
+                label=a['label'],
+                side_effect=a['side_effect'],
+                requires_confirm=a['requires_confirm'],
+                prefill=a.get('prefill', {})
+            )
+            for a in action_data.get('actions', [])
+        ]
 
         return SearchResponse(
             success=response.success,
@@ -649,6 +704,9 @@ async def search(
             },
             results_by_domain=response.results_by_domain,
             error=response.error,
+            # NEW: Action surfacing fields
+            context=context,
+            actions=actions,
         )
 
     except Exception as e:
