@@ -68,6 +68,20 @@ class ScoringEngine:
         'ambiguous_gap': 15,    # If top1-top2 < this, ambiguous
     }
 
+    # ==========================================================================
+    # L2.5 Hybrid Fusion Weights
+    # ==========================================================================
+
+    HYBRID_WEIGHTS = {
+        'text': 0.45,      # Text match weight
+        'vector': 0.35,    # Semantic vector weight
+        'recency': 0.15,   # Recency decay weight
+        'bias': 0.05,      # Role bias weight
+    }
+
+    RRF_K = 60             # RRF constant (typical range: 60-100)
+    RRF_ALPHA = 0.7        # Fusion blending: α*weighted + (1-α)*RRF
+
     def __init__(self):
         """Initialize scoring engine."""
         pass
@@ -289,6 +303,133 @@ class ScoringEngine:
             True if should auto-confirm
         """
         return score >= self.THRESHOLDS['auto_confirm']
+
+    # ==========================================================================
+    # L2.5 Hybrid Fusion Scoring
+    # ==========================================================================
+
+    def compute_hybrid_fusion_score(
+        self,
+        score_inputs: Dict[str, float],
+        use_rrf: bool = False
+    ) -> float:
+        """
+        Compute hybrid fusion score from search_index signals.
+
+        Args:
+            score_inputs: Dict with s_text, s_vector, s_recency, s_bias, rank_text, rank_vector
+            use_rrf: If True, blend weighted + RRF scores (default: False)
+
+        Returns:
+            Fused score in [0, 1] range
+        """
+        # Weighted fusion
+        w_text = self.HYBRID_WEIGHTS['text']
+        w_vector = self.HYBRID_WEIGHTS['vector']
+        w_recency = self.HYBRID_WEIGHTS['recency']
+        w_bias = self.HYBRID_WEIGHTS['bias']
+
+        s_text = score_inputs.get('s_text', 0.0)
+        s_vector = score_inputs.get('s_vector', 0.0)
+        s_recency = score_inputs.get('s_recency', 0.0)
+        s_bias = score_inputs.get('s_bias', 0.5)
+
+        weighted_score = (
+            w_text * s_text +
+            w_vector * s_vector +
+            w_recency * s_recency +
+            w_bias * s_bias
+        )
+
+        if not use_rrf:
+            return weighted_score
+
+        # Optional RRF blending
+        rank_text = score_inputs.get('rank_text', 999999)
+        rank_vector = score_inputs.get('rank_vector', 999999)
+
+        rrf_score = (
+            1.0 / (self.RRF_K + rank_text) +
+            1.0 / (self.RRF_K + rank_vector)
+        )
+
+        # Normalize RRF to [0, 1] (approximate)
+        # Max possible RRF score is 2/(K+1) when rank=1 for both
+        rrf_max = 2.0 / (self.RRF_K + 1)
+        rrf_normalized = min(rrf_score / rrf_max, 1.0)
+
+        # Blend: α * weighted + (1-α) * RRF
+        final_score = self.RRF_ALPHA * weighted_score + (1 - self.RRF_ALPHA) * rrf_normalized
+
+        return final_score
+
+    def scale_hybrid_score_to_points(self, fusion_score: float) -> int:
+        """
+        Scale hybrid fusion score [0, 1] to point system [0, 150].
+
+        Maps to our threshold system:
+        - 0.87+ → 130+ (auto-confirm)
+        - 0.67-0.86 → 100-129 (strong suggest)
+        - 0.47-0.66 → 70-99 (weak suggest)
+        - <0.47 → <70 (no suggest)
+
+        Args:
+            fusion_score: Score in [0, 1] from compute_hybrid_fusion_score()
+
+        Returns:
+            Point score in [0, 150] range
+        """
+        # Linear scaling with cap
+        point_score = int(fusion_score * 150)
+        return min(point_score, 150)
+
+    def score_hybrid_candidates(
+        self,
+        candidates: List[Dict[str, Any]],
+        use_rrf: bool = False
+    ) -> List[Dict[str, Any]]:
+        """
+        Score candidates from L2.5 hybrid search using fusion.
+
+        Args:
+            candidates: Candidates from find_search_index_candidates()
+            use_rrf: Whether to use RRF blending (default: False)
+
+        Returns:
+            Scored candidates with 'score' field set
+        """
+        for candidate in candidates:
+            score_inputs = candidate.get('score_inputs', {})
+
+            if score_inputs:
+                # Compute fusion score
+                fusion_score = self.compute_hybrid_fusion_score(score_inputs, use_rrf=use_rrf)
+
+                # Scale to point system
+                candidate['score'] = self.scale_hybrid_score_to_points(fusion_score)
+
+                # Store fusion score for transparency
+                candidate['fusion_score'] = fusion_score
+
+                # Update match reason to indicate hybrid
+                candidate['match_reason'] = 'hybrid_search_index'
+
+                # Build breakdown
+                candidate['score_breakdown'] = {
+                    'base_reason': 'hybrid_fusion',
+                    'fusion_score': fusion_score,
+                    'score_inputs': score_inputs,
+                    'weights': self.HYBRID_WEIGHTS,
+                    'total': candidate['score']
+                }
+            else:
+                # Fallback if score_inputs missing
+                candidate['score'] = 0
+
+        # Sort by score descending
+        candidates = sorted(candidates, key=lambda x: x.get('score', 0), reverse=True)
+
+        return candidates
 
 
 # Export

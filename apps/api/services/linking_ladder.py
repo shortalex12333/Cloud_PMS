@@ -88,6 +88,12 @@ class LinkingLadder:
             logger.info(f"[LinkingLadder] Thread {thread_id}: L2 match - {l2_result['candidate']['label']}")
             return {'level': 'L2', 'confidence': 'suggested', **l2_result}
 
+        # L2.5: Hybrid search index (text + vector + recency + role bias)
+        l25_result = await self._check_l25_hybrid(yacht_id, thread_id, subject, tokens, context)
+        if l25_result:
+            logger.info(f"[LinkingLadder] Thread {thread_id}: L2.5 match - {l25_result['candidate']['label']}")
+            return {'level': 'L2.5', 'confidence': 'suggested', **l25_result}
+
         # L3: Part/serial match
         l3_result = await self._check_l3_parts_equipment(yacht_id, tokens)
         if l3_result:
@@ -179,6 +185,101 @@ class LinkingLadder:
 
             if selection and selection.get('confidence') in ('deterministic', 'suggested'):
                 return selection
+
+        return None
+
+    async def _check_l25_hybrid(
+        self,
+        yacht_id: str,
+        thread_id: str,
+        subject: str,
+        tokens: Dict[str, Any],
+        context: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        L2.5: Hybrid search index retrieval (text + vector + recency + role bias).
+
+        Queries search_index with:
+        - Text: subject + top entity values
+        - Vector: GPT-1536 embedding (if available)
+        - Recency: exponential decay (90-day half-life)
+        - Bias: role-based weights
+
+        Only auto-confirms if score >= 130 AND not ambiguous.
+        Otherwise creates suggestions.
+        """
+        # Build query text from subject + top entities
+        query_text_parts = [subject]
+
+        # Add top entity values for richer query
+        ids = tokens.get('ids', {})
+        parts = tokens.get('parts', {})
+        vendor = tokens.get('vendor', {})
+
+        # Add explicit IDs (WO, PO, etc.) - but these should have matched L1
+        for id_type, values in ids.items():
+            if values:
+                query_text_parts.append(' '.join(values))
+
+        # Add part/serial numbers for equipment/part context
+        for part_type, values in parts.items():
+            if values:
+                query_text_parts.append(' '.join(values[:3]))  # Top 3 to avoid bloat
+
+        # Add vendor name if present
+        if vendor.get('sender_name'):
+            query_text_parts.append(vendor['sender_name'])
+
+        query_text = ' '.join(query_text_parts)[:500]  # Cap at 500 chars
+
+        # Try to get embedding for this thread (if prepared by email_rag)
+        query_embedding = await self._get_thread_embedding(thread_id)
+
+        # Get user role from context (if available)
+        user_role = context.get('user_role') if context else None
+
+        logger.debug(f"[LinkingLadder] L2.5: query_text='{query_text[:100]}...' embedding={'present' if query_embedding else 'missing'}")
+
+        # Query search_index
+        candidates = await self.candidate_finder.find_search_index_candidates(
+            yacht_id=yacht_id,
+            query_text=query_text,
+            query_embedding=query_embedding,
+            role=user_role,
+            object_types=None,  # Search all types
+            days_back=365,
+            limit=20
+        )
+
+        if not candidates:
+            logger.debug(f"[LinkingLadder] L2.5: No candidates found")
+            return None
+
+        # Score candidates using hybrid fusion
+        scored = self.scoring_engine.score_hybrid_candidates(candidates, use_rrf=False)
+
+        # Check if top candidate meets auto-confirm threshold
+        if scored:
+            top_score = scored[0].get('score', 0)
+            ambiguous = scored[0].get('ambiguous', False)
+
+            # Auto-confirm only if score >= 130 AND not ambiguous
+            if top_score >= self.scoring_engine.THRESHOLDS['auto_confirm'] and not ambiguous:
+                logger.info(f"[LinkingLadder] L2.5: Auto-confirming {scored[0]['label']} (score={top_score})")
+                return {
+                    'candidate': scored[0],
+                    'all_candidates': scored[:3],
+                    'action': 'auto_link'
+                }
+
+            # Otherwise create suggestion if score meets threshold
+            if self.scoring_engine.should_create_suggestion(top_score):
+                logger.info(f"[LinkingLadder] L2.5: Suggesting {scored[0]['label']} (score={top_score})")
+                return {
+                    'candidate': scored[0],
+                    'all_candidates': scored[:3],
+                    'action': 'suggest'
+                }
 
         return None
 
@@ -307,6 +408,35 @@ class LinkingLadder:
             }).execute()
         except Exception as e:
             logger.error(f"[LinkingLadder] Error saving tokens: {e}")
+
+    async def _get_thread_embedding(self, thread_id: str) -> Optional[List[float]]:
+        """
+        Get embedding for thread (from email_messages.embedding or meta_embedding).
+
+        Args:
+            thread_id: Email thread ID
+
+        Returns:
+            1536-dim embedding vector or None if not found
+        """
+        try:
+            # Get latest message in thread with embedding
+            result = self.supabase.table('email_messages').select(
+                'embedding, meta_embedding'
+            ).eq('thread_id', thread_id).order(
+                'sent_at', desc=True
+            ).limit(1).maybe_single().execute()
+
+            if result.data:
+                # Prefer meta_embedding (summary of thread) over individual message embedding
+                embedding = result.data.get('meta_embedding') or result.data.get('embedding')
+                if embedding:
+                    return embedding
+
+        except Exception as e:
+            logger.debug(f"[LinkingLadder] Error fetching thread embedding: {e}")
+
+        return None
 
     async def create_link_suggestion(
         self,
