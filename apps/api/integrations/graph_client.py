@@ -17,7 +17,8 @@ import logging
 import os
 import random
 import asyncio
-from typing import Optional, Dict, Any, List
+import time
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta, timezone
 from supabase import Client
 
@@ -92,6 +93,198 @@ class GraphApiError(GraphClientError):
     def __init__(self, message: str, status_code: int = 0):
         super().__init__(message)
         self.status_code = status_code
+
+
+# ============================================================================
+# M6: RATE LIMITER & EXPONENTIAL BACKOFF
+# ============================================================================
+
+# Configuration (can be overridden by env vars)
+TOKEN_REFRESH_BACKOFF_BASE_SECONDS = int(os.getenv('TOKEN_REFRESH_BACKOFF_BASE_SECONDS', '60'))
+TOKEN_REFRESH_BACKOFF_MAX_SECONDS = int(os.getenv('TOKEN_REFRESH_BACKOFF_MAX_SECONDS', '3600'))
+TOKEN_REFRESH_MAX_FAILURES = int(os.getenv('TOKEN_REFRESH_MAX_FAILURES', '10'))
+TOKEN_REFRESH_RATE_LIMIT_REQUESTS = int(os.getenv('TOKEN_REFRESH_RATE_LIMIT_REQUESTS', '100'))
+TOKEN_REFRESH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('TOKEN_REFRESH_RATE_LIMIT_WINDOW_SECONDS', '600'))
+
+
+class TokenRefreshRateLimiter:
+    """
+    In-memory rate limiter for token refresh operations.
+
+    Prevents hammering Microsoft Graph API during outages by:
+    - Tracking refresh attempts in a sliding time window
+    - Rejecting requests when budget is exhausted
+    - Per-worker instance (acceptable; each worker gets its own budget)
+
+    Example:
+        limiter = TokenRefreshRateLimiter(max_requests=100, window_seconds=600)
+        if limiter.can_refresh():
+            result = await refresh_token()
+            limiter.record_attempt(success=result.ok)
+    """
+
+    def __init__(
+        self,
+        max_requests: int = TOKEN_REFRESH_RATE_LIMIT_REQUESTS,
+        window_seconds: int = TOKEN_REFRESH_RATE_LIMIT_WINDOW_SECONDS
+    ):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.attempts: List[Tuple[float, bool]] = []  # [(timestamp, success), ...]
+
+    def _cleanup_old_attempts(self) -> None:
+        """Remove attempts outside the sliding window."""
+        cutoff = time.time() - self.window_seconds
+        self.attempts = [(ts, success) for ts, success in self.attempts if ts > cutoff]
+
+    def can_refresh(self) -> bool:
+        """Check if we have budget remaining for another refresh attempt."""
+        self._cleanup_old_attempts()
+        return len(self.attempts) < self.max_requests
+
+    def record_attempt(self, success: bool) -> None:
+        """Record a refresh attempt (success or failure)."""
+        self.attempts.append((time.time(), success))
+
+    def get_stats(self) -> Dict[str, int]:
+        """Get current rate limit statistics."""
+        self._cleanup_old_attempts()
+        total = len(self.attempts)
+        successful = sum(1 for _, success in self.attempts if success)
+        failed = total - successful
+        remaining = max(0, self.max_requests - total)
+
+        return {
+            'total_attempts': total,
+            'successful': successful,
+            'failed': failed,
+            'remaining_budget': remaining,
+            'max_requests': self.max_requests,
+            'window_seconds': self.window_seconds
+        }
+
+
+def calculate_backoff_delay(consecutive_failures: int) -> int:
+    """
+    Calculate exponential backoff delay with jitter.
+
+    Formula: delay = min(base * 2^failures, max) ± 20%
+
+    Examples:
+    - 1st failure: 60s ± 12s = 48-72s
+    - 2nd failure: 120s ± 24s = 96-144s
+    - 3rd failure: 240s ± 48s = 192-288s
+    - 4th failure: 480s ± 96s = 384-576s
+    - 5th+ failure: 3600s (capped at 1 hour)
+
+    Args:
+        consecutive_failures: Number of sequential refresh failures
+
+    Returns:
+        Backoff delay in seconds
+    """
+    if consecutive_failures <= 0:
+        return 0
+
+    base_delay = TOKEN_REFRESH_BACKOFF_BASE_SECONDS * (2 ** (consecutive_failures - 1))
+    capped_delay = min(base_delay, TOKEN_REFRESH_BACKOFF_MAX_SECONDS)
+
+    # Add ±20% jitter to prevent thundering herd
+    jitter = random.uniform(-0.2, 0.2)
+    delay_with_jitter = int(capped_delay * (1 + jitter))
+
+    return max(0, delay_with_jitter)
+
+
+async def update_token_retry_state(
+    supabase: Client,
+    token_id: str,
+    success: bool,
+    error_message: Optional[str] = None
+) -> None:
+    """
+    Update token retry state after refresh attempt.
+
+    On success:
+    - Reset consecutive_failures to 0
+    - Clear next_retry_at
+    - Clear last_refresh_error
+
+    On failure:
+    - Increment consecutive_failures
+    - Calculate and set next_retry_at (exponential backoff)
+    - Store last_refresh_error
+    - If consecutive_failures >= MAX_FAILURES: mark as revoked
+
+    Args:
+        supabase: Supabase client
+        token_id: Token ID to update
+        success: Whether refresh succeeded
+        error_message: Error message (if failure)
+    """
+    now = datetime.now(timezone.utc)
+
+    try:
+        if success:
+            # Success: reset retry state
+            supabase.table('auth_microsoft_tokens').update({
+                'last_refresh_attempt_at': now.isoformat(),
+                'consecutive_failures': 0,
+                'next_retry_at': None,
+                'last_refresh_error': None,
+                'updated_at': now.isoformat()
+            }).eq('id', token_id).execute()
+
+        else:
+            # Failure: increment failure count and apply backoff
+            # First, get current consecutive_failures
+            token_result = supabase.table('auth_microsoft_tokens').select(
+                'consecutive_failures'
+            ).eq('id', token_id).limit(1).execute()
+
+            if not token_result.data:
+                logger.error(f"[M6:Backoff] Token {token_id} not found for retry state update")
+                return
+
+            current_failures = token_result.data[0].get('consecutive_failures', 0)
+            new_failures = current_failures + 1
+
+            # Calculate backoff delay
+            backoff_seconds = calculate_backoff_delay(new_failures)
+            next_retry_at = now + timedelta(seconds=backoff_seconds) if backoff_seconds > 0 else None
+
+            # Hard fail after max consecutive failures
+            is_hard_fail = new_failures >= TOKEN_REFRESH_MAX_FAILURES
+
+            update_data = {
+                'last_refresh_attempt_at': now.isoformat(),
+                'consecutive_failures': new_failures,
+                'next_retry_at': next_retry_at.isoformat() if next_retry_at else None,
+                'last_refresh_error': error_message[:500] if error_message else None,
+                'updated_at': now.isoformat()
+            }
+
+            if is_hard_fail:
+                update_data['is_revoked'] = True
+                update_data['revoked_at'] = now.isoformat()
+                logger.error(
+                    f"[M6:Backoff] Token {token_id[:8]}... marked as REVOKED after {new_failures} failures"
+                )
+            else:
+                logger.warning(
+                    f"[M6:Backoff] Token {token_id[:8]}... failure #{new_failures}, "
+                    f"backoff until {next_retry_at.isoformat() if next_retry_at else 'N/A'} "
+                    f"(+{backoff_seconds}s)"
+                )
+
+            supabase.table('auth_microsoft_tokens').update(update_data).eq('id', token_id).execute()
+
+    except Exception as e:
+        logger.error(f"[M6:Backoff] Failed to update retry state for token {token_id}: {e}")
+
+
+# Global rate limiter instance (per worker process)
+_token_refresh_rate_limiter = TokenRefreshRateLimiter()
 
 
 # ============================================================================
@@ -778,12 +971,16 @@ async def refresh_expiring_tokens(
     Selection criteria:
     - Token expires within lookahead_seconds
     - Token NOT refreshed in last cooldown_seconds (avoid hammering)
+    - Token NOT in backoff window (M6: next_retry_at <= now())
     - Watcher is active (last_activity_at within recent_activity_days) OR sync_status='syncing'
     - Batch limited to batch_limit per cycle
+    - Rate limit budget available (M6: 100 requests per 10 min)
 
     Safety:
     - Jitter: random 0-jitter_max_seconds delay per token
     - Batch cap: process at most batch_limit tokens per heartbeat
+    - M6: Exponential backoff for failed tokens
+    - M6: Rate limit budget to prevent API overload
     - Metrics: track attempts, success, failures, latency
 
     Call this periodically from a worker/heartbeat (every 120s recommended).
@@ -794,7 +991,9 @@ async def refresh_expiring_tokens(
             'refreshed': [{'user_id': ..., 'yacht_id': ..., 'purpose': ..., 'latency_ms': ...}, ...],
             'failed': [{'user_id': ..., 'error': ..., 'error_type': ...}, ...],
             'skipped_cooldown': int,
-            'skipped_inactive': int
+            'skipped_inactive': int,
+            'skipped_backoff': int,  # M6
+            'rate_limit_budget': {...}  # M6
         }
     """
     start_time = datetime.now(timezone.utc)
@@ -807,12 +1006,24 @@ async def refresh_expiring_tokens(
         'refreshed': [],
         'failed': [],
         'skipped_cooldown': 0,
-        'skipped_inactive': 0
+        'skipped_inactive': 0,
+        'skipped_backoff': 0,  # M6
+        'rate_limit_budget': _token_refresh_rate_limiter.get_stats()  # M6
     }
 
+    # M6: Check rate limit budget before processing
+    if not _token_refresh_rate_limiter.can_refresh():
+        logger.warning(
+            f"[M6:RateLimit] Budget exhausted "
+            f"({stats['rate_limit_budget']['total_attempts']}/{stats['rate_limit_budget']['max_requests']} "
+            f"in last {stats['rate_limit_budget']['window_seconds']}s). Skipping refresh cycle."
+        )
+        return stats
+
     # Find tokens expiring soon that haven't been refreshed recently
+    # M6: Added filter for backoff (next_retry_at IS NULL OR next_retry_at <= now())
     result = supabase.table('auth_microsoft_tokens').select(
-        'id, user_id, yacht_id, token_purpose, token_expires_at, updated_at'
+        'id, user_id, yacht_id, token_purpose, token_expires_at, updated_at, next_retry_at'
     ).eq('is_revoked', False).lt(
         'token_expires_at', refresh_threshold.isoformat()
     ).gt(
@@ -821,6 +1032,25 @@ async def refresh_expiring_tokens(
 
     candidate_tokens = result.data or []
     logger.info(f"[ProactiveRefresh] Found {len(candidate_tokens)} candidate tokens expiring within {lookahead_seconds}s")
+
+    # M6: Filter out tokens in backoff window
+    ready_tokens = []
+    for token in candidate_tokens:
+        next_retry_at = token.get('next_retry_at')
+        if next_retry_at:
+            try:
+                next_retry_dt = datetime.fromisoformat(next_retry_at.replace('Z', '+00:00'))
+                if next_retry_dt > start_time:
+                    stats['skipped_backoff'] += 1
+                    continue  # Still in backoff window
+            except Exception:
+                pass  # Invalid timestamp, proceed anyway
+        ready_tokens.append(token)
+
+    if stats['skipped_backoff'] > 0:
+        logger.info(f"[M6:Backoff] Skipped {stats['skipped_backoff']} tokens still in backoff window")
+
+    candidate_tokens = ready_tokens
 
     # Filter by watcher activity
     active_tokens = []
@@ -864,9 +1094,15 @@ async def refresh_expiring_tokens(
 
     # Refresh selected tokens with jitter
     for token in active_tokens:
+        token_id = token['id']
         user_id = token['user_id']
         yacht_id = token['yacht_id']
         purpose = token['token_purpose']
+
+        # M6: Check rate limit budget before each attempt
+        if not _token_refresh_rate_limiter.can_refresh():
+            logger.warning(f"[M6:RateLimit] Budget exhausted mid-cycle, stopping refresh")
+            break
 
         # Apply jitter to avoid thundering herd
         if jitter_max_seconds > 0:
@@ -877,6 +1113,10 @@ async def refresh_expiring_tokens(
         try:
             await refresh_access_token(supabase, user_id, yacht_id, purpose)
             latency_ms = int((datetime.now(timezone.utc) - token_start).total_seconds() * 1000)
+
+            # M6: Record success in rate limiter and update retry state
+            _token_refresh_rate_limiter.record_attempt(success=True)
+            await update_token_retry_state(supabase, token_id, success=True)
 
             stats['refreshed'].append({
                 'user_id': user_id[:8] + '...',  # Redact for privacy
@@ -892,6 +1132,10 @@ async def refresh_expiring_tokens(
         except TokenRefreshError as e:
             error_msg = str(e)
             error_type = 'hard_fail' if 'invalid_grant' in error_msg.lower() or 'revoked' in error_msg.lower() else 'soft_fail'
+
+            # M6: Record failure in rate limiter and update retry state
+            _token_refresh_rate_limiter.record_attempt(success=False)
+            await update_token_retry_state(supabase, token_id, success=False, error_message=error_msg)
 
             stats['failed'].append({
                 'user_id': user_id[:8] + '...',
@@ -910,6 +1154,11 @@ async def refresh_expiring_tokens(
 
         except Exception as e:
             error_msg = str(e)
+
+            # M6: Record failure in rate limiter and update retry state
+            _token_refresh_rate_limiter.record_attempt(success=False)
+            await update_token_retry_state(supabase, token_id, success=False, error_message=error_msg)
+
             stats['failed'].append({
                 'user_id': user_id[:8] + '...',
                 'yacht_id': yacht_id[:8] + '...',
