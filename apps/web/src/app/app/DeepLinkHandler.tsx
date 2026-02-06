@@ -63,7 +63,7 @@ export function DeepLinkHandler({ onDeepLinkProcessed }: DeepLinkHandlerProps) {
     showEmail({ folder: 'inbox' });
 
     // Clean up URL (remove openEmail param)
-    router.replace('/', { scroll: false });
+    router.replace('/app', { scroll: false });
   }, [searchParams, showEmail, router]);
 
   // Handle handover open resolution (from /open?t=... -> /app?open_resolved=1)
