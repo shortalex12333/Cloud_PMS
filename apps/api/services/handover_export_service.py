@@ -290,12 +290,12 @@ class HandoverExportService:
         # Work orders
         if entity_lookups['work_order']:
             wos = self.db.table("pms_work_orders").select(
-                "id, number, title"
+                "id, wo_number, title"
             ).in_("id", list(entity_lookups['work_order'])).execute()
             if wos.data:
                 for wo in wos.data:
                     entity_details[wo["id"]] = {
-                        "name": f"WO-{wo.get('number', '')} {wo.get('title', '')}",
+                        "name": f"WO-{wo.get('wo_number', '')} {wo.get('title', '')}",
                         "link": f"/work-orders/{wo['id']}"
                     }
 
