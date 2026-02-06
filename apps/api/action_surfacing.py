@@ -43,8 +43,12 @@ Usage:
 from typing import Dict, List, Optional, Any
 from domain_microactions import (
     detect_domain_from_query,
+    detect_domain_with_confidence,
     detect_intent_from_query,
+    detect_intent_with_confidence,
     get_microactions_for_query,
+    get_detection_context,
+    extract_filters_from_query,
     DOMAIN_KEYWORDS,
 )
 
@@ -65,30 +69,26 @@ def surface_actions_for_query(
         yacht_id: Yacht ID (for security validation)
 
     Returns:
-        Dict with domain, intent, mode, domain_boost, and actions
+        Dict with domain, intent, mode, domain_boost, domain_confidence, intent_confidence, and actions
     """
-    # Detect domain and intent
-    domain_result = detect_domain_from_query(query)
-    intent = detect_intent_from_query(query)
+    # Use new detection context with confidence scores
+    ctx = get_detection_context(query)
+    domain = ctx['domain']
+    domain_confidence = ctx['domain_confidence']
+    intent = ctx['intent']
+    intent_confidence = ctx['intent_confidence']
+    mode = ctx['mode']
+    filters = ctx['filters']
 
     # Part number detection - if query contains a part number pattern, set domain=part
     part_number_match = PART_NUMBER_PATTERN.search(query)
-    if part_number_match and not domain_result:
-        domain_result = ('part', 0.25)
-
-    if domain_result:
-        domain, domain_boost = domain_result
-    else:
-        domain = None
-        domain_boost = 0.0
-
-    # Determine mode based on intent and domain
-    # Explicit domain queries → focused mode
-    # Exploratory queries → explore mode
-    if domain and intent in ('READ', 'UPDATE', 'DELETE', 'EXPORT', 'APPROVE'):
+    if part_number_match and not domain:
+        domain = 'part'
+        domain_confidence = 0.7
         mode = 'focused'
-    else:
-        mode = 'explore'
+
+    # domain_boost is for backward compatibility (use confidence now)
+    domain_boost = domain_confidence * 0.35 if domain else 0.0
 
     # Get top result for prefill
     entity_id = None
@@ -122,9 +122,12 @@ def surface_actions_for_query(
 
     return {
         'domain': domain,
+        'domain_confidence': domain_confidence,
         'intent': intent,
+        'intent_confidence': intent_confidence,
         'mode': mode,
-        'domain_boost': domain_boost,
+        'domain_boost': domain_boost,  # Deprecated, use domain_confidence
+        'filters': filters,
         'actions': actions,
         'top_entity': {
             'id': entity_id,
@@ -145,10 +148,14 @@ def get_fusion_params_for_query(query: str) -> Dict[str, Any]:
     """
     Get f1_search_fusion parameters based on query analysis.
 
+    Uses compound anchor detection with confidence scores.
+    If confidence < 0.6, returns explore mode with no domain.
+
     Returns parameters to pass to the fusion function:
-    - p_domain: detected domain
+    - p_domain: detected domain (None if vague/low confidence)
     - p_mode: 'focused' or 'explore'
-    - p_domain_boost: boost value
+    - p_domain_boost: boost value derived from confidence
+    - p_filters: structured filters extracted from query
 
     Usage:
         params = get_fusion_params_for_query("show me hours of rest")
@@ -158,58 +165,33 @@ def get_fusion_params_for_query(query: str) -> Dict[str, Any]:
             embedding,
             role,
             lens,
-            **params  # domain, mode, domain_boost
+            **params  # domain, mode, domain_boost, p_filters
         )
     """
-    q = (query or "").lower()
-    domain_result = detect_domain_from_query(q)
-    intent = detect_intent_from_query(q)
+    # Use new detection context with confidence
+    ctx = get_detection_context(query)
+    domain = ctx['domain']
+    domain_confidence = ctx['domain_confidence']
+    mode = ctx['mode']
+    filters = ctx['filters']
 
     # Part number detection - if query contains a part number pattern, set domain=parts
     part_number_match = PART_NUMBER_PATTERN.search(query)
-    if part_number_match and not domain_result:
-        domain_result = ('parts', 0.25)
-
-    if domain_result:
-        domain, domain_boost = domain_result
-        # Normalize 'parts' → 'part' for consistency
-        if domain == 'parts':
-            domain = 'part'
-    else:
-        return {
-            'p_domain': None,
-            'p_mode': 'explore',
-            'p_domain_boost': 0.0
-        }
-
-    # Determine mode
-    if intent in ('READ', 'UPDATE', 'DELETE', 'EXPORT', 'APPROVE', 'REJECT'):
+    if part_number_match and not domain:
+        domain = 'part'
+        domain_confidence = 0.7
         mode = 'focused'
-    else:
-        mode = 'explore'
 
-    # Build structured filters (p_filters) from query terms
+    # Build domain boost from confidence (max 0.35)
+    domain_boost = domain_confidence * 0.35 if domain else 0.0
+
+    # Build p_filters from extracted filters
     p_filters: Dict[str, Any] = {}
+    if filters:
+        p_filters.update(filters)
 
-    # Status filters for receiving
-    # Note: "accepted deliveries" means status=accepted (adjective), not APPROVE action
-    if any(tok in q for tok in [' draft ', ' status:draft', 'status draft', ' in draft', 'draft status']):
-        p_filters['status'] = 'draft'
-    elif any(tok in q for tok in [' in progress', 'in-progress', 'status:in_progress']):
-        p_filters['status'] = 'in_progress'
-    elif any(tok in q for tok in [' rejected', 'status:rejected']):
-        p_filters['status'] = 'rejected'
-    elif any(tok in q for tok in ['accepted deliveries', 'accepted receiving', 'accepted shipment', ' approved', 'status:approved']):
-        p_filters['status'] = 'accepted'
-
-    # Compliance filters for hours_of_rest
-    if any(tok in q for tok in [' violation', 'violations', 'non-compliant', 'non compliant']):
-        p_filters['compliance_state'] = 'violation'
-    elif any(tok in q for tok in [' compliant', 'compliance ok']):
-        p_filters['compliance_state'] = 'compliant'
-
-    # Item content filter for receiving line items (best-effort)
-    # e.g., "fuel filter elements", "oil filter", "gasket"
+    # Additional item content filter for receiving line items (best-effort)
+    q = (query or "").lower()
     for kw in ['fuel filter', 'filter element', 'oil filter', 'gasket', 'element']:
         if kw in q:
             p_filters['item_contains'] = kw
@@ -241,6 +223,7 @@ def build_action_response(
     Build complete response with search results + actions.
 
     This is what the API returns to the frontend.
+    Includes confidence scores and extracted filters.
     """
     action_data = surface_actions_for_query(
         query=query,
@@ -253,8 +236,11 @@ def build_action_response(
         'actions': action_data['actions'],
         'context': {
             'domain': action_data['domain'],
+            'domain_confidence': action_data['domain_confidence'],
             'intent': action_data['intent'],
+            'intent_confidence': action_data['intent_confidence'],
             'mode': action_data['mode'],
+            'filters': action_data.get('filters'),
         }
     }
 
