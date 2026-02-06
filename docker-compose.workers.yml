@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Projection Worker - Maintains search_index from queue
+  projection_worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: python -m workers.projection_worker
+    environment:
+      - SUPABASE_URL=${MASTER_SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${MASTER_SUPABASE_SERVICE_KEY}
+      - PROJECTION_POLL_INTERVAL=30
+      - PROJECTION_BATCH_SIZE=50
+      - PROJECTION_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - celeste_network
+
+  # Embedding Worker - Generates 1536-dim embeddings
+  embedding_worker_1536:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: python -m workers.embedding_worker_1536
+    environment:
+      - SUPABASE_URL=${MASTER_SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${MASTER_SUPABASE_SERVICE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - EMBEDDING_POLL_INTERVAL=30
+      - EMBEDDING_BATCH_SIZE=20
+      - EMBEDDING_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - celeste_network
+
+  # Email Extraction Worker - Extracts tokens from emails
+  email_extraction_worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: python -m workers.email_extraction_worker
+    environment:
+      - SUPABASE_URL=${yTEST_YACHT_001_SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${yTEST_YACHT_001_SUPABASE_SERVICE_KEY}
+      - EXTRACTION_POLL_INTERVAL=30
+      - EXTRACTION_BATCH_SIZE=10
+      - EXTRACTION_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - celeste_network
+
+  # Link Suggester Worker - Creates email_links suggestions
+  link_suggester_worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: python -m workers.link_suggester_worker
+    environment:
+      - SUPABASE_URL=${yTEST_YACHT_001_SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${yTEST_YACHT_001_SUPABASE_SERVICE_KEY}
+      - LINK_SUGGESTER_POLL_INTERVAL=60
+      - LINK_SUGGESTER_BATCH_SIZE=10
+      - LINK_SUGGESTER_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - celeste_network
+
+networks:
+  celeste_network:
+    driver: bridge
