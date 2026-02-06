@@ -43,7 +43,7 @@ logging.basicConfig(
 logger = logging.getLogger('EmailWatcher')
 
 # Configuration
-POLL_INTERVAL = int(os.getenv('EMAIL_WATCHER_POLL_INTERVAL', '60'))
+POLL_INTERVAL = int(os.getenv('EMAIL_WATCHER_POLL_INTERVAL', '30'))  # Changed from 60 to 30 seconds
 WATCHER_BATCH_SIZE = int(os.getenv('EMAIL_WATCHER_BATCH_SIZE', '10'))
 ENABLED = os.getenv('EMAIL_WATCHER_ENABLED', 'false').lower() == 'true'
 
