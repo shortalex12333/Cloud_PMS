@@ -936,11 +936,12 @@ async def get_thread(
         thread = thread_result.data[0]
 
         # Get messages for this thread (include web_link for "Open in Outlook")
+        # Filter out deleted messages (soft delete)
         messages_result = supabase.table('email_messages').select(
             'id, provider_message_id, direction, from_display_name, subject, sent_at, received_at, has_attachments, attachments, web_link'
-        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).order(
-            'sent_at', desc=False
-        ).execute()
+        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).eq(
+            'is_deleted', False
+        ).order('sent_at', desc=False).execute()
 
         return {
             **thread,
@@ -2303,7 +2304,9 @@ async def _search_email_threads(
     # =========================================================================
     text_results = supabase.table('email_messages').select(
         'id, thread_id, subject, from_display_name, direction, sent_at, has_attachments'
-    ).eq('yacht_id', yacht_id).or_(
+    ).eq('yacht_id', yacht_id).eq(
+        'is_deleted', False  # Filter out deleted messages
+    ).or_(
         f"subject.ilike.%{query}%,from_display_name.ilike.%{query}%"
     )
 

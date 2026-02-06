@@ -193,6 +193,12 @@ class EmailSyncService:
                     if messages_processed >= max_messages:
                         break
 
+                    # Handle deleted messages (Microsoft Graph delta sync)
+                    if '@removed' in msg:
+                        await self._mark_message_deleted(yacht_id, msg)
+                        messages_processed += 1
+                        continue
+
                     thread_id = await self._process_message(yacht_id, msg, folder)
                     if thread_id:
                         thread_ids.add(thread_id)
@@ -422,6 +428,55 @@ class EmailSyncService:
             await self._embed_message(yacht_id, message_id, subject, from_display_name, attachments)
 
         return message_id
+
+    async def _mark_message_deleted(
+        self,
+        yacht_id: str,
+        msg: Dict[str, Any]
+    ) -> None:
+        """
+        Mark a message as deleted (soft delete).
+
+        Called when Microsoft Graph delta sync returns a message with @removed property.
+        We keep the message in the database to preserve link history and audit trail.
+
+        Args:
+            yacht_id: Yacht ID
+            msg: Message from Graph API with @removed property
+        """
+        try:
+            provider_message_id = msg.get('id')
+            if not provider_message_id:
+                return
+
+            # Check if message exists in our database
+            existing = self.supabase.table('email_messages').select('id, is_deleted').eq(
+                'provider_message_id', provider_message_id
+            ).eq('yacht_id', yacht_id).execute()
+
+            if not existing.data:
+                # Message doesn't exist in our DB - nothing to delete
+                logger.debug(f"[EmailSync] Message {provider_message_id[:8]}... not found for deletion (never synced)")
+                return
+
+            message = existing.data[0]
+            if message.get('is_deleted'):
+                # Already marked as deleted
+                logger.debug(f"[EmailSync] Message {provider_message_id[:8]}... already marked as deleted")
+                return
+
+            # Soft delete: mark as deleted with timestamp
+            from datetime import datetime, timezone
+            self.supabase.table('email_messages').update({
+                'is_deleted': True,
+                'deleted_at': datetime.now(timezone.utc).isoformat(),
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }).eq('id', message['id']).execute()
+
+            logger.info(f"[EmailSync] ✓ Marked message {provider_message_id[:8]}... as deleted")
+
+        except Exception as e:
+            logger.error(f"[EmailSync] Failed to mark message as deleted: {e}")
 
     async def _embed_message(
         self,

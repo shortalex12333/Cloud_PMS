@@ -27,15 +27,55 @@ import {
 } from 'lucide-react';
 import { useThread, useMessageContent, type EmailMessage, type MessageContent } from '@/hooks/useEmailData';
 import { cn, formatEmailTimestamp } from '@/lib/utils';
+import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
 
 interface EmailThreadViewerProps {
   threadId: string;
   onClose?: () => void;
 }
 
+interface AttachmentViewerState {
+  open: boolean;
+  fileName: string;
+  contentType: string;
+  blobUrl: string;
+  downloadUrl: string;
+}
+
 export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps) {
   const { data: thread, isLoading, error } = useThread(threadId);
   const [expandedMessageId, setExpandedMessageId] = useState<string | null>(null);
+  const [attachmentViewer, setAttachmentViewer] = useState<AttachmentViewerState>({
+    open: false,
+    fileName: '',
+    contentType: '',
+    blobUrl: '',
+    downloadUrl: '',
+  });
+
+  const handleAttachmentClick = (providerMessageId: string, attachmentId: string, fileName: string, contentType: string) => {
+    // Build URL for inline viewing (not download)
+    const viewUrl = `/api/email/message/${providerMessageId}/attachments/${attachmentId}/download?inline=true`;
+    const downloadUrl = `/api/email/message/${providerMessageId}/attachments/${attachmentId}/download`;
+
+    setAttachmentViewer({
+      open: true,
+      fileName,
+      contentType,
+      blobUrl: viewUrl,
+      downloadUrl,
+    });
+  };
+
+  const closeAttachmentViewer = () => {
+    setAttachmentViewer({
+      open: false,
+      fileName: '',
+      contentType: '',
+      blobUrl: '',
+      downloadUrl: '',
+    });
+  };
 
   // Loading state
   if (isLoading) {
@@ -93,9 +133,20 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
             onToggle={() => setExpandedMessageId(
               expandedMessageId === message.id ? null : message.id
             )}
+            onAttachmentClick={handleAttachmentClick}
           />
         ))}
       </div>
+
+      {/* Attachment Viewer Overlay */}
+      <DocumentViewerOverlay
+        open={attachmentViewer.open}
+        onClose={closeAttachmentViewer}
+        fileName={attachmentViewer.fileName}
+        contentType={attachmentViewer.contentType}
+        blobUrl={attachmentViewer.blobUrl}
+        downloadUrl={attachmentViewer.downloadUrl}
+      />
     </div>
   );
 }
@@ -108,9 +159,10 @@ interface MessageItemProps {
   message: EmailMessage;
   isExpanded: boolean;
   onToggle: () => void;
+  onAttachmentClick: (providerMessageId: string, attachmentId: string, fileName: string, contentType: string) => void;
 }
 
-function MessageItem({ message, isExpanded, onToggle }: MessageItemProps) {
+function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: MessageItemProps) {
   const [showOriginal, setShowOriginal] = useState(false);
 
   const isInbound = message.direction === 'inbound';
@@ -172,13 +224,19 @@ function MessageItem({ message, isExpanded, onToggle }: MessageItemProps) {
               </p>
               <div className="flex flex-wrap gap-1">
                 {message.attachments.map((att) => (
-                  <span
+                  <button
                     key={att.id}
-                    className="inline-flex items-center gap-1 text-[12px] text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded"
+                    onClick={() => handleAttachmentClick(
+                      message.provider_message_id,
+                      att.id,
+                      att.name,
+                      att.contentType || 'application/octet-stream'
+                    )}
+                    className="inline-flex items-center gap-1 text-[12px] text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
                   >
                     <FileText className="h-3 w-3" />
                     {att.name}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -318,16 +376,22 @@ function OriginalContentViewer({ providerMessageId, onClose }: OriginalContentVi
           </p>
           <div className="flex flex-wrap gap-1">
             {content.attachments.map((att) => (
-              <span
+              <button
                 key={att.id}
-                className="inline-flex items-center gap-1 text-[12px] text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded"
+                onClick={() => onAttachmentClick(
+                  message.provider_message_id,
+                  att.id,
+                  att.name,
+                  att.contentType || 'application/octet-stream'
+                )}
+                className="inline-flex items-center gap-1 text-[12px] text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
               >
                 <Paperclip className="h-3 w-3" />
                 {att.name}
                 <span className="text-zinc-400 text-[10px]">
                   ({Math.round(att.size / 1024)}KB)
                 </span>
-              </span>
+              </button>
             ))}
           </div>
         </div>
