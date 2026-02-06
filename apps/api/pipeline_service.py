@@ -672,9 +672,9 @@ async def search(
         p_mode = fusion_params.get('p_mode', 'explore')
         p_domain_boost = fusion_params.get('p_domain_boost', 0.25)
         p_filters = fusion_params.get('p_filters')
-        p_filters_json = json.dumps(p_filters) if p_filters else None
 
         # Call f1_search_fusion with structured filters
+        # Note: Supabase RPC accepts dict for jsonb, handles serialization
         fusion_start = time.time()
         result = client.rpc('f1_search_fusion', {
             'p_yacht_id': yacht_id,
@@ -688,7 +688,7 @@ async def search(
             'p_limit': request.limit,
             'p_offset': 0,
             'p_debug': False,
-            'p_filters': p_filters_json,
+            'p_filters': p_filters,  # Pass dict directly, not JSON string
         }).execute()
         fusion_ms = (time.time() - fusion_start) * 1000
 
