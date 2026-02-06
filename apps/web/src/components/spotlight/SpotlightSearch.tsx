@@ -374,10 +374,18 @@ export default function SpotlightSearch({
 
   /**
    * Handle result open (double-click or Enter) - Creates ACTIVE situation
+   * For email_thread: Opens EmailOverlay with selected thread
    */
   const handleResultOpen = useCallback(async (result: SpotlightResult) => {
     const entityType = mapResultTypeToEntityType(result.type);
     const domain = mapEntityTypeToDomain(entityType);
+
+    // Special handling for email threads: open EmailOverlay
+    if (entityType === 'email_thread' && surfaceContext) {
+      const threadId = result.metadata?.thread_id || result.id;
+      surfaceContext.showEmail({ threadId, folder: 'inbox' });
+      return; // Don't create situation for emails - overlay handles the UX
+    }
 
     // Store full result in metadata for viewer access
     const situationMetadata = {
@@ -405,7 +413,7 @@ export default function SpotlightSearch({
         metadata: situationMetadata,
       });
     }
-  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
+  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext]);
 
   /**
    * Handle situation close (any viewer)

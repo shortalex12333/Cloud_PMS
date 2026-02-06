@@ -950,8 +950,28 @@ async def get_thread(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[email/thread] Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch thread")
+        error_msg = str(e)
+        logger.error(f"[email/thread] Unexpected error: {error_msg}", exc_info=True)
+        # Check for common DB errors that should be 404
+        if 'not found' in error_msg.lower() or 'does not exist' in error_msg.lower():
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "thread_not_found",
+                    "message": "Thread not found",
+                    "thread_id": thread_id,
+                    "yacht_id": yacht_id
+                }
+            )
+        # Return 500 only for truly unexpected errors
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "internal_error",
+                "message": "Failed to fetch thread",
+                "thread_id": thread_id
+            }
+        )
 
 
 # ============================================================================
