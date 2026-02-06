@@ -24,8 +24,9 @@ Domains (from card types):
 - document, certificate, handover, checklist, purchase, crew
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
+import re
 
 
 @dataclass
@@ -741,190 +742,217 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
 
 
 # =============================================================================
-# DOMAIN KEYWORDS (for detection + domain boost in fusion)
+# COMPOUND ANCHORS (determine domain with high confidence)
+# =============================================================================
+# Only compound patterns anchor a domain. Single keywords are demoted.
+# Each pattern returns (domain, confidence) when matched.
+
+COMPOUND_ANCHORS: Dict[str, List[str]] = {
+    # hours_of_rest compounds - require multi-word context
+    'hours_of_rest': [
+        r'\bcrew\s+rest\b',
+        r'\brest\s+hours?\b',
+        r'\bhours?\s+of\s+rest\b',
+        r'\bwork\s+hours?\b',
+        r'\brest\s+violations?\b',
+        r'\brest\s+records?\b',
+        r'\brest\s+compliance\b',
+        r'\bmonthly\s+sign[- ]?off',
+        r'\bsign[- ]?off.*hours?\b',
+        r'\blog\s+(my\s+)?hours?\b',
+        r'\bupdate\s+(my\s+)?hours?\b',
+        r'\bhor\b',  # Explicit abbreviation
+        r'\bh\.o\.r\b',
+        r'\bmlc\s+compliance\b',
+        r'\bfatigue\s+management\b',
+    ],
+    # receiving compounds - status + delivery/receiving
+    'receiving': [
+        r'\b(accepted?|approved?)\s+deliver',
+        r'\b(rejected?|declined?)\s+deliver',
+        r'\bdraft\s+deliver',
+        r'\bpending\s+deliver',
+        r'\breceiving\s+(draft|accepted|rejected|pending)\b',
+        r'\bdeliveries?\s+(this|last|today|yesterday)',
+        r'\bshipments?\s+(from|to|this|last)',
+        r'\bgoods\s+received\b',
+        r'\bsupplier\s+delivery\b',
+        r'\binbound\s+shipment',
+    ],
+    # equipment compounds - specific equipment types or equipment + context
+    'equipment': [
+        r'\bmain\s+engine\b',
+        r'\bgenerator\s*[#]?\d*\b',
+        r'\bwatermaker\b',
+        r'\bwater\s+maker\b',
+        r'\bradar\b',
+        r'\bflybridge\b',
+        r'\bfly\s+bridge\b',
+        r'\bhvac\b',
+        r'\bpump\s*[#]?\d*\b',
+        r'\bboiler\b',
+        r'\bcompressor\b',
+        r'\bautopilot\b',
+        r'\bthruster\b',
+        r'\bstabilizer\b',
+        r'\bchiller\b',
+        r'\bwinch\b',
+        r'\bcrane\b',
+        r'\bdavit\b',
+        r'\bequipment\s+(status|details|info|list)\b',
+    ],
+    # part/inventory compounds - brand + part type or part-specific patterns
+    'part': [
+        r'\b(racor|caterpillar|volvo|mtu|yanmar|northern\s+lights|cummins|kohler)\b.*\b(filter|part|element|belt|seal)\b',
+        r'\b(filter|part|element|belt|seal).*\b(racor|caterpillar|volvo|mtu|yanmar)\b',
+        r'\bpart\s+number\b',
+        r'\bpart\s+#?\s*[A-Z0-9-]+\b',
+        r'\bspare\s+parts?\b',
+        r'\b[A-Z]{2,}-\d{3,}',  # Part number patterns like CAT-12345
+        r'\blow\s+stock\b',
+        r'\breorder\s+(point|level)\b',
+        r'\bstock\s+levels?\b',
+        r'\binventory\s+(count|check|level)\b',
+        r'\b(oil|fuel|air|water)\s+filter\b',
+    ],
+    # work_order compounds
+    'work_order': [
+        r'\bwork\s+order\b',
+        r'\bworkorder\b',
+        r'\bwo\s*[-#]?\s*\d*\b',
+        r'\bmaintenance\s+(task|schedule|order)\b',
+        r'\boverdue\s+(work|task|maintenance)\b',
+        r'\bopen\s+work\s+orders?\b',
+        r'\bcreate\s+work\s+order\b',
+        r'\bpreventive\s+maintenance\b',
+        r'\bcorrective\s+maintenance\b',
+    ],
+    # document compounds
+    'document': [
+        r'\bmanual\b',  # "manual" alone is strong signal for document
+        r'\bprocedure\b',
+        r'\bdocumentation\b',
+        r'\bsafety\s+procedures?\b',
+        r'\boperating\s+instructions?\b',
+        r'\btechnical\s+doc',
+        r'\bsop\b',
+        r'\bschematic\b',
+        r'\bdrawing\b',
+    ],
+    # fault compounds
+    'fault': [
+        r'\bopen\s+faults?\b',
+        r'\bcritical\s+faults?\b',
+        r'\bfault\s+(code|history|report|log)\b',
+        r'\bequipment\s+fault\b',
+        r'\breport\s+fault\b',
+        r'\blog\s+fault\b',
+        r'\bactive\s+faults?\b',
+        r'\bresolved\s+faults?\b',
+    ],
+    # certificate compounds
+    'certificate': [
+        r'\bcertificate\s+(expir|renew|valid)',
+        r'\bexpiring\s+cert',
+        r'\bcrew\s+cert',
+        r'\btraining\s+cert',
+        r'\blicense\s+expir',
+    ],
+    # crew compounds
+    'crew': [
+        r'\bcrew\s+(member|profile|list|roster)\b',
+        r'\bseafarer\s+(document|cert|info)\b',
+        r'\bcrew\s+cert',
+    ],
+    # checklist compounds
+    'checklist': [
+        r'\bchecklist\b',
+        r'\bcheck\s+list\b',
+        r'\binspection\s+(form|checklist)\b',
+        r'\bdeparture\s+checklist\b',
+        r'\barrival\s+checklist\b',
+    ],
+    # handover compounds
+    'handover': [
+        r'\bhandover\b',
+        r'\bhand\s+over\b',
+        r'\bturnover\s+(report|notes)\b',
+        r'\bshift\s+handover\b',
+    ],
+    # purchase compounds
+    'purchase': [
+        r'\bpurchase\s+order\b',
+        r'\bpo\s*[-#]?\s*\d+\b',
+        r'\bcreate\s+purchase\b',
+        r'\bapprove\s+purchase\b',
+    ],
+}
+
+# =============================================================================
+# SINGLETON KEYWORDS (weak signals - do NOT anchor domain alone)
+# =============================================================================
+# These words are too vague to determine domain by themselves.
+# They may appear in many contexts and should not force a domain match.
+
+SINGLETON_KEYWORDS = {
+    # Generic action words
+    'warning', 'warnings', 'alert', 'alerts',
+    'crew', 'staff', 'team',
+    'work', 'working',
+    'rest', 'hrs', 'hours',  # alone without compound
+    'check', 'show', 'view', 'list', 'find',
+    'status', 'update', 'log',
+    # Generic equipment words
+    'engine', 'pump', 'system', 'machine',
+    # Generic status words
+    'open', 'closed', 'pending', 'completed',
+    # Generic nouns
+    'order', 'item', 'record', 'document',
+}
+
+# =============================================================================
+# LEGACY DOMAIN KEYWORDS (kept for boost scoring, not primary detection)
 # =============================================================================
 # Maps keywords → (domain, boost_value)
-# Used to detect domain from query and apply ranking boost
+# Used for ranking boost in fusion, NOT for domain detection
 
 DOMAIN_KEYWORDS: Dict[str, tuple] = {
-    # Hours of Rest - expanded with abbreviations and variants
+    # Hours of Rest
     'hours of rest': ('hours_of_rest', 0.30),
-    'hour of rest': ('hours_of_rest', 0.30),
-    'hours-of-rest': ('hours_of_rest', 0.30),
-    'hours_of_rest': ('hours_of_rest', 0.30),
     'hor': ('hours_of_rest', 0.30),
-    'h.o.r': ('hours_of_rest', 0.30),
     'rest hours': ('hours_of_rest', 0.25),
-    'rest-hours': ('hours_of_rest', 0.25),
-    'rest_hours': ('hours_of_rest', 0.25),
-    'rest hrs': ('hours_of_rest', 0.25),
-    'rest period': ('hours_of_rest', 0.20),
     'rest record': ('hours_of_rest', 0.25),
-    'rest records': ('hours_of_rest', 0.25),
     'work hours': ('hours_of_rest', 0.20),
-    'work rest': ('hours_of_rest', 0.20),
-    'fatigue': ('hours_of_rest', 0.15),
-    'compliance': ('hours_of_rest', 0.15),
     'mlc': ('hours_of_rest', 0.20),
     'sign off': ('hours_of_rest', 0.20),
-    'signoff': ('hours_of_rest', 0.20),
-    'sign-off': ('hours_of_rest', 0.20),
-    'monthly sign': ('hours_of_rest', 0.20),
-    'log hours': ('hours_of_rest', 0.25),
-    'log hrs': ('hours_of_rest', 0.25),
-    'my hours': ('hours_of_rest', 0.20),
-    'my hrs': ('hours_of_rest', 0.20),
 
-    # Inventory / Parts - core terms
-    'inventory': ('inventory', 0.30),
-    'stock': ('inventory', 0.25),
-    'stock level': ('inventory', 0.30),
-    'stock levels': ('inventory', 0.30),
-    'in stock': ('inventory', 0.25),
-    'out of stock': ('inventory', 0.30),
-    'parts': ('parts', 0.30),
-    'part': ('parts', 0.25),
-    'spare': ('parts', 0.20),
-    'spares': ('parts', 0.20),
-    'consumable': ('inventory', 0.20),
-    'reorder': ('inventory', 0.20),
-    # Parts - specific types
-    'filter': ('parts', 0.25),
-    'gasket': ('parts', 0.25),
-    'bearing': ('parts', 0.25),
-    'seal': ('parts', 0.25),
-    'belt': ('parts', 0.25),
-    'impeller': ('parts', 0.25),
-    'injector': ('parts', 0.25),
-    'turbocharger': ('parts', 0.25),
-    'alternator': ('parts', 0.25),
-    'antenna': ('parts', 0.25),
-    # Parts - manufacturers (lower boost, secondary signal)
-    'mtu': ('parts', 0.20),
-    'volvo penta': ('parts', 0.20),
-    'volvo': ('parts', 0.15),
-    'caterpillar': ('parts', 0.20),
-    'cat': ('parts', 0.15),
-    'cummins': ('parts', 0.20),
-    'kohler': ('parts', 0.20),
-    'grundfos': ('parts', 0.20),
-    'racor': ('parts', 0.20),
-    'fleetguard': ('parts', 0.20),
-    'mann': ('parts', 0.15),
-    'parker': ('parts', 0.15),
-    'parker hannifin': ('parts', 0.20),
-    'raymarine': ('parts', 0.20),
-    'furuno': ('parts', 0.20),
-    'garmin': ('parts', 0.20),
-    'survitec': ('parts', 0.20),
-
-    # Equipment - core terms
-    'equipment': ('equipment', 0.30),
-    'machine': ('equipment', 0.20),
-    'system': ('equipment', 0.15),
-    'engine': ('equipment', 0.25),
-    'generator': ('equipment', 0.25),
-    'pump': ('equipment', 0.20),
-    'compressor': ('equipment', 0.20),
-    # Equipment - specific types
+    # Equipment (specific types only)
     'watermaker': ('equipment', 0.30),
-    'water maker': ('equipment', 0.30),
+    'generator': ('equipment', 0.25),
     'radar': ('equipment', 0.30),
     'flybridge': ('equipment', 0.25),
-    'fly bridge': ('equipment', 0.25),
-    'autopilot': ('equipment', 0.25),
-    'thruster': ('equipment', 0.25),
-    'stabilizer': ('equipment', 0.25),
-    'boiler': ('equipment', 0.25),
-    'chiller': ('equipment', 0.25),
     'hvac': ('equipment', 0.25),
-    'hydraulic': ('equipment', 0.20),
-    'anchor': ('equipment', 0.20),
-    'winch': ('equipment', 0.25),
-    'crane': ('equipment', 0.25),
-    'davit': ('equipment', 0.25),
-    'tender': ('equipment', 0.20),
+    'boiler': ('equipment', 0.25),
 
     # Work Order
     'work order': ('work_order', 0.30),
     'workorder': ('work_order', 0.30),
-    'wo': ('work_order', 0.25),
-    'task': ('work_order', 0.20),
-    'job': ('work_order', 0.20),
     'maintenance': ('work_order', 0.20),
 
     # Fault
     'fault': ('fault', 0.30),
     'faults': ('fault', 0.30),
-    'error': ('fault', 0.20),
-    'failure': ('fault', 0.25),
-    'alarm': ('fault', 0.20),
-    'warning': ('fault', 0.20),
-    'issue': ('fault', 0.15),
 
-    # Document - boost manual higher so "watermaker manual" → document
-    'document': ('document', 0.30),
-    'documents': ('document', 0.30),
-    'doc': ('document', 0.25),
-    'manual': ('document', 0.35),  # Higher boost so "X manual" → document
-    'manuals': ('document', 0.35),
+    # Document
+    'manual': ('document', 0.35),
     'procedure': ('document', 0.20),
     'sop': ('document', 0.25),
-    'drawing': ('document', 0.20),
-    'schematic': ('document', 0.20),
 
-    # Certificate
-    'certificate': ('certificate', 0.30),
-    'cert': ('certificate', 0.25),
-    'certification': ('certificate', 0.25),
-    'expiry': ('certificate', 0.20),
-    'license': ('certificate', 0.20),
-
-    # Handover
-    'handover': ('handover', 0.30),
-    'hand over': ('handover', 0.30),
-    'turnover': ('handover', 0.25),
-    'shift': ('handover', 0.15),
-
-    # Purchase
-    'purchase': ('purchase', 0.30),
-    'purchase order': ('purchase', 0.30),
-    'po': ('purchase', 0.25),
-    'order': ('purchase', 0.20),
-    'supplier': ('purchase', 0.20),
-
-    # Shopping List
-    'shopping list': ('shopping_list', 0.30),
-    'shopping': ('shopping_list', 0.25),
-    'requisition': ('shopping_list', 0.20),
-
-    # Checklist
-    'checklist': ('checklist', 0.30),
-    'check list': ('checklist', 0.30),
-    'inspection': ('checklist', 0.20),
-
-    # Crew
-    'crew': ('crew', 0.30),
-    'crew member': ('crew', 0.30),
-    'seafarer': ('crew', 0.25),
-    'staff': ('crew', 0.20),
-
-    # Receiving / Deliveries (MVP1 - added for ranking tests)
-    'receiving': ('receiving', 0.30),
-    'received': ('receiving', 0.25),
-    'receive': ('receiving', 0.25),
+    # Receiving
     'delivery': ('receiving', 0.30),
     'deliveries': ('receiving', 0.30),
     'shipment': ('receiving', 0.25),
-    'shipments': ('receiving', 0.25),
-    'arrival': ('receiving', 0.20),
-    'arrived': ('receiving', 0.20),
-    'vendor': ('receiving', 0.20),
-    'supplier delivery': ('receiving', 0.30),
-    'goods received': ('receiving', 0.30),
-    'package': ('receiving', 0.20),
-    'packages': ('receiving', 0.20),
-    'inbound': ('receiving', 0.25),
+    'receiving': ('receiving', 0.30),
 }
 
 
@@ -1078,42 +1106,97 @@ def normalize_for_detection(query: str) -> str:
 
 def detect_domain_from_query(query: str) -> Optional[tuple]:
     """
-    Detect domain and boost from query text.
+    Detect domain from query using compound anchors.
 
-    Fix 5: Uses normalization for better detection of abbreviations and variants.
-    Fix 6: Returns highest-boost match, not first match by length.
+    "No Magic Booster" Philosophy:
+    - Only compound anchors (multi-word patterns) can anchor a domain
+    - Singleton keywords (warning, crew, work) do NOT anchor domain alone
+    - Returns (domain, confidence) where confidence determines mode:
+      - confidence >= 0.6 → focused mode
+      - confidence < 0.6 → explore mode (domain=None)
 
-    Returns: (domain, boost) or None
+    Returns: (domain, confidence) or None if no anchor matches
     """
-    # Normalize first
-    query_normalized = normalize_for_detection(query)
+    query_lower = query.lower()
 
-    # Collect all matching keywords and their boost values
+    # Check each domain's compound patterns
     matches = []
-
-    for keyword, (domain, boost) in DOMAIN_KEYWORDS.items():
-        if keyword in query_normalized:
-            matches.append((domain, boost, keyword))
-
-    # Also check original query for edge cases
-    if not matches:
-        query_lower = query.lower()
-        for keyword, (domain, boost) in DOMAIN_KEYWORDS.items():
-            if keyword in query_lower:
-                matches.append((domain, boost, keyword))
+    for domain, patterns in COMPOUND_ANCHORS.items():
+        for pattern in patterns:
+            if re.search(pattern, query_lower, re.IGNORECASE):
+                matches.append((domain, pattern))
+                break  # One match per domain is enough
 
     if not matches:
+        # No compound anchor matched - check if query is vague
+        # Return None to indicate explore mode
         return None
 
-    # Return the highest-boost match
-    # This ensures "watermaker 1 manual" → document (0.35) not equipment (0.30)
-    matches.sort(key=lambda x: x[1], reverse=True)
-    best_domain, best_boost, _ = matches[0]
+    if len(matches) == 1:
+        # Single domain matched with high confidence
+        domain = normalize_domain(matches[0][0])
+        return (domain, 0.9)
 
-    # Normalize to canonical form (parts → part, documents → document, etc.)
-    best_domain = normalize_domain(best_domain)
+    # Multiple domains matched - need disambiguation
+    # Priority order based on specificity
+    priority = ['work_order', 'receiving', 'hours_of_rest', 'equipment', 'part', 'fault', 'document', 'certificate', 'crew', 'checklist', 'handover', 'purchase']
+    for p in priority:
+        for domain, _ in matches:
+            if domain == p:
+                return (normalize_domain(domain), 0.7)  # Lower confidence due to ambiguity
 
-    return (best_domain, best_boost)
+    # Fallback to first match with medium confidence
+    return (normalize_domain(matches[0][0]), 0.6)
+
+
+def detect_domain_with_confidence(query: str) -> Tuple[Optional[str], float]:
+    """
+    Detect domain and confidence from query.
+
+    Returns: (domain, confidence) tuple
+    - domain: The detected domain or None if vague/ambiguous
+    - confidence: 0.0-1.0 score indicating detection certainty
+
+    Confidence thresholds:
+    - 0.9: Strong compound anchor match (single domain)
+    - 0.7: Compound match with some ambiguity (multiple domains)
+    - 0.6: Weak match or fallback
+    - 0.0: No match (explore mode)
+    """
+    result = detect_domain_from_query(query)
+    if result is None:
+        return (None, 0.0)
+    return result
+
+
+def is_vague_query(query: str) -> bool:
+    """
+    Check if query is too vague to assign a domain.
+    Vague = only singleton keywords, no compound anchors.
+    """
+    query_lower = query.lower()
+
+    # Check if any compound anchor matches
+    for domain, patterns in COMPOUND_ANCHORS.items():
+        for pattern in patterns:
+            if re.search(pattern, query_lower, re.IGNORECASE):
+                return False  # Has a compound anchor, not vague
+
+    # Check if it's just singleton words
+    words = set(re.findall(r'\b\w+\b', query_lower))
+    stopwords = {'me', 'my', 'the', 'a', 'an', 'for', 'to', 'of', 'and', 'or', 'in', 'on', 'at', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'please', 'all', 'this', 'that', 'these', 'those', 'i'}
+    meaningful_words = words - stopwords
+
+    # If most words are singleton keywords or very short, it's vague
+    if len(meaningful_words) <= 2:
+        return True
+
+    # Check how many words are singletons
+    singleton_count = sum(1 for w in meaningful_words if w in SINGLETON_KEYWORDS)
+    if singleton_count >= len(meaningful_words) * 0.7:
+        return True
+
+    return False
 
 
 def detect_intent_from_query(query: str) -> str:
@@ -1122,38 +1205,179 @@ def detect_intent_from_query(query: str) -> str:
 
     Returns: intent string (default: 'READ')
     """
-    import re
+    result = detect_intent_with_confidence(query)
+    return result[0]
+
+
+# Adjective status words that mean READ + filter, not mutation
+STATUS_ADJECTIVES = {
+    'accepted', 'approved', 'rejected', 'draft', 'pending',
+    'compliant', 'non-compliant', 'violation', 'overdue',
+    'open', 'closed', 'completed', 'in progress',
+}
+
+
+def detect_intent_with_confidence(query: str) -> Tuple[str, float]:
+    """
+    Detect intent from query text with confidence score.
+
+    Key rule: Adjective status words (accepted, draft, pending) followed by
+    a noun → READ intent + status filter, NOT mutation intent.
+
+    Returns: (intent, confidence) tuple
+    """
     query_lower = query.lower()
 
-    # Contextual rules: "accepted/approved/rejected" followed by a noun = status filter (READ)
-    # Examples: "accepted deliveries", "approved records", "rejected items"
-    status_adjective_pattern = r'\b(accepted|approved|rejected|draft|pending)\s+(deliveries|delivery|records|items|orders|receiving|shipments?)\b'
+    # Rule 1: Status adjective + noun pattern → READ with high confidence
+    # Examples: "accepted deliveries", "draft receiving", "pending orders"
+    status_adjective_pattern = r'\b(accepted|approved|rejected|draft|pending|open|closed|completed|overdue)\s+\w+'
     if re.search(status_adjective_pattern, query_lower):
-        return 'READ'
+        return ('READ', 0.95)
 
-    # "details" or "documents" alone implies READ
-    if re.search(r'\bdetails\b', query_lower) and not re.search(r'\b(create|add|new)\b', query_lower):
-        return 'READ'
-    if re.search(r'\bdocuments?\b', query_lower) and not re.search(r'\b(create|add|new|upload)\b', query_lower):
-        return 'READ'
+    # Rule 2: Compliance/violation patterns → READ
+    if re.search(r'\b(compliance|compliant|violation|non-compliant)', query_lower):
+        return ('READ', 0.90)
 
-    # "manual" as a noun (documentation) implies READ for document domain
-    # Must be standalone word, not part of compound like "watermaker"
-    if re.search(r'\bmanual\b', query_lower) and not re.search(r'\b(create|add|new|write)\b', query_lower):
-        return 'READ'
+    # Rule 3: Explicit mutation intents with explicit verbs
+    explicit_mutations = {
+        'CREATE': [
+            r'\bcreate\s+\w+',
+            r'\badd\s+(new\s+)?\w+',
+            r'\bnew\s+\w+\s+(order|task|fault|item)',
+            r'\blog\s+(new\s+)?(fault|issue|hours)',
+            r'\breport\s+(a\s+)?(fault|issue)',
+        ],
+        'UPDATE': [
+            r'\bupdate\s+(my\s+)?\w+',
+            r'\bedit\s+\w+',
+            r'\bmodify\s+\w+',
+            r'\bchange\s+\w+',
+            r'\bcorrect\s+\w+',
+        ],
+        'APPROVE': [
+            r'\bsign\s*off\b',
+            r'\bsign[-\s]?off\s+\w+',
+            r'\bapprove\s+\w+',
+            r'\baccept\s+(the\s+)?(delivery|order)',  # verb accept, not adjective
+            r'\backnowledge\s+\w+',
+        ],
+        'DELETE': [
+            r'\bdelete\s+\w+',
+            r'\bremove\s+\w+',
+            r'\bcancel\s+\w+',
+        ],
+        'EXPORT': [
+            r'\bexport\s+\w+',
+            r'\bdownload\s+\w+',
+            r'\bprint\s+\w+',
+            r'\bgenerate\s+report',
+        ],
+    }
 
-    # Check longest matches first, using word boundaries
-    # This prevents "watermaker" from matching "make"
-    sorted_keywords = sorted(INTENT_KEYWORDS.keys(), key=len, reverse=True)
+    for intent, patterns in explicit_mutations.items():
+        for pattern in patterns:
+            if re.search(pattern, query_lower):
+                return (intent, 0.85)
 
-    for keyword in sorted_keywords:
-        # Use word boundary matching to avoid partial matches
-        # e.g., "watermaker" should NOT match "make"
-        pattern = r'\b' + re.escape(keyword) + r'\b'
-        if re.search(pattern, query_lower):
-            return INTENT_KEYWORDS[keyword]
+    # Rule 4: Question patterns → READ
+    if re.search(r'^(what|where|how|when|which|who|show|find|list|check|see)\b', query_lower):
+        return ('READ', 0.85)
 
-    return 'READ'  # Default intent
+    # Rule 5: "details" or "manual" or similar → READ
+    if re.search(r'\b(details|manual|info|information|status|history)\b', query_lower):
+        if not re.search(r'\b(create|add|new|update|edit)\b', query_lower):
+            return ('READ', 0.80)
+
+    # Default to READ with lower confidence
+    return ('READ', 0.70)
+
+
+def extract_filters_from_query(query: str) -> Optional[Dict[str, Any]]:
+    """
+    Extract structured filters from query for p_filters parameter.
+
+    Returns dict with filter keys or None if no filters detected.
+    Supports:
+    - status: accepted, draft, rejected, pending
+    - compliance_state: compliant, violation
+    """
+    query_lower = query.lower()
+    filters = {}
+
+    # Status filters for receiving domain
+    if re.search(r'\b(accepted?|approved?)\s+(deliver|receiving)', query_lower):
+        filters['status'] = 'accepted'
+    elif re.search(r'\bdraft\s+(deliver|receiving)', query_lower):
+        filters['status'] = 'draft'
+    elif re.search(r'\b(rejected?|declined?)\s+(deliver|receiving)', query_lower):
+        filters['status'] = 'rejected'
+    elif re.search(r'\bpending\s+(deliver|receiving)', query_lower):
+        filters['status'] = 'pending'
+
+    # Compliance filters for hours_of_rest domain
+    if re.search(r'\bviolation', query_lower):
+        filters['compliance_state'] = 'violation'
+    elif re.search(r'\bnon[- ]?compliant', query_lower):
+        filters['compliance_state'] = 'violation'
+    elif re.search(r'\bcompliant\b', query_lower):
+        filters['compliance_state'] = 'compliant'
+
+    # Work order / fault status
+    if re.search(r'\bopen\s+(work\s+orders?|faults?|tasks?)', query_lower):
+        filters['status'] = 'open'
+    elif re.search(r'\bclosed\s+(work\s+orders?|faults?|tasks?)', query_lower):
+        filters['status'] = 'closed'
+    elif re.search(r'\boverdue\s+(work\s+orders?|tasks?|maintenance)', query_lower):
+        filters['status'] = 'overdue'
+
+    return filters if filters else None
+
+
+def get_detection_context(query: str) -> Dict[str, Any]:
+    """
+    Get full detection context for API response.
+
+    Returns a dict with:
+    - domain: detected domain or None
+    - domain_confidence: 0.0-1.0
+    - intent: detected intent
+    - intent_confidence: 0.0-1.0
+    - mode: 'focused' or 'explore'
+    - filters: extracted filters or None
+    - is_vague: whether query is too vague for domain assignment
+    """
+    # Detect domain with confidence
+    domain, domain_confidence = detect_domain_with_confidence(query)
+
+    # Detect intent with confidence
+    intent, intent_confidence = detect_intent_with_confidence(query)
+
+    # Extract filters
+    filters = extract_filters_from_query(query)
+
+    # Determine mode based on confidence threshold
+    CONFIDENCE_THRESHOLD = 0.6
+    if domain and domain_confidence >= CONFIDENCE_THRESHOLD:
+        mode = 'focused'
+    else:
+        mode = 'explore'
+        # If below threshold, set domain to None for explore mode
+        if domain_confidence < CONFIDENCE_THRESHOLD:
+            domain = None
+            domain_confidence = 0.0
+
+    # Check if query is vague
+    vague = is_vague_query(query)
+
+    return {
+        'domain': domain,
+        'domain_confidence': domain_confidence,
+        'intent': intent,
+        'intent_confidence': intent_confidence,
+        'mode': mode,
+        'filters': filters,
+        'is_vague': vague,
+    }
 
 
 def get_microactions_for_query(
