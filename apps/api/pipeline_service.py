@@ -358,10 +358,14 @@ class Entity(BaseModel):
     extraction_type: Optional[str] = None  # Backend extraction type (PART_NUMBER, EQUIPMENT_NAME, etc.)
 
 class SearchContext(BaseModel):
-    """Context info from domain/intent detection."""
+    """Context info from domain/intent detection with confidence scores."""
     domain: Optional[str] = None
+    domain_confidence: float = 0.0
     intent: Optional[str] = None
+    intent_confidence: float = 0.0
     mode: Optional[str] = None
+    filters: Optional[Dict[str, Any]] = None
+    is_vague: bool = False
 
 class MicroAction(BaseModel):
     """Action button returned from action surfacing."""
@@ -652,6 +656,11 @@ async def search(
     try:
         from action_surfacing import surface_actions_for_query, get_fusion_params_for_query
         from rag.context_builder import generate_query_embedding
+        from domain_microactions import get_detection_context
+
+        # Get detection context (domain, intent, mode with confidence scores)
+        detection_ctx = get_detection_context(request.query)
+        logger.info(f"[search] detection: domain={detection_ctx['domain']}, conf={detection_ctx['domain_confidence']:.2f}, intent={detection_ctx['intent']}, mode={detection_ctx['mode']}")
 
         # Get fusion params for domain-aware search (includes p_filters)
         fusion_params = get_fusion_params_for_query(request.query)
@@ -711,11 +720,15 @@ async def search(
             yacht_id=yacht_id
         )
 
-        # Build context from action surfacing
+        # Build context from detection with confidence scores
         context = SearchContext(
-            domain=action_data.get('domain'),
-            intent=action_data.get('intent'),
-            mode=action_data.get('mode')
+            domain=detection_ctx['domain'],
+            domain_confidence=detection_ctx['domain_confidence'],
+            intent=detection_ctx['intent'],
+            intent_confidence=detection_ctx['intent_confidence'],
+            mode=detection_ctx['mode'],
+            filters=detection_ctx['filters'],
+            is_vague=detection_ctx['is_vague']
         )
 
         # Build microaction list
