@@ -71,14 +71,15 @@ test.describe('Handover Dual-Signature Workflow', () => {
         action: 'add_to_handover',
         context: { yacht_id: yachtId },
         payload: {
-          summary: `[E2E Test] Critical item - Main engine inspection overdue (${DRAFT_ID})`,
+          entity_type: 'note',  // Required field
+          entity_id: null,  // NULL for standalone notes
+          summary_text: `[E2E Test] Critical item - Main engine inspection overdue (${DRAFT_ID})`,
           category: 'urgent',  // Valid: urgent|in_progress|completed|watch|fyi
-          section: 'engineering',  // Optional presentation bucket
+          priority: 'high',
+          presentation_bucket: 'Engineering',  // Display grouping
           is_critical: true,
           requires_action: true,
           action_summary: 'Schedule inspection within 48 hours',
-          priority: 'high',
-          entity_type: 'note',  // Required field
         },
       },
     });
@@ -105,12 +106,13 @@ test.describe('Handover Dual-Signature Workflow', () => {
         action: 'add_to_handover',
         context: { yacht_id: yachtId },
         payload: {
-          summary: `[E2E Test] Normal item - Weekly deck cleaning completed (${DRAFT_ID})`,
-          category: 'completed',  // Valid: urgent|in_progress|completed|watch|fyi
-          section: 'deck',  // Optional presentation bucket
-          is_critical: false,
-          priority: 'normal',
           entity_type: 'note',  // Required field
+          entity_id: null,  // NULL for standalone notes
+          summary_text: `[E2E Test] Normal item - Weekly deck cleaning completed (${DRAFT_ID})`,
+          category: 'completed',  // Valid: urgent|in_progress|completed|watch|fyi
+          priority: 'normal',
+          presentation_bucket: 'Deck',  // Display grouping
+          is_critical: false,
         },
       },
     });
