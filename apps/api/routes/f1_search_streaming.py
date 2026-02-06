@@ -314,40 +314,20 @@ async def call_hyper_search_multi(
     original_query = texts[0] if texts else ""
     trgm_limit = 0.07 if len(original_query.strip()) <= 6 else 0.15
 
-    # Try single round-trip with inline trgm_limit (migration 009)
-    # Falls back to 2 round-trips if migration not applied yet
-    try:
-        rows = await conn.fetch(
-            """
-            SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-            FROM hyper_search_multi($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real)
-            """,
-            texts,
-            vec_literals,
-            uuid.UUID(ctx.org_id),
-            uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
-            rrf_k,
-            page_limit,
-            trgm_limit,
-        )
-    except asyncpg.PostgresError as e:
-        # Fallback: migration 009 not applied yet, use old 2-roundtrip approach
-        if "function hyper_search_multi" in str(e).lower():
-            await conn.execute(f"SELECT set_limit({trgm_limit})")
-            rows = await conn.fetch(
-                """
-                SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-                FROM hyper_search_multi($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int)
-                """,
-                texts,
-                vec_literals,
-                uuid.UUID(ctx.org_id),
-                uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
-                rrf_k,
-                page_limit,
-            )
-        else:
-            raise
+    # Use f1_search_cards wrapper (unambiguous name, avoids overload collision)
+    rows = await conn.fetch(
+        """
+        SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
+        FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real)
+        """,
+        texts,
+        vec_literals,
+        uuid.UUID(ctx.org_id),
+        uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
+        rrf_k,
+        page_limit,
+        trgm_limit,
+    )
 
     # Convert asyncpg Records to dicts
     return [dict(r) for r in rows]
