@@ -71,6 +71,11 @@ def surface_actions_for_query(
     domain_result = detect_domain_from_query(query)
     intent = detect_intent_from_query(query)
 
+    # Part number detection - if query contains a part number pattern, set domain=part
+    part_number_match = PART_NUMBER_PATTERN.search(query)
+    if part_number_match and not domain_result:
+        domain_result = ('part', 0.25)
+
     if domain_result:
         domain, domain_boost = domain_result
     else:
