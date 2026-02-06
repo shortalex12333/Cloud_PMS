@@ -378,6 +378,81 @@ class CandidateFinder:
             logger.error(f"[CandidateFinder] Equipment WO search error: {e}")
             return []
 
+    # ==========================================================================
+    # L2.5: Hybrid Search Index Candidates
+    # ==========================================================================
+
+    async def find_search_index_candidates(
+        self,
+        yacht_id: str,
+        query_text: str,
+        query_embedding: Optional[List[float]] = None,
+        role: Optional[str] = None,
+        object_types: Optional[List[str]] = None,
+        days_back: int = 365,
+        limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        L2.5: Find candidates from search_index using hybrid fusion.
+
+        Calls match_link_targets RPC which:
+        - Text: ts_rank_cd on search_index.tsv
+        - Vector: cosine similarity on search_index.embedding (1536)
+        - Recency: exponential decay (90-day half-life)
+        - Bias: role-based weights from search_role_bias
+
+        Args:
+            yacht_id: Yacht ID for isolation
+            query_text: Text query (subject + top entities from email)
+            query_embedding: Optional 1536-dim GPT embedding
+            role: Optional user role for bias weighting
+            object_types: Optional filter ['work_order', 'equipment', 'part', ...]
+            days_back: Recency window in days (default: 365)
+            limit: Max candidates to return (default: 20)
+
+        Returns:
+            List of candidates with score_inputs for fusion scoring
+        """
+        candidates = []
+
+        try:
+            # Call match_link_targets RPC
+            result = self.supabase.rpc('match_link_targets', {
+                'p_yacht_id': yacht_id,
+                'p_query': query_text,
+                'p_query_embedding': query_embedding,
+                'p_object_types': object_types,
+                'p_role': role,
+                'p_days_back': days_back,
+                'p_limit': limit
+            }).execute()
+
+            # Map RPC results to candidate format
+            for row in result.data or []:
+                candidates.append({
+                    'object_type': row['object_type'],
+                    'object_id': row['object_id'],
+                    'label': row['label'],
+                    'match_reason': 'hybrid_search_index',
+                    'score': 0,  # Will be computed by ScoringEngine from score_inputs
+                    'score_inputs': {
+                        's_text': float(row['s_text']),
+                        's_vector': float(row['s_vector']),
+                        's_recency': float(row['s_recency']),
+                        's_bias': float(row['s_bias']),
+                        'rank_text': int(row['rank_text']),
+                        'rank_vector': int(row['rank_vector']),
+                    },
+                    'payload': row.get('payload', {}),
+                })
+
+            logger.info(f"[CandidateFinder] L2.5 Hybrid: Found {len(candidates)} candidates for query_text={query_text[:50]}...")
+
+        except Exception as e:
+            logger.error(f"[CandidateFinder] L2.5 Hybrid search error: {e}")
+
+        return candidates
+
 
 # Export
 __all__ = ['CandidateFinder']
