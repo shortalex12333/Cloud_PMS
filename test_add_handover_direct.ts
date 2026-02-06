@@ -34,7 +34,8 @@ async function testAddToHandover() {
       payload: {
         entity_type: 'note',
         entity_id: null,
-        summary_text: 'Direct Test: Testing add_to_handover with correct payload format',
+        title: 'Direct Test: Critical Item',
+        summary_text: 'Testing add_to_handover with correct payload format - verifying all required fields are present',
         category: 'urgent',
         priority: 'high',
         presentation_bucket: 'Engineering',

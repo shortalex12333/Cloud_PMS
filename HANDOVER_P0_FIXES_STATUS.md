@@ -84,12 +84,19 @@ Response Body:
 - Handler tries to insert into `handover_items`
 - Somehow query becomes "pms_handover" between handler and PostgREST
 
-**Most Likely Cause**:
-The consolidation migration (20260205140000) has NOT been applied to the tenant database yet. Without it:
-1. `handover_items.handover_id` is still NOT NULL with FK constraint
-2. `handover_items` is missing new columns: category, is_critical, requires_action, action_summary, risk_tags, entity_url
-3. Insert fails due to NULL constraint violation on handover_id OR missing column
-4. Error message is confusing/misleading (references wrong table name)
+**ACTUAL CAUSE (Verified 2026-02-05 22:00 PST)**:
+Ran `check_db_schema.ts` against tenant DB (vzsohavtuotocgrfkfyd.supabase.co):
+- ❌ `pms_handover` table **STILL EXISTS** (0 rows) - migration should have dropped this
+- ✅ `handover_items` table **EXISTS** with new columns (category, is_critical, requires_action)
+- ✅ `handover_id` **IS NULLABLE** in handover_items
+
+**Root Cause**: Migration 20260205140000 was PARTIALLY applied:
+- ✅ Lines 22-43: Added columns to handover_items
+- ✅ Lines 46-47: Made handover_id nullable
+- ❌ **Line 207: DROP TABLE pms_handover - DID NOT EXECUTE**
+
+**Why add_to_handover fails**:
+PostgREST still sees `pms_handover` in schema cache. Some code tries to reference it → PGRST205 "table not found"
 
 ### P0 Blocker 2: Step 4 Still Failing
 **Symptom**: Export endpoint still returns non-OK status
@@ -106,28 +113,35 @@ Created and ran `test_add_handover_direct.ts`:
 - Received 500 error with PGRST205 code
 - Confirmed table name mismatch issue
 
-### 2. Verify and Apply Consolidation Migration
-**Action**: Check if migration 20260205140000 has been applied to tenant DB
-**Options**:
-A. SSH to Render and check migrations table
-B. Add diagnostic endpoint to check table schema
-C. Run migration manually if needed
+### 2. ✅ Verified Tenant DB Schema (COMPLETED)
+Created and ran `check_db_schema.ts`:
+- Connected to tenant DB: vzsohavtuotocgrfkfyd.supabase.co
+- ❌ Found `pms_handover` still exists (should have been dropped)
+- ✅ Confirmed `handover_items` has new columns (category, is_critical)
+- ✅ Confirmed handover_id is nullable
 
-**Migration file**: `supabase/migrations/20260205140000_consolidate_handover_tables.sql`
-**Key changes needed**:
-- Line 46-47: Make handover_items.handover_id nullable
-- Line 50-51: Drop FK constraint to handovers
-- Line 22-43: Add columns: category, is_critical, requires_action, action_summary, risk_tags, entity_url
-- Line 207: Drop pms_handover table
+### 3. ⚠️  REQUIRED FIX: Drop pms_handover Table
+**The Problem**: Migration line 207 didn't execute: `DROP TABLE IF EXISTS pms_handover CASCADE;`
 
-### 3. Alternative Quick Fix (if migration can't be run immediately)
-**Workaround**: Make handover_id optional in handler and provide a dummy value
-- Modify handler to set handover_id to a dummy UUID if NULL
-- This allows tests to pass while migration is being scheduled
-- NOT recommended for production (migration is the correct fix)
+**Solution**: Run SQL manually in Supabase SQL Editor:
+```sql
+DROP TABLE IF EXISTS pms_handover CASCADE;
+```
+
+**Steps**:
+1. Go to: https://supabase.com/dashboard/project/vzsohavtuotocgrfkfyd/sql/new
+2. Paste: `DROP TABLE IF EXISTS pms_handover CASCADE;`
+3. Click "Run"
+4. Verify: Table no longer appears in Table Editor
+
+**Alternative**: Created script `drop_pms_handover_table.ts` (requires service_role key)
 
 ### 4. Re-run Tests Until Green
-Once migration is confirmed applied, re-run E2E suite.
+After dropping pms_handover, re-run:
+```bash
+npx tsx test_add_handover_direct.ts
+npx playwright test tests/e2e/handover-workflow.spec.ts
+```
 
 ---
 
