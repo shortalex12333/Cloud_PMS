@@ -46,6 +46,8 @@ import {
   type AttachmentBlobResult,
 } from '@/hooks/useEmailData';
 import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
+import { LinkEmailModal } from '@/components/email/LinkEmailModal';
+import { ThreadLinksPanel } from '@/components/email/ThreadLinksPanel';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
 
@@ -303,6 +305,14 @@ export default function EmailSurface({
       triggerBackfill();
     }
   }, [isLoading, isSearching, threads.length, isBackfilling, outlookStatus?.isConnected, triggerBackfill]);
+
+  // Sync selectedThreadId when initialThreadId prop changes (e.g., from search result click)
+  useEffect(() => {
+    if (initialThreadId && initialThreadId !== selectedThreadId) {
+      setSelectedThreadId(initialThreadId);
+      setSelectedMessageId(null); // Reset message selection for new thread
+    }
+  }, [initialThreadId]);
 
   // Auto-select first message when thread loads
   useEffect(() => {
@@ -680,8 +690,9 @@ export default function EmailSurface({
             </div>
           )}
 
-          {selectedThread && (
+          {selectedThread && selectedThreadId && (
             <MessagePanel
+              threadId={selectedThreadId}
               thread={selectedThread}
               selectedMessageId={selectedMessageId}
               onMessageSelect={handleMessageClick}
@@ -774,6 +785,7 @@ function ThreadListItem({ thread, isSelected, onClick, onHover }: ThreadListItem
 // ============================================================================
 
 interface MessagePanelProps {
+  threadId: string;
   thread: {
     latest_subject: string | null;
     message_count: number;
@@ -786,9 +798,11 @@ interface MessagePanelProps {
   contentLoading: boolean;
   relatedLinksCount: number;
   hasRelatedLinks: boolean;
+  onLinksChanged?: () => void;
 }
 
 function MessagePanel({
+  threadId,
   thread,
   selectedMessageId,
   onMessageSelect,
@@ -796,8 +810,10 @@ function MessagePanel({
   contentLoading,
   relatedLinksCount,
   hasRelatedLinks,
+  onLinksChanged,
 }: MessagePanelProps) {
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showLinksPanel, setShowLinksPanel] = useState(false);
 
   return (
     <div data-testid="message-panel" className="h-full flex flex-col">
@@ -825,6 +841,7 @@ function MessagePanel({
           <div className="flex-shrink-0">
             {hasRelatedLinks ? (
               <button
+                onClick={() => setShowLinksPanel(true)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#30d158]/20 text-[#30d158] text-[12px] font-medium hover:bg-[#30d158]/30 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -969,6 +986,22 @@ function MessagePanel({
           </div>
         )}
       </div>
+
+      {/* Link Email Modal */}
+      <LinkEmailModal
+        open={showLinkModal}
+        onOpenChange={setShowLinkModal}
+        threadId={threadId}
+        threadSubject={thread.latest_subject || undefined}
+      />
+
+      {/* Thread Links Panel (See Related) */}
+      <ThreadLinksPanel
+        open={showLinksPanel}
+        onClose={() => setShowLinksPanel(false)}
+        threadId={threadId}
+        threadSubject={thread.latest_subject || undefined}
+      />
     </div>
   );
 }
