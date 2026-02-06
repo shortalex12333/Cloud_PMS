@@ -620,7 +620,7 @@ async def search(
     """
     Main search endpoint with JWT authentication.
 
-    Flow: JWT verify → Tenant lookup → Query → Extract entities → Execute SQL → Actions → Surface
+    Flow: JWT verify → Tenant lookup → f1_search_fusion(with p_filters) → Actions → Surface
 
     Auth:
         - JWT verified using MASTER_SUPABASE_JWT_SECRET
@@ -628,10 +628,11 @@ async def search(
         - Request routed to tenant's per-yacht Supabase DB
 
     Returns:
-        - results: Search results from pipeline
+        - results: Search results from f1_search_fusion with structured filters
         - context: Domain/intent/mode from action_surfacing
         - actions: Microaction buttons filtered by role
     """
+    import json
     start = time.time()
 
     # Get yacht_id from auth context (override request body if present)
@@ -649,21 +650,64 @@ async def search(
         raise HTTPException(status_code=500, detail="Tenant configuration error")
 
     try:
-        from pipeline_v1 import Pipeline
         from action_surfacing import surface_actions_for_query, get_fusion_params_for_query
+        from rag.context_builder import generate_query_embedding
 
-        # Get fusion params for domain-aware search
+        # Get fusion params for domain-aware search (includes p_filters)
         fusion_params = get_fusion_params_for_query(request.query)
-        logger.debug(f"[search] fusion_params: {fusion_params}")
+        logger.info(f"[search] fusion_params: {fusion_params}")
 
-        pipeline = Pipeline(client, yacht_id)
-        response = await pipeline.search(request.query, limit=request.limit)
+        # Generate query embedding for vector search
+        embedding_start = time.time()
+        query_embedding = generate_query_embedding(request.query)
+        embedding_ms = (time.time() - embedding_start) * 1000
+
+        # Build vector literal for PostgreSQL
+        vec_literal = None
+        if query_embedding:
+            vec_literal = '[' + ','.join(str(x) for x in query_embedding) + ']'
+
+        # Extract filter params
+        p_domain = fusion_params.get('p_domain')
+        p_mode = fusion_params.get('p_mode', 'explore')
+        p_domain_boost = fusion_params.get('p_domain_boost', 0.25)
+        p_filters = fusion_params.get('p_filters')
+        p_filters_json = json.dumps(p_filters) if p_filters else None
+
+        # Call f1_search_fusion with structured filters
+        fusion_start = time.time()
+        result = client.rpc('f1_search_fusion', {
+            'p_yacht_id': yacht_id,
+            'p_query_text': request.query,
+            'p_query_embedding': vec_literal,
+            'p_role': role,
+            'p_lens': 'default',
+            'p_domain': p_domain,
+            'p_mode': p_mode,
+            'p_domain_boost': p_domain_boost,
+            'p_limit': request.limit,
+            'p_offset': 0,
+            'p_debug': False,
+            'p_filters': p_filters_json,
+        }).execute()
+        fusion_ms = (time.time() - fusion_start) * 1000
+
+        # Process results
+        results = []
+        if result.data:
+            for row in result.data:
+                results.append({
+                    'object_id': row.get('object_id'),
+                    'object_type': row.get('object_type'),
+                    'payload': row.get('payload', {}),
+                    'score': row.get('final_score', 0),
+                })
 
         # Surface actions based on query and results
         action_data = surface_actions_for_query(
             query=request.query,
             role=role,
-            search_results=response.results,
+            search_results=results,
             yacht_id=yacht_id
         )
 
@@ -686,25 +730,24 @@ async def search(
             for a in action_data.get('actions', [])
         ]
 
+        total_ms = (time.time() - start) * 1000
+
         return SearchResponse(
-            success=response.success,
+            success=True,
             query=request.query,
-            results=response.results,
-            total_count=response.total_count,
-            available_actions=response.available_actions,
-            entities=[
-                Entity(**e) for e in response.extraction.get("entities", [])
-            ],
-            plans=response.prepare.get("plans", []),
+            results=results,
+            total_count=len(results),
+            available_actions=[],  # Deprecated, use actions field
+            entities=[],  # Extraction disabled for f1_search_fusion path
+            plans=[],
             timing_ms={
-                "extraction": response.extraction_ms,
-                "prepare": response.prepare_ms,
-                "execute": response.execute_ms,
-                "total": response.total_ms,
+                "embedding": embedding_ms,
+                "fusion": fusion_ms,
+                "total": total_ms,
             },
-            results_by_domain=response.results_by_domain,
-            error=response.error,
-            # NEW: Action surfacing fields
+            results_by_domain={},
+            error=None,
+            # Action surfacing fields
             context=context,
             actions=actions,
         )
