@@ -230,7 +230,7 @@ async def rag_answer(
         # Build response (after connection closed)
         response_data = {
             'answer': answer.answer,
-            'citations': [c.to_dict() for c in context.chunks] if context.chunks else [],
+            'citations': [c.citation.to_dict() for c in context.chunks] if context.chunks else [],
             'used_doc_ids': answer.used_doc_ids,
             'confidence': answer.confidence,
         }
