@@ -1257,6 +1257,10 @@ def detect_intent_with_confidence(query: str) -> Tuple[str, float]:
     if re.search(r'\back(nowledge)?\s+\w+', query_lower):
         return ('APPROVE', 0.90)
 
+    # Rule 2a: "view/show sign-off" → READ (viewing sign-off status, not signing)
+    if re.search(r'\b(view|show|list|check)\s+(my\s+)?(monthly\s+)?sign[-\s]?off', query_lower):
+        return ('READ', 0.90)
+
     # Rule 2b: Compliance/violation patterns (without acknowledge) → READ
     if re.search(r'\b(compliance|compliant|violation|non-compliant)', query_lower):
         return ('READ', 0.90)

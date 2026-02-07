@@ -262,6 +262,13 @@ def detect_intent(query: str, domain: Optional[str]) -> Tuple[str, float]:
     # "acknowledge rest violation" → APPROVE (not READ just because "violation" is present)
     if re.search(r'\back(nowledge)?\s+\w+', query_lower):
         return 'APPROVE', 0.9
+
+    # Sign-off patterns - but NOT "view sign-off" or "create sign-off"
+    # Those should be READ and CREATE respectively
+    if re.search(r'\b(view|show|list|check)\s+(my\s+)?(monthly\s+)?sign[-\s]?off', query_lower):
+        return 'READ', 0.9  # "view my monthly sign-off" → READ
+    if re.search(r'\bcreate\s+(monthly\s+)?sign[-\s]?off', query_lower):
+        return 'CREATE', 0.9  # "create monthly sign-off" → CREATE
     if re.search(r'\bsign[-\s]?off\b', query_lower):
         return 'APPROVE', 0.9
     if re.search(r'\bstart\s+(monthly\s+)?sign[-\s]?off', query_lower):
