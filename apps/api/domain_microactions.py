@@ -1252,7 +1252,12 @@ def detect_intent_with_confidence(query: str) -> Tuple[str, float]:
     if re.search(status_adjective_pattern, query_lower):
         return ('READ', 0.95)
 
-    # Rule 2: Compliance/violation patterns → READ
+    # Rule 2: Acknowledge patterns → APPROVE (must check BEFORE violation rule)
+    # "acknowledge rest violation", "ack violation" - user wants to acknowledge, not just view
+    if re.search(r'\back(nowledge)?\s+\w+', query_lower):
+        return ('APPROVE', 0.90)
+
+    # Rule 2b: Compliance/violation patterns (without acknowledge) → READ
     if re.search(r'\b(compliance|compliant|violation|non-compliant)', query_lower):
         return ('READ', 0.90)
 
