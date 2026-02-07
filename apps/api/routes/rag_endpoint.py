@@ -42,12 +42,29 @@ import json
 import hashlib
 import logging
 import time
+import psycopg2
+import psycopg2.extras
 from typing import Optional
 from datetime import datetime
+from contextlib import contextmanager
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+# Database connection
+READ_DSN = os.getenv("READ_DB_DSN") or os.getenv("DATABASE_URL")
+
+@contextmanager
+def get_db_connection():
+    """Get database connection for RAG queries."""
+    if not READ_DSN:
+        raise ValueError("READ_DB_DSN or DATABASE_URL not configured")
+    conn = psycopg2.connect(READ_DSN)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 # Import RAG modules (path set by pipeline_service.py)
 from rag import (
@@ -185,36 +202,32 @@ async def rag_answer(
     mode = 'focused' if domain else 'explore'
 
     try:
-        # Get database connection
-        # In production, use connection pool from app state
-        conn = req.app.state.db_pool if hasattr(req.app.state, 'db_pool') else None
-        if not conn:
-            raise HTTPException(status_code=500, detail="Database connection not available")
+        # Get database connection and build context
+        with get_db_connection() as conn:
+            from rag import build_context_sync, generate_answer_sync
+            context = build_context_sync(
+                conn=conn,
+                yacht_id=yacht_id,
+                query=request.query,
+                role=role,
+                lens=request.lens,
+                domain=domain,
+                mode=mode,
+                domain_boost=domain_boost,
+                top_k=request.top_k,
+            )
 
-        # Build context
-        context = await build_context(
-            conn=conn,
-            yacht_id=yacht_id,
-            query=request.query,
-            role=role,
-            lens=request.lens,
-            domain=domain,
-            mode=mode,
-            domain_boost=domain_boost,
-            top_k=request.top_k,
-        )
+            if not context.chunks:
+                answer = generate_no_context_answer(request.query, query_hash)
+            else:
+                # Generate answer (sync version)
+                answer = generate_answer_sync(context)
 
-        if not context.chunks:
-            answer = generate_no_context_answer(request.query, query_hash)
-        else:
-            # Generate answer
-            answer = await generate_answer(context)
+                # Verify faithfulness (optional, for monitoring)
+                if request.debug:
+                    verification = verify_answer(answer, context)
 
-            # Verify faithfulness (optional, for monitoring)
-            if request.debug:
-                verification = verify_answer(answer, context)
-
-        # Build response
+        # Build response (after connection closed)
         response_data = {
             'answer': answer.answer,
             'citations': [c.to_dict() for c in context.chunks] if context.chunks else [],
