@@ -64,8 +64,8 @@ class ScoringEngine:
     THRESHOLDS = {
         'auto_confirm': 130,    # L1 hard match - deterministic linking
         'strong_suggest': 100,  # High confidence suggestion
-        'weak_suggest': 70,     # Low confidence - show but don't highlight
-        'no_suggest': 69,       # Below this, don't suggest
+        'weak_suggest': 60,     # Low confidence - show but don't highlight
+        'no_suggest': 59,       # Below this, don't suggest
         'ambiguous_gap': 15,    # If top1-top2 < this, ambiguous
     }
 
@@ -340,8 +340,8 @@ class ScoringEngine:
         self,
         score_inputs: Dict[str, float],
         use_rrf: bool = True,
-        mu: float = 0.72,
-        sigma: float = 0.05
+        mu: float = 0.50,
+        sigma: float = 0.10
     ) -> float:
         """
         Compute hybrid fusion score from search_index signals.

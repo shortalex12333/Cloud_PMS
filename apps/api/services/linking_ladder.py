@@ -240,13 +240,13 @@ class LinkingLadder:
 
         logger.debug(f"[LinkingLadder] L2.5: query_text='{query_text[:100]}...' embedding={'present' if query_embedding else 'missing'}")
 
-        # Query search_index
+        # Query search_index - filter to linkable PMS object types only
         candidates = await self.candidate_finder.find_search_index_candidates(
             yacht_id=yacht_id,
             query_text=query_text,
             query_embedding=query_embedding,
             role=user_role,
-            object_types=None,  # Search all types
+            object_types=['work_order', 'equipment', 'part'],  # Only PMS objects
             days_back=365,
             limit=20
         )

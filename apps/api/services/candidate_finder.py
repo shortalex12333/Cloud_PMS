@@ -416,15 +416,17 @@ class CandidateFinder:
         candidates = []
 
         try:
-            # Call match_link_targets RPC
-            result = self.supabase.rpc('match_link_targets', {
+            # Call match_link_targets_v2 RPC (uses embedding_1536 and websearch_to_tsquery)
+            result = self.supabase.rpc('match_link_targets_v2', {
                 'p_yacht_id': yacht_id,
                 'p_query': query_text,
                 'p_query_embedding': query_embedding,
                 'p_object_types': object_types,
                 'p_role': role,
                 'p_days_back': days_back,
-                'p_limit': limit
+                'p_text_k': limit * 2,  # Fetch more candidates for fusion
+                'p_vector_k': limit * 2,
+                'p_min_vector': 0.50,  # Minimum vector similarity threshold
             }).execute()
 
             # Map RPC results to candidate format
