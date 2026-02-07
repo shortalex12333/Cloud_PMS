@@ -2620,20 +2620,24 @@ async def save_attachment(
         logger.warning(f"[email/evidence/save-attachment] Forbidden: role={user_role} user={user_id[:8]}")
         raise HTTPException(status_code=403, detail="Insufficient permissions to save attachments")
 
-    # M4: Idempotency check - check if already saved this exact attachment
+    # M4: Idempotency check - use deterministic path prefix to detect duplicates
+    # Path pattern: {yacht_id}/email-attachments/{message_id_hash}_{attachment_id_hash}/
+    import hashlib
+    msg_hash = hashlib.md5(request.message_id.encode()).hexdigest()[:12]
+    att_hash = hashlib.md5(request.attachment_id.encode()).hexdigest()[:12]
+    path_prefix = f"{yacht_id}/email-attachments/{msg_hash}_{att_hash}"
+
     if request.idempotency_key:
-        existing = supabase.table('doc_yacht_library').select('id, storage_path').eq(
+        existing = supabase.table('doc_yacht_library').select('id, document_path').eq(
             'yacht_id', yacht_id
-        ).eq('metadata->>original_attachment_id', request.attachment_id).eq(
-            'metadata->>email_message_id', request.message_id
-        ).limit(1).execute()
+        ).like('document_path', f'{path_prefix}%').limit(1).execute()
 
         if existing.data:
             logger.info(f"[email/evidence/save-attachment] Already saved: attachment={request.attachment_id[:16]}")
             return {
                 'success': True,
                 'document_id': existing.data[0]['id'],
-                'storage_path': existing.data[0]['storage_path'],
+                'storage_path': existing.data[0]['document_path'],
                 'already_saved': True,
             }
 
@@ -2687,9 +2691,9 @@ async def save_attachment(
                 detail=f"Content type '{content_type}' not allowed"
             )
 
-        # SECURITY FIX P0-007: Generate safe storage path (no user-provided path components)
+        # SECURITY FIX P0-007: Generate safe storage path using deterministic prefix for idempotency
         safe_filename = f"{uuid.uuid4()}{ext}"
-        storage_path = f"{yacht_id}/email-attachments/{safe_filename}"
+        storage_path = f"{path_prefix}/{safe_filename}"
 
         # Upload to storage
         supabase.storage.from_('documents').upload(
@@ -2697,21 +2701,13 @@ async def save_attachment(
             {'content-type': content_type}
         )
 
-        # Create document entry
+        # Create document entry using actual doc_yacht_library schema columns
         doc_entry = {
             'yacht_id': yacht_id,
-            'title': original_filename,
-            'source': 'email_attachment',
-            'storage_path': storage_path,
-            'content_type': content_type,
-            'file_size': len(file_data),
-            'metadata': {
-                'email_message_id': request.message_id,
-                'email_thread_id': msg_result.data['thread_id'],
-                'original_attachment_id': request.attachment_id,
-                'saved_by_role': user_role,
-            },
-            'created_by': user_id,
+            'document_name': original_filename,  # actual column name
+            'document_path': storage_path,       # actual column name
+            'document_type': content_type,       # maps content_type -> document_type
+            'user_id': user_id,                  # actual column name (not created_by)
         }
 
         doc_result = supabase.table('doc_yacht_library').insert(doc_entry).execute()
