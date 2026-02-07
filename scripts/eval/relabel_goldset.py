@@ -151,12 +151,13 @@ INTENT_PATTERNS = {
         r'\bcorrect\s+\w+',
     ],
     'APPROVE': [
-        r'\bsign\s*off\b',
+        r'\bsign[-\s]?off\b',  # "sign off", "sign-off", "signoff"
         r'\bsignoff\b',
         # Sign + monthly/hours/record patterns
         r'\bsign\b.*\b(monthly|hours?|hrs|record)\b',
         r'\bpls\s+sign\b',
         r'\bwho\s+needs?\s+to\s+sign\b',
+        r'\bstart\s+(monthly\s+)?sign[-\s]?off',  # "start monthly sign-off"
         r'\bapprove\s+\w+',
         r'\baccept\s+(the\s+)?(delivery|order)',
         r'\back(nowledge)?\s+\w+',  # "acknowledge rest violation"
@@ -256,6 +257,15 @@ def detect_intent(query: str, domain: Optional[str]) -> Tuple[str, float]:
     Key rule: Adjective status words (accepted, draft) → READ + filter, not APPROVE.
     """
     query_lower = query.lower()
+
+    # Priority check: acknowledge/sign-off patterns BEFORE adjective check
+    # "acknowledge rest violation" → APPROVE (not READ just because "violation" is present)
+    if re.search(r'\back(nowledge)?\s+\w+', query_lower):
+        return 'APPROVE', 0.9
+    if re.search(r'\bsign[-\s]?off\b', query_lower):
+        return 'APPROVE', 0.9
+    if re.search(r'\bstart\s+(monthly\s+)?sign[-\s]?off', query_lower):
+        return 'APPROVE', 0.9
 
     # Check for adjective-before-noun patterns (READ + filter)
     for adj in STATUS_ADJECTIVES:
