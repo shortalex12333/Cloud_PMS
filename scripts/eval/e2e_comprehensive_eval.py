@@ -273,8 +273,13 @@ def load_all_queries() -> List[QueryTestCase]:
 # AUTHENTICATION
 # =============================================================================
 
-def get_auth_token(role: str) -> Optional[str]:
-    """Get auth token for a role."""
+# Token cache with timestamps for refresh
+_token_cache: Dict[str, Tuple[str, float]] = {}
+TOKEN_REFRESH_INTERVAL = 300  # Refresh token every 5 minutes (300 seconds)
+
+
+def get_auth_token(role: str, force_refresh: bool = False) -> Optional[str]:
+    """Get auth token for a role with automatic refresh."""
     if not HAS_SUPABASE:
         return None
 
@@ -283,16 +288,37 @@ def get_auth_token(role: str) -> Optional[str]:
         print(f"WARNING: Unknown role '{role}'")
         return None
 
+    # Check cache unless force refresh
+    if not force_refresh and role in _token_cache:
+        token, timestamp = _token_cache[role]
+        age = time.time() - timestamp
+        if age < TOKEN_REFRESH_INTERVAL:
+            return token
+
     try:
         client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
         auth = client.auth.sign_in_with_password({
             "email": user["email"],
             "password": user["password"]
         })
-        return auth.session.access_token
+        token = auth.session.access_token
+        _token_cache[role] = (token, time.time())
+        return token
     except Exception as e:
         print(f"WARNING: Auth failed for {role}: {e}")
         return None
+
+
+def refresh_token_if_needed(role: str) -> Optional[str]:
+    """Check if token needs refresh and refresh if necessary."""
+    if role in _token_cache:
+        token, timestamp = _token_cache[role]
+        age = time.time() - timestamp
+        if age >= TOKEN_REFRESH_INTERVAL:
+            print(f"  [Refreshing {role} token after {age:.0f}s...]")
+            return get_auth_token(role, force_refresh=True)
+        return token
+    return get_auth_token(role, force_refresh=True)
 
 
 # =============================================================================
@@ -505,7 +531,22 @@ def run_evaluation(
         role_results = []
 
         for i, test_case in enumerate(test_cases):
+            # Refresh token every 100 queries or when needed
+            if i > 0 and i % 100 == 0:
+                token = refresh_token_if_needed(role)
+                if not token:
+                    print(f"  WARNING: Failed to refresh token for {role}")
+                    break
+
             result = evaluate_query(test_case, token, role)
+
+            # If we get a 401, immediately refresh and retry once
+            if result.status == "error" and result.status_code == 401:
+                print(f"  [Token expired at query {i+1}, refreshing...]")
+                token = get_auth_token(role, force_refresh=True)
+                if token:
+                    result = evaluate_query(test_case, token, role)
+
             role_results.append(result)
             completed += 1
 
