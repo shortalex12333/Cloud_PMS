@@ -1131,3 +1131,90 @@ export async function downloadAndSaveAttachment(
     };
   }
 }
+
+// ============================================================================
+// SAVE ATTACHMENT FOR PREVIEW (with micro-actions support)
+// ============================================================================
+
+export type SaveAttachmentResult = {
+  success: true;
+  document_id: string;
+  storage_path: string;
+  already_saved?: boolean;
+} | {
+  success: false;
+  error: string;
+};
+
+/**
+ * Save an email attachment to storage for micro-actions.
+ *
+ * This persists the attachment to Supabase Storage and creates a
+ * doc_yacht_library record, enabling document micro-actions like
+ * "Add to Handover" or "Attach to Work Order".
+ *
+ * SOC-2 compliant:
+ * - Yacht-scoped storage path ({yacht_id}/email-attachments/...)
+ * - Audit logged
+ * - Role-checked server-side
+ * - Idempotent (won't duplicate if already saved)
+ */
+export async function saveAttachmentForPreview(
+  messageId: string,
+  attachmentId: string,
+  fileName: string,
+  idempotencyKey?: string
+): Promise<SaveAttachmentResult> {
+  try {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_BASE}/email/evidence/save-attachment`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message_id: messageId,
+        attachment_id: attachmentId,
+        file_name: fileName,
+        idempotency_key: idempotencyKey || `${messageId}:${attachmentId}`,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorDetail = 'Failed to save attachment';
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || errorDetail;
+      } catch {
+        // Response may not be JSON
+      }
+
+      // Handle specific error cases
+      if (response.status === 403) {
+        errorDetail = 'Insufficient permissions to save attachments';
+      } else if (response.status === 413) {
+        errorDetail = 'File is too large (max 50MB)';
+      } else if (response.status === 415) {
+        errorDetail = 'This file type is not permitted';
+      }
+
+      return { success: false, error: errorDetail };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      document_id: data.document_id,
+      storage_path: data.storage_path,
+      already_saved: data.already_saved,
+    };
+  } catch (error) {
+    console.error('[saveAttachmentForPreview] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}

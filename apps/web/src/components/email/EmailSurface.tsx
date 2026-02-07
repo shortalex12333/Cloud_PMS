@@ -36,6 +36,7 @@ import {
   useEmailBackfill,
   downloadAndSaveAttachment,
   fetchAttachmentBlob,
+  saveAttachmentForPreview,
   useWatcherStatus,
   useOutlookConnection,
   usePrefetchThread,
@@ -1074,6 +1075,8 @@ interface ViewerState {
   contentType: string;
   blobUrl: string;
   outlookUrl?: string;
+  /** Document ID if saved to storage (enables micro-actions) */
+  documentId?: string;
 }
 
 function AttachmentsPanel({ attachments, providerMessageId, webLink }: AttachmentsPanelProps) {
@@ -1083,26 +1086,74 @@ function AttachmentsPanel({ attachments, providerMessageId, webLink }: Attachmen
     contentType: '',
     blobUrl: '',
   });
+  const [savingAttachment, setSavingAttachment] = useState(false);
 
-  // Handle opening attachment in viewer
+  // Handle opening attachment in viewer (with optional save for micro-actions)
   const handleViewAttachment = useCallback(
-    async (result: AttachmentBlobResult) => {
+    async (result: AttachmentBlobResult, attachmentId?: string) => {
       // Revoke previous blob URL if any
       if (viewer.blobUrl) {
         URL.revokeObjectURL(viewer.blobUrl);
       }
 
       const blobUrl = URL.createObjectURL(result.blob);
+      let documentId: string | undefined;
+
+      // Try to save attachment to storage for micro-actions (fire-and-forget)
+      // This enables "Add to Handover", "Attach to WO" etc.
+      if (providerMessageId && attachmentId) {
+        setSavingAttachment(true);
+        try {
+          const saveResult = await saveAttachmentForPreview(
+            providerMessageId,
+            attachmentId,
+            result.fileName
+          );
+          if (saveResult.success) {
+            documentId = saveResult.document_id;
+            console.log('[AttachmentsPanel] Saved for micro-actions:', documentId);
+          }
+        } catch (err) {
+          // Non-blocking - viewer still opens
+          console.warn('[AttachmentsPanel] Save for preview failed:', err);
+        } finally {
+          setSavingAttachment(false);
+        }
+      }
+
       setViewer({
         open: true,
         fileName: result.fileName,
         contentType: result.contentType,
         blobUrl,
         outlookUrl: webLink,
+        documentId,
       });
     },
-    [viewer.blobUrl, webLink]
+    [viewer.blobUrl, webLink, providerMessageId]
   );
+
+  // Handle micro-actions from viewer dropdown
+  const handleMicroAction = useCallback((action: string, documentId: string) => {
+    console.log('[AttachmentsPanel] Micro-action:', action, documentId);
+
+    switch (action) {
+      case 'add_to_handover':
+        // TODO: Open handover modal or trigger mutation
+        alert(`Add to Handover: ${documentId}`);
+        break;
+      case 'attach_to_work_order':
+        // TODO: Open work order picker modal
+        alert(`Attach to Work Order: ${documentId}`);
+        break;
+      case 'unlink_from_work_order':
+        // TODO: Show confirmation and trigger unlink mutation
+        alert(`Unlink from Work Order: ${documentId}`);
+        break;
+      default:
+        console.warn('Unknown micro-action:', action);
+    }
+  }, []);
 
   // Handle closing viewer
   const handleCloseViewer = useCallback(() => {
@@ -1156,7 +1207,7 @@ function AttachmentsPanel({ attachments, providerMessageId, webLink }: Attachmen
         </div>
       </div>
 
-      {/* Document Viewer Overlay */}
+      {/* Document Viewer Overlay - allowDownload=false for email attachments (SOC-2) */}
       <DocumentViewerOverlay
         open={viewer.open}
         onClose={handleCloseViewer}
@@ -1164,6 +1215,9 @@ function AttachmentsPanel({ attachments, providerMessageId, webLink }: Attachmen
         contentType={viewer.contentType}
         blobUrl={viewer.blobUrl}
         outlookUrl={viewer.outlookUrl}
+        allowDownload={false}
+        documentId={viewer.documentId}
+        onMicroAction={handleMicroAction}
       />
     </>
   );
@@ -1181,7 +1235,7 @@ interface AttachmentItemProps {
     size?: number;
   };
   providerMessageId: string;
-  onViewAttachment: (result: AttachmentBlobResult) => void;
+  onViewAttachment: (result: AttachmentBlobResult, attachmentId?: string) => void;
 }
 
 function AttachmentItem({ attachment, providerMessageId, onViewAttachment }: AttachmentItemProps) {
@@ -1203,7 +1257,8 @@ function AttachmentItem({ attachment, providerMessageId, onViewAttachment }: Att
       const result = await fetchAttachmentBlob(providerMessageId, attachment.id, true);
 
       // Always open in document viewer overlay (handles both viewable and non-viewable)
-      onViewAttachment(result);
+      // Pass attachmentId for save-for-micro-actions flow
+      onViewAttachment(result, attachment.id);
       setStatus('idle');
     } catch (err) {
       setStatus('error');
