@@ -288,4 +288,11 @@ async def rag_answer(
 @router.get("/health")
 async def rag_health():
     """Health check for RAG service."""
-    return {"status": "ok", "cache_size": len(_cache)}
+    import os
+    return {
+        "status": "ok",
+        "cache_size": len(_cache),
+        "version": "2026-02-07-v2",
+        "openai_key_set": bool(os.environ.get('OPENAI_API_KEY')),
+        "read_dsn_set": bool(os.environ.get('READ_DB_DSN') or os.environ.get('DATABASE_URL')),
+    }
