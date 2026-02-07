@@ -7,6 +7,7 @@ Phase 7h: Point-based scoring and threshold logic for link suggestions.
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,11 @@ class ScoringEngine:
 
     SCORE_TABLE = {
         # Hard signals (safe to auto-confirm)
-        'wo_id_match': 120,
-        'po_id_match': 120,
-        'eq_id_match': 120,
-        'fault_id_match': 120,
-        'uuid_match': 120,
+        'wo_id_match': 135,
+        'po_id_match': 135,
+        'eq_id_match': 135,
+        'fault_id_match': 135,
+        'uuid_match': 135,
 
         # Strong signals
         'part_number_match': 70,
@@ -104,6 +105,12 @@ class ScoringEngine:
         if not candidates:
             return []
 
+        # Set base score from SCORE_TABLE based on match_reason
+        for candidate in candidates:
+            match_reason = candidate.get('match_reason', 'unknown')
+            base_score = self.SCORE_TABLE.get(match_reason, 0)
+            candidate['score'] = base_score
+
         # Apply bonus scoring based on context
         if context:
             candidates = self._apply_context_bonuses(candidates, context)
@@ -162,9 +169,10 @@ class ScoringEngine:
                 except:
                     pass
 
-            # Open status bonus
-            status = candidate.get('status', '').lower()
-            if status in ('open', 'in_progress', 'pending'):
+            # Open status bonus (using StatusMapper for canonical comparison)
+            from services.status_mapper import StatusMapper
+            status = candidate.get('status', '')
+            if StatusMapper.is_wo_active(status):
                 bonus = self.SCORE_TABLE['object_is_open']
                 candidate['score'] = candidate.get('score', 0) + bonus
                 bonuses.append(('object_is_open', bonus))
@@ -308,32 +316,72 @@ class ScoringEngine:
     # L2.5 Hybrid Fusion Scoring
     # ==========================================================================
 
+    def normalize_vector_score(self, raw_cosine: float, mu: float = 0.72, sigma: float = 0.05) -> float:
+        """
+        Logistic normalization for vector similarity scores.
+
+        Transforms cosine similarity to [0,1] with configurable μ (center) and σ (spread).
+
+        Args:
+            raw_cosine: Raw cosine similarity from search_index (typically 0.6-0.9)
+            mu: Center point for logistic (default: 0.72)
+            sigma: Spread parameter (default: 0.05)
+
+        Returns:
+            Normalized score in [0, 1] range
+        """
+        try:
+            return 1.0 / (1.0 + math.exp(-(raw_cosine - mu) / sigma))
+        except (OverflowError, ZeroDivisionError):
+            # Handle edge cases
+            return 0.0 if raw_cosine < mu else 1.0
+
     def compute_hybrid_fusion_score(
         self,
         score_inputs: Dict[str, float],
-        use_rrf: bool = False
+        use_rrf: bool = True,
+        mu: float = 0.72,
+        sigma: float = 0.05
     ) -> float:
         """
         Compute hybrid fusion score from search_index signals.
 
+        Applies normalization:
+        - s_text: Clamped to [0, 1]
+        - s_vector: Logistic normalization 1/(1+exp(-(s-μ)/σ))
+        - s_recency: Used as-is (exponential decay from RPC)
+        - s_bias: Used as-is (from search_role_bias table)
+
+        Then blends with RRF: α·Score + (1-α)·RRF_scaled
+
         Args:
             score_inputs: Dict with s_text, s_vector, s_recency, s_bias, rank_text, rank_vector
-            use_rrf: If True, blend weighted + RRF scores (default: False)
+            use_rrf: If True, blend weighted + RRF scores (default: True)
+            mu: Center point for vector logistic (default: 0.72)
+            sigma: Spread for vector logistic (default: 0.05)
 
         Returns:
             Fused score in [0, 1] range
         """
-        # Weighted fusion
+        # Get weights
         w_text = self.HYBRID_WEIGHTS['text']
         w_vector = self.HYBRID_WEIGHTS['vector']
         w_recency = self.HYBRID_WEIGHTS['recency']
         w_bias = self.HYBRID_WEIGHTS['bias']
 
-        s_text = score_inputs.get('s_text', 0.0)
-        s_vector = score_inputs.get('s_vector', 0.0)
+        # Get raw scores
+        s_text_raw = score_inputs.get('s_text', 0.0)
+        s_vector_raw = score_inputs.get('s_vector', 0.0)
         s_recency = score_inputs.get('s_recency', 0.0)
         s_bias = score_inputs.get('s_bias', 0.5)
 
+        # Normalize s_text: clamp to [0, 1]
+        s_text = max(0.0, min(1.0, s_text_raw))
+
+        # Normalize s_vector: logistic transformation
+        s_vector = self.normalize_vector_score(s_vector_raw, mu=mu, sigma=sigma)
+
+        # Compute weighted fusion
         weighted_score = (
             w_text * s_text +
             w_vector * s_vector +
@@ -344,7 +392,7 @@ class ScoringEngine:
         if not use_rrf:
             return weighted_score
 
-        # Optional RRF blending
+        # RRF blending
         rank_text = score_inputs.get('rank_text', 999999)
         rank_vector = score_inputs.get('rank_vector', 999999)
 
@@ -353,13 +401,13 @@ class ScoringEngine:
             1.0 / (self.RRF_K + rank_vector)
         )
 
-        # Normalize RRF to [0, 1] (approximate)
+        # Normalize RRF to [0, 1]
         # Max possible RRF score is 2/(K+1) when rank=1 for both
         rrf_max = 2.0 / (self.RRF_K + 1)
-        rrf_normalized = min(rrf_score / rrf_max, 1.0)
+        rrf_scaled = min(rrf_score / rrf_max, 1.0)
 
         # Blend: α * weighted + (1-α) * RRF
-        final_score = self.RRF_ALPHA * weighted_score + (1 - self.RRF_ALPHA) * rrf_normalized
+        final_score = self.RRF_ALPHA * weighted_score + (1 - self.RRF_ALPHA) * rrf_scaled
 
         return final_score
 
@@ -386,14 +434,14 @@ class ScoringEngine:
     def score_hybrid_candidates(
         self,
         candidates: List[Dict[str, Any]],
-        use_rrf: bool = False
+        use_rrf: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Score candidates from L2.5 hybrid search using fusion.
 
         Args:
             candidates: Candidates from find_search_index_candidates()
-            use_rrf: Whether to use RRF blending (default: False)
+            use_rrf: Whether to use RRF blending (default: True)
 
         Returns:
             Scored candidates with 'score' field set
@@ -402,7 +450,7 @@ class ScoringEngine:
             score_inputs = candidate.get('score_inputs', {})
 
             if score_inputs:
-                # Compute fusion score
+                # Compute fusion score with normalization + RRF
                 fusion_score = self.compute_hybrid_fusion_score(score_inputs, use_rrf=use_rrf)
 
                 # Scale to point system

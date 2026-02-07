@@ -49,6 +49,9 @@ work_orders:
   source_table: pms_work_orders
   object_type: work_order
   search_text:
+    # WO number first for L1 exact ID matching
+    - field: wo_number
+      cast: text
     - field: title
       cast: text
     - field: description
@@ -56,6 +59,13 @@ work_orders:
     - field: related_text
       cast: text
     - field: completion_notes
+      cast: text
+    # Additional fields for L2.5 semantic matching
+    - field: notes
+      cast: text
+    - field: warranty_notes
+      cast: text
+    - field: claim_description
       cast: text
   filters:
     status: status

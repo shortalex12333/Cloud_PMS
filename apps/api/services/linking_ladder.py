@@ -431,12 +431,44 @@ class LinkingLadder:
                 # Prefer meta_embedding (summary of thread) over individual message embedding
                 embedding = result.data.get('meta_embedding') or result.data.get('embedding')
                 if embedding:
+                    # Parse string vector format if needed (Supabase returns vector as string)
+                    if isinstance(embedding, str):
+                        import json
+                        try:
+                            embedding = json.loads(embedding)
+                        except json.JSONDecodeError:
+                            logger.warning(f"[LinkingLadder] Invalid embedding format for thread {thread_id}")
+                            return None
                     return embedding
 
         except Exception as e:
             logger.debug(f"[LinkingLadder] Error fetching thread embedding: {e}")
 
         return None
+
+    def _map_match_reason_to_suggested_reason(self, match_reason: str) -> str:
+        """
+        Map internal match_reason to database suggested_reason enum.
+
+        Args:
+            match_reason: Internal match reason from CandidateFinder
+
+        Returns:
+            Valid suggested_reason for email_links table
+        """
+        mapping = {
+            'wo_id_match': 'wo_pattern',
+            'po_id_match': 'po_pattern',
+            'part_number_match': 'part_number',
+            'serial_match': 'serial_match',
+            'vendor_email_match': 'vendor_domain',
+            'vendor_hash_match': 'vendor_domain',
+            'vendor_domain_match': 'vendor_domain',
+            'hybrid_search_index': 'token_match',
+            'equipment_wo_link': 'token_match',
+            'oem_number_match': 'part_number',
+        }
+        return mapping.get(match_reason, 'token_match')
 
     async def create_link_suggestion(
         self,
@@ -469,6 +501,11 @@ class LinkingLadder:
         # Determine confidence level
         confidence = selection.get('confidence', 'suggested')
 
+        # Map match_reason to valid suggested_reason
+        suggested_reason = self._map_match_reason_to_suggested_reason(
+            candidate.get('match_reason', 'unknown')
+        )
+
         # Create primary suggestion
         try:
             result = self.supabase.table('email_links').insert({
@@ -480,7 +517,7 @@ class LinkingLadder:
                 'is_primary': True,
                 'score': candidate.get('score'),
                 'score_breakdown': candidate.get('score_breakdown'),
-                'suggested_reason': candidate.get('match_reason'),
+                'suggested_reason': suggested_reason,
                 'is_active': confidence == 'deterministic',  # Auto-active for L1
             }).execute()
 
@@ -494,6 +531,9 @@ class LinkingLadder:
         all_candidates = selection.get('all_candidates', selection.get('candidates', []))
         for i, alt in enumerate(all_candidates[1:max_suggestions]):
             try:
+                alt_suggested_reason = self._map_match_reason_to_suggested_reason(
+                    alt.get('match_reason', 'unknown')
+                )
                 result = self.supabase.table('email_links').insert({
                     'yacht_id': yacht_id,
                     'thread_id': thread_id,
@@ -503,7 +543,7 @@ class LinkingLadder:
                     'is_primary': False,
                     'score': alt.get('score'),
                     'score_breakdown': alt.get('score_breakdown'),
-                    'suggested_reason': alt.get('match_reason'),
+                    'suggested_reason': alt_suggested_reason,
                     'is_active': False,
                 }).execute()
 
