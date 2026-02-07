@@ -255,18 +255,29 @@ async def rag_answer(
         return JSONResponse(content=response_data)
 
     except Exception as e:
-        logger.error(f"RAG error: query_hash={query_hash} error={str(e)}")
+        import traceback
+        error_msg = str(e)
+        error_tb = traceback.format_exc()
+        logger.error(f"RAG error: query_hash={query_hash} error={error_msg}")
+        logger.error(f"RAG traceback: {error_tb}")
 
-        # Return error response (don't expose internal details)
-        error_answer = generate_error_answer(request.query, query_hash, str(e))
+        # Return error response with debug info in dev mode
+        error_answer = generate_error_answer(request.query, query_hash, error_msg)
+        response_content = {
+            'answer': error_answer.answer,
+            'citations': [],
+            'used_doc_ids': [],
+            'confidence': 0.0,
+        }
+
+        # Include error details for debugging
+        if request.debug:
+            response_content['debug_error'] = error_msg
+            response_content['debug_traceback'] = error_tb[:500]
+
         return JSONResponse(
             status_code=500,
-            content={
-                'answer': error_answer.answer,
-                'citations': [],
-                'used_doc_ids': [],
-                'confidence': 0.0,
-            }
+            content=response_content
         )
 
 
