@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 
 INPUT_PATH = Path("tests/search/goldset.jsonl")
-OUTPUT_PATH = Path("tests/search/goldset_v2.jsonl")
+OUTPUT_PATH = Path("tests/search/goldset_v3.jsonl")  # v3 with fixed intents and looser anchors
 
 # =============================================================================
 # SINGLETON KEYWORDS (no domain anchor alone)
@@ -37,20 +37,35 @@ SINGLETON_KEYWORDS = {
 # =============================================================================
 
 COMPOUND_ANCHORS = {
-    # hours_of_rest compounds
+    # hours_of_rest compounds - includes abbreviations (hrs, hor)
     'hours_of_rest': [
+        # Core patterns
         r'\bcrew\s+rest\b',
         r'\brest\s+hours?\b',
-        r'\bhours?\s+of\s+rest\b',
+        r'\brest\s+hrs\b',  # abbreviation
+        r'\bhours?[\s-]+of[\s-]+rest\b',  # matches "hours of rest" and "hours-of-rest"
         r'\bwork\s+hours?\b',
+        r'\bwork\s+hrs\b',  # abbreviation
         r'\brest\s+violations?\b',
         r'\brest\s+records?\b',
         r'\brest\s+compliance\b',
+        # Monthly sign-off patterns
         r'\bmonthly\s+sign[- ]?off',
+        r'\bmonthly\s+(hours?|hrs|record)',
         r'\bsign[- ]?off.*hours?\b',
-        r'\blog\s+(my\s+)?hours?\b',
-        r'\bupdate\s+(my\s+)?hours?\b',
-        r'\bhor\b',
+        r'\bsign\s+monthly\b',
+        r'\bsign\s+(my\s+)?monthly',
+        # Log/update patterns with abbreviations
+        r'\blog\b.*\b(hours?|hrs|rest)\b',
+        r'\b(log|record|enter)\s+(my\s+)?(hours?|hrs|rest)\b',
+        r'\bneed\s+to\s+log\b',
+        r'\bupdate\s+(my\s+)?(hours?|hrs|rest)\b',
+        # Abbreviations with context
+        r'\bhor\s+\w+',  # "hor records", "hor violations"
+        r'\bhor\b',  # Standalone abbreviation
+        r'\bhrs\s+of\s+rest\b',
+        # Acknowledge patterns
+        r'\back(nowledge)?\s+(rest\s+)?violation',
     ],
     # receiving compounds
     'receiving': [
@@ -120,21 +135,42 @@ COMPOUND_ANCHORS = {
 
 INTENT_PATTERNS = {
     'CREATE': [
-        r'\bcreate\b', r'\badd\b', r'\bnew\b', r'\blog\b',
-        r'\breport\s+fault\b', r'\bgenerate\b',
+        r'\bcreate\s+\w+',
+        r'\badd\s+(new\s+)?\w+',
+        # Hours of rest logging - expanded patterns
+        r'\blog\b.*\b(hours?|hrs|rest)\b',  # "log my hours", "log hrs"
+        r'\b(log|record|enter)\s+(my\s+)?(hours?|hrs|rest)',
+        r'\bneed\s+to\s+log\b',  # "i need to log rest today"
+        r'\breport\s+(a\s+)?(fault|issue)',
     ],
     'UPDATE': [
-        r'\bupdate\b', r'\bedit\b', r'\bmodify\b', r'\bchange\b', r'\bcorrect\b',
+        r'\bupdate\s+(my\s+)?\w+',
+        r'\bedit\s+\w+',
+        r'\bmodify\s+\w+',
+        r'\bchange\s+\w+',
+        r'\bcorrect\s+\w+',
     ],
     'APPROVE': [
-        r'\bsign\b(?!\s+off\s+on)', r'\bsign[- ]?off\b', r'\bapprove\b',
-        r'\backnowledge\b',
+        r'\bsign\s*off\b',
+        r'\bsignoff\b',
+        # Sign + monthly/hours/record patterns
+        r'\bsign\b.*\b(monthly|hours?|hrs|record)\b',
+        r'\bpls\s+sign\b',
+        r'\bwho\s+needs?\s+to\s+sign\b',
+        r'\bapprove\s+\w+',
+        r'\baccept\s+(the\s+)?(delivery|order)',
+        r'\back(nowledge)?\s+\w+',  # "acknowledge rest violation"
     ],
     'DELETE': [
-        r'\bdelete\b', r'\bremove\b', r'\bcancel\b',
+        r'\bdelete\s+\w+',
+        r'\bremove\s+\w+',
+        r'\bcancel\s+\w+',
     ],
     'EXPORT': [
-        r'\bexport\b', r'\bdownload\b', r'\bprint\b', r'\bgenerate\s+report\b',
+        r'\bexport\s+\w+',
+        r'\bdownload\s+\w+',
+        r'\bprint\s+\w+',
+        r'\bgenerate\s+report',
     ],
 }
 
@@ -272,8 +308,8 @@ def relabel_query(item: Dict[str, Any]) -> Dict[str, Any]:
     # Detect domain with compound anchors
     domain, domain_confidence = detect_domain(query)
 
-    # Check for vague queries
-    if is_vague_query(query) and domain_confidence < 0.7:
+    # Check for vague queries - only set to explore if truly vague AND low confidence
+    if is_vague_query(query) and domain_confidence < 0.4:
         domain = None
         domain_confidence = 0.0
 
@@ -283,8 +319,8 @@ def relabel_query(item: Dict[str, Any]) -> Dict[str, Any]:
     # Extract filters
     filters = extract_filters(query)
 
-    # Determine mode
-    mode = 'focused' if domain and domain_confidence >= 0.6 else 'explore'
+    # Determine mode - lowered threshold from 0.6 to 0.4
+    mode = 'focused' if domain and domain_confidence >= 0.4 else 'explore'
 
     # Build updated item
     updated = item.copy()
