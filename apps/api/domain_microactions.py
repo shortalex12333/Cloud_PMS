@@ -749,22 +749,40 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
 
 COMPOUND_ANCHORS: Dict[str, List[str]] = {
     # hours_of_rest compounds - require multi-word context
+    # Includes abbreviations: hrs, hor
     'hours_of_rest': [
+        # Core patterns
         r'\bcrew\s+rest\b',
         r'\brest\s+hours?\b',
-        r'\bhours?\s+of\s+rest\b',
+        r'\brest\s+hrs\b',  # abbreviation
+        r'\bhours?[\s-]+of[\s-]+rest\b',  # matches "hours of rest" and "hours-of-rest"
         r'\bwork\s+hours?\b',
+        r'\bwork\s+hrs\b',  # abbreviation
         r'\brest\s+violations?\b',
         r'\brest\s+records?\b',
+        r'\brest\s+recordz\b',  # common typo - but search handles fuzzy
         r'\brest\s+compliance\b',
+        # Monthly sign-off patterns
         r'\bmonthly\s+sign[- ]?off',
+        r'\bmonthly\s+(hours?|hrs|record)',
         r'\bsign[- ]?off.*hours?\b',
-        r'\blog\s+(my\s+)?hours?\b',
-        r'\bupdate\s+(my\s+)?hours?\b',
-        r'\bhor\b',  # Explicit abbreviation
+        r'\bsign\s+monthly\b',
+        r'\bsign\s+(my\s+)?monthly',
+        # Log/update patterns with abbreviations
+        r'\blog\s+(my\s+)?(hours?|hrs|rest)\b',
+        r'\brecord\s+(my\s+)?(hours?|hrs|rest)\b',
+        r'\benter\s+(my\s+)?(hours?|hrs|rest)\b',
+        r'\bupdate\s+(my\s+)?(hours?|hrs|rest)\b',
+        # Abbreviations with context
+        r'\bhor\s+\w+',  # "hor records", "hor violations"
+        r'\bhor\b',  # Standalone abbreviation
         r'\bh\.o\.r\b',
+        r'\bhrs\s+of\s+rest\b',
+        # Compliance
         r'\bmlc\s+compliance\b',
         r'\bfatigue\s+management\b',
+        # Acknowledge patterns
+        r'\back(nowledge)?\s+(rest\s+)?violation',
     ],
     # receiving compounds - status + delivery/receiving
     'receiving': [
@@ -1244,7 +1262,10 @@ def detect_intent_with_confidence(query: str) -> Tuple[str, float]:
             r'\bcreate\s+\w+',
             r'\badd\s+(new\s+)?\w+',
             r'\bnew\s+\w+\s+(order|task|fault|item)',
-            r'\blog\s+(new\s+)?(fault|issue|hours)',
+            # Hours of rest logging - expanded patterns
+            r'\blog\b.*\b(hours?|hrs|rest)\b',  # "log my hours", "log hrs", "i need to log rest"
+            r'\b(log|record|enter)\s+(my\s+)?(hours?|hrs|rest)',  # "log my hours", "record hours"
+            r'\bneed\s+to\s+log\b',  # "i need to log rest today"
             r'\breport\s+(a\s+)?(fault|issue)',
         ],
         'UPDATE': [
@@ -1255,11 +1276,18 @@ def detect_intent_with_confidence(query: str) -> Tuple[str, float]:
             r'\bcorrect\s+\w+',
         ],
         'APPROVE': [
+            # Sign-off patterns - expanded
             r'\bsign\s*off\b',
             r'\bsign[-\s]?off\s+\w+',
+            r'\bsignoff\b',
+            # Sign + monthly/hours/record patterns
+            r'\bsign\b.*\b(monthly|hours?|hrs|record)\b',  # "sign monthly hours", "sign my monthly record"
+            r'\bpls\s+sign\b',  # "pls sign my monthly hrs"
+            r'\bwho\s+needs?\s+to\s+sign\b',  # "who needs to sign their monthly hours"
             r'\bapprove\s+\w+',
             r'\baccept\s+(the\s+)?(delivery|order)',  # verb accept, not adjective
-            r'\backnowledge\s+\w+',
+            # Acknowledge patterns
+            r'\back(nowledge)?\s+\w+',  # "acknowledge rest violation", "ack violation"
         ],
         'DELETE': [
             r'\bdelete\s+\w+',
@@ -1356,13 +1384,13 @@ def get_detection_context(query: str) -> Dict[str, Any]:
     filters = extract_filters_from_query(query)
 
     # Determine mode based on confidence threshold
-    CONFIDENCE_THRESHOLD = 0.6
+    CONFIDENCE_THRESHOLD = 0.4  # Lowered from 0.6 to reduce accidental explore mode
     if domain and domain_confidence >= CONFIDENCE_THRESHOLD:
         mode = 'focused'
     else:
         mode = 'explore'
         # If below threshold, set domain to None for explore mode
-        if domain_confidence < CONFIDENCE_THRESHOLD:
+        if domain_confidence < CONFIDENCE_THRESHOLD:  # Below 0.4 → explore mode
             domain = None
             domain_confidence = 0.0
 

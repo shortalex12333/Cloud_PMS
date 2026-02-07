@@ -60,14 +60,14 @@ YACHT_ID = "85fe1119-b04c-41ac-80f1-829d23322598"
 
 # Test accounts - using verified working accounts
 USERS = {
-    "crew": {"email": "crew.tenant@alex-short.com", "password": "Password2!"},
-    "hod": {"email": "hod.tenant@alex-short.com", "password": "Password2!"},
+    "crew": {"email": "crew.test@alex-short.com", "password": "Password2!"},
+    "hod": {"email": "hod.test@alex-short.com", "password": "Password2!"},
     "captain": {"email": "x@alex-short.com", "password": "Password2!"},
 }
 
 # Paths
 ROOT = Path(__file__).parent.parent.parent
-GOLDSET_PATH = ROOT / "tests/search/goldset_v2.jsonl"  # Use relabeled goldset
+GOLDSET_PATH = ROOT / "tests/search/goldset_v3.jsonl"  # Use relabeled goldset v3 (fixed intents)
 GOLDSET_V1_PATH = ROOT / "tests/search/goldset.jsonl"  # Fallback to v1
 SCENARIO_MATRIX_PATH = ROOT / "apps/api/scenario_matrix.json"
 OUTPUT_DIR = ROOT / "test-results/e2e_comprehensive"
