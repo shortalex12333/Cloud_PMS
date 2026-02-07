@@ -10,9 +10,9 @@
  * SOC-2 compliant: bytes streamed live, no storage at rest.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, ExternalLink, FileText, Image as ImageIcon, File } from 'lucide-react';
+import { X, Download, ExternalLink, FileText, Image as ImageIcon, File, MoreVertical, FileUp, Link2, Unlink } from 'lucide-react';
 
 interface DocumentViewerOverlayProps {
   open: boolean;
@@ -24,6 +24,12 @@ interface DocumentViewerOverlayProps {
   outlookUrl?: string;
   /** Optional: Download URL for fallback */
   downloadUrl?: string;
+  /** Optional: Hide download button (default true). Set false for email attachments. */
+  allowDownload?: boolean;
+  /** Optional: Document ID for micro-actions (if saved to storage) */
+  documentId?: string;
+  /** Optional: Callback for micro-actions */
+  onMicroAction?: (action: string, documentId: string) => void;
 }
 
 // Safe content types for inline viewing
@@ -66,10 +72,15 @@ export default function DocumentViewerOverlay({
   blobUrl,
   outlookUrl,
   downloadUrl,
+  allowDownload = true,
+  documentId,
+  onMicroAction,
 }: DocumentViewerOverlayProps) {
   const [mounted, setMounted] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [pdfError, setPdfError] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
   // Handle client-side mounting for portal
   useEffect(() => {
@@ -129,6 +140,27 @@ export default function DocumentViewerOverlay({
     }
   }, [outlookUrl]);
 
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    };
+    if (showActionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showActionsMenu]);
+
+  // Micro-action handlers
+  const handleMicroAction = useCallback((action: string) => {
+    setShowActionsMenu(false);
+    if (documentId && onMicroAction) {
+      onMicroAction(action, documentId);
+    }
+  }, [documentId, onMicroAction]);
+
   // Don't render on server or if not mounted
   if (!mounted || typeof window === 'undefined') {
     return null;
@@ -168,13 +200,55 @@ export default function DocumentViewerOverlay({
               </button>
             )}
 
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Download</span>
-            </button>
+            {allowDownload && (
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Download</span>
+              </button>
+            )}
+
+            {/* Micro-actions dropdown (only if document is saved) */}
+            {documentId && onMicroAction && (
+              <div className="relative" ref={actionsMenuRef}>
+                <button
+                  onClick={() => setShowActionsMenu(!showActionsMenu)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#0a84ff] hover:bg-[#0a84ff]/80 text-white rounded-md transition-colors"
+                  aria-label="Document actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="hidden sm:inline">Actions</span>
+                </button>
+
+                {showActionsMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-[#2c2c2e] border border-zinc-700 rounded-lg shadow-xl z-50 py-1">
+                    <button
+                      onClick={() => handleMicroAction('add_to_handover')}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                    >
+                      <FileUp className="h-4 w-4 text-green-400" />
+                      Add to Handover
+                    </button>
+                    <button
+                      onClick={() => handleMicroAction('attach_to_work_order')}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                    >
+                      <Link2 className="h-4 w-4 text-blue-400" />
+                      Attach to Work Order
+                    </button>
+                    <button
+                      onClick={() => handleMicroAction('unlink_from_work_order')}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                    >
+                      <Unlink className="h-4 w-4 text-orange-400" />
+                      Unlink from Work Order
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={onClose}
@@ -240,13 +314,15 @@ export default function DocumentViewerOverlay({
                     Open in Outlook
                   </button>
                 )}
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </button>
+                {allowDownload && (
+                  <button
+                    onClick={handleDownload}
+                    className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </button>
+                )}
               </div>
             </div>
           )}
