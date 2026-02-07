@@ -99,30 +99,38 @@ class CandidateFinder:
         candidates = []
 
         # 1. Exact WO number match (highest priority)
+        # Check both wo_id (numeric) and wo_number (full alphanumeric like WO-TEST-68DB4A)
+        wo_values = set()
         if 'wo_id' in ids:
-            for wo_num in ids['wo_id']:
-                try:
-                    result = self.supabase.table('pms_work_orders').select(
-                        'id, wo_number, title, status, updated_at'
-                    ).eq('yacht_id', yacht_id).ilike(
-                        'wo_number', f'%{wo_num}%'
-                    ).execute()
+            wo_values.update(ids['wo_id'])
+        if 'wo_number' in ids:
+            wo_values.update(ids['wo_number'])
 
-                    for row in result.data or []:
+        for wo_num in wo_values:
+            try:
+                result = self.supabase.table('pms_work_orders').select(
+                    'id, wo_number, title, status, updated_at'
+                ).eq('yacht_id', yacht_id).ilike(
+                    'wo_number', f'%{wo_num}%'
+                ).execute()
+
+                for row in result.data or []:
+                    # Avoid duplicates
+                    if not any(c['object_id'] == row['id'] for c in candidates):
                         candidates.append({
                             'object_type': 'work_order',
                             'object_id': row['id'],
-                            'label': f"WO-{row['wo_number']}: {row['title']}",
+                            'label': f"{row['wo_number']}: {row['title']}",
                             'match_reason': 'wo_id_match',
-                            'score': 120,  # Hard match
+                            'score': 135,  # Hard match - highest score for L1
                             'status': row.get('status'),
                             'updated_at': row.get('updated_at'),
                         })
 
-                except Exception as e:
-                    logger.error(f"[CandidateFinder] WO number search error: {e}")
+            except Exception as e:
+                logger.error(f"[CandidateFinder] WO number search error: {e}")
 
-        # 2. Vendor hash match on open work orders
+        # 2. Vendor hash match on active work orders (planned or in_progress)
         sender_hash = vendor.get('sender_hash')
         if sender_hash:
             try:
@@ -130,7 +138,7 @@ class CandidateFinder:
                     'id, wo_number, title, status'
                 ).eq('yacht_id', yacht_id).eq(
                     'vendor_contact_hash', sender_hash
-                ).eq('status', 'open').execute()
+                ).in_('status', ['planned', 'in_progress']).execute()
 
                 for row in result.data or []:
                     # Don't duplicate if already matched by WO number
@@ -363,7 +371,7 @@ class CandidateFinder:
                 'id, wo_number, title, status, updated_at'
             ).eq('yacht_id', yacht_id).eq(
                 'equipment_id', equipment_id
-            ).eq('status', 'open').execute()
+            ).in_('status', ['planned', 'in_progress']).execute()
 
             return [{
                 'object_type': 'work_order',
