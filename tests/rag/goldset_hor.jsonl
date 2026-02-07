@@ -1,0 +1,30 @@
+{"id": "hor-001", "query": "What are the minimum rest hours required by MLC regulations?", "expected_answer_contains": ["10 hours", "minimum", "24", "rest"], "domain": "hours_of_rest", "difficulty": 1}
+{"id": "hor-002", "query": "How many hours of rest must seafarers have in any 7-day period?", "expected_answer_contains": ["77 hours", "7-day", "week"], "domain": "hours_of_rest", "difficulty": 1}
+{"id": "hor-003", "query": "What is the maximum work period allowed without a break?", "expected_answer_contains": ["14 hours", "maximum", "work"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-004", "query": "How do I log my rest hours?", "expected_answer_contains": ["log", "hours", "record", "enter"], "domain": "hours_of_rest", "difficulty": 1}
+{"id": "hor-005", "query": "What happens if a crew member has a rest violation?", "expected_answer_contains": ["violation", "compliance", "flag", "warning"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-006", "query": "Who needs to sign off on monthly rest records?", "expected_answer_contains": ["captain", "sign", "monthly", "approve"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-007", "query": "What is the difference between rest hours and work hours?", "expected_answer_contains": ["rest", "work", "hours"], "domain": "hours_of_rest", "difficulty": 1}
+{"id": "hor-008", "query": "How are rest violations calculated?", "expected_answer_contains": ["calculate", "violation", "minimum", "hours"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-009", "query": "What is STCW compliance for hours of rest?", "expected_answer_contains": ["STCW", "compliance", "convention", "standards"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-010", "query": "Can exceptions be granted for rest hour requirements?", "expected_answer_contains": ["exception", "emergency", "granted"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-011", "query": "Show me the rest hours policy", "expected_answer_contains": ["policy", "rest", "hours", "compliance"], "domain": "hours_of_rest", "difficulty": 1}
+{"id": "hor-012", "query": "What happens during a port state control inspection for rest hours?", "expected_answer_contains": ["port state", "inspection", "records", "compliance"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-013", "query": "How do I acknowledge a rest violation warning?", "expected_answer_contains": ["acknowledge", "violation", "warning"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-014", "query": "What is the format for rest hour records?", "expected_answer_contains": ["format", "record", "date", "hours"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-015", "query": "Who is responsible for monitoring crew rest compliance?", "expected_answer_contains": ["captain", "responsible", "monitoring", "compliance"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-016", "query": "What are the consequences of repeated rest violations?", "expected_answer_contains": ["consequences", "violation", "repeated"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-017", "query": "How long must rest hour records be kept?", "expected_answer_contains": ["retain", "keep", "years", "records"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-018", "query": "What is the watchkeeping schedule requirement?", "expected_answer_contains": ["watchkeeping", "schedule", "hours"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-019", "query": "How do split rest periods work?", "expected_answer_contains": ["split", "rest", "period", "hours"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-020", "query": "What documentation is needed for rest hour compliance?", "expected_answer_contains": ["documentation", "records", "compliance"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-021", "query": "Explain the 10/6 hour rest rule", "expected_answer_contains": ["10", "6", "hours", "period"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-022", "query": "What is the difference between scheduled and actual rest hours?", "expected_answer_contains": ["scheduled", "actual", "rest"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-023", "query": "How do drills and emergencies affect rest hours?", "expected_answer_contains": ["drill", "emergency", "rest", "hours"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-024", "query": "What is the crew rest compliance report?", "expected_answer_contains": ["report", "compliance", "crew"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-025", "query": "How to generate a rest hours summary for the month?", "expected_answer_contains": ["generate", "summary", "month", "report"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-026", "query": "What is the minimum continuous rest period?", "expected_answer_contains": ["continuous", "rest", "hours", "minimum"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-027", "query": "How are night hours treated differently?", "expected_answer_contains": ["night", "hours", "rest"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-028", "query": "What is MLC 2006 Standard A2.3?", "expected_answer_contains": ["MLC", "2006", "A2.3", "hours", "rest"], "domain": "hours_of_rest", "difficulty": 3}
+{"id": "hor-029", "query": "How do I correct a rest hour entry?", "expected_answer_contains": ["correct", "edit", "update", "entry"], "domain": "hours_of_rest", "difficulty": 2}
+{"id": "hor-030", "query": "What triggers a non-compliance flag?", "expected_answer_contains": ["trigger", "non-compliance", "flag", "violation"], "domain": "hours_of_rest", "difficulty": 2}

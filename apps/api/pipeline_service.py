@@ -340,6 +340,18 @@ except Exception as e:
     logger.error("Receiving image upload endpoints will not be available")
 
 # ============================================================================
+# RAG ANSWER ENDPOINT
+# ============================================================================
+
+try:
+    from routes.rag_endpoint import router as rag_router
+    app.include_router(rag_router)
+    logger.info("✅ RAG endpoint registered at /api/rag/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register RAG endpoint: {e}")
+    logger.error("RAG answer endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
