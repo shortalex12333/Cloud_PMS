@@ -118,12 +118,11 @@ class LinkSuggesterWorker:
         Run linking ladder and create suggestions for a thread.
 
         Args:
-            thread: Thread record with id, yacht_id, latest_subject, latest_from_address, extracted_tokens
+            thread: Thread record with id, yacht_id, latest_subject, extracted_tokens
         """
         thread_id = thread['id']
         yacht_id = thread['yacht_id']
         subject = thread.get('latest_subject', '')
-        from_address = thread.get('latest_from_address', '')
 
         logger.debug(f"Processing thread {thread_id[:8]}... subject='{subject[:50]}'")
 
@@ -135,9 +134,9 @@ class LinkSuggesterWorker:
             yacht_id=yacht_id,
             thread_id=thread_id,
             subject=subject,
-            from_address=from_address,
-            attachments=None,  # TODO: Load if needed
-            participant_hashes=None,  # TODO: Load if needed
+            from_address=None,  # Background worker doesn't have from_address readily available
+            attachments=None,
+            participant_hashes=None,
             context=None
         )
 
@@ -171,7 +170,7 @@ class LinkSuggesterWorker:
         """
         try:
             result = self.supabase.table('email_threads').select(
-                'id, yacht_id, latest_subject, latest_from_address, extracted_tokens'
+                'id, yacht_id, latest_subject, extracted_tokens'
             ).is_(
                 'suggestions_generated_at', 'null'
             ).not_.is_(
