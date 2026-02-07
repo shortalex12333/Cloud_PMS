@@ -32,9 +32,11 @@ class TokenExtractor:
 
     ID_PATTERNS = {
         # WO patterns - capture both numeric-only and full alphanumeric formats
-        'wo_id': re.compile(r'\b(?:WO[-#]?|Work\s*Order[-#:\s]*)(\d{1,6})\b', re.IGNORECASE),
+        # Support both hyphen (-) and en-dash (–) and em-dash (—)
+        'wo_id': re.compile(r'\b(?:WO[-–—#]?|Work\s*Order[-–—#:\s]*)(\d{1,6})\b', re.IGNORECASE),
         # Full WO number including TEST/alphanumeric variants (WO-TEST-68DB4A, WO-0012, etc.)
-        'wo_number': re.compile(r'\b(WO[-]?(?:TEST[-])?[A-Z0-9]{4,20}(?:[-][A-Z0-9]+)*)\b', re.IGNORECASE),
+        # Requires hyphen/dash after WO to avoid matching words like "working"
+        'wo_number': re.compile(r'\b(WO[-–—](?:TEST[-–—])?[A-Z0-9]{4,20}(?:[-–—][A-Z0-9]+)*)\b', re.IGNORECASE),
         'po_id': re.compile(r'\b(?:PO[-#]?|Purchase\s*Order[-#:\s]*)(\d{1,6})\b', re.IGNORECASE),
         'eq_id': re.compile(r'\b(?:EQ[-#]?)(\d{1,6})\b', re.IGNORECASE),
         'fault_id': re.compile(r'\b(?:FAULT[-#]?|Fault[-#:\s]*)(\d{1,6})\b', re.IGNORECASE),
@@ -52,8 +54,9 @@ class TokenExtractor:
         'part_number': re.compile(r'\b([A-Z]{2,6}[-]?[A-Z0-9]{2,6}(?:[-][A-Z0-9]{2,6})?)\b'),
         # Explicit "Part" prefix patterns (higher priority when mentioned)
         'part_explicit': re.compile(r'\bPart\s+([A-Z0-9][-A-Z0-9]{3,20})\b', re.IGNORECASE),
-        # Serial numbers: S/N or Serial followed by alphanumeric (allows hyphens)
-        'serial_number': re.compile(r'\b(?:S/?N|Serial)[-:\s]*([A-Z0-9][-A-Z0-9]{5,35})\b', re.IGNORECASE),
+        # Serial numbers: S/N or Serial or SN: followed by alphanumeric (allows hyphens)
+        # Also matches standalone SN-prefixed serials like SN525756
+        'serial_number': re.compile(r'\b(?:S/?N[-:\s]*|Serial[-:\s]*|SN[-:\s]*)([A-Z0-9][-A-Z0-9]{5,35})\b', re.IGNORECASE),
         # OEM numbers
         'oem_number': re.compile(r'\b(?:OEM|Original)[-:\s]*([A-Z0-9-]{5,20})\b', re.IGNORECASE),
     }
@@ -187,6 +190,14 @@ class TokenExtractor:
                     else:
                         tokens[key] = list(dict.fromkeys(filtered))
 
+        # De-duplicate: remove serial_numbers from part_numbers (serial takes priority)
+        if 'serial_number' in tokens and 'part_number' in tokens:
+            serial_set = set(s.upper() for s in tokens['serial_number'])
+            tokens['part_number'] = [p for p in tokens['part_number']
+                                     if p.upper() not in serial_set]
+            if not tokens['part_number']:
+                del tokens['part_number']
+
         return tokens
 
     def _is_false_positive(self, match: str, match_type: str) -> bool:
@@ -202,6 +213,15 @@ class TokenExtractor:
         # Check if it's a file extension or common prefix
         if upper in false_positives:
             return True
+
+        # For part_number: exclude WO-prefixed strings (those are work orders)
+        if match_type == 'part_number':
+            if upper.startswith('WO-') or upper.startswith('WO–'):
+                return True
+            # Exclude common words that might match
+            common_words = {'WORKING', 'WORLD', 'WOULD', 'WORDS', 'WORSE'}
+            if upper in common_words:
+                return True
 
         # Serial numbers should have both letters and numbers
         if match_type == 'serial_number':
