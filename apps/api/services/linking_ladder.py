@@ -122,8 +122,8 @@ class LinkingLadder:
         """
         ids = tokens.get('ids', {})
 
-        # Priority order for L1
-        l1_ids = ['wo_id', 'po_id', 'fault_id', 'eq_id']
+        # Priority order for L1 - includes both numeric wo_id and full wo_number patterns
+        l1_ids = ['wo_id', 'wo_number', 'po_id', 'fault_id', 'eq_id']
 
         for id_type in l1_ids:
             if id_type in ids and ids[id_type]:
