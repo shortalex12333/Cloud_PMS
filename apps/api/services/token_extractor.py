@@ -31,7 +31,10 @@ class TokenExtractor:
     # ==========================================================================
 
     ID_PATTERNS = {
+        # WO patterns - capture both numeric-only and full alphanumeric formats
         'wo_id': re.compile(r'\b(?:WO[-#]?|Work\s*Order[-#:\s]*)(\d{1,6})\b', re.IGNORECASE),
+        # Full WO number including TEST/alphanumeric variants (WO-TEST-68DB4A, WO-0012, etc.)
+        'wo_number': re.compile(r'\b(WO[-]?(?:TEST[-])?[A-Z0-9]{4,20}(?:[-][A-Z0-9]+)*)\b', re.IGNORECASE),
         'po_id': re.compile(r'\b(?:PO[-#]?|Purchase\s*Order[-#:\s]*)(\d{1,6})\b', re.IGNORECASE),
         'eq_id': re.compile(r'\b(?:EQ[-#]?)(\d{1,6})\b', re.IGNORECASE),
         'fault_id': re.compile(r'\b(?:FAULT[-#]?|Fault[-#:\s]*)(\d{1,6})\b', re.IGNORECASE),
@@ -44,10 +47,13 @@ class TokenExtractor:
     # ==========================================================================
 
     PART_PATTERNS = {
-        # Part numbers: 2-4 letters, optional dash, 3-8 digits, optional suffix
-        'part_number': re.compile(r'\b([A-Z]{2,4}[-]?\d{3,8}[-]?[A-Z0-9]{0,4})\b'),
-        # Serial numbers: S/N or Serial followed by alphanumeric
-        'serial_number': re.compile(r'\b(?:S/?N|Serial)[-:\s]*([A-Z0-9]{6,20})\b', re.IGNORECASE),
+        # Part numbers: flexible pattern for various formats
+        # Matches: DCK-0084-536, THERM-160F, SP-BKR6E, VBELT-A53, AF-25550
+        'part_number': re.compile(r'\b([A-Z]{2,6}[-]?[A-Z0-9]{2,6}(?:[-][A-Z0-9]{2,6})?)\b'),
+        # Explicit "Part" prefix patterns (higher priority when mentioned)
+        'part_explicit': re.compile(r'\bPart\s+([A-Z0-9][-A-Z0-9]{3,20})\b', re.IGNORECASE),
+        # Serial numbers: S/N or Serial followed by alphanumeric (allows hyphens)
+        'serial_number': re.compile(r'\b(?:S/?N|Serial)[-:\s]*([A-Z0-9][-A-Z0-9]{5,35})\b', re.IGNORECASE),
         # OEM numbers
         'oem_number': re.compile(r'\b(?:OEM|Original)[-:\s]*([A-Z0-9-]{5,20})\b', re.IGNORECASE),
     }
@@ -173,7 +179,13 @@ class TokenExtractor:
                 # Filter out common false positives
                 filtered = [m for m in matches if not self._is_false_positive(m, name)]
                 if filtered:
-                    tokens[name] = list(dict.fromkeys(filtered))
+                    # Merge part_explicit into part_number for consistency
+                    key = 'part_number' if name == 'part_explicit' else name
+                    if key in tokens:
+                        tokens[key].extend(filtered)
+                        tokens[key] = list(dict.fromkeys(tokens[key]))
+                    else:
+                        tokens[key] = list(dict.fromkeys(filtered))
 
         return tokens
 
