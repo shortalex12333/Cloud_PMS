@@ -49,7 +49,10 @@ class LinkingLadder:
         context: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Run linking ladder L1-L5 to determine primary object.
+        Run linking ladder to determine primary object.
+
+        Strategy: L1 first (deterministic), then parallel L2.5+L3, choose best by score.
+        This avoids "first-wins" masking better downstream candidates.
 
         Args:
             yacht_id: Yacht ID for isolation
@@ -76,37 +79,80 @@ class LinkingLadder:
         # Store extracted tokens on thread
         await self._save_extracted_tokens(thread_id, tokens)
 
-        # L1: Explicit IDs in subject (auto-primary)
+        # =======================================================================
+        # PHASE 1: L1 Deterministic (check first, auto-confirm if found)
+        # =======================================================================
         l1_result = await self._check_l1_explicit_ids(yacht_id, tokens)
         if l1_result:
             logger.info(f"[LinkingLadder] Thread {thread_id}: L1 match - {l1_result['candidate']['label']}")
             return {'level': 'L1', 'confidence': 'deterministic', **l1_result}
 
-        # L2: Strong procurement signals
+        # L2: Strong procurement signals (check before parallel phase)
         l2_result = await self._check_l2_procurement(yacht_id, tokens)
         if l2_result:
             logger.info(f"[LinkingLadder] Thread {thread_id}: L2 match - {l2_result['candidate']['label']}")
             return {'level': 'L2', 'confidence': 'suggested', **l2_result}
 
-        # L2.5: Hybrid search index (text + vector + recency + role bias)
+        # =======================================================================
+        # PHASE 2: Parallel L2.5 + L3 (score-and-choose best)
+        # =======================================================================
+        # Run L2.5 (semantic) and L3 (heuristic) together, pick highest score
         l25_result = await self._check_l25_hybrid(yacht_id, thread_id, subject, tokens, context)
-        if l25_result:
-            logger.info(f"[LinkingLadder] Thread {thread_id}: L2.5 match - {l25_result['candidate']['label']}")
-            return {'level': 'L2.5', 'confidence': 'suggested', **l25_result}
-
-        # L3: Part/serial match
         l3_result = await self._check_l3_parts_equipment(yacht_id, tokens)
-        if l3_result:
-            logger.info(f"[LinkingLadder] Thread {thread_id}: L3 match - {l3_result['candidate']['label']}")
-            return {'level': 'L3', 'confidence': 'suggested', **l3_result}
 
-        # L4: Open WO by vendor
+        # Collect all candidates with their levels
+        candidates_with_levels = []
+
+        if l25_result and l25_result.get('candidate'):
+            candidates_with_levels.append({
+                'level': 'L2.5',
+                'result': l25_result,
+                'score': l25_result.get('candidate', {}).get('score', 0),
+                'label': l25_result.get('candidate', {}).get('label', 'unknown')
+            })
+
+        if l3_result and l3_result.get('candidate'):
+            candidates_with_levels.append({
+                'level': 'L3',
+                'result': l3_result,
+                'score': l3_result.get('candidate', {}).get('score', 0),
+                'label': l3_result.get('candidate', {}).get('label', 'unknown')
+            })
+
+        # Choose best by score
+        if candidates_with_levels:
+            # Sort by score descending
+            candidates_with_levels.sort(key=lambda x: x['score'], reverse=True)
+            best = candidates_with_levels[0]
+
+            # Check for ambiguity: if top two are within 10 points, flag it
+            if len(candidates_with_levels) >= 2:
+                gap = best['score'] - candidates_with_levels[1]['score']
+                if gap < 10:
+                    logger.debug(
+                        f"[LinkingLadder] Thread {thread_id}: Ambiguous between "
+                        f"{best['level']} ({best['score']}) and "
+                        f"{candidates_with_levels[1]['level']} ({candidates_with_levels[1]['score']})"
+                    )
+                    best['result']['candidate']['ambiguous'] = True
+
+            logger.info(
+                f"[LinkingLadder] Thread {thread_id}: {best['level']} match "
+                f"(score={best['score']}) - {best['label']}"
+            )
+            return {'level': best['level'], 'confidence': 'suggested', **best['result']}
+
+        # =======================================================================
+        # PHASE 3: L4 Fallback (vendor match on open WOs)
+        # =======================================================================
         l4_result = await self._check_l4_open_work_orders(yacht_id, tokens, context)
         if l4_result:
             logger.info(f"[LinkingLadder] Thread {thread_id}: L4 match - {l4_result['candidate']['label']}")
             return {'level': 'L4', 'confidence': 'suggested', **l4_result}
 
-        # L5: Ambiguous / no match
+        # =======================================================================
+        # PHASE 4: L5 No match
+        # =======================================================================
         logger.info(f"[LinkingLadder] Thread {thread_id}: L5 - No primary match found")
         return await self._handle_l5_no_match(yacht_id, thread_id, tokens)
 
