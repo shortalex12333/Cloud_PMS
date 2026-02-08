@@ -351,6 +351,14 @@ except Exception as e:
     logger.error(f"❌ Failed to register RAG endpoint: {e}")
     logger.error("RAG answer endpoints will not be available")
 
+try:
+    from routes.document_routes import router as document_router
+    app.include_router(document_router)
+    logger.info("✅ Document routes registered at /v1/documents/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register document routes: {e}")
+    logger.error("Document link/unlink endpoints will not be available")
+
 # ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
