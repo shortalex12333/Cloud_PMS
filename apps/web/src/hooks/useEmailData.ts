@@ -1218,3 +1218,179 @@ export async function saveAttachmentForPreview(
     };
   }
 }
+
+// ============================================================================
+// DOCUMENT LINK/UNLINK API
+// ============================================================================
+
+export type DocumentLinkResult = {
+  success: true;
+  link_id: string;
+  already_exists?: boolean;
+} | {
+  success: false;
+  error: string;
+};
+
+export type DocumentUnlinkResult = {
+  success: true;
+  link_id?: string;
+  already_unlinked?: boolean;
+} | {
+  success: false;
+  error: string;
+};
+
+export type DocumentLink = {
+  link_id: string;
+  document_id: string;
+  object_type: string;
+  object_id: string;
+  link_reason?: string;
+  linked_at?: string;
+};
+
+/**
+ * Link a document to an object (work order, equipment, handover, etc.)
+ */
+export async function linkDocument(
+  documentId: string,
+  objectType: string,
+  objectId: string,
+  linkReason?: string,
+  sourceContext?: Record<string, string>
+): Promise<DocumentLinkResult> {
+  try {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_BASE}/v1/documents/link`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        object_type: objectType,
+        object_id: objectId,
+        link_reason: linkReason || 'manual',
+        source_context: sourceContext,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorDetail = 'Failed to link document';
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || errorDetail;
+      } catch {
+        // Response may not be JSON
+      }
+      return { success: false, error: errorDetail };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      link_id: data.link_id,
+      already_exists: data.already_exists,
+    };
+  } catch (error) {
+    console.error('[linkDocument] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Unlink a document from an object
+ */
+export async function unlinkDocument(
+  documentId: string,
+  objectType: string,
+  objectId: string
+): Promise<DocumentUnlinkResult> {
+  try {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_BASE}/v1/documents/unlink`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        object_type: objectType,
+        object_id: objectId,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorDetail = 'Failed to unlink document';
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || errorDetail;
+      } catch {
+        // Response may not be JSON
+      }
+      return { success: false, error: errorDetail };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      link_id: data.link_id,
+      already_unlinked: data.already_unlinked,
+    };
+  } catch (error) {
+    console.error('[unlinkDocument] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Get all links for a document
+ */
+export async function getDocumentLinks(documentId: string): Promise<{
+  success: boolean;
+  links?: DocumentLink[];
+  error?: string;
+}> {
+  try {
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_BASE}/v1/documents/${documentId}/links`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      let errorDetail = 'Failed to get document links';
+      try {
+        const errorData = await response.json();
+        errorDetail = errorData.detail || errorDetail;
+      } catch {
+        // Response may not be JSON
+      }
+      return { success: false, error: errorDetail };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      links: data.links || [],
+    };
+  } catch (error) {
+    console.error('[getDocumentLinks] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
