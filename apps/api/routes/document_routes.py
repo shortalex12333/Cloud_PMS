@@ -1,5 +1,6 @@
 """
 CelesteOS Backend - Document Routes
+Version: 2026-02-08-v3 (maybe_single fix)
 
 Endpoints:
 - POST /v1/documents/link     - Link a document to an object (work order, equipment, etc.)
