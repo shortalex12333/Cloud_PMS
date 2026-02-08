@@ -158,9 +158,16 @@ async def link_document(
 
     try:
         # Verify document exists and belongs to yacht
+        # Check both doc_yacht_library (email attachments) and doc_metadata (bulk uploads)
         doc_result = supabase.table('doc_yacht_library').select('id').eq(
             'id', request.document_id
         ).eq('yacht_id', yacht_id).maybe_single().execute()
+
+        if not doc_result.data:
+            # Fallback to doc_metadata for legacy/bulk-uploaded documents
+            doc_result = supabase.table('doc_metadata').select('id').eq(
+                'id', request.document_id
+            ).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not doc_result.data:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -367,9 +374,15 @@ async def get_document_links(
 
     try:
         # Verify document exists and belongs to yacht
+        # Check both doc_yacht_library (email attachments) and doc_metadata (bulk uploads)
         doc_result = supabase.table('doc_yacht_library').select('id').eq(
             'id', document_id
         ).eq('yacht_id', yacht_id).maybe_single().execute()
+
+        if not doc_result.data:
+            doc_result = supabase.table('doc_metadata').select('id').eq(
+                'id', document_id
+            ).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not doc_result.data:
             raise HTTPException(status_code=404, detail="Document not found")
