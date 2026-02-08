@@ -166,7 +166,7 @@ async def link_document(
             raise HTTPException(status_code=404, detail="Document not found")
 
         # Check for existing active link (idempotency)
-        existing = supabase.table('document_object_links').select('id').eq(
+        existing = supabase.table('email_attachment_object_links').select('id').eq(
             'yacht_id', yacht_id
         ).eq('document_id', request.document_id).eq(
             'object_type', request.object_type
@@ -208,7 +208,7 @@ async def link_document(
             'created_by': user_id,
         }
 
-        result = supabase.table('document_object_links').insert(link_entry).execute()
+        result = supabase.table('email_attachment_object_links').insert(link_entry).execute()
         link_id = result.data[0]['id'] if result.data else None
 
         # Audit
@@ -281,7 +281,7 @@ async def unlink_document(
 
     try:
         # Find the active link
-        link_result = supabase.table('document_object_links').select('id, is_active').eq(
+        link_result = supabase.table('email_attachment_object_links').select('id, is_active').eq(
             'yacht_id', yacht_id
         ).eq('document_id', request.document_id).eq(
             'object_type', request.object_type
@@ -311,7 +311,7 @@ async def unlink_document(
             }
 
         # Soft delete the link
-        supabase.table('document_object_links').update({
+        supabase.table('email_attachment_object_links').update({
             'is_active': False,
             'removed_at': datetime.utcnow().isoformat(),
             'removed_by': user_id,
@@ -375,7 +375,7 @@ async def get_document_links(
             raise HTTPException(status_code=404, detail="Document not found")
 
         # Get all active links
-        links_result = supabase.table('document_object_links').select(
+        links_result = supabase.table('email_attachment_object_links').select(
             'id, object_type, object_id, link_reason, source_context, created_at, created_by'
         ).eq('yacht_id', yacht_id).eq('document_id', document_id).eq('is_active', True).execute()
 
@@ -419,7 +419,7 @@ async def get_documents_for_object(
 
     try:
         # Get all active links for this object
-        links_result = supabase.table('document_object_links').select(
+        links_result = supabase.table('email_attachment_object_links').select(
             'id, document_id, link_reason, source_context, created_at'
         ).eq('yacht_id', yacht_id).eq(
             'object_type', object_type
