@@ -301,6 +301,8 @@ def build_card(card_type: CardType, title: str, yacht_id: str, actions: List[str
             action = build_action(action_name, yacht_id, **data)
             if action:
                 card["actions"].append(action)
+        # Back-compat alias for clients expecting 'microactions'
+        card["microactions"] = list(card["actions"]) if card["actions"] else []
 
     return card
 
@@ -640,8 +642,23 @@ class GraphRAGQueryService:
     # INTENT EXECUTION
     # ========================================================================
 
-    def _execute_query(self, yacht_id: str, intent: QueryIntent, query: str, entities: List[Dict]) -> List[Dict]:
-        """Execute intent-specific query pattern"""
+    def _execute_query(
+        self,
+        yacht_id: str,
+        intent: QueryIntent,
+        query: str,
+        entities: List[Dict],
+        similar_docs: Optional[List[Dict]] = None,
+        person_filter: Optional[str] = None,
+    ) -> List[Dict]:
+        """
+        Execute intent-specific query pattern.
+
+        Note: similar_docs and person_filter are optional enrichments produced by
+        upstream extraction/vector steps. They are accepted here to keep the
+        internal call signature stable across /v1 and /v2 search flows. Current
+        intent handlers may ignore them.
+        """
         if intent == QueryIntent.DIAGNOSE_FAULT:
             return self._query_fault(yacht_id, query, entities)
         elif intent == QueryIntent.FIND_DOCUMENT:
