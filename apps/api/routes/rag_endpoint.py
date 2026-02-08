@@ -52,6 +52,9 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+# Auth dependency
+from middleware.auth import get_authenticated_user
+
 # Database connection
 READ_DSN = os.getenv("READ_DB_DSN") or os.getenv("DATABASE_URL")
 
@@ -160,6 +163,7 @@ def set_cached_response(cache_key: str, response: dict):
 async def rag_answer(
     request: RAGRequest,
     req: Request,
+    auth: dict = Depends(get_authenticated_user),
 ):
     """
     Generate an answer from retrieved context.
@@ -171,19 +175,9 @@ async def rag_answer(
     """
     start_time = time.time()
 
-    # Get auth context (yacht_id, role from JWT)
-    # In production, this comes from middleware
-    auth_context = getattr(req.state, 'auth', None)
-    if auth_context:
-        yacht_id = auth_context.get('yacht_id')
-        role = auth_context.get('role', 'crew')
-    else:
-        # Fallback for testing
-        yacht_id = req.headers.get('X-Yacht-ID')
-        role = req.headers.get('X-Role', 'crew')
-
-    if not yacht_id:
-        raise HTTPException(status_code=400, detail="Missing yacht context")
+    # Get auth context from dependency (yacht_id, role from JWT)
+    yacht_id = auth['yacht_id']
+    role = auth.get('role', 'crew')
 
     # Compute query hash (for logging without raw text)
     query_hash = compute_query_hash(request.query, yacht_id, role, request.lens)
