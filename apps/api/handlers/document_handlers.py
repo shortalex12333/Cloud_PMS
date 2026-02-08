@@ -77,6 +77,13 @@ class DocumentHandlers:
             params = params or {}
             expires_in = params.get("expires_in", 3600)  # Default 1 hour
 
+            # Validate UUID format before database query (prevent 500 errors for invalid UUIDs)
+            try:
+                uuid.UUID(entity_id)
+            except (ValueError, AttributeError, TypeError):
+                builder.set_error("NOT_FOUND", f"Invalid document ID format: {entity_id}", status_code=404)
+                return builder.build()
+
             # Get document metadata (exclude soft-deleted)
             try:
                 result = self.db.table("doc_metadata").select(
@@ -86,14 +93,14 @@ class DocumentHandlers:
                 result = None
 
             if not result or not result.data:
-                builder.set_error("NOT_FOUND", f"Document not found: {entity_id}")
+                builder.set_error("NOT_FOUND", f"Document not found: {entity_id}", status_code=404)
                 return builder.build()
 
             doc = result.data
 
             # Additional check for deleted documents (in case column doesn't exist)
             if doc.get("deleted_at"):
-                builder.set_error("NOT_FOUND", f"Document has been deleted: {entity_id}")
+                builder.set_error("NOT_FOUND", f"Document has been deleted: {entity_id}", status_code=404)
                 return builder.build()
 
             # Generate signed URL
