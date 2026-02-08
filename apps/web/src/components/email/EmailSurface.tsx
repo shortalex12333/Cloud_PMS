@@ -37,6 +37,9 @@ import {
   downloadAndSaveAttachment,
   fetchAttachmentBlob,
   saveAttachmentForPreview,
+  linkDocument,
+  unlinkDocument,
+  getDocumentLinks,
   useWatcherStatus,
   useOutlookConnection,
   usePrefetchThread,
@@ -45,6 +48,7 @@ import {
   type MessageContent as MessageContentType,
   type EmailSearchResult,
   type AttachmentBlobResult,
+  type DocumentLink,
 } from '@/hooks/useEmailData';
 import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
 import { LinkEmailModal } from '@/components/email/LinkEmailModal';
@@ -1134,22 +1138,92 @@ function AttachmentsPanel({ attachments, providerMessageId, webLink }: Attachmen
   );
 
   // Handle micro-actions from viewer dropdown
-  const handleMicroAction = useCallback((action: string, documentId: string) => {
+  const handleMicroAction = useCallback(async (action: string, documentId: string) => {
     console.log('[AttachmentsPanel] Micro-action:', action, documentId);
 
     switch (action) {
-      case 'add_to_handover':
-        // TODO: Open handover modal or trigger mutation
-        alert(`Add to Handover: ${documentId}`);
+      case 'add_to_handover': {
+        // For now, use existing thread links to find handover context
+        // In production, this would open a handover picker modal
+        const result = await linkDocument(documentId, 'handover', documentId, 'manual_from_email');
+        if (result.success) {
+          alert('✓ Added to Handover');
+        } else {
+          alert(`Failed: ${result.error}`);
+        }
         break;
-      case 'attach_to_work_order':
-        // TODO: Open work order picker modal
-        alert(`Attach to Work Order: ${documentId}`);
+      }
+
+      case 'attach_to_work_order': {
+        // Get thread's existing work order links
+        const linksResult = await getDocumentLinks(documentId);
+        const existingWoLinks = linksResult.links?.filter(l => l.object_type === 'work_order') || [];
+
+        if (existingWoLinks.length > 0) {
+          alert(`Already linked to ${existingWoLinks.length} work order(s)`);
+          return;
+        }
+
+        // Prompt for work order ID (in production, use a picker modal)
+        const workOrderId = prompt('Enter Work Order ID to attach to:');
+        if (!workOrderId) return;
+
+        const result = await linkDocument(
+          documentId,
+          'work_order',
+          workOrderId.trim(),
+          'manual_from_email',
+          { source: 'email_attachment_viewer' }
+        );
+
+        if (result.success) {
+          if (result.already_exists) {
+            alert('Already attached to this work order');
+          } else {
+            alert('✓ Attached to Work Order');
+          }
+        } else {
+          alert(`Failed: ${result.error}`);
+        }
         break;
-      case 'unlink_from_work_order':
-        // TODO: Show confirmation and trigger unlink mutation
-        alert(`Unlink from Work Order: ${documentId}`);
+      }
+
+      case 'unlink_from_work_order': {
+        // Get current links to find which WO to unlink from
+        const linksResult = await getDocumentLinks(documentId);
+        const woLinks = linksResult.links?.filter(l => l.object_type === 'work_order') || [];
+
+        if (woLinks.length === 0) {
+          alert('Not linked to any work order');
+          return;
+        }
+
+        // If multiple, let user choose (in production, use a picker)
+        let targetLink = woLinks[0];
+        if (woLinks.length > 1) {
+          const choice = prompt(
+            `Linked to ${woLinks.length} work orders. Enter index (1-${woLinks.length}) to unlink:`
+          );
+          if (!choice) return;
+          const idx = parseInt(choice, 10) - 1;
+          if (idx >= 0 && idx < woLinks.length) {
+            targetLink = woLinks[idx];
+          }
+        }
+
+        if (!confirm(`Unlink from work order ${targetLink.object_id.slice(0, 8)}...?`)) {
+          return;
+        }
+
+        const result = await unlinkDocument(documentId, 'work_order', targetLink.object_id);
+        if (result.success) {
+          alert('✓ Unlinked from Work Order');
+        } else {
+          alert(`Failed: ${result.error}`);
+        }
         break;
+      }
+
       default:
         console.warn('Unknown micro-action:', action);
     }
