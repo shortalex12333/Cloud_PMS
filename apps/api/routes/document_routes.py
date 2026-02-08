@@ -18,11 +18,34 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 import logging
+import os
 
 from middleware.auth import get_authenticated_user
-from pipeline_service import get_tenant_client
+from supabase import create_client
 
 logger = logging.getLogger(__name__)
+
+
+def _get_tenant_client(tenant_key_alias: str):
+    """
+    Get Supabase client for tenant DB.
+
+    Uses tenant-prefixed env vars: {tenant_key_alias}_SUPABASE_URL
+    Falls back to TENANT_1 if specific tenant vars not found.
+    """
+    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
+    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
+
+    if not url or not key:
+        # Fallback to TENANT_1 vars (for single-tenant setup)
+        url = os.environ.get('TENANT_1_SUPABASE_URL')
+        key = os.environ.get('TENANT_1_SUPABASE_SERVICE_KEY')
+
+    if not url or not key:
+        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
+        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
+
+    return create_client(url, key)
 
 router = APIRouter(prefix="/v1/documents", tags=["documents"])
 
@@ -125,7 +148,7 @@ async def link_document(
     yacht_id = auth['yacht_id']
     user_id = auth['user_id']
     user_role = auth.get('role', '')
-    supabase = get_tenant_client(auth['tenant_key_alias'])
+    supabase = _get_tenant_client(auth['tenant_key_alias'])
 
     # Role check
     if user_role not in LINK_MANAGE_ROLES:
@@ -255,7 +278,7 @@ async def unlink_document(
     yacht_id = auth['yacht_id']
     user_id = auth['user_id']
     user_role = auth.get('role', '')
-    supabase = get_tenant_client(auth['tenant_key_alias'])
+    supabase = _get_tenant_client(auth['tenant_key_alias'])
 
     # Role check
     if user_role not in LINK_MANAGE_ROLES:
@@ -353,7 +376,7 @@ async def get_document_links(
     Returns the list of objects (work orders, equipment, etc.) that this document is linked to.
     """
     yacht_id = auth['yacht_id']
-    supabase = get_tenant_client(auth['tenant_key_alias'])
+    supabase = _get_tenant_client(auth['tenant_key_alias'])
 
     try:
         # Verify document exists and belongs to yacht
@@ -404,7 +427,7 @@ async def get_documents_for_object(
     Use this to show attached documents on a work order, equipment, etc.
     """
     yacht_id = auth['yacht_id']
-    supabase = get_tenant_client(auth['tenant_key_alias'])
+    supabase = _get_tenant_client(auth['tenant_key_alias'])
 
     # Validate object_type
     if object_type not in VALID_OBJECT_TYPES:
