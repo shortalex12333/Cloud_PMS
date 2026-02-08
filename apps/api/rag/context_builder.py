@@ -161,11 +161,13 @@ async def retrieve_chunks(
             $6,                 -- domain
             $7,                 -- mode
             $8,                 -- domain_boost
-            0.50, 0.25, 0.15, 0.10, 0.20,  -- weights
-            0.01, 60, 6.0, 0.2,            -- params
+            0.40, 0.25, 0.10, 0.10, 0.15,  -- weights (w_text, w_vector, w_recency, w_bias, w_rrf)
+            0.01, 60, 6.0, 0.2,            -- lambda, rrf_k, logistic_a, logistic_b
             200, 200,                       -- m_text, m_vec
             $9, 0,                          -- limit, offset
-            true                            -- debug
+            true,                           -- debug
+            0.15, 100, 0.15,               -- trigram: trgm_limit, m_trgm, w_trigram
+            NULL::jsonb                    -- p_filters (structured filters)
         )
     """, yacht_id, query, vec_literal, role, lens, domain, mode, domain_boost, top_k)
 
@@ -609,13 +611,21 @@ def build_context_sync(
             payload,
             final_score
         FROM f1_search_fusion(
-            %s::uuid, %s, %s::vector(1536), %s, %s,
-            %s, %s, %s,
-            0.50, 0.25, 0.15, 0.10, 0.20,
-            0.01, 60, 6.0, 0.2,
-            200, 200,
-            %s, 0,
-            true
+            %s::uuid,           -- yacht_id
+            %s,                 -- query_text
+            %s::vector(1536),   -- query_embedding
+            %s,                 -- role
+            %s,                 -- lens
+            %s,                 -- domain
+            %s,                 -- mode
+            %s,                 -- domain_boost
+            0.40, 0.25, 0.10, 0.10, 0.15,  -- weights (w_text, w_vector, w_recency, w_bias, w_rrf)
+            0.01, 60, 6.0, 0.2,            -- lambda, rrf_k, logistic_a, logistic_b
+            200, 200,                       -- m_text, m_vec
+            %s, 0,                          -- limit, offset
+            true,                           -- debug
+            0.15, 100, 0.15,               -- trigram: trgm_limit, m_trgm, w_trigram
+            NULL::jsonb                    -- p_filters (structured filters)
         )
     """, (yacht_id, query, vec_literal, role, lens, domain, mode, domain_boost, top_k))
 
