@@ -131,7 +131,8 @@ class DocumentHandlers:
                 storage_path = doc.get("storage_path", "")
                 builder.set_error(
                     "NOT_FOUND",
-                    f"Document file not found in storage: {storage_path}"
+                    f"Document file not found in storage: {storage_path}",
+                    status_code=404
                 )
 
             return builder.build()

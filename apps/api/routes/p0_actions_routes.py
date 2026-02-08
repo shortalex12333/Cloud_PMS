@@ -38,6 +38,7 @@ from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation
+from action_router.registry import get_action
 from middleware.auth import lookup_tenant_for_user
 
 logger = logging.getLogger(__name__)
@@ -498,6 +499,55 @@ async def execute_action(
     yacht_id = request.context["yacht_id"]
     user_id = user_context["user_id"]
     payload = request.payload
+
+    # ========================================================================
+    # AUTHORIZATION-FIRST: Universal Role Check (Security Fix - Parts Lens Gold)
+    # ========================================================================
+    # CRITICAL SECURITY: Role authorization MUST happen BEFORE payload validation
+    # to prevent information disclosure of action structure to unauthorized users.
+    #
+    # Rationale: Previously, field validation happened first, causing unauthorized
+    # users to receive 400 errors with field names instead of immediate 403 denial.
+    # This allowed attackers to probe action requirements without authorization.
+    #
+    # Fix: Query registry for action's allowed_roles and validate BEFORE inspecting payload.
+    try:
+        action_def = get_action(action)
+        if action_def and action_def.allowed_roles:
+            user_role = user_context.get("role")
+
+            if not user_role:
+                logger.warning(f"[SECURITY] No role found for user {user_id} attempting action '{action}'")
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": "RLS_DENIED",
+                        "message": "User role not found"
+                    }
+                )
+
+            if user_role not in action_def.allowed_roles:
+                logger.warning(
+                    f"[SECURITY] Role '{user_role}' denied for action '{action}'. "
+                    f"Allowed: {action_def.allowed_roles}"
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "status": "error",
+                        "error_code": "FORBIDDEN",
+                        "message": f"Role '{user_role}' is not authorized to perform this action",
+                        "required_roles": action_def.allowed_roles
+                    }
+                )
+    except HTTPException:
+        # Re-raise HTTP exceptions (403, 401, etc.)
+        raise
+    except Exception as e:
+        # Action not in registry or other error - log but continue
+        # (allows legacy actions not yet in registry to still work)
+        logger.debug(f"Could not validate role for action '{action}': {e}")
 
     # ========================================================================
     # REQUIRED FIELD VALIDATION - Return 400 instead of 500 for missing fields
