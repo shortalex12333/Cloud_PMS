@@ -791,14 +791,13 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
 
     "link_document_to_equipment": ActionDefinition(
         action_id="link_document_to_equipment",
-        label="Link Document",
+        label="Link Document to Equipment",
         endpoint="/v1/equipment/link-document",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD only - restrict to match document actions
         required_fields=["yacht_id", "equipment_id", "document_id"],
-        domain="equipment",
+        domain="documents",  # Changed from "equipment" to "documents" per Document Lens v2 spec
         variant=ActionVariant.MUTATE,
         search_keywords=["link", "document", "attach", "manual", "equipment", "file"],
         storage_bucket="documents",
@@ -1715,8 +1714,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD only - no crew mutations
         required_fields=["yacht_id", "document_id", "comment"],
         domain="documents",
         variant=ActionVariant.MUTATE,
@@ -1735,8 +1733,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD only - no crew mutations
         required_fields=["yacht_id", "comment_id", "comment"],
         domain="documents",
         variant=ActionVariant.MUTATE,
@@ -1754,8 +1751,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/actions/execute",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                       "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        allowed_roles=["chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],  # HOD only - no crew mutations
         required_fields=["yacht_id", "comment_id"],
         domain="documents",
         variant=ActionVariant.MUTATE,
@@ -1793,6 +1789,52 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
     # All stock mutations create pms_inventory_transactions
     # Suggested order qty = round_up(max(min_level - on_hand, 1), reorder_multiple)
     # ========================================================================
+
+    # Legacy P0 Inventory actions (exposed for suggestions; execution handled via p0_actions_routes)
+    "check_stock_level": ActionDefinition(
+        action_id="check_stock_level",
+        label="Check Stock Level",
+        endpoint="/v1/actions/execute",  # Routed internally by p0_actions_routes
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        # READ action: allow all crew to view stock
+        allowed_roles=[
+            "crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"
+        ],
+        required_fields=["yacht_id", "part_id"],
+        domain="parts",
+        variant=ActionVariant.READ,
+        search_keywords=["check", "stock", "inventory", "view", "part", "level", "quantity"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("part_id", FieldClassification.REQUIRED, auto_populate_from="part", lookup_required=True),
+        ],
+    ),
+
+    "log_part_usage": ActionDefinition(
+        action_id="log_part_usage",
+        label="Log Part Usage",
+        endpoint="/v1/actions/execute",  # Routed internally by p0_actions_routes
+        handler_type=HandlerType.INTERNAL,
+        method="POST",
+        # MUTATE action: HOD and above
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        required_fields=["yacht_id", "part_id", "quantity", "usage_reason"],
+        domain="parts",
+        variant=ActionVariant.MUTATE,
+        search_keywords=["log", "use", "consume", "part", "deduct", "inventory", "stock"],
+        field_metadata=[
+            FieldMetadata("yacht_id", FieldClassification.CONTEXT),
+            FieldMetadata("part_id", FieldClassification.REQUIRED, auto_populate_from="part", lookup_required=True),
+            FieldMetadata("quantity", FieldClassification.REQUIRED, description="Amount to deduct from stock"),
+            FieldMetadata("usage_reason", FieldClassification.REQUIRED,
+                          options=["work_order", "maintenance", "repair", "inspection", "other"]),
+            FieldMetadata("work_order_id", FieldClassification.OPTIONAL, auto_populate_from="work_order", lookup_required=True),
+            FieldMetadata("equipment_id", FieldClassification.OPTIONAL, auto_populate_from="equipment", lookup_required=True),
+            FieldMetadata("notes", FieldClassification.OPTIONAL),
+        ],
+    ),
 
     # ========================================================================
     # SHOPPING LIST LENS ACTIONS (v1)
