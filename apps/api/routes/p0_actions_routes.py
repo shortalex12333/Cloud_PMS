@@ -36,6 +36,7 @@ from handlers.handover_workflow_handlers import HandoverWorkflowHandlers
 from handlers.manual_handlers import ManualHandlers
 from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
+from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation
 from middleware.auth import lookup_tenant_for_user
 
@@ -107,7 +108,8 @@ if supabase:
         manual_handlers = ManualHandlers(supabase)
         part_handlers = PartHandlers(supabase)
         shopping_list_handlers = ShoppingListHandlers(supabase)
-        logger.info("✅ All P0 action handlers initialized (including Part Lens, Shopping List Lens, and Handover Workflow)")
+        hor_handlers = HoursOfRestHandlers(supabase)
+        logger.info("✅ All P0 action handlers initialized (including Part Lens, Shopping List Lens, Handover Workflow, and HOR)")
     except Exception as e:
         logger.error(f"Failed to initialize handlers: {e}")
         wo_handlers = None
@@ -116,6 +118,7 @@ if supabase:
         manual_handlers = None
         part_handlers = None
         shopping_list_handlers = None
+        hor_handlers = None
 else:
     logger.warning("⚠️ P0 handlers not initialized - no database connection")
     wo_handlers = None
@@ -124,6 +127,7 @@ else:
     manual_handlers = None
     part_handlers = None
     shopping_list_handlers = None
+    hor_handlers = None
 
 
 # ============================================================================
@@ -594,6 +598,9 @@ async def execute_action(
         "export_hours_of_rest": ["crew_id"],
         "view_compliance_status": [],
         "tag_for_survey": ["equipment_id"],
+        # Hours of Rest Actions (Crew Lens v3 - Action Registry)
+        "get_hours_of_rest": ["yacht_id"],
+        "upsert_hours_of_rest": ["yacht_id", "user_id", "record_date"],
         # Tier 7 - Purchasing
         "create_purchase_request": ["title"],
         "add_item_to_purchase": ["purchase_request_id", "item_description"],
@@ -4534,6 +4541,54 @@ async def execute_action(
                 yacht_id=yacht_id,
                 params=payload
             )
+
+        # ===== HOURS OF REST ACTIONS (Crew Lens v3) =====
+        elif action in ("get_hours_of_rest", "upsert_hours_of_rest"):
+            logger.info(f"[HOR] Dispatching action '{action}' - yacht_id={yacht_id}, user_id={user_id}")
+
+            if not hor_handlers:
+                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+
+            # Map action to handler method
+            handler_map = {
+                "get_hours_of_rest": hor_handlers.get_hours_of_rest,
+                "upsert_hours_of_rest": hor_handlers.upsert_hours_of_rest,
+            }
+
+            handler_fn = handler_map[action]
+
+            # Extract target user (defaults to current user for get_hours_of_rest)
+            target_user_id = payload.get("user_id", user_id)
+
+            # Build params dict (only include dates if provided)
+            handler_params = {"user_id": target_user_id}
+            if "start_date" in payload:
+                handler_params["start_date"] = payload["start_date"]
+            if "end_date" in payload:
+                handler_params["end_date"] = payload["end_date"]
+            if "record_date" in payload:
+                handler_params["record_date"] = payload["record_date"]
+            if "rest_periods" in payload:
+                handler_params["rest_periods"] = payload["rest_periods"]
+            if "total_rest_hours" in payload:
+                handler_params["total_rest_hours"] = payload["total_rest_hours"]
+            if "daily_compliance_notes" in payload:
+                handler_params["daily_compliance_notes"] = payload["daily_compliance_notes"]
+
+            # Call handler
+            if action == "get_hours_of_rest":
+                result = await handler_fn(
+                    entity_id=target_user_id,
+                    yacht_id=yacht_id,
+                    params=handler_params
+                )
+            else:  # upsert_hours_of_rest
+                result = await handler_fn(
+                    entity_id=target_user_id,
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    payload=payload
+                )
 
         # ===== DOCUMENT LENS V2 ACTIONS =====
         elif action in ("upload_document", "update_document", "delete_document",

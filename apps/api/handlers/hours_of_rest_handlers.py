@@ -154,11 +154,12 @@ class HoursOfRestHandlers:
                 is_primary=False
             ))
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error fetching hours of rest: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # MUTATE HANDLERS - Daily Hours of Rest
@@ -197,10 +198,8 @@ class HoursOfRestHandlers:
             daily_compliance_notes = payload.get("daily_compliance_notes")
 
             if not record_date or not rest_periods:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "record_date and rest_periods are required"
-                )
+                builder.set_error("VALIDATION_ERROR", "record_date and rest_periods are required")
+                return builder.build()
 
             # Calculate totals
             if total_rest_hours is None:
@@ -278,11 +277,12 @@ class HoursOfRestHandlers:
                 "warnings_created": warnings_created,
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error upserting hours of rest: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # READ HANDLERS - Monthly Sign-offs
@@ -368,11 +368,12 @@ class HoursOfRestHandlers:
                 is_primary=True
             ))
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error listing monthly signoffs: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     async def get_monthly_signoff(
         self,
@@ -398,7 +399,8 @@ class HoursOfRestHandlers:
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not result.data:
-                return builder.build_error("NOT_FOUND", f"Sign-off not found: {entity_id}")
+                builder.set_error("NOT_FOUND", f"Sign-off not found: {entity_id}")
+                return builder.build()
 
             signoff = result.data
 
@@ -439,11 +441,12 @@ class HoursOfRestHandlers:
                 is_primary=False
             ))
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error getting monthly signoff: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # MUTATE HANDLERS - Monthly Sign-offs
@@ -476,10 +479,8 @@ class HoursOfRestHandlers:
             department = payload.get("department")
 
             if not month or not department:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "month and department are required"
-                )
+                builder.set_error("VALIDATION_ERROR", "month and department are required")
+                return builder.build()
 
             # Check if sign-off already exists
             existing = self.db.table("pms_hor_monthly_signoffs").select("id").eq(
@@ -487,10 +488,8 @@ class HoursOfRestHandlers:
             ).eq("user_id", user_id).eq("month", month).maybe_single().execute()
 
             if existing.data:
-                return builder.build_error(
-                    "DUPLICATE_ERROR",
-                    f"Sign-off already exists for {month}"
-                )
+                builder.set_error("DUPLICATE_ERROR", f"Sign-off already exists for {month}")
+                return builder.build()
 
             # Calculate month summary
             summary_result = self.db.rpc(
@@ -531,11 +530,12 @@ class HoursOfRestHandlers:
                 "summary": summary,
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error creating monthly signoff: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     async def sign_monthly_signoff(
         self,
@@ -568,10 +568,8 @@ class HoursOfRestHandlers:
             notes = payload.get("notes")
 
             if not signoff_id or not signature_level or not signature_data:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "signoff_id, signature_level, and signature_data are required"
-                )
+                builder.set_error("VALIDATION_ERROR", "signoff_id, signature_level, and signature_data are required")
+                return builder.build()
 
             # Fetch current sign-off
             current = self.db.table("pms_hor_monthly_signoffs").select("*").eq(
@@ -579,7 +577,8 @@ class HoursOfRestHandlers:
             ).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not current.data:
-                return builder.build_error("NOT_FOUND", f"Sign-off not found: {signoff_id}")
+                builder.set_error("NOT_FOUND", f"Sign-off not found: {signoff_id}")
+                return builder.build()
 
             signoff = current.data
 
@@ -613,10 +612,8 @@ class HoursOfRestHandlers:
                     "status": "finalized"
                 })
             else:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    f"Invalid signature_level: {signature_level}"
-                )
+                builder.set_error("VALIDATION_ERROR", f"Invalid signature_level: {signature_level}")
+                return builder.build()
 
             # Update sign-off
             result = self.db.table("pms_hor_monthly_signoffs").update(update_data).eq(
@@ -631,11 +628,12 @@ class HoursOfRestHandlers:
                 "new_status": update_data.get("status"),
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error signing monthly signoff: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # READ HANDLERS - Schedule Templates
@@ -704,11 +702,12 @@ class HoursOfRestHandlers:
                     is_primary=False
                 ))
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error listing crew templates: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # MUTATE HANDLERS - Schedule Templates
@@ -746,10 +745,8 @@ class HoursOfRestHandlers:
             is_active = payload.get("is_active", True)
 
             if not schedule_name or not schedule_template:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "schedule_name and schedule_template are required"
-                )
+                builder.set_error("VALIDATION_ERROR", "schedule_name and schedule_template are required")
+                return builder.build()
 
             # If setting as active, deactivate other templates
             if is_active:
@@ -779,11 +776,12 @@ class HoursOfRestHandlers:
                 "template": template,
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error creating crew template: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     async def apply_crew_template(
         self,
@@ -812,10 +810,8 @@ class HoursOfRestHandlers:
             template_id = payload.get("template_id")
 
             if not week_start_date:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "week_start_date is required"
-                )
+                builder.set_error("VALIDATION_ERROR", "week_start_date is required")
+                return builder.build()
 
             # Call apply_template_to_week function
             rpc_result = self.db.rpc(
@@ -843,11 +839,12 @@ class HoursOfRestHandlers:
                 },
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error applying crew template: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # READ HANDLERS - Warnings
@@ -931,11 +928,12 @@ class HoursOfRestHandlers:
                     is_primary=True
                 ))
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error listing crew warnings: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     # =========================================================================
     # MUTATE HANDLERS - Warnings
@@ -967,10 +965,8 @@ class HoursOfRestHandlers:
             crew_reason = payload.get("crew_reason")
 
             if not warning_id:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "warning_id is required"
-                )
+                builder.set_error("VALIDATION_ERROR", "warning_id is required")
+                return builder.build()
 
             update_data = {
                 "acknowledged_at": datetime.now(timezone.utc).isoformat(),
@@ -987,20 +983,19 @@ class HoursOfRestHandlers:
             warning = result.data[0] if result.data else None
 
             if not warning:
-                return builder.build_error(
-                    "NOT_FOUND",
-                    f"Warning not found or not accessible: {warning_id}"
-                )
+                builder.set_error("NOT_FOUND", f"Warning not found or not accessible: {warning_id}")
+                return builder.build()
 
             builder.set_data({
                 "warning": warning,
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error acknowledging warning: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
 
     async def dismiss_warning(
         self,
@@ -1030,10 +1025,8 @@ class HoursOfRestHandlers:
             dismissed_by_role = payload.get("dismissed_by_role")
 
             if not warning_id or not hod_justification or not dismissed_by_role:
-                return builder.build_error(
-                    "VALIDATION_ERROR",
-                    "warning_id, hod_justification, and dismissed_by_role are required"
-                )
+                builder.set_error("VALIDATION_ERROR", "warning_id, hod_justification, and dismissed_by_role are required")
+                return builder.build()
 
             update_data = {
                 "is_dismissed": True,
@@ -1052,17 +1045,16 @@ class HoursOfRestHandlers:
             warning = result.data[0] if result.data else None
 
             if not warning:
-                return builder.build_error(
-                    "NOT_FOUND",
-                    f"Warning not found: {warning_id}"
-                )
+                builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
+                return builder.build()
 
             builder.set_data({
                 "warning": warning,
             })
 
-            return builder.build_success()
+            return builder.build()
 
         except Exception as e:
             logger.error(f"Error dismissing warning: {e}")
-            return builder.build_error("DATABASE_ERROR", str(e))
+            builder.set_error("DATABASE_ERROR", str(e))
+            return builder.build()
