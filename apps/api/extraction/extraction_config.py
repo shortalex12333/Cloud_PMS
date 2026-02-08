@@ -105,35 +105,37 @@ class ExtractionConfig:
         # Entity type precedence (higher value = higher priority in overlaps)
         # Fix 2026-02-03: Added missing types that were defaulting to 10
         # This caused brand→equipment conversion, approval_status loss, etc.
-        self.type_precedence = self._load_json_or_default(
-            'TYPE_PRECEDENCE_JSON',
-            {
-                'fault_code': 100,
-                'work_order_id': 95,       # NEW: Extract WO-12345 before part_number
-                'document_id': 92,         # NEW: Extract DNV-123456 before part_number
-                'model': 90,
-                'part_number': 85,
-                'brand': 82,               # NEW: Beat equipment (80) in overlaps
-                'equipment_brand': 82,     # NEW: Beat equipment (80) in overlaps
-                'equipment': 80,
-                'document_type': 78,       # NEW: Document types have priority
-                'document': 75,            # NEW: Generic document reference
-                'org': 70,
-                'approval_status': 68,     # NEW: Shopping list approval status
-                'shopping_list_term': 66,  # NEW: Shopping list terms
-                'measurement': 60,
-                'location_on_board': 50,
-                'action': 40,
-                'work_order_status': 35,   # NEW: Work order status (below action)
-                'status': 30,
-                'receiving_status': 28,    # NEW: Receiving lens status
-                'stock_status': 28,        # NEW: Inventory lens status
-                'WARNING_SEVERITY': 65,    # NEW: Crew lens warning severity
-                'WARNING_STATUS': 63,      # NEW: Crew lens warning status
-                'urgency_level': 60,       # NEW: Shopping list urgency
-                'other': 10
-            }
-        )
+        # Merge env override (if any) with safe defaults so missing keys
+        # like brand/document/approval_status don't fall back to 'other'.
+        _type_precedence_defaults = {
+            'fault_code': 100,
+            'work_order_id': 95,       # NEW: Extract WO-12345 before part_number
+            'document_id': 92,         # NEW: Extract DNV-123456 before part_number
+            'model': 90,
+            'part_number': 85,
+            'brand': 82,               # NEW: Beat equipment (80) in overlaps
+            'equipment_brand': 82,     # NEW: Beat equipment (80) in overlaps
+            'equipment': 80,
+            'document_type': 78,       # NEW: Document types have priority
+            'document': 75,            # NEW: Generic document reference
+            'org': 70,
+            'approval_status': 68,     # NEW: Shopping list approval status
+            'shopping_list_term': 66,  # NEW: Shopping list terms
+            'measurement': 60,
+            'location_on_board': 50,
+            'action': 40,
+            'work_order_status': 35,   # NEW: Work order status (below action)
+            'status': 30,
+            'receiving_status': 28,    # NEW: Receiving lens status
+            'stock_status': 28,        # NEW: Inventory lens status
+            'WARNING_SEVERITY': 65,    # NEW: Crew lens warning severity
+            'WARNING_STATUS': 63,      # NEW: Crew lens warning status
+            'urgency_level': 60,       # NEW: Shopping list urgency
+            'other': 10
+        }
+        _env_tp = self._load_json_or_default('TYPE_PRECEDENCE_JSON', {})
+        # env should override defaults, but never erase unspecified keys
+        self.type_precedence = {**_type_precedence_defaults, **_env_tp}
 
         # Brand expansions (bi-directional mapping)
         self.brand_expansions = self._load_json_or_default(
