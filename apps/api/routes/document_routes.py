@@ -18,30 +18,13 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 import logging
-import os
 
 from middleware.auth import get_authenticated_user
-from supabase import create_client
+from pipeline_service import get_tenant_client
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/documents", tags=["documents"])
-
-
-# ============================================================================
-# TENANT CLIENT
-# ============================================================================
-
-def get_tenant_client(tenant_key_alias: str):
-    """Get Supabase client for tenant DB using tenant-prefixed env vars."""
-    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
-    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
-
-    if not url or not key:
-        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    return create_client(url, key)
 
 
 # ============================================================================
