@@ -2743,10 +2743,53 @@ async def save_attachment(
             f"size={len(file_data)} type={content_type} user={user_id[:8]}"
         )
 
+        # M5: Auto-link attachment to thread's confirmed links
+        auto_linked_objects = []
+        if document_id and msg_result.data.get('thread_id'):
+            thread_id = msg_result.data['thread_id']
+            try:
+                # Get confirmed/accepted links for this thread
+                thread_links = supabase.table('email_links').select(
+                    'object_type, object_id'
+                ).eq('yacht_id', yacht_id).eq('thread_id', thread_id).eq(
+                    'is_active', True
+                ).in_('confidence', ['deterministic', 'user_confirmed']).execute()
+
+                for link in (thread_links.data or []):
+                    try:
+                        # Create attachment-object link
+                        supabase.table('email_attachment_object_links').insert({
+                            'yacht_id': yacht_id,
+                            'document_id': document_id,
+                            'object_type': link['object_type'],
+                            'object_id': link['object_id'],
+                            'link_reason': 'auto_from_thread',
+                            'source_context': {
+                                'email_thread_id': thread_id,
+                                'email_message_id': request.message_id,
+                            },
+                            'is_active': True,
+                            'created_by': user_id,
+                        }).execute()
+                        auto_linked_objects.append({
+                            'object_type': link['object_type'],
+                            'object_id': link['object_id'],
+                        })
+                        logger.info(
+                            f"[email/evidence/save-attachment] Auto-linked: "
+                            f"doc={document_id[:8]} → {link['object_type']}={link['object_id'][:8]}"
+                        )
+                    except Exception as link_error:
+                        # Don't fail save if auto-link fails (might be duplicate)
+                        logger.warning(f"[email/evidence/save-attachment] Auto-link skipped: {link_error}")
+            except Exception as auto_link_error:
+                logger.warning(f"[email/evidence/save-attachment] Auto-link lookup failed: {auto_link_error}")
+
         return {
             'success': True,
             'document_id': document_id,
             'storage_path': storage_path,
+            'auto_linked': auto_linked_objects if auto_linked_objects else None,
         }
 
     except TokenNotFoundError:
