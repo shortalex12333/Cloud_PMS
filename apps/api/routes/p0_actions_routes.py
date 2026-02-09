@@ -795,7 +795,8 @@ async def execute_action(
         "close_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
 
         # SIGNED actions - require signatures
-        "create_work_order": ["captain", "manager"],
+        # create_work_order: crew allowed with department-level RBAC (enforced in handler)
+        "create_work_order": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
         "create_work_order_from_fault": ["chief_engineer", "chief_officer", "captain", "manager"],
         "mark_work_order_complete": ["chief_engineer", "chief_officer", "captain", "manager"],
         "reassign_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
@@ -2065,6 +2066,27 @@ async def execute_action(
             raw_priority = payload.get("priority", "routine")
             priority_map = {"normal": "routine", "low": "routine", "medium": "routine", "high": "critical"}
             priority = priority_map.get(raw_priority, raw_priority if raw_priority in ("routine", "emergency", "critical") else "routine")
+
+            # Department-level RBAC for crew (2026-02-09)
+            user_role = user_context.get("role")
+            if user_role == "crew":
+                # Get user's department from TENANT DB
+                user_dept_result = db_client.table("auth_users_profiles").select("department").eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                user_dept = user_dept_result.data.get("department") if user_dept_result.data else None
+
+                # Get work order department from payload
+                wo_dept = payload.get("department")
+
+                # Require department for crew
+                if not wo_dept:
+                    raise HTTPException(status_code=400, detail="department is required for crew")
+
+                # Enforce department match
+                if user_dept and wo_dept and user_dept != wo_dept:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Crew can only create work orders for their department (user: {user_dept}, work order: {wo_dept})"
+                    )
 
             wo_data = {
                 "yacht_id": yacht_id,
