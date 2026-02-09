@@ -59,12 +59,37 @@ for (const [key, user] of Object.entries(TEST_USERS)) {
     // Click submit and wait for redirect
     await submitButton.click();
 
-    // Wait for successful login (redirect to dashboard or home)
+    // FIX 2026-02-08: Wait for Supabase auth state instead of just URL redirect
+    // This fixes timing issues where redirect happens before localStorage is populated
     try {
+      // First wait for auth token in localStorage (more reliable than URL)
+      await page.waitForFunction(() => {
+        const authKeys = Object.keys(localStorage).filter(k =>
+          k.includes('supabase') || k.includes('auth')
+        );
+        if (authKeys.length === 0) return false;
+
+        try {
+          for (const key of authKeys) {
+            const value = localStorage.getItem(key);
+            if (!value) continue;
+            const parsed = JSON.parse(value);
+            // Check if we have an access_token (indicates successful auth)
+            if (parsed.access_token || parsed.currentSession?.access_token) {
+              return true;
+            }
+          }
+        } catch {
+          return false;
+        }
+        return false;
+      }, { timeout: 30000 });  // Increased timeout to 30s for auth state
+
+      // Then verify we're on the right page
       await page.waitForURL(/\/(dashboard|home)/, { timeout: 10000 });
-      console.log(`   ✅ Login successful - redirected to dashboard`);
+      console.log(`   ✅ Login successful - auth state verified`);
     } catch (e) {
-      console.error(`   ❌ Login failed - no redirect to dashboard`);
+      console.error(`   ❌ Login failed - no auth state or redirect`);
       console.error(`   Current URL: ${page.url()}`);
 
       // Take screenshot for debugging

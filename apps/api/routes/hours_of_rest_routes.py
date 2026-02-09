@@ -287,7 +287,7 @@ async def upsert_hours_of_rest_route(
             detail={
                 "error": "UNAUTHORIZED",
                 "error_code": "UNAUTHORIZED",
-                "message": jwt_result.get("error", "Invalid or missing JWT")
+                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
             }
         )
 
@@ -301,7 +301,7 @@ async def upsert_hours_of_rest_route(
             detail={
                 "error": "FORBIDDEN",
                 "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.get("error", "Yacht isolation validation failed")
+                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
             }
         )
 
@@ -364,7 +364,7 @@ async def export_hours_of_rest(
             detail={
                 "error": "UNAUTHORIZED",
                 "error_code": "UNAUTHORIZED",
-                "message": jwt_result.get("error", "Invalid or missing JWT")
+                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
             }
         )
 
@@ -378,7 +378,7 @@ async def export_hours_of_rest(
             detail={
                 "error": "FORBIDDEN",
                 "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.get("error", "Yacht isolation validation failed")
+                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
             }
         )
 
