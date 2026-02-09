@@ -25,6 +25,9 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 import json
 
+# Import standard error code mappings for auto-mapping
+from middleware.action_security import get_standard_error_codes
+
 
 # =============================================================================
 # RESPONSE ENVELOPE (every response wrapped in this)
@@ -534,11 +537,34 @@ class ResponseBuilder:
         self,
         code: str,
         message: str,
-        status_code: int = 500,
+        status_code: Optional[int] = None,
         field: Optional[str] = None,
         suggestions: Optional[List[str]] = None
     ) -> "ResponseBuilder":
-        """Set error (makes success=False)"""
+        """
+        Set error (makes success=False).
+
+        Auto-maps error codes to HTTP status codes if status_code not provided:
+        - NOT_FOUND -> 404
+        - VALIDATION_ERROR -> 400
+        - PERMISSION_DENIED -> 403
+        - IDEMPOTENCY_CONFLICT -> 409
+        - INTERNAL_ERROR -> 500
+        - Unknown codes -> 500 (fail-safe)
+
+        Args:
+            code: Error code (e.g., "NOT_FOUND", "VALIDATION_ERROR")
+            message: Human-readable error message
+            status_code: HTTP status code (optional, auto-mapped if not provided)
+            field: Field name for validation errors
+            suggestions: Recovery suggestions for the user
+        """
+        # Auto-map status code if not provided
+        if status_code is None:
+            error_mappings = get_standard_error_codes()
+            status_code = error_mappings.get(code, {}).get("status_code", 500)
+            # Fallback to 500 only for unknown error codes
+
         self._error = ErrorDetail(
             code=code,
             message=message,
