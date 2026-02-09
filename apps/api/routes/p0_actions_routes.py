@@ -92,6 +92,45 @@ def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
     return get_tenant_client(tenant_key_alias)
 
 
+def get_user_scoped_client(jwt_token: str, tenant_key_alias: str = None) -> Client:
+    """Create a user-scoped Supabase client using the user's JWT.
+
+    This enables Row-Level Security (RLS) enforcement - the client
+    will use the user's permissions instead of bypassing RLS with service_role.
+
+    Args:
+        jwt_token: Bearer token from Authorization header (with or without "Bearer " prefix)
+        tenant_key_alias: Tenant identifier (defaults to DEFAULT_YACHT_CODE)
+
+    Returns:
+        Supabase client scoped to the user's JWT
+    """
+    # Strip "Bearer " prefix if present
+    if jwt_token and jwt_token.startswith("Bearer "):
+        jwt_token = jwt_token[7:]
+
+    # Get tenant URL
+    if not tenant_key_alias:
+        tenant_key_alias = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
+
+    url = os.getenv(f"{tenant_key_alias}_SUPABASE_URL") or os.getenv("TENANT_1_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    anon_key = os.getenv(f"{tenant_key_alias}_SUPABASE_ANON_KEY") or os.getenv("TENANT_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+    if not url or not anon_key:
+        raise ValueError(f"Missing Supabase credentials for user-scoped client (tenant: {tenant_key_alias})")
+
+    # Create client with anon key, then set user JWT
+    client = create_client(url, anon_key)
+
+    # Set the user's access token for RLS
+    client.auth.set_session(jwt_token, jwt_token)  # Set both access_token and refresh_token to the JWT
+    client.postgrest.auth(jwt_token)  # Set auth header for PostgREST queries
+
+    logger.info(f"[RLS] Created user-scoped Supabase client for tenant {tenant_key_alias}")
+
+    return client
+
+
 # ============================================================================
 # ROUTER
 # ============================================================================
@@ -731,33 +770,6 @@ async def execute_action(
         # NOTE: write_off_part role check is at handler level (checks role_at_signing + is_manager RPC)
     }
 
-    # INVENTORY/PARTS LENS ACTIONS - Role enforcement (Inventory Lens - Finish Line)
-    # READ actions: all roles including crew
-    # MUTATE actions: engineer and above (crew explicitly excluded)
-    INVENTORY_LENS_ROLES = {
-        # READ actions - all roles
-        "check_stock_level": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                              "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-        "view_part_details": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                              "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-        "view_part_stock": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-        "view_part_location": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                               "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-        "view_part_usage": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-        "view_linked_equipment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                  "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-
-        # MUTATE actions - engineer and above only (crew excluded)
-        "log_part_usage": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        "consume_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        "receive_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        "transfer_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        "add_to_shopping_list": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        "order_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-        "scan_part_barcode": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
-    }
 
     # WORK ORDER LENS ACTIONS - Role enforcement (Security Fix 2026-02-08)
     # Centralized RBAC for all work order actions
@@ -838,32 +850,6 @@ async def execute_action(
                     "status": "error",
                     "error_code": "INSUFFICIENT_PERMISSIONS",
                     "message": f"Role '{user_role}' forbidden: not authorized to perform signed action '{action}'"
-                }
-            )
-
-    # INVENTORY/PARTS LENS ACTIONS - Role validation (Inventory Lens - Finish Line)
-    if action in INVENTORY_LENS_ROLES:
-        user_role = user_context.get("role")
-        allowed_roles = INVENTORY_LENS_ROLES[action]
-
-        if not user_role:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "RLS_DENIED",
-                    "message": "User role not found for inventory action"
-                }
-            )
-
-        if user_role not in allowed_roles:
-            logger.warning(f"[SECURITY] Role '{user_role}' denied for inventory action '{action}'. Allowed: {allowed_roles}")
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "status": "error",
-                    "error_code": "INSUFFICIENT_PERMISSIONS",
-                    "message": f"Role '{user_role}' is not authorized to perform inventory action '{action}'"
                 }
             )
 
@@ -4710,13 +4696,14 @@ async def execute_action(
         elif action in ("get_hours_of_rest", "upsert_hours_of_rest"):
             logger.info(f"[HOR] Dispatching action '{action}' - yacht_id={yacht_id}, user_id={user_id}")
 
-            if not hor_handlers:
-                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+            # Create user-scoped client for RLS enforcement
+            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
+            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
 
             # Map action to handler method
             handler_map = {
-                "get_hours_of_rest": hor_handlers.get_hours_of_rest,
-                "upsert_hours_of_rest": hor_handlers.upsert_hours_of_rest,
+                "get_hours_of_rest": user_scoped_hor_handlers.get_hours_of_rest,
+                "upsert_hours_of_rest": user_scoped_hor_handlers.upsert_hours_of_rest,
             }
 
             handler_fn = handler_map[action]
@@ -4758,14 +4745,15 @@ async def execute_action(
         elif action in ("get_monthly_signoff", "list_monthly_signoffs", "create_monthly_signoff", "sign_monthly_signoff"):
             logger.info(f"[HOR_SIGNOFF] Dispatching action '{action}' - yacht_id={yacht_id}")
 
-            if not hor_handlers:
-                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+            # Create user-scoped client for RLS enforcement
+            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
+            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
 
             handler_map = {
-                "get_monthly_signoff": hor_handlers.get_monthly_signoff,
-                "list_monthly_signoffs": hor_handlers.list_monthly_signoffs,
-                "create_monthly_signoff": hor_handlers.create_monthly_signoff,
-                "sign_monthly_signoff": hor_handlers.sign_monthly_signoff,
+                "get_monthly_signoff": user_scoped_hor_handlers.get_monthly_signoff,
+                "list_monthly_signoffs": user_scoped_hor_handlers.list_monthly_signoffs,
+                "create_monthly_signoff": user_scoped_hor_handlers.create_monthly_signoff,
+                "sign_monthly_signoff": user_scoped_hor_handlers.sign_monthly_signoff,
             }
 
             handler_fn = handler_map[action]
@@ -4797,13 +4785,14 @@ async def execute_action(
         elif action in ("create_crew_template", "apply_crew_template", "list_crew_templates"):
             logger.info(f"[HOR_TEMPLATE] Dispatching action '{action}' - yacht_id={yacht_id}")
 
-            if not hor_handlers:
-                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+            # Create user-scoped client for RLS enforcement
+            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
+            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
 
             handler_map = {
-                "create_crew_template": hor_handlers.create_crew_template,
-                "apply_crew_template": hor_handlers.apply_crew_template,
-                "list_crew_templates": hor_handlers.list_crew_templates,
+                "create_crew_template": user_scoped_hor_handlers.create_crew_template,
+                "apply_crew_template": user_scoped_hor_handlers.apply_crew_template,
+                "list_crew_templates": user_scoped_hor_handlers.list_crew_templates,
             }
 
             handler_fn = handler_map[action]
@@ -4829,13 +4818,14 @@ async def execute_action(
         elif action in ("list_crew_warnings", "acknowledge_warning", "dismiss_warning"):
             logger.info(f"[HOR_WARNING] Dispatching action '{action}' - yacht_id={yacht_id}")
 
-            if not hor_handlers:
-                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+            # Create user-scoped client for RLS enforcement
+            user_client = get_user_scoped_client(authorization, user_context.get("tenant_key_alias"))
+            user_scoped_hor_handlers = HoursOfRestHandlers(user_client)
 
             handler_map = {
-                "list_crew_warnings": hor_handlers.list_crew_warnings,
-                "acknowledge_warning": hor_handlers.acknowledge_warning,
-                "dismiss_warning": hor_handlers.dismiss_warning,
+                "list_crew_warnings": user_scoped_hor_handlers.list_crew_warnings,
+                "acknowledge_warning": user_scoped_hor_handlers.acknowledge_warning,
+                "dismiss_warning": user_scoped_hor_handlers.dismiss_warning,
             }
 
             handler_fn = handler_map[action]
