@@ -2070,10 +2070,16 @@ async def execute_action(
             # Department-level RBAC for crew (2026-02-09)
             user_role = user_context.get("role")
             if user_role == "crew":
-                # Get user's department from TENANT DB
+                # Get user's department from TENANT DB (stored in metadata JSON)
                 try:
-                    user_dept_result = db_client.table("auth_users_profiles").select("department").eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                    user_dept = user_dept_result.data.get("department") if user_dept_result.data else None
+                    user_dept_result = db_client.table("auth_users_profiles").select("metadata").eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                    if user_dept_result.data and user_dept_result.data.get("metadata"):
+                        # Department is stored in metadata->department JSON field
+                        user_dept = user_dept_result.data["metadata"].get("department")
+                        # Normalize to lowercase for comparison
+                        user_dept = user_dept.lower() if user_dept else None
+                    else:
+                        user_dept = None
                 except Exception:
                     # User doesn't have a profile record - no department
                     user_dept = None
@@ -2084,6 +2090,9 @@ async def execute_action(
                 # Require department in payload
                 if not wo_dept:
                     raise HTTPException(status_code=400, detail="department is required for crew")
+
+                # Normalize to lowercase for comparison
+                wo_dept = wo_dept.lower() if wo_dept else None
 
                 # Require crew to have a department in profile
                 if not user_dept:
