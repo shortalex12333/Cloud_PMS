@@ -226,7 +226,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
                 {message.attachments.map((att) => (
                   <button
                     key={att.id}
-                    onClick={() => handleAttachmentClick(
+                    onClick={() => onAttachmentClick(
                       message.provider_message_id,
                       att.id,
                       att.name,
@@ -255,6 +255,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
             <OriginalContentViewer
               providerMessageId={message.provider_message_id}
               onClose={() => setShowOriginal(false)}
+              onAttachmentClick={onAttachmentClick}
             />
           )}
         </div>
@@ -270,9 +271,10 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
 interface OriginalContentViewerProps {
   providerMessageId: string;
   onClose: () => void;
+  onAttachmentClick: (providerMessageId: string, attachmentId: string, fileName: string, contentType: string) => void;
 }
 
-function OriginalContentViewer({ providerMessageId, onClose }: OriginalContentViewerProps) {
+function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }: OriginalContentViewerProps) {
   const { data: content, isLoading, error } = useMessageContent(providerMessageId);
 
   // Loading state
@@ -379,7 +381,7 @@ function OriginalContentViewer({ providerMessageId, onClose }: OriginalContentVi
               <button
                 key={att.id}
                 onClick={() => onAttachmentClick(
-                  message.provider_message_id,
+                  providerMessageId,
                   att.id,
                   att.name,
                   att.contentType || 'application/octet-stream'
