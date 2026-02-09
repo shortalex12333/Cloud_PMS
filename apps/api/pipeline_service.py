@@ -360,6 +360,18 @@ except Exception as e:
     logger.error("Document link/unlink endpoints will not be available")
 
 # ============================================================================
+# HOURS OF REST ROUTES (Crew Compliance - MLC 2006 & STCW)
+# ============================================================================
+
+try:
+    from routes.hours_of_rest_routes import router as hor_router
+    app.include_router(hor_router)
+    logger.info("✅ Hours of Rest routes registered at /v1/hours-of-rest/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Hours of Rest routes: {e}")
+    logger.error("Hours of Rest endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
