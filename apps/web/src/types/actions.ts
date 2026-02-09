@@ -84,6 +84,18 @@ export type MicroAction =
   | 'log_delivery_received'
   | 'update_purchase_status'
 
+  // RECEIVING (10 actions)
+  | 'create_receiving'
+  | 'view_receiving_history'
+  | 'add_receiving_item'
+  | 'adjust_receiving_item'
+  | 'update_receiving'
+  | 'attach_receiving_image_with_comment'
+  | 'extract_receiving_candidates'
+  | 'accept_receiving'
+  | 'reject_receiving'
+  | 'link_receiving_to_invoice'
+
   // OPERATIONAL CHECKLISTS (4 actions)
   | 'view_checklist'
   | 'mark_checklist_item_complete'
@@ -799,6 +811,101 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     side_effect_type: 'mutation_light',
     icon: 'Edit',
     description: 'Change purchase order status',
+  },
+
+  // RECEIVING (10 actions)
+  create_receiving: {
+    action_name: 'create_receiving',
+    label: 'Create Receiving',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'Package',
+    description: 'Create new receiving record for delivered goods',
+  },
+  view_receiving_history: {
+    action_name: 'view_receiving_history',
+    label: 'View Receiving History',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'read_only',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'History',
+    description: 'Display receiving audit log and history',
+  },
+  add_receiving_item: {
+    action_name: 'add_receiving_item',
+    label: 'Add Line Item',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_light',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'PlusCircle',
+    description: 'Add item to receiving record',
+  },
+  adjust_receiving_item: {
+    action_name: 'adjust_receiving_item',
+    label: 'Adjust Line Item',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_light',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'Edit',
+    description: 'Modify receiving line item quantity or details',
+  },
+  update_receiving: {
+    action_name: 'update_receiving',
+    label: 'Update Receiving Fields',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_light',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'Edit',
+    description: 'Update receiving header information',
+  },
+  attach_receiving_image_with_comment: {
+    action_name: 'attach_receiving_image_with_comment',
+    label: 'Attach Image',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_light',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'Camera',
+    description: 'Add photo documentation to receiving',
+  },
+  extract_receiving_candidates: {
+    action_name: 'extract_receiving_candidates',
+    label: 'Extract Line Items',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'read_only',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'ScanText',
+    description: 'Extract line items from attached invoice PDF',
+  },
+  accept_receiving: {
+    action_name: 'accept_receiving',
+    label: 'Accept',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'CheckCircle',
+    description: 'Accept receiving and finalize',
+  },
+  reject_receiving: {
+    action_name: 'reject_receiving',
+    label: 'Reject',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'XCircle',
+    description: 'Reject receiving and provide reason',
+  },
+  link_receiving_to_invoice: {
+    action_name: 'link_receiving_to_invoice',
+    label: 'Link Invoice PDF',
+    cluster: 'procure_suppliers',
+    side_effect_type: 'mutation_light',
+    role_restricted: ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'],
+    icon: 'Link',
+    description: 'Associate invoice PDF with receiving',
   },
 
   // OPERATIONAL CHECKLISTS
