@@ -1,15 +1,20 @@
 // @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
- * UpdateHoursOfRestModal Component
+ * UpdateHoursOfRestModal Component - UPDATED FOR NEW SCHEMA
  *
- * Modal for updating crew hours of rest entries
+ * Modal for logging daily hours of rest entries
  * MLC compliance-sensitive with audit trail
+ *
+ * NEW SCHEMA:
+ * - record_date: ISO date string (e.g., "2026-02-09")
+ * - rest_periods: Array of {start: "22:00", end: "06:00", hours: 8.0}
+ * - total_rest_hours: Sum of all rest period hours
  */
 
 'use client';
 
 import { useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -21,90 +26,94 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useActionHandler } from '@/hooks/useActionHandler';
 import {
   Clock,
   Loader2,
-  User,
   Calendar,
   AlertTriangle,
   CheckCircle,
-  Edit,
-  Shield,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { upsertHoursOfRest } from '@/lib/microactions/handlers/hours_of_rest';
 
-// Time entry schema
-const timeEntrySchema = z.object({
-  hour: z.number().min(0).max(23),
-  status: z.enum(['work', 'rest', 'watch']),
+// Rest period schema
+const restPeriodSchema = z.object({
+  start: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be in HH:MM format'),
+  end: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be in HH:MM format'),
+  hours: z.number().min(0).max(24),
 });
 
 // Validation schema
 const updateHoursOfRestSchema = z.object({
-  crew_member_id: z.string().min(1, 'Crew member is required'),
-  date: z.string().min(1, 'Date is required'),
-  entries: z.array(timeEntrySchema).length(24),
-  reason: z.string().min(10, 'Reason must be at least 10 characters'),
-  verified_by: z.string().optional(),
+  record_date: z.string().min(1, 'Date is required'),
+  rest_periods: z.array(restPeriodSchema).min(1, 'At least one rest period is required'),
+  total_rest_hours: z.number().min(0).max(24),
 });
 
-type TimeEntry = z.infer<typeof timeEntrySchema>;
+type RestPeriod = z.infer<typeof restPeriodSchema>;
 type UpdateHoursOfRestFormData = z.infer<typeof updateHoursOfRestSchema>;
-
-// Status types
-type RestStatus = 'work' | 'rest' | 'watch';
 
 interface UpdateHoursOfRestModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: {
-    crew_member_id: string;
-    crew_member_name: string;
-    crew_member_role: string;
-    date: string;
-    current_entries?: TimeEntry[];
+    yacht_id: string;
+    user_id: string;
+    user_role: string;
+  };
+  defaultDate?: string;
+  currentData?: {
+    record_date: string;
+    rest_periods: RestPeriod[];
+    total_rest_hours: number;
   };
   onSuccess?: () => void;
 }
 
-const STATUS_CONFIG: Record<RestStatus, { label: string; color: string; bgColor: string }> = {
-  work: { label: 'Work', color: 'text-blue-700', bgColor: 'bg-blue-500' },
-  rest: { label: 'Rest', color: 'text-emerald-700', bgColor: 'bg-emerald-500' },
-  watch: { label: 'Watch', color: 'text-amber-700', bgColor: 'bg-amber-500' },
+// Common rest period presets
+const REST_PRESETS = {
+  standard: {
+    label: 'Standard Night Rest (22:00-06:00)',
+    periods: [{ start: '22:00', end: '06:00', hours: 8.0 }],
+  },
+  extended: {
+    label: 'Extended Night Rest (20:00-08:00)',
+    periods: [{ start: '20:00', end: '08:00', hours: 12.0 }],
+  },
+  split: {
+    label: 'Split Rest (00:00-06:00 + 13:00-17:00)',
+    periods: [
+      { start: '00:00', end: '06:00', hours: 6.0 },
+      { start: '13:00', end: '17:00', hours: 4.0 },
+    ],
+  },
+  watch_4_8: {
+    label: '4/8 Watch Rest (04:00-08:00 + 20:00-04:00)',
+    periods: [
+      { start: '04:00', end: '08:00', hours: 4.0 },
+      { start: '20:00', end: '04:00', hours: 8.0 },
+    ],
+  },
 };
-
-// Generate default 24-hour entries
-function generateDefaultEntries(): TimeEntry[] {
-  return Array.from({ length: 24 }, (_, hour) => ({
-    hour,
-    status: hour >= 22 || hour < 6 ? 'rest' : 'work',
-  }));
-}
 
 export function UpdateHoursOfRestModal({
   open,
   onOpenChange,
   context,
+  defaultDate,
+  currentData,
   onSuccess,
 }: UpdateHoursOfRestModalProps) {
-  const { executeAction, isLoading } = useActionHandler();
-  const [selectedStatus, setSelectedStatus] = useState<RestStatus>('work');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const defaultEntries = context.current_entries || generateDefaultEntries();
+  const defaultRestPeriods = currentData?.rest_periods || [{ start: '22:00', end: '06:00', hours: 8.0 }];
+  const defaultTotalHours = currentData?.total_rest_hours || 8.0;
 
   const {
     register,
-    control,
     handleSubmit,
     formState: { errors },
     setValue,
@@ -113,66 +122,81 @@ export function UpdateHoursOfRestModal({
   } = useForm<UpdateHoursOfRestFormData>({
     resolver: zodResolver(updateHoursOfRestSchema),
     defaultValues: {
-      crew_member_id: context.crew_member_id,
-      date: context.date,
-      entries: defaultEntries,
-      reason: '',
-      verified_by: '',
+      record_date: currentData?.record_date || defaultDate || new Date().toISOString().split('T')[0],
+      rest_periods: defaultRestPeriods,
+      total_rest_hours: defaultTotalHours,
     },
   });
 
-  const entries = watch('entries');
-  const reason = watch('reason');
+  const restPeriods = watch('rest_periods');
+  const totalRestHours = watch('total_rest_hours');
+  const recordDate = watch('record_date');
 
-  // Calculate hours summary
-  const summary = {
-    work: entries.filter(e => e.status === 'work').length,
-    rest: entries.filter(e => e.status === 'rest').length,
-    watch: entries.filter(e => e.status === 'watch').length,
+  // Check MLC compliance (minimum 10 hours rest in 24 hours)
+  const isCompliant = totalRestHours >= 10;
+
+  const addRestPeriod = () => {
+    setValue('rest_periods', [
+      ...restPeriods,
+      { start: '00:00', end: '00:00', hours: 0 },
+    ]);
   };
 
-  // Check MLC compliance (minimum 10 hours rest in 24 hours, minimum 6 continuous)
-  const totalRest = summary.rest;
-  const isCompliant = totalRest >= 10;
-
-  const toggleHour = (hour: number) => {
-    const newEntries = [...entries];
-    newEntries[hour] = {
-      hour,
-      status: selectedStatus,
-    };
-    setValue('entries', newEntries);
+  const removeRestPeriod = (index: number) => {
+    const newPeriods = restPeriods.filter((_, i) => i !== index);
+    setValue('rest_periods', newPeriods);
+    recalculateTotalHours(newPeriods);
   };
 
-  const setRange = (startHour: number, endHour: number, status: RestStatus) => {
-    const newEntries = [...entries];
-    for (let h = startHour; h <= endHour; h++) {
-      newEntries[h] = { hour: h, status };
+  const updateRestPeriod = (index: number, field: keyof RestPeriod, value: string | number) => {
+    const newPeriods = [...restPeriods];
+    newPeriods[index] = { ...newPeriods[index], [field]: value };
+
+    // Auto-calculate hours if start and end times are provided
+    if (field === 'start' || field === 'end') {
+      const period = newPeriods[index];
+      if (period.start && period.end) {
+        newPeriods[index].hours = calculateHours(period.start, period.end);
+      }
     }
-    setValue('entries', newEntries);
+
+    setValue('rest_periods', newPeriods);
+    recalculateTotalHours(newPeriods);
+  };
+
+  const recalculateTotalHours = (periods: RestPeriod[]) => {
+    const total = periods.reduce((sum, period) => sum + period.hours, 0);
+    setValue('total_rest_hours', Math.round(total * 10) / 10);
+  };
+
+  const applyPreset = (presetKey: keyof typeof REST_PRESETS) => {
+    const preset = REST_PRESETS[presetKey];
+    setValue('rest_periods', preset.periods);
+    recalculateTotalHours(preset.periods);
   };
 
   const onSubmit = async (data: UpdateHoursOfRestFormData) => {
-    const response = await executeAction(
-      'update_hours_of_rest',
-      {
-        crew_member_id: data.crew_member_id,
-        date: data.date,
-        entries: data.entries,
-        reason: data.reason,
-        verified_by: data.verified_by,
-        is_compliant: isCompliant,
-      },
-      {
-        successMessage: 'Hours of rest updated',
-        refreshData: true,
-      }
-    );
+    setIsLoading(true);
+    try {
+      const result = await upsertHoursOfRest(context, {
+        record_date: data.record_date,
+        rest_periods: data.rest_periods,
+        total_rest_hours: data.total_rest_hours,
+      });
 
-    if (response?.success) {
-      reset();
-      onOpenChange(false);
-      onSuccess?.();
+      if (result.success) {
+        reset();
+        onOpenChange(false);
+        onSuccess?.();
+      } else {
+        console.error('Failed to save hours of rest:', result.error);
+        alert(result.error?.message || 'Failed to save hours of rest');
+      }
+    } catch (error) {
+      console.error('Error saving hours of rest:', error);
+      alert('An error occurred while saving');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -181,20 +205,16 @@ export function UpdateHoursOfRestModal({
     onOpenChange(false);
   };
 
-  const formatHour = (hour: number) => {
-    return `${hour.toString().padStart(2, '0')}:00`;
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-500" />
-            Update Hours of Rest
+            Log Hours of Rest
           </DialogTitle>
           <DialogDescription>
-            Record work and rest periods for MLC compliance
+            Record rest periods for MLC 2006 compliance
           </DialogDescription>
         </DialogHeader>
 
@@ -222,147 +242,130 @@ export function UpdateHoursOfRestModal({
                 'text-sm',
                 isCompliant ? 'text-emerald-700' : 'text-red-700'
               )}>
-                {totalRest} hours rest recorded. Minimum 10 hours required per 24-hour period.
+                {totalRestHours} hours rest recorded. Minimum 10 hours required per 24-hour period.
               </p>
             </div>
           </div>
 
-          {/* Crew Member Info */}
-          <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{context.crew_member_name}</p>
-                <p className="text-sm text-gray-500">{context.crew_member_role}</p>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Calendar className="h-4 w-4" />
-                {context.date}
-              </div>
-            </div>
-          </div>
-
-          {/* Status Selection */}
+          {/* Record Date */}
           <div className="space-y-2">
-            <Label>Select Status to Apply</Label>
-            <div className="flex gap-2">
-              {(Object.keys(STATUS_CONFIG) as RestStatus[]).map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setSelectedStatus(status)}
-                  className={cn(
-                    'px-4 py-2 rounded-lg border-2 transition-all',
-                    'flex items-center gap-2 text-sm font-medium',
-                    selectedStatus === status
-                      ? `border-current ${STATUS_CONFIG[status].color} bg-white ring-2 ring-offset-2`
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                  )}
-                >
-                  <span className={cn('w-3 h-3 rounded', STATUS_CONFIG[status].bgColor)} />
-                  {STATUS_CONFIG[status].label}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500">Click on hours below to apply selected status</p>
-          </div>
-
-          {/* 24-Hour Grid */}
-          <div className="space-y-2">
-            <Label>24-Hour Schedule</Label>
-            <div className="grid grid-cols-12 gap-1">
-              {entries.map((entry, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => toggleHour(index)}
-                  className={cn(
-                    'aspect-square rounded flex flex-col items-center justify-center',
-                    'text-xs transition-all hover:ring-2 hover:ring-offset-1',
-                    STATUS_CONFIG[entry.status].bgColor,
-                    'text-white font-medium'
-                  )}
-                  title={`${formatHour(index)} - ${STATUS_CONFIG[entry.status].label}`}
-                >
-                  <span>{index.toString().padStart(2, '0')}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRange(0, 5, 'rest')}
-            >
-              Night Rest (00-06)
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRange(6, 17, 'work')}
-            >
-              Day Work (06-18)
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRange(18, 21, 'rest')}
-            >
-              Evening Rest (18-22)
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRange(22, 23, 'rest')}
-            >
-              Night Rest (22-24)
-            </Button>
-          </div>
-
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 bg-blue-50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-blue-700">{summary.work}h</p>
-              <p className="text-xs text-blue-600">Work</p>
-            </div>
-            <div className="p-3 bg-emerald-50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-emerald-700">{summary.rest}h</p>
-              <p className="text-xs text-emerald-600">Rest</p>
-            </div>
-            <div className="p-3 bg-amber-50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-amber-700">{summary.watch}h</p>
-              <p className="text-xs text-amber-600">Watch</p>
-            </div>
-          </div>
-
-          {/* Reason for Change */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="reason">Reason for Update *</Label>
-              <Shield className="h-4 w-4 text-amber-500" />
-            </div>
-            <Textarea
-              id="reason"
-              {...register('reason')}
-              placeholder="Explain why this record is being updated (audit requirement)..."
-              rows={3}
-              className={errors.reason ? 'border-red-500' : ''}
+            <Label htmlFor="record_date" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              Date *
+            </Label>
+            <Input
+              id="record_date"
+              type="date"
+              {...register('record_date')}
+              className={errors.record_date ? 'border-red-500' : ''}
             />
-            {errors.reason && (
-              <p className="text-sm text-red-600">{errors.reason.message}</p>
+            {errors.record_date && (
+              <p className="text-sm text-red-600">{errors.record_date.message}</p>
             )}
-            <p className="text-xs text-amber-600">
-              This is an audit-sensitive field. Changes are logged permanently.
-            </p>
+          </div>
+
+          {/* Preset Buttons */}
+          <div className="space-y-2">
+            <Label>Quick Presets</Label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(REST_PRESETS).map(([key, preset]) => (
+                <Button
+                  key={key}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset(key as keyof typeof REST_PRESETS)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rest Periods */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Rest Periods *</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addRestPeriod}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Period
+              </Button>
+            </div>
+
+            {errors.rest_periods && (
+              <p className="text-sm text-red-600">{errors.rest_periods.message as string}</p>
+            )}
+
+            <div className="space-y-2">
+              {restPeriods.map((period, index) => (
+                <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1 grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs text-gray-600">Start</Label>
+                      <Input
+                        type="time"
+                        value={period.start}
+                        onChange={(e) => updateRestPeriod(index, 'start', e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">End</Label>
+                      <Input
+                        type="time"
+                        value={period.end}
+                        onChange={(e) => updateRestPeriod(index, 'end', e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">Hours</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="24"
+                        value={period.hours}
+                        onChange={(e) => updateRestPeriod(index, 'hours', parseFloat(e.target.value) || 0)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                  {restPeriods.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeRestPeriod(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Total Rest Hours (auto-calculated) */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-900">Total Rest Hours</p>
+                <p className="text-xs text-blue-700">Auto-calculated from rest periods</p>
+              </div>
+              <p className={cn(
+                'text-3xl font-bold',
+                isCompliant ? 'text-emerald-600' : 'text-red-600'
+              )}>
+                {totalRestHours}h
+              </p>
+            </div>
           </div>
 
           {/* Actions */}
@@ -377,8 +380,8 @@ export function UpdateHoursOfRestModal({
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || !reason?.trim() || reason.length < 10}
-              className={!isCompliant ? 'bg-amber-600 hover:bg-amber-700' : ''}
+              disabled={isLoading || restPeriods.length === 0}
+              className={!isCompliant ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}
             >
               {isLoading ? (
                 <>
@@ -387,7 +390,7 @@ export function UpdateHoursOfRestModal({
                 </>
               ) : (
                 <>
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-2" />
                   {!isCompliant ? 'Save (Non-Compliant)' : 'Save Hours'}
                 </>
               )}
@@ -397,4 +400,23 @@ export function UpdateHoursOfRestModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+// Helper function to calculate hours between two times
+function calculateHours(start: string, end: string): number {
+  const [startHour, startMin] = start.split(':').map(Number);
+  const [endHour, endMin] = end.split(':').map(Number);
+
+  let hours = endHour - startHour;
+  let minutes = endMin - startMin;
+
+  // Handle negative hours (crossing midnight)
+  if (hours < 0) {
+    hours += 24;
+  }
+
+  // Convert minutes to fractional hours
+  const totalHours = hours + minutes / 60;
+
+  return Math.round(totalHours * 10) / 10;
 }
