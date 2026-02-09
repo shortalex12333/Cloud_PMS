@@ -1185,31 +1185,39 @@ def detect_domain_from_query(query: str) -> Optional[tuple]:
     """
     query_lower = query.lower()
 
+    # DEBUG 2026-02-09: Log to diagnose shopping_list not matching
+    print(f"[DETECT_DOMAIN] query='{query_lower}', shopping_list_in_dict={'shopping_list' in COMPOUND_ANCHORS}, total_domains={len(COMPOUND_ANCHORS)}")
+
     # Check each domain's compound patterns
     matches = []
     for domain, patterns in COMPOUND_ANCHORS.items():
         for pattern in patterns:
             if re.search(pattern, query_lower, re.IGNORECASE):
                 matches.append((domain, pattern))
+                print(f"[DETECT_DOMAIN_MATCH] domain='{domain}', pattern='{pattern}'")
                 break  # One match per domain is enough
 
     if not matches:
         # No compound anchor matched - check if query is vague
         # Return None to indicate explore mode
+        print(f"[DETECT_DOMAIN_RESULT] No matches for query='{query_lower}'")
         return None
 
     if len(matches) == 1:
         # Single domain matched with high confidence
         domain = normalize_domain(matches[0][0])
+        print(f"[DETECT_DOMAIN_RESULT] Single match: domain='{domain}', confidence=0.9")
         return (domain, 0.9)
 
     # Multiple domains matched - need disambiguation
+    print(f"[DETECT_DOMAIN_RESULT] Multiple matches ({len(matches)}): {[d for d, _ in matches]}")
     # Priority order based on specificity
     # FIX 2026-02-08: Added shopping_list with high priority (after receiving, before hours_of_rest)
     priority = ['work_order', 'receiving', 'shopping_list', 'hours_of_rest', 'equipment', 'part', 'fault', 'document', 'certificate', 'crew', 'checklist', 'handover', 'purchase']
     for p in priority:
         for domain, _ in matches:
             if domain == p:
+                print(f"[DETECT_DOMAIN_RESULT] Priority disambiguation: chose '{domain}' over others")
                 return (normalize_domain(domain), 0.7)  # Lower confidence due to ambiguity
 
     # Fallback to first match with medium confidence

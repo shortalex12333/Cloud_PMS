@@ -1436,6 +1436,7 @@ class PartHandlers:
         user_id: str,
         part_id: str,
         file_name: str,
+        file_content: bytes,
         mime_type: str,
         description: str = None,
         tags: List[str] = None,
@@ -1445,7 +1446,7 @@ class PartHandlers:
 
         Storage path template: {yacht_id}/parts/{part_id}/images/{timestamp}_{filename}
 
-        Returns presigned URL for client-side upload to Supabase Storage.
+        Performs direct upload to Supabase Storage.
         """
         try:
             # Validate part exists and belongs to yacht
@@ -1466,16 +1467,22 @@ class PartHandlers:
             storage_path = f"{yacht_id}/parts/{part_id}/images/{timestamp_suffix}_{safe_filename}"
             bucket = "pms-part-images"
 
-            # Generate presigned POST URL (expires in 1 hour)
+            # Upload file directly to storage
             try:
-                signed_result = self.db.storage.from_(bucket).create_signed_upload_url(storage_path)
-                presigned_url = signed_result.get("signedURL") or signed_result.get("signedUrl")
+                upload_result = self.db.storage.from_(bucket).upload(
+                    storage_path,
+                    file_content,
+                    {"content-type": mime_type}
+                )
 
-                if not presigned_url:
-                    raise ValueError("Failed to generate presigned URL")
+                if not upload_result:
+                    raise ValueError("Failed to upload file to storage")
+
+                # Generate public URL for the uploaded file
+                public_url = self.db.storage.from_(bucket).get_public_url(storage_path)
             except Exception as e:
-                logger.error(f"Failed to generate presigned URL for {storage_path}: {e}")
-                raise ValueError(f"Failed to generate upload URL: {str(e)}")
+                logger.error(f"Failed to upload file to {storage_path}: {e}")
+                raise ValueError(f"Failed to upload file: {str(e)}")
 
             # Update pms_parts with image metadata
             update_data = {
@@ -1516,9 +1523,8 @@ class PartHandlers:
                 "part_name": part_name,
                 "storage_path": storage_path,
                 "bucket": bucket,
-                "presigned_upload_url": presigned_url,
-                "expires_in": 3600,
-                "message": f"Image upload URL generated for {file_name}",
+                "image_url": public_url,
+                "message": f"Image uploaded successfully: {file_name}",
             }
 
         except ValueError as e:
@@ -1526,7 +1532,7 @@ class PartHandlers:
             raise
         except Exception as e:
             logger.error(f"upload_part_image failed: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 
     async def update_part_image(
         self,
