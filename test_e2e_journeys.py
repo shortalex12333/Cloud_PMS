@@ -150,6 +150,7 @@ class JourneyTest:
 
 def journey_1_rbac_fix_crew_work_order():
     """Journey 1: CRITICAL RBAC Fix - Crew creates work order (PR #194)"""
+    import time
     headers = {
         "Authorization": f"Bearer {USERS['CREW']['jwt']}",
         "Content-Type": "application/json",
@@ -159,7 +160,7 @@ def journey_1_rbac_fix_crew_work_order():
         "action": "create_work_order",
         "context": {"yacht_id": YACHT_ID},
         "payload": {
-            "title": "E2E Journey Test - Crew Work Order",
+            "title": f"E2E Test - Crew WO {int(time.time())}",
             "department": "deck",
             "priority": "medium",
             "description": "Testing PR #194 RBAC fix - crew can create work orders",
