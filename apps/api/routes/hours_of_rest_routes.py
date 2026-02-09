@@ -210,27 +210,27 @@ async def get_hours_of_rest_route(
 
     # Validate JWT
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
+    if not jwt_result.valid:
         raise HTTPException(
             status_code=401,
             detail={
                 "error": "UNAUTHORIZED",
                 "error_code": "UNAUTHORIZED",
-                "message": jwt_result.get("error", "Invalid or missing JWT")
+                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
             }
         )
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
 
     # Validate yacht isolation
     yacht_validation = validate_yacht_isolation(yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
+    if not yacht_validation.valid:
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "FORBIDDEN",
                 "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.get("error", "Yacht isolation validation failed")
+                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
             }
         )
 
@@ -281,27 +281,27 @@ async def upsert_hours_of_rest_route(
 
     # Validate JWT
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
+    if not jwt_result.valid:
         raise HTTPException(
             status_code=401,
             detail={
                 "error": "UNAUTHORIZED",
                 "error_code": "UNAUTHORIZED",
-                "message": jwt_result.get("error", "Invalid or missing JWT")
+                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
             }
         )
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
 
     # Validate yacht isolation
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
+    if not yacht_validation.valid:
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "FORBIDDEN",
                 "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.get("error", "Yacht isolation validation failed")
+                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
             }
         )
 
@@ -358,27 +358,27 @@ async def export_hours_of_rest(
 
     # Validate JWT
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
+    if not jwt_result.valid:
         raise HTTPException(
             status_code=401,
             detail={
                 "error": "UNAUTHORIZED",
                 "error_code": "UNAUTHORIZED",
-                "message": jwt_result.get("error", "Invalid or missing JWT")
+                "message": jwt_result.error.message if jwt_result.error else "Invalid or missing JWT"
             }
         )
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
 
     # Validate yacht isolation
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
+    if not yacht_validation.valid:
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "FORBIDDEN",
                 "error_code": "YACHT_ISOLATION_VIOLATION",
-                "message": yacht_validation.get("error", "Yacht isolation validation failed")
+                "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation validation failed"
             }
         )
 
@@ -456,13 +456,13 @@ async def list_monthly_signoffs_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.list_monthly_signoffs(
@@ -491,13 +491,13 @@ async def get_monthly_signoff_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.get_monthly_signoff(
@@ -525,13 +525,13 @@ async def create_monthly_signoff_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.create_monthly_signoff(
@@ -563,13 +563,13 @@ async def sign_monthly_signoff_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.sign_monthly_signoff(
@@ -612,13 +612,13 @@ async def list_crew_templates_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.list_crew_templates(
@@ -646,13 +646,13 @@ async def create_crew_template_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.create_crew_template(
@@ -687,13 +687,13 @@ async def apply_crew_template_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.apply_crew_template(
@@ -731,13 +731,13 @@ async def list_crew_warnings_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.list_crew_warnings(
@@ -765,13 +765,13 @@ async def acknowledge_warning_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.acknowledge_warning(
@@ -804,11 +804,11 @@ async def dismiss_warning_route(
     """
     hor_handlers = get_hor_handlers()
     jwt_result = validate_jwt(authorization)
-    if not jwt_result["valid"]:
-        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.get("error")})
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": jwt_result.error.message if jwt_result.error else "Invalid JWT"})
 
-    user_id_from_jwt = jwt_result["user_id"]
-    user_role = jwt_result.get("role", "crew")
+    user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
+    user_role = jwt_result.context.get("role", "crew") if jwt_result.context else "crew"
 
     # Role check - HOD+ only
     hod_plus_roles = ["chief_engineer", "chief_officer", "chief_steward", "eto", "purser", "captain", "manager"]
@@ -816,8 +816,8 @@ async def dismiss_warning_route(
         raise HTTPException(status_code=403, detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot dismiss warnings. HOD+ required."})
 
     yacht_validation = validate_yacht_isolation(request.yacht_id, user_id_from_jwt)
-    if not yacht_validation["valid"]:
-        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.get("error")})
+    if not yacht_validation.valid:
+        raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
     try:
         result = await hor_handlers.dismiss_warning(
