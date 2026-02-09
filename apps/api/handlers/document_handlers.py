@@ -81,7 +81,7 @@ class DocumentHandlers:
             try:
                 uuid.UUID(entity_id)
             except (ValueError, AttributeError, TypeError):
-                builder.set_error("NOT_FOUND", f"Invalid document ID format: {entity_id}", status_code=404)
+                builder.set_error("NOT_FOUND", f"Invalid document ID format: {entity_id}")
                 return builder.build()
 
             # Get document metadata (exclude soft-deleted)
@@ -93,14 +93,14 @@ class DocumentHandlers:
                 result = None
 
             if not result or not result.data:
-                builder.set_error("NOT_FOUND", f"Document not found: {entity_id}", status_code=404)
+                builder.set_error("NOT_FOUND", f"Document not found: {entity_id}")
                 return builder.build()
 
             doc = result.data
 
             # Additional check for deleted documents (in case column doesn't exist)
             if doc.get("deleted_at"):
-                builder.set_error("NOT_FOUND", f"Document has been deleted: {entity_id}", status_code=404)
+                builder.set_error("NOT_FOUND", f"Document has been deleted: {entity_id}")
                 return builder.build()
 
             # Generate signed URL
@@ -131,8 +131,7 @@ class DocumentHandlers:
                 storage_path = doc.get("storage_path", "")
                 builder.set_error(
                     "NOT_FOUND",
-                    f"Document file not found in storage: {storage_path}",
-                    status_code=404
+                    f"Document file not found in storage: {storage_path}"
                 )
 
             return builder.build()
