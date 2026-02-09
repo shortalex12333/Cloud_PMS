@@ -573,6 +573,7 @@ async def execute_action(
         "start_work_order": ["work_order_id"],
         "cancel_work_order": ["work_order_id"],
         "create_work_order": ["title"],
+        "view_work_order": ["work_order_id"],
         "view_work_order_detail": ["work_order_id"],
         "add_work_order_photo": ["work_order_id", "photo_url"],
         "add_parts_to_work_order": ["work_order_id", "part_id"],
@@ -590,10 +591,7 @@ async def execute_action(
         "add_document_tags": ["document_id", "tags"],
         "get_document_url": ["document_id"],
         # Document Comment Actions (Document Lens v2 - Comments MVP)
-        "add_document_comment": ["document_id", "comment"],
-        "update_document_comment": ["comment_id", "comment"],
-        "delete_document_comment": ["comment_id"],
-        "list_document_comments": ["document_id"],
+        # Document comment actions migrated to action router - see registry.py
         "delete_shopping_item": ["item_id"],
         # Add_wo_* variants
         "add_wo_hours": ["work_order_id", "hours"],
@@ -761,6 +759,37 @@ async def execute_action(
         "scan_part_barcode": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
     }
 
+    # WORK ORDER LENS ACTIONS - Role enforcement (Security Fix 2026-02-08)
+    # Centralized RBAC for all work order actions
+    # READ actions: all authenticated roles
+    # MUTATE actions: chief_engineer and above
+    # SIGNED actions: subset requiring signatures (captain/manager for create/archive)
+    WORK_ORDER_LENS_ROLES = {
+        # READ actions - all roles can view
+        "view_work_order": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        "view_work_order_detail": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        "view_work_order_checklist": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        "view_work_order_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        "view_my_work_orders": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+
+        # MUTATE actions - management only (HOD and above)
+        "update_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "assign_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "start_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "cancel_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "add_note_to_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "add_part_to_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "add_work_order_photo": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "close_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+
+        # SIGNED actions - require signatures
+        "create_work_order": ["captain", "manager"],
+        "create_work_order_from_fault": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "mark_work_order_complete": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "reassign_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
+        "archive_work_order": ["captain", "manager"],
+    }
+
     if action in FAULT_LENS_ROLES:
         user_role = user_context.get("role")
         allowed_roles = FAULT_LENS_ROLES[action]
@@ -835,6 +864,33 @@ async def execute_action(
                     "status": "error",
                     "error_code": "INSUFFICIENT_PERMISSIONS",
                     "message": f"Role '{user_role}' is not authorized to perform inventory action '{action}'"
+                }
+            )
+
+    # WORK ORDER LENS ACTIONS - Role validation (Security Fix 2026-02-08)
+    # Enforce RBAC BEFORE signature checks and handler execution
+    if action in WORK_ORDER_LENS_ROLES:
+        user_role = user_context.get("role")
+        allowed_roles = WORK_ORDER_LENS_ROLES[action]
+
+        if not user_role:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "User role not found",
+                    "status_code": 403,
+                    "path": request.url.path if hasattr(request, "url") else "/v1/actions/execute"
+                }
+            )
+
+        if user_role not in allowed_roles:
+            logger.warning(f"[SECURITY] Role '{user_role}' denied for work order action '{action}'. Allowed: {allowed_roles}")
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "status_code": 403,
+                    "path": request.url.path if hasattr(request, "url") else "/v1/actions/execute"
                 }
             )
 
@@ -1147,10 +1203,7 @@ async def execute_action(
         elif action == "reassign_work_order":
             if not wo_handlers:
                 raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-            # Role-based access: reassign allowed for HOD, captain, manager
-            user_role = user_context.get("role", "")
-            if user_role not in ("chief_engineer", "chief_officer", "captain", "manager"):
-                raise HTTPException(status_code=403, detail=f"Role '{user_role}' is not authorized to perform action '{action}'")
+            # RBAC check now handled centrally in WORK_ORDER_LENS_ROLES
             signature = payload.get("signature")
             if not signature:
                 raise HTTPException(status_code=400, detail="signature is required for reassign_work_order")
@@ -1170,10 +1223,7 @@ async def execute_action(
         elif action == "archive_work_order":
             if not wo_handlers:
                 raise HTTPException(status_code=500, detail="Work order handlers not initialized")
-            # Role-based access: archive allowed for captain, manager
-            user_role = user_context.get("role", "")
-            if user_role not in ("captain", "manager"):
-                raise HTTPException(status_code=403, detail=f"Role '{user_role}' is not authorized to perform action '{action}'")
+            # RBAC check now handled centrally in WORK_ORDER_LENS_ROLES
             signature = payload.get("signature")
             if not signature:
                 raise HTTPException(status_code=400, detail="signature is required for archive_work_order")
@@ -2073,7 +2123,7 @@ async def execute_action(
             else:
                 result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create work order"}
 
-        elif action in ("view_work_order_detail", "get_work_order"):
+        elif action in ("view_work_order_detail", "view_work_order", "get_work_order"):
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
             work_order_id = payload.get("work_order_id")
@@ -4748,48 +4798,13 @@ async def execute_action(
             # Call the handler (async handlers)
             result = await handler_fn(**handler_params)
 
-        # ===== DOCUMENT COMMENT ACTIONS (Document Lens v2 - Comments MVP) =====
-        elif action in ("add_document_comment", "update_document_comment",
-                        "delete_document_comment", "list_document_comments"):
-            # All roles can view/add comments; update/delete restricted to owner or admin
-            COMMENT_ALLOWED_ROLES = {
-                "add_document_comment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                         "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "update_document_comment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "delete_document_comment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-                "list_document_comments": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
-                                           "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
-            }
-            user_role = user_context.get("role", "")
-            allowed_roles = COMMENT_ALLOWED_ROLES.get(action, [])
-            if user_role not in allowed_roles:
-                logger.warning(f"[RLS] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Role '{user_role}' is not authorized to perform action '{action}'"
-                )
-
-            # Dispatch to internal_dispatcher
-            logger.info(f"[DOCUMENT_COMMENT] Dispatching action '{action}' to internal_dispatcher")
-
-            from action_router.dispatchers import internal_dispatcher
-
-            # Merge context and payload for internal dispatcher
-            handler_params = {
-                "yacht_id": yacht_id,
-                "user_id": user_id,
-                "user_context": user_context,
-                **payload
-            }
-
-            try:
-                result = await internal_dispatcher.dispatch(action, handler_params)
-                logger.info(f"[DOCUMENT_COMMENT] Action '{action}' completed successfully")
-            except Exception as e:
-                logger.error(f"[DOCUMENT_COMMENT] Action '{action}' failed: {type(e).__name__}: {e}")
-                raise
+        # ===== DOCUMENT COMMENT ACTIONS - MIGRATED TO ACTION ROUTER =====
+        # Document comment actions (add_document_comment, update_document_comment,
+        # delete_document_comment, list_document_comments) are now handled by the
+        # action router with proper role-based permissions. They should NOT be
+        # handled here to avoid dual permission systems.
+        # See: apps/api/action_router/registry.py (lines 1764-1835)
+        # See: apps/api/action_router/dispatchers/internal_dispatcher.py (lines 451-507)
 
         # ===== RECEIVING LENS V1 ACTIONS =====
         elif action in ["create_receiving", "attach_receiving_image_with_comment",
