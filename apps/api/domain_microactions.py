@@ -29,6 +29,12 @@ from dataclasses import dataclass
 import re
 
 
+# HOTFIX 2026-02-09: Force rebuild to activate Shopping List entity extraction
+# Shopping List compound anchors are present in COMPOUND_ANCHORS (lines 909-928)
+# This constant forces Python bytecode recompilation to load the fix
+ENTITY_EXTRACTION_VERSION = "2026.02.09.001"  # Shopping List + Parts normalization active
+
+
 @dataclass
 class MicroactionDef:
     """Definition of a microaction button."""
@@ -916,6 +922,8 @@ COMPOUND_ANCHORS: Dict[str, List[str]] = {
         r'\bapprove\s+purchase\b',
     ],
     # shopping_list compounds - FIX 2026-02-08: Added shopping list domain anchors
+    # HOTFIX 2026-02-09: Force rebuild - Version 2026.02.09.001
+    # This enables Shopping List entity extraction (queries like "shopping list", "candidate parts")
     'shopping_list': [
         # Primary shopping list patterns
         r'\bshopping\s+list\b',
