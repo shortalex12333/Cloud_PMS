@@ -1427,6 +1427,281 @@ class PartHandlers:
         return result
 
     # =========================================================================
+    # IMAGE HANDLERS (MVP - single image per part stored in pms_parts columns)
+    # =========================================================================
+
+    async def upload_part_image(
+        self,
+        yacht_id: str,
+        user_id: str,
+        part_id: str,
+        file_name: str,
+        mime_type: str,
+        description: str = None,
+        tags: List[str] = None,
+    ) -> Dict:
+        """
+        Upload part image (MVP - stores metadata in pms_parts columns).
+
+        Storage path template: {yacht_id}/parts/{part_id}/images/{timestamp}_{filename}
+
+        Returns presigned URL for client-side upload to Supabase Storage.
+        """
+        try:
+            # Validate part exists and belongs to yacht
+            part_result = self.db.table("pms_parts").select(
+                "id, name, image_storage_path"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not part_result.data or len(part_result.data) == 0:
+                raise ValueError(f"Part {part_id} not found")
+
+            part = part_result.data[0]
+            part_name = part.get("name")
+
+            # Generate storage path with timestamp
+            now = datetime.now(timezone.utc)
+            timestamp_suffix = now.strftime("%Y%m%d_%H%M%S")
+            safe_filename = file_name.replace(" ", "_")
+            storage_path = f"{yacht_id}/parts/{part_id}/images/{timestamp_suffix}_{safe_filename}"
+            bucket = "pms-part-images"
+
+            # Generate presigned POST URL (expires in 1 hour)
+            try:
+                signed_result = self.db.storage.from_(bucket).create_signed_upload_url(storage_path)
+                presigned_url = signed_result.get("signedURL") or signed_result.get("signedUrl")
+
+                if not presigned_url:
+                    raise ValueError("Failed to generate presigned URL")
+            except Exception as e:
+                logger.error(f"Failed to generate presigned URL for {storage_path}: {e}")
+                raise ValueError(f"Failed to generate upload URL: {str(e)}")
+
+            # Update pms_parts with image metadata
+            update_data = {
+                "image_file_name": file_name,
+                "image_storage_path": storage_path,
+                "image_bucket": bucket,
+                "image_mime_type": mime_type,
+                "image_uploaded_at": now.isoformat(),
+                "image_uploaded_by": user_id,
+                "updated_at": now.isoformat(),
+            }
+
+            if description:
+                update_data["image_description"] = description
+
+            self.db.table("pms_parts").update(update_data).eq("id", part_id).eq("yacht_id", yacht_id).execute()
+
+            # Write audit log with signature = {} (non-signed MUTATE action)
+            self._write_audit_log(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                action="upload_part_image",
+                entity_type="part",
+                entity_id=part_id,
+                old_values=None,
+                new_values={
+                    "image_storage_path": storage_path,
+                    "image_file_name": file_name,
+                    "image_mime_type": mime_type,
+                    "image_description": description,
+                },
+                signature={},  # Non-signed action
+            )
+
+            return {
+                "status": "success",
+                "part_id": part_id,
+                "part_name": part_name,
+                "storage_path": storage_path,
+                "bucket": bucket,
+                "presigned_upload_url": presigned_url,
+                "expires_in": 3600,
+                "message": f"Image upload URL generated for {file_name}",
+            }
+
+        except ValueError as e:
+            logger.error(f"upload_part_image validation error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"upload_part_image failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
+
+    async def update_part_image(
+        self,
+        yacht_id: str,
+        user_id: str,
+        image_id: str,  # Actually part_id for MVP (one image per part)
+        description: str = None,
+        tags: List[str] = None,
+    ) -> Dict:
+        """
+        Update part image metadata (description only for MVP).
+
+        image_id is actually part_id since MVP stores one image per part.
+        """
+        try:
+            part_id = image_id  # MVP: image_id == part_id
+
+            # Validate part exists and has an image
+            part_result = self.db.table("pms_parts").select(
+                "id, name, image_storage_path, image_file_name"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not part_result.data or len(part_result.data) == 0:
+                raise ValueError(f"Part {part_id} not found")
+
+            part = part_result.data[0]
+
+            if not part.get("image_storage_path"):
+                raise ValueError(f"Part {part_id} has no image to update")
+
+            # Update image description
+            update_data = {
+                "image_description": description,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            self.db.table("pms_parts").update(update_data).eq("id", part_id).eq("yacht_id", yacht_id).execute()
+
+            # Write audit log with signature = {} (non-signed MUTATE action)
+            self._write_audit_log(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                action="update_part_image",
+                entity_type="part",
+                entity_id=part_id,
+                old_values=None,
+                new_values={"image_description": description},
+                signature={},  # Non-signed action
+            )
+
+            return {
+                "status": "success",
+                "part_id": part_id,
+                "image_file_name": part.get("image_file_name"),
+                "message": "Image description updated successfully",
+            }
+
+        except ValueError as e:
+            logger.error(f"update_part_image validation error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"update_part_image failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to update image: {str(e)}")
+
+    async def delete_part_image(
+        self,
+        yacht_id: str,
+        user_id: str,
+        image_id: str,
+        reason: str,
+        signature: Dict = None,
+    ) -> Dict:
+        """
+        Delete part image (SIGNED action - requires PIN+TOTP signature).
+
+        Captain/Manager role only.
+
+        Soft delete: clears all image_* columns in pms_parts.
+        """
+        try:
+            # Enforce signature contract (400 if missing)
+            if not signature or signature == {}:
+                raise SignatureRequiredError("Signature required for delete_part_image")
+
+            # Validate signature contains required fields
+            role_at_signing = signature.get("role_at_signing", "").lower()
+            signature_type = signature.get("signature_type", "")
+
+            if not role_at_signing or not signature_type:
+                raise SignatureRequiredError("Invalid signature format")
+
+            # Enforce role restriction (403 if not captain/manager)
+            if role_at_signing not in ("captain", "manager"):
+                raise PermissionError(
+                    f"delete_part_image requires captain or manager role (got: {role_at_signing})"
+                )
+
+            part_id = image_id  # MVP: image_id == part_id
+
+            # Validate part exists and has an image
+            part_result = self.db.table("pms_parts").select(
+                "id, name, image_storage_path, image_file_name"
+            ).eq("id", part_id).eq("yacht_id", yacht_id).limit(1).execute()
+
+            if not part_result.data or len(part_result.data) == 0:
+                raise ValueError(f"Part {part_id} not found")
+
+            part = part_result.data[0]
+            deleted_path = part.get("image_storage_path")
+
+            if not deleted_path:
+                raise ValueError(f"Part {part_id} has no image to delete")
+
+            # Clear all image_* columns (soft delete)
+            update_data = {
+                "image_file_name": None,
+                "image_storage_path": None,
+                "image_bucket": None,
+                "image_mime_type": None,
+                "image_size_bytes": None,
+                "image_description": None,
+                "image_uploaded_at": None,
+                "image_uploaded_by": None,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            self.db.table("pms_parts").update(update_data).eq("id", part_id).eq("yacht_id", yacht_id).execute()
+
+            # Build signature payload for audit
+            now = datetime.now(timezone.utc).isoformat()
+            signature_hash = hashlib.sha256(str(signature).encode()).hexdigest()[:16]
+
+            signature_payload = {
+                "user_id": user_id,
+                "role_at_signing": role_at_signing,
+                "signature_type": signature_type,
+                "signature_hash": f"sha256:{signature_hash}",
+                "signed_at": now,
+                **signature,
+            }
+
+            # Write audit log with full signature JSON (SIGNED action)
+            self._write_audit_log(
+                yacht_id=yacht_id,
+                user_id=user_id,
+                action="delete_part_image",
+                entity_type="part",
+                entity_id=part_id,
+                old_values={"image_storage_path": deleted_path},
+                new_values=None,
+                signature=signature_payload,  # Full signature for SIGNED action
+            )
+
+            return {
+                "status": "success",
+                "part_id": part_id,
+                "deleted_path": deleted_path,
+                "reason": reason,
+                "message": f"Image deleted for part {part.get('name')}",
+            }
+
+        except SignatureRequiredError as e:
+            logger.error(f"delete_part_image signature error: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except PermissionError as e:
+            logger.error(f"delete_part_image permission error: {e}")
+            raise HTTPException(status_code=403, detail=str(e))
+        except ValueError as e:
+            logger.error(f"delete_part_image validation error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"delete_part_image failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete image: {str(e)}")
+
+    # =========================================================================
     # HELPERS
     # =========================================================================
 
@@ -1551,4 +1826,9 @@ def get_part_handlers(supabase_client) -> Dict[str, callable]:
         # Label handlers
         "generate_part_labels": handlers.generate_part_labels,
         "request_label_output": handlers.request_label_output,
+
+        # Image handlers (MVP)
+        "upload_part_image": handlers.upload_part_image,
+        "update_part_image": handlers.update_part_image,
+        "delete_part_image": handlers.delete_part_image,
     }
