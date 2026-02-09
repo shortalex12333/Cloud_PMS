@@ -682,7 +682,8 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        item_result = db.table("pms_receiving_items").insert(item_payload).execute()
+        # Insert with .select() to force PostgREST to return data (avoids 204 No Content)
+        item_result = db.table("pms_receiving_items").insert(item_payload).select("*").execute()
 
         if not item_result.data or len(item_result.data) == 0:
             return {
