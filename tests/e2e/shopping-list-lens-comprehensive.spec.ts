@@ -150,7 +150,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.data.status).toBe('success');
+    expect(result.data.success).toBe(true);
     expect(result.data.data).toHaveProperty('shopping_list_item_id');
     expect(result.data.data.status).toBe('candidate');
     expect(result.data.data.is_candidate_part).toBe(true);
@@ -167,14 +167,15 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.data.status).toBe('success');
+    expect(result.data.success).toBe(true);
   });
 
   test('Create with all optional fields', async () => {
     const { token, userId } = await login(USERS.CREW.email, USERS.CREW.password);
 
+    const partName = `Complete Test Part ${Date.now()}`;
     const result = await executeAction(token, userId, 'create_shopping_list_item', {
-      part_name: `Complete Test Part ${Date.now()}`,
+      part_name: partName,
       quantity_requested: 10,
       source_type: 'inventory_low',
       urgency: 'critical',
@@ -187,7 +188,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.data.data.part_name).toBe(`Complete Test Part ${Date.now()}`);
+    expect(result.data.data.part_name).toBe(partName);
   });
 
   test('FAIL: Create without required field (part_name)', async () => {
@@ -226,7 +227,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data.error_code).toBe('VALIDATION_FAILED');
+    expect(result.data.code).toBe('VALIDATION_FAILED');
     expect(result.data.message).toContain('source_type');
   });
 
@@ -241,7 +242,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data.error_code).toBe('VALIDATION_FAILED');
+    expect(result.data.code).toBe('VALIDATION_FAILED');
     expect(result.data.message).toContain('urgency');
   });
 
@@ -255,8 +256,8 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data.error_code).toBe('VALIDATION_FAILED');
-    expect(result.data.message).toContain('greater than 0');
+    expect(result.data.error_code).toBe('MISSING_REQUIRED_FIELD');
+    expect(result.data.message).toContain('quantity_requested');
   });
 
   test('FAIL: Create with negative quantity', async () => {
@@ -269,7 +270,8 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data.error_code).toBe('VALIDATION_FAILED');
+    expect(result.data.code).toBe('VALIDATION_FAILED');
+    expect(result.data.message).toContain('greater than 0');
   });
 
   test('Create with decimal quantity (valid)', async () => {
@@ -297,7 +299,7 @@ test.describe('Shopping List - CREATE Action', () => {
       });
 
       expect(result.status).toBe(200);
-      expect(result.data.status).toBe('success');
+      expect(result.data.success).toBe(true);
     }
   });
 
@@ -313,7 +315,7 @@ test.describe('Shopping List - CREATE Action', () => {
       });
 
       expect(result.status).toBe(200);
-      expect(result.data.status).toBe('success');
+      expect(result.data.success).toBe(true);
     }
   });
 });
@@ -345,7 +347,7 @@ test.describe('Shopping List - APPROVE Action', () => {
     });
 
     expect(approveResult.status).toBe(200);
-    expect(approveResult.data.status).toBe('success');
+    expect(approveResult.data.success).toBe(true);
     expect(approveResult.data.data.status).toBe('approved');
     expect(approveResult.data.data.quantity_approved).toBe(5);
   });
@@ -389,7 +391,7 @@ test.describe('Shopping List - APPROVE Action', () => {
 
     expect(approveResult.status).toBe(403);
     expect(approveResult.data.error_code).toBe('FORBIDDEN');
-    expect(approveResult.data.message).toContain('Only HoD');
+    expect(approveResult.data.message).toContain('not authorized');
   });
 
   test('FAIL: Approve without quantity_approved', async () => {
@@ -408,7 +410,7 @@ test.describe('Shopping List - APPROVE Action', () => {
     });
 
     expect(approveResult.status).toBe(400);
-    expect(approveResult.data.error_code).toBe('VALIDATION_FAILED');
+    expect(approveResult.data.error_code).toBe('MISSING_REQUIRED_FIELD');
     expect(approveResult.data.message).toContain('quantity_approved');
   });
 
@@ -429,8 +431,8 @@ test.describe('Shopping List - APPROVE Action', () => {
     });
 
     expect(approveResult.status).toBe(400);
-    expect(approveResult.data.error_code).toBe('VALIDATION_FAILED');
-    expect(approveResult.data.message).toContain('greater than 0');
+    expect(approveResult.data.error_code).toBe('MISSING_REQUIRED_FIELD');
+    expect(approveResult.data.message).toContain('quantity_approved');
   });
 
   test('FAIL: Approve non-existent item', async () => {
@@ -443,7 +445,7 @@ test.describe('Shopping List - APPROVE Action', () => {
     });
 
     expect(approveResult.status).toBe(404);
-    expect(approveResult.data.error_code).toBe('NOT_FOUND');
+    expect(approveResult.data.code).toBe('NOT_FOUND');
   });
 
   test('FAIL: Approve already rejected item', async () => {
@@ -471,7 +473,7 @@ test.describe('Shopping List - APPROVE Action', () => {
     });
 
     expect(approveResult.status).toBe(400);
-    expect(approveResult.data.error_code).toBe('INVALID_STATE');
+    expect(approveResult.data.code).toBe('INVALID_STATE');
     expect(approveResult.data.message).toContain('rejected');
   });
 });
@@ -500,7 +502,7 @@ test.describe('Shopping List - REJECT Action', () => {
     });
 
     expect(rejectResult.status).toBe(200);
-    expect(rejectResult.data.status).toBe('success');
+    expect(rejectResult.data.success).toBe(true);
     expect(rejectResult.data.data.rejected).toBe(true);
     expect(rejectResult.data.data.rejection_reason).toBe('Already have sufficient stock');
   });
@@ -522,7 +524,7 @@ test.describe('Shopping List - REJECT Action', () => {
 
     expect(rejectResult.status).toBe(403);
     expect(rejectResult.data.error_code).toBe('FORBIDDEN');
-    expect(rejectResult.data.message).toContain('Only HoD');
+    expect(rejectResult.data.message).toContain('not authorized');
   });
 
   test('FAIL: Reject without rejection_reason', async () => {
@@ -541,7 +543,7 @@ test.describe('Shopping List - REJECT Action', () => {
     });
 
     expect(rejectResult.status).toBe(400);
-    expect(rejectResult.data.error_code).toBe('VALIDATION_FAILED');
+    expect(rejectResult.data.error_code).toBe('MISSING_REQUIRED_FIELD');
     expect(rejectResult.data.message).toContain('rejection_reason');
   });
 
@@ -570,7 +572,7 @@ test.describe('Shopping List - REJECT Action', () => {
     });
 
     expect(rejectResult.status).toBe(400);
-    expect(rejectResult.data.error_code).toBe('INVALID_STATE');
+    expect(rejectResult.data.code).toBe('INVALID_STATE');
   });
 
   test('FAIL: Reject already rejected item (idempotency check)', async () => {
@@ -598,7 +600,7 @@ test.describe('Shopping List - REJECT Action', () => {
     });
 
     expect(rejectResult.status).toBe(400);
-    expect(rejectResult.data.error_code).toBe('INVALID_STATE');
+    expect(rejectResult.data.code).toBe('INVALID_STATE');
     expect(rejectResult.data.message).toContain('already rejected');
   });
 });
@@ -624,7 +626,7 @@ test.describe('Shopping List - VIEW HISTORY Action', () => {
     });
 
     expect(historyResult.status).toBe(200);
-    expect(historyResult.data.status).toBe('success');
+    expect(historyResult.data.success).toBe(true);
     expect(historyResult.data.data).toHaveProperty('history');
     expect(Array.isArray(historyResult.data.data.history)).toBe(true);
   });
@@ -669,7 +671,7 @@ test.describe('Shopping List - VIEW HISTORY Action', () => {
     });
 
     expect(historyResult.status).toBe(404);
-    expect(historyResult.data.error_code).toBe('NOT_FOUND');
+    expect(historyResult.data.code).toBe('NOT_FOUND');
   });
 });
 
@@ -741,7 +743,7 @@ test.describe('Shopping List - FULL LIFECYCLE', () => {
     });
 
     expect(approveResult.status).toBe(400);
-    expect(approveResult.data.error_code).toBe('INVALID_STATE');
+    expect(approveResult.data.code).toBe('INVALID_STATE');
   });
 });
 

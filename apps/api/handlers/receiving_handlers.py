@@ -129,7 +129,7 @@ def _write_audit_log(db, payload: Dict):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    db.table("pms_audit_log").insert(audit_payload).select("*").execute()
+    db.table("pms_audit_log").insert(audit_payload).execute()
 
 
 # ============================================================================
@@ -317,7 +317,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.table("pms_receiving_documents").insert(doc_payload).select("*").execute()
+        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -461,7 +461,7 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        extract_result = db.table("pms_receiving_extractions").insert(extraction_record).select("*").execute()
+        extract_result = db.table("pms_receiving_extractions").insert(extraction_record).execute()
 
         if not extract_result.data or len(extract_result.data) == 0:
             return {
@@ -619,7 +619,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         try:
             update_result = db.table("pms_receiving").update(update_payload).eq(
                 "id", receiving_id
-            ).eq("yacht_id", yacht_id).select("*").execute()
+            ).eq("yacht_id", yacht_id).execute()
 
             if not update_result.data or len(update_result.data) == 0:
                 logger.error(f"Update returned no data for receiving_id: {receiving_id}")
@@ -774,9 +774,9 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        # Force PostgREST to return data (avoids 204 No Content)
+        # Insert and return data (Supabase returns data by default)
         try:
-            item_result = db.table("pms_receiving_items").insert(item_payload).select("*").execute()
+            item_result = db.table("pms_receiving_items").insert(item_payload).execute()
         except Exception as e:
             logger.error(f"Database insert error: {e}")
             return {
@@ -900,10 +900,10 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                 "message": "No fields provided for update"
             }
 
-        # Update item (force return data)
+        # Update item
         db.table("pms_receiving_items").update(update_payload).eq(
             "id", receiving_item_id
-        ).select("*").execute()
+        ).execute()
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -1044,7 +1044,7 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
         }
 
         try:
-            doc_result = db.table("pms_receiving_documents").insert(doc_payload).select("*").execute()
+            doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
         except Exception as e:
             logger.error(f"Database insert error: {e}")
             return {

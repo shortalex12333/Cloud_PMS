@@ -796,7 +796,9 @@ async def upload_part_image(
 
         # Validate yacht isolation
         tenant_key = lookup_tenant_for_user(user_id)
-        validate_yacht_isolation(jwt_result, yacht_id)
+        yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
+        if not yacht_validation.valid:
+            raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
@@ -865,7 +867,9 @@ async def update_part_image(
 
         # Validate yacht isolation
         tenant_key = lookup_tenant_for_user(user_id)
-        validate_yacht_isolation(jwt_result, request.yacht_id)
+        yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, jwt_result.context if jwt_result.context else {})
+        if not yacht_validation.valid:
+            raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
@@ -925,7 +929,9 @@ async def delete_part_image(
 
         # Validate yacht isolation
         tenant_key = lookup_tenant_for_user(user_id)
-        validate_yacht_isolation(jwt_result, request.yacht_id)
+        yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, jwt_result.context if jwt_result.context else {})
+        if not yacht_validation.valid:
+            raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()

@@ -431,23 +431,26 @@ async function* streamSearch(
   console.log('[useCelesteSearch] 📤 Sending request to:', searchUrl);
   console.log('[useCelesteSearch] 📤 Payload:', payload);
 
-  const response = await fetch(searchUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ ...payload, stream: true }),
-    signal,
-  });
+  let response;
+  let data;
 
-  console.log('[useCelesteSearch] 📥 Response status:', response.status);
-
-  if (!response.ok) {
-    throw new Error(`Search failed: ${response.status}`);
-  }
-
-  // SIMPLIFIED: Backend sends complete JSON response, not streaming chunks
-  // Parse the full response as JSON
   try {
-    const data = await response.json();
+    response = await fetch(searchUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...payload, stream: true }),
+      signal,
+    });
+
+    console.log('[useCelesteSearch] 📥 Response status:', response.status);
+
+    if (!response.ok) {
+      throw new Error(`Search failed: ${response.status}`);
+    }
+
+    // SIMPLIFIED: Backend sends complete JSON response, not streaming chunks
+    // Parse the full response as JSON
+    data = await response.json();
     console.log('[useCelesteSearch] ✅ Parsed response:', {
       success: data.success,
       hasResults: !!data.results,
@@ -483,8 +486,33 @@ async function* streamSearch(
       console.warn('[useCelesteSearch] ⚠️ No results array in response:', data);
     }
   } catch (e) {
-    console.error('[useCelesteSearch] ❌ Failed to parse JSON response:', e);
-    throw new Error('Failed to parse search response');
+    console.warn('[useCelesteSearch] ⚠️ Pipeline search failed in stream, using fallback:', e);
+
+    // FALLBACK: Use local database search when pipeline is down
+    try {
+      const fallbackResponse = await fetch('/api/search/fallback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          yacht_id: yachtId,
+          limit: 20,
+        }),
+        signal,
+      });
+
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        console.log('[useCelesteSearch] ✅ Using fallback search results:', fallbackData.total_count, 'results');
+        if (fallbackData.results && Array.isArray(fallbackData.results)) {
+          yield fallbackData.results;
+        }
+      } else {
+        console.error('[useCelesteSearch] ❌ Fallback search also failed');
+      }
+    } catch (fallbackError) {
+      console.error('[useCelesteSearch] ❌ Fallback search failed:', fallbackError);
+    }
   }
 }
 
@@ -515,19 +543,53 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
   }
 
   const searchUrl = `${API_URL}/webhook/search`;
-  const response = await fetch(searchUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-    signal,
-  });
 
-  if (!response.ok) {
-    throw new Error(`Search failed: ${response.status}`);
+  try {
+    const response = await fetch(searchUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...payload, stream: false }),
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Search failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.results && Array.isArray(data.results)) {
+      return data.results;
+    }
+    return [];
+  } catch (error) {
+    console.warn('[useCelesteSearch] ⚠️ Pipeline search failed, using fallback:', error);
+
+    // FALLBACK: Use local database search when pipeline is down
+    try {
+      const fallbackResponse = await fetch('/api/search/fallback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          yacht_id: yachtId,
+          limit: 20,
+        }),
+        signal,
+      });
+
+      if (!fallbackResponse.ok) {
+        console.error('[useCelesteSearch] ❌ Fallback search also failed');
+        return [];
+      }
+
+      const fallbackData = await fallbackResponse.json();
+      console.log('[useCelesteSearch] ✅ Using fallback search results:', fallbackData.total_count, 'results');
+      return fallbackData.results || [];
+    } catch (fallbackError) {
+      console.error('[useCelesteSearch] ❌ Fallback search failed:', fallbackError);
+      return [];
+    }
   }
-
-  const data = await response.json();
-  return data.results || [];
 }
 
 /**
