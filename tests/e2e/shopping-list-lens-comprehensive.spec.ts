@@ -150,7 +150,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.data.status).toBe('success');
+    expect(result.data.success).toBe(true);
     expect(result.data.data).toHaveProperty('shopping_list_item_id');
     expect(result.data.data.status).toBe('candidate');
     expect(result.data.data.is_candidate_part).toBe(true);
@@ -167,7 +167,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.data.status).toBe('success');
+    expect(result.data.success).toBe(true);
   });
 
   test('Create with all optional fields', async () => {
@@ -297,7 +297,7 @@ test.describe('Shopping List - CREATE Action', () => {
       });
 
       expect(result.status).toBe(200);
-      expect(result.data.status).toBe('success');
+      expect(result.data.success).toBe(true);
     }
   });
 
@@ -313,7 +313,7 @@ test.describe('Shopping List - CREATE Action', () => {
       });
 
       expect(result.status).toBe(200);
-      expect(result.data.status).toBe('success');
+      expect(result.data.success).toBe(true);
     }
   });
 });
@@ -345,7 +345,7 @@ test.describe('Shopping List - APPROVE Action', () => {
     });
 
     expect(approveResult.status).toBe(200);
-    expect(approveResult.data.status).toBe('success');
+    expect(approveResult.data.success).toBe(true);
     expect(approveResult.data.data.status).toBe('approved');
     expect(approveResult.data.data.quantity_approved).toBe(5);
   });
@@ -500,7 +500,7 @@ test.describe('Shopping List - REJECT Action', () => {
     });
 
     expect(rejectResult.status).toBe(200);
-    expect(rejectResult.data.status).toBe('success');
+    expect(rejectResult.data.success).toBe(true);
     expect(rejectResult.data.data.rejected).toBe(true);
     expect(rejectResult.data.data.rejection_reason).toBe('Already have sufficient stock');
   });
@@ -624,7 +624,7 @@ test.describe('Shopping List - VIEW HISTORY Action', () => {
     });
 
     expect(historyResult.status).toBe(200);
-    expect(historyResult.data.status).toBe('success');
+    expect(historyResult.data.success).toBe(true);
     expect(historyResult.data.data).toHaveProperty('history');
     expect(Array.isArray(historyResult.data.data.history)).toBe(true);
   });
