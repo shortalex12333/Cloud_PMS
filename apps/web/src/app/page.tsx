@@ -68,12 +68,7 @@ function SurfaceContent() {
       </div>
 
       {/* Email Overlay - full-width slide from left (portal to body) */}
-      <EmailOverlay
-        open={emailPanel.visible}
-        initialThreadId={emailPanel.threadId}
-        initialFolder={emailPanel.folder}
-        onClose={hideEmail}
-      />
+      <EmailOverlay />
     </main>
   );
 }

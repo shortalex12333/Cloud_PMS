@@ -382,7 +382,7 @@ export default function SpotlightSearch({
 
     // Special handling for email threads: open EmailOverlay
     if (entityType === 'email_thread' && surfaceContext) {
-      const threadId = result.metadata?.thread_id || result.id;
+      const threadId = (result.metadata?.thread_id || result.id) as string;
       surfaceContext.showEmail({ threadId, folder: 'inbox' });
       return; // Don't create situation for emails - overlay handles the UX
     }
