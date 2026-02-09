@@ -104,14 +104,25 @@ export function AuthDebug() {
             ? Date.now() > session.expires_at * 1000
             : false;
 
-          // Test RPC - use get_my_bootstrap (no args, uses auth.uid() internally)
+          // Test bootstrap endpoint instead of missing RPC
           state.rpc.called = true;
-          const { data: rpcData, error: rpcError } = await supabase.rpc('get_my_bootstrap');
+          try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+            const response = await fetch(`${apiUrl}/v1/bootstrap`, {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            });
 
-          if (rpcError) {
-            state.rpc.error = rpcError.message;
-          } else {
-            state.rpc.result = rpcData;
+            if (!response.ok) {
+              state.rpc.error = `Bootstrap failed: ${response.status} ${response.statusText}`;
+            } else {
+              const data = await response.json();
+              state.rpc.result = data;
+            }
+          } catch (e: any) {
+            state.rpc.error = `Bootstrap error: ${e.message}`;
           }
         }
       } catch (e: any) {
