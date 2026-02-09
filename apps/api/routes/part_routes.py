@@ -789,7 +789,7 @@ async def upload_part_image(
                 detail=jwt_result.error.message if jwt_result.error else "Invalid JWT"
             )
 
-        user_id = jwt_result.context.get("user_id")
+        user_id = jwt_result.context.get("user_id") if jwt_result.context else None
 
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
@@ -858,7 +858,7 @@ async def update_part_image(
                 detail=jwt_result.error.message if jwt_result.error else "Invalid JWT"
             )
 
-        user_id = jwt_result.context.get("user_id")
+        user_id = jwt_result.context.get("user_id") if jwt_result.context else None
 
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
@@ -918,7 +918,7 @@ async def delete_part_image(
                 detail=jwt_result.error.message if jwt_result.error else "Invalid JWT"
             )
 
-        user_id = jwt_result.context.get("user_id")
+        user_id = jwt_result.context.get("user_id") if jwt_result.context else None
 
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")

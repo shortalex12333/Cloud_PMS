@@ -871,6 +871,19 @@ COMPOUND_ANCHORS: Dict[str, List[str]] = {
         r'\bhoses?\b',
         r'\bfittings?\b',
         r'\bvalves?\b',
+        # Marine-specific parts and compounds
+        r'\bteak\s+(seam\s+)?(compound|cleaner|oil|restorer)\b',
+        r'\bantifouling\s+(paint|coating)?\b',
+        r'\bgelcoat\s+(repair|compound)?\b',
+        r'\bvarnish\b',
+        r'\bsikaflex\b',
+        r'\b5200\b',
+        r'\bbilge\s+cleaner\b',
+        r'\bhull\s+(wash|cleaner)\b',
+        r'\b(marinetex|star\s*brite|west\s*system|interlux|awlgrip)\b',
+        r'\b\w+\s+compound\b',  # "seam compound", "rubbing compound"
+        r'\b\w+\s+sealant\b',   # "silicone sealant", "deck sealant"
+        r'\b\w+\s+adhesive\b',  # "marine adhesive", "epoxy adhesive"
     ],
     # work_order compounds
     'work_order': [

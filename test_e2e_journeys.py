@@ -14,6 +14,7 @@ import requests
 import json
 import sys
 import os
+import uuid
 from typing import Dict, Any
 
 # Configuration
@@ -150,7 +151,7 @@ class JourneyTest:
 
 def journey_1_rbac_fix_crew_work_order():
     """Journey 1: CRITICAL RBAC Fix - Crew creates work order (PR #194)"""
-    import time
+    unique_id = str(uuid.uuid4())[:8]
     headers = {
         "Authorization": f"Bearer {USERS['CREW']['jwt']}",
         "Content-Type": "application/json",
@@ -160,10 +161,10 @@ def journey_1_rbac_fix_crew_work_order():
         "action": "create_work_order",
         "context": {"yacht_id": YACHT_ID},
         "payload": {
-            "title": f"E2E Test - Crew WO {int(time.time())}",
+            "title": f"E2E Test - Crew WO {unique_id}",
             "department": "deck",
             "priority": "medium",
-            "description": "Testing PR #194 RBAC fix - crew can create work orders",
+            "description": f"Testing PR #194 RBAC fix - UUID: {unique_id}",
         },
     }
 
