@@ -783,6 +783,7 @@ async def execute_action(
         "view_work_order_checklist": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
         "view_work_order_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
         "view_my_work_orders": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+        "list_work_orders": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
 
         # MUTATE actions - management only (HOD and above)
         "update_work_order": ["chief_engineer", "chief_officer", "captain", "manager"],
@@ -2147,6 +2148,26 @@ async def execute_action(
                 result = {"status": "success", "work_order_id": work_order_id, "message": "Work order created"}
             else:
                 result = {"status": "error", "error_code": "INSERT_FAILED", "message": "Failed to create work order"}
+
+        elif action == "list_work_orders":
+            # List work orders with optional filters
+            logger.info(f"[WORK_ORDER] Listing work orders - yacht_id={yacht_id}")
+
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+
+            from handlers.list_handlers import ListHandlers
+            list_handlers_instance = ListHandlers(db_client)
+
+            # Extract filters from payload
+            filters = payload.get("filters", {})
+            params = payload.get("params", {})
+
+            result = await list_handlers_instance.list_work_orders(
+                yacht_id=yacht_id,
+                filters=filters,
+                params=params
+            )
 
         elif action in ("view_work_order_detail", "view_work_order", "get_work_order"):
             tenant_alias = user_context.get("tenant_key_alias", "")

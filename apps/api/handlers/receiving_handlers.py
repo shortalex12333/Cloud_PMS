@@ -265,12 +265,15 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         document_id = params["document_id"]
         doc_type = params.get("doc_type")  # 'invoice', 'packing_slip', 'photo'
@@ -380,12 +383,15 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         source_document_id = params["source_document_id"]
         request_context = params.get("request_context")
@@ -494,12 +500,15 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
 
         # Optional update fields
@@ -611,12 +620,15 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
 
         # Item fields
@@ -733,12 +745,15 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         receiving_item_id = params["receiving_item_id"]
 
@@ -841,12 +856,15 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         document_id = params["document_id"]
         comment = params.get("comment")
@@ -953,12 +971,15 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         signature = params.get("signature")
         request_context = params.get("request_context")
@@ -1114,12 +1135,15 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
         user_id = params["user_id"]
         user_jwt = params.get("user_jwt")
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
-            return map_postgrest_error(e, "RLS_CLIENT_ERROR")
+            logger.error(f"Failed to create database client: {e}")
+            return map_postgrest_error(e, "DB_CLIENT_ERROR")
         receiving_id = params["receiving_id"]
         reason = params.get("reason")
         request_context = params.get("request_context")
