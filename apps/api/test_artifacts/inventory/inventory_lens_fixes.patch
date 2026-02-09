@@ -1,0 +1,80 @@
+diff --git a/apps/api/routes/orchestrated_search_routes.py b/apps/api/routes/orchestrated_search_routes.py
+index 1234567..abcdefg 100644
+--- a/apps/api/routes/orchestrated_search_routes.py
++++ b/apps/api/routes/orchestrated_search_routes.py
+@@ -27,6 +27,9 @@ from orchestration import (
+ )
+ from orchestration.executor import PlanExecutor
+
++# Action registry for action suggestions
++from action_router.registry import get_actions_for_domain
++
+ logger = logging.getLogger(__name__)
+
+ router = APIRouter(prefix="/v2", tags=["search-v2"])
+@@ -57,6 +60,16 @@ class TrustPayload(BaseModel):
+     explain: str
+
+
++class ContextMetadata(BaseModel):
++    """Context metadata for frontend adaptation."""
++    domain: Optional[str] = None
++    domain_confidence: Optional[float] = None
++    intent: Optional[str] = None
++    intent_confidence: Optional[float] = None
++    mode: Optional[str] = None
++    filters: Optional[Dict[str, Any]] = None
++
++
+ class OrchestatedSearchResponse(BaseModel):
+     """Response from orchestrated search."""
+     success: bool
+@@ -64,6 +77,8 @@ class OrchestatedSearchResponse(BaseModel):
+     results: List[Dict[str, Any]]
+     results_by_domain: Dict[str, List[Dict[str, Any]]]
+     total_count: int
++    context: Optional[ContextMetadata] = None
++    actions: Optional[List[Dict[str, Any]]] = None
+     trust: TrustPayload
+     timing_ms: Dict[str, float]
+     debug: Optional[Dict[str, Any]] = None
+@@ -206,6 +221,34 @@ async def orchestrated_search(
+         # Build response
+         trust_payload = result.get_trust_payload()
+
++        # Extract primary domain from allowed_scopes
++        primary_domain = result.classification.allowed_scopes[0] if result.classification.allowed_scopes else None
++
++        # Build context metadata
++        context_metadata = ContextMetadata(
++            domain=primary_domain,
++            domain_confidence=0.9,  # High confidence from deterministic classification
++            intent=result.intent_family or "READ",
++            intent_confidence=0.95 if result.intent_family else 0.8,
++            mode=result.plan.path.value,
++            filters={
++                'time_window_days': result.plan.time_window.days,
++                'scopes': result.classification.allowed_scopes,
++            },
++        )
++
++        # Get action suggestions filtered by domain and role
++        # Normalize inventory → parts as per requirements
++        action_suggestions = []
++        if primary_domain:
++            normalized_domain = "parts" if primary_domain == "inventory" else primary_domain
++            user_role = auth.get('role')
++            if user_role:
++                action_suggestions = get_actions_for_domain(normalized_domain, user_role)
++
+         response = OrchestatedSearchResponse(
+             success=True,
+             request_id=result.request_id,
+@@ -213,6 +256,8 @@ async def orchestrated_search(
+             results_by_domain=execution_result.results_by_domain,
+             total_count=execution_result.total_count,
++            context=context_metadata,
++            actions=action_suggestions,
+             trust=TrustPayload(
+                 path=trust_payload['path'],
+                 scopes=trust_payload['scopes'],

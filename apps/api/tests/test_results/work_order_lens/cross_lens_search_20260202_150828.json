@@ -1,0 +1,50 @@
+[
+  {
+    "query": "generator",
+    "entities": [],
+    "capabilities_executed": [],
+    "has_equipment": false,
+    "has_work_order": false,
+    "cross_lens_success": false,
+    "results_by_capability": {},
+    "success": true
+  },
+  {
+    "query": "port engine",
+    "entities": [],
+    "capabilities_executed": [],
+    "has_equipment": false,
+    "has_work_order": false,
+    "cross_lens_success": false,
+    "results_by_capability": {},
+    "success": true
+  },
+  {
+    "query": "pump",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Pump",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Pump",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "capabilities_executed": [
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "has_equipment": true,
+    "has_work_order": true,
+    "cross_lens_success": true,
+    "results_by_capability": {
+      "equipment_by_name_or_model": 20,
+      "work_order_by_id": 6
+    },
+    "success": true
+  }
+]

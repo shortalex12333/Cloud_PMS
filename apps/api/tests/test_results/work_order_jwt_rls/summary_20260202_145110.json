@@ -1,0 +1,87 @@
+{
+  "test_run_id": "20260202_145110",
+  "start_time": "2026-02-02T14:51:10.320385",
+  "tests": [
+    {
+      "test_name": "crew_cannot_create",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320407",
+      "details": {
+        "status": "skipped",
+        "reason": "No CREW JWT token"
+      }
+    },
+    {
+      "test_name": "hod_can_create",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320411",
+      "details": {
+        "status": "skipped",
+        "reason": "No HoD JWT token"
+      }
+    },
+    {
+      "test_name": "captain_can_create",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320414",
+      "details": {
+        "status": "skipped",
+        "reason": "No Captain JWT token"
+      }
+    },
+    {
+      "test_name": "reassign_requires_signature",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320417",
+      "details": {
+        "status": "skipped",
+        "reason": "No Captain JWT token"
+      }
+    },
+    {
+      "test_name": "archive_captain_only",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320420",
+      "details": {
+        "status": "skipped",
+        "reason": "Missing JWT tokens"
+      }
+    },
+    {
+      "test_name": "cannot_access_other_yacht",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320422",
+      "details": {
+        "status": "skipped",
+        "reason": "No HoD JWT token"
+      }
+    },
+    {
+      "test_name": "update_work_order",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320425",
+      "details": {
+        "status": "skipped",
+        "reason": "No HoD JWT token"
+      }
+    },
+    {
+      "test_name": "complete_work_order",
+      "passed": false,
+      "timestamp": "2026-02-02T14:51:10.320427",
+      "details": {
+        "status": "skipped",
+        "reason": "No HoD JWT token"
+      }
+    }
+  ],
+  "passed": 0,
+  "failed": 8,
+  "summary": {
+    "total": 8,
+    "passed": 0,
+    "failed": 8,
+    "pass_rate": 0.0
+  },
+  "end_time": "2026-02-02T14:51:10.320436"
+}

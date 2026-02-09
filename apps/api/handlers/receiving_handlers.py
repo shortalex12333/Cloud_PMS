@@ -214,22 +214,25 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "create_receiving",
-            "user_id": user_id,
-            "old_values": None,
-            "new_values": {
-                "vendor_name": vendor_name,
-                "vendor_reference": vendor_reference,
-                "status": "draft",
-            },
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "create_receiving",
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "vendor_name": vendor_name,
+                    "vendor_reference": vendor_reference,
+                    "status": "draft",
+                },
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for create_receiving: {e}")
 
         return {
             "status": "success",
@@ -325,22 +328,25 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "attach_receiving_image_with_comment",
-            "user_id": user_id,
-            "old_values": None,
-            "new_values": {
-                "document_id": document_id,
-                "doc_type": doc_type,
-                "comment": comment,
-            },
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "attach_receiving_image_with_comment",
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "document_id": document_id,
+                    "doc_type": doc_type,
+                    "comment": comment,
+                },
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for attach_receiving_image_with_comment: {e}")
 
         return {
             "status": "success",
@@ -435,22 +441,25 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log (advisory only)
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "extract_receiving_candidates",
-            "user_id": user_id,
-            "old_values": None,
-            "new_values": {
-                "extraction_id": extraction_id,
-                "source_document_id": source_document_id,
-                "flags": extraction_payload["flags"],
-            },
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (advisory only, non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "extract_receiving_candidates",
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "extraction_id": extraction_id,
+                    "source_document_id": source_document_id,
+                    "flags": extraction_payload["flags"],
+                },
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for extract_receiving_candidates: {e}")
 
         return {
             "status": "success",
@@ -556,21 +565,24 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "update_receiving_fields",
-            "user_id": user_id,
-            "old_values": {
-                "vendor_name": old_data.get("vendor_name"),
-                "vendor_reference": old_data.get("vendor_reference"),
-            },
-            "new_values": update_payload,
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "update_receiving_fields",
+                "user_id": user_id,
+                "old_values": {
+                    "vendor_name": old_data.get("vendor_name"),
+                    "vendor_reference": old_data.get("vendor_reference"),
+                },
+                "new_values": update_payload,
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for update_receiving_fields: {e}")
 
         return {
             "status": "success",
@@ -672,23 +684,26 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "add_receiving_item",
-            "user_id": user_id,
-            "old_values": None,
-            "new_values": {
-                "item_id": item_id,
-                "part_id": part_id,
-                "description": description,
-                "quantity_received": quantity_received,
-            },
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "add_receiving_item",
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "item_id": item_id,
+                    "part_id": part_id,
+                    "description": description,
+                    "quantity_received": quantity_received,
+                },
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for add_receiving_item: {e}")
 
         return {
             "status": "success",
@@ -777,21 +792,24 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "adjust_receiving_item",
-            "user_id": user_id,
-            "old_values": {
-                "item_id": receiving_item_id,
-                "quantity_received": old_data.get("quantity_received"),
-            },
-            "new_values": update_payload,
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "adjust_receiving_item",
+                "user_id": user_id,
+                "old_values": {
+                    "item_id": receiving_item_id,
+                    "quantity_received": old_data.get("quantity_received"),
+                },
+                "new_values": update_payload,
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for adjust_receiving_item: {e}")
 
         return {
             "status": "success",
@@ -885,22 +903,25 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "link_invoice_document",
-            "user_id": user_id,
-            "old_values": None,
-            "new_values": {
-                "document_id": document_id,
-                "doc_type": "invoice",
-                "comment": comment,
-            },
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "link_invoice_document",
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "document_id": document_id,
+                    "doc_type": "invoice",
+                    "comment": comment,
+                },
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for link_invoice_document: {e}")
 
         return {
             "status": "success",
@@ -1041,25 +1062,28 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log (SIGNED)
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "accept_receiving",
-            "user_id": user_id,
-            "old_values": {
-                "status": receiving.get("status"),
-            },
-            "new_values": {
-                "status": "accepted",
-                "subtotal": subtotal,
-                "tax_total": tax_total,
-                "total": total,
-            },
-            "signature": signature,  # SIGNED action
-            **audit_meta,
-        })
+        # Audit log (SIGNED, non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "accept_receiving",
+                "user_id": user_id,
+                "old_values": {
+                    "status": receiving.get("status"),
+                },
+                "new_values": {
+                    "status": "accepted",
+                    "subtotal": subtotal,
+                    "tax_total": tax_total,
+                    "total": total,
+                },
+                "signature": signature,  # SIGNED action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for accept_receiving: {e}")
 
         return {
             "status": "success",
@@ -1138,23 +1162,26 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
 
-        # Audit log
-        _write_audit_log(db, {
-            "yacht_id": yacht_id,
-            "entity_type": "receiving",
-            "entity_id": receiving_id,
-            "action": "reject_receiving",
-            "user_id": user_id,
-            "old_values": {
-                "status": old_status,
-            },
-            "new_values": {
-                "status": "rejected",
-                "reason": reason,
-            },
-            "signature": {},  # Non-signed action
-            **audit_meta,
-        })
+        # Audit log (non-critical - don't fail operation if audit fails)
+        try:
+            _write_audit_log(db, {
+                "yacht_id": yacht_id,
+                "entity_type": "receiving",
+                "entity_id": receiving_id,
+                "action": "reject_receiving",
+                "user_id": user_id,
+                "old_values": {
+                    "status": old_status,
+                },
+                "new_values": {
+                    "status": "rejected",
+                    "reason": reason,
+                },
+                "signature": {},  # Non-signed action
+                **audit_meta,
+            })
+        except Exception as e:
+            logging.warning(f"Audit log write failed (non-critical) for reject_receiving: {e}")
 
         return {
             "status": "success",

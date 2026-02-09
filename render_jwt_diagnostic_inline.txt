@@ -1,0 +1,82 @@
+## Run this directly in Render Shell (copy/paste entire command):
+
+python3 << 'EOF'
+import os
+import jwt
+import json
+import base64
+
+TEST_JWT = "eyJhbGciOiJIUzI1NiIsImtpZCI6IjE3UGY4ZUVPVnFXZXlmRGIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3F2em1rYWFtemFxeHB6YmV3anhlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI1N2U4MmY3OC0wYTJkLTRhN2MtYTQyOC02Mjg3NjIxZDA2YzUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcwNjU3ODgyLCJpYXQiOjE3NzA2NTQyODIsImVtYWlsIjoiY3Jldy50ZXN0QGFsZXgtc2hvcnQuY29tIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbF92ZXJpZmllZCI6dHJ1ZX0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NzA2NTQyODJ9XSwic2Vzc2lvbl9pZCI6ImVjNTZiZjE0LWRmYzItNDBhMS1iYzQyLTAzOWRmYTg5ZTUyMyIsImlzX2Fub255bW91cyI6ZmFsc2V9.4TbK_FEuw54Be8qpPwyVmG7pdIDCJ_-p47s6g2Hvqrc"
+
+print("="*80)
+print("RENDER JWT SECRET DIAGNOSTIC")
+print("="*80)
+
+# Show configured secrets
+secrets = {
+    "MASTER_SUPABASE_JWT_SECRET": os.getenv("MASTER_SUPABASE_JWT_SECRET"),
+    "TENANT_SUPABASE_JWT_SECRET": os.getenv("TENANT_SUPABASE_JWT_SECRET"),
+    "yTEST_YACHT_001_SUPABASE_JWT_SECRET": os.getenv("yTEST_YACHT_001_SUPABASE_JWT_SECRET"),
+    "SUPABASE_JWT_SECRET": os.getenv("SUPABASE_JWT_SECRET"),
+}
+
+print("\nConfigured Secrets:")
+for name, val in secrets.items():
+    if val:
+        print(f"  {name}: {val[:10]}...{val[-10:]} ({len(val)} chars)")
+    else:
+        print(f"  {name}: Not set")
+
+# Decode JWT issuer
+print("\nTest JWT Issuer:")
+parts = TEST_JWT.split('.')
+payload = parts[1] + '=' * (4 - len(parts[1]) % 4)
+decoded = json.loads(base64.urlsafe_b64decode(payload))
+print(f"  {decoded.get('iss')}")
+print(f"  Email: {decoded.get('email')}")
+
+# Test each secret
+print("\n" + "="*80)
+print("TESTING EACH SECRET")
+print("="*80)
+
+valid = []
+for name, secret in secrets.items():
+    if not secret:
+        continue
+    print(f"\n{name}:")
+    try:
+        jwt.decode(TEST_JWT, secret, algorithms=["HS256"], options={"verify_aud": False})
+        print(f"  ✅ VALID")
+        valid.append(name)
+    except jwt.InvalidSignatureError:
+        print(f"  ❌ Invalid signature")
+    except jwt.ExpiredSignatureError:
+        print(f"  ⚠️  Expired (signature valid)")
+        valid.append(name)
+    except Exception as e:
+        print(f"  ❌ {e}")
+
+# Result
+print("\n" + "="*80)
+print("RESULT")
+print("="*80)
+
+if "MASTER_SUPABASE_JWT_SECRET" in valid:
+    print("\n✅ MASTER_SUPABASE_JWT_SECRET is VALID")
+    print("   Configuration is correct!")
+elif "yTEST_YACHT_001_SUPABASE_JWT_SECRET" in valid:
+    print("\n⚠️  yTEST_YACHT_001_SUPABASE_JWT_SECRET is valid")
+    print("   But API uses MASTER_SUPABASE_JWT_SECRET (priority 1)")
+    print("\n🔧 FIX: Copy yTEST_YACHT_001_SUPABASE_JWT_SECRET value")
+    print("        to MASTER_SUPABASE_JWT_SECRET in Render")
+elif valid:
+    print(f"\n⚠️  Valid: {valid}")
+    print("   But MASTER_SUPABASE_JWT_SECRET is invalid")
+else:
+    print("\n❌ NO VALID SECRETS")
+    print("\n🔧 Get JWT secret from qvzmkaamzaqxpzbewjxe Supabase project")
+    print("   and set MASTER_SUPABASE_JWT_SECRET")
+
+print("="*80)
+EOF

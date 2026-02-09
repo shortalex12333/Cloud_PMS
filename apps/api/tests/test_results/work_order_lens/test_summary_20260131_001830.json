@@ -1,0 +1,38 @@
+{
+  "test_run_id": "20260131_001830",
+  "start_time": "2026-01-31T00:18:30.470260",
+  "tests": [
+    {
+      "name": "entity_extraction",
+      "total": 11,
+      "passed": 11,
+      "failed": 0
+    },
+    {
+      "name": "capability_execution",
+      "total": 3,
+      "passed": 1,
+      "failed": 2
+    },
+    {
+      "name": "cross_lens_search",
+      "total": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "name": "chaos_queries",
+      "total": 19,
+      "passed": 19,
+      "failed": 0
+    }
+  ],
+  "failures": [],
+  "summary": {
+    "total_tests": 4,
+    "total_passed": 34,
+    "total_failed": 2,
+    "has_failures": false
+  },
+  "end_time": "2026-01-31T00:18:34.101209"
+}

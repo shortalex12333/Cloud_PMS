@@ -1,0 +1,8 @@
+{
+  "endpoint": "v2_search",
+  "user": "CREW",
+  "query": "bearing",
+  "domain": "work_orders",
+  "actions_count": 4,
+  "mutate_count": 0
+}

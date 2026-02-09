@@ -1,0 +1,56 @@
+{
+  "test_name": "rbac_create_work_order",
+  "test_run_id": "20260202_142524",
+  "timestamp": "2026-02-02T14:25:26.149480",
+  "results": [
+    {
+      "role": "captain",
+      "action": "create_work_order",
+      "expected": "ALLOW",
+      "description": "Captain should be able to create work orders",
+      "status": "DOCUMENTED"
+    },
+    {
+      "role": "chief_engineer",
+      "action": "create_work_order",
+      "expected": "ALLOW",
+      "description": "Chief Engineer should be able to create work orders",
+      "status": "DOCUMENTED"
+    },
+    {
+      "role": "chief_officer",
+      "action": "create_work_order",
+      "expected": "ALLOW",
+      "description": "Chief Officer should be able to create work orders",
+      "status": "DOCUMENTED"
+    },
+    {
+      "role": "manager",
+      "action": "create_work_order",
+      "expected": "ALLOW",
+      "description": "Manager should be able to create work orders",
+      "status": "DOCUMENTED"
+    },
+    {
+      "role": "crew",
+      "action": "create_work_order",
+      "expected": "DENY",
+      "description": "Regular crew should NOT be able to create work orders",
+      "status": "DOCUMENTED"
+    },
+    {
+      "role": "deckhand",
+      "action": "create_work_order",
+      "expected": "DENY",
+      "description": "Deckhand should NOT be able to create work orders",
+      "status": "DOCUMENTED"
+    },
+    {
+      "role": "steward",
+      "action": "create_work_order",
+      "expected": "DENY",
+      "description": "Steward should NOT be able to create work orders",
+      "status": "DOCUMENTED"
+    }
+  ]
+}

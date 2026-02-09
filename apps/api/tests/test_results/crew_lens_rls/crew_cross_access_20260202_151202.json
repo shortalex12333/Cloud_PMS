@@ -1,0 +1,19 @@
+{
+  "crew1": {
+    "email": "crew.test@alex-short.com",
+    "user_id": "crew-001",
+    "role": "crew",
+    "department": "deck",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
+  },
+  "crew2": {
+    "email": "crew2.test@alex-short.com",
+    "user_id": "crew-002",
+    "role": "deckhand",
+    "department": "deck",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
+  },
+  "expected_behavior": "crew1 should NOT see crew2's HoR records",
+  "rls_policy": "WHERE user_id = auth.uid() OR role IN ('captain', 'manager', 'chief_*')",
+  "violations": []
+}

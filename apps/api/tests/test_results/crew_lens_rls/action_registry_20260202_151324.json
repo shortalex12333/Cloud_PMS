@@ -1,0 +1,19 @@
+{
+  "expected_count": 12,
+  "found_count": 12,
+  "missing_actions": [],
+  "all_actions": [
+    "get_hours_of_rest",
+    "upsert_hours_of_rest",
+    "list_monthly_signoffs",
+    "get_monthly_signoff",
+    "create_monthly_signoff",
+    "sign_monthly_signoff",
+    "list_crew_templates",
+    "create_crew_template",
+    "apply_crew_template",
+    "list_crew_warnings",
+    "acknowledge_warning",
+    "dismiss_warning"
+  ]
+}

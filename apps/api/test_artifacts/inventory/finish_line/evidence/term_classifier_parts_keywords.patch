@@ -1,0 +1,37 @@
+diff --git a/apps/api/orchestration/term_classifier.py b/apps/api/orchestration/term_classifier.py
+index da4592f..bbd3edc 100644
+--- a/apps/api/orchestration/term_classifier.py
++++ b/apps/api/orchestration/term_classifier.py
+@@ -113,6 +113,32 @@ class TermClassifier:
+         'spare': ['parts'],
+         'spares': ['parts'],
+         'inventory': ['parts'],
++        'stock': ['parts'],
++        'low stock': ['parts'],
++        'out of stock': ['parts'],
++        'stock level': ['parts'],
++        # Common part types (Inventory Lens - Finish Line)
++        'filter': ['parts'],
++        'oil filter': ['parts'],
++        'fuel filter': ['parts'],
++        'air filter': ['parts'],
++        'hydraulic filter': ['parts'],
++        'bearing': ['parts'],
++        'bearings': ['parts'],
++        'gasket': ['parts'],
++        'gaskets': ['parts'],
++        'seal': ['parts'],
++        'seals': ['parts'],
++        'o-ring': ['parts'],
++        'o-rings': ['parts'],
++        'belt': ['parts'],
++        'belts': ['parts'],
++        'hose': ['parts'],
++        'hoses': ['parts'],
++        'fitting': ['parts'],
++        'fittings': ['parts'],
++        'valve': ['parts'],
++        'valves': ['parts'],
+         'fault': ['faults'],
+         'faults': ['faults'],
+         'error': ['faults'],
