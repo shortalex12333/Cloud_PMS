@@ -1,0 +1,13 @@
+{
+  "hod": {
+    "role": "chief_engineer",
+    "department": "engine"
+  },
+  "crew": {
+    "role": "deckhand",
+    "department": "deck"
+  },
+  "expected_behavior": "HoD cannot see crew from other departments",
+  "rls_policy": "department = current_user.department",
+  "violations": []
+}

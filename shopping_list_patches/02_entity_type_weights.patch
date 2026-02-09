@@ -1,0 +1,15 @@
+--- a/apps/api/entity_extraction_loader.py
++++ b/apps/api/entity_extraction_loader.py
+@@ -2418,8 +2418,12 @@ def calculate_weight(entity_type: str, metadata: Dict, text_length: int = 0) -
+         'sensor_reading': 3.5,      # Measurement terms
+         'sensor_language': 3.3,     # Sensor terminology
+         'equipment_brand': 3.2,     # Brand names
++        'equipment': 3.2,           # Equipment items (FIXED 2026-02-02: was missing, defaulted to 2.0)
+         'human_report': 3.0,        # Human observations
++        'shopping_list_term': 3.0,  # Shopping list queries (FIXED 2026-02-02)
++        'approval_status': 3.0,     # Approval status (pending, approved, etc.) (FIXED 2026-02-02)
+         'equipment_type': 2.8,      # Equipment types
++        'part': 2.8,                # Parts and components (FIXED 2026-02-02: was missing, defaulted to 2.0)
+         'action': 2.5,              # Action verbs
+         'system_type': 2.3          # System categories
+     }

@@ -1,0 +1,14 @@
+{
+  "user": "HOD",
+  "query": "log part",
+  "domain": "parts",
+  "total_actions": 7,
+  "has_log_part_usage": true,
+  "mutate_actions": [
+    "log_part_usage",
+    "consume_part",
+    "receive_part",
+    "transfer_part",
+    "generate_part_labels"
+  ]
+}

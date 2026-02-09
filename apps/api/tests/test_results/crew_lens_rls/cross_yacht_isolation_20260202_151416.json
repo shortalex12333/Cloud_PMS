@@ -1,0 +1,13 @@
+{
+  "yacht_a": {
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+    "role": "captain"
+  },
+  "yacht_b": {
+    "yacht_id": "00000000-0000-0000-0000-000000000000",
+    "role": "captain"
+  },
+  "expected_behavior": "Complete yacht isolation enforced by RLS",
+  "rls_policy": "WHERE yacht_id = current_user.yacht_id",
+  "violations": []
+}

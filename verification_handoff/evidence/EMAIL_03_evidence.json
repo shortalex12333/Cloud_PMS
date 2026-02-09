@@ -1,0 +1,26 @@
+{
+  "test": "EMAIL_03",
+  "status": "FAIL",
+  "timestamp": "2026-02-05T19:44:36.284Z",
+  "steps": [
+    {
+      "step": "login",
+      "status": "success"
+    },
+    {
+      "step": "open_email",
+      "status": "success"
+    },
+    {
+      "step": "check_surface",
+      "status": "FAIL"
+    },
+    {
+      "step": "count_threads",
+      "status": "success",
+      "count": 0
+    }
+  ],
+  "surfaceVisible": false,
+  "threadCount": 0
+}

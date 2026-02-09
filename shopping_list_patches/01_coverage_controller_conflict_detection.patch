@@ -1,0 +1,33 @@
+--- a/apps/api/extraction/coverage_controller.py
++++ b/apps/api/extraction/coverage_controller.py
+@@ -276,11 +276,27 @@ class CoverageController:
+                                     # Could be conflicting readings
+                                     return True
+
+-        # Check for overlapping entities of different types
++        # FIXED 2026-02-02: Only treat PARTIAL overlaps as conflicts, not subspan containment
++        # Example: "main engine" contains "engine" - NOT a conflict
++        # Example: "high temperature" contains "high" - NOT a conflict
++        # Example: "230V 50Hz" where "230" and "50Hz" partially overlap - IS a conflict
+         for i, e1 in enumerate(entities):
+             for e2 in entities[i+1:]:
+                 if e1.span and e2.span and e1.type != e2.type:
+                     # Check for overlap
+                     if (e1.span[0] < e2.span[1] and e2.span[0] < e1.span[1]):
+-                        return True
++                        # Determine if this is subspan containment or partial overlap
++                        e1_start, e1_end = e1.span
++                        e2_start, e2_end = e2.span
++
++                        # Case 1: e1 fully contains e2 (subspan) - NOT a conflict
++                        if e1_start <= e2_start and e1_end >= e2_end:
++                            continue
++
++                        # Case 2: e2 fully contains e1 (subspan) - NOT a conflict
++                        if e2_start <= e1_start and e2_end >= e1_end:
++                            continue
++
++                        # Case 3: Partial overlap - IS a conflict
++                        return True
+
+         return False

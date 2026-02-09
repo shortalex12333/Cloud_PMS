@@ -1,0 +1,11 @@
+--- a/apps/api/extraction/extraction_config.py
++++ b/apps/api/extraction/extraction_config.py
+@@ -20,7 +20,7 @@ class ExtractionConfig:
+                 'regex': 1.0,
+                 'gazetteer': 0.95,
+                 'proper_noun': 0.85,
+-                'ai': 0.70,
++                'ai': 0.85,  # FIXED 2026-02-02: Increased from 0.70 to match gpt-4o-mini reliability
+                 'fallback_py': 0.90
+             }
+         )

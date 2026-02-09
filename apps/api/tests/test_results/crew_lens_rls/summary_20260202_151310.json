@@ -1,0 +1,130 @@
+{
+  "test_run_id": "20260202_151310",
+  "start_time": "2026-02-02T15:13:10.389932",
+  "scope": "Crew Lens Hours of Rest - RLS Security",
+  "tests": [
+    {
+      "test_name": "crew_lens_action_registry",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.390272",
+      "details": {
+        "missing_actions": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "crew_cannot_view_other_crew",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.390460",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "crew_warning_restrictions",
+      "passed": false,
+      "timestamp": "2026-02-02T15:13:10.390601",
+      "details": {
+        "failures": [
+          "deckhand cannot acknowledge warnings",
+          "steward cannot acknowledge warnings",
+          "cook cannot acknowledge warnings"
+        ],
+        "security_violation": "Permission errors: ['deckhand cannot acknowledge warnings', 'steward cannot acknowledge warnings', 'cook cannot acknowledge warnings']"
+      }
+    },
+    {
+      "test_name": "crew_create_restrictions",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.390723",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "hod_department_isolation",
+      "passed": false,
+      "timestamp": "2026-02-02T15:13:10.390938",
+      "details": {
+        "violations": [
+          "eto cannot list warnings",
+          "purser cannot list warnings",
+          "eto cannot dismiss warnings",
+          "purser cannot dismiss warnings"
+        ],
+        "security_violation": "HoD permission errors: ['eto cannot list warnings', 'purser cannot list warnings', 'eto cannot dismiss warnings', 'purser cannot dismiss warnings']"
+      }
+    },
+    {
+      "test_name": "hod_cross_department_denied",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.391042",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "hod_signoff_permissions",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.391125",
+      "details": {
+        "failures": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "captain_full_access",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.391214",
+      "details": {
+        "failures": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "captain_signoff_all",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.391313",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "cross_yacht_isolation",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.391402",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "signature_requirements",
+      "passed": true,
+      "timestamp": "2026-02-02T15:13:10.391487",
+      "details": {
+        "failures": [],
+        "security_violation": null
+      }
+    }
+  ],
+  "passed": 9,
+  "failed": 2,
+  "security_violations": [
+    {
+      "test": "crew_warning_restrictions",
+      "violation": "Permission errors: ['deckhand cannot acknowledge warnings', 'steward cannot acknowledge warnings', 'cook cannot acknowledge warnings']",
+      "timestamp": "2026-02-02T15:13:10.390609"
+    },
+    {
+      "test": "hod_department_isolation",
+      "violation": "HoD permission errors: ['eto cannot list warnings', 'purser cannot list warnings', 'eto cannot dismiss warnings', 'purser cannot dismiss warnings']",
+      "timestamp": "2026-02-02T15:13:10.390940"
+    }
+  ],
+  "end_time": "2026-02-02T15:13:10.391506"
+}

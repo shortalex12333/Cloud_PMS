@@ -1,0 +1,15 @@
+{
+  "endpoint": "v2_search",
+  "user": "HOD",
+  "query": "fuel filter",
+  "domain": "work_orders",
+  "domain_confidence": 0.9,
+  "actions_count": 15,
+  "mutate_count": 10,
+  "first_3_actions": [
+    "close_work_order",
+    "add_work_order_photo",
+    "add_parts_to_work_order"
+  ],
+  "result_count": 3
+}

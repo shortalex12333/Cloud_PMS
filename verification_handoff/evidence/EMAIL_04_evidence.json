@@ -1,0 +1,13 @@
+{
+  "test": "EMAIL_04",
+  "status": "SKIPPED",
+  "timestamp": "2026-02-05T19:44:42.455Z",
+  "steps": [
+    {
+      "step": "open_email",
+      "status": "success"
+    }
+  ],
+  "threadCount": 0,
+  "note": "No threads available to test"
+}
