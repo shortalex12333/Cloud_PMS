@@ -4754,6 +4754,115 @@ async def execute_action(
                     payload=payload
                 )
 
+        # ===== HOR MONTHLY SIGNOFF ACTIONS =====
+        elif action in ("get_monthly_signoff", "list_monthly_signoffs", "create_monthly_signoff", "sign_monthly_signoff"):
+            logger.info(f"[HOR_SIGNOFF] Dispatching action '{action}' - yacht_id={yacht_id}")
+
+            if not hor_handlers:
+                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+
+            handler_map = {
+                "get_monthly_signoff": hor_handlers.get_monthly_signoff,
+                "list_monthly_signoffs": hor_handlers.list_monthly_signoffs,
+                "create_monthly_signoff": hor_handlers.create_monthly_signoff,
+                "sign_monthly_signoff": hor_handlers.sign_monthly_signoff,
+            }
+
+            handler_fn = handler_map[action]
+
+            # Entity ID varies by action
+            if action == "get_monthly_signoff" or action == "sign_monthly_signoff":
+                entity_id = payload.get("signoff_id")
+            else:
+                entity_id = user_id
+
+            # Call handler
+            if action in ("get_monthly_signoff", "list_monthly_signoffs"):
+                # READ actions
+                result = await handler_fn(
+                    entity_id=entity_id,
+                    yacht_id=yacht_id,
+                    params=payload
+                )
+            else:
+                # MUTATE/SIGNED actions
+                result = await handler_fn(
+                    entity_id=entity_id,
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    payload=payload
+                )
+
+        # ===== HOR TEMPLATE ACTIONS =====
+        elif action in ("create_crew_template", "apply_crew_template", "list_crew_templates"):
+            logger.info(f"[HOR_TEMPLATE] Dispatching action '{action}' - yacht_id={yacht_id}")
+
+            if not hor_handlers:
+                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+
+            handler_map = {
+                "create_crew_template": hor_handlers.create_crew_template,
+                "apply_crew_template": hor_handlers.apply_crew_template,
+                "list_crew_templates": hor_handlers.list_crew_templates,
+            }
+
+            handler_fn = handler_map[action]
+
+            # Call handler
+            if action == "list_crew_templates":
+                # READ action
+                result = await handler_fn(
+                    entity_id=user_id,
+                    yacht_id=yacht_id,
+                    params=payload
+                )
+            else:
+                # MUTATE actions
+                result = await handler_fn(
+                    entity_id=user_id,
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    payload=payload
+                )
+
+        # ===== HOR WARNING ACTIONS =====
+        elif action in ("list_crew_warnings", "acknowledge_warning", "dismiss_warning"):
+            logger.info(f"[HOR_WARNING] Dispatching action '{action}' - yacht_id={yacht_id}")
+
+            if not hor_handlers:
+                raise HTTPException(status_code=503, detail="Hours of Rest handlers not initialized")
+
+            handler_map = {
+                "list_crew_warnings": hor_handlers.list_crew_warnings,
+                "acknowledge_warning": hor_handlers.acknowledge_warning,
+                "dismiss_warning": hor_handlers.dismiss_warning,
+            }
+
+            handler_fn = handler_map[action]
+
+            # Entity ID is warning_id for acknowledge/dismiss, user_id for list
+            if action == "list_crew_warnings":
+                entity_id = user_id
+            else:
+                entity_id = payload.get("warning_id")
+
+            # Call handler
+            if action == "list_crew_warnings":
+                # READ action
+                result = await handler_fn(
+                    entity_id=entity_id,
+                    yacht_id=yacht_id,
+                    params=payload
+                )
+            else:
+                # MUTATE actions
+                result = await handler_fn(
+                    entity_id=entity_id,
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    payload=payload
+                )
+
         # ===== DOCUMENT LENS V2 ACTIONS =====
         elif action in ("upload_document", "update_document", "delete_document",
                         "add_document_tags", "get_document_url", "list_documents"):
