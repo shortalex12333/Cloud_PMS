@@ -129,7 +129,7 @@ def _write_audit_log(db, payload: Dict):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    db.table("pms_audit_log").insert(audit_payload).execute()
+    db.table("pms_audit_log").insert(audit_payload).select("*").execute()
 
 
 # ============================================================================
@@ -317,7 +317,7 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
+        doc_result = db.table("pms_receiving_documents").insert(doc_payload).select("*").execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -433,7 +433,7 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        extract_result = db.table("pms_receiving_extractions").insert(extraction_record).execute()
+        extract_result = db.table("pms_receiving_extractions").insert(extraction_record).select("*").execute()
 
         if not extract_result.data or len(extract_result.data) == 0:
             return {
@@ -565,7 +565,7 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         try:
             db.table("pms_receiving").update(update_payload).eq(
                 "id", receiving_id
-            ).execute()
+            ).select("*").execute()
         except Exception as e:
             # Map database errors (including RLS denials) to proper error responses
             logger.error(f"Failed to update receiving fields: {e}", exc_info=True)
@@ -682,7 +682,8 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        item_result = db.table("pms_receiving_items").insert(item_payload).execute()
+        # Force PostgREST to return data (avoids 204 No Content)
+        item_result = db.table("pms_receiving_items").insert(item_payload).select("*").execute()
 
         if not item_result.data or len(item_result.data) == 0:
             return {
@@ -799,10 +800,10 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
                 "message": "No fields provided for update"
             }
 
-        # Update item
+        # Update item (force return data)
         db.table("pms_receiving_items").update(update_payload).eq(
             "id", receiving_item_id
-        ).execute()
+        ).select("*").execute()
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -907,7 +908,7 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.table("pms_receiving_documents").insert(doc_payload).execute()
+        doc_result = db.table("pms_receiving_documents").insert(doc_payload).select("*").execute()
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {
@@ -1078,7 +1079,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
             "subtotal": subtotal,
             "tax_total": tax_total,
             "total": total,
-        }).eq("id", receiving_id).execute()
+        }).eq("id", receiving_id).select("*").execute()
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -1181,7 +1182,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
         db.table("pms_receiving").update({
             "status": "rejected",
             "notes": reason,  # Store reason in notes
-        }).eq("id", receiving_id).execute()
+        }).eq("id", receiving_id).select("*").execute()
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
