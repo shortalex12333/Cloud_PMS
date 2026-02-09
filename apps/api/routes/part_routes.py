@@ -138,6 +138,65 @@ class PrefillResponse(BaseModel):
 
 
 # ============================================================================
+# IMAGE UPLOAD MODELS (MVP)
+# ============================================================================
+
+class UploadImageRequest(BaseModel):
+    """Request to upload part image."""
+    yacht_id: str
+    part_id: str
+    file_name: str
+    mime_type: str
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+class UploadImageResponse(BaseModel):
+    """Response from upload image endpoint."""
+    status: str
+    part_id: str
+    part_name: Optional[str] = None
+    storage_path: str
+    bucket: str
+    presigned_upload_url: str
+    expires_in: int
+    message: str
+
+
+class UpdateImageRequest(BaseModel):
+    """Request to update part image metadata."""
+    yacht_id: str
+    image_id: str  # Actually part_id for MVP
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+class UpdateImageResponse(BaseModel):
+    """Response from update image endpoint."""
+    status: str
+    part_id: str
+    image_file_name: Optional[str] = None
+    message: str
+
+
+class DeleteImageRequest(BaseModel):
+    """Request to delete part image (SIGNED action)."""
+    yacht_id: str
+    image_id: str  # Actually part_id for MVP
+    reason: str
+    signature: Dict[str, Any]
+
+
+class DeleteImageResponse(BaseModel):
+    """Response from delete image endpoint."""
+    status: str
+    part_id: str
+    deleted_path: Optional[str] = None
+    reason: str
+    message: str
+
+
+# ============================================================================
 # STOCK COMPUTATION HELPERS
 # ============================================================================
 
@@ -701,6 +760,171 @@ async def get_low_stock(
     except Exception as e:
         logger.error(f"get_low_stock failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve low stock data")
+
+
+# ============================================================================
+# IMAGE UPLOAD ROUTES (MVP)
+# ============================================================================
+
+@router.post("/upload-image", response_model=UploadImageResponse)
+async def upload_part_image(
+    request: UploadImageRequest,
+    authorization: str = Header(...),
+) -> UploadImageResponse:
+    """
+    Generate presigned URL for uploading part image.
+
+    Returns presigned URL for client-side direct upload to Supabase Storage.
+    """
+    try:
+        # Validate JWT and extract user_id
+        jwt_result = validate_jwt(authorization)
+        user_id = jwt_result.context.get("user_id")
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid or missing JWT")
+
+        # Validate yacht isolation
+        tenant_key = lookup_tenant_for_user(user_id)
+        validate_yacht_isolation(jwt_result, request.yacht_id)
+
+        # Get tenant-specific Supabase client
+        db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
+
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+
+        # Get part handlers
+        from handlers.part_handlers import get_part_handlers
+        handlers = get_part_handlers(db)
+
+        # Call handler
+        result = await handlers["upload_part_image"](
+            yacht_id=request.yacht_id,
+            user_id=user_id,
+            part_id=request.part_id,
+            file_name=request.file_name,
+            mime_type=request.mime_type,
+            description=request.description,
+            tags=request.tags,
+        )
+
+        return UploadImageResponse(**result)
+
+    except ValueError as e:
+        logger.error(f"upload_part_image validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"upload_part_image failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate upload URL")
+
+
+@router.post("/update-image", response_model=UpdateImageResponse)
+async def update_part_image(
+    request: UpdateImageRequest,
+    authorization: str = Header(...),
+) -> UpdateImageResponse:
+    """
+    Update part image metadata (description).
+
+    For MVP, only the description field can be updated.
+    """
+    try:
+        # Validate JWT and extract user_id
+        jwt_result = validate_jwt(authorization)
+        user_id = jwt_result.context.get("user_id")
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid or missing JWT")
+
+        # Validate yacht isolation
+        tenant_key = lookup_tenant_for_user(user_id)
+        validate_yacht_isolation(jwt_result, request.yacht_id)
+
+        # Get tenant-specific Supabase client
+        db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
+
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+
+        # Get part handlers
+        from handlers.part_handlers import get_part_handlers
+        handlers = get_part_handlers(db)
+
+        # Call handler
+        result = await handlers["update_part_image"](
+            yacht_id=request.yacht_id,
+            user_id=user_id,
+            image_id=request.image_id,
+            description=request.description,
+            tags=request.tags,
+        )
+
+        return UpdateImageResponse(**result)
+
+    except ValueError as e:
+        logger.error(f"update_part_image validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"update_part_image failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update image")
+
+
+@router.post("/delete-image", response_model=DeleteImageResponse)
+async def delete_part_image(
+    request: DeleteImageRequest,
+    authorization: str = Header(...),
+) -> DeleteImageResponse:
+    """
+    Delete part image (SIGNED action - requires PIN+TOTP signature).
+
+    Captain/Manager role only.
+    """
+    try:
+        # Validate JWT and extract user_id
+        jwt_result = validate_jwt(authorization)
+        user_id = jwt_result.context.get("user_id")
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid or missing JWT")
+
+        # Validate yacht isolation
+        tenant_key = lookup_tenant_for_user(user_id)
+        validate_yacht_isolation(jwt_result, request.yacht_id)
+
+        # Get tenant-specific Supabase client
+        db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
+
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+
+        # Get part handlers
+        from handlers.part_handlers import get_part_handlers
+        handlers = get_part_handlers(db)
+
+        # Call handler (signature validation done in handler)
+        result = await handlers["delete_part_image"](
+            yacht_id=request.yacht_id,
+            user_id=user_id,
+            image_id=request.image_id,
+            reason=request.reason,
+            signature=request.signature,
+        )
+
+        return DeleteImageResponse(**result)
+
+    except ValueError as e:
+        logger.error(f"delete_part_image validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"delete_part_image failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete image")
 
 
 # ============================================================================
