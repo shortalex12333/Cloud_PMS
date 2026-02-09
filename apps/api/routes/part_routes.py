@@ -16,7 +16,7 @@ Stock computation rule:
 All routes require JWT authentication and yacht isolation validation.
 """
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Query
+from fastapi import APIRouter, HTTPException, Header, Depends, Query, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 import logging
@@ -158,8 +158,7 @@ class UploadImageResponse(BaseModel):
     part_name: Optional[str] = None
     storage_path: str
     bucket: str
-    presigned_upload_url: str
-    expires_in: int
+    image_url: str
     message: str
 
 
@@ -768,13 +767,17 @@ async def get_low_stock(
 
 @router.post("/upload-image", response_model=UploadImageResponse)
 async def upload_part_image(
-    request: UploadImageRequest,
+    file: UploadFile = File(...),
+    part_id: str = Form(...),
+    yacht_id: str = Form(...),
+    description: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
     authorization: str = Header(...),
 ) -> UploadImageResponse:
     """
-    Generate presigned URL for uploading part image.
+    Upload part image directly to Supabase Storage.
 
-    Returns presigned URL for client-side direct upload to Supabase Storage.
+    Accepts multipart/form-data with actual file upload.
     """
     try:
         # Validate JWT and extract user_id
@@ -786,7 +789,7 @@ async def upload_part_image(
 
         # Validate yacht isolation
         tenant_key = lookup_tenant_for_user(user_id)
-        validate_yacht_isolation(jwt_result, request.yacht_id)
+        validate_yacht_isolation(jwt_result, yacht_id)
 
         # Get tenant-specific Supabase client
         db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
@@ -794,19 +797,26 @@ async def upload_part_image(
         if not db:
             raise HTTPException(status_code=500, detail="Database connection failed")
 
+        # Read file content
+        file_content = await file.read()
+
+        # Parse tags if provided
+        tags_list = tags.split(',') if tags else None
+
         # Get part handlers
         from handlers.part_handlers import get_part_handlers
         handlers = get_part_handlers(db)
 
-        # Call handler
+        # Call handler with actual file data
         result = await handlers["upload_part_image"](
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id,
-            part_id=request.part_id,
-            file_name=request.file_name,
-            mime_type=request.mime_type,
-            description=request.description,
-            tags=request.tags,
+            part_id=part_id,
+            file_name=file.filename,
+            file_content=file_content,
+            mime_type=file.content_type,
+            description=description,
+            tags=tags_list,
         )
 
         return UploadImageResponse(**result)
@@ -817,8 +827,8 @@ async def upload_part_image(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"upload_part_image failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate upload URL")
+        logger.error(f"upload_part_image failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/update-image", response_model=UpdateImageResponse)
