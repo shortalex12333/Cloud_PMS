@@ -25,7 +25,7 @@ import {
   canPerformAction,
   getActionMetadata,
 } from '@/types/actions';
-import { getWorkflowEndpoint, getWorkflowArchetype } from '@/types/workflow-archetypes';
+// Removed workflow-archetypes import - using Action Router instead
 import { callCelesteApi } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -118,40 +118,32 @@ export function useActionHandler() {
           error: null,
         }));
 
-        // Build unified payload (matches workflow_plan.md specification)
+        // Build payload for Action Router
         const payload = {
-          action_name: action,
+          action: action,
           context: {
+            yacht_id: user.yachtId,
+            user_id: user.id,
             ...context,
-            user_id: user.id,
-            yacht_id: user.yachtId,
           },
-          parameters: {
-            user_input: context.user_input || null,
+          payload: {
             ...context.parameters,
-          },
-          session: {
-            user_id: user.id,
-            yacht_id: user.yachtId,
-            timestamp: new Date().toISOString(),
+            ...(context.user_input && { user_input: context.user_input }),
           },
         };
 
-        // Get workflow archetype endpoint
-        const archetype = getWorkflowArchetype(action);
-        const endpoint = getWorkflowEndpoint(action);
+        // Use unified Action Router endpoint
+        const endpoint = '/v1/actions/execute';
 
         // Log action (for debugging)
         console.log('[useActionHandler] Executing action:', {
           action,
-          archetype,
           endpoint,
           payload,
           metadata,
         });
 
-        // Call backend API using unified workflow archetype endpoint
-        // Route: /workflows/{archetype} (e.g., /workflows/create)
+        // Call backend API using Action Router
         const response = await callCelesteApi<ActionResponse>(
           endpoint,
           {
