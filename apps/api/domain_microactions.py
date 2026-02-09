@@ -832,7 +832,17 @@ COMPOUND_ANCHORS: Dict[str, List[str]] = {
         r'\breorder\s+(point|level)\b',
         r'\bstock\s+levels?\b',
         r'\binventory\s+(count|check|level)\b',
-        r'\b(oil|fuel|air|water)\s+filter\b',
+        r'\b(oil|fuel|air|water|hydraulic)\s+filter\b',
+        # Common part types (Inventory Lens - align with term_classifier.py)
+        r'\bfilters?\b',
+        r'\bbearings?\b',
+        r'\bgaskets?\b',
+        r'\bseals?\b',
+        r'\bo-rings?\b',
+        r'\bbelts?\b',
+        r'\bhoses?\b',
+        r'\bfittings?\b',
+        r'\bvalves?\b',
     ],
     # work_order compounds
     'work_order': [
