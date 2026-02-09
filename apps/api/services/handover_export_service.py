@@ -284,7 +284,7 @@ class HandoverExportService:
                     equip = f.get("equipment", {}) or {}
                     entity_details[f["id"]] = {
                         "name": f"{equip.get('name', '')} - {f.get('fault_code', '')}",
-                        "link": f"/faults/{f['id']}"
+                        "link": f"/?entity=fault&id={f['id']}"
                     }
 
         # Work orders
@@ -296,7 +296,7 @@ class HandoverExportService:
                 for wo in wos.data:
                     entity_details[wo["id"]] = {
                         "name": f"WO-{wo.get('wo_number', '')} {wo.get('title', '')}",
-                        "link": f"/work-orders/{wo['id']}"
+                        "link": f"/?entity=work_order&id={wo['id']}"
                     }
 
         # Equipment
@@ -308,7 +308,7 @@ class HandoverExportService:
                 for e in equip.data:
                     entity_details[e["id"]] = {
                         "name": f"{e.get('name', '')} ({e.get('location', '')})",
-                        "link": f"/equipment/{e['id']}"
+                        "link": f"/?entity=equipment&id={e['id']}"
                     }
 
         # Parts
@@ -320,7 +320,7 @@ class HandoverExportService:
                 for p in parts.data:
                     entity_details[p["id"]] = {
                         "name": f"{p.get('name', '')} ({p.get('part_number', '')})",
-                        "link": f"/parts/{p['id']}"
+                        "link": f"/?entity=part&id={p['id']}"
                     }
 
         # Enrich items
