@@ -197,7 +197,7 @@ class ShoppingListHandlers:
                 ).eq("id", part_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
                 if not part_result or not part_result.data:
-                    builder.set_error("NOT_FOUND", f"Part not found: {part_id}", 404)
+                    builder.set_error("NOT_FOUND", f"Part not found: {part_id}")
                     return builder.build()
 
                 # Use part details if not provided
@@ -389,7 +389,7 @@ class ShoppingListHandlers:
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not item_result or not item_result.data:
-                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
+                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}")
                 return builder.build()
 
             item = item_result.data
@@ -614,7 +614,7 @@ class ShoppingListHandlers:
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not item_result or not item_result.data:
-                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
+                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}")
                 return builder.build()
 
             item = item_result.data
@@ -809,7 +809,7 @@ class ShoppingListHandlers:
             ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not item_result or not item_result.data:
-                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
+                builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}")
                 return builder.build()
 
             item = item_result.data
@@ -997,7 +997,7 @@ class ShoppingListHandlers:
                 ).eq("id", entity_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
                 if not item_result or not item_result.data:
-                    builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}", 404)
+                    builder.set_error("NOT_FOUND", f"Shopping list item not found: {entity_id}")
                     return builder.build()
 
                 # Item exists but no history yet
