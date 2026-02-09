@@ -651,6 +651,16 @@ async def execute_action(
         # Hours of Rest Actions (Crew Lens v3 - Action Registry)
         "get_hours_of_rest": ["yacht_id"],
         "upsert_hours_of_rest": ["yacht_id", "user_id", "record_date"],
+        "get_monthly_signoff": ["yacht_id", "signoff_id"],
+        "list_monthly_signoffs": ["yacht_id"],
+        "create_monthly_signoff": ["yacht_id", "user_id", "month", "department"],
+        "sign_monthly_signoff": ["signoff_id", "signature_level", "signature_data"],
+        "create_crew_template": ["yacht_id", "user_id", "schedule_name", "schedule_template"],
+        "apply_crew_template": ["yacht_id", "user_id", "week_start_date"],
+        "list_crew_templates": ["yacht_id"],
+        "list_crew_warnings": ["yacht_id"],
+        "acknowledge_warning": ["warning_id"],
+        "dismiss_warning": ["warning_id", "hod_justification", "dismissed_by_role"],
         # Tier 7 - Purchasing
         "create_purchase_request": ["title"],
         "add_item_to_purchase": ["purchase_request_id", "item_description"],
@@ -723,6 +733,34 @@ async def execute_action(
         # NOTE: write_off_part role check is at handler level (checks role_at_signing + is_manager RPC)
     }
 
+    # INVENTORY/PARTS LENS ACTIONS - Role enforcement (Inventory Lens - Finish Line)
+    # READ actions: all roles including crew
+    # MUTATE actions: engineer and above (crew explicitly excluded)
+    INVENTORY_LENS_ROLES = {
+        # READ actions - all roles
+        "check_stock_level": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                              "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        "view_part_details": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                              "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        "view_part_stock": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        "view_part_location": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                               "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        "view_part_usage": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                            "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+        "view_linked_equipment": ["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto",
+                                  "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
+
+        # MUTATE actions - engineer and above only (crew excluded)
+        "log_part_usage": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        "consume_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        "receive_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        "transfer_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        "add_to_shopping_list": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        "order_part": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+        "scan_part_barcode": ["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
+    }
+
     if action in FAULT_LENS_ROLES:
         user_role = user_context.get("role")
         allowed_roles = FAULT_LENS_ROLES[action]
@@ -771,6 +809,32 @@ async def execute_action(
                     "status": "error",
                     "error_code": "INSUFFICIENT_PERMISSIONS",
                     "message": f"Role '{user_role}' forbidden: not authorized to perform signed action '{action}'"
+                }
+            )
+
+    # INVENTORY/PARTS LENS ACTIONS - Role validation (Inventory Lens - Finish Line)
+    if action in INVENTORY_LENS_ROLES:
+        user_role = user_context.get("role")
+        allowed_roles = INVENTORY_LENS_ROLES[action]
+
+        if not user_role:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "status": "error",
+                    "error_code": "RLS_DENIED",
+                    "message": "User role not found for inventory action"
+                }
+            )
+
+        if user_role not in allowed_roles:
+            logger.warning(f"[SECURITY] Role '{user_role}' denied for inventory action '{action}'. Allowed: {allowed_roles}")
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "status": "error",
+                    "error_code": "INSUFFICIENT_PERMISSIONS",
+                    "message": f"Role '{user_role}' is not authorized to perform inventory action '{action}'"
                 }
             )
 
