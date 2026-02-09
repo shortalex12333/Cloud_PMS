@@ -228,15 +228,16 @@ export default function ContextPanel() {
       data-entity-id={entityId}
     >
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-700/50">
+      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-700/50 relative z-50 bg-gray-900/95">
         <div className="flex items-center gap-4">
           <button
             onClick={hideContext}
-            className="relative z-[10002] p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="relative z-50 p-2 hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto cursor-pointer"
             aria-label="Close context panel"
             data-testid="close-context-panel"
+            type="button"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-400 pointer-events-none" />
           </button>
           <div>
             <span className="text-xs text-gray-500 uppercase tracking-wider">
@@ -251,10 +252,11 @@ export default function ContextPanel() {
         </div>
         <button
           onClick={hideContext}
-          className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          className="relative z-50 p-2 hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto cursor-pointer"
           aria-label="Close panel"
+          type="button"
         >
-          <ChevronRight className="w-5 h-5 text-gray-400" />
+          <ChevronRight className="w-5 h-5 text-gray-400 pointer-events-none" />
         </button>
       </div>
 
