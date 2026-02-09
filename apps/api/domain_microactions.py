@@ -904,6 +904,32 @@ COMPOUND_ANCHORS: Dict[str, List[str]] = {
         r'\bcreate\s+purchase\b',
         r'\bapprove\s+purchase\b',
     ],
+    # shopping_list compounds - FIX 2026-02-08: Added shopping list domain anchors
+    'shopping_list': [
+        # Primary shopping list patterns
+        r'\bshopping\s+list\b',
+        r'\bbuy\s+list\b',
+        r'\bpurchase\s+list\b',
+        r'\border\s+list\b',
+        # Requisition patterns (not followed by document/manual)
+        r'\brequisition(?!\s+(?:form|document|manual))\b',
+        r'\breq\s+list\b',
+        r'\bspare\s+parts\s+list\b',
+        r'\bparts\s+list(?!\s+(?:manual|document|pdf|file))\b',  # "parts list" but not "parts list manual"
+        # Procurement patterns
+        r'\bprocurement\s+(?:items?|list|requests?)\b',
+        r'\brequested\s+parts?\b',
+        r'\bparts?\s+request(?:s|ed)?\b',
+        r'\bparts?\s+requisition\b',
+        # Approval status in shopping list context
+        r'\b(candidate|pending|approved|rejected)\s+(?:items?|parts?|list)\b',
+        r'\bcandidate\s+parts?\b',
+        r'\bpending\s+approval\s+list\b',
+        # Shopping list specific actions
+        r'\bapprove\s+(?:shopping|requisition|procurement)\b',
+        r'\breject\s+(?:shopping|requisition|procurement)\b',
+        r'\bpromote\s+(?:candidate|item)\s+to\s+part\b',
+    ],
 }
 
 # =============================================================================
@@ -1157,7 +1183,8 @@ def detect_domain_from_query(query: str) -> Optional[tuple]:
 
     # Multiple domains matched - need disambiguation
     # Priority order based on specificity
-    priority = ['work_order', 'receiving', 'hours_of_rest', 'equipment', 'part', 'fault', 'document', 'certificate', 'crew', 'checklist', 'handover', 'purchase']
+    # FIX 2026-02-08: Added shopping_list with high priority (after receiving, before hours_of_rest)
+    priority = ['work_order', 'receiving', 'shopping_list', 'hours_of_rest', 'equipment', 'part', 'fault', 'document', 'certificate', 'crew', 'checklist', 'handover', 'purchase']
     for p in priority:
         for domain, _ in matches:
             if domain == p:
