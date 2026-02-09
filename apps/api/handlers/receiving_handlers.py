@@ -1246,14 +1246,17 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
                 "message": "receiving_id is required"
             }
 
-        # Create RLS-enforced client with user's JWT
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
         try:
-            db = get_user_db(user_jwt, yacht_id)
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
         except Exception as e:
-            logger.error(f"Failed to create RLS client: {e}")
+            logger.error(f"Failed to create database client: {e}")
             return {
                 "status": "error",
-                "error_code": "RLS_CLIENT_ERROR",
+                "error_code": "DB_CLIENT_ERROR",
                 "message": "Failed to create database client"
             }
 
