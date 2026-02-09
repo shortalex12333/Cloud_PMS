@@ -199,7 +199,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data.error_code).toBe('VALIDATION_FAILED');
+    expect(result.data.error_code).toBe('MISSING_REQUIRED_FIELD');
     expect(result.data.message).toContain('part_name');
   });
 
@@ -212,7 +212,7 @@ test.describe('Shopping List - CREATE Action', () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data.error_code).toBe('VALIDATION_FAILED');
+    expect(result.data.error_code).toBe('MISSING_REQUIRED_FIELD');
     expect(result.data.message).toContain('quantity_requested');
   });
 
