@@ -5048,7 +5048,9 @@ async def execute_action(
         if error_code in ("FAULT_NOT_FOUND", "WO_NOT_FOUND", "EQUIPMENT_NOT_FOUND", "PART_NOT_FOUND",
                           "NOT_FOUND", "RECEIVING_NOT_FOUND", "DOCUMENT_NOT_FOUND"):
             status_code = 404
-        elif error_code in ("SIGNATURE_REQUIRED", "RLS_DENIED", "INSUFFICIENT_PERMISSIONS"):
+        elif error_code == "SIGNATURE_REQUIRED":
+            status_code = 400  # Client error - user forgot to sign (not a permission issue)
+        elif error_code in ("RLS_DENIED", "INSUFFICIENT_PERMISSIONS"):
             status_code = 403
         elif error_code in ("CONFLICT", "DUPLICATE_RECORD", "DUPLICATE_WO_EXISTS"):
             status_code = 409
