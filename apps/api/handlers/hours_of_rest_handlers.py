@@ -232,20 +232,33 @@ class HoursOfRestHandlers:
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            # Check if record exists
-            existing = self.db.table("pms_hours_of_rest").select("id").eq(
-                "yacht_id", yacht_id
-            ).eq("user_id", user_id).eq("record_date", record_date).maybe_single().execute()
+            # Check if record exists (handle RLS/406 errors gracefully)
+            record_exists = False
+            existing_id = None
 
-            if existing.data:
-                # Update
+            try:
+                existing = self.db.table("pms_hours_of_rest").select("id").eq(
+                    "yacht_id", yacht_id
+                ).eq("user_id", user_id).eq("record_date", record_date).maybe_single().execute()
+
+                if existing and existing.data:
+                    record_exists = True
+                    existing_id = existing.data["id"]
+            except Exception as check_err:
+                # 406/RLS errors mean no existing record or no permission
+                # Safe to attempt INSERT (will fail with 403 if not allowed)
+                logger.debug(f"Existence check failed (likely no record): {check_err}")
+                record_exists = False
+
+            if record_exists and existing_id:
+                # Update existing record
                 result = self.db.table("pms_hours_of_rest").update(upsert_data).eq(
-                    "id", existing.data["id"]
+                    "id", existing_id
                 ).execute()
                 record = result.data[0] if result.data else None
                 action_taken = "updated"
             else:
-                # Insert
+                # Insert new record
                 upsert_data["created_at"] = datetime.now(timezone.utc).isoformat()
                 result = self.db.table("pms_hours_of_rest").insert(upsert_data).execute()
                 record = result.data[0] if result.data else None
