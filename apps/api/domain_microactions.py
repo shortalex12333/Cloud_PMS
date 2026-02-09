@@ -1081,8 +1081,10 @@ INTENT_KEYWORDS: Dict[str, str] = {
 # Maps plural/variant domain names to canonical singular form
 
 DOMAIN_CANONICAL: Dict[str, str] = {
-    # Plurals → singular
-    'parts': 'part',
+    # Plurals → singular (EXCEPT parts/inventory which need plural for action registry)
+    'parts': 'parts',  # Keep plural for action registry consistency (Inventory Lens)
+    'part': 'parts',   # Normalize singular to plural (Inventory Lens)
+    'inventory': 'parts',  # Normalize inventory to parts (Inventory Lens)
     'documents': 'document',
     'certificates': 'certificate',
     'faults': 'fault',
@@ -1091,7 +1093,6 @@ DOMAIN_CANONICAL: Dict[str, str] = {
     'handovers': 'handover',
     'checklists': 'checklist',
     # Variants → canonical
-    'inventory': 'inventory',  # keep as-is (no singular "inventorie")
     'crew': 'crew',  # collective noun
     'receiving': 'receiving',  # gerund
     'purchase': 'purchase',
@@ -1101,7 +1102,7 @@ DOMAIN_CANONICAL: Dict[str, str] = {
 
 
 def normalize_domain(domain: str) -> str:
-    """Normalize domain to canonical singular form."""
+    """Normalize domain to canonical form (singular for most, plural for parts/inventory)."""
     return DOMAIN_CANONICAL.get(domain, domain)
 
 
