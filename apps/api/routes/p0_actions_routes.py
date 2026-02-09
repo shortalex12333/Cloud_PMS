@@ -2081,12 +2081,16 @@ async def execute_action(
                 # Get work order department from payload
                 wo_dept = payload.get("department")
 
-                # Require department for crew
+                # Require department in payload
                 if not wo_dept:
                     raise HTTPException(status_code=400, detail="department is required for crew")
 
+                # Require crew to have a department in profile
+                if not user_dept:
+                    raise HTTPException(status_code=403, detail="Crew user must have a department assigned in their profile")
+
                 # Enforce department match
-                if user_dept and wo_dept and user_dept != wo_dept:
+                if user_dept != wo_dept:
                     raise HTTPException(
                         status_code=403,
                         detail=f"Crew can only create work orders for their department (user: {user_dept}, work order: {wo_dept})"
