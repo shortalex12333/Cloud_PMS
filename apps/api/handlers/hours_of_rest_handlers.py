@@ -120,7 +120,7 @@ class HoursOfRestHandlers:
                 "id, user_id, record_date, rest_periods, "
                 "total_rest_hours, total_work_hours, "
                 "is_daily_compliant, is_weekly_compliant, "
-                "weekly_rest_hours, compliance_status, "
+                "weekly_rest_hours, "
                 "daily_compliance_notes, weekly_compliance_notes, "
                 "created_at, updated_at"
             ).eq("yacht_id", yacht_id).eq("user_id", user_id).gte(
