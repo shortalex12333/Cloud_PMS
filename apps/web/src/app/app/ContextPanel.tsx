@@ -19,6 +19,37 @@ import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
 import { EquipmentCard } from '@/components/cards/EquipmentCard';
 import { PartCard } from '@/components/cards/PartCard';
 import { ReceivingCard } from '@/components/cards/ReceivingCard';
+import type { MicroAction } from '@/types/actions';
+
+/**
+ * Get available actions for parts based on user role
+ * Mirrors backend domain_microactions.py logic
+ */
+function getPartActions(role: string): MicroAction[] {
+  const actions: MicroAction[] = [];
+
+  // READ actions - available to all roles
+  const allRoles = ['crew', 'deckhand', 'steward', 'chef', 'bosun', 'engineer', 'eto',
+                    'chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
+
+  if (allRoles.includes(role)) {
+    actions.push('view_part_details' as MicroAction);
+    actions.push('check_stock_level' as MicroAction);
+  }
+
+  // Usage History - elevated roles only
+  const elevatedRoles = ['engineer', 'eto', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
+  if (elevatedRoles.includes(role)) {
+    actions.push('view_part_usage' as MicroAction);
+  }
+
+  // MUTATE actions - elevated roles only
+  if (elevatedRoles.includes(role)) {
+    actions.push('log_part_usage' as MicroAction);
+  }
+
+  return actions;
+}
 
 export default function ContextPanel() {
   const { contextPanel, hideContext } = useSurface();
@@ -133,11 +164,16 @@ export default function ContextPanel() {
           last_counted_by: data.last_counted_by as string | undefined,
           unit: data.unit as string | undefined,
         };
+
+        // Get available actions based on user role
+        const partActions = getPartActions(user?.role || 'crew');
+
         return (
           <div data-testid={`context-panel-${entityType}-card`}>
             <PartCard
               part={partData}
               entityType={entityType as 'part' | 'inventory'}
+              actions={partActions}
             />
           </div>
         );
