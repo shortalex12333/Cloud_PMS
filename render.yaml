@@ -23,10 +23,14 @@ services:
         value: "https://vzsohavtuotocgrfkfyd.supabase.co"
       - key: yTEST_YACHT_001_SUPABASE_SERVICE_KEY
         sync: false
+      - key: yTEST_YACHT_001_SUPABASE_ANON_KEY
+        sync: false
       # Default/fallback (points to TENANT_1)
       - key: SUPABASE_URL
         value: "https://vzsohavtuotocgrfkfyd.supabase.co"
       - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: TENANT_SUPABASE_ANON_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false
