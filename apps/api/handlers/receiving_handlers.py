@@ -1023,6 +1023,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
         if not signature or not isinstance(signature, dict):
             return {
                 "status": "error",
+                "status_code": 400,
                 "error_code": "SIGNATURE_REQUIRED",
                 "message": "This action requires a signature for execution"
             }
