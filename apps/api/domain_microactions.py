@@ -30,9 +30,11 @@ import re
 
 
 # HOTFIX 2026-02-09: Force rebuild to activate Shopping List entity extraction
-# Shopping List compound anchors are present in COMPOUND_ANCHORS (lines 909-928)
+# Shopping List compound anchors are present in COMPOUND_ANCHORS (lines 912-931)
 # This constant forces Python bytecode recompilation to load the fix
-ENTITY_EXTRACTION_VERSION = "2026.02.09.001"  # Shopping List + Parts normalization active
+# UPDATED: 2026-02-09 17:00 UTC - Version bump .002 to FORCE Render rebuild
+ENTITY_EXTRACTION_VERSION = "2026.02.09.002"  # MUST ACTIVATE Shopping List + Parts
+# Next deployment MUST load shopping_list patterns or issue is Render config
 
 
 @dataclass
@@ -1608,3 +1610,8 @@ def get_domain_boost_for_object_type(query: str, object_type: str) -> float:
         return boost
 
     return 0.0
+
+
+# HOTFIX 2026-02-09: Module load verification - This prints when module is imported
+# Check Render logs for this message to confirm new code loaded
+print(f"[ENTITY_EXTRACTION_LOADED] v{ENTITY_EXTRACTION_VERSION} | shopping_list_patterns={len(COMPOUND_ANCHORS.get('shopping_list', []))}")
