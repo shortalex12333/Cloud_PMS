@@ -61,7 +61,7 @@ jobs:
           BASE_URL: ${{ secrets.BASE_URL }}
         run: |
           cd apps/web
-          npx playwright test tests/playwright/complete-e2e-with-jwt-injection.spec.ts --project=chromium --reporter=html,json,list
+          npx playwright test tests/playwright/document-lens-real-journey.spec.ts --project=chromium --reporter=html,json,list
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
