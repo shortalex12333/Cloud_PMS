@@ -1,0 +1,15 @@
+{
+  "user": "HOD",
+  "query": "check stock",
+  "domain": "parts",
+  "total_actions": 4,
+  "read_actions": [
+    "check_stock_level",
+    "view_part_details"
+  ],
+  "mutate_actions": [
+    "log_part_usage",
+    "receive_part"
+  ],
+  "signed_actions": []
+}

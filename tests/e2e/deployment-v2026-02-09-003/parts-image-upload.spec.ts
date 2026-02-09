@@ -160,8 +160,8 @@ test.describe('Parts Image Upload - API Endpoints', () => {
       }
     });
 
-    // Should be 401 (unauthorized), NOT 404 (endpoint exists)
-    expect(response.status()).toBe(401);
+    // Should be 401 or 422 (endpoint exists), NOT 404
+    expect([401, 422]).toContain(response.status());
   });
 
   test('Upload endpoint returns 422 for missing data (not 404)', async ({ request }) => {

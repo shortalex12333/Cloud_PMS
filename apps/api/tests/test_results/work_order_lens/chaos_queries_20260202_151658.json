@@ -1,0 +1,199 @@
+[
+  {
+    "query": "genrator maintanence",
+    "entities_count": 0,
+    "results_count": 0,
+    "capabilities": [],
+    "is_vague": true,
+    "success": true
+  },
+  {
+    "query": "oil chnge on port engin",
+    "entities_count": 1,
+    "results_count": 2,
+    "capabilities": [
+      "graph_node_search"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "recieving shipment for pump parst",
+    "entities_count": 2,
+    "results_count": 26,
+    "capabilities": [
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "stuff from yesterday",
+    "entities_count": 1,
+    "results_count": 0,
+    "capabilities": [],
+    "is_vague": true,
+    "success": true
+  },
+  {
+    "query": "things that need attention",
+    "entities_count": 0,
+    "results_count": 0,
+    "capabilities": [],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "maintenance",
+    "entities_count": 2,
+    "results_count": 20,
+    "capabilities": [
+      "work_order_by_id"
+    ],
+    "is_vague": true,
+    "success": true
+  },
+  {
+    "query": "work",
+    "entities_count": 0,
+    "results_count": 0,
+    "capabilities": [],
+    "is_vague": true,
+    "success": true
+  },
+  {
+    "query": "urgent but can wait generator issue",
+    "entities_count": 3,
+    "results_count": 45,
+    "capabilities": [
+      "work_order_by_id",
+      "equipment_by_name_or_model",
+      "shopping_list_by_item_or_status"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "important not critical oil leak",
+    "entities_count": 2,
+    "results_count": 0,
+    "capabilities": [
+      "shopping_list_by_item_or_status",
+      "crew_warnings_search"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "high priority low urgency",
+    "entities_count": 4,
+    "results_count": 11,
+    "capabilities": [
+      "crew_warnings_search",
+      "shopping_list_by_item_or_status"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "work order from last week",
+    "entities_count": 2,
+    "results_count": 0,
+    "capabilities": [
+      "shopping_list_by_item_or_status"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "maintenance scheduled for tomorrow",
+    "entities_count": 4,
+    "results_count": 20,
+    "capabilities": [
+      "work_order_by_id"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "service due 2nd Tuesday",
+    "entities_count": 2,
+    "results_count": 0,
+    "capabilities": [
+      "fault_by_fault_code"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "john ordered pump part",
+    "entities_count": 3,
+    "results_count": 31,
+    "capabilities": [
+      "shopping_list_by_item_or_status",
+      "work_order_by_id",
+      "equipment_by_name_or_model"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "captain signed generator work order",
+    "entities_count": 4,
+    "results_count": 45,
+    "capabilities": [
+      "shopping_list_by_item_or_status",
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "chief engineer requested oil change",
+    "entities_count": 3,
+    "results_count": 2,
+    "capabilities": [
+      "shopping_list_by_item_or_status",
+      "graph_node_search"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "show me that thing captain mentioned yesterday about starboard generator leak",
+    "entities_count": 5,
+    "results_count": 40,
+    "capabilities": [
+      "work_order_by_id",
+      "part_by_part_number_or_name",
+      "equipment_by_name_or_model"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "need to find work order john created last week urgent",
+    "entities_count": 3,
+    "results_count": 0,
+    "capabilities": [
+      "shopping_list_by_item_or_status"
+    ],
+    "is_vague": false,
+    "success": true
+  },
+  {
+    "query": "where is the pump part from last month high priority",
+    "entities_count": 6,
+    "results_count": 46,
+    "capabilities": [
+      "shopping_list_by_item_or_status",
+      "crew_warnings_search",
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "is_vague": false,
+    "success": true
+  }
+]

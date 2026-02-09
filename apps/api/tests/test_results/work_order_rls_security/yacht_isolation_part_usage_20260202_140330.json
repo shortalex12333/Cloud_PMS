@@ -1,0 +1,13 @@
+{
+  "test_name": "yacht_isolation_part_usage",
+  "test_run_id": "20260202_140330",
+  "timestamp": "2026-02-02T14:03:33.383885",
+  "results": [
+    {
+      "test": "part_usage_yacht_isolation",
+      "status": "PASS",
+      "blocker": "B3",
+      "migration_status": "APPLIED"
+    }
+  ]
+}

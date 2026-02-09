@@ -13,7 +13,7 @@ export const TEST_USERS = {
     role: 'chief_engineer',
   },
   captain: {
-    email: process.env.STAGING_CAPTAIN_EMAIL || 'captain.test@alex-short.com',
+    email: process.env.STAGING_CAPTAIN_EMAIL || 'x@alex-short.com',
     password: process.env.STAGING_USER_PASSWORD || 'Password2!',
     role: 'captain',
   },

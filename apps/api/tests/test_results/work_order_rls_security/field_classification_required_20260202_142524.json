@@ -1,0 +1,28 @@
+{
+  "test_name": "field_classification_required",
+  "test_run_id": "20260202_142524",
+  "timestamp": "2026-02-02T14:25:30.508490",
+  "results": [
+    {
+      "test": "required_field_validation",
+      "description": "Missing title (REQUIRED)",
+      "expected": "FAIL",
+      "missing_field": "title",
+      "status": "DOCUMENTED"
+    },
+    {
+      "test": "required_field_validation",
+      "description": "Missing type (REQUIRED, but has default)",
+      "expected": "PASS",
+      "missing_field": "type",
+      "status": "DOCUMENTED"
+    },
+    {
+      "test": "required_field_validation",
+      "description": "All REQUIRED fields present",
+      "expected": "PASS",
+      "missing_field": null,
+      "status": "DOCUMENTED"
+    }
+  ]
+}

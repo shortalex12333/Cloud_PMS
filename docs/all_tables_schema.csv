@@ -1,0 +1,3360 @@
+table_name,column_name,data_type,is_nullable,description
+dash_predictive_insights,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_predictive_insights,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_predictive_insights,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+dash_predictive_insights,insight_type,public.insight_type,NO,
+dash_predictive_insights,title,text,NO,
+dash_predictive_insights,description,text,NO,
+dash_predictive_insights,recommendation,text,YES,
+dash_predictive_insights,severity,text,YES,
+dash_predictive_insights,metadata,jsonb,YES,
+dash_predictive_insights,acknowledged,boolean,YES,
+dash_predictive_insights,acknowledged_by,uuid,YES,
+dash_predictive_insights,acknowledged_at,timestamptz,YES,
+dash_predictive_insights,dismissed,boolean,YES,
+dash_predictive_insights,dismissed_at,timestamptz,YES,
+dash_predictive_insights,expires_at,timestamptz,YES,
+dash_predictive_insights,created_at,timestamptz,NO,
+pms_crew_certificates,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_crew_certificates,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_crew_certificates,person_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+pms_crew_certificates,person_name,text,NO,
+pms_crew_certificates,certificate_type,text,NO,
+pms_crew_certificates,certificate_number,text,YES,
+pms_crew_certificates,issuing_authority,text,YES,
+pms_crew_certificates,issue_date,date,YES,
+pms_crew_certificates,expiry_date,date,YES,
+pms_crew_certificates,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_crew_certificates,properties,jsonb,YES,
+pms_crew_certificates,created_at,timestamptz,NO,
+email_attachment_links,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_attachment_links,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_attachment_links,message_id,uuid,NO,"Note:
+This is a Foreign Key to `email_messages.id`"
+email_attachment_links,blob_id,uuid,NO,"Note:
+This is a Foreign Key to `email_attachment_b"
+email_attachment_links,provider_attachment_id,text,YES,
+email_attachment_links,name,text,NO,
+email_attachment_links,is_inline,boolean,YES,
+email_attachment_links,created_at,timestamptz,YES,
+pms_parts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_parts,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_parts,name,text,NO,
+pms_parts,part_number,text,YES,
+pms_parts,manufacturer,text,YES,
+pms_parts,description,text,YES,
+pms_parts,category,text,YES,
+pms_parts,model_compatibility,jsonb,YES,Compatible equipment models
+pms_parts,metadata,jsonb,YES,
+pms_parts,created_at,timestamptz,NO,
+pms_parts,updated_at,timestamptz,NO,
+pms_parts,search_embedding,public.vector(1536),YES,
+pms_parts,embedding_text,text,YES,
+pms_parts,quantity_on_hand,integer,NO,Current stock level. Updated by pms_part_usage log
+pms_parts,minimum_quantity,integer,YES,Reorder threshold. When quantity_on_hand <= minimu
+pms_parts,unit,text,YES,"Unit of measurement (ea, kg, L, m, etc). For trans"
+pms_parts,location,text,YES,"Physical location on yacht (e.g., ""Storeroom A - S"
+pms_parts,last_counted_at,timestamptz,YES,ACCOUNTABILITY: When was stock last physically cou
+pms_parts,last_counted_by,uuid,YES,ACCOUNTABILITY: WHO counted stock. Links to auth.u
+pms_parts,min_level,integer,YES,Minimum stock level before reorder alert
+pms_parts,reorder_multiple,integer,YES,Order quantity must be multiple of this value
+pms_parts,primary_location_id,uuid,YES,"Default storage location for this part
+
+Note:
+This"
+pms_parts,unit_cost,numeric,YES,Cost per unit in base currency
+pms_parts,department,text,YES,"Department responsible (deck, engineering, interio"
+pms_parts,is_critical,boolean,YES,Safety-critical part requiring special handling
+pms_parts,deleted_at,timestamptz,YES,
+pms_parts,deleted_by,uuid,YES,
+pms_parts,deletion_reason,text,YES,
+pms_parts,desired_quantity,integer,YES,
+pms_parts,photo_paths,text[],YES,Array of storage paths in pms-part-photos bucket. 
+entity_definitions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+entity_definitions,yacht_id,uuid,YES,
+entity_definitions,entity_type,text,NO,
+entity_definitions,canonical_name,text,NO,
+entity_definitions,aliases,text[],YES,
+entity_definitions,category,text,YES,
+entity_definitions,metadata,jsonb,YES,
+entity_definitions,extraction_patterns,text[],YES,
+entity_definitions,priority,integer,YES,
+entity_definitions,active,boolean,YES,
+entity_definitions,created_at,timestamptz,NO,
+v_low_stock_report,part_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_low_stock_report,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_low_stock_report,part_name,text,YES,
+v_low_stock_report,part_number,text,YES,
+v_low_stock_report,is_critical,boolean,YES,
+v_low_stock_report,on_hand,integer,YES,
+v_low_stock_report,min_level,integer,YES,
+v_low_stock_report,reorder_multiple,integer,YES,
+v_low_stock_report,location,text,YES,
+v_low_stock_report,category,text,YES,
+v_low_stock_report,department,text,YES,
+v_low_stock_report,is_out_of_stock,boolean,YES,
+v_low_stock_report,is_low_stock,boolean,YES,
+v_low_stock_report,suggested_order_qty,integer,YES,
+v_low_stock_report,urgency,text,YES,
+pms_receiving_documents,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_documents,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_documents,receiving_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_receiving.id`."
+pms_receiving_documents,document_id,uuid,NO,Foreign key to doc_metadata.id
+pms_receiving_documents,doc_type,text,YES,"Document type: invoice, packing_slip, photo"
+pms_receiving_documents,comment,text,YES,Inline comment from attach_receiving_image_with_co
+pms_receiving_documents,created_at,timestamptz,NO,
+dash_action_logs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_action_logs,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_action_logs,user_id,uuid,YES,
+dash_action_logs,action_name,text,NO,
+dash_action_logs,action_status,public.action_status,NO,
+dash_action_logs,request_payload,jsonb,NO,
+dash_action_logs,response_payload,jsonb,YES,
+dash_action_logs,context,jsonb,YES,
+dash_action_logs,error_code,text,YES,
+dash_action_logs,error_message,text,YES,
+dash_action_logs,started_at,timestamptz,NO,
+dash_action_logs,completed_at,timestamptz,YES,
+dash_action_logs,duration_ms,integer,YES,
+dash_action_logs,source_ip,text,YES,
+dash_action_logs,user_agent,text,YES,
+dash_action_logs,created_at,timestamptz,NO,
+doc_sop_edit_history,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+doc_sop_edit_history,sop_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_sop_procedures"
+doc_sop_edit_history,user_id,uuid,YES,
+doc_sop_edit_history,original_content,text,NO,
+doc_sop_edit_history,edited_content,text,NO,
+doc_sop_edit_history,edit_count,integer,YES,
+doc_sop_edit_history,created_at,timestamptz,YES,
+ledger_day_anchors,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+ledger_day_anchors,yacht_id,uuid,NO,
+ledger_day_anchors,anchor_date,date,NO,
+ledger_day_anchors,total_mutations,integer,YES,
+ledger_day_anchors,total_reads,integer,YES,
+ledger_day_anchors,total_contexts,integer,YES,
+ledger_day_anchors,mutation_by_type,jsonb,YES,
+ledger_day_anchors,mutations_by_user,jsonb,YES,
+ledger_day_anchors,mutations_by_department,jsonb,YES,
+ledger_day_anchors,actions_breakdown,jsonb,YES,
+ledger_day_anchors,first_event_id,uuid,YES,
+ledger_day_anchors,last_event_id,uuid,YES,
+ledger_day_anchors,first_event_time,timestamptz,YES,
+ledger_day_anchors,last_event_time,timestamptz,YES,
+ledger_day_anchors,day_proof_hash,text,YES,
+ledger_day_anchors,previous_day_hash,text,YES,
+ledger_day_anchors,is_finalized,boolean,YES,
+ledger_day_anchors,finalized_at,timestamptz,YES,
+ledger_day_anchors,created_at,timestamptz,NO,
+ledger_day_anchors,updated_at,timestamptz,NO,
+user_action_history,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+user_action_history,yacht_id,uuid,NO,
+user_action_history,user_id,uuid,NO,
+user_action_history,action_type,text,NO,
+user_action_history,action_description,text,NO,
+user_action_history,entity_type,text,NO,
+user_action_history,entity_id,uuid,NO,
+user_action_history,entity_display_name,text,YES,
+user_action_history,action_date,date,NO,
+user_action_history,action_hour,integer,NO,
+user_action_history,was_via_search,boolean,YES,
+user_action_history,search_query,text,YES,
+user_action_history,confirmation_id,uuid,YES,
+user_action_history,ledger_event_id,uuid,YES,
+user_action_history,created_at,timestamptz,NO,
+dash_legacy_view,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_legacy_view,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_legacy_view,equipment_overview,jsonb,NO,
+dash_legacy_view,equipment_count,integer,YES,
+dash_legacy_view,equipment_by_status,jsonb,YES,
+dash_legacy_view,work_orders_overview,jsonb,NO,
+dash_legacy_view,work_orders_count,integer,YES,
+dash_legacy_view,work_orders_by_status,jsonb,YES,
+dash_legacy_view,work_orders_overdue_count,integer,YES,
+dash_legacy_view,inventory_overview,jsonb,NO,
+dash_legacy_view,inventory_count,integer,YES,
+dash_legacy_view,inventory_low_stock_count,integer,YES,
+dash_legacy_view,certificates_overview,jsonb,NO,
+dash_legacy_view,certificates_count,integer,YES,
+dash_legacy_view,certificates_expiring_soon,integer,YES,
+dash_legacy_view,fault_history,jsonb,NO,
+dash_legacy_view,faults_active_count,integer,YES,
+dash_legacy_view,faults_resolved_30d,integer,YES,
+dash_legacy_view,scheduled_maintenance,jsonb,NO,
+dash_legacy_view,maintenance_upcoming_7d,integer,YES,
+dash_legacy_view,maintenance_overdue,integer,YES,
+dash_legacy_view,parts_usage,jsonb,NO,
+dash_legacy_view,documents_summary,jsonb,NO,
+dash_legacy_view,documents_total,integer,YES,
+dash_legacy_view,generated_at,timestamptz,NO,
+dash_legacy_view,valid_until,timestamptz,YES,
+pms_part_usage,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_part_usage,yacht_id,uuid,NO,
+pms_part_usage,part_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_part_usage,quantity,integer,NO,Quantity used (deducted from inventory). Always po
+pms_part_usage,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_part_usage,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_part_usage,usage_reason,text,NO,"WHY part was used: work_order (linked to WO), prev"
+pms_part_usage,notes,text,YES,
+pms_part_usage,used_by,uuid,NO,WHO used this part. Links to auth.users. For accou
+pms_part_usage,used_at,timestamptz,NO,
+pms_part_usage,metadata,jsonb,YES,
+log_pipeline_execution,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+log_pipeline_execution,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+log_pipeline_execution,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+log_pipeline_execution,step,text,NO,
+log_pipeline_execution,status,text,NO,
+log_pipeline_execution,message,text,YES,
+log_pipeline_execution,error_details,jsonb,YES,
+log_pipeline_execution,metadata,jsonb,YES,
+log_pipeline_execution,duration_ms,integer,YES,
+log_pipeline_execution,created_at,timestamptz,NO,
+pms_handover,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_handover,yacht_id,uuid,NO,
+pms_handover,entity_type,text,NO,"Type of entity being handed over: work_order, faul"
+pms_handover,entity_id,uuid,YES,
+pms_handover,summary_text,text,NO,
+pms_handover,category,text,YES,"Category: urgent (needs immediate attention), in_p"
+pms_handover,priority,integer,YES,
+pms_handover,added_by,uuid,NO,"Note:
+This is a Foreign Key to `auth_users_profile"
+pms_handover,added_at,timestamptz,NO,
+pms_handover,metadata,jsonb,YES,
+pms_attachments,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_attachments,yacht_id,uuid,NO,
+pms_attachments,entity_type,varchar,NO,
+pms_attachments,entity_id,uuid,NO,
+pms_attachments,filename,varchar,NO,
+pms_attachments,original_filename,varchar,YES,
+pms_attachments,mime_type,varchar,NO,
+pms_attachments,file_size,integer,YES,
+pms_attachments,storage_path,text,NO,
+pms_attachments,width,integer,YES,
+pms_attachments,height,integer,YES,
+pms_attachments,thumbnail_path,text,YES,
+pms_attachments,description,text,YES,
+pms_attachments,tags,text[],YES,
+pms_attachments,metadata,jsonb,YES,
+pms_attachments,uploaded_by,uuid,NO,
+pms_attachments,uploaded_at,timestamptz,NO,
+pms_attachments,created_at,timestamptz,NO,
+pms_attachments,updated_at,timestamptz,YES,
+pms_attachments,deleted_at,timestamptz,YES,
+pms_attachments,deleted_by,uuid,YES,
+pms_attachments,deletion_reason,text,YES,
+pms_attachments,related_text,text,YES,Surface facts for Show Related: filename | descrip
+pms_attachments,category,varchar,YES,Attachment category for bucket determination: phot
+pms_shopping_list_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_shopping_list_items,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_shopping_list_items,part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_shopping_list_items,part_name,text,NO,
+pms_shopping_list_items,part_number,text,YES,
+pms_shopping_list_items,manufacturer,text,YES,
+pms_shopping_list_items,is_candidate_part,boolean,NO,
+pms_shopping_list_items,quantity_requested,numeric,NO,
+pms_shopping_list_items,quantity_approved,numeric,YES,
+pms_shopping_list_items,quantity_ordered,numeric,YES,
+pms_shopping_list_items,quantity_received,numeric,YES,
+pms_shopping_list_items,quantity_installed,numeric,YES,
+pms_shopping_list_items,unit,text,YES,
+pms_shopping_list_items,preferred_supplier,text,YES,
+pms_shopping_list_items,estimated_unit_price,numeric,YES,
+pms_shopping_list_items,status,text,NO,
+pms_shopping_list_items,source_type,text,NO,
+pms_shopping_list_items,source_work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_shopping_list_items,source_receiving_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_shopping_list_items,source_notes,text,YES,
+pms_shopping_list_items,order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_orders.id`.<fk"
+pms_shopping_list_items,order_line_number,integer,YES,
+pms_shopping_list_items,approved_by,uuid,YES,
+pms_shopping_list_items,approved_at,timestamptz,YES,
+pms_shopping_list_items,approval_notes,text,YES,
+pms_shopping_list_items,rejected_by,uuid,YES,
+pms_shopping_list_items,rejected_at,timestamptz,YES,
+pms_shopping_list_items,rejection_reason,text,YES,
+pms_shopping_list_items,fulfilled_at,timestamptz,YES,
+pms_shopping_list_items,installed_at,timestamptz,YES,
+pms_shopping_list_items,installed_to_equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_shopping_list_items,urgency,text,YES,
+pms_shopping_list_items,required_by_date,date,YES,
+pms_shopping_list_items,created_by,uuid,NO,
+pms_shopping_list_items,created_at,timestamptz,NO,
+pms_shopping_list_items,updated_by,uuid,YES,
+pms_shopping_list_items,updated_at,timestamptz,NO,
+pms_shopping_list_items,deleted_at,timestamptz,YES,
+pms_shopping_list_items,deleted_by,uuid,YES,
+pms_shopping_list_items,deletion_reason,text,YES,
+pms_shopping_list_items,metadata,jsonb,YES,
+pms_shopping_list_items,rejection_notes,text,YES,
+pms_shopping_list_items,candidate_promoted_to_part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_shopping_list_items,promoted_by,uuid,YES,
+pms_shopping_list_items,promoted_at,timestamptz,YES,
+pms_shopping_list_items,requested_by,uuid,YES,User who requested the item
+pms_shopping_list_items,requested_at,timestamptz,YES,When item was added to list
+equipment_aliases,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+equipment_aliases,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+equipment_aliases,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+equipment_aliases,alias,text,YES,
+equipment_aliases,alias_type,text,YES,
+equipment_aliases,confidence,double precision,YES,
+equipment_aliases,created_at,timestamptz,YES,
+decision_audit_log,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+decision_audit_log,execution_id,uuid,NO,UUID grouping all decisions from a single evaluati
+decision_audit_log,timestamp,timestamptz,NO,
+decision_audit_log,user_id,uuid,NO,
+decision_audit_log,yacht_id,uuid,NO,
+decision_audit_log,session_id,uuid,YES,
+decision_audit_log,user_role,text,YES,
+decision_audit_log,action,text,NO,
+decision_audit_log,decision,text,NO,"Outcome: show (allowed), hide (blocked/low confide"
+decision_audit_log,tier,text,YES,
+decision_audit_log,confidence_total,double precision,YES,E018 weighted sum: intent*0.4 + entity*0.4 + situa
+decision_audit_log,confidence_intent,double precision,YES,
+decision_audit_log,confidence_entity,double precision,YES,
+decision_audit_log,confidence_situation,double precision,YES,
+decision_audit_log,reasons,jsonb,YES,
+decision_audit_log,blocked_by,text,YES,
+decision_audit_log,blocked_by_type,text,YES,
+decision_audit_log,detected_intents,jsonb,YES,
+decision_audit_log,entities,jsonb,YES,
+decision_audit_log,situation,jsonb,YES,
+decision_audit_log,environment,text,YES,
+pms_equipment_documents,id,uuid,NO,"Primary key
+
+Note:
+This is a Primary Key.<pk/>"
+pms_equipment_documents,yacht_id,uuid,NO,"Yacht isolation FK
+
+Note:
+This is a Foreign Key to"
+pms_equipment_documents,equipment_id,uuid,NO,"FK to pms_equipment
+
+Note:
+This is a Foreign Key t"
+pms_equipment_documents,document_id,uuid,YES,Optional FK to doc_metadata for centralized docume
+pms_equipment_documents,storage_path,text,NO,Full bucket path: {yacht_id}/equipment/{equipment_
+pms_equipment_documents,filename,text,NO,UUID-based filename in storage
+pms_equipment_documents,original_filename,text,YES,User-provided original filename
+pms_equipment_documents,mime_type,text,YES,Detected MIME type
+pms_equipment_documents,file_size,bigint,YES,File size in bytes
+pms_equipment_documents,document_type,text,YES,"Classification: manual, photo, certificate, diagra"
+pms_equipment_documents,description,text,YES,User-provided description
+pms_equipment_documents,tags,text[],YES,Array of user tags for filtering
+pms_equipment_documents,uploaded_by,uuid,YES,User who uploaded the document
+pms_equipment_documents,uploaded_at,timestamptz,NO,Timestamp of upload
+pms_equipment_documents,created_at,timestamptz,NO,
+pms_equipment_documents,comment,text,YES,Inline comment for image attachments (attach_image
+email_extraction_results,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_extraction_results,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_extraction_results,message_id,uuid,NO,"Note:
+This is a Foreign Key to `email_messages.id`"
+email_extraction_results,entity_type,text,NO,
+email_extraction_results,entity_value,text,NO,
+email_extraction_results,entity_id,uuid,YES,
+email_extraction_results,confidence,numeric,YES,
+email_extraction_results,extraction_method,text,YES,
+email_extraction_results,found_in,text,YES,
+email_extraction_results,created_at,timestamptz,NO,
+alias_systems,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_systems,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_systems,system_type,text,NO,
+alias_systems,alias,text,NO,
+alias_systems,alias_type,text,YES,
+alias_systems,confidence,double precision,YES,
+alias_systems,created_at,timestamptz,YES,
+alias_systems,source,text,YES,
+alias_systems,master_candidate_id,uuid,YES,
+alias_systems,deployed_at,timestamptz,YES,
+email_sync_dlq,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_sync_dlq,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_sync_dlq,watcher_id,uuid,NO,"Note:
+This is a Foreign Key to `email_watchers.id`"
+email_sync_dlq,item_ref,text,NO,
+email_sync_dlq,item_type,text,NO,
+email_sync_dlq,first_failed_at,timestamptz,NO,
+email_sync_dlq,last_failed_at,timestamptz,NO,
+email_sync_dlq,fail_count,integer,NO,
+email_sync_dlq,last_error,text,YES,
+email_sync_dlq,last_error_code,text,YES,
+email_sync_dlq,retry_after_at,timestamptz,YES,
+email_sync_dlq,next_retry_at,timestamptz,YES,
+email_sync_dlq,status,text,NO,
+email_sync_dlq,closed_reason,text,YES,
+email_sync_dlq,closed_at,timestamptz,YES,
+email_sync_dlq,created_at,timestamptz,YES,
+email_sync_dlq,updated_at,timestamptz,YES,
+email_extraction_jobs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_extraction_jobs,yacht_id,uuid,NO,
+email_extraction_jobs,query,text,YES,
+email_extraction_jobs,days_back,integer,YES,
+email_extraction_jobs,max_emails,integer,YES,
+email_extraction_jobs,folder_id,text,YES,
+email_extraction_jobs,status,text,NO,
+email_extraction_jobs,started_at,timestamptz,YES,
+email_extraction_jobs,completed_at,timestamptz,YES,
+email_extraction_jobs,emails_fetched,integer,YES,
+email_extraction_jobs,emails_classified,integer,YES,
+email_extraction_jobs,entries_created,integer,YES,
+email_extraction_jobs,current_stage,text,YES,
+email_extraction_jobs,stage_progress,jsonb,YES,
+email_extraction_jobs,error_message,text,YES,
+email_extraction_jobs,error_details,jsonb,YES,
+email_extraction_jobs,draft_id,uuid,YES,
+email_extraction_jobs,created_by_user_id,uuid,YES,
+email_extraction_jobs,created_at,timestamptz,NO,
+email_extraction_jobs,message_id,uuid,YES,"Note:
+This is a Foreign Key to `email_messages.id`"
+email_extraction_jobs,job_type,text,YES,
+email_extraction_jobs,retry_count,integer,YES,
+email_extraction_jobs,entities_found,jsonb,YES,
+email_extraction_jobs,embedding_generated,boolean,YES,
+embedding_jobs,id,bigint,NO,"Note:
+This is a Primary Key.<pk/>"
+embedding_jobs,object_type,text,NO,
+embedding_jobs,object_id,uuid,NO,
+embedding_jobs,org_id,uuid,NO,
+embedding_jobs,yacht_id,uuid,YES,
+embedding_jobs,status,text,NO,
+embedding_jobs,attempt,integer,NO,
+embedding_jobs,last_error,text,YES,
+embedding_jobs,created_at,timestamptz,NO,
+embedding_jobs,updated_at,timestamptz,NO,
+pms_health_events,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_health_events,check_id,uuid,NO,"Parent health check ID
+
+Note:
+This is a Foreign Ke"
+pms_health_events,level,text,NO,"Event severity: info (informational), warning (deg"
+pms_health_events,detail_json,jsonb,NO,"Event-specific details (error messages, endpoint f"
+pms_health_events,created_at,timestamptz,NO,
+pms_checklist_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_checklist_items,yacht_id,uuid,NO,
+pms_checklist_items,checklist_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_checklists.id`"
+pms_checklist_items,description,text,NO,
+pms_checklist_items,instructions,text,YES,
+pms_checklist_items,sequence,integer,NO,
+pms_checklist_items,is_completed,boolean,NO,
+pms_checklist_items,completed_at,timestamptz,YES,
+pms_checklist_items,completed_by,uuid,YES,
+pms_checklist_items,completion_notes,text,YES,
+pms_checklist_items,is_required,boolean,NO,
+pms_checklist_items,requires_photo,boolean,NO,
+pms_checklist_items,requires_signature,boolean,NO,
+pms_checklist_items,requires_value,boolean,NO,
+pms_checklist_items,value_type,varchar,YES,
+pms_checklist_items,value_unit,varchar,YES,
+pms_checklist_items,value_min,numeric,YES,
+pms_checklist_items,value_max,numeric,YES,
+pms_checklist_items,recorded_value,text,YES,
+pms_checklist_items,recorded_at,timestamptz,YES,
+pms_checklist_items,recorded_by,uuid,YES,
+pms_checklist_items,photo_url,text,YES,
+pms_checklist_items,signature_data,jsonb,YES,
+pms_checklist_items,status,varchar,NO,
+pms_checklist_items,metadata,jsonb,YES,
+pms_checklist_items,created_at,timestamptz,NO,
+pms_checklist_items,created_by,uuid,YES,
+pms_checklist_items,updated_at,timestamptz,YES,
+pms_checklist_items,updated_by,uuid,YES,
+pms_checklist_items,deleted_at,timestamptz,YES,
+pms_checklist_items,deleted_by,uuid,YES,
+pms_checklist_items,deletion_reason,text,YES,
+pms_equipment_status_log,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_equipment_status_log,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_equipment_status_log,equipment_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_equipment_status_log,old_status,text,YES,
+pms_equipment_status_log,new_status,text,NO,
+pms_equipment_status_log,changed_at,timestamptz,NO,
+pms_equipment_status_log,changed_by,uuid,YES,
+pms_equipment_status_log,reason,text,YES,Optional reason for status change
+pms_equipment_status_log,work_order_id,uuid,YES,Work order that caused this status change (if any)
+pms_equipment_status_log,created_at,timestamptz,NO,
+yacht_resolution_records,resolution_id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+yacht_resolution_records,yacht_id,text,NO,
+yacht_resolution_records,resolution_title,varchar,YES,
+yacht_resolution_records,resolution_description,text,YES,
+yacht_resolution_records,resolution_steps,jsonb,YES,
+yacht_resolution_records,equipment_type,varchar,YES,
+yacht_resolution_records,applicable_models,text[],YES,
+yacht_resolution_records,success_count,integer,YES,
+yacht_resolution_records,failure_count,integer,YES,
+yacht_resolution_records,average_time_minutes,integer,YES,
+yacht_resolution_records,difficulty_level,varchar,YES,
+yacht_resolution_records,required_expertise,text[],YES,
+yacht_resolution_records,safety_warnings,text[],YES,
+yacht_resolution_records,tools_required,text[],YES,
+yacht_resolution_records,parts_required,jsonb,YES,
+yacht_resolution_records,estimated_cost_range,varchar,YES,
+yacht_resolution_records,created_by,varchar,YES,
+yacht_resolution_records,approved_by,varchar,YES,
+yacht_resolution_records,approval_date,timestamptz,YES,
+yacht_resolution_records,is_verified,boolean,YES,
+yacht_resolution_records,created_at,timestamptz,YES,
+yacht_resolution_records,updated_at,timestamptz,YES,
+suggestion_log,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+suggestion_log,yacht_id,uuid,NO,
+suggestion_log,user_id,uuid,YES,
+suggestion_log,query_text,text,NO,
+suggestion_log,intent,text,YES,
+suggestion_log,search_query_id,uuid,YES,
+suggestion_log,situation_detected,boolean,YES,
+suggestion_log,situation_type,text,YES,
+suggestion_log,suggested_actions,jsonb,YES,
+suggestion_log,action_taken,text,YES,
+suggestion_log,action_taken_at,timestamptz,YES,
+suggestion_log,feedback,text,YES,
+suggestion_log,created_at,timestamptz,NO,
+handover_drafts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_drafts,yacht_id,uuid,NO,
+handover_drafts,period_start,timestamptz,NO,
+handover_drafts,period_end,timestamptz,NO,
+handover_drafts,title,text,YES,
+handover_drafts,department,text,YES,
+handover_drafts,generated_at,timestamptz,NO,
+handover_drafts,generated_by_user_id,uuid,YES,
+handover_drafts,generated_by_version,text,YES,
+handover_drafts,generation_method,text,YES,
+handover_drafts,state,text,NO,
+handover_drafts,last_modified_at,timestamptz,NO,
+handover_drafts,last_modified_by,uuid,YES,
+handover_drafts,total_entries,integer,YES,
+handover_drafts,critical_entries,integer,YES,
+handover_drafts,metadata,jsonb,YES,
+handover_drafts,created_at,timestamptz,NO,
+email_messages,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_messages,thread_id,uuid,NO,"Note:
+This is a Foreign Key to `email_threads.id`."
+email_messages,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_messages,provider_message_id,text,NO,
+email_messages,internet_message_id,text,YES,
+email_messages,direction,text,NO,
+email_messages,from_address_hash,text,NO,
+email_messages,from_display_name,text,YES,
+email_messages,to_addresses_hash,text[],YES,
+email_messages,cc_addresses_hash,text[],YES,
+email_messages,subject,text,YES,
+email_messages,sent_at,timestamptz,YES,
+email_messages,received_at,timestamptz,YES,
+email_messages,has_attachments,boolean,NO,
+email_messages,attachments,jsonb,YES,
+email_messages,folder,text,YES,
+email_messages,provider_etag,text,YES,
+email_messages,created_at,timestamptz,NO,
+email_messages,subject_embedding,public.vector(1536),YES,
+email_messages,sender_embedding,public.vector(1536),YES,
+email_messages,meta_embedding,public.vector(1536),YES,
+email_messages,entities_extracted,jsonb,YES,
+email_messages,entities_extracted_at,timestamptz,YES,
+email_messages,preview_text,text,YES,First 200 characters of email body. Safe for stora
+email_messages,embedding,public.vector(1536),YES,Vector embedding from OpenAI text-embeddings-3-sma
+email_messages,extracted_entities,jsonb,YES,Raw entities extracted from email content: {work_o
+email_messages,entity_matches,jsonb,YES,Matched operational object IDs: {work_order_ids: [
+email_messages,extraction_status,text,YES,Status of background extraction job: pending → pro
+email_messages,indexed_at,timestamptz,YES,When embedding and entity extraction completed suc
+email_messages,content_hash,text,YES,SHA256 of normalized content for no-op detection
+email_messages,last_seen_at,timestamptz,YES,Last time message was seen in delta sync
+email_messages,change_key,text,YES,Graph API change detection key
+email_messages,is_active,boolean,NO,False if message was deleted/moved in provider
+email_messages,moved_at,timestamptz,YES,Timestamp when message was detected as moved
+email_messages,deleted_at,timestamptz,YES,Timestamp when message was detected as deleted at 
+email_messages,web_link,text,YES,
+yacht_email_configs,contact_id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+yacht_email_configs,yacht_id,text,NO,
+yacht_email_configs,vendor,varchar,YES,
+yacht_email_configs,contact_name,varchar,YES,
+yacht_email_configs,email,varchar,NO,
+yacht_email_configs,specialization,varchar,YES,
+yacht_email_configs,notes,text,YES,
+yacht_email_configs,created_at,timestamptz,YES,
+yacht_email_configs,updated_at,timestamptz,YES,
+yacht_email_configs,user_id,uuid,YES,
+yacht_email_configs,reliability_score,numeric,YES,Reliability score for contact
+yacht_email_configs,last_contacted,timestamptz,YES,Last time this contact was reached out to
+yacht_fault_records,fault_id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+yacht_fault_records,yacht_id,text,NO,
+yacht_fault_records,equipment_type,varchar,YES,
+yacht_fault_records,equipment_brand,varchar,YES,
+yacht_fault_records,equipment_model,varchar,YES,
+yacht_fault_records,fault_code,varchar,YES,
+yacht_fault_records,fault_description,text,YES,
+yacht_fault_records,symptoms,text[],YES,
+yacht_fault_records,severity_level,varchar,YES,
+yacht_fault_records,detected_date,timestamptz,YES,
+yacht_fault_records,resolved_date,timestamptz,YES,
+yacht_fault_records,resolution_status,varchar,YES,
+yacht_fault_records,resolution_id,uuid,YES,
+yacht_fault_records,technician_notes,text,YES,
+yacht_fault_records,root_cause,text,YES,
+yacht_fault_records,preventive_measures,text,YES,
+yacht_fault_records,downtime_hours,numeric,YES,
+yacht_fault_records,repair_cost_usd,numeric,YES,
+yacht_fault_records,parts_replaced,jsonb,YES,
+yacht_fault_records,created_at,timestamptz,YES,
+yacht_fault_records,updated_at,timestamptz,YES,
+yacht_fault_records,user_id,uuid,YES,
+chat_messages,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+chat_messages,session_id,uuid,YES,"Note:
+This is a Foreign Key to `chat_sessions.id`."
+chat_messages,role,text,NO,
+chat_messages,content,text,NO,
+chat_messages,timestamp,timestamptz,YES,
+chat_messages,message_index,integer,NO,
+chat_messages,sources,jsonb,YES,
+chat_messages,metadata,jsonb,YES,
+chat_messages,tokens_used,integer,YES,
+chat_messages,confidence_score,double precision,YES,
+chat_messages,yacht_id,text,YES,
+handover_signoffs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_signoffs,draft_id,uuid,NO,"Note:
+This is a Foreign Key to `handover_drafts.id"
+handover_signoffs,yacht_id,uuid,NO,
+handover_signoffs,outgoing_user_id,uuid,NO,
+handover_signoffs,outgoing_role,text,YES,
+handover_signoffs,outgoing_signed_at,timestamptz,YES,
+handover_signoffs,outgoing_notes,text,YES,
+handover_signoffs,incoming_user_id,uuid,YES,
+handover_signoffs,incoming_role,text,YES,
+handover_signoffs,incoming_signed_at,timestamptz,YES,
+handover_signoffs,incoming_notes,text,YES,
+handover_signoffs,incoming_acknowledged_critical,boolean,YES,
+handover_signoffs,document_hash,text,YES,
+handover_signoffs,signoff_complete,boolean,YES,
+handover_signoffs,created_at,timestamptz,NO,
+handover_signoffs,updated_at,timestamptz,NO,
+pms_work_order_history,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_work_order_history,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_work_order_history,work_order_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_work_order_history,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_work_order_history,completed_by,uuid,YES,
+pms_work_order_history,completed_at,timestamptz,YES,
+pms_work_order_history,notes,text,YES,Free-form technician notes - indexed for RAG searc
+pms_work_order_history,hours_logged,integer,YES,
+pms_work_order_history,status_on_completion,text,YES,
+pms_work_order_history,parts_used,jsonb,YES,Array of parts consumed during work order
+pms_work_order_history,documents_used,jsonb,YES,
+pms_work_order_history,faults_related,jsonb,YES,
+pms_work_order_history,metadata,jsonb,YES,
+pms_work_order_history,created_at,timestamptz,NO,
+handover_draft_edits,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_draft_edits,draft_id,uuid,NO,"Note:
+This is a Foreign Key to `handover_drafts.id"
+handover_draft_edits,draft_item_id,uuid,YES,"Note:
+This is a Foreign Key to `handover_draft_ite"
+handover_draft_edits,edited_by_user_id,uuid,NO,
+handover_draft_edits,edited_at,timestamptz,NO,
+handover_draft_edits,field_edited,text,NO,
+handover_draft_edits,original_text,text,YES,
+handover_draft_edits,edited_text,text,NO,
+handover_draft_edits,edit_reason,text,YES,
+handover_draft_edits,edit_type,text,YES,
+handover_draft_edits,created_at,timestamptz,NO,
+document_directory_tree,yacht_id,uuid,YES,
+document_directory_tree,level_1,text,YES,
+document_directory_tree,level_2,text,YES,
+document_directory_tree,level_3,text,YES,
+document_directory_tree,document_count,bigint,YES,
+procurement_intents,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+procurement_intents,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+procurement_intents,vendor_id,uuid,YES,
+procurement_intents,status,text,NO,
+procurement_intents,summary,text,YES,
+procurement_intents,vendor_domain,text,YES,
+procurement_intents,vendor_email_hash,text,YES,
+procurement_intents,related_object_type,text,YES,
+procurement_intents,related_object_id,uuid,YES,
+procurement_intents,created_from_thread_id,uuid,YES,"Note:
+This is a Foreign Key to `email_threads.id`."
+procurement_intents,converted_to_type,text,YES,
+procurement_intents,converted_to_id,uuid,YES,
+procurement_intents,created_by,uuid,YES,
+procurement_intents,created_at,timestamptz,NO,
+procurement_intents,updated_at,timestamptz,NO,
+email_attachments_view,link_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+email_attachments_view,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_attachments_view,message_id,uuid,YES,"Note:
+This is a Foreign Key to `email_messages.id`"
+email_attachments_view,provider_attachment_id,text,YES,
+email_attachments_view,name,text,YES,
+email_attachments_view,is_inline,boolean,YES,
+email_attachments_view,linked_at,timestamptz,YES,
+email_attachments_view,blob_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+email_attachments_view,sha256,text,YES,
+email_attachments_view,size_bytes,integer,YES,
+email_attachments_view,content_type,text,YES,
+email_attachments_view,is_stored,boolean,YES,
+email_attachments_view,storage_path,text,YES,
+graph_nodes,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+graph_nodes,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+graph_nodes,node_type,public.graph_node_type,YES,
+graph_nodes,label,text,YES,
+graph_nodes,normalized_label,text,YES,
+graph_nodes,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+graph_nodes,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+graph_nodes,properties,jsonb,YES,
+graph_nodes,confidence,real,YES,
+graph_nodes,extraction_source,text,YES,
+graph_nodes,created_at,timestamptz,YES,
+graph_nodes,updated_at,timestamptz,YES,
+graph_nodes,embedding,public.vector(1536),YES,
+v_stock_from_transactions,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_stock_from_transactions,part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+v_stock_from_transactions,location,text,YES,
+v_stock_from_transactions,stock_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_stock_from_transactions,on_hand,integer,YES,
+v_stock_from_transactions,cached_quantity,integer,YES,
+v_stock_from_transactions,reconciliation_status,text,YES,
+v_stock_from_transactions,transaction_count,bigint,YES,
+v_stock_from_transactions,first_transaction,timestamptz,YES,
+v_stock_from_transactions,last_transaction,timestamptz,YES,
+search_embedding_queue,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+search_embedding_queue,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+search_embedding_queue,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+search_embedding_queue,status,text,NO,
+search_embedding_queue,error_message,text,YES,
+search_embedding_queue,started_at,timestamptz,YES,
+search_embedding_queue,completed_at,timestamptz,YES,
+search_embedding_queue,metadata,jsonb,YES,
+search_embedding_queue,created_at,timestamptz,NO,
+pms_maintenance_schedules,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_maintenance_schedules,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_maintenance_schedules,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_maintenance_schedules,task_name,text,NO,
+pms_maintenance_schedules,description,text,YES,
+pms_maintenance_schedules,frequency,text,NO,
+pms_maintenance_schedules,frequency_days,integer,YES,
+pms_maintenance_schedules,frequency_hours,integer,YES,
+pms_maintenance_schedules,last_completed_at,timestamptz,YES,
+pms_maintenance_schedules,last_completed_hours,integer,YES,
+pms_maintenance_schedules,next_due_at,timestamptz,YES,
+pms_maintenance_schedules,next_due_hours,integer,YES,
+pms_maintenance_schedules,assigned_to,uuid,YES,
+pms_maintenance_schedules,priority,text,YES,
+pms_maintenance_schedules,status,text,YES,
+pms_maintenance_schedules,deferral_reason,text,YES,
+pms_maintenance_schedules,deferred_by,uuid,YES,
+pms_maintenance_schedules,deferred_at,timestamptz,YES,
+pms_maintenance_schedules,metadata,jsonb,YES,
+pms_maintenance_schedules,created_at,timestamptz,NO,
+pms_maintenance_schedules,updated_at,timestamptz,NO,
+pms_maintenance_schedules,created_by,uuid,YES,
+alias_faults,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_faults,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_faults,fault_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_faults.id`.<fk"
+alias_faults,alias,text,NO,
+alias_faults,alias_type,text,YES,
+alias_faults,confidence,double precision,YES,
+alias_faults,created_at,timestamptz,YES,
+alias_faults,source,text,YES,
+alias_faults,master_candidate_id,uuid,YES,
+alias_faults,deployed_at,timestamptz,YES,
+document_counts_by_department,yacht_id,uuid,YES,
+document_counts_by_department,department,text,YES,
+document_counts_by_department,document_count,bigint,YES,
+document_counts_by_department,total_size_bytes,numeric,YES,
+document_counts_by_department,indexed_count,bigint,YES,
+document_counts_by_department,pending_count,bigint,YES,
+search_fault_code_catalog,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+search_fault_code_catalog,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+search_fault_code_catalog,equipment_type,text,NO,"Equipment model this fault code applies to, e.g. C"
+search_fault_code_catalog,manufacturer,text,YES,
+search_fault_code_catalog,code,text,NO,
+search_fault_code_catalog,name,text,YES,
+search_fault_code_catalog,description,text,YES,
+search_fault_code_catalog,severity,text,YES,
+search_fault_code_catalog,symptoms,text[],YES,Observable symptoms when this fault occurs
+search_fault_code_catalog,causes,text[],YES,Possible root causes of this fault
+search_fault_code_catalog,diagnostic_steps,text[],YES,Steps to diagnose the fault
+search_fault_code_catalog,resolution_steps,text[],YES,Steps to resolve the fault
+search_fault_code_catalog,related_parts,text[],YES,
+search_fault_code_catalog,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+search_fault_code_catalog,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+search_fault_code_catalog,created_at,timestamptz,NO,
+search_fault_code_catalog,updated_at,timestamptz,NO,
+pms_receiving_draft_lines,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_draft_lines,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_draft_lines,session_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_receiving_sess"
+pms_receiving_draft_lines,source_image_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_image_uploads."
+pms_receiving_draft_lines,line_sequence,integer,NO,
+pms_receiving_draft_lines,raw_text,text,NO,
+pms_receiving_draft_lines,extracted_part_name,text,YES,
+pms_receiving_draft_lines,extracted_part_number,text,YES,
+pms_receiving_draft_lines,extracted_quantity,numeric,YES,
+pms_receiving_draft_lines,extracted_unit,text,YES,
+pms_receiving_draft_lines,extracted_description,text,YES,
+pms_receiving_draft_lines,extracted_manufacturer,text,YES,
+pms_receiving_draft_lines,match_status,text,NO,
+pms_receiving_draft_lines,suggested_part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_receiving_draft_lines,suggested_shopping_list_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_shopping_list_"
+pms_receiving_draft_lines,alternative_matches,jsonb,YES,
+pms_receiving_draft_lines,is_verified,boolean,NO,
+pms_receiving_draft_lines,verified_by,uuid,YES,
+pms_receiving_draft_lines,verified_at,timestamptz,YES,
+pms_receiving_draft_lines,resolved_part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_receiving_draft_lines,resolved_shopping_list_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_shopping_list_"
+pms_receiving_draft_lines,resolved_quantity,numeric,YES,
+pms_receiving_draft_lines,resolved_unit,text,YES,
+pms_receiving_draft_lines,resolved_disposition,text,YES,
+pms_receiving_draft_lines,resolution_notes,text,YES,
+pms_receiving_draft_lines,is_discrepancy,boolean,YES,
+pms_receiving_draft_lines,discrepancy_type,text,YES,
+pms_receiving_draft_lines,discrepancy_notes,text,YES,
+pms_receiving_draft_lines,creates_candidate_part,boolean,YES,
+pms_receiving_draft_lines,created_candidate_part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_receiving_draft_lines,created_at,timestamptz,NO,
+pms_receiving_draft_lines,updated_at,timestamptz,NO,
+pms_part_stock,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_part_stock,part_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+pms_part_stock,on_hand,integer,YES,
+pms_part_stock,min_level,integer,YES,
+pms_part_stock,reorder_multiple,integer,YES,
+pms_part_stock,location,text,YES,
+pms_part_stock,is_critical,boolean,YES,
+pms_part_stock,department,text,YES,
+pms_part_stock,category,text,YES,
+pms_part_stock,part_name,text,YES,
+pms_part_stock,part_number,text,YES,
+pms_part_stock,stock_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+confirmation_templates,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+confirmation_templates,action_type,text,NO,
+confirmation_templates,title_template,text,NO,
+confirmation_templates,message_template,text,NO,
+confirmation_templates,supports_undo,boolean,YES,
+confirmation_templates,undo_window_seconds,integer,YES,
+confirmation_templates,icon,text,YES,
+confirmation_templates,color,text,YES,
+confirmation_templates,duration_ms,integer,YES,
+confirmation_templates,active,boolean,YES,
+confirmation_templates,created_at,timestamptz,NO,
+search_graph_nodes,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+search_graph_nodes,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+search_graph_nodes,node_type,public.graph_node_type,NO,
+search_graph_nodes,label,text,NO,
+search_graph_nodes,normalized_label,text,NO,
+search_graph_nodes,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+search_graph_nodes,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+search_graph_nodes,properties,jsonb,YES,
+search_graph_nodes,confidence,real,NO,
+search_graph_nodes,extraction_source,text,YES,
+search_graph_nodes,created_at,timestamptz,NO,
+search_graph_nodes,updated_at,timestamptz,NO,
+search_graph_nodes,embedding,public.vector(1536),YES,Entity label embedded with text-embedding-3-small 
+predictive_state,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+predictive_state,yacht_id,uuid,NO,
+predictive_state,equipment_id,uuid,NO,
+predictive_state,risk_score,numeric,NO,
+predictive_state,confidence,numeric,NO,
+predictive_state,failure_probability,numeric,YES,
+predictive_state,trend,text,YES,
+predictive_state,anomalies,jsonb,YES,
+predictive_state,failure_modes,jsonb,YES,
+predictive_state,recommended_actions,jsonb,YES,
+predictive_state,next_maintenance_due,timestamptz,YES,
+predictive_state,last_updated,timestamptz,NO,
+pms_vessel_certificates,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_vessel_certificates,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_vessel_certificates,certificate_type,text,NO,
+pms_vessel_certificates,certificate_name,text,NO,
+pms_vessel_certificates,certificate_number,text,YES,
+pms_vessel_certificates,issuing_authority,text,NO,
+pms_vessel_certificates,issue_date,date,YES,
+pms_vessel_certificates,expiry_date,date,YES,
+pms_vessel_certificates,last_survey_date,date,YES,
+pms_vessel_certificates,next_survey_due,date,YES,
+pms_vessel_certificates,status,text,NO,
+pms_vessel_certificates,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_vessel_certificates,properties,jsonb,YES,
+pms_vessel_certificates,created_at,timestamptz,NO,
+pms_voyage_log,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_voyage_log,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_voyage_log,voyage_name,text,YES,
+pms_voyage_log,voyage_type,text,YES,
+pms_voyage_log,departure_port,text,YES,
+pms_voyage_log,departure_port_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+pms_voyage_log,arrival_port,text,YES,
+pms_voyage_log,arrival_port_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+pms_voyage_log,departure_time,timestamptz,YES,
+pms_voyage_log,arrival_time,timestamptz,YES,
+pms_voyage_log,distance_nm,numeric,YES,
+pms_voyage_log,fuel_consumed_liters,numeric,YES,
+pms_voyage_log,properties,jsonb,YES,
+pms_voyage_log,created_at,timestamptz,NO,
+pms_inventory_transactions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_inventory_transactions,yacht_id,uuid,NO,
+pms_inventory_transactions,stock_id,uuid,NO,
+pms_inventory_transactions,transaction_type,text,NO,
+pms_inventory_transactions,quantity_change,integer,NO,
+pms_inventory_transactions,quantity_before,integer,NO,
+pms_inventory_transactions,quantity_after,integer,NO,
+pms_inventory_transactions,user_id,uuid,NO,
+pms_inventory_transactions,created_at,timestamptz,NO,
+pms_inventory_transactions,idempotency_key,text,YES,"Unique key for idempotent operations (yacht_id, ke"
+pms_inventory_transactions,photo_storage_path,text,YES,Path to photo in storage bucket
+pms_inventory_transactions,supplier_id,uuid,YES,Supplier for receive transactions
+pms_inventory_transactions,from_location_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_part_locations"
+pms_inventory_transactions,to_location_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_part_locations"
+pms_inventory_transactions,usage_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_part_usage.id`"
+pms_inventory_transactions,transfer_group_id,uuid,YES,
+pms_inventory_transactions,reverses_transaction_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_inventory_tran"
+action_confirmations,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+action_confirmations,yacht_id,uuid,NO,
+action_confirmations,user_id,uuid,NO,
+action_confirmations,action_type,text,NO,
+action_confirmations,entity_type,text,NO,
+action_confirmations,entity_id,uuid,NO,
+action_confirmations,confirmation_title,text,NO,
+action_confirmations,confirmation_message,text,NO,
+action_confirmations,changes_summary,jsonb,NO,
+action_confirmations,can_undo,boolean,YES,
+action_confirmations,undo_deadline,timestamptz,YES,
+action_confirmations,undo_action,jsonb,YES,
+action_confirmations,was_undone,boolean,YES,
+action_confirmations,undone_at,timestamptz,YES,
+action_confirmations,related_actions,uuid[],YES,
+action_confirmations,source_session_id,uuid,YES,
+action_confirmations,source_context,text,YES,
+action_confirmations,ledger_event_id,uuid,YES,
+action_confirmations,created_at,timestamptz,NO,
+v_my_work_orders_summary,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_my_work_orders_summary,work_order_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_my_work_orders_summary,title,text,YES,
+v_my_work_orders_summary,status,public.work_order_status,YES,
+v_my_work_orders_summary,due_at,timestamptz,YES,
+v_my_work_orders_summary,started_at,timestamptz,YES,
+v_my_work_orders_summary,estimated_duration_minutes,integer,YES,
+v_my_work_orders_summary,severity,text,YES,
+v_my_work_orders_summary,criticality_rank,smallint,YES,
+v_my_work_orders_summary,sla_priority,text,YES,
+v_my_work_orders_summary,last_activity_at,timestamptz,YES,
+v_my_work_orders_summary,is_overdue,boolean,YES,
+v_my_work_orders_summary,days_overdue,integer,YES,
+v_my_work_orders_summary,est_minutes,integer,YES,
+v_my_work_orders_summary,group_key,text,YES,
+pms_equipment,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_equipment,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_equipment,parent_id,uuid,YES,"Parent equipment for hierarchical structure
+
+Note:"
+pms_equipment,name,text,NO,
+pms_equipment,code,text,YES,
+pms_equipment,description,text,YES,
+pms_equipment,location,text,YES,
+pms_equipment,manufacturer,text,YES,
+pms_equipment,model,text,YES,
+pms_equipment,serial_number,text,YES,
+pms_equipment,installed_date,date,YES,
+pms_equipment,criticality,public.equipment_criticality,YES,Operational criticality level
+pms_equipment,system_type,text,YES,
+pms_equipment,metadata,jsonb,YES,
+pms_equipment,created_at,timestamptz,NO,
+pms_equipment,updated_at,timestamptz,NO,
+pms_equipment,attention_flag,boolean,YES,
+pms_equipment,attention_reason,text,YES,
+pms_equipment,attention_updated_at,timestamptz,YES,
+pms_equipment,updated_by,uuid,YES,
+pms_equipment,deleted_at,timestamptz,YES,
+pms_equipment,deleted_by,uuid,YES,
+pms_equipment,deletion_reason,text,YES,
+pms_equipment,status,text,YES,
+pms_equipment,running_hours,numeric,YES,
+pms_equipment,related_text,text,YES,Surface facts for Show Related: name | manufacture
+pms_hor_monthly_signoffs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_hor_monthly_signoffs,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_hor_monthly_signoffs,user_id,uuid,NO,
+pms_hor_monthly_signoffs,department,text,NO,
+pms_hor_monthly_signoffs,month,text,NO,"Month in YYYY-MM format (e.g., ""2026-01"")"
+pms_hor_monthly_signoffs,crew_signature,jsonb,YES,"Crew signature JSONB (name, timestamp, signature_d"
+pms_hor_monthly_signoffs,crew_signed_at,timestamptz,YES,
+pms_hor_monthly_signoffs,crew_signed_by,uuid,YES,
+pms_hor_monthly_signoffs,hod_signature,jsonb,YES,"HOD signature JSONB (name, timestamp, signature_da"
+pms_hor_monthly_signoffs,hod_signed_at,timestamptz,YES,
+pms_hor_monthly_signoffs,hod_signed_by,uuid,YES,
+pms_hor_monthly_signoffs,hod_department,text,YES,
+pms_hor_monthly_signoffs,master_signature,jsonb,YES,"Master signature JSONB (name, timestamp, signature"
+pms_hor_monthly_signoffs,master_signed_at,timestamptz,YES,
+pms_hor_monthly_signoffs,master_signed_by,uuid,YES,
+pms_hor_monthly_signoffs,status,text,NO,Workflow status: draft -> crew_signed -> hod_signe
+pms_hor_monthly_signoffs,total_rest_hours,numeric,YES,
+pms_hor_monthly_signoffs,total_work_hours,numeric,YES,
+pms_hor_monthly_signoffs,violation_count,integer,YES,
+pms_hor_monthly_signoffs,notes,text,YES,
+pms_hor_monthly_signoffs,created_at,timestamptz,YES,
+pms_hor_monthly_signoffs,updated_at,timestamptz,YES,
+pms_purchase_order_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_purchase_order_items,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_purchase_order_items,purchase_order_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_purchase_order"
+pms_purchase_order_items,part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_purchase_order_items,description,text,NO,
+pms_purchase_order_items,quantity_ordered,integer,NO,
+pms_purchase_order_items,quantity_received,integer,YES,
+pms_purchase_order_items,unit_price,numeric,YES,
+pms_purchase_order_items,metadata,jsonb,YES,
+pms_purchase_order_items,created_at,timestamptz,NO,
+pms_purchase_order_items,updated_at,timestamptz,NO,
+doc_metadata,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+doc_metadata,yacht_id,uuid,NO,
+doc_metadata,source,text,NO,
+doc_metadata,original_path,text,YES,
+doc_metadata,filename,text,NO,
+doc_metadata,content_type,text,YES,
+doc_metadata,size_bytes,bigint,YES,
+doc_metadata,sha256,text,YES,SHA256 hash for file integrity and deduplication (
+doc_metadata,storage_path,text,NO,
+doc_metadata,equipment_ids,uuid[],YES,
+doc_metadata,tags,text[],YES,Searchable tags array
+doc_metadata,indexed,boolean,YES,Whether document has been processed by indexing pi
+doc_metadata,indexed_at,timestamptz,YES,
+doc_metadata,metadata,jsonb,YES,Flexible JSONB field for additional metadata (dire
+doc_metadata,created_at,timestamptz,NO,
+doc_metadata,updated_at,timestamptz,NO,
+doc_metadata,system_path,text,YES,Full storage path in bucket (yacht_id/documents/do
+doc_metadata,doc_type,text,YES,
+doc_metadata,oem,text,YES,
+doc_metadata,model,text,YES,
+doc_metadata,system_type,text,YES,
+doc_metadata,storage_bucket,text,YES,
+doc_metadata,document_type,text,YES,
+doc_metadata,description,text,YES,Human-readable description for manuals/documents. 
+doc_metadata,deleted_at,timestamptz,YES,Soft delete timestamp (null = not deleted)
+doc_metadata,deleted_by,uuid,YES,UUID of user who deleted the document
+doc_metadata,deleted_reason,text,YES,Reason for deletion (required for signed delete)
+pms_work_order_parts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_work_order_parts,work_order_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_work_order_parts,part_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_work_order_parts,quantity,integer,YES,
+pms_work_order_parts,notes,text,YES,
+pms_work_order_parts,created_at,timestamptz,YES,
+pms_work_order_parts,updated_at,timestamptz,YES,
+pms_work_order_parts,deleted_at,timestamptz,YES,
+pms_work_order_parts,deleted_by,uuid,YES,
+email_watchers,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_watchers,user_id,uuid,NO,
+email_watchers,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_watchers,provider,text,NO,
+email_watchers,mailbox_address_hash,text,YES,
+email_watchers,delta_link_inbox,text,YES,
+email_watchers,delta_link_sent,text,YES,
+email_watchers,subscription_id,text,YES,
+email_watchers,subscription_expires_at,timestamptz,YES,
+email_watchers,last_sync_at,timestamptz,YES,
+email_watchers,last_sync_error,text,YES,
+email_watchers,sync_status,text,NO,
+email_watchers,backfill_days_inbox,integer,YES,
+email_watchers,backfill_days_sent,integer,YES,
+email_watchers,created_at,timestamptz,NO,
+email_watchers,updated_at,timestamptz,NO,
+email_watchers,api_calls_this_hour,integer,YES,
+email_watchers,hour_window_start,timestamptz,YES,
+email_watchers,sync_interval_minutes,integer,YES,
+email_watchers,is_paused,boolean,YES,
+email_watchers,pause_reason,text,YES,
+email_watchers,last_delta_url,text,YES,Graph API deltaLink URL for resume - persisted aft
+email_watchers,last_success_at,timestamptz,YES,Timestamp of last successful sync page commit
+email_watchers,last_delta_commit_at,timestamptz,YES,Timestamp when last_delta_url was persisted
+email_watchers,error_count,integer,NO,Consecutive sync error count - reset on success
+email_watchers,degraded_at,timestamptz,YES,Timestamp when watcher was marked degraded (token 
+email_watchers,last_error_code,text,YES,"Last error code (429, 5xx, token_revoked, etc.)"
+email_watchers,status,text,NO,"Watcher status: active=syncing, degraded=token iss"
+email_watchers,retry_after_until,timestamptz,YES,Graph 429 Retry-After deadline
+email_watchers,backoff_until,timestamptz,YES,Exponential backoff deadline
+email_watchers,consecutive_failures,integer,YES,Consecutive 5xx/timeout count for backoff
+email_watchers,last_throttle_at,timestamptz,YES,Last 429 received
+shopping_list_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+shopping_list_items,yacht_id,uuid,NO,
+shopping_list_items,part_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+shopping_list_items,quantity_requested,integer,NO,
+shopping_list_items,priority,text,YES,
+shopping_list_items,notes,text,YES,
+shopping_list_items,requested_by,uuid,NO,
+shopping_list_items,requested_at,timestamptz,NO,
+shopping_list_items,status,text,YES,
+shopping_list_items,purchase_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_purchase_order"
+shopping_list_items,created_at,timestamptz,NO,
+shopping_list_items,updated_at,timestamptz,YES,
+shopping_list_items,deleted_at,timestamptz,YES,
+shopping_list_items,deleted_by,uuid,YES,
+shopping_list_items,deletion_reason,text,YES,
+facet_registry,id,integer,NO,"Note:
+This is a Primary Key.<pk/>"
+facet_registry,facet_key,text,NO,
+facet_registry,domain,text,NO,
+facet_registry,data_type,text,NO,
+facet_registry,storage,text,NO,
+facet_registry,promoted,boolean,NO,
+facet_registry,index_type,text,YES,
+facet_registry,index_name,text,YES,
+facet_registry,usage_30d_pct,numeric,YES,
+facet_registry,last_used_at,timestamptz,YES,
+facet_registry,created_at,timestamptz,NO,
+facet_registry,updated_at,timestamptz,NO,
+pms_inventory_stock,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_inventory_stock,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_inventory_stock,part_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_inventory_stock,location,text,YES,Physical storage location on vessel
+pms_inventory_stock,quantity,integer,NO,NON-AUTHORITATIVE CACHE. Updated by trigger for pe
+pms_inventory_stock,min_quantity,integer,YES,
+pms_inventory_stock,max_quantity,integer,YES,
+pms_inventory_stock,reorder_quantity,integer,YES,
+pms_inventory_stock,last_counted_at,timestamptz,YES,
+pms_inventory_stock,metadata,jsonb,YES,
+pms_inventory_stock,created_at,timestamptz,NO,
+pms_inventory_stock,updated_at,timestamptz,NO,
+pms_inventory_stock,updated_by,uuid,YES,
+pms_inventory_stock,deleted_at,timestamptz,YES,
+pms_inventory_stock,deleted_by,uuid,YES,
+pms_inventory_stock,deletion_reason,text,YES,
+email_links,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_links,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_links,thread_id,uuid,NO,"Note:
+This is a Foreign Key to `email_threads.id`."
+email_links,object_type,text,NO,
+email_links,object_id,uuid,NO,
+email_links,confidence,text,NO,
+email_links,suggested_reason,text,YES,
+email_links,suggested_at,timestamptz,YES,
+email_links,accepted_at,timestamptz,YES,
+email_links,accepted_by,uuid,YES,
+email_links,modified_at,timestamptz,YES,
+email_links,modified_by,uuid,YES,
+email_links,is_active,boolean,NO,
+email_links,removed_at,timestamptz,YES,
+email_links,removed_by,uuid,YES,
+email_links,created_at,timestamptz,NO,
+email_links,updated_at,timestamptz,NO,
+email_links,is_primary,boolean,YES,
+email_links,score,integer,YES,
+email_links,score_breakdown,jsonb,YES,
+email_links,user_blocked,boolean,YES,
+v_handover_signoffs,id,text,YES,
+v_handover_signoffs,draft_id,uuid,YES,
+v_handover_signoffs,yacht_id,uuid,YES,
+v_handover_signoffs,signoff_type,text,YES,
+v_handover_signoffs,user_id,uuid,YES,
+v_handover_signoffs,role,text,YES,
+v_handover_signoffs,signed_at,timestamptz,YES,
+v_handover_signoffs,comments,text,YES,
+v_handover_signoffs,created_at,timestamptz,YES,
+v_handover_signoffs,updated_at,timestamptz,YES,
+symptom_reports,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+symptom_reports,yacht_id,uuid,NO,
+symptom_reports,equipment_label,text,NO,
+symptom_reports,symptom_code,text,NO,
+symptom_reports,symptom_label,text,NO,
+symptom_reports,search_query_id,uuid,YES,
+symptom_reports,reported_by,uuid,YES,
+symptom_reports,source,text,NO,
+symptom_reports,resolved,boolean,YES,
+symptom_reports,resolved_at,timestamptz,YES,
+symptom_reports,resolved_by,uuid,YES,
+symptom_reports,created_at,timestamptz,NO,
+role_search_profiles,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+role_search_profiles,yacht_id,uuid,YES,
+role_search_profiles,role_id,text,NO,
+role_search_profiles,default_intent,text,YES,
+role_search_profiles,intent_biases,jsonb,YES,
+role_search_profiles,entity_biases,jsonb,YES,
+role_search_profiles,domain_weights,jsonb,NO,
+role_search_profiles,result_type_order,text[],YES,
+role_search_profiles,answer_style,text,YES,
+role_search_profiles,default_detail_level,text,YES,
+role_search_profiles,recency_boost,numeric,YES,
+role_search_profiles,handover_auto_include,text[],YES,
+role_search_profiles,sample_queries,text[],YES,
+role_search_profiles,active,boolean,YES,
+role_search_profiles,created_at,timestamptz,NO,
+role_search_profiles,updated_at,timestamptz,NO,
+handover_draft_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_draft_items,draft_id,uuid,NO,"Note:
+This is a Foreign Key to `handover_drafts.id"
+handover_draft_items,section_id,uuid,YES,"Note:
+This is a Foreign Key to `handover_draft_sec"
+handover_draft_items,section_bucket,text,NO,
+handover_draft_items,domain_code,text,YES,
+handover_draft_items,summary_text,text,NO,
+handover_draft_items,source_entry_ids,uuid[],YES,
+handover_draft_items,source_event_ids,uuid[],YES,
+handover_draft_items,risk_tags,text[],YES,
+handover_draft_items,confidence_level,text,YES,
+handover_draft_items,item_order,integer,NO,
+handover_draft_items,conflict_flag,boolean,YES,
+handover_draft_items,uncertainty_flag,boolean,YES,
+handover_draft_items,is_critical,boolean,YES,
+handover_draft_items,requires_action,boolean,YES,
+handover_draft_items,action_summary,text,YES,
+handover_draft_items,created_at,timestamptz,NO,
+handover_draft_items,updated_at,timestamptz,NO,
+handover_draft_items,entity_url,text,YES,"Direct Celeste app entity URL (e.g., /work-orders/"
+handover_draft_items,metadata,jsonb,YES,JSONB metadata for source links. Keys: email_messa
+log_events,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+log_events,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+log_events,user_id,uuid,YES,
+log_events,event_type,text,NO,
+log_events,entity_type,text,YES,
+log_events,entity_id,uuid,YES,
+log_events,metadata,jsonb,YES,
+log_events,created_at,timestamptz,NO,
+log_events,session_id,uuid,YES,
+handover_buckets,code,text,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_buckets,display_name,text,NO,
+handover_buckets,section_order,integer,NO,
+handover_buckets,description,text,YES,
+log_system_events,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+log_system_events,event_type,text,NO,
+log_system_events,event_data,jsonb,YES,
+log_system_events,created_at,timestamptz,NO,
+auth_signatures,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_signatures,yacht_id,uuid,NO,
+auth_signatures,user_id,uuid,NO,
+auth_signatures,role_at_signing,text,NO,
+auth_signatures,signature_type,text,NO,
+auth_signatures,entity_type,text,NO,
+auth_signatures,entity_id,uuid,NO,
+auth_signatures,signature_hash,text,NO,
+auth_signatures,signed_at,timestamptz,NO,
+pms_notes,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_notes,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_notes,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_notes,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_notes,fault_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_faults.id`.<fk"
+pms_notes,text,text,NO,Note content - searchable text
+pms_notes,note_type,public.note_type,NO,"Classification: general, observation, warning, res"
+pms_notes,created_by,uuid,NO,
+pms_notes,attachments,jsonb,YES,"Array of document references: [{document_id, filen"
+pms_notes,metadata,jsonb,YES,
+pms_notes,created_at,timestamptz,NO,
+pms_notes,updated_at,timestamptz,NO,
+alias_symptoms,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_symptoms,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_symptoms,symptom_id,uuid,YES,
+alias_symptoms,alias,text,NO,
+alias_symptoms,alias_type,text,YES,
+alias_symptoms,confidence,double precision,YES,
+alias_symptoms,created_at,timestamptz,YES,
+alias_symptoms,source,text,YES,
+alias_symptoms,candidate_id,uuid,YES,
+alias_symptoms,master_candidate_id,uuid,YES,
+alias_symptoms,deployed_at,timestamptz,YES,
+alias_symptoms,symptom_code,text,YES,
+auth_api_keys,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_api_keys,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+auth_api_keys,key_prefix,text,NO,"First 8-12 chars for identification (e.g., sk_live"
+auth_api_keys,hashed_key,text,NO,bcrypt hash of full API key
+auth_api_keys,name,text,NO,
+auth_api_keys,scopes,text[],YES,"Granted permissions (e.g., read:equipment, write:w"
+auth_api_keys,created_by,uuid,YES,
+auth_api_keys,expires_at,timestamptz,YES,
+auth_api_keys,last_used_at,timestamptz,YES,
+auth_api_keys,is_active,boolean,YES,
+auth_api_keys,metadata,jsonb,YES,
+auth_api_keys,created_at,timestamptz,NO,
+auth_users_profiles,id,uuid,NO,"Must match auth.users.id - enforced by FK
+
+Note:
+T"
+auth_users_profiles,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+auth_users_profiles,email,text,NO,
+auth_users_profiles,name,text,NO,
+auth_users_profiles,is_active,boolean,NO,
+auth_users_profiles,metadata,jsonb,YES,
+auth_users_profiles,created_at,timestamptz,NO,
+auth_users_profiles,updated_at,timestamptz,NO,
+pms_suppliers,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_suppliers,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_suppliers,name,text,NO,
+pms_suppliers,contact_name,text,YES,
+pms_suppliers,email,text,YES,
+pms_suppliers,phone,text,YES,
+pms_suppliers,address,jsonb,YES,
+pms_suppliers,preferred,boolean,YES,
+pms_suppliers,metadata,jsonb,YES,
+pms_suppliers,created_at,timestamptz,NO,
+pms_suppliers,updated_at,timestamptz,NO,
+alias_tasks,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_tasks,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_tasks,task_id,uuid,YES,
+alias_tasks,alias,text,NO,
+alias_tasks,alias_type,text,YES,
+alias_tasks,confidence,double precision,YES,
+alias_tasks,created_at,timestamptz,YES,
+graph_edges,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+graph_edges,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+graph_edges,from_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+graph_edges,to_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+graph_edges,edge_type,public.graph_edge_type,YES,
+graph_edges,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+graph_edges,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+graph_edges,properties,jsonb,YES,
+graph_edges,confidence,real,YES,
+graph_edges,created_at,timestamptz,YES,
+graph_edges,description,text,YES,
+graph_edges,embedding,public.vector(1536),YES,
+maintenance_facts,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+maintenance_facts,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+maintenance_facts,equipment_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+maintenance_facts,part_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+maintenance_facts,system_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+maintenance_facts,action,public.maintenance_action_type,YES,
+maintenance_facts,interval_hours,integer,YES,
+maintenance_facts,interval_days,integer,YES,
+maintenance_facts,interval_description,text,YES,
+maintenance_facts,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+maintenance_facts,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+maintenance_facts,confidence,real,YES,
+maintenance_facts,properties,jsonb,YES,
+maintenance_facts,created_at,timestamptz,YES,
+search_symptom_catalog,code,text,NO,"Note:
+This is a Primary Key.<pk/>"
+search_symptom_catalog,label,text,NO,
+search_symptom_catalog,description,text,YES,
+search_symptom_catalog,system_type,text,YES,
+search_symptom_catalog,severity,integer,YES,
+search_symptom_catalog,created_at,timestamptz,NO,
+email_sync_telemetry,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_sync_telemetry,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_sync_telemetry,sync_date,date,NO,
+email_sync_telemetry,messages_inserted,integer,YES,
+email_sync_telemetry,messages_updated,integer,YES,
+email_sync_telemetry,messages_noop,integer,YES,
+email_sync_telemetry,messages_deleted,integer,YES,
+email_sync_telemetry,attachments_deduped,integer,YES,
+email_sync_telemetry,prepare_jobs_deduped,integer,YES,
+email_sync_telemetry,avg_upsert_latency_ms,numeric,YES,
+email_sync_telemetry,created_at,timestamptz,YES,
+email_sync_telemetry,updated_at,timestamptz,YES,
+email_sync_telemetry,backlog_depth,integer,YES,Pending jobs in extraction queue
+email_sync_telemetry,in_flight,integer,YES,Currently processing jobs
+email_sync_telemetry,dlq_depth,integer,YES,Items in dead-letter queue
+email_sync_telemetry,retry_attempts,integer,YES,Total retry attempts today
+email_sync_telemetry,retry_successes,integer,YES,Successful retries today
+email_sync_telemetry,throttle_events,integer,YES,429 responses received today
+email_sync_telemetry,checkpoint_age_max_s,integer,YES,Max checkpoint age in seconds
+alias_crew,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_crew,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_crew,crew_id,uuid,YES,
+alias_crew,alias,text,NO,
+alias_crew,alias_type,text,YES,
+alias_crew,confidence,double precision,YES,
+alias_crew,created_at,timestamptz,YES,
+v_receiving_attachments_summary,receiving_event_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_receiving_attachments_summary,receiving_number,text,YES,
+v_receiving_attachments_summary,packing_slip_count,bigint,YES,
+v_receiving_attachments_summary,photo_count,bigint,YES,
+v_receiving_attachments_summary,invoice_count,bigint,YES,
+v_receiving_attachments_summary,total_attachments,bigint,YES,
+onedrive_connections,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+onedrive_connections,yacht_id,text,NO,
+onedrive_connections,user_principal_name,text,NO,
+onedrive_connections,access_token_encrypted,text,NO,
+onedrive_connections,refresh_token_encrypted,text,NO,
+onedrive_connections,token_expires_at,timestamptz,NO,
+onedrive_connections,sync_enabled,boolean,YES,
+onedrive_connections,selected_folders,jsonb,YES,
+onedrive_connections,created_at,timestamptz,YES,
+onedrive_connections,last_sync_at,timestamptz,YES,
+pms_orders,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_orders,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_orders,order_number,text,NO,
+pms_orders,order_title,text,YES,
+pms_orders,supplier_name,text,NO,
+pms_orders,supplier_contact,text,YES,
+pms_orders,status,text,NO,
+pms_orders,estimated_total,numeric,YES,
+pms_orders,actual_total,numeric,YES,
+pms_orders,currency,text,YES,
+pms_orders,ordered_at,timestamptz,YES,
+pms_orders,expected_delivery_date,date,YES,
+pms_orders,completed_at,timestamptz,YES,
+pms_orders,approved_by,uuid,YES,
+pms_orders,approved_at,timestamptz,YES,
+pms_orders,submitted_by,uuid,YES,
+pms_orders,submitted_at,timestamptz,YES,
+pms_orders,purchase_order_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_orders,invoice_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_orders,packing_slip_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_orders,notes,text,YES,
+pms_orders,metadata,jsonb,YES,
+pms_orders,created_by,uuid,NO,
+pms_orders,created_at,timestamptz,NO,
+pms_orders,updated_by,uuid,YES,
+pms_orders,updated_at,timestamptz,NO,
+pms_orders,deleted_at,timestamptz,YES,
+pms_orders,deleted_by,uuid,YES,
+pms_orders,deletion_reason,text,YES,
+related_audit_events,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+related_audit_events,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+related_audit_events,user_id,uuid,NO,
+related_audit_events,event_name,text,NO,"ONLY artefact_opened, relation_added, situation_en"
+related_audit_events,payload,jsonb,NO,
+related_audit_events,occurred_at,timestamptz,NO,
+pms_work_order_checklist,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_work_order_checklist,yacht_id,uuid,NO,
+pms_work_order_checklist,work_order_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_work_order_checklist,title,varchar,NO,
+pms_work_order_checklist,description,text,YES,
+pms_work_order_checklist,instructions,text,YES,
+pms_work_order_checklist,sequence,integer,NO,
+pms_work_order_checklist,is_completed,boolean,NO,
+pms_work_order_checklist,completed_at,timestamptz,YES,
+pms_work_order_checklist,completed_by,uuid,YES,
+pms_work_order_checklist,completion_notes,text,YES,
+pms_work_order_checklist,is_required,boolean,NO,
+pms_work_order_checklist,requires_photo,boolean,NO,
+pms_work_order_checklist,requires_signature,boolean,NO,
+pms_work_order_checklist,photo_url,text,YES,
+pms_work_order_checklist,signature_data,jsonb,YES,
+pms_work_order_checklist,metadata,jsonb,YES,
+pms_work_order_checklist,created_at,timestamptz,NO,
+pms_work_order_checklist,created_by,uuid,YES,
+pms_work_order_checklist,updated_at,timestamptz,YES,
+pms_work_order_checklist,updated_by,uuid,YES,
+pms_work_order_checklist,deleted_at,timestamptz,YES,
+pms_work_order_checklist,deleted_by,uuid,YES,
+pms_work_order_checklist,deletion_reason,text,YES,
+pms_equipment_parts_bom,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_equipment_parts_bom,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_equipment_parts_bom,equipment_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_equipment_parts_bom,part_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_equipment_parts_bom,quantity_required,integer,YES,
+pms_equipment_parts_bom,notes,text,YES,
+pms_equipment_parts_bom,created_at,timestamptz,NO,
+relationship_staging,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+relationship_staging,yacht_id,uuid,NO,
+relationship_staging,from_canonical,text,NO,
+relationship_staging,to_canonical,text,NO,
+relationship_staging,relationship_type,text,NO,
+relationship_staging,confidence,double precision,YES,
+relationship_staging,evidence,text,YES,
+relationship_staging,source_chunk_id,text,YES,
+relationship_staging,status,text,YES,
+relationship_staging,error_message,text,YES,
+relationship_staging,processed_at,timestamptz,YES,
+relationship_staging,graph_edge_id,uuid,YES,
+relationship_staging,created_at,timestamptz,YES,
+pms_shopping_list_state_history,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_shopping_list_state_history,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_shopping_list_state_history,shopping_list_item_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_shopping_list_"
+pms_shopping_list_state_history,previous_state,text,YES,
+pms_shopping_list_state_history,new_state,text,NO,
+pms_shopping_list_state_history,transition_reason,text,YES,
+pms_shopping_list_state_history,transition_notes,text,YES,
+pms_shopping_list_state_history,changed_by,uuid,NO,
+pms_shopping_list_state_history,changed_at,timestamptz,NO,
+pms_shopping_list_state_history,related_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_orders.id`.<fk"
+pms_shopping_list_state_history,related_receiving_event_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_shopping_list_state_history,metadata,jsonb,YES,
+pms_shopping_list_state_history,created_at,timestamptz,NO,
+doc_metadata_comments,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+doc_metadata_comments,yacht_id,uuid,NO,
+doc_metadata_comments,document_id,uuid,NO,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+doc_metadata_comments,comment,text,NO,
+doc_metadata_comments,created_by,uuid,NO,
+doc_metadata_comments,created_at,timestamptz,NO,
+doc_metadata_comments,updated_by,uuid,YES,
+doc_metadata_comments,updated_at,timestamptz,YES,
+doc_metadata_comments,deleted_by,uuid,YES,
+doc_metadata_comments,deleted_at,timestamptz,YES,
+doc_metadata_comments,author_department,varchar,YES,
+doc_metadata_comments,parent_comment_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata_comme"
+doc_metadata_comments,metadata,jsonb,YES,
+user_added_relations,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+user_added_relations,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+user_added_relations,created_by_user_id,uuid,NO,
+user_added_relations,created_at,timestamptz,NO,
+user_added_relations,from_artefact_type,text,NO,
+user_added_relations,from_artefact_id,uuid,NO,
+user_added_relations,to_artefact_type,text,NO,
+user_added_relations,to_artefact_id,uuid,NO,
+user_added_relations,is_active,boolean,NO,
+pms_audit_log,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_audit_log,yacht_id,uuid,NO,
+pms_audit_log,action,text,NO,"Action name (e.g., create_work_order_from_fault, l"
+pms_audit_log,entity_type,text,NO,
+pms_audit_log,entity_id,uuid,NO,
+pms_audit_log,user_id,uuid,YES,
+pms_audit_log,signature,jsonb,YES,"Digital signature: {user_id, timestamp, ip_address"
+pms_audit_log,old_values,jsonb,YES,State BEFORE change (NULL for creates). Shows what
+pms_audit_log,new_values,jsonb,YES,State AFTER change. Shows what the new state is.
+pms_audit_log,created_at,timestamptz,NO,
+pms_audit_log,metadata,jsonb,YES,
+pms_audit_log,actor_id,uuid,YES,
+pms_finance_transactions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_finance_transactions,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_finance_transactions,transaction_number,text,NO,
+pms_finance_transactions,transaction_date,timestamptz,NO,
+pms_finance_transactions,transaction_type,text,NO,
+pms_finance_transactions,amount,numeric,NO,
+pms_finance_transactions,currency,text,NO,
+pms_finance_transactions,order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_orders.id`.<fk"
+pms_finance_transactions,receiving_event_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_finance_transactions,receiving_line_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_line"
+pms_finance_transactions,shopping_list_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_shopping_list_"
+pms_finance_transactions,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_finance_transactions,part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_finance_transactions,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_finance_transactions,description,text,NO,
+pms_finance_transactions,source_trigger,text,NO,
+pms_finance_transactions,posted_by,uuid,NO,
+pms_finance_transactions,approved_by,uuid,YES,
+pms_finance_transactions,invoice_number,text,YES,
+pms_finance_transactions,invoice_date,date,YES,
+pms_finance_transactions,invoice_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_finance_transactions,notes,text,YES,
+pms_finance_transactions,metadata,jsonb,YES,
+pms_finance_transactions,created_at,timestamptz,NO,
+pms_finance_transactions,deleted_at,timestamptz,YES,
+pms_finance_transactions,deleted_by,uuid,YES,
+pms_finance_transactions,deletion_reason,text,YES,
+entity_staging,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+entity_staging,yacht_id,uuid,NO,
+entity_staging,entity_type,text,NO,
+entity_staging,entity_value,text,NO,
+entity_staging,canonical_label,text,NO,
+entity_staging,confidence,double precision,YES,
+entity_staging,source_chunk_id,text,YES,
+entity_staging,source_document_id,text,YES,
+entity_staging,source_storage_path,text,YES,
+entity_staging,attributes,jsonb,YES,
+entity_staging,status,text,YES,
+entity_staging,error_message,text,YES,
+entity_staging,processed_at,timestamptz,YES,
+entity_staging,graph_node_id,uuid,YES,
+entity_staging,created_at,timestamptz,YES,
+v_handover_draft_complete,draft_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_handover_draft_complete,yacht_id,uuid,YES,
+v_handover_draft_complete,period_start,timestamptz,YES,
+v_handover_draft_complete,period_end,timestamptz,YES,
+v_handover_draft_complete,title,text,YES,
+v_handover_draft_complete,department,text,YES,
+v_handover_draft_complete,state,text,YES,
+v_handover_draft_complete,total_entries,integer,YES,
+v_handover_draft_complete,critical_entries,integer,YES,
+v_handover_draft_complete,generated_at,timestamptz,YES,
+v_handover_draft_complete,generated_by_user_id,uuid,YES,
+v_handover_draft_complete,draft_metadata,jsonb,YES,
+v_handover_draft_complete,sections,jsonb,YES,
+intent_patterns,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+intent_patterns,intent_type,text,NO,
+intent_patterns,pattern_type,text,NO,
+intent_patterns,pattern,text,NO,
+intent_patterns,weight,numeric,YES,
+intent_patterns,examples,text[],YES,
+intent_patterns,active,boolean,YES,
+intent_patterns,created_at,timestamptz,NO,
+v_finance_transactions_net,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_finance_transactions_net,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_finance_transactions_net,transaction_number,text,YES,
+v_finance_transactions_net,transaction_date,timestamptz,YES,
+v_finance_transactions_net,transaction_type,text,YES,
+v_finance_transactions_net,amount,numeric,YES,
+v_finance_transactions_net,currency,text,YES,
+v_finance_transactions_net,order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_orders.id`.<fk"
+v_finance_transactions_net,receiving_event_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_even"
+v_finance_transactions_net,receiving_line_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_line"
+v_finance_transactions_net,shopping_list_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_shopping_list_"
+v_finance_transactions_net,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+v_finance_transactions_net,part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+v_finance_transactions_net,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+v_finance_transactions_net,description,text,YES,
+v_finance_transactions_net,source_trigger,text,YES,
+v_finance_transactions_net,posted_by,uuid,YES,
+v_finance_transactions_net,approved_by,uuid,YES,
+v_finance_transactions_net,invoice_number,text,YES,
+v_finance_transactions_net,invoice_date,date,YES,
+v_finance_transactions_net,invoice_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+v_finance_transactions_net,notes,text,YES,
+v_finance_transactions_net,metadata,jsonb,YES,
+v_finance_transactions_net,created_at,timestamptz,YES,
+v_finance_transactions_net,is_reversed,boolean,YES,
+v_finance_transactions_net,reversed_by_transaction_id,uuid,YES,
+v_finance_transactions_net,net_amount,numeric,YES,
+v_finance_transactions_net,transaction_status,text,YES,
+symptom_aliases,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+symptom_aliases,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+symptom_aliases,symptom_id,uuid,YES,
+symptom_aliases,symptom_code,text,YES,
+symptom_aliases,alias,text,YES,
+symptom_aliases,alias_type,text,YES,
+symptom_aliases,confidence,double precision,YES,
+symptom_aliases,created_at,timestamptz,YES,
+v_vessel_status,yacht_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>
+This is a Foreig"
+v_vessel_status,current_status,text,YES,
+v_vessel_status,next_event_type,text,YES,
+v_vessel_status,next_event_at,timestamptz,YES,
+v_vessel_status,next_event_name,text,YES,
+v_vessel_status,hot_work_permitted,boolean,YES,
+v_vessel_status,guests_on_board,boolean,YES,
+v_vessel_status,updated_at,timestamptz,YES,
+v_vessel_status,hours_until_event,numeric,YES,
+v_vessel_status,time_pressure,text,YES,
+v_vessel_status,is_pre_charter_critical,boolean,YES,
+pms_crew_hours_warnings,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_crew_hours_warnings,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_crew_hours_warnings,user_id,uuid,NO,
+pms_crew_hours_warnings,warning_type,text,NO,"Violation type: DAILY_REST, WEEKLY_REST, REST_PERI"
+pms_crew_hours_warnings,severity,text,NO,"Warning severity: info (advisory), warning (minor "
+pms_crew_hours_warnings,record_date,date,NO,
+pms_crew_hours_warnings,message,text,NO,
+pms_crew_hours_warnings,violation_data,jsonb,YES,"JSONB data: {""actual_hours"": X, ""required_hours"": "
+pms_crew_hours_warnings,acknowledged_at,timestamptz,YES,
+pms_crew_hours_warnings,acknowledged_by,uuid,YES,
+pms_crew_hours_warnings,crew_reason,text,YES,Crew explanation for violation (operational necess
+pms_crew_hours_warnings,dismissed_at,timestamptz,YES,
+pms_crew_hours_warnings,dismissed_by,uuid,YES,
+pms_crew_hours_warnings,dismissed_by_role,text,YES,
+pms_crew_hours_warnings,hod_justification,text,YES,HOD/Captain justification for dismissing warning (
+pms_crew_hours_warnings,is_dismissed,boolean,YES,
+pms_crew_hours_warnings,status,text,YES,
+pms_crew_hours_warnings,created_at,timestamptz,YES,
+pms_crew_hours_warnings,updated_at,timestamptz,YES,
+pms_work_orders,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_work_orders,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_work_orders,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_work_orders,title,text,NO,
+pms_work_orders,description,text,YES,
+pms_work_orders,type,public.work_order_type,NO,
+pms_work_orders,priority,public.work_order_priority,NO,
+pms_work_orders,status,public.work_order_status,NO,
+pms_work_orders,due_date,date,YES,
+pms_work_orders,due_hours,integer,YES,Equipment running hours when maintenance is due
+pms_work_orders,last_completed_date,date,YES,
+pms_work_orders,last_completed_hours,integer,YES,
+pms_work_orders,frequency,jsonb,YES,Recurring schedule definition
+pms_work_orders,created_by,uuid,NO,
+pms_work_orders,updated_by,uuid,YES,
+pms_work_orders,metadata,jsonb,YES,
+pms_work_orders,created_at,timestamptz,NO,
+pms_work_orders,updated_at,timestamptz,NO,
+pms_work_orders,wo_number,text,YES,
+pms_work_orders,deleted_at,timestamptz,YES,"Soft delete timestamp; archived in UI, never hard-"
+pms_work_orders,deleted_by,uuid,YES,
+pms_work_orders,deletion_reason,text,YES,Human-readable reason for archive (ledger also sto
+pms_work_orders,work_order_type,text,YES,
+pms_work_orders,fault_id,uuid,YES,TRANSPARENCY: Link to originating fault (for creat
+pms_work_orders,assigned_to,uuid,YES,ACCOUNTABILITY: WHO is responsible for this work. 
+pms_work_orders,completed_by,uuid,YES,ACCOUNTABILITY: WHO signed off on completion. Link
+pms_work_orders,completed_at,timestamptz,YES,ACCOUNTABILITY: WHEN was work completed. Timestamp
+pms_work_orders,completion_notes,text,YES,TRANSPARENCY: WHAT was done. Required field for ma
+pms_work_orders,vendor_contact_hash,text,YES,
+pms_work_orders,due_at,timestamptz,YES,
+pms_work_orders,started_at,timestamptz,YES,
+pms_work_orders,estimated_duration_minutes,integer,YES,
+pms_work_orders,severity,text,YES,
+pms_work_orders,criticality_rank,smallint,YES,
+pms_work_orders,sla_priority,text,YES,
+pms_work_orders,last_activity_at,timestamptz,YES,
+pms_work_orders,related_text,text,YES,Surface facts for Show Related: title | descriptio
+onedrive_sync_state,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+onedrive_sync_state,connection_id,uuid,NO,"Note:
+This is a Foreign Key to `onedrive_connectio"
+onedrive_sync_state,yacht_id,text,NO,
+onedrive_sync_state,onedrive_item_id,text,NO,
+onedrive_sync_state,onedrive_path,text,NO,
+onedrive_sync_state,file_name,text,NO,
+onedrive_sync_state,file_size,bigint,YES,
+onedrive_sync_state,onedrive_etag,text,YES,
+onedrive_sync_state,sync_status,text,NO,
+onedrive_sync_state,supabase_doc_id,uuid,YES,
+onedrive_sync_state,extracted_metadata,jsonb,YES,
+onedrive_sync_state,created_at,timestamptz,YES,
+auth_role_assignments,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_role_assignments,user_id,uuid,NO,Which user has this role
+auth_role_assignments,yacht_id,uuid,NO,Which yacht context this role applies to
+auth_role_assignments,role,text,NO,"Role name (chief_engineer, eto, captain, etc.)"
+auth_role_assignments,scopes,text[],YES,Fine-grained permissions for this role assignment
+auth_role_assignments,is_active,boolean,YES,
+auth_role_assignments,valid_from,timestamptz,YES,When this role assignment becomes valid
+auth_role_assignments,valid_until,timestamptz,YES,When this role assignment expires (NULL = never)
+auth_role_assignments,assigned_by,uuid,YES,
+auth_role_assignments,assigned_at,timestamptz,YES,
+v_inventory,part_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_inventory,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_inventory,name,text,YES,
+v_inventory,part_number,text,YES,
+v_inventory,manufacturer,text,YES,
+v_inventory,description,text,YES,
+v_inventory,category,text,YES,
+v_inventory,equipment,text,YES,
+v_inventory,system,text,YES,
+v_inventory,unit_cost,numeric,YES,
+v_inventory,stock_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_inventory,location,text,YES,
+v_inventory,quantity,integer,YES,
+v_inventory,min_quantity,integer,YES,
+v_inventory,max_quantity,integer,YES,
+v_inventory,reorder_quantity,integer,YES,
+v_inventory,needs_reorder,boolean,YES,
+v_inventory,has_embedding,boolean,YES,
+v_inventory,created_at,timestamptz,YES,
+v_inventory,updated_at,timestamptz,YES,
+v_active_insights,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_active_insights,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_active_insights,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+v_active_insights,insight_type,public.insight_type,YES,
+v_active_insights,title,text,YES,
+v_active_insights,description,text,YES,
+v_active_insights,recommendation,text,YES,
+v_active_insights,severity,text,YES,
+v_active_insights,metadata,jsonb,YES,
+v_active_insights,acknowledged,boolean,YES,
+v_active_insights,acknowledged_by,uuid,YES,
+v_active_insights,acknowledged_at,timestamptz,YES,
+v_active_insights,dismissed,boolean,YES,
+v_active_insights,dismissed_at,timestamptz,YES,
+v_active_insights,expires_at,timestamptz,YES,
+v_active_insights,created_at,timestamptz,YES,
+v_active_insights,equipment_name,text,YES,
+v_active_insights,system_type,text,YES,
+v_active_insights,criticality,public.equipment_criticality,YES,
+pms_image_uploads,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_image_uploads,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_image_uploads,storage_bucket,text,NO,
+pms_image_uploads,storage_path,text,NO,
+pms_image_uploads,file_name,text,NO,
+pms_image_uploads,mime_type,text,NO,
+pms_image_uploads,file_size_bytes,bigint,NO,
+pms_image_uploads,sha256_hash,text,NO,SHA256 hash for deduplication. Duplicates are BLOC
+pms_image_uploads,is_valid,boolean,NO,
+pms_image_uploads,validation_stage,text,NO,
+pms_image_uploads,validation_errors,jsonb,YES,
+pms_image_uploads,document_type,text,YES,
+pms_image_uploads,classification_confidence,numeric,YES,
+pms_image_uploads,classification_metadata,jsonb,YES,
+pms_image_uploads,ocr_raw_text,text,YES,
+pms_image_uploads,ocr_completed_at,timestamptz,YES,
+pms_image_uploads,extraction_status,text,YES,
+pms_image_uploads,extracted_data,jsonb,YES,
+pms_image_uploads,extracted_at,timestamptz,YES,
+pms_image_uploads,upload_ip_address,inet,YES,RESTRICTED: Only service_role can SELECT. Users CA
+pms_image_uploads,is_duplicate,boolean,NO,"Should always be false - duplicates are blocked, n"
+pms_image_uploads,duplicate_of_image_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_image_uploads."
+pms_image_uploads,uploaded_by,uuid,NO,
+pms_image_uploads,uploaded_at,timestamptz,NO,
+pms_image_uploads,processed_by,uuid,YES,
+pms_image_uploads,processed_at,timestamptz,YES,
+pms_image_uploads,metadata,jsonb,YES,
+pms_image_uploads,deleted_at,timestamptz,YES,
+pms_image_uploads,deleted_by,uuid,YES,
+pms_image_uploads,deletion_reason,text,YES,
+pms_image_uploads,created_at,timestamptz,NO,
+pms_image_uploads,updated_at,timestamptz,NO,
+pms_image_uploads,ocr_confidence,double precision,YES,Average OCR confidence score (0.0-1.0)
+pms_image_uploads,ocr_engine,text,YES,"OCR engine used (paddleocr, tesseract, etc.)"
+pms_image_uploads,ocr_processing_time_ms,integer,YES,OCR processing time in milliseconds
+pms_image_uploads,ocr_line_count,integer,YES,Number of text lines extracted
+pms_image_uploads,ocr_word_count,integer,YES,Number of words extracted
+pms_equipment_hours_log,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_equipment_hours_log,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_equipment_hours_log,equipment_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_equipment_hours_log,hours,numeric,NO,Cumulative running hours (not delta). Must be >= p
+pms_equipment_hours_log,recorded_at,timestamptz,NO,
+pms_equipment_hours_log,recorded_by,uuid,YES,User who recorded the hours
+pms_equipment_hours_log,source,text,YES,"How hours were recorded: manual, meter, import"
+pms_equipment_hours_log,notes,text,YES,
+pms_equipment_hours_log,created_at,timestamptz,NO,
+email_link_decisions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_link_decisions,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_link_decisions,thread_id,uuid,NO,"Note:
+This is a Foreign Key to `email_threads.id`."
+email_link_decisions,action,text,NO,
+email_link_decisions,chosen_object_type,text,YES,
+email_link_decisions,chosen_object_id,uuid,YES,
+email_link_decisions,previous_suggestion,jsonb,YES,
+email_link_decisions,system_score,integer,YES,
+email_link_decisions,created_by,uuid,YES,
+email_link_decisions,created_at,timestamptz,NO,
+dash_intelligence_snapshot,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_intelligence_snapshot,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_intelligence_snapshot,snapshot_type,public.snapshot_type,NO,
+dash_intelligence_snapshot,high_risk_equipment,jsonb,NO,
+dash_intelligence_snapshot,risk_movements,jsonb,NO,
+dash_intelligence_snapshot,unstable_systems,jsonb,NO,
+dash_intelligence_snapshot,patterns_7d,jsonb,NO,
+dash_intelligence_snapshot,overdue_critical,jsonb,NO,
+dash_intelligence_snapshot,inventory_gaps,jsonb,NO,
+dash_intelligence_snapshot,inspections_due,jsonb,NO,
+dash_intelligence_snapshot,crew_frustration,jsonb,NO,
+dash_intelligence_snapshot,summary_stats,jsonb,NO,
+dash_intelligence_snapshot,generated_at,timestamptz,NO,
+dash_intelligence_snapshot,generation_duration_ms,integer,YES,
+dash_intelligence_snapshot,data_freshness_hours,numeric,YES,
+dash_intelligence_snapshot,valid_until,timestamptz,YES,
+dash_intelligence_snapshot,is_stale,boolean,YES,
+dash_notifications,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_notifications,yacht_id,uuid,NO,
+dash_notifications,user_id,uuid,YES,
+dash_notifications,equipment_id,uuid,YES,
+dash_notifications,type,text,NO,
+dash_notifications,title,text,NO,
+dash_notifications,message,text,NO,
+dash_notifications,priority,text,NO,
+dash_notifications,metadata,jsonb,YES,
+dash_notifications,is_read,boolean,NO,
+dash_notifications,read_at,timestamptz,YES,
+dash_notifications,created_at,timestamptz,NO,
+yacht_registry,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+yacht_registry,name,text,NO,
+yacht_registry,imo,text,YES,
+yacht_registry,mmsi,text,YES,
+yacht_registry,flag_state,text,YES,
+yacht_registry,length_m,numeric,YES,
+yacht_registry,owner_ref,text,YES,
+yacht_registry,yacht_secret_hash,text,NO,bcrypt hash of master yacht secret - for deriving 
+yacht_registry,nas_root_path,text,YES,
+yacht_registry,status,text,YES,
+yacht_registry,metadata,jsonb,YES,
+yacht_registry,created_at,timestamptz,NO,
+yacht_registry,updated_at,timestamptz,NO,
+pms_receiving_attachments,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_attachments,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_attachments,receiving_event_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_receiving_attachments,receiving_line_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_line"
+pms_receiving_attachments,document_id,uuid,NO,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_receiving_attachments,attachment_type,text,NO,
+pms_receiving_attachments,description,text,YES,
+pms_receiving_attachments,attached_by,uuid,NO,
+pms_receiving_attachments,attached_at,timestamptz,NO,
+auth_microsoft_tokens,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_microsoft_tokens,user_id,text,NO,
+auth_microsoft_tokens,microsoft_user_id,text,YES,
+auth_microsoft_tokens,original_email,text,YES,
+auth_microsoft_tokens,microsoft_email,text,YES,
+auth_microsoft_tokens,display_name,text,YES,
+auth_microsoft_tokens,microsoft_access_token,text,NO,
+auth_microsoft_tokens,microsoft_refresh_token,text,YES,
+auth_microsoft_tokens,token_expires_at,timestamptz,NO,
+auth_microsoft_tokens,token_type,text,YES,
+auth_microsoft_tokens,scopes,text[],YES,
+auth_microsoft_tokens,created_at,timestamptz,YES,
+auth_microsoft_tokens,updated_at,timestamptz,YES,
+auth_microsoft_tokens,client_id,text,YES,
+auth_microsoft_tokens,client_secret,text,YES,
+auth_microsoft_tokens,yacht_id,text,YES,
+auth_microsoft_tokens,provider,text,YES,
+auth_microsoft_tokens,token_purpose,text,YES,
+auth_microsoft_tokens,provider_email_hash,text,YES,
+auth_microsoft_tokens,provider_display_name,text,YES,
+auth_microsoft_tokens,is_revoked,boolean,YES,
+auth_microsoft_tokens,revoked_at,timestamptz,YES,
+auth_microsoft_tokens,revoked_by,uuid,YES,
+onedrive_sync_jobs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+onedrive_sync_jobs,connection_id,uuid,NO,"Note:
+This is a Foreign Key to `onedrive_connectio"
+onedrive_sync_jobs,yacht_id,text,NO,
+onedrive_sync_jobs,job_status,text,NO,
+onedrive_sync_jobs,total_files_found,integer,YES,
+onedrive_sync_jobs,files_succeeded,integer,YES,
+onedrive_sync_jobs,files_failed,integer,YES,
+onedrive_sync_jobs,started_at,timestamptz,YES,
+onedrive_sync_jobs,completed_at,timestamptz,YES,
+onedrive_sync_jobs,created_at,timestamptz,YES,
+symptom_catalog,code,text,YES,"Note:
+This is a Primary Key.<pk/>"
+symptom_catalog,label,text,YES,
+symptom_catalog,description,text,YES,
+symptom_catalog,system_type,text,YES,
+symptom_catalog,severity,integer,YES,
+symptom_catalog,created_at,timestamptz,YES,
+pms_part_alert_prefs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_part_alert_prefs,yacht_id,uuid,NO,
+pms_part_alert_prefs,user_id,uuid,NO,
+pms_part_alert_prefs,department,text,YES,
+pms_part_alert_prefs,category,text,YES,
+pms_part_alert_prefs,part_id,uuid,YES,
+pms_part_alert_prefs,suppress_low_stock,boolean,YES,
+pms_part_alert_prefs,suppress_out_of_stock,boolean,YES,
+pms_part_alert_prefs,suppress_until,timestamptz,YES,
+pms_part_alert_prefs,created_at,timestamptz,YES,
+pms_part_alert_prefs,updated_at,timestamptz,YES,
+pms_part_alert_prefs,created_by,uuid,YES,
+pms_entity_images,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_entity_images,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_entity_images,entity_type,text,NO,
+pms_entity_images,entity_id,uuid,NO,
+pms_entity_images,image_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_image_uploads."
+pms_entity_images,image_role,text,NO,
+pms_entity_images,sequence,integer,YES,
+pms_entity_images,notes,text,YES,
+pms_entity_images,metadata,jsonb,YES,
+pms_entity_images,added_by,uuid,NO,
+pms_entity_images,added_at,timestamptz,NO,
+pms_entity_images,created_at,timestamptz,NO,
+pms_warranty_claims,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_warranty_claims,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_warranty_claims,claim_number,text,YES,
+pms_warranty_claims,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_warranty_claims,fault_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_faults.id`.<fk"
+pms_warranty_claims,work_order_id,uuid,YES,
+pms_warranty_claims,title,text,NO,
+pms_warranty_claims,description,text,YES,
+pms_warranty_claims,claim_type,text,NO,
+pms_warranty_claims,vendor_id,uuid,YES,
+pms_warranty_claims,vendor_name,text,YES,
+pms_warranty_claims,manufacturer,text,YES,
+pms_warranty_claims,part_number,text,YES,
+pms_warranty_claims,serial_number,text,YES,
+pms_warranty_claims,purchase_date,date,YES,
+pms_warranty_claims,warranty_expiry,date,YES,
+pms_warranty_claims,status,text,NO,
+pms_warranty_claims,claimed_amount,numeric,YES,
+pms_warranty_claims,currency,text,YES,
+pms_warranty_claims,approved_amount,numeric,YES,
+pms_warranty_claims,drafted_by,uuid,NO,
+pms_warranty_claims,drafted_at,timestamptz,NO,
+pms_warranty_claims,submitted_by,uuid,YES,
+pms_warranty_claims,submitted_at,timestamptz,YES,
+pms_warranty_claims,reviewed_by,uuid,YES,
+pms_warranty_claims,reviewed_at,timestamptz,YES,
+pms_warranty_claims,approved_by,uuid,YES,
+pms_warranty_claims,approved_at,timestamptz,YES,
+pms_warranty_claims,rejection_reason,text,YES,
+pms_warranty_claims,email_draft,jsonb,YES,
+pms_warranty_claims,metadata,jsonb,NO,
+pms_warranty_claims,created_at,timestamptz,NO,
+pms_warranty_claims,updated_at,timestamptz,NO,
+alias_equipment,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_equipment,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_equipment,equipment_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+alias_equipment,alias,text,NO,
+alias_equipment,is_primary,boolean,NO,
+alias_equipment,created_at,timestamptz,NO,
+alias_equipment,confidence,double precision,YES,
+alias_equipment,source,text,YES,"manual = added locally, master = pushed from Celes"
+alias_equipment,candidate_id,uuid,YES,
+alias_equipment,master_candidate_id,uuid,YES,Links to alias_candidates.id in Master DB for audi
+alias_equipment,deployed_at,timestamptz,YES,
+chat_session_summaries,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+chat_session_summaries,user_id,uuid,YES,
+chat_session_summaries,title,text,YES,
+chat_session_summaries,created_at,timestamptz,YES,
+chat_session_summaries,updated_at,timestamptz,YES,
+chat_session_summaries,folder,text,YES,
+chat_session_summaries,yacht_id,text,YES,
+chat_session_summaries,search_type,text,YES,
+chat_session_summaries,message_count,integer,YES,
+chat_session_summaries,is_archived,boolean,YES,
+chat_session_summaries,deleted,boolean,YES,
+chat_session_summaries,first_message_preview,text,YES,
+chat_session_summaries,last_message_at,timestamptz,YES,
+database_architecture_notes,id,integer,NO,"Note:
+This is a Primary Key.<pk/>"
+database_architecture_notes,note_type,text,NO,
+database_architecture_notes,note_content,text,NO,
+database_architecture_notes,created_at,timestamptz,NO,
+search_graph_edges,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+search_graph_edges,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+search_graph_edges,from_node_id,uuid,NO,"Note:
+This is a Foreign Key to `search_graph_nodes"
+search_graph_edges,to_node_id,uuid,NO,"Note:
+This is a Foreign Key to `search_graph_nodes"
+search_graph_edges,edge_type,public.graph_edge_type,NO,
+search_graph_edges,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+search_graph_edges,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+search_graph_edges,properties,jsonb,YES,
+search_graph_edges,confidence,real,NO,
+search_graph_edges,created_at,timestamptz,NO,
+search_graph_edges,description,text,YES,Natural language description of relationship
+search_graph_edges,embedding,public.vector(1536),YES,Embedded description for semantic relationship mat
+handover_draft_sections,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_draft_sections,draft_id,uuid,NO,"Note:
+This is a Foreign Key to `handover_drafts.id"
+handover_draft_sections,bucket_name,text,NO,
+handover_draft_sections,section_order,integer,NO,
+handover_draft_sections,display_title,text,YES,
+handover_draft_sections,item_count,integer,YES,
+handover_draft_sections,critical_count,integer,YES,
+handover_draft_sections,created_at,timestamptz,NO,
+v_handover_export_items,item_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_handover_export_items,draft_id,uuid,YES,"Note:
+This is a Foreign Key to `handover_drafts.id"
+v_handover_export_items,section_id,uuid,YES,"Note:
+This is a Foreign Key to `handover_draft_sec"
+v_handover_export_items,section_bucket,text,YES,
+v_handover_export_items,section_title,text,YES,
+v_handover_export_items,section_order,integer,YES,
+v_handover_export_items,summary_text,text,YES,
+v_handover_export_items,domain_code,text,YES,
+v_handover_export_items,item_order,integer,YES,
+v_handover_export_items,risk_tags,text[],YES,
+v_handover_export_items,confidence_level,text,YES,
+v_handover_export_items,is_critical,boolean,YES,
+v_handover_export_items,requires_action,boolean,YES,
+v_handover_export_items,action_summary,text,YES,
+v_handover_export_items,conflict_flag,boolean,YES,
+v_handover_export_items,uncertainty_flag,boolean,YES,
+v_handover_export_items,source_entry_ids,uuid[],YES,
+v_handover_export_items,source_event_ids,uuid[],YES,
+v_handover_export_items,metadata,jsonb,YES,
+v_handover_export_items,presentation_bucket,text,YES,
+v_handover_export_items,entity_url,text,YES,
+v_handover_export_items,source_entity_type,text,YES,
+v_handover_export_items,source_entity_id,text,YES,
+v_handover_export_items,email_message_id,text,YES,
+v_handover_export_items,link_json,jsonb,YES,
+v_handover_export_items,item_created_at,timestamptz,YES,
+v_handover_export_items,item_updated_at,timestamptz,YES,
+pms_worklist_tasks,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_worklist_tasks,yacht_id,uuid,NO,
+pms_worklist_tasks,description,text,NO,
+pms_worklist_tasks,instructions,text,YES,
+pms_worklist_tasks,priority,varchar,NO,
+pms_worklist_tasks,assigned_to,uuid,YES,
+pms_worklist_tasks,assigned_by,uuid,YES,
+pms_worklist_tasks,assigned_at,timestamptz,YES,
+pms_worklist_tasks,scheduled_date,date,YES,
+pms_worklist_tasks,due_date,date,YES,
+pms_worklist_tasks,estimated_duration_minutes,integer,YES,
+pms_worklist_tasks,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_worklist_tasks,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_worklist_tasks,fault_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_faults.id`.<fk"
+pms_worklist_tasks,status,varchar,NO,
+pms_worklist_tasks,completed_at,timestamptz,YES,
+pms_worklist_tasks,completed_by,uuid,YES,
+pms_worklist_tasks,completion_notes,text,YES,
+pms_worklist_tasks,actual_duration_minutes,integer,YES,
+pms_worklist_tasks,progress,integer,YES,
+pms_worklist_tasks,tags,text[],YES,
+pms_worklist_tasks,metadata,jsonb,YES,
+pms_worklist_tasks,created_at,timestamptz,NO,
+pms_worklist_tasks,created_by,uuid,NO,
+pms_worklist_tasks,updated_at,timestamptz,YES,
+pms_worklist_tasks,updated_by,uuid,YES,
+pms_worklist_tasks,deleted_at,timestamptz,YES,
+pms_worklist_tasks,deleted_by,uuid,YES,
+pms_worklist_tasks,deletion_reason,text,YES,
+auth_users_roles,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_users_roles,user_id,uuid,NO,
+auth_users_roles,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+auth_users_roles,role,text,NO,RBAC role - chief_engineer/captain/manager = HOD
+auth_users_roles,assigned_at,timestamptz,NO,
+auth_users_roles,assigned_by,uuid,YES,
+auth_users_roles,is_active,boolean,NO,
+auth_users_roles,valid_from,timestamptz,NO,
+auth_users_roles,valid_until,timestamptz,YES,
+pms_user_preferences,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_user_preferences,user_id,uuid,NO,
+pms_user_preferences,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_user_preferences,in_app_enabled,boolean,NO,
+pms_user_preferences,push_enabled,boolean,NO,
+pms_user_preferences,email_enabled,boolean,NO,
+pms_user_preferences,notify_fault_reported,boolean,NO,
+pms_user_preferences,notify_fault_acknowledged,boolean,NO,
+pms_user_preferences,notify_fault_closed,boolean,NO,
+pms_user_preferences,notify_wo_assigned,boolean,NO,
+pms_user_preferences,notify_wo_completed,boolean,NO,
+pms_user_preferences,notify_wo_pending_signature,boolean,NO,
+pms_user_preferences,notify_handover_reminder,boolean,NO,
+pms_user_preferences,notify_warranty_status,boolean,NO,
+pms_user_preferences,quiet_hours_start,time without time zone,YES,
+pms_user_preferences,quiet_hours_end,time without time zone,YES,
+pms_user_preferences,created_at,timestamptz,NO,
+pms_user_preferences,updated_at,timestamptz,NO,
+search_index,id,bigint,NO,"Note:
+This is a Primary Key.<pk/>"
+search_index,object_type,text,NO,
+search_index,object_id,uuid,NO,
+search_index,org_id,uuid,NO,
+search_index,yacht_id,uuid,YES,
+search_index,search_text,text,NO,
+search_index,tsv,tsvector,YES,
+search_index,embedding,public.vector(1536),YES,"Computed by async job, NOT by trigger. 384-dim vec"
+search_index,payload,jsonb,YES,
+search_index,embedding_version,smallint,YES,Track model version for re-embedding on model upgr
+search_index,updated_at,timestamptz,YES,
+search_index,popularity_score,double precision,YES,
+search_index,filters,jsonb,YES,
+pms_receiving_events,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_events,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_events,receiving_number,text,NO,
+pms_receiving_events,order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_orders.id`.<fk"
+pms_receiving_events,received_at,timestamptz,NO,
+pms_receiving_events,received_by,uuid,NO,
+pms_receiving_events,location,text,YES,
+pms_receiving_events,status,text,NO,
+pms_receiving_events,delivery_method,text,YES,
+pms_receiving_events,tracking_number,text,YES,
+pms_receiving_events,notes,text,YES,
+pms_receiving_events,metadata,jsonb,YES,
+pms_receiving_events,created_at,timestamptz,NO,
+pms_receiving_events,updated_by,uuid,YES,
+pms_receiving_events,updated_at,timestamptz,NO,
+pms_receiving_events,deleted_at,timestamptz,YES,
+pms_receiving_events,deleted_by,uuid,YES,
+pms_receiving_events,deletion_reason,text,YES,
+pms_receiving_events,is_locked,boolean,NO,
+pms_receiving_events,receiving_session_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_sess"
+pms_receiving_events,was_camera_initiated,boolean,YES,
+handover_exports,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_exports,draft_id,uuid,NO,"Note:
+This is a Foreign Key to `handover_drafts.id"
+handover_exports,yacht_id,uuid,NO,
+handover_exports,export_type,text,NO,
+handover_exports,storage_path,text,YES,
+handover_exports,storage_bucket,text,YES,
+handover_exports,file_name,text,YES,
+handover_exports,file_size_bytes,integer,YES,
+handover_exports,exported_by_user_id,uuid,NO,
+handover_exports,exported_at,timestamptz,NO,
+handover_exports,recipients,text[],YES,
+handover_exports,email_subject,text,YES,
+handover_exports,email_sent_at,timestamptz,YES,
+handover_exports,document_hash,text,YES,
+handover_exports,export_status,text,YES,
+handover_exports,error_message,text,YES,
+handover_exports,created_at,timestamptz,NO,
+handover_exports,file_url,text,YES,
+pms_crew_normal_hours,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_crew_normal_hours,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_crew_normal_hours,user_id,uuid,NO,
+pms_crew_normal_hours,schedule_name,text,NO,
+pms_crew_normal_hours,description,text,YES,
+pms_crew_normal_hours,schedule_template,jsonb,NO,"JSONB template: {""monday"": {""rest_periods"": [...],"
+pms_crew_normal_hours,is_active,boolean,YES,Only one active template per crew member per appli
+pms_crew_normal_hours,applies_to,text,YES,"Schedule context: normal (at sea), port, transit"
+pms_crew_normal_hours,created_at,timestamptz,YES,
+pms_crew_normal_hours,updated_at,timestamptz,YES,
+pms_crew_normal_hours,created_by,uuid,YES,
+auth_role_definitions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_role_definitions,name,text,NO,
+auth_role_definitions,description,text,YES,
+auth_role_definitions,permissions,jsonb,YES,
+auth_role_definitions,created_at,timestamptz,NO,
+ledger_events,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+ledger_events,yacht_id,uuid,NO,
+ledger_events,event_type,text,NO,
+ledger_events,entity_type,text,NO,
+ledger_events,entity_id,uuid,NO,
+ledger_events,action,text,NO,
+ledger_events,previous_state,jsonb,YES,
+ledger_events,new_state,jsonb,YES,
+ledger_events,change_summary,text,YES,
+ledger_events,user_id,uuid,NO,
+ledger_events,user_role,text,YES,
+ledger_events,user_department,text,YES,
+ledger_events,source_context,text,YES,
+ledger_events,session_id,uuid,YES,
+ledger_events,related_event_ids,uuid[],YES,
+ledger_events,metadata,jsonb,YES,
+ledger_events,proof_hash,text,NO,
+ledger_events,previous_proof_hash,text,YES,
+ledger_events,day_anchor_id,uuid,YES,
+ledger_events,created_at,timestamptz,NO,
+ledger_events,event_timestamp,timestamptz,NO,
+auth_guest_preferences,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+auth_guest_preferences,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+auth_guest_preferences,guest_name,text,NO,
+auth_guest_preferences,guest_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+auth_guest_preferences,preference_category,text,NO,
+auth_guest_preferences,preference_key,text,NO,
+auth_guest_preferences,preference_value,text,NO,
+auth_guest_preferences,notes,text,YES,
+auth_guest_preferences,source_trip_id,uuid,YES,
+auth_guest_preferences,created_at,timestamptz,NO,
+v_equipment_risk,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_equipment_risk,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_equipment_risk,parent_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+v_equipment_risk,name,text,YES,
+v_equipment_risk,code,text,YES,
+v_equipment_risk,description,text,YES,
+v_equipment_risk,location,text,YES,
+v_equipment_risk,manufacturer,text,YES,
+v_equipment_risk,model,text,YES,
+v_equipment_risk,serial_number,text,YES,
+v_equipment_risk,installed_date,date,YES,
+v_equipment_risk,criticality,public.equipment_criticality,YES,
+v_equipment_risk,system_type,text,YES,
+v_equipment_risk,metadata,jsonb,YES,
+v_equipment_risk,created_at,timestamptz,YES,
+v_equipment_risk,updated_at,timestamptz,YES,
+v_equipment_risk,attention_flag,boolean,YES,
+v_equipment_risk,attention_reason,text,YES,
+v_equipment_risk,attention_updated_at,timestamptz,YES,
+v_equipment_risk,risk_score,numeric,YES,
+v_equipment_risk,risk_level,public.risk_level,YES,
+v_equipment_risk,trend,text,YES,
+v_equipment_risk,contributing_factors,jsonb,YES,
+v_equipment_risk,risk_calculated_at,timestamptz,YES,
+pms_part_locations,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_part_locations,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_part_locations,name,text,NO,
+pms_part_locations,path,text,YES,
+pms_part_locations,description,text,YES,
+pms_part_locations,created_at,timestamptz,NO,
+pms_part_locations,created_by,uuid,YES,
+pms_receiving_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_items,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_items,receiving_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_receiving.id`."
+pms_receiving_items,part_id,uuid,YES,
+pms_receiving_items,description,text,YES,Part name or description; required if part_id is n
+pms_receiving_items,quantity_expected,numeric,YES,Expected quantity from PO/order; null if ad-hoc
+pms_receiving_items,quantity_received,numeric,NO,Actual quantity received
+pms_receiving_items,unit_price,numeric,YES,
+pms_receiving_items,currency,text,YES,
+pms_receiving_items,properties,jsonb,YES,
+pms_receiving_items,created_at,timestamptz,NO,
+audit_field_history,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+audit_field_history,yacht_id,uuid,NO,
+audit_field_history,table_name,text,NO,
+audit_field_history,record_id,uuid,NO,
+audit_field_history,field_name,text,NO,
+audit_field_history,old_value,text,YES,
+audit_field_history,new_value,text,YES,
+audit_field_history,changed_by,uuid,NO,
+audit_field_history,changed_at,timestamptz,NO,
+doc_sop_procedures,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+doc_sop_procedures,user_id,uuid,YES,
+doc_sop_procedures,yacht_id,text,NO,
+doc_sop_procedures,equipment,text,YES,
+doc_sop_procedures,title,text,NO,
+doc_sop_procedures,query,text,NO,
+doc_sop_procedures,content_markdown,text,NO,
+doc_sop_procedures,source_chunks,integer[],YES,
+doc_sop_procedures,version,integer,YES,
+doc_sop_procedures,created_at,timestamptz,YES,
+doc_sop_procedures,updated_at,timestamptz,YES,
+doc_sop_procedures,metadata,jsonb,YES,
+pms_label_generations,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_label_generations,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_label_generations,receiving_event_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_label_generations,receiving_session_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_sess"
+pms_label_generations,label_type,text,NO,
+pms_label_generations,lines_included,jsonb,NO,
+pms_label_generations,total_labels_count,integer,NO,
+pms_label_generations,status,text,NO,
+pms_label_generations,pdf_storage_path,text,YES,
+pms_label_generations,pdf_file_size_bytes,bigint,YES,
+pms_label_generations,generation_completed_at,timestamptz,YES,
+pms_label_generations,generation_errors,jsonb,YES,
+pms_label_generations,emailed_to,text,YES,
+pms_label_generations,emailed_at,timestamptz,YES,
+pms_label_generations,downloaded_count,integer,YES,
+pms_label_generations,last_downloaded_at,timestamptz,YES,
+pms_label_generations,requested_by,uuid,NO,
+pms_label_generations,requested_at,timestamptz,NO,
+pms_label_generations,expires_at,timestamptz,YES,
+pms_label_generations,metadata,jsonb,YES,
+pms_label_generations,created_at,timestamptz,NO,
+pms_entity_links,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_entity_links,yacht_id,uuid,NO,
+pms_entity_links,source_entity_type,text,NO,
+pms_entity_links,source_entity_id,uuid,NO,
+pms_entity_links,target_entity_type,text,NO,
+pms_entity_links,target_entity_id,uuid,NO,
+pms_entity_links,link_type,text,NO,
+pms_entity_links,note,text,YES,
+pms_entity_links,created_by,uuid,NO,
+pms_entity_links,created_at,timestamptz,NO,
+pms_entity_links,relationship_type,text,YES,"Type of relationship: related, parent, child, refe"
+email_attachments,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_attachments,message_id,uuid,NO,"Note:
+This is a Foreign Key to `email_messages.id`"
+email_attachments,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_attachments,filename,text,NO,
+email_attachments,content_type,text,YES,
+email_attachments,size_bytes,integer,YES,
+email_attachments,storage_path,text,YES,
+email_attachments,graph_attachment_id,text,YES,
+email_attachments,created_at,timestamptz,NO,
+dash_safety_drills,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_safety_drills,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_safety_drills,drill_type,text,NO,
+dash_safety_drills,drill_date,timestamptz,NO,
+dash_safety_drills,conducted_by,text,YES,
+dash_safety_drills,participants,jsonb,YES,
+dash_safety_drills,duration_minutes,integer,YES,
+dash_safety_drills,outcome,text,YES,
+dash_safety_drills,notes,text,YES,
+dash_safety_drills,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+dash_safety_drills,created_at,timestamptz,NO,
+role_handover_buckets,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+role_handover_buckets,yacht_id,uuid,YES,
+role_handover_buckets,role_id,text,NO,
+role_handover_buckets,department,text,NO,
+role_handover_buckets,bucket_name,text,NO,
+role_handover_buckets,bucket_order,integer,NO,
+role_handover_buckets,source_entity_types,text[],NO,
+role_handover_buckets,filter_criteria,jsonb,YES,
+role_handover_buckets,auto_populate,boolean,YES,
+role_handover_buckets,auto_populate_criteria,jsonb,YES,
+role_handover_buckets,max_items,integer,YES,
+role_handover_buckets,show_if_empty,boolean,YES,
+role_handover_buckets,empty_message,text,YES,
+role_handover_buckets,is_critical_bucket,boolean,YES,
+role_handover_buckets,active,boolean,YES,
+role_handover_buckets,created_at,timestamptz,NO,
+role_handover_buckets,updated_at,timestamptz,NO,
+doc_yacht_library,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+doc_yacht_library,document_name,text,NO,
+doc_yacht_library,document_path,text,NO,
+doc_yacht_library,document_type,text,YES,
+doc_yacht_library,times_accessed,integer,YES,
+doc_yacht_library,times_helpful,integer,YES,
+doc_yacht_library,times_not_helpful,integer,YES,
+doc_yacht_library,equipment_covered,jsonb,YES,
+doc_yacht_library,created_at,timestamptz,YES,
+doc_yacht_library,updated_at,timestamptz,YES,
+doc_yacht_library,last_used,timestamptz,YES,
+doc_yacht_library,yacht_id,text,YES,
+doc_yacht_library,total_uses,integer,YES,
+doc_yacht_library,successful_uses,integer,YES,
+doc_yacht_library,effectiveness_score,numeric,YES,
+doc_yacht_library,department,varchar,YES,
+doc_yacht_library,fault_code_matches,jsonb,YES,
+doc_yacht_library,user_id,uuid,YES,
+doc_yacht_library,helpful_count,integer,YES,
+doc_yacht_library,chunk_id,text,YES,
+doc_yacht_library,chunk_text,text,YES,
+doc_yacht_library,chunk_index,integer,YES,
+doc_yacht_library,page_num,integer,YES,
+doc_yacht_library,entities_found,jsonb,YES,
+doc_yacht_library,entity_weights,jsonb,YES,
+doc_yacht_library,query,text,YES,
+doc_yacht_library,session_id,uuid,YES,
+doc_yacht_library,score,numeric,YES,
+doc_yacht_library,chunk_metadata,jsonb,YES,
+doc_yacht_library,is_chunk,boolean,YES,
+doc_yacht_library,conversion_rate,numeric,YES,Conversion rate for document effectiveness
+document_chunks,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+document_chunks,yacht_id,uuid,YES,
+document_chunks,document_id,uuid,YES,
+document_chunks,chunk_index,integer,YES,
+document_chunks,text,text,YES,
+document_chunks,page_number,integer,YES,
+document_chunks,embedding,public.vector(1536),YES,
+document_chunks,equipment_ids,uuid[],YES,
+document_chunks,fault_codes,text[],YES,
+document_chunks,tags,text[],YES,
+document_chunks,metadata,jsonb,YES,
+document_chunks,created_at,timestamptz,YES,
+document_chunks,content,text,YES,
+document_chunks,graph_extracted,boolean,YES,
+document_chunks,graph_extracted_at,timestamptz,YES,
+document_chunks,section_title,text,YES,
+document_chunks,doc_type,text,YES,
+document_chunks,system_tag,text,YES,
+document_chunks,graph_extract_status,text,YES,
+document_chunks,graph_extract_error,text,YES,
+document_chunks,section_path,text[],YES,
+document_chunks,section_type,text,YES,
+document_chunks,is_section_entry,boolean,YES,
+document_chunks,symptom_codes,text[],YES,
+document_chunks,graph_extract_ts,timestamptz,YES,
+documents,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+documents,yacht_id,uuid,YES,
+documents,source,text,YES,
+documents,original_path,text,YES,
+documents,filename,text,YES,
+documents,content_type,text,YES,
+documents,size_bytes,bigint,YES,
+documents,sha256,text,YES,
+documents,storage_path,text,YES,
+documents,equipment_ids,uuid[],YES,
+documents,tags,text[],YES,
+documents,indexed,boolean,YES,
+documents,indexed_at,timestamptz,YES,
+documents,metadata,jsonb,YES,
+documents,created_at,timestamptz,YES,
+documents,updated_at,timestamptz,YES,
+documents,system_path,text,YES,
+documents,doc_type,text,YES,
+documents,oem,text,YES,
+documents,model,text,YES,
+documents,system_type,text,YES,
+chat_sessions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+chat_sessions,user_id,uuid,YES,
+chat_sessions,title,text,NO,
+chat_sessions,created_at,timestamptz,YES,
+chat_sessions,updated_at,timestamptz,YES,
+chat_sessions,folder,text,YES,
+chat_sessions,yacht_id,text,YES,
+chat_sessions,search_type,text,YES,
+chat_sessions,session_metadata,jsonb,YES,
+chat_sessions,is_archived,boolean,YES,
+chat_sessions,message_count,integer,YES,
+chat_sessions,deleted,boolean,YES,Soft delete flag - allows users to delete chats wi
+pms_receiving_line_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_line_items,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_line_items,receiving_event_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_receiving_line_items,shopping_list_item_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_shopping_list_"
+pms_receiving_line_items,part_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+pms_receiving_line_items,part_name,text,NO,
+pms_receiving_line_items,part_number,text,YES,
+pms_receiving_line_items,manufacturer,text,YES,
+pms_receiving_line_items,quantity_expected,numeric,YES,
+pms_receiving_line_items,quantity_received,numeric,NO,
+pms_receiving_line_items,quantity_accepted,numeric,NO,
+pms_receiving_line_items,quantity_rejected,numeric,YES,
+pms_receiving_line_items,unit,text,YES,
+pms_receiving_line_items,disposition,text,NO,
+pms_receiving_line_items,disposition_notes,text,YES,
+pms_receiving_line_items,installed_immediately,boolean,YES,
+pms_receiving_line_items,installed_to_equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_receiving_line_items,installed_to_work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_receiving_line_items,installed_at,timestamptz,YES,
+pms_receiving_line_items,installed_by,uuid,YES,
+pms_receiving_line_items,unit_price,numeric,YES,
+pms_receiving_line_items,line_total,numeric,YES,
+pms_receiving_line_items,serial_numbers,text[],YES,
+pms_receiving_line_items,batch_lot_number,text,YES,
+pms_receiving_line_items,expiration_date,date,YES,
+pms_receiving_line_items,metadata,jsonb,YES,
+pms_receiving_line_items,created_at,timestamptz,NO,
+pms_receiving_line_items,updated_by,uuid,YES,
+pms_receiving_line_items,updated_at,timestamptz,NO,
+pms_receiving_line_items,verified_by,uuid,YES,
+pms_receiving_line_items,verified_at,timestamptz,YES,
+pms_receiving_line_items,is_verified,boolean,NO,
+pms_receiving_line_items,received_by,uuid,YES,
+pms_receiving_line_items,draft_line_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_draf"
+pms_receiving_line_items,verification_notes,text,YES,
+pms_receiving_line_items,human_verified_at,timestamptz,YES,
+pms_receiving_line_items,human_verified_by,uuid,YES,
+ledger_filter_presets,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+ledger_filter_presets,yacht_id,uuid,NO,
+ledger_filter_presets,user_id,uuid,NO,
+ledger_filter_presets,name,text,NO,
+ledger_filter_presets,description,text,YES,
+ledger_filter_presets,filters,jsonb,NO,
+ledger_filter_presets,display_options,jsonb,YES,
+ledger_filter_presets,is_default,boolean,YES,
+ledger_filter_presets,use_count,integer,YES,
+ledger_filter_presets,last_used_at,timestamptz,YES,
+ledger_filter_presets,created_at,timestamptz,NO,
+ledger_filter_presets,updated_at,timestamptz,NO,
+handover_items,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handover_items,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+handover_items,handover_id,uuid,NO,"Note:
+This is a Foreign Key to `handovers.id`.<fk "
+handover_items,entity_id,uuid,NO,
+handover_items,entity_type,varchar,NO,
+handover_items,section,varchar,YES,
+handover_items,summary,text,YES,
+handover_items,priority,integer,YES,
+handover_items,status,varchar,NO,
+handover_items,acknowledged_by,uuid,YES,"Note:
+This is a Foreign Key to `auth_users_profile"
+handover_items,acknowledged_at,timestamptz,YES,
+handover_items,acknowledgement_notes,text,YES,
+handover_items,metadata,jsonb,YES,
+handover_items,created_at,timestamptz,NO,
+handover_items,added_by,uuid,NO,"Note:
+This is a Foreign Key to `auth_users_profile"
+handover_items,updated_at,timestamptz,YES,
+handover_items,updated_by,uuid,YES,"Note:
+This is a Foreign Key to `auth_users_profile"
+handover_items,deleted_at,timestamptz,YES,
+handover_items,deleted_by,uuid,YES,
+handover_items,deletion_reason,text,YES,
+handover_items,source_ids,uuid[],YES,
+email_dedupe_health,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_dedupe_health,sync_date,date,YES,
+email_dedupe_health,messages_inserted,integer,YES,
+email_dedupe_health,messages_updated,integer,YES,
+email_dedupe_health,messages_noop,integer,YES,
+email_dedupe_health,messages_deleted,integer,YES,
+email_dedupe_health,attachments_deduped,integer,YES,
+email_dedupe_health,prepare_jobs_deduped,integer,YES,
+email_dedupe_health,noop_rate_pct,numeric,YES,
+email_dedupe_health,avg_upsert_latency_ms,numeric,YES,
+email_dedupe_health,last_updated,timestamptz,YES,
+pms_notifications,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_notifications,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_notifications,user_id,uuid,NO,
+pms_notifications,notification_type,text,NO,
+pms_notifications,title,text,NO,
+pms_notifications,body,text,YES,
+pms_notifications,priority,text,NO,
+pms_notifications,entity_type,text,YES,
+pms_notifications,entity_id,uuid,YES,
+pms_notifications,cta_action_id,text,YES,
+pms_notifications,cta_payload,jsonb,YES,
+pms_notifications,idempotency_key,text,NO,
+pms_notifications,read_at,timestamptz,YES,
+pms_notifications,dismissed_at,timestamptz,YES,
+pms_notifications,created_at,timestamptz,NO,
+email_watcher_health,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+email_watcher_health,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_watcher_health,status,text,YES,
+email_watcher_health,error_count,integer,YES,
+email_watcher_health,has_checkpoint,boolean,YES,
+email_watcher_health,checkpoint_age_seconds,numeric,YES,
+email_watcher_health,sync_age_seconds,numeric,YES,
+email_watcher_health,success_age_seconds,numeric,YES,
+email_watcher_health,last_error_code,text,YES,
+email_watcher_health,degraded_at,timestamptz,YES,
+email_watcher_health,health_status,text,YES,
+dash_predictive_equipment_risk,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_predictive_equipment_risk,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_predictive_equipment_risk,equipment_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+dash_predictive_equipment_risk,risk_score,numeric,NO,
+dash_predictive_equipment_risk,risk_level,public.risk_level,YES,
+dash_predictive_equipment_risk,confidence,numeric,NO,
+dash_predictive_equipment_risk,trend,text,YES,
+dash_predictive_equipment_risk,trend_delta,numeric,YES,
+dash_predictive_equipment_risk,contributing_factors,jsonb,NO,
+dash_predictive_equipment_risk,last_calculated_at,timestamptz,NO,
+dash_predictive_equipment_risk,previous_risk_score,numeric,YES,
+dash_predictive_equipment_risk,created_at,timestamptz,NO,
+dash_predictive_equipment_risk,updated_at,timestamptz,NO,
+equipment,id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+equipment,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+equipment,parent_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+equipment,name,text,YES,
+equipment,code,text,YES,
+equipment,description,text,YES,
+equipment,location,text,YES,
+equipment,manufacturer,text,YES,
+equipment,model,text,YES,
+equipment,serial_number,text,YES,
+alias_roles,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_roles,canonical_role,text,NO,
+alias_roles,alias,text,NO,
+alias_roles,created_at,timestamptz,NO,
+pms_receiving_extractions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_extractions,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_extractions,receiving_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_receiving.id`."
+pms_receiving_extractions,source_document_id,uuid,NO,Document that was scanned/extracted
+pms_receiving_extractions,payload,jsonb,NO,Extracted fields with confidence scores; advisory 
+pms_receiving_extractions,created_at,timestamptz,NO,
+alias_work_orders,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_work_orders,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_work_orders,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+alias_work_orders,alias,text,NO,
+alias_work_orders,alias_type,text,YES,
+alias_work_orders,confidence,double precision,YES,
+alias_work_orders,created_at,timestamptz,YES,
+v_part_stock_status,part_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+v_part_stock_status,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+v_part_stock_status,part_name,text,YES,
+v_part_stock_status,part_number,text,YES,
+v_part_stock_status,is_critical,boolean,YES,
+v_part_stock_status,min_level,integer,YES,
+v_part_stock_status,reorder_multiple,integer,YES,
+v_part_stock_status,category,text,YES,
+v_part_stock_status,department,text,YES,
+v_part_stock_status,on_hand_qty,integer,YES,
+v_part_stock_status,location,text,YES,
+v_part_stock_status,is_out_of_stock,boolean,YES,
+v_part_stock_status,is_low_stock,boolean,YES,
+v_part_stock_status,suggested_order_qty,integer,YES,
+v_part_stock_status,urgency,text,YES,
+pms_certificates,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_certificates,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_certificates,certificate_name,text,NO,
+pms_certificates,certificate_type,text,NO,
+pms_certificates,certificate_number,text,YES,
+pms_certificates,issuing_authority,text,YES,
+pms_certificates,issue_date,date,YES,
+pms_certificates,expiry_date,date,YES,
+pms_certificates,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_certificates,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_certificates,status,text,YES,
+pms_certificates,superseded_by,uuid,YES,"Note:
+This is a Foreign Key to `pms_certificates.i"
+pms_certificates,notes,text,YES,
+pms_certificates,metadata,jsonb,YES,
+pms_certificates,created_at,timestamptz,NO,
+pms_certificates,updated_at,timestamptz,NO,
+pms_certificates,created_by,uuid,YES,
+pms_work_order_notes,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_work_order_notes,work_order_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_work_order_notes,note_text,text,NO,
+pms_work_order_notes,note_type,text,NO,"Type of note: general (info), progress (update), i"
+pms_work_order_notes,created_by,uuid,NO,"Note:
+This is a Foreign Key to `auth_users_profile"
+pms_work_order_notes,created_at,timestamptz,NO,
+pms_work_order_notes,metadata,jsonb,YES,
+pms_work_order_notes,related_text,text,YES,Surface facts for Show Related: note_text (≤200 ch
+search_document_chunks,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+search_document_chunks,yacht_id,uuid,YES,
+search_document_chunks,document_id,uuid,YES,
+search_document_chunks,chunk_index,integer,YES,
+search_document_chunks,text,text,YES,Chunk text content (250-800 tokens typically)
+search_document_chunks,page_number,integer,YES,
+search_document_chunks,embedding,public.vector(1536),YES,Vector embedding for semantic search
+search_document_chunks,equipment_ids,uuid[],YES,
+search_document_chunks,fault_codes,text[],YES,
+search_document_chunks,tags,text[],YES,
+search_document_chunks,metadata,jsonb,YES,
+search_document_chunks,created_at,timestamptz,NO,
+search_document_chunks,content,text,YES,
+search_document_chunks,graph_extracted,boolean,YES,
+search_document_chunks,graph_extracted_at,timestamptz,YES,
+search_document_chunks,section_title,text,YES,
+search_document_chunks,doc_type,text,YES,"Document type: manual, log, checklist, spec, email"
+search_document_chunks,system_tag,text,YES,"System category: engine, hvac, electrical, navigat"
+search_document_chunks,graph_extract_status,text,NO,"pending = not processed, success = extracted, fail"
+search_document_chunks,graph_extract_error,text,YES,
+search_document_chunks,section_path,text[],YES,
+search_document_chunks,section_type,text,YES,
+search_document_chunks,is_section_entry,boolean,NO,
+search_document_chunks,symptom_codes,text[],YES,
+search_document_chunks,graph_extract_ts,timestamptz,YES,
+email_backpressure_health,watcher_id,uuid,YES,"Note:
+This is a Primary Key.<pk/>"
+email_backpressure_health,yacht_id,uuid,YES,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_backpressure_health,status,text,YES,
+email_backpressure_health,consecutive_failures,integer,YES,
+email_backpressure_health,retry_after_until,timestamptz,YES,
+email_backpressure_health,backoff_until,timestamptz,YES,
+email_backpressure_health,is_ready,boolean,YES,
+email_backpressure_health,checkpoint_age_s,numeric,YES,
+email_backpressure_health,dlq_pending,bigint,YES,
+email_backpressure_health,backlog_depth,bigint,YES,
+email_attachment_blobs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_attachment_blobs,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_attachment_blobs,sha256,text,NO,
+email_attachment_blobs,size_bytes,integer,YES,
+email_attachment_blobs,content_type,text,YES,
+email_attachment_blobs,is_stored,boolean,YES,
+email_attachment_blobs,storage_path,text,YES,
+email_attachment_blobs,created_at,timestamptz,YES,
+search_maintenance_facts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+search_maintenance_facts,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+search_maintenance_facts,equipment_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+search_maintenance_facts,part_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+search_maintenance_facts,system_node_id,uuid,YES,"Note:
+This is a Foreign Key to `search_graph_nodes"
+search_maintenance_facts,action,public.maintenance_action_type,NO,
+search_maintenance_facts,interval_hours,integer,YES,
+search_maintenance_facts,interval_days,integer,YES,
+search_maintenance_facts,interval_description,text,YES,
+search_maintenance_facts,source_chunk_id,uuid,YES,"Note:
+This is a Foreign Key to `search_document_ch"
+search_maintenance_facts,source_document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+search_maintenance_facts,confidence,real,NO,
+search_maintenance_facts,properties,jsonb,YES,
+search_maintenance_facts,created_at,timestamptz,NO,
+dash_crew_hours_compliance,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+dash_crew_hours_compliance,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+dash_crew_hours_compliance,user_id,uuid,NO,
+dash_crew_hours_compliance,date,date,NO,
+dash_crew_hours_compliance,hours_worked,numeric,NO,
+dash_crew_hours_compliance,hours_of_rest,numeric,NO,
+dash_crew_hours_compliance,violations,boolean,YES,
+dash_crew_hours_compliance,notes,text,YES,
+dash_crew_hours_compliance,metadata,jsonb,YES,
+dash_crew_hours_compliance,created_at,timestamptz,NO,
+dash_crew_hours_compliance,updated_at,timestamptz,NO,
+pms_receiving,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving,vendor_name,text,YES,
+pms_receiving,vendor_reference,text,YES,"Invoice number, AWB, packing slip, or other vendor"
+pms_receiving,received_date,date,NO,
+pms_receiving,received_by,uuid,NO,
+pms_receiving,status,text,NO,Draft → in_review → accepted/rejected
+pms_receiving,currency,text,YES,
+pms_receiving,subtotal,numeric,YES,
+pms_receiving,tax_total,numeric,YES,
+pms_receiving,total,numeric,YES,
+pms_receiving,linked_work_order_id,uuid,YES,
+pms_receiving,notes,text,YES,
+pms_receiving,properties,jsonb,YES,"Additional metadata (session_id, extracted_confide"
+pms_receiving,created_at,timestamptz,NO,
+pms_receiving,created_by,uuid,YES,
+pms_staged_mutations,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_staged_mutations,idempotency_token,uuid,NO,Unique token for idempotent commit
+pms_staged_mutations,action_id,text,NO,
+pms_staged_mutations,user_id,uuid,NO,
+pms_staged_mutations,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_staged_mutations,entity_id,uuid,YES,
+pms_staged_mutations,entity_type,text,YES,
+pms_staged_mutations,preview_hash,text,NO,SHA256 of payload for validation at commit time
+pms_staged_mutations,payload_snapshot,jsonb,NO,
+pms_staged_mutations,proposed_payload,jsonb,NO,
+pms_staged_mutations,unresolved_fields,text[],YES,
+pms_staged_mutations,warnings,text[],YES,
+pms_staged_mutations,requires_signature,boolean,NO,
+pms_staged_mutations,signature_role,text,YES,
+pms_staged_mutations,expires_at,timestamptz,NO,Token expiry time (default: 15 minutes from creati
+pms_staged_mutations,consumed_at,timestamptz,YES,
+pms_staged_mutations,created_at,timestamptz,NO,
+pms_health_checks,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_health_checks,yacht_id,uuid,NO,
+pms_health_checks,lens_id,text,NO,"Lens identifier (e.g., faults, certificates, equip"
+pms_health_checks,status,text,NO,"Overall health status: healthy (all green), degrad"
+pms_health_checks,p95_latency_ms,integer,YES,95th percentile latency for requests in this check
+pms_health_checks,error_rate_percent,numeric,YES,Percentage of requests that returned 4xx/5xx
+pms_health_checks,sample_size,integer,YES,Number of requests tested in this check
+pms_health_checks,observed_at,timestamptz,NO,
+pms_health_checks,notes,jsonb,YES,"Detailed check results (endpoint statuses, feature"
+navigation_contexts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+navigation_contexts,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+navigation_contexts,created_by_user_id,uuid,NO,
+navigation_contexts,created_at,timestamptz,NO,
+navigation_contexts,ended_at,timestamptz,YES,
+navigation_contexts,active_anchor_type,text,NO,Type of artifact currently anchoring the situation
+navigation_contexts,active_anchor_id,uuid,NO,
+navigation_contexts,extracted_entities,jsonb,NO,Deterministic entities extracted from anchor. NO A
+navigation_contexts,temporal_bias,text,NO,
+email_threads,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+email_threads,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+email_threads,provider_conversation_id,text,NO,
+email_threads,latest_subject,text,YES,
+email_threads,message_count,integer,NO,Total messages in thread (including deleted)
+email_threads,has_attachments,boolean,NO,Whether any message in thread has attachments
+email_threads,participant_hashes,text[],YES,
+email_threads,source,text,NO,
+email_threads,first_message_at,timestamptz,YES,
+email_threads,last_activity_at,timestamptz,YES,Most recent message timestamp in thread
+email_threads,last_inbound_at,timestamptz,YES,
+email_threads,last_outbound_at,timestamptz,YES,
+email_threads,created_at,timestamptz,NO,
+email_threads,updated_at,timestamptz,NO,
+email_threads,extracted_tokens,jsonb,YES,
+email_threads,suggestions_generated_at,timestamptz,YES,
+email_threads,thread_embedding,public.vector(1536),YES,
+email_threads,active_message_count,integer,YES,Active (non-deleted) messages in thread
+alias_documents,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_documents,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_documents,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+alias_documents,alias,text,NO,
+alias_documents,alias_type,text,YES,
+alias_documents,confidence,double precision,YES,
+alias_documents,created_at,timestamptz,YES,
+chat_agent_configs,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+chat_agent_configs,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+chat_agent_configs,name,text,NO,
+chat_agent_configs,agent_secret_hash,text,NO,bcrypt hash of agent secret - used for HMAC verifi
+chat_agent_configs,device_info,jsonb,YES,"Device metadata: OS, version, IP, hardware specs"
+chat_agent_configs,last_seen_at,timestamptz,YES,
+chat_agent_configs,is_active,boolean,YES,
+chat_agent_configs,metadata,jsonb,YES,
+chat_agent_configs,created_at,timestamptz,NO,
+chat_agent_configs,updated_at,timestamptz,NO,
+pms_faults,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_faults,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_faults,equipment_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_faults,fault_code,text,YES,"OEM fault code (e.g., E047, SPN 123)"
+pms_faults,title,text,NO,
+pms_faults,description,text,YES,
+pms_faults,severity,public.fault_severity,NO,
+pms_faults,detected_at,timestamptz,NO,
+pms_faults,resolved_at,timestamptz,YES,
+pms_faults,resolved_by,uuid,YES,
+pms_faults,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_faults,metadata,jsonb,YES,
+pms_faults,created_at,timestamptz,NO,
+pms_faults,updated_by,uuid,YES,
+pms_faults,updated_at,timestamptz,YES,
+pms_faults,deleted_at,timestamptz,YES,
+pms_faults,deleted_by,uuid,YES,
+pms_faults,deletion_reason,text,YES,
+pms_faults,status,text,YES,
+pms_faults,related_text,text,YES,Surface facts for Show Related: title | descriptio
+pms_checklists,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_checklists,yacht_id,uuid,NO,
+pms_checklists,name,varchar,NO,
+pms_checklists,description,text,YES,
+pms_checklists,checklist_type,varchar,NO,
+pms_checklists,equipment_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_equipment.id`."
+pms_checklists,work_order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_work_orders.id"
+pms_checklists,status,varchar,NO,
+pms_checklists,is_template,boolean,NO,
+pms_checklists,total_items,integer,YES,
+pms_checklists,completed_items,integer,YES,
+pms_checklists,metadata,jsonb,YES,
+pms_checklists,created_at,timestamptz,NO,
+pms_checklists,created_by,uuid,YES,
+pms_checklists,updated_at,timestamptz,YES,
+pms_checklists,updated_by,uuid,YES,
+pms_checklists,deleted_at,timestamptz,YES,
+pms_checklists,deleted_by,uuid,YES,
+pms_checklists,deletion_reason,text,YES,
+pms_hours_of_rest,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_hours_of_rest,yacht_id,uuid,NO,
+pms_hours_of_rest,user_id,uuid,NO,
+pms_hours_of_rest,record_date,date,NO,
+pms_hours_of_rest,rest_periods,jsonb,NO,
+pms_hours_of_rest,total_rest_hours,numeric,NO,
+pms_hours_of_rest,total_work_hours,numeric,NO,
+pms_hours_of_rest,is_daily_compliant,boolean,NO,
+pms_hours_of_rest,daily_compliance_notes,text,YES,
+pms_hours_of_rest,weekly_rest_hours,numeric,NO,
+pms_hours_of_rest,is_weekly_compliant,boolean,NO,
+pms_hours_of_rest,weekly_compliance_notes,text,YES,
+pms_hours_of_rest,is_compliant,boolean,NO,
+pms_hours_of_rest,status,text,NO,
+pms_hours_of_rest,submitted_at,timestamptz,YES,
+pms_hours_of_rest,approved_by,uuid,YES,
+pms_hours_of_rest,approved_at,timestamptz,YES,
+pms_hours_of_rest,location,text,YES,
+pms_hours_of_rest,voyage_type,text,YES,
+pms_hours_of_rest,has_exception,boolean,NO,
+pms_hours_of_rest,exception_reason,text,YES,
+pms_hours_of_rest,exception_approved_by,uuid,YES,
+pms_hours_of_rest,exception_approved_at,timestamptz,YES,
+pms_hours_of_rest,signature,jsonb,YES,
+pms_hours_of_rest,metadata,jsonb,YES,
+pms_hours_of_rest,created_at,timestamptz,NO,
+pms_hours_of_rest,created_by,uuid,YES,
+pms_hours_of_rest,updated_at,timestamptz,NO,
+pms_hours_of_rest,updated_by,uuid,YES,
+alias_parts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+alias_parts,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+alias_parts,part_id,uuid,NO,"Note:
+This is a Foreign Key to `pms_parts.id`.<fk "
+alias_parts,alias,text,NO,
+alias_parts,alias_type,text,YES,
+alias_parts,confidence,numeric,YES,
+alias_parts,created_at,timestamptz,YES,
+alias_parts,source,text,YES,
+alias_parts,candidate_id,uuid,YES,
+alias_parts,master_candidate_id,uuid,YES,
+alias_parts,deployed_at,timestamptz,YES,
+situation_detections,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+situation_detections,yacht_id,uuid,NO,
+situation_detections,user_id,uuid,YES,
+situation_detections,situation_type,text,NO,
+situation_detections,severity,text,NO,
+situation_detections,label,text,NO,
+situation_detections,context,text,YES,
+situation_detections,evidence,jsonb,YES,
+situation_detections,recommendations,jsonb,YES,
+situation_detections,search_query_id,uuid,YES,
+situation_detections,acknowledged,boolean,YES,
+situation_detections,acknowledged_at,timestamptz,YES,
+situation_detections,acknowledged_by,uuid,YES,
+situation_detections,created_at,timestamptz,NO,
+pms_service_contracts,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_service_contracts,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_service_contracts,contract_name,text,NO,
+pms_service_contracts,vendor_name,text,NO,
+pms_service_contracts,vendor_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_suppliers.id`."
+pms_service_contracts,contract_type,text,YES,
+pms_service_contracts,contract_number,text,YES,
+pms_service_contracts,start_date,date,YES,
+pms_service_contracts,end_date,date,YES,
+pms_service_contracts,value,numeric,YES,
+pms_service_contracts,currency,text,YES,
+pms_service_contracts,coverage_details,text,YES,
+pms_service_contracts,equipment_ids,uuid[],YES,
+pms_service_contracts,document_id,uuid,YES,"Note:
+This is a Foreign Key to `doc_metadata.id`.<"
+pms_service_contracts,status,text,YES,
+pms_service_contracts,auto_renew,boolean,YES,
+pms_service_contracts,renewal_notice_days,integer,YES,
+pms_service_contracts,claims_count,integer,YES,
+pms_service_contracts,notes,text,YES,
+pms_service_contracts,metadata,jsonb,YES,
+pms_service_contracts,created_at,timestamptz,NO,
+pms_service_contracts,updated_at,timestamptz,NO,
+pms_service_contracts,created_by,uuid,YES,
+yacht_operational_context,yacht_id,uuid,NO,"Note:
+This is a Primary Key.<pk/>
+This is a Foreig"
+yacht_operational_context,current_status,text,NO,
+yacht_operational_context,next_event_type,text,YES,Type of next critical event affecting urgency of i
+yacht_operational_context,next_event_at,timestamptz,YES,When the next critical event starts
+yacht_operational_context,next_event_name,text,YES,
+yacht_operational_context,hot_work_permitted,boolean,YES,
+yacht_operational_context,guests_on_board,boolean,YES,
+yacht_operational_context,updated_at,timestamptz,NO,
+yacht_operational_context,updated_by,uuid,YES,
+pms_purchase_orders,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_purchase_orders,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_purchase_orders,supplier_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_suppliers.id`."
+pms_purchase_orders,po_number,text,YES,
+pms_purchase_orders,status,text,YES,
+pms_purchase_orders,ordered_at,timestamptz,YES,
+pms_purchase_orders,received_at,timestamptz,YES,
+pms_purchase_orders,currency,text,YES,
+pms_purchase_orders,metadata,jsonb,YES,
+pms_purchase_orders,created_at,timestamptz,NO,
+pms_purchase_orders,updated_at,timestamptz,NO,
+pms_purchase_orders,approved_by,uuid,YES,User ID who approved the purchase order (HOD)
+pms_purchase_orders,approved_at,timestamptz,YES,Timestamp when PO was approved
+pms_purchase_orders,approval_notes,text,YES,
+pms_purchase_orders,received_by,uuid,YES,User ID who committed the receiving (or logged del
+pms_purchase_orders,receiving_notes,text,YES,
+pms_purchase_orders,ordered_by,uuid,YES,User ID who placed the order with supplier
+pms_receiving_sessions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+pms_receiving_sessions,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+pms_receiving_sessions,session_number,text,NO,
+pms_receiving_sessions,status,text,NO,
+pms_receiving_sessions,order_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_orders.id`.<fk"
+pms_receiving_sessions,order_matched_automatically,boolean,YES,
+pms_receiving_sessions,session_type,text,NO,
+pms_receiving_sessions,supplier_name,text,YES,
+pms_receiving_sessions,tracking_number,text,YES,
+pms_receiving_sessions,expected_items_count,integer,YES,
+pms_receiving_sessions,extraction_completed_at,timestamptz,YES,
+pms_receiving_sessions,reconciliation_completed_at,timestamptz,YES,
+pms_receiving_sessions,verification_completed_at,timestamptz,YES,
+pms_receiving_sessions,committed_at,timestamptz,YES,
+pms_receiving_sessions,cancelled_at,timestamptz,YES,
+pms_receiving_sessions,received_to_inventory_count,integer,YES,
+pms_receiving_sessions,installed_immediately_count,integer,YES,
+pms_receiving_sessions,discrepancy_count,integer,YES,
+pms_receiving_sessions,unresolved_lines_count,integer,YES,
+pms_receiving_sessions,receiving_event_id,uuid,YES,"Note:
+This is a Foreign Key to `pms_receiving_even"
+pms_receiving_sessions,created_by,uuid,NO,
+pms_receiving_sessions,created_at,timestamptz,NO,
+pms_receiving_sessions,committed_by,uuid,YES,
+pms_receiving_sessions,cancelled_by,uuid,YES,
+pms_receiving_sessions,cancellation_reason,text,YES,
+pms_receiving_sessions,metadata,jsonb,YES,
+pms_receiving_sessions,updated_at,timestamptz,NO,
+handovers,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+handovers,yacht_id,uuid,NO,"Note:
+This is a Foreign Key to `yacht_registry.id`"
+handovers,title,varchar,YES,
+handovers,description,text,YES,
+handovers,status,varchar,NO,
+handovers,from_user_id,uuid,YES,"Note:
+This is a Foreign Key to `auth_users_profile"
+handovers,to_user_id,uuid,YES,"Note:
+This is a Foreign Key to `auth_users_profile"
+handovers,shift_date,date,YES,
+handovers,shift_type,varchar,YES,
+handovers,started_at,timestamptz,YES,
+handovers,completed_at,timestamptz,YES,
+handovers,approved_by,uuid,YES,"Note:
+This is a Foreign Key to `auth_users_profile"
+handovers,approved_at,timestamptz,YES,
+handovers,approval_notes,text,YES,
+handovers,metadata,jsonb,YES,
+handovers,created_at,timestamptz,NO,
+handovers,created_by,uuid,NO,"Note:
+This is a Foreign Key to `auth_users_profile"
+handovers,updated_at,timestamptz,YES,
+handovers,updated_by,uuid,YES,
+handovers,deleted_at,timestamptz,YES,
+handovers,deleted_by,uuid,YES,
+handovers,deletion_reason,text,YES,
+action_executions,id,uuid,NO,"Note:
+This is a Primary Key.<pk/>"
+action_executions,yacht_id,uuid,NO,
+action_executions,user_id,uuid,NO,
+action_executions,action_name,text,NO,
+action_executions,entity_type,text,NO,
+action_executions,entity_id,uuid,YES,
+action_executions,params,jsonb,YES,
+action_executions,result,jsonb,YES,
+action_executions,success,boolean,NO,
+action_executions,error_code,text,YES,
+action_executions,error_message,text,YES,
+action_executions,duration_ms,integer,YES,
+action_executions,created_at,timestamptz,NO,

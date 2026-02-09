@@ -1,0 +1,196 @@
+{
+  "test_run_id": "20260202_151202",
+  "start_time": "2026-02-02T15:12:02.829046",
+  "scope": "Crew Lens Hours of Rest - RLS Security",
+  "tests": [
+    {
+      "test_name": "crew_lens_action_registry",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.829352",
+      "details": {
+        "missing_actions": [
+          "get_hours_of_rest",
+          "get_monthly_signoff",
+          "list_monthly_signoffs",
+          "list_crew_templates",
+          "list_crew_warnings",
+          "upsert_hours_of_rest",
+          "create_monthly_signoff",
+          "sign_monthly_signoff",
+          "create_crew_template",
+          "apply_crew_template",
+          "acknowledge_warning",
+          "dismiss_warning"
+        ],
+        "security_violation": "Missing actions: ['get_hours_of_rest', 'get_monthly_signoff', 'list_monthly_signoffs', 'list_crew_templates', 'list_crew_warnings', 'upsert_hours_of_rest', 'create_monthly_signoff', 'sign_monthly_signoff', 'create_crew_template', 'apply_crew_template', 'acknowledge_warning', 'dismiss_warning']"
+      }
+    },
+    {
+      "test_name": "crew_cannot_view_other_crew",
+      "passed": true,
+      "timestamp": "2026-02-02T15:12:02.829494",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "crew_warning_restrictions",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.829616",
+      "details": {
+        "failures": [
+          "crew cannot acknowledge warnings",
+          "deckhand cannot acknowledge warnings",
+          "steward cannot acknowledge warnings",
+          "cook cannot acknowledge warnings"
+        ],
+        "security_violation": "Permission errors: ['crew cannot acknowledge warnings', 'deckhand cannot acknowledge warnings', 'steward cannot acknowledge warnings', 'cook cannot acknowledge warnings']"
+      }
+    },
+    {
+      "test_name": "crew_create_restrictions",
+      "passed": true,
+      "timestamp": "2026-02-02T15:12:02.829724",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "hod_department_isolation",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.829912",
+      "details": {
+        "violations": [
+          "chief_engineer cannot list warnings",
+          "chief_officer cannot list warnings",
+          "chief_steward cannot list warnings",
+          "eto cannot list warnings",
+          "purser cannot list warnings",
+          "chief_engineer cannot dismiss warnings",
+          "chief_officer cannot dismiss warnings",
+          "chief_steward cannot dismiss warnings",
+          "eto cannot dismiss warnings",
+          "purser cannot dismiss warnings"
+        ],
+        "security_violation": "HoD permission errors: ['chief_engineer cannot list warnings', 'chief_officer cannot list warnings', 'chief_steward cannot list warnings', 'eto cannot list warnings', 'purser cannot list warnings', 'chief_engineer cannot dismiss warnings', 'chief_officer cannot dismiss warnings', 'chief_steward cannot dismiss warnings', 'eto cannot dismiss warnings', 'purser cannot dismiss warnings']"
+      }
+    },
+    {
+      "test_name": "hod_cross_department_denied",
+      "passed": true,
+      "timestamp": "2026-02-02T15:12:02.830058",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "hod_signoff_permissions",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.830225",
+      "details": {
+        "failures": [
+          "chief_engineer cannot sign sign-offs",
+          "chief_officer cannot sign sign-offs",
+          "chief_steward cannot sign sign-offs",
+          "Missing signature requirement"
+        ],
+        "security_violation": "Sign-off permission errors: ['chief_engineer cannot sign sign-offs', 'chief_officer cannot sign sign-offs', 'chief_steward cannot sign sign-offs', 'Missing signature requirement']"
+      }
+    },
+    {
+      "test_name": "captain_full_access",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.830379",
+      "details": {
+        "failures": [
+          "captain denied get_hours_of_rest",
+          "captain denied list_crew_warnings",
+          "captain denied dismiss_warning",
+          "captain denied sign_monthly_signoff",
+          "captain denied create_crew_template",
+          "manager denied get_hours_of_rest",
+          "manager denied list_crew_warnings",
+          "manager denied dismiss_warning",
+          "manager denied sign_monthly_signoff",
+          "manager denied create_crew_template"
+        ],
+        "security_violation": "Captain access errors: ['captain denied get_hours_of_rest', 'captain denied list_crew_warnings', 'captain denied dismiss_warning', 'captain denied sign_monthly_signoff', 'captain denied create_crew_template', 'manager denied get_hours_of_rest', 'manager denied list_crew_warnings', 'manager denied dismiss_warning', 'manager denied sign_monthly_signoff', 'manager denied create_crew_template']"
+      }
+    },
+    {
+      "test_name": "captain_signoff_all",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.830520",
+      "details": {
+        "violations": [
+          "Captain cannot sign sign-offs",
+          "Missing signature requirement"
+        ],
+        "security_violation": "Captain sign-off restriction"
+      }
+    },
+    {
+      "test_name": "cross_yacht_isolation",
+      "passed": true,
+      "timestamp": "2026-02-02T15:12:02.830638",
+      "details": {
+        "violations": [],
+        "security_violation": null
+      }
+    },
+    {
+      "test_name": "signature_requirements",
+      "passed": false,
+      "timestamp": "2026-02-02T15:12:02.830738",
+      "details": {
+        "failures": [
+          "sign_monthly_signoff should require signature"
+        ],
+        "security_violation": "Signature requirement errors: ['sign_monthly_signoff should require signature']"
+      }
+    }
+  ],
+  "passed": 4,
+  "failed": 7,
+  "security_violations": [
+    {
+      "test": "crew_lens_action_registry",
+      "violation": "Missing actions: ['get_hours_of_rest', 'get_monthly_signoff', 'list_monthly_signoffs', 'list_crew_templates', 'list_crew_warnings', 'upsert_hours_of_rest', 'create_monthly_signoff', 'sign_monthly_signoff', 'create_crew_template', 'apply_crew_template', 'acknowledge_warning', 'dismiss_warning']",
+      "timestamp": "2026-02-02T15:12:02.829356"
+    },
+    {
+      "test": "crew_warning_restrictions",
+      "violation": "Permission errors: ['crew cannot acknowledge warnings', 'deckhand cannot acknowledge warnings', 'steward cannot acknowledge warnings', 'cook cannot acknowledge warnings']",
+      "timestamp": "2026-02-02T15:12:02.829618"
+    },
+    {
+      "test": "hod_department_isolation",
+      "violation": "HoD permission errors: ['chief_engineer cannot list warnings', 'chief_officer cannot list warnings', 'chief_steward cannot list warnings', 'eto cannot list warnings', 'purser cannot list warnings', 'chief_engineer cannot dismiss warnings', 'chief_officer cannot dismiss warnings', 'chief_steward cannot dismiss warnings', 'eto cannot dismiss warnings', 'purser cannot dismiss warnings']",
+      "timestamp": "2026-02-02T15:12:02.829915"
+    },
+    {
+      "test": "hod_signoff_permissions",
+      "violation": "Sign-off permission errors: ['chief_engineer cannot sign sign-offs', 'chief_officer cannot sign sign-offs', 'chief_steward cannot sign sign-offs', 'Missing signature requirement']",
+      "timestamp": "2026-02-02T15:12:02.830228"
+    },
+    {
+      "test": "captain_full_access",
+      "violation": "Captain access errors: ['captain denied get_hours_of_rest', 'captain denied list_crew_warnings', 'captain denied dismiss_warning', 'captain denied sign_monthly_signoff', 'captain denied create_crew_template', 'manager denied get_hours_of_rest', 'manager denied list_crew_warnings', 'manager denied dismiss_warning', 'manager denied sign_monthly_signoff', 'manager denied create_crew_template']",
+      "timestamp": "2026-02-02T15:12:02.830381"
+    },
+    {
+      "test": "captain_signoff_all",
+      "violation": "Captain sign-off restriction",
+      "timestamp": "2026-02-02T15:12:02.830522"
+    },
+    {
+      "test": "signature_requirements",
+      "violation": "Signature requirement errors: ['sign_monthly_signoff should require signature']",
+      "timestamp": "2026-02-02T15:12:02.830740"
+    }
+  ],
+  "end_time": "2026-02-02T15:12:02.830756"
+}

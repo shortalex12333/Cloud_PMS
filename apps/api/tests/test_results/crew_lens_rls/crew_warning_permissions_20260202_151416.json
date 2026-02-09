@@ -1,0 +1,11 @@
+{
+  "crew_roles": [
+    "crew",
+    "deckhand",
+    "steward",
+    "cook"
+  ],
+  "dismiss_action": "DENY",
+  "acknowledge_action": "ALLOW",
+  "failures": []
+}

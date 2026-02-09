@@ -1,0 +1,12 @@
+{
+  "test_run_id": "20260202_140330",
+  "timestamp": "2026-02-02T14:03:33.384600",
+  "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598",
+  "categories": {
+    "rbac": "Role-Based Access Control",
+    "yacht_isolation": "Cross-Yacht Isolation",
+    "field_classification": "Field Classification"
+  },
+  "critical_findings": [],
+  "recommendations": []
+}

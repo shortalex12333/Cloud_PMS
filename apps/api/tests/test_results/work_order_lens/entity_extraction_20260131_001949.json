@@ -1,0 +1,305 @@
+[
+  {
+    "query": "WO-12345",
+    "category": "exact_wo_number",
+    "entities": [
+      {
+        "type": "PART_NUMBER",
+        "value": "WO-12345",
+        "confidence": 0.8
+      }
+    ],
+    "entity_types": [
+      "PART_NUMBER"
+    ],
+    "wo_equipment_count": 0,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "work order 98765",
+    "category": "natural_wo_number",
+    "entities": [
+      {
+        "type": "PART_NUMBER",
+        "value": "order 98765",
+        "confidence": 0.8
+      },
+      {
+        "type": "SHOPPING_LIST_ITEM",
+        "value": "shopping list",
+        "confidence": 0.75,
+        "source": "shopping_list_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "PART_NUMBER",
+      "SHOPPING_LIST_ITEM"
+    ],
+    "wo_equipment_count": 0,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "generator",
+    "category": "equipment_single_word",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Generator",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "EQUIPMENT_NAME",
+      "WORK_ORDER_EQUIPMENT"
+    ],
+    "wo_equipment_count": 1,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "port generator maintenance",
+    "category": "equipment_compound",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Generator",
+        "confidence": 0.8
+      },
+      {
+        "type": "ACTION",
+        "value": "maintenance",
+        "confidence": 0.8
+      },
+      {
+        "type": "LOCATION",
+        "value": "Port",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      },
+      {
+        "type": "WORK_ORDER_TITLE",
+        "value": "maintenance",
+        "confidence": 0.68,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "EQUIPMENT_NAME",
+      "ACTION",
+      "LOCATION",
+      "WORK_ORDER_EQUIPMENT",
+      "WORK_ORDER_TITLE"
+    ],
+    "wo_equipment_count": 1,
+    "wo_title_count": 1,
+    "success": true
+  },
+  {
+    "query": "oil change",
+    "category": "maintenance_action",
+    "entities": [
+      {
+        "type": "SYSTEM_NAME",
+        "value": "Oil",
+        "confidence": 0.8
+      }
+    ],
+    "entity_types": [
+      "SYSTEM_NAME"
+    ],
+    "wo_equipment_count": 0,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "routine maintenance checklist",
+    "category": "maintenance_with_descriptor",
+    "entities": [
+      {
+        "type": "ACTION",
+        "value": "maintenance",
+        "confidence": 0.8
+      },
+      {
+        "type": "DOCUMENT_QUERY",
+        "value": "checklist",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_TITLE",
+        "value": "maintenance",
+        "confidence": 0.68,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "ACTION",
+      "DOCUMENT_QUERY",
+      "WORK_ORDER_TITLE"
+    ],
+    "wo_equipment_count": 0,
+    "wo_title_count": 1,
+    "success": true
+  },
+  {
+    "query": "show me work order from yesterday about generator leak",
+    "category": "chaotic_natural_language",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Generator",
+        "confidence": 0.8
+      },
+      {
+        "type": "ACTION",
+        "value": "order",
+        "confidence": 0.8
+      },
+      {
+        "type": "TIME_REF",
+        "value": "yesterday",
+        "confidence": 0.8
+      },
+      {
+        "type": "SYMPTOM",
+        "value": "leak",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      },
+      {
+        "type": "REQUESTED_PART",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "shopping_list_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "EQUIPMENT_NAME",
+      "ACTION",
+      "TIME_REF",
+      "SYMPTOM",
+      "WORK_ORDER_EQUIPMENT",
+      "REQUESTED_PART"
+    ],
+    "wo_equipment_count": 1,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "genrator oil chnge scheduled today",
+    "category": "misspelled_chaos",
+    "entities": [
+      {
+        "type": "SYMPTOM",
+        "value": "scheduled",
+        "confidence": 0.8
+      },
+      {
+        "type": "TIME_REF",
+        "value": "today",
+        "confidence": 0.8
+      },
+      {
+        "type": "SYSTEM_NAME",
+        "value": "Oil",
+        "confidence": 0.8
+      }
+    ],
+    "entity_types": [
+      "SYMPTOM",
+      "TIME_REF",
+      "SYSTEM_NAME"
+    ],
+    "wo_equipment_count": 0,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "maintenance",
+    "category": "vague_single_word",
+    "entities": [
+      {
+        "type": "ACTION",
+        "value": "maintenance",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_TITLE",
+        "value": "maintenance",
+        "confidence": 0.68,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "ACTION",
+      "WORK_ORDER_TITLE"
+    ],
+    "wo_equipment_count": 0,
+    "wo_title_count": 1,
+    "success": true
+  },
+  {
+    "query": "stuff that needs fixing",
+    "category": "extremely_vague",
+    "entities": [],
+    "entity_types": [],
+    "wo_equipment_count": 0,
+    "wo_title_count": 0,
+    "success": true
+  },
+  {
+    "query": "urgent but not critical generator service",
+    "category": "contradictory_priority",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Generator",
+        "confidence": 0.8
+      },
+      {
+        "type": "ACTION",
+        "value": "do not service",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      },
+      {
+        "type": "REQUESTED_PART",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "shopping_list_lens_transformation"
+      }
+    ],
+    "entity_types": [
+      "EQUIPMENT_NAME",
+      "ACTION",
+      "WORK_ORDER_EQUIPMENT",
+      "REQUESTED_PART"
+    ],
+    "wo_equipment_count": 1,
+    "wo_title_count": 0,
+    "success": true
+  }
+]

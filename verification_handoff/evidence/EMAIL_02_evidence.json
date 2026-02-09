@@ -1,0 +1,25 @@
+{
+  "test": "EMAIL_02",
+  "status": "FAIL",
+  "timestamp": "2026-02-05T19:44:30.628Z",
+  "steps": [
+    {
+      "step": "login",
+      "status": "success"
+    },
+    {
+      "step": "find_email_toggle",
+      "status": "success"
+    },
+    {
+      "step": "click_email_toggle",
+      "status": "success"
+    },
+    {
+      "step": "check_overlay",
+      "status": "FAIL"
+    }
+  ],
+  "emailToggleFound": true,
+  "overlayVisible": false
+}

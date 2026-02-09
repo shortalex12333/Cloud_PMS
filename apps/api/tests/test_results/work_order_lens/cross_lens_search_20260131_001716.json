@@ -1,0 +1,92 @@
+[
+  {
+    "query": "generator",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Generator",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Generator",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "capabilities_executed": [
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "has_equipment": true,
+    "has_work_order": true,
+    "cross_lens_success": true,
+    "results_by_capability": {
+      "equipment_by_name_or_model": 20,
+      "work_order_by_id": 20
+    },
+    "success": true
+  },
+  {
+    "query": "port engine",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Engine",
+        "confidence": 0.8
+      },
+      {
+        "type": "LOCATION",
+        "value": "Port",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Engine",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "capabilities_executed": [
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "has_equipment": true,
+    "has_work_order": true,
+    "cross_lens_success": true,
+    "results_by_capability": {
+      "inventory_by_location": 0,
+      "equipment_by_name_or_model": 9,
+      "work_order_by_id": 20
+    },
+    "success": true
+  },
+  {
+    "query": "pump",
+    "entities": [
+      {
+        "type": "EQUIPMENT_NAME",
+        "value": "Pump",
+        "confidence": 0.8
+      },
+      {
+        "type": "WORK_ORDER_EQUIPMENT",
+        "value": "Pump",
+        "confidence": 0.7200000000000001,
+        "source": "work_order_lens_transformation"
+      }
+    ],
+    "capabilities_executed": [
+      "equipment_by_name_or_model",
+      "work_order_by_id"
+    ],
+    "has_equipment": true,
+    "has_work_order": true,
+    "cross_lens_success": true,
+    "results_by_capability": {
+      "equipment_by_name_or_model": 20,
+      "work_order_by_id": 6
+    },
+    "success": true
+  }
+]

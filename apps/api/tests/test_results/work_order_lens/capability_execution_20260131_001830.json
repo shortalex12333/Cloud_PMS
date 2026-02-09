@@ -1,0 +1,31 @@
+[
+  {
+    "query": "generator",
+    "category": "title_search",
+    "error": "'NormalizedResult' object has no attribute 'get'",
+    "success": false
+  },
+  {
+    "query": "oil change",
+    "category": "title_search_action",
+    "error": "'NormalizedResult' object has no attribute 'get'",
+    "success": false
+  },
+  {
+    "query": "WO-12345",
+    "category": "exact_wo_number",
+    "entity": {
+      "type": "WORK_ORDER_ID",
+      "value": "WO-12345",
+      "confidence": 0.9
+    },
+    "capabilities_executed": [
+      "work_order_by_id"
+    ],
+    "total_results": 0,
+    "execution_times_ms": {
+      "work_order_by_id": 68.25923919677734
+    },
+    "success": true
+  }
+]
