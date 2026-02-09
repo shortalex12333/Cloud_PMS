@@ -2071,8 +2071,12 @@ async def execute_action(
             user_role = user_context.get("role")
             if user_role == "crew":
                 # Get user's department from TENANT DB
-                user_dept_result = db_client.table("auth_users_profiles").select("department").eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
-                user_dept = user_dept_result.data.get("department") if user_dept_result.data else None
+                try:
+                    user_dept_result = db_client.table("auth_users_profiles").select("department").eq("id", user_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                    user_dept = user_dept_result.data.get("department") if user_dept_result.data else None
+                except Exception:
+                    # User doesn't have a profile record - no department
+                    user_dept = None
 
                 # Get work order department from payload
                 wo_dept = payload.get("department")
