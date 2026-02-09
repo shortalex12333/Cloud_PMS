@@ -212,9 +212,14 @@ async def orchestrated_search(
         # Extract primary domain from allowed_scopes
         primary_domain = result.classification.allowed_scopes[0] if result.classification.allowed_scopes else None
 
+        # Normalize domain: "inventory" → "parts", "part" → "parts"
+        normalized_domain = primary_domain
+        if primary_domain in ("inventory", "part"):
+            normalized_domain = "parts"
+
         # Build context metadata
         context_metadata = ContextMetadata(
-            domain=primary_domain,
+            domain=normalized_domain,  # Use normalized domain
             domain_confidence=0.9,  # High confidence from deterministic classification
             intent=result.intent_family or "READ",
             intent_confidence=0.95 if result.intent_family else 0.8,
@@ -225,11 +230,9 @@ async def orchestrated_search(
             },
         )
 
-        # Get action suggestions filtered by domain and role
-        # Normalize inventory → parts as per requirements
+        # Get action suggestions filtered by normalized domain and role
         action_suggestions = []
-        if primary_domain:
-            normalized_domain = "parts" if primary_domain == "inventory" else primary_domain
+        if normalized_domain:
             user_role = auth.get('role')
             if user_role:
                 action_suggestions = get_actions_for_domain(normalized_domain, user_role)
