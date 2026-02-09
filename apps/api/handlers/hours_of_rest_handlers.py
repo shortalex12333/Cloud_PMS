@@ -40,6 +40,33 @@ from actions.action_response_schema import (
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# HELPER: Write Audit Log
+# =============================================================================
+
+def _write_hor_audit_log(db, entry: Dict):
+    """
+    Write entry to pms_audit_log for HOR actions.
+
+    INVARIANT: signature is NEVER NULL - {} for non-signed, full payload for signed.
+    """
+    try:
+        audit_payload = {
+            "yacht_id": entry["yacht_id"],
+            "entity_type": entry.get("entity_type", "hours_of_rest"),
+            "entity_id": entry["entity_id"],
+            "action": entry["action"],
+            "user_id": entry["user_id"],
+            "old_values": entry.get("old_values"),
+            "new_values": entry.get("new_values"),
+            "signature": entry.get("signature", {}),  # Default to {} if not provided
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        db.table("pms_audit_log").insert(audit_payload).execute()
+    except Exception as e:
+        logger.error(f"Failed to write HOR audit log: {e}")
+
+
 class HoursOfRestHandlers:
     """
     Hours of Rest domain handlers (Crew Lens v3).
@@ -251,18 +278,30 @@ class HoursOfRestHandlers:
                 record_exists = False
 
             if record_exists and existing_id:
-                # Update existing record
+                # Update existing record - .select("*") required to return data
                 result = self.db.table("pms_hours_of_rest").update(upsert_data).eq(
                     "id", existing_id
-                ).execute()
+                ).select("*").execute()
                 record = result.data[0] if result.data else None
                 action_taken = "updated"
             else:
-                # Insert new record
+                # Insert new record - .select("*") required to return data
                 upsert_data["created_at"] = datetime.now(timezone.utc).isoformat()
-                result = self.db.table("pms_hours_of_rest").insert(upsert_data).execute()
+                result = self.db.table("pms_hours_of_rest").insert(upsert_data).select("*").execute()
                 record = result.data[0] if result.data else None
                 action_taken = "created"
+
+            # Write audit log
+            if record and record.get("id"):
+                _write_hor_audit_log(self.db, {
+                    "yacht_id": yacht_id,
+                    "entity_type": "hours_of_rest",
+                    "entity_id": str(record["id"]),
+                    "action": f"upsert_hours_of_rest:{action_taken}",
+                    "user_id": user_id,
+                    "new_values": {"record_date": record_date, "total_rest_hours": total_rest_hours},
+                    "signature": payload.get("signature", {}),  # {} for non-signed
+                })
 
             # Check for violations and create warnings
             warnings_created = []
@@ -535,8 +574,20 @@ class HoursOfRestHandlers:
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            result = self.db.table("pms_hor_monthly_signoffs").insert(insert_data).execute()
+            result = self.db.table("pms_hor_monthly_signoffs").insert(insert_data).select("*").execute()
             signoff = result.data[0] if result.data else None
+
+            # Write audit log
+            if signoff and signoff.get("id"):
+                _write_hor_audit_log(self.db, {
+                    "yacht_id": yacht_id,
+                    "entity_type": "monthly_signoff",
+                    "entity_id": str(signoff["id"]),
+                    "action": "create_monthly_signoff",
+                    "user_id": user_id,
+                    "new_values": {"month": month, "department": department, "status": "draft"},
+                    "signature": {},  # Not a signed action
+                })
 
             builder.set_data({
                 "signoff": signoff,
@@ -631,9 +682,22 @@ class HoursOfRestHandlers:
             # Update sign-off
             result = self.db.table("pms_hor_monthly_signoffs").update(update_data).eq(
                 "id", signoff_id
-            ).execute()
+            ).select("*").execute()
 
             updated_signoff = result.data[0] if result.data else None
+
+            # Write audit log with signature
+            if updated_signoff:
+                _write_hor_audit_log(self.db, {
+                    "yacht_id": yacht_id,
+                    "entity_type": "monthly_signoff",
+                    "entity_id": signoff_id,
+                    "action": f"sign_monthly_signoff:{signature_level}",
+                    "user_id": user_id,
+                    "old_values": {"status": signoff.get("status")},
+                    "new_values": {"status": update_data.get("status"), "signature_level": signature_level},
+                    "signature": signature_data,  # Actual signature data for signed action
+                })
 
             builder.set_data({
                 "signoff": updated_signoff,
@@ -782,8 +846,20 @@ class HoursOfRestHandlers:
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            result = self.db.table("pms_crew_normal_hours").insert(insert_data).execute()
+            result = self.db.table("pms_crew_normal_hours").insert(insert_data).select("*").execute()
             template = result.data[0] if result.data else None
+
+            # Write audit log
+            if template and template.get("id"):
+                _write_hor_audit_log(self.db, {
+                    "yacht_id": yacht_id,
+                    "entity_type": "crew_template",
+                    "entity_id": str(template["id"]),
+                    "action": "create_crew_template",
+                    "user_id": user_id,
+                    "new_values": {"schedule_name": schedule_name, "applies_to": applies_to},
+                    "signature": {},  # Not a signed action
+                })
 
             builder.set_data({
                 "template": template,
@@ -842,6 +918,17 @@ class HoursOfRestHandlers:
             # Count successes
             created_count = sum(1 for r in application_results if r.get("created"))
             skipped_count = len(application_results) - created_count
+
+            # Write audit log
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "crew_template",
+                "entity_id": template_id or "active_template",
+                "action": "apply_crew_template",
+                "user_id": user_id,
+                "new_values": {"week_start_date": week_start_date, "created": created_count, "skipped": skipped_count},
+                "signature": {},  # Not a signed action
+            })
 
             builder.set_data({
                 "application_results": application_results,
@@ -991,13 +1078,24 @@ class HoursOfRestHandlers:
 
             result = self.db.table("pms_crew_hours_warnings").update(update_data).eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).eq("user_id", user_id).execute()
+            ).eq("yacht_id", yacht_id).eq("user_id", user_id).select("*").execute()
 
             warning = result.data[0] if result.data else None
 
             if not warning:
                 builder.set_error("NOT_FOUND", f"Warning not found or not accessible: {warning_id}")
                 return builder.build()
+
+            # Write audit log
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "crew_warning",
+                "entity_id": warning_id,
+                "action": "acknowledge_warning",
+                "user_id": user_id,
+                "new_values": {"status": "acknowledged", "crew_reason": crew_reason},
+                "signature": {},  # Not a signed action
+            })
 
             builder.set_data({
                 "warning": warning,
@@ -1053,13 +1151,28 @@ class HoursOfRestHandlers:
 
             result = self.db.table("pms_crew_hours_warnings").update(update_data).eq(
                 "id", warning_id
-            ).eq("yacht_id", yacht_id).execute()
+            ).eq("yacht_id", yacht_id).select("*").execute()
 
             warning = result.data[0] if result.data else None
 
             if not warning:
                 builder.set_error("NOT_FOUND", f"Warning not found: {warning_id}")
                 return builder.build()
+
+            # Write audit log with justification
+            _write_hor_audit_log(self.db, {
+                "yacht_id": yacht_id,
+                "entity_type": "crew_warning",
+                "entity_id": warning_id,
+                "action": "dismiss_warning",
+                "user_id": user_id,
+                "new_values": {
+                    "status": "dismissed",
+                    "dismissed_by_role": dismissed_by_role,
+                    "hod_justification": hod_justification
+                },
+                "signature": {},  # Not a SIGNED action, but justification is recorded
+            })
 
             builder.set_data({
                 "warning": warning,
