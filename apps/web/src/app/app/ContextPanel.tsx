@@ -218,7 +218,8 @@ export default function ContextPanel() {
     <div
       className={cn(
         'absolute inset-y-0 right-0 w-[520px] bg-gray-900/95 border-l border-gray-700/50',
-        'transform transition-transform duration-300 ease-out z-20',
+        'flex flex-col',
+        'transform transition-transform duration-300 ease-out z-[10001]',
         'backdrop-blur-sm shadow-2xl',
         visible ? 'translate-x-0' : 'translate-x-full'
       )}
@@ -227,11 +228,11 @@ export default function ContextPanel() {
       data-entity-id={entityId}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
+      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-700/50">
         <div className="flex items-center gap-4">
           <button
             onClick={hideContext}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="relative z-[10002] p-2 hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Close context panel"
             data-testid="close-context-panel"
           >

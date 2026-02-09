@@ -750,7 +750,7 @@ export default function SpotlightSearch({
                       result={result}
                       isSelected={index === selectedIndex}
                       index={index}
-                      onClick={() => handleResultOpen(result)}
+                      onClick={() => handleResultSelect(result, index)}
                       onDoubleClick={() => handleResultOpen(result)}
                     />
                   ))}
