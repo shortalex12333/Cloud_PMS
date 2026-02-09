@@ -379,9 +379,28 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
     """
     async def _fn(**params):
         # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
+
+        # source_document_id is optional - if not provided, this is manual extraction
+        source_document_id = params.get("source_document_id")
+        request_context = params.get("request_context")
 
         # Use service role for database operations
         # RBAC is already enforced at the route level (p0_actions_routes.py)
@@ -391,15 +410,24 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
-        source_document_id = params["source_document_id"]
-        request_context = params.get("request_context")
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
 
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
-            "id, status"
-        ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "id, status"
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        except Exception as e:
+            logger.error(f"Database query error: {e}")
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to query receiving record"
+            }
 
         if not recv_result.data:
             return {
@@ -495,21 +523,25 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
 
         # Optional update fields
         vendor_name = params.get("vendor_name")
@@ -519,10 +551,32 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
         notes = params.get("notes")
         request_context = params.get("request_context")
 
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
+        try:
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create database client: {e}")
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
+
         # Get current receiving
-        recv_result = db.table("pms_receiving").select(
-            "id, vendor_name, vendor_reference, currency, status"
-        ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "id, vendor_name, vendor_reference, currency, status"
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        except Exception as e:
+            logger.error(f"Database query error: {e}")
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to query receiving record"
+            }
 
         if not recv_result.data:
             return {
@@ -563,13 +617,25 @@ def _update_receiving_fields_adapter(handlers: ReceivingHandlers):
 
         # Update receiving - wrap in try/catch to properly handle RLS denials
         try:
-            db.table("pms_receiving").update(update_payload).eq(
+            update_result = db.table("pms_receiving").update(update_payload).eq(
                 "id", receiving_id
-            ).select("*").execute()
+            ).eq("yacht_id", yacht_id).select("*").execute()
+
+            if not update_result.data or len(update_result.data) == 0:
+                logger.error(f"Update returned no data for receiving_id: {receiving_id}")
+                return {
+                    "status": "error",
+                    "error_code": "UPDATE_FAILED",
+                    "message": "Update operation completed but returned no data"
+                }
         except Exception as e:
             # Map database errors (including RLS denials) to proper error responses
             logger.error(f"Failed to update receiving fields: {e}", exc_info=True)
-            return map_postgrest_error(e, "UPDATE_FAILED")
+            return {
+                "status": "error",
+                "error_code": "UPDATE_FAILED",
+                "message": f"Failed to update receiving: {str(e)}"
+            }
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -615,21 +681,25 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
 
-        # Use service role for database operations
-        # RBAC is already enforced at the route level (p0_actions_routes.py)
-        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
-        try:
-            from handlers.db_client import get_service_db
-            db = get_service_db(yacht_id)
-        except Exception as e:
-            logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
 
         # Item fields
         part_id = params.get("part_id")
@@ -648,10 +718,32 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
                 "message": "Either part_id or description is required"
             }
 
+        # Use service role for database operations
+        # RBAC is already enforced at the route level (p0_actions_routes.py)
+        # RLS policies rely on auth_users_profiles which may not be synced from MASTER
+        try:
+            from handlers.db_client import get_service_db
+            db = get_service_db(yacht_id)
+        except Exception as e:
+            logger.error(f"Failed to create database client: {e}")
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
+
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
-            "id, status"
-        ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "id, status"
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        except Exception as e:
+            logger.error(f"Database query error: {e}")
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to query receiving record"
+            }
 
         if not recv_result.data:
             return {
@@ -683,7 +775,15 @@ def _add_receiving_item_adapter(handlers: ReceivingHandlers):
         }
 
         # Force PostgREST to return data (avoids 204 No Content)
-        item_result = db.table("pms_receiving_items").insert(item_payload).select("*").execute()
+        try:
+            item_result = db.table("pms_receiving_items").insert(item_payload).select("*").execute()
+        except Exception as e:
+            logger.error(f"Database insert error: {e}")
+            return {
+                "status": "error",
+                "error_code": "INSERT_FAILED",
+                "message": f"Failed to add receiving item: {str(e)}"
+            }
 
         if not item_result.data or len(item_result.data) == 0:
             return {
@@ -852,10 +952,37 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
     Storage path validation: {yacht_id}/receiving/{receiving_id}/{filename}
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
+
+        # Accept either document_id or document_url for flexibility
+        document_id = params.get("document_id") or params.get("document_url")
+        if not document_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "Either document_id or document_url is required"
+            }
+
+        comment = params.get("comment")
+        request_context = params.get("request_context")
 
         # Use service role for database operations
         # RBAC is already enforced at the route level (p0_actions_routes.py)
@@ -865,16 +992,24 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
-        document_id = params["document_id"]
-        comment = params.get("comment")
-        request_context = params.get("request_context")
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
 
         # Verify receiving exists
-        recv_result = db.table("pms_receiving").select(
-            "id, status"
-        ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        try:
+            recv_result = db.table("pms_receiving").select(
+                "id, status"
+            ).eq("id", receiving_id).eq("yacht_id", yacht_id).maybe_single().execute()
+        except Exception as e:
+            logger.error(f"Database query error: {e}")
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to query receiving record"
+            }
 
         if not recv_result.data:
             return {
@@ -908,7 +1043,15 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        doc_result = db.table("pms_receiving_documents").insert(doc_payload).select("*").execute()
+        try:
+            doc_result = db.table("pms_receiving_documents").insert(doc_payload).select("*").execute()
+        except Exception as e:
+            logger.error(f"Database insert error: {e}")
+            return {
+                "status": "error",
+                "error_code": "INSERT_FAILED",
+                "message": f"Failed to link invoice document: {str(e)}"
+            }
 
         if not doc_result.data or len(doc_result.data) == 0:
             return {

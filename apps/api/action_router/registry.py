@@ -1422,11 +1422,11 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/receiving/accept",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["captain", "manager"],
+        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
         required_fields=["yacht_id", "receiving_id"],
         domain="receiving",
         variant=ActionVariant.SIGNED,
-        signature_roles_required=["captain", "manager"],
+        signature_roles_required=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
         search_keywords=["accept", "approve", "sign", "finalize", "confirm"],
         prefill_endpoint="/v1/receiving/accept?mode=prepare",
         field_metadata=[
