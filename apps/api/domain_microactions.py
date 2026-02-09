@@ -175,7 +175,8 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
             side_effect='read_only',
             requires_confirm=False,
             prefill_fields=['part_id', 'part_number'],
-            allowed_roles=['crew', 'engineer', 'hod', 'captain', 'admin']
+            allowed_roles=['crew', 'deckhand', 'steward', 'chef', 'bosun', 'engineer', 'eto',
+                          'chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager']
         ),
         MicroactionDef(
             action='view_part_usage',
@@ -183,7 +184,7 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
             side_effect='read_only',
             requires_confirm=False,
             prefill_fields=['part_id'],
-            allowed_roles=['engineer', 'hod', 'captain', 'admin']
+            allowed_roles=['engineer', 'eto', 'chief_engineer', 'chief_officer', 'captain', 'manager']
         ),
     ],
 
