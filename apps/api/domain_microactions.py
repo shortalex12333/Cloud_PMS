@@ -194,6 +194,26 @@ DOMAIN_MICROACTIONS: Dict[tuple, List[MicroactionDef]] = {
             prefill_fields=['part_id'],
             allowed_roles=['engineer', 'eto', 'chief_engineer', 'chief_officer', 'captain', 'manager']
         ),
+        MicroactionDef(
+            action='check_stock_level',
+            label='Check Stock',
+            side_effect='read_only',
+            requires_confirm=False,
+            prefill_fields=['part_id'],
+            allowed_roles=['crew', 'deckhand', 'steward', 'chef', 'bosun', 'engineer', 'eto',
+                          'chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager']
+        ),
+    ],
+
+    ('parts', 'MUTATE'): [
+        MicroactionDef(
+            action='log_part_usage',
+            label='Log Usage',
+            side_effect='write',
+            requires_confirm=False,
+            prefill_fields=['part_id', 'part_number'],
+            allowed_roles=['engineer', 'eto', 'chief_engineer', 'chief_officer', 'captain', 'manager']
+        ),
     ],
 
     # =========================================================================
