@@ -1465,7 +1465,7 @@ class PartHandlers:
             timestamp_suffix = now.strftime("%Y%m%d_%H%M%S")
             safe_filename = file_name.replace(" ", "_")
             storage_path = f"{yacht_id}/parts/{part_id}/images/{timestamp_suffix}_{safe_filename}"
-            bucket = "pms-part-images"
+            bucket = "pms-part-photos"
 
             # Upload file directly to storage
             try:

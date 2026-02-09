@@ -51,6 +51,47 @@ function getPartActions(role: string): MicroAction[] {
   return actions;
 }
 
+/**
+ * Get available actions for receiving based on status and user role
+ * Mirrors backend receiving_handlers.py permissions (HOD+)
+ */
+function getReceivingActions(status: string, role: string): MicroAction[] {
+  const actions: MicroAction[] = [];
+
+  // Only HOD+ roles can interact with receivings
+  const hodPlusRoles = ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
+
+  if (!hodPlusRoles.includes(role)) {
+    return actions; // Empty for non-HOD roles
+  }
+
+  // All HOD+ can view history
+  actions.push('view_receiving_history' as MicroAction);
+
+  // Draft status: full edit capabilities
+  if (status === 'draft') {
+    actions.push('add_receiving_item' as MicroAction);
+    actions.push('attach_receiving_image_with_comment' as MicroAction);
+    actions.push('extract_receiving_candidates' as MicroAction);
+    actions.push('update_receiving' as MicroAction);
+    actions.push('accept_receiving' as MicroAction);
+    actions.push('reject_receiving' as MicroAction);
+  }
+
+  // In review: can accept or reject
+  if (status === 'in_review') {
+    actions.push('accept_receiving' as MicroAction);
+    actions.push('reject_receiving' as MicroAction);
+  }
+
+  // Accepted: can link to invoice, view history
+  if (status === 'accepted') {
+    actions.push('link_receiving_to_invoice' as MicroAction);
+  }
+
+  return actions;
+}
+
 export default function ContextPanel() {
   const { contextPanel, hideContext } = useSurface();
   const { user } = useAuth();
@@ -190,9 +231,19 @@ export default function ContextPanel() {
           notes: data.notes as string | undefined,
           received_by: data.received_by as string | undefined,
         };
+
+        // Get available actions based on status and role
+        const receivingActions = getReceivingActions(
+          receivingData.status,
+          user?.role || 'crew'
+        );
+
         return (
           <div data-testid="context-panel-receiving-card">
-            <ReceivingCard receiving={receivingData} />
+            <ReceivingCard
+              receiving={receivingData}
+              actions={receivingActions}
+            />
           </div>
         );
 
