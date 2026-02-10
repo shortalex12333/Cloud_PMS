@@ -97,7 +97,7 @@ class SurfaceContext:
 # Default scopes per surface state
 # These are the SAFE defaults when user doesn't specify domain
 SAFE_DEFAULT_SCOPES = {
-    SurfaceState.SEARCH: ["work_orders", "equipment", "faults", "documents", "parts"],
+    SurfaceState.SEARCH: ["work_orders", "equipment", "faults", "documents", "parts", "certificates", "checklists"],
     SurfaceState.EMAIL_INBOX: ["emails"],
     SurfaceState.EMAIL_OPEN: ["emails", "email_attachments"],
     SurfaceState.EMAIL_SEARCH: ["emails", "email_attachments"],

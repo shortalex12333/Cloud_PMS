@@ -162,6 +162,45 @@ class TermClassifier:
         'needs approval': ['shopping_list'],
         'need approval': ['shopping_list'],
         'awaiting approval': ['shopping_list'],
+        # Certificates
+        'certificate': ['certificates'],
+        'certificates': ['certificates'],
+        'cert': ['certificates'],
+        'certs': ['certificates'],
+        'expiry': ['certificates'],
+        'expiring': ['certificates'],
+        'renewal': ['certificates'],
+        # Hours of Rest
+        'hours of rest': ['hours_of_rest'],
+        'hor': ['hours_of_rest'],
+        'rest hours': ['hours_of_rest'],
+        'crew rest': ['hours_of_rest'],
+        'work hours': ['hours_of_rest'],
+        'mlc': ['hours_of_rest'],
+        # Receiving / Deliveries
+        'receiving': ['receiving'],
+        'delivery': ['receiving'],
+        'deliveries': ['receiving'],
+        'shipment': ['receiving'],
+        'shipments': ['receiving'],
+        'package': ['receiving'],
+        'packages': ['receiving'],
+        # Handover
+        'handover': ['handover'],
+        'handovers': ['handover'],
+        'hand over': ['handover'],
+        'shift handover': ['handover'],
+        # Checklist
+        'checklist': ['checklists'],
+        'checklists': ['checklists'],
+        'check list': ['checklists'],
+        # Purchase Orders
+        'purchase order': ['purchase_orders'],
+        'purchase orders': ['purchase_orders'],
+        'po': ['purchase_orders'],
+        'supplier': ['purchase_orders'],
+        'suppliers': ['purchase_orders'],
+        'vendor': ['purchase_orders'],
     }
 
     # Time keywords → days mapping
