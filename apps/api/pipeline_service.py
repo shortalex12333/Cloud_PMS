@@ -1048,6 +1048,64 @@ async def list_entity_types():
         logger.error(f"Failed to list entity types: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ============================================================================
+# ENTITY FETCHING ENDPOINT
+# ============================================================================
+
+@app.get("/v1/entity/receiving/{receiving_id}")
+async def get_receiving_entity(
+    receiving_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Fetch receiving by ID for entity viewer (DeepLinkHandler).
+
+    Returns receiving data with status field required for getReceivingActions().
+    """
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        # Get TENANT supabase client
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        # Fetch receiving from pms_receiving
+        response = supabase.table('pms_receiving') \
+            .select('*') \
+            .eq('id', receiving_id) \
+            .eq('yacht_id', yacht_id) \
+            .single() \
+            .execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Receiving not found")
+
+        data = response.data
+
+        # Return data compatible with ReceivingCard
+        return {
+            "id": data.get('id'),
+            "vendor_name": data.get('vendor_name'),
+            "vendor_reference": data.get('vendor_reference'),
+            "received_date": data.get('received_date'),
+            "status": data.get('status', 'draft'),  # CRITICAL: Required for getReceivingActions()
+            "total": data.get('total'),
+            "currency": data.get('currency'),
+            "notes": data.get('notes'),
+            "received_by": data.get('received_by'),
+            "created_at": data.get('created_at'),
+            "updated_at": data.get('updated_at'),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch receiving {receiving_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================================
 # DIRECT TABLE QUERY ENDPOINT
 # ============================================================================
