@@ -2218,6 +2218,17 @@ async def execute_action(
 
         # ===== EQUIPMENT STATUS ACTION (Cluster 03) =====
         elif action == "update_equipment_status":
+            # RBAC Check: update_equipment_status is HoD+ only (Security Fix 2026-02-10)
+            equipment_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
+            if user_role not in equipment_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {equipment_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": equipment_roles
+                }
+
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
@@ -2271,6 +2282,17 @@ async def execute_action(
 
         # ===== SHOPPING ITEM DELETE ACTION (Cluster 08) =====
         elif action == "delete_shopping_item":
+            # RBAC Check: delete_shopping_item is HoD+ only (Security Fix 2026-02-10)
+            delete_item_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
+            if user_role not in delete_item_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {delete_item_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": delete_item_roles
+                }
+
             import re
             tenant_alias = user_context.get("tenant_key_alias", "")
             db_client = get_tenant_supabase_client(tenant_alias)
@@ -2920,6 +2942,18 @@ async def execute_action(
             }
 
         elif action == "add_equipment_note":
+            # RBAC Check: add_equipment_note is all crew+ (Security Fix 2026-02-10)
+            # Allow crew to add notes but restrict modification
+            equipment_note_roles = ["crew", "chief_engineer", "chief_officer", "captain", "manager"]
+            if user_role not in equipment_note_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {equipment_note_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": equipment_note_roles
+                }
+
             # Add a note to equipment
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -3988,6 +4022,17 @@ async def execute_action(
         # =====================================================================
 
         elif action == "create_purchase_request":
+            # RBAC Check: create_purchase_request is HoD+ only (Security Fix 2026-02-10)
+            purchase_create_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
+            if user_role not in purchase_create_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {purchase_create_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": purchase_create_roles
+                }
+
             # Create a new purchase request
             from datetime import datetime, timezone
             import uuid as uuid_module
@@ -4080,6 +4125,17 @@ async def execute_action(
                 }
 
         elif action == "approve_purchase":
+            # RBAC Check: approve_purchase is captain/manager only (Security Fix 2026-02-10)
+            approve_roles = ["captain", "manager"]
+            if user_role not in approve_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {approve_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": approve_roles
+                }
+
             # Approve a purchase request
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
@@ -4254,6 +4310,17 @@ async def execute_action(
                 }
 
         elif action == "update_purchase_status":
+            # RBAC Check: update_purchase_status is HoD+ only (Security Fix 2026-02-10)
+            purchase_status_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
+            if user_role not in purchase_status_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {purchase_status_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": purchase_status_roles
+                }
+
             # Update purchase request status
             from datetime import datetime, timezone
             tenant_alias = user_context.get("tenant_key_alias", "")
