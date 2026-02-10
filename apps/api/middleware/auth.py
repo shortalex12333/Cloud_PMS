@@ -611,6 +611,14 @@ async def get_authenticated_user(
 
     token = authorization.split(' ', 1)[1]
 
+    # HARDENING: Explicitly reject empty/whitespace tokens
+    if not token or not token.strip():
+        raise HTTPException(status_code=401, detail='JWT token required')
+
+    # HARDENING: Reject suspiciously short tokens (JWT typically 100+ chars)
+    if len(token) < 20:
+        raise HTTPException(status_code=401, detail='Invalid JWT token format')
+
     # Verify JWT
     payload = decode_jwt(token)
     user_id = payload.get('sub')
