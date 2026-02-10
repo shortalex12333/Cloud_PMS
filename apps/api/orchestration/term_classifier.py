@@ -148,6 +148,20 @@ class TermClassifier:
         'manual': ['documents'],
         'manuals': ['documents'],
         'schematic': ['documents'],
+        # Shopping List keywords
+        'shopping list': ['shopping_list'],
+        'shopping': ['shopping_list'],
+        'requisition': ['shopping_list'],
+        'requisitions': ['shopping_list'],
+        'procurement': ['shopping_list'],
+        'candidate part': ['shopping_list'],
+        'candidate parts': ['shopping_list'],
+        'buy list': ['shopping_list'],
+        'purchase list': ['shopping_list'],
+        'pending approval': ['shopping_list'],
+        'needs approval': ['shopping_list'],
+        'need approval': ['shopping_list'],
+        'awaiting approval': ['shopping_list'],
     }
 
     # Time keywords → days mapping
@@ -319,7 +333,13 @@ class TermClassifier:
                     confidence=0.9,
                 ))
                 scopes.extend(scope_list)
-        return terms, list(set(scopes))
+        # Deduplicate while preserving order, with shopping_list prioritized
+        # when present (it indicates specific procurement intent)
+        unique_scopes = list(dict.fromkeys(scopes))
+        if 'shopping_list' in unique_scopes and unique_scopes[0] != 'shopping_list':
+            unique_scopes.remove('shopping_list')
+            unique_scopes.insert(0, 'shopping_list')
+        return terms, unique_scopes
 
     def _extract_time(self, query: str) -> Tuple[List[ClassifiedTerm], Optional[int]]:
         """Extract time bounds from query."""
