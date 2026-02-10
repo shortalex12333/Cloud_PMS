@@ -308,6 +308,18 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
 
   // DELETE (1) - Treated as UPDATE in practice
   delete_item: 'UPDATE',
+
+  // RECEIVING (10) - Inventory receiving workflow actions
+  create_receiving: 'CREATE',
+  view_receiving_history: 'VIEW',
+  add_receiving_item: 'CREATE',
+  adjust_receiving_item: 'UPDATE',
+  update_receiving: 'UPDATE',
+  attach_receiving_image_with_comment: 'CREATE',
+  extract_receiving_candidates: 'RAG',
+  accept_receiving: 'UPDATE',
+  reject_receiving: 'UPDATE',
+  link_receiving_to_invoice: 'LINKING',
 };
 
 // ============================================================================
