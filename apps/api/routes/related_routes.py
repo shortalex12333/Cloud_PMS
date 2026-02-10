@@ -31,6 +31,7 @@ from supabase import create_client, Client
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
+from pipeline_service import get_tenant_client
 
 # Related handlers
 try:
@@ -160,7 +161,7 @@ async def view_related_entities(
         raise HTTPException(status_code=400, detail="limit cannot exceed 50")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = RelatedHandlers(supabase)
 
         yacht_id = auth["yacht_id"]
@@ -231,7 +232,7 @@ async def add_entity_link(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = RelatedHandlers(supabase)
 
         # SECURITY: yacht_id ONLY from auth context - invariant #1

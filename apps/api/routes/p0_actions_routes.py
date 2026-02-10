@@ -138,6 +138,37 @@ def get_user_scoped_client(jwt_token: str, tenant_key_alias: str = None) -> Clie
 
 router = APIRouter(prefix="/v1/actions", tags=["p0-actions"])
 
+# Per-tenant handler caches
+_handlers_cache = {}
+
+def get_handlers_for_tenant(tenant_key_alias: str):
+    """Get or initialize handlers for specific tenant."""
+    global _handlers_cache
+    if tenant_key_alias not in _handlers_cache:
+        supabase = get_tenant_supabase_client(tenant_key_alias)
+        if supabase:
+            try:
+                _handlers_cache[tenant_key_alias] = {
+                    "wo_handlers": WorkOrderMutationHandlers(supabase),
+                    "inventory_handlers": InventoryHandlers(supabase),
+                    "handover_handlers": HandoverHandlers(supabase),
+                    "handover_workflow_handlers": HandoverWorkflowHandlers(supabase),
+                    "manual_handlers": ManualHandlers(supabase),
+                    "part_handlers": PartHandlers(supabase),
+                    "shopping_list_handlers": ShoppingListHandlers(supabase),
+                    "hor_handlers": HoursOfRestHandlers(supabase),
+                }
+                logger.info(f"✅ All P0 action handlers initialized for {tenant_key_alias}")
+            except Exception as e:
+                logger.error(f"Failed to initialize handlers for {tenant_key_alias}: {e}")
+                raise HTTPException(status_code=503, detail="Handler initialization failed")
+        else:
+            logger.warning(f"⚠️ P0 handlers not initialized - no database connection for {tenant_key_alias}")
+            raise HTTPException(status_code=503, detail="Database connection not available")
+    return _handlers_cache[tenant_key_alias]
+
+
+# Backward compatibility: module-level handlers for default tenant (fallback)
 # Initialize handlers (gracefully handle missing DB connection)
 supabase = get_supabase_client()
 if supabase:
@@ -150,7 +181,7 @@ if supabase:
         part_handlers = PartHandlers(supabase)
         shopping_list_handlers = ShoppingListHandlers(supabase)
         hor_handlers = HoursOfRestHandlers(supabase)
-        logger.info("✅ All P0 action handlers initialized (including Part Lens, Shopping List Lens, Handover Workflow, and HOR)")
+        logger.info("✅ All P0 action handlers initialized (default tenant fallback)")
     except Exception as e:
         logger.error(f"Failed to initialize handlers: {e}")
         wo_handlers = None
