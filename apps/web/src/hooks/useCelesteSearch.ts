@@ -408,6 +408,14 @@ async function* streamSearch(
 
   console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL, yachtId });
 
+  // FORCE FALLBACK MODE: Default to local DB search (opt-out via env var)
+  // This ensures reliable search during E2E testing and when external pipeline is unreliable
+  const FORCE_FALLBACK = process.env.NEXT_PUBLIC_FORCE_SEARCH_FALLBACK !== 'false';
+  if (FORCE_FALLBACK) {
+    console.log('[useCelesteSearch] 🔄 Force fallback mode enabled - skipping external pipeline API');
+    throw new Error('Force fallback mode: using local database search');
+  }
+
   // Get fresh token (auto-refreshes if expiring soon)
   const jwt = await ensureFreshToken();
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
@@ -532,6 +540,13 @@ async function* streamSearch(
 async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null): Promise<SearchResult[]> {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
+
+  // FORCE FALLBACK MODE: Default to local DB search (opt-out via env var)
+  const FORCE_FALLBACK = process.env.NEXT_PUBLIC_FORCE_SEARCH_FALLBACK !== 'false';
+  if (FORCE_FALLBACK) {
+    console.log('[useCelesteSearch] 🔄 Force fallback mode enabled - skipping external pipeline API');
+    throw new Error('Force fallback mode: using local database search');
+  }
 
   // Get fresh token (auto-refreshes if expiring soon)
   const jwt = await ensureFreshToken();
