@@ -185,6 +185,28 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
         linked_work_order_id = params.get("linked_work_order_id")
         request_context = params.get("request_context")
 
+        # HARDENING: Validate vendor_name (prevent NULL, empty, too long)
+        if vendor_name is None:
+            return {
+                "status": "error",
+                "error_code": "INVALID_VALUE",
+                "message": "vendor_name cannot be null"
+            }
+        if isinstance(vendor_name, str):
+            vendor_name = vendor_name.strip()
+            if len(vendor_name) == 0:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_VALUE",
+                    "message": "vendor_name cannot be empty"
+                }
+            if len(vendor_name) > 255:
+                return {
+                    "status": "error",
+                    "error_code": "INVALID_LENGTH",
+                    "message": "vendor_name must be 255 characters or less"
+                }
+
         # Insert receiving record via RPC function (bypasses MASTER/TENANT JWT issue)
         # The RPC function uses SECURITY DEFINER and checks auth_users_roles internally
         rpc_params = {
@@ -1033,6 +1055,26 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
                     "error_code": "INVALID_STORAGE_PATH",
                     "message": error_msg
                 }
+
+        # HARDENING: Verify document exists before creating link (referential integrity)
+        try:
+            doc_check = db.table("pms_documents").select("id").eq(
+                "id", document_id
+            ).eq("yacht_id", yacht_id).maybe_single().execute()
+        except Exception as e:
+            logger.error(f"Document existence check failed: {e}")
+            return {
+                "status": "error",
+                "error_code": "DATABASE_ERROR",
+                "message": "Failed to verify document"
+            }
+
+        if not doc_check.data:
+            return {
+                "status": "error",
+                "error_code": "DOCUMENT_NOT_FOUND",
+                "message": "Document not found or not accessible"
+            }
 
         # Insert document link with doc_type='invoice'
         doc_payload = {
