@@ -4,32 +4,45 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 /**
- * Button variants - Apple-inspired design
+ * Button variants - CelesteOS Maritime Design
+ * Source: BRANDING_V3
  *
- * Key changes from generic SaaS:
+ * Key principles:
  * - 8px border radius (not rounded-full)
- * - Subtle shadows on primary
- * - 15px font size (Apple standard)
- * - Precise padding following 8px grid
+ * - Maritime teal accent (#3A7C9D)
+ * - Muted restricted colors for destructive
+ * - Transparent default buttons per brand spec
  * - Smooth 150ms transitions
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-medium ring-offset-background transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--system-blue] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-medium ring-offset-background transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
+        // Default: Transparent with border (per brand spec)
         default:
-          'bg-[--system-blue] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-[#0066CC] hover:shadow-[0_2px_4px_rgba(0,0,0,0.1)]',
+          'bg-transparent border border-celeste-border text-celeste-text-secondary hover:text-celeste-text-primary hover:bg-celeste-accent-soft dark:border-celeste-border dark:text-celeste-text-secondary dark:hover:text-celeste-text-primary',
+        // Accent: Maritime teal - primary CTA
+        accent:
+          'bg-celeste-accent text-celeste-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-celeste-accent-hover hover:shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
+        // Destructive: Muted red - irreversible actions only
         destructive:
-          'bg-[--system-red] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-[#E6352B]',
+          'bg-restricted-red text-celeste-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-restricted-red/90',
+        // Outline: Border emphasis
         outline:
-          'border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100',
+          'border border-celeste-border-light dark:border-celeste-border bg-celeste-white dark:bg-celeste-bg-primary hover:bg-celeste-bg-secondary-light dark:hover:bg-celeste-bg-secondary text-celeste-text-primary-light dark:text-celeste-text-primary',
+        // Secondary: Subtle background
         secondary:
-          'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700',
+          'bg-celeste-bg-secondary-light dark:bg-celeste-bg-secondary text-celeste-text-primary-light dark:text-celeste-text-primary hover:bg-celeste-bg-tertiary-light dark:hover:bg-celeste-bg-tertiary',
+        // Ghost: No background until hover
         ghost:
-          'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200',
+          'hover:bg-celeste-accent-soft text-celeste-text-secondary hover:text-celeste-text-primary dark:text-celeste-text-secondary dark:hover:text-celeste-text-primary',
+        // Link: Text only with underline
         link:
-          'text-[--system-blue] underline-offset-4 hover:underline',
+          'text-celeste-accent underline-offset-4 hover:underline',
+        // Warning: For cautionary actions
+        warning:
+          'bg-transparent border border-restricted-red text-restricted-red hover:bg-restricted-red/10',
       },
       size: {
         default: 'h-10 px-4 py-2 rounded-[8px]',

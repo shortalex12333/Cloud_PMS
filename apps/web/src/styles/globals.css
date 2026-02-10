@@ -4,75 +4,80 @@
 
 /**
  * CelesteOS Global Styles
- * Source: branding/Brand/colour-system.md, branding/Brand/Brand Guidelines.md
+ * Source: BRANDING_V3 - Maritime authority through restraint
  *
  * "Colour is a signal of state, not personality."
  */
 
 @layer base {
   :root {
-    /* Legacy shadcn variables (for compatibility) */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    /* =========================================================================
+       CELESTE MARITIME BRAND - LIGHT MODE
+       Source: BRANDING_V3 - "Colour is a signal of state, not personality."
+       ========================================================================= */
+
+    /* shadcn compatibility layer - mapped to Celeste brand */
+    --background: 240 4% 94%;           /* #EFEFF1 */
+    --foreground: 210 15% 6%;           /* #0B0D0F */
+    --card: 240 4% 94%;                 /* #EFEFF1 */
+    --card-foreground: 210 15% 6%;      /* #0B0D0F */
+    --popover: 240 4% 94%;              /* #EFEFF1 */
+    --popover-foreground: 210 15% 6%;   /* #0B0D0F */
+    --primary: 196 46% 42%;             /* #3A7C9D - maritime teal */
+    --primary-foreground: 240 4% 94%;   /* #EFEFF1 */
+    --secondary: 210 6% 93%;            /* slightly darker than bg */
+    --secondary-foreground: 210 8% 11%; /* #1A1D1F */
+    --muted: 210 6% 90%;                /* muted surface */
+    --muted-foreground: 200 5% 56%;     /* #8A9196 */
+    --accent: 196 46% 42%;              /* #3A7C9D */
+    --accent-foreground: 240 4% 94%;    /* #EFEFF1 */
+    --destructive: 0 45% 42%;           /* #9D3A3A - dignified red */
+    --destructive-foreground: 240 4% 94%;
+    --border: 210 6% 85%;               /* subtle border */
+    --input: 210 6% 85%;
+    --ring: 196 46% 42%;                /* #3A7C9D */
     --radius: 0.5rem;
 
     /* =========================================================================
        CELESTE BRAND TOKENS
-       Source: branding/Brand/colour-system.md
        ========================================================================= */
 
     /* Neutral Foundation (80-90% of interface) */
-    --celeste-white: #FFFFFF;
-    --celeste-white-soft: #FAFAFA;
-    --celeste-white-muted: #F8F8F0;
-    --celeste-white-dim: #F4F4F4;
+    --celeste-white: #EFEFF1;
+    --celeste-white-soft: #F5F5F7;
+    --celeste-white-muted: #E8E8EA;
+    --celeste-white-dim: #DCDCDE;
 
-    --celeste-black: #020202;
-    --celeste-black-deep: #181818;
-    --celeste-black-base: #242424;
+    --celeste-black: #0A0A0A;
+    --celeste-black-deep: #0B0D0F;
+    --celeste-black-base: #1A1D1F;
 
-    /* Functional Blue (selection, focus ONLY) */
-    --celeste-blue: #0070FF;
-    --celeste-blue-secondary: #00A4FF;
-    --celeste-blue-soft: #BADDE9;
+    /* Functional Accent (maritime teal - selection, focus ONLY) */
+    --celeste-accent: #3A7C9D;
+    --celeste-accent-soft: rgba(58, 124, 157, 0.15);
+    --celeste-accent-hover: #327189;
 
     /* Restricted Colors (specific contexts only) */
-    --celeste-red: #FF3B30;      /* Irreversible destructive only */
-    --celeste-orange: #FF9500;   /* Inspection warnings only */
-    --celeste-yellow: #FFCC00;   /* Time-sensitive only */
-    --celeste-green: #34C759;    /* Committed confirmation only */
+    --celeste-warning: #9D3A3A;         /* Dignified warning/destructive */
+    --celeste-orange: #9D6B3A;          /* Muted inspection warnings */
+    --celeste-yellow: #9D8A3A;          /* Time-sensitive advisories */
+    --celeste-green: #3A9D5C;           /* Committed confirmation only */
 
-    /* Semantic Text */
-    --celeste-text-primary: #1D1D1F;
-    --celeste-text-secondary: #6E6E73;
-    --celeste-text-muted: #86868B;
-    --celeste-text-disabled: #AEAEB2;
+    /* Semantic Text - Light Mode */
+    --celeste-text-title: #0B0D0F;
+    --celeste-text-primary: #1A1D1F;
+    --celeste-text-secondary: #8A9196;
+    --celeste-text-muted: #A0A4A8;
+    --celeste-text-disabled: #C0C4C8;
 
-    /* Semantic Backgrounds */
-    --celeste-bg-primary: #FFFFFF;
-    --celeste-bg-secondary: #F5F5F7;
-    --celeste-bg-tertiary: #E8E8ED;
+    /* Semantic Backgrounds - Light Mode */
+    --celeste-bg-primary: #EFEFF1;
+    --celeste-bg-secondary: #E5E5E7;
+    --celeste-bg-tertiary: #DCDCDE;
 
-    /* Borders */
-    --celeste-border: #D2D2D7;
-    --celeste-border-subtle: rgba(0, 0, 0, 0.08);
+    /* Borders - Light Mode */
+    --celeste-border: #C8C8CA;
+    --celeste-border-subtle: rgba(0, 0, 0, 0.06);
 
     /* Typography */
     --celeste-font-display: 'Eloquia Display', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
@@ -101,39 +106,45 @@
   }
 
   .dark {
-    /* Legacy shadcn dark mode */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* =========================================================================
+       CELESTE MARITIME BRAND - DARK MODE (PRIMARY)
+       Night-first design for maritime operations
+       ========================================================================= */
+
+    /* shadcn compatibility layer - mapped to Celeste brand */
+    --background: 0 0% 4%;              /* #0A0A0A */
+    --foreground: 240 4% 94%;           /* #EFEFF1 */
+    --card: 0 0% 6%;                    /* slightly elevated */
+    --card-foreground: 220 5% 88%;      /* #DADDE0 */
+    --popover: 0 0% 6%;
+    --popover-foreground: 220 5% 88%;   /* #DADDE0 */
+    --primary: 196 46% 42%;             /* #3A7C9D */
+    --primary-foreground: 240 4% 94%;   /* #EFEFF1 */
+    --secondary: 0 0% 10%;              /* elevated surface */
+    --secondary-foreground: 220 5% 88%; /* #DADDE0 */
+    --muted: 0 0% 12%;                  /* muted surface */
+    --muted-foreground: 200 5% 56%;     /* #8A9196 */
+    --accent: 196 46% 42%;              /* #3A7C9D */
+    --accent-foreground: 240 4% 94%;    /* #EFEFF1 */
+    --destructive: 0 45% 42%;           /* #9D3A3A */
+    --destructive-foreground: 240 4% 94%;
+    --border: 0 0% 16%;                 /* subtle border */
+    --input: 0 0% 16%;
+    --ring: 196 46% 42%;                /* #3A7C9D */
 
     /* CELESTE DARK MODE OVERRIDES */
-    --celeste-text-primary: #F5F5F7;
-    --celeste-text-secondary: #98989F;
-    --celeste-text-muted: #86868B;
-    --celeste-text-disabled: #636366;
+    --celeste-text-title: #EFEFF1;
+    --celeste-text-primary: #DADDE0;
+    --celeste-text-secondary: #8A9196;
+    --celeste-text-muted: #6A6E72;
+    --celeste-text-disabled: #4A4E52;
 
-    --celeste-bg-primary: #1C1C1E;
-    --celeste-bg-secondary: #2C2C2E;
-    --celeste-bg-tertiary: #3D3D3F;
+    --celeste-bg-primary: #0A0A0A;
+    --celeste-bg-secondary: #121212;
+    --celeste-bg-tertiary: #1A1A1A;
 
-    --celeste-border: #3D3D3F;
-    --celeste-border-subtle: rgba(61, 61, 63, 0.3);
+    --celeste-border: #2A2A2A;
+    --celeste-border-subtle: rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -245,17 +256,17 @@
 }
 
 /* ============================================================================
-   APPLE SPOTLIGHT - Unified Panel
-   Exact recreation of macOS Spotlight appearance
+   CELESTE SPOTLIGHT - Unified Panel
+   Maritime glass material - deeper, more authoritative
    ============================================================================ */
 
 .spotlight-panel {
-  /* Glass material - high blur, subtle tint */
-  background: rgba(246, 246, 246, 0.88);
-  backdrop-filter: blur(72px) saturate(210%);
-  -webkit-backdrop-filter: blur(72px) saturate(210%);
+  /* Glass material - Celeste light mode */
+  background: rgba(239, 239, 241, 0.92);  /* #EFEFF1 */
+  backdrop-filter: blur(72px) saturate(180%);
+  -webkit-backdrop-filter: blur(72px) saturate(180%);
 
-  /* Large radius - Apple uses ~18-20px */
+  /* Large radius */
   border-radius: 18px;
 
   /* Dramatic shadow - floating effect */
@@ -270,12 +281,13 @@
 }
 
 .dark .spotlight-panel {
-  background: rgba(30, 30, 30, 0.92);
+  /* Glass material - Celeste dark mode (deeper black) */
+  background: rgba(10, 10, 10, 0.94);  /* #0A0A0A */
   box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.08),
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    0 8px 16px rgba(0, 0, 0, 0.3),
-    0 24px 48px rgba(0, 0, 0, 0.5);
+    0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    0 24px 48px rgba(0, 0, 0, 0.6);
 }
 
 /* Spotlight scrollbar - thin, subtle */
@@ -305,11 +317,11 @@
 }
 
 .dark .spotlight-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 .dark .spotlight-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.20);
 }
 
 /* Spotlight entrance animation */

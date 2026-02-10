@@ -2,8 +2,9 @@
  * CelesteOS Design Tokens
  * Barrel export for all token modules
  *
- * Source: branding/ repository
- * These tokens implement the official brand specification.
+ * Source: BRANDING_V3
+ * These tokens implement the official maritime brand specification.
+ * "Colour is a signal of state, not personality."
  */
 
 // Color system
@@ -11,11 +12,13 @@ export {
   whites,
   blacks,
   grays,
+  accent,
   blue,
   gradient,
   restricted,
   semantic,
   roleColors,
+  button,
   cssVars as colorCssVars,
 } from './colors';
 

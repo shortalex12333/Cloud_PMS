@@ -1,9 +1,12 @@
 /**
  * CelesteOS Design System
- * Apple Spotlight + macOS Control Center Quality
+ * Maritime-grade interface design
+ * Source: BRANDING_V3
  *
- * Version: 2.0
- * Last Updated: 2025-01-28
+ * "Colour is a signal of state, not personality."
+ *
+ * Version: 3.0
+ * Last Updated: 2025-02-10
  */
 
 // ============================================================================
@@ -73,7 +76,7 @@ export const shadows = {
   card: {
     default: '0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
     hover: '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04)',
-    selected: '0 0 0 2px rgba(59, 130, 246, 0.5), 0 4px 12px rgba(0, 0, 0, 0.08)',
+    selected: '0 0 0 2px rgba(58, 124, 157, 0.5), 0 4px 12px rgba(0, 0, 0, 0.08)',  // #3A7C9D
   },
   // Dashboard modules
   module: {
@@ -154,77 +157,99 @@ export const typography = {
 } as const;
 
 // ============================================================================
-// COLOR SYSTEM
+// COLOR SYSTEM - Maritime Palette
+// Source: BRANDING_V3
 // ============================================================================
 
 export const colors = {
-  // Semantic colors
+  // Brand foundations
+  brand: {
+    dark: '#0A0A0A',
+    light: '#EFEFF1',
+    accent: '#3A7C9D',
+    accentHover: '#327189',
+    warning: '#9D3A3A',
+  },
+  // Semantic text colors
   text: {
     primary: 'var(--foreground)',
     secondary: 'hsl(var(--muted-foreground))',
     tertiary: 'hsl(var(--muted-foreground) / 0.7)',
     inverse: 'var(--background)',
+    // Direct hex for precision
+    titleDark: '#EFEFF1',
+    titleLight: '#0B0D0F',
+    bodyDark: '#DADDE0',
+    bodyLight: '#1A1D1F',
+    muted: '#8A9196',
   },
   background: {
     primary: 'hsl(var(--background))',
     secondary: 'hsl(var(--muted))',
     elevated: 'hsl(var(--card))',
-    overlay: 'hsl(var(--background) / 0.8)',
+    overlay: 'hsl(var(--background) / 0.85)',
+    // Direct hex
+    dark: '#0A0A0A',
+    darkElevated: '#121212',
+    darkTertiary: '#1A1A1A',
+    light: '#EFEFF1',
+    lightElevated: '#E5E5E7',
+    lightTertiary: '#DCDCDE',
   },
-  // Status colors (yacht operations)
+  // Status colors - muted, dignified (maritime operations)
   status: {
     critical: {
-      bg: 'rgba(239, 68, 68, 0.12)',
-      border: 'rgba(239, 68, 68, 0.3)',
-      text: '#DC2626',
-      icon: '#EF4444',
+      bg: 'rgba(157, 58, 58, 0.12)',      // #9D3A3A based
+      border: 'rgba(157, 58, 58, 0.3)',
+      text: '#9D3A3A',
+      icon: '#9D3A3A',
     },
     warning: {
-      bg: 'rgba(245, 158, 11, 0.12)',
-      border: 'rgba(245, 158, 11, 0.3)',
-      text: '#D97706',
-      icon: '#F59E0B',
+      bg: 'rgba(157, 107, 58, 0.12)',     // #9D6B3A based
+      border: 'rgba(157, 107, 58, 0.3)',
+      text: '#9D6B3A',
+      icon: '#9D6B3A',
     },
     success: {
-      bg: 'rgba(34, 197, 94, 0.12)',
-      border: 'rgba(34, 197, 94, 0.3)',
-      text: '#16A34A',
-      icon: '#22C55E',
+      bg: 'rgba(58, 157, 92, 0.12)',      // #3A9D5C based
+      border: 'rgba(58, 157, 92, 0.3)',
+      text: '#3A9D5C',
+      icon: '#3A9D5C',
     },
     info: {
-      bg: 'rgba(59, 130, 246, 0.12)',
-      border: 'rgba(59, 130, 246, 0.3)',
-      text: '#2563EB',
-      icon: '#3B82F6',
+      bg: 'rgba(58, 124, 157, 0.12)',     // #3A7C9D based
+      border: 'rgba(58, 124, 157, 0.3)',
+      text: '#3A7C9D',
+      icon: '#3A7C9D',
     },
     neutral: {
-      bg: 'rgba(107, 114, 128, 0.12)',
-      border: 'rgba(107, 114, 128, 0.3)',
-      text: '#4B5563',
-      icon: '#6B7280',
+      bg: 'rgba(138, 145, 150, 0.12)',    // #8A9196 based
+      border: 'rgba(138, 145, 150, 0.3)',
+      text: '#8A9196',
+      icon: '#8A9196',
     },
   },
-  // Card type accent colors
+  // Card type accent colors - muted maritime variants
   cardType: {
-    fault: '#EF4444',
-    work_order: '#3B82F6',
-    equipment: '#8B5CF6',
-    part: '#10B981',
-    handover: '#F59E0B',
-    document: '#6366F1',
-    hor_table: '#EC4899',
-    purchase: '#14B8A6',
-    checklist: '#84CC16',
-    worklist: '#F97316',
-    fleet_summary: '#06B6D4',
-    smart_summary: '#A855F7',
+    fault: '#9D3A3A',           // Warning red
+    work_order: '#3A7C9D',      // Maritime teal
+    equipment: '#6B5A9D',       // Muted purple
+    part: '#3A9D5C',            // Success green
+    handover: '#9D6B3A',        // Caution orange
+    document: '#5A6B9D',        // Muted indigo
+    hor_table: '#9D5A7B',       // Muted pink
+    purchase: '#3A8D9D',        // Teal variant
+    checklist: '#6B9D3A',       // Olive green
+    worklist: '#9D7B3A',        // Amber
+    fleet_summary: '#3A8D9D',   // Cyan teal
+    smart_summary: '#7B5A9D',   // Purple variant
   },
-  // Confidence bar colors
+  // Confidence bar colors - muted
   confidence: {
-    high: '#22C55E',    // 80-100%
-    medium: '#F59E0B',  // 50-79%
-    low: '#EF4444',     // 0-49%
-    gradient: 'linear-gradient(90deg, #22C55E 0%, #84CC16 25%, #F59E0B 50%, #F97316 75%, #EF4444 100%)',
+    high: '#3A9D5C',    // 80-100%
+    medium: '#9D8A3A',  // 50-79%
+    low: '#9D3A3A',     // 0-49%
+    gradient: 'linear-gradient(90deg, #3A9D5C 0%, #6B9D3A 25%, #9D8A3A 50%, #9D6B3A 75%, #9D3A3A 100%)',
   },
 } as const;
 
