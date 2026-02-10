@@ -156,7 +156,7 @@ export interface ActionMetadata {
   side_effect_type: SideEffectType;
   requires_confirmation?: boolean; // For mutation_heavy actions
   requires_reason?: boolean; // For audit-sensitive actions like edit_invoice_amount
-  role_restricted?: ('chief_engineer' | 'eto' | 'captain' | 'manager')[]; // If role-based
+  role_restricted?: ('chief_engineer' | 'eto' | 'captain' | 'manager' | 'chief_officer' | 'chief_steward' | 'purser' | 'vendor' | 'crew' | 'deck' | 'interior')[]; // If role-based
   icon?: string; // lucide-react icon name
   description: string;
 }
