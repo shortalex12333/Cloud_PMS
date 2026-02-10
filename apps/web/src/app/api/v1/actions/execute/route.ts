@@ -85,7 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       }
 
       const { data, error } = await supabase
-        .from('parts')
+        .from('pms_parts')
         .select('part_id, part_name, on_hand, min_quantity, unit_cost, location, bin')
         .eq('part_id', part_id)
         .eq('yacht_id', enrichedContext.yacht_id)
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       }
 
       const { data, error } = await supabase
-        .from('parts')
+        .from('pms_parts')
         .select('*')
         .eq('part_id', part_id)
         .eq('yacht_id', enrichedContext.yacht_id)
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       }
 
       const { data, error } = await supabase
-        .from('part_usage_log')
+        .from('pms_part_usage_log')
         .select('*')
         .eq('part_id', part_id)
         .eq('yacht_id', enrichedContext.yacht_id)
@@ -187,23 +187,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
         );
       }
 
-      // RBAC check
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .eq('yacht_id', enrichedContext.yacht_id)
-        .single();
+      // RBAC check - get user role from bootstrap
+      const { data: bootstrap, error: bootstrapError } = await supabase.rpc('get_my_bootstrap');
 
-      if (userError) {
+      if (bootstrapError || !bootstrap) {
         return NextResponse.json(
-          { success: false, error: 'Failed to verify permissions', code: 'PERMISSION_ERROR' },
+          { success: false, error: 'Failed to get user permissions', code: 'PERMISSION_ERROR' },
           { status: 500 }
         );
       }
 
-      const allowedRoles = ['HOD', 'CAPTAIN', 'CHIEF_ENGINEER', 'FLEET_MANAGER'];
-      if (!allowedRoles.includes(userData.role)) {
+      const allowedRoles = ['chief_engineer', 'captain', 'fleet_manager', 'hod'];
+      if (!allowedRoles.includes(bootstrap.role.toLowerCase())) {
         return NextResponse.json(
           { success: false, error: 'Permission denied: Insufficient privileges', code: 'FORBIDDEN' },
           { status: 403 }
@@ -212,7 +207,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
       // Stock check
       const { data: partData, error: partError } = await supabase
-        .from('parts')
+        .from('pms_parts')
         .select('on_hand, part_name')
         .eq('part_id', part_id)
         .eq('yacht_id', enrichedContext.yacht_id)
@@ -234,7 +229,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
       // Log usage
       await supabase
-        .from('part_usage_log')
+        .from('pms_part_usage_log')
         .insert({
           part_id,
           yacht_id: enrichedContext.yacht_id,
@@ -248,7 +243,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
       // Update stock
       const { error: updateError } = await supabase
-        .from('parts')
+        .from('pms_parts')
         .update({ on_hand: partData.on_hand - quantity })
         .eq('part_id', part_id)
         .eq('yacht_id', enrichedContext.yacht_id);
