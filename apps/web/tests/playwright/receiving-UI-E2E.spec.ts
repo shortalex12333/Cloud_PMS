@@ -53,22 +53,6 @@ test.describe('RECEIVING LENS - UI E2E', () => {
     // =======================================================================
     console.log('\nStep 2: Creating receiving via "create receiving" query...');
 
-    // Set up network interception to capture receiving_id
-    let receivingId: string | null = null;
-    page.on('response', async (response) => {
-      if (response.url().includes('/v1/actions/execute') && response.request().method() === 'POST') {
-        try {
-          const body = await response.json();
-          if (body.receiving_id) {
-            receivingId = body.receiving_id;
-            console.log(`  ✓ Captured receiving_id: ${receivingId}`);
-          }
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    });
-
     // Type query to trigger action suggestions
     await searchBar.fill('create receiving');
 
@@ -97,16 +81,27 @@ test.describe('RECEIVING LENS - UI E2E', () => {
       console.log('  ✓ Filled vendor_reference');
     }
 
+    // Wait for the action execute response and capture receiving_id
+    const responsePromise = page.waitForResponse(
+      response => response.url().includes('/v1/actions/execute') && response.status() === 200,
+      { timeout: 10000 }
+    );
+
     // Click Execute
     const executeButton = page.locator('button[data-testid="action-submit"], button:has-text("Execute")').first();
     await executeButton.click();
-    await page.waitForTimeout(2000);
 
-    console.log('✓ Receiving created');
+    // Wait for and parse response
+    const response = await responsePromise;
+    const responseBody = await response.json();
+    const receivingId = responseBody.receiving_id || responseBody.result?.receiving_id || responseBody.data?.receiving_id;
+
+    console.log(`✓ Receiving created: ${receivingId}`);
+    await page.waitForTimeout(1000);
     await page.screenshot({ path: '/tmp/receiving-e2e-4-created.png', fullPage: true });
 
     // =======================================================================
-    // STEP 3: Search for receiving and open in ContextPanel
+    // STEP 3: Navigate to receiving via deep link
     // =======================================================================
     console.log('\nStep 3: Searching for created receiving...');
 
@@ -114,33 +109,17 @@ test.describe('RECEIVING LENS - UI E2E', () => {
       throw new Error('Failed to capture receiving_id from response');
     }
 
-    // Use "view receiving history" action to open the receiving
-    await searchBar.clear();
-    await page.waitForTimeout(500);
-    await searchBar.fill('view receiving');
-    await page.waitForTimeout(2000);
-    await page.screenshot({ path: '/tmp/receiving-e2e-5-view-actions.png', fullPage: true });
-
-    // Click "View Receiving History" action
-    const viewAction = page.locator('[data-testid^="action-btn-"], button:has-text("View Receiving History")').first();
-    await viewAction.waitFor({ state: 'visible', timeout: 5000 });
-    console.log('✓ Found "View Receiving History" action');
-
-    await viewAction.click();
-    await page.waitForTimeout(1500);
-    await page.screenshot({ path: '/tmp/receiving-e2e-6-view-modal.png', fullPage: true });
-
-    // Fill receiving_id in modal
-    const idInput = page.locator('input[name="receiving_id"]').first();
-    await idInput.waitFor({ state: 'visible', timeout: 3000 });
-    await idInput.fill(receivingId);
-    console.log(`  ✓ Filled receiving_id: ${receivingId}`);
-
-    // Execute
-    const execButton = page.locator('button[data-testid="action-submit"], button:has-text("Execute")').first();
-    await execButton.click();
+    // Navigate to receiving via deep link (now that crash is fixed and endpoint exists)
+    console.log(`\n✓ Navigating to receiving via deep link...`);
+    const deepLinkUrl = `https://app.celeste7.ai/?entity=receiving&id=${receivingId}`;
+    await page.goto(deepLinkUrl);
     await page.waitForTimeout(3000);
-    console.log('✓ Executed view_receiving_history');
+
+    // Verify no crash
+    const errorHeading = page.locator('h2:has-text("Application error")');
+    const hasError = await errorHeading.isVisible().catch(() => false);
+    expect(hasError).toBe(false);
+    console.log('✓ No crash - deep link navigation successful');
 
     await page.screenshot({ path: '/tmp/receiving-e2e-6-after-navigation.png', fullPage: true });
 

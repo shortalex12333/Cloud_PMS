@@ -1,9 +1,9 @@
 /**
- * CelesteOS Color System
- * Source: branding/Brand/colour-system.md
+ * CelesteOS Maritime Color System
+ * Source: BRANDING_V3
  *
  * "Colour is a signal of state, not personality."
- * Color serves functional instrumentation, never emotion.
+ * Maritime authority through restraint — not cheap blue saturation.
  */
 
 // =============================================================================
@@ -11,40 +11,47 @@
 // =============================================================================
 
 export const whites = {
-  pure: '#FFFFFF',
-  soft: '#FAFAFA',
-  muted: '#F8F8F0',
-  dim: '#F4F4F4',
+  pure: '#EFEFF1',      // Primary light background
+  soft: '#F5F5F7',      // Elevated light surfaces
+  muted: '#E8E8EA',     // Secondary surfaces
+  dim: '#DCDCDE',       // Tertiary/borders
 } as const;
 
 export const blacks = {
-  pure: '#020202',
-  deep: '#181818',
-  base: '#242424',
+  pure: '#0A0A0A',      // Primary dark background
+  deep: '#0B0D0F',      // Title text on light
+  base: '#1A1D1F',      // Body text on light
 } as const;
 
-// Dark mode grays (for current dark UI)
+// Dark mode surface grays (based on #0A0A0A foundation)
 export const grays = {
-  50: '#FAFAFA',
-  100: '#F4F4F4',
-  200: '#E5E5E5',
-  300: '#D4D4D4',
-  400: '#A3A3A3',
-  500: '#737373',
-  600: '#525252',
-  700: '#404040',
-  800: '#262626',
-  900: '#171717',
+  50: '#EFEFF1',        // Inverted for dark mode text
+  100: '#DADDE0',       // Primary text dark mode
+  200: '#C0C4C8',       //
+  300: '#A0A4A8',       // Muted text
+  400: '#8A9196',       // Secondary text (shared)
+  500: '#6A6E72',       // Muted dark
+  600: '#4A4E52',       // Disabled
+  700: '#2A2A2A',       // Borders dark
+  800: '#1A1A1A',       // Tertiary surface
+  900: '#121212',       // Secondary surface
 } as const;
 
 // =============================================================================
-// FUNCTIONAL ACCENT (Blue only)
+// FUNCTIONAL ACCENT (Maritime Teal - NOT cheap blue)
 // =============================================================================
 
+export const accent = {
+  primary: '#3A7C9D',     // Selection, focus, interactive
+  hover: '#327189',       // Hover state
+  soft: 'rgba(58, 124, 157, 0.15)',  // Soft backgrounds
+} as const;
+
+// Legacy blue export for compatibility (maps to new accent)
 export const blue = {
-  primary: '#0070FF',    // Selection, focus
-  secondary: '#00A4FF',  // Secondary focus states
-  soft: '#BADDE9',       // Soft state indicators
+  primary: '#3A7C9D',
+  secondary: '#327189',
+  soft: 'rgba(58, 124, 157, 0.15)',
 } as const;
 
 // =============================================================================
@@ -52,28 +59,29 @@ export const blue = {
 // =============================================================================
 
 export const gradient = {
-  from: '#BADDE9',
-  to: '#2FB9E8',
+  from: '#3A7C9D',
+  to: '#2A5C7D',
   // RESTRICTED TO: website hero, launch materials, physical collateral
   // FORBIDDEN IN: product UI backgrounds, buttons, cards, microactions
 } as const;
 
 // =============================================================================
 // RESTRICTED COLORS (Use sparingly, specific contexts only)
+// Muted, dignified tones — not screaming SaaS colors
 // =============================================================================
 
 export const restricted = {
-  // RED: Irreversible destructive actions, safety-critical alerts ONLY
-  red: '#FF3B30',
+  // WARNING/DESTRUCTIVE: Dignified muted red for irreversible actions
+  red: '#9D3A3A',
 
-  // ORANGE: Inspection warnings, time-sensitive advisories ONLY
-  orange: '#FF9500',
+  // ORANGE: Muted inspection warnings
+  orange: '#9D6B3A',
 
-  // YELLOW: Time-sensitive advisories ONLY
-  yellow: '#FFCC00',
+  // YELLOW: Time-sensitive advisories
+  yellow: '#9D8A3A',
 
   // GREEN: Confirmation of committed actions ONLY
-  green: '#34C759',
+  green: '#3A9D5C',
 } as const;
 
 // =============================================================================
@@ -82,23 +90,38 @@ export const restricted = {
 
 export const semantic = {
   // Selection & Focus
-  selection: blue.primary,
-  focus: blue.primary,
+  selection: accent.primary,
+  focus: accent.primary,
 
-  // Text hierarchy
-  textPrimary: '#F5F5F7',      // Primary content
-  textSecondary: '#98989F',    // Secondary content, placeholders
-  textMuted: '#86868B',        // Tertiary, less important
-  textDisabled: '#636366',     // Disabled, records
+  // Text hierarchy - DARK MODE (primary)
+  textTitle: '#EFEFF1',         // Titles, headings
+  textPrimary: '#DADDE0',       // Primary content
+  textSecondary: '#8A9196',     // Secondary content, placeholders
+  textMuted: '#6A6E72',         // Tertiary, less important
+  textDisabled: '#4A4E52',      // Disabled, records
 
-  // Backgrounds (dark mode)
-  bgPrimary: '#1C1C1E',        // Main background
-  bgSecondary: '#2C2C2E',      // Cards, elevated surfaces
-  bgTertiary: '#3D3D3F',       // Hover states, borders
+  // Text hierarchy - LIGHT MODE
+  textTitleLight: '#0B0D0F',
+  textPrimaryLight: '#1A1D1F',
+  textSecondaryLight: '#8A9196',
+  textMutedLight: '#A0A4A8',
+  textDisabledLight: '#C0C4C8',
+
+  // Backgrounds - DARK MODE (primary)
+  bgPrimary: '#0A0A0A',         // Main background
+  bgSecondary: '#121212',       // Cards, elevated surfaces
+  bgTertiary: '#1A1A1A',        // Hover states
+
+  // Backgrounds - LIGHT MODE
+  bgPrimaryLight: '#EFEFF1',
+  bgSecondaryLight: '#E5E5E7',
+  bgTertiaryLight: '#DCDCDE',
 
   // Borders
-  border: '#3D3D3F',
-  borderSubtle: 'rgba(61, 61, 63, 0.3)',
+  border: '#2A2A2A',
+  borderSubtle: 'rgba(255, 255, 255, 0.06)',
+  borderLight: '#C8C8CA',
+  borderSubtleLight: 'rgba(0, 0, 0, 0.06)',
 } as const;
 
 // =============================================================================
@@ -113,16 +136,44 @@ export const roleColors = {
   readAction: semantic.textMuted,
   readActionHover: semantic.textPrimary,
 
-  // MUTATE actions: Neutral, no blue, no red by default
+  // MUTATE actions: Neutral, no accent, no red by default
   mutateAction: semantic.textDisabled,
   mutateActionHover: semantic.textSecondary,
 
   // Commitment: Neutral + dimming
   commitment: semantic.textPrimary,
-  commitmentOverlay: 'rgba(0, 0, 0, 0.8)',
+  commitmentOverlay: 'rgba(0, 0, 0, 0.85)',
 
   // Records: Reduced contrast
   record: semantic.textDisabled,
+} as const;
+
+// =============================================================================
+// BUTTON COLORS (per brand spec)
+// =============================================================================
+
+export const button = {
+  default: {
+    bg: 'transparent',
+    text: semantic.textSecondary,
+    border: semantic.border,
+    hoverBg: 'rgba(255, 255, 255, 0.05)',
+    hoverText: semantic.textPrimary,
+  },
+  accent: {
+    bg: accent.primary,
+    text: '#EFEFF1',
+    border: accent.primary,
+    hoverBg: accent.hover,
+    hoverText: '#EFEFF1',
+  },
+  warning: {
+    bg: 'transparent',
+    text: restricted.red,
+    border: restricted.red,
+    hoverBg: 'rgba(157, 58, 58, 0.1)',
+    hoverText: restricted.red,
+  },
 } as const;
 
 // =============================================================================
@@ -130,28 +181,41 @@ export const roleColors = {
 // =============================================================================
 
 export const cssVars = {
+  // Whites
   '--color-white': whites.pure,
   '--color-white-soft': whites.soft,
+
+  // Blacks
   '--color-black': blacks.pure,
   '--color-black-deep': blacks.deep,
   '--color-black-base': blacks.base,
 
-  '--color-blue-primary': blue.primary,
-  '--color-blue-secondary': blue.secondary,
-  '--color-blue-soft': blue.soft,
+  // Accent (maritime teal)
+  '--color-accent': accent.primary,
+  '--color-accent-hover': accent.hover,
+  '--color-accent-soft': accent.soft,
 
+  // Text
+  '--color-text-title': semantic.textTitle,
   '--color-text-primary': semantic.textPrimary,
   '--color-text-secondary': semantic.textSecondary,
   '--color-text-muted': semantic.textMuted,
   '--color-text-disabled': semantic.textDisabled,
 
+  // Backgrounds
   '--color-bg-primary': semantic.bgPrimary,
   '--color-bg-secondary': semantic.bgSecondary,
   '--color-bg-tertiary': semantic.bgTertiary,
 
+  // Borders
   '--color-border': semantic.border,
   '--color-border-subtle': semantic.borderSubtle,
 
+  // Interactive
   '--color-selection': semantic.selection,
   '--color-focus': semantic.focus,
+
+  // Restricted
+  '--color-warning': restricted.red,
+  '--color-success': restricted.green,
 } as const;

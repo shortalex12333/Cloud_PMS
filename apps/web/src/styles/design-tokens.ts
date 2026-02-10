@@ -1,12 +1,14 @@
 /**
  * CelesteOS Design Tokens
- * Apple-inspired design system for premium UX
+ * Maritime-inspired design system for professional UX
+ * Source: BRANDING_V3
  *
  * Principles:
+ * - Colour is a signal of state, not personality
  * - Precision over decoration
  * - Subtle over saturated
- * - Consistency over variety
  * - Typography as primary hierarchy
+ * - Night-first design for maritime operations
  */
 
 // ============================================================================
@@ -133,47 +135,58 @@ export const typography = {
 } as const;
 
 // ============================================================================
-// COLORS - Apple-inspired palette (muted, sophisticated)
+// COLORS - Maritime palette (muted, authoritative)
+// Source: BRANDING_V3
 // ============================================================================
 
 export const colors = {
-  // System colors (less saturated than default Tailwind)
-  blue: {
-    DEFAULT: '#007AFF',
-    light: '#E8F4FF',
-    dark: '#0A84FF',
+  // Brand backgrounds
+  background: {
+    dark: '#0A0A0A',
+    light: '#EFEFF1',
   },
-  green: {
-    DEFAULT: '#34C759',
-    light: '#E8FAF0',
-    dark: '#30D158',
+  // Text colors
+  text: {
+    title: { dark: '#EFEFF1', light: '#0B0D0F' },
+    primary: { dark: '#DADDE0', light: '#1A1D1F' },
+    secondary: '#8A9196',  // Shared
   },
-  orange: {
-    DEFAULT: '#FF9500',
-    light: '#FFF4E5',
-    dark: '#FF9F0A',
+  // Maritime accent (NOT cheap blue)
+  accent: {
+    DEFAULT: '#3A7C9D',
+    hover: '#327189',
+    soft: 'rgba(58, 124, 157, 0.15)',
   },
-  red: {
-    DEFAULT: '#FF3B30',
-    light: '#FFF0EF',
-    dark: '#FF453A',
+  // Restricted colors (muted, dignified)
+  warning: {
+    DEFAULT: '#9D3A3A',
+    soft: 'rgba(157, 58, 58, 0.12)',
   },
-  yellow: {
-    DEFAULT: '#FFCC00',
-    light: '#FFFBE5',
-    dark: '#FFD60A',
+  success: {
+    DEFAULT: '#3A9D5C',
+    soft: 'rgba(58, 157, 92, 0.12)',
   },
+  caution: {
+    DEFAULT: '#9D6B3A',
+    soft: 'rgba(157, 107, 58, 0.12)',
+  },
+  info: {
+    DEFAULT: '#9D8A3A',
+    soft: 'rgba(157, 138, 58, 0.12)',
+  },
+  // Neutral grays (based on #0A0A0A foundation)
   gray: {
-    50: '#F9FAFB',
-    100: '#F2F2F7',
-    200: '#E5E5EA',
-    300: '#D1D1D6',
-    400: '#AEAEB2',
-    500: '#8E8E93',
-    600: '#636366',
-    700: '#48484A',
-    800: '#3A3A3C',
-    900: '#1C1C1E',
+    50: '#EFEFF1',
+    100: '#DADDE0',
+    200: '#C0C4C8',
+    300: '#A0A4A8',
+    400: '#8A9196',
+    500: '#6A6E72',
+    600: '#4A4E52',
+    700: '#2A2A2A',
+    800: '#1A1A1A',
+    900: '#121212',
+    950: '#0A0A0A',
   },
 } as const;
 
@@ -216,7 +229,7 @@ export const transitions = {
 // ============================================================================
 
 export const cssVariables = `
-  /* Apple-inspired CelesteOS Design Tokens */
+  /* CelesteOS Maritime Design Tokens */
 
   /* Radius */
   --radius-container: ${radius.container};
@@ -226,15 +239,16 @@ export const cssVariables = `
   --radius-badge: ${radius.badge};
   --radius-small: ${radius.small};
 
-  /* System Colors */
-  --color-blue: ${colors.blue.DEFAULT};
-  --color-blue-light: ${colors.blue.light};
-  --color-green: ${colors.green.DEFAULT};
-  --color-green-light: ${colors.green.light};
-  --color-orange: ${colors.orange.DEFAULT};
-  --color-orange-light: ${colors.orange.light};
-  --color-red: ${colors.red.DEFAULT};
-  --color-red-light: ${colors.red.light};
+  /* Brand Colors */
+  --color-bg-dark: ${colors.background.dark};
+  --color-bg-light: ${colors.background.light};
+  --color-accent: ${colors.accent.DEFAULT};
+  --color-accent-hover: ${colors.accent.hover};
+  --color-warning: ${colors.warning.DEFAULT};
+  --color-success: ${colors.success.DEFAULT};
+
+  /* Text Colors */
+  --color-text-secondary: ${colors.text.secondary};
 
   /* Shadows */
   --shadow-xs: ${shadows.xs};
@@ -254,14 +268,20 @@ export const cssVariables = `
 // ============================================================================
 
 export const utilityClasses = {
-  // Card styling
-  card: 'bg-white dark:bg-gray-900 rounded-[12px] border border-gray-200/60 dark:border-gray-700/60 shadow-sm',
+  // Card styling - maritime palette
+  card: 'bg-[#EFEFF1] dark:bg-[#121212] rounded-[12px] border border-[#C8C8CA] dark:border-[#2A2A2A] shadow-sm',
 
   // Button base
   buttonBase: 'inline-flex items-center justify-center rounded-[8px] font-medium transition-all duration-150',
 
-  // Input base
-  inputBase: 'w-full rounded-[8px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500',
+  // Button accent - maritime teal
+  buttonAccent: 'bg-[#3A7C9D] text-[#EFEFF1] hover:bg-[#327189]',
+
+  // Button default - transparent
+  buttonDefault: 'bg-transparent border border-[#2A2A2A] text-[#8A9196] hover:text-[#DADDE0] hover:bg-white/5',
+
+  // Input base - maritime palette
+  inputBase: 'w-full rounded-[8px] border border-[#C8C8CA] dark:border-[#2A2A2A] bg-[#EFEFF1] dark:bg-[#0A0A0A] px-3 py-2 text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3A7C9D]/30 focus:border-[#3A7C9D]',
 
   // Badge (NOT pill shaped)
   badge: 'inline-flex items-center px-2 py-0.5 rounded-[6px] text-[12px] font-medium',
