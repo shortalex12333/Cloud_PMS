@@ -200,6 +200,37 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ====================================================================
+    // DOCUMENTS SEARCH
+    // ====================================================================
+    const { data: documents, error: documentsError} = await supabase
+      .from('doc_metadata')
+      .select('*')
+      .eq('yacht_id', yacht_id)
+      .is('deleted_at', null)
+      .or(`filename.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,tags.ilike.%${searchTerm}%,doc_type.ilike.%${searchTerm}%`)
+      .limit(limit);
+
+    if (!documentsError && documents) {
+      documents.forEach((doc: any) => {
+        results.push({
+          id: doc.id,
+          primary_id: doc.id,
+          type: 'document',
+          source_table: 'documents',
+          title: doc.filename || 'Unnamed Document',
+          subtitle: [
+            doc.doc_type && `Type: ${doc.doc_type}`,
+            doc.content_type && `Format: ${doc.content_type}`,
+            doc.created_at && `Uploaded: ${new Date(doc.created_at).toLocaleDateString()}`,
+          ]
+            .filter(Boolean)
+            .join(' | '),
+          metadata: doc,
+        });
+      });
+    }
+
     // Sort results by relevance (simple: exact matches first, then contains)
     results.sort((a, b) => {
       const aTitle = a.title.toLowerCase();
