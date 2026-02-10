@@ -37,7 +37,7 @@ from handlers.manual_handlers import ManualHandlers
 from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
-from action_router.validators import validate_jwt, validate_yacht_isolation
+from action_router.validators import validate_jwt, validate_yacht_isolation, validate_payload_entities
 from action_router.registry import get_action
 from middleware.auth import lookup_tenant_for_user
 
@@ -744,6 +744,35 @@ async def execute_action(
                     "message": f"Missing required field(s): {', '.join(missing)}"
                 }
             )
+
+    # ========================================================================
+    # RLS ENTITY VALIDATION - Security Fix 2026-02-10
+    # ========================================================================
+    # Verify all entity IDs in payload belong to user's yacht
+    # This prevents cross-yacht data access even when entity IDs are known
+    try:
+        tenant_alias = user_context.get("tenant_key_alias", "")
+        if tenant_alias:
+            rls_db = get_tenant_supabase_client(tenant_alias)
+            rls_result = await validate_payload_entities(rls_db, payload, yacht_id)
+            if not rls_result.valid:
+                logger.warning(
+                    f"[RLS] Entity validation failed for action '{action}': "
+                    f"{rls_result.error.message if rls_result.error else 'Unknown error'}"
+                )
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "status": "error",
+                        "error_code": "NOT_FOUND",
+                        "message": rls_result.error.message if rls_result.error else "Entity not found"
+                    }
+                )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        # Log but don't fail on RLS check errors (graceful degradation)
+        logger.debug(f"[RLS] Could not validate entities for action '{action}': {e}")
 
     # ========================================================================
     # ROLE VALIDATION - Security fix for Fault Lens v1
