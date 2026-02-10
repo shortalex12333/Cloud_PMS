@@ -25,6 +25,7 @@ from supabase import create_client, Client
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
+from pipeline_service import get_tenant_client
 
 # Certificate handlers (optional - graceful degradation if schema_mapping incomplete)
 try:
@@ -132,7 +133,7 @@ async def list_vessel_certificates(
         raise HTTPException(status_code=404, detail="Certificate feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_certificate_handlers(supabase)
 
         result = await handlers["list_vessel_certificates"](
@@ -169,7 +170,7 @@ async def list_crew_certificates(
         raise HTTPException(status_code=404, detail="Certificate feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_certificate_handlers(supabase)
 
         result = await handlers["list_crew_certificates"](
@@ -204,7 +205,7 @@ async def find_expiring_certificates(
         raise HTTPException(status_code=404, detail="Certificate feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_certificate_handlers(supabase)
 
         result = await handlers["find_expiring_certificates"](
@@ -239,7 +240,7 @@ async def get_certificate_details(
         raise HTTPException(status_code=404, detail="Certificate feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_certificate_handlers(supabase)
 
         result = await handlers["get_certificate_details"](
@@ -272,7 +273,7 @@ async def view_certificate_history(
         raise HTTPException(status_code=404, detail="Certificate feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_certificate_handlers(supabase)
 
         result = await handlers["view_certificate_history"](
@@ -410,7 +411,7 @@ async def debug_certificate_pipeline(
 
         if primary_action in read_handlers:
             try:
-                supabase = get_supabase_client()
+                supabase = get_tenant_client(auth['tenant_key_alias'])
                 handlers = get_certificate_handlers(supabase)
 
                 if primary_action in handlers:

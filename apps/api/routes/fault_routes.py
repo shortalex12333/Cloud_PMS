@@ -26,6 +26,7 @@ from supabase import create_client, Client
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
+from pipeline_service import get_tenant_client
 
 # Fault handlers
 try:
@@ -171,7 +172,7 @@ async def list_faults(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
 
         # Build query
         query = supabase.table("pms_faults").select(
@@ -229,7 +230,7 @@ async def get_fault_details(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_handlers(supabase)
 
         result = await handlers["view_fault"](
@@ -261,7 +262,7 @@ async def get_fault_history(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_handlers(supabase)
 
         result = await handlers["view_fault_history"](
@@ -304,7 +305,7 @@ async def show_related(
         raise HTTPException(status_code=404, detail="Fault feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         yacht_id = auth["yacht_id"]
         entity_type = request.entity_type
         entity_id = str(request.entity_id)
@@ -460,7 +461,7 @@ async def add_related(
         raise HTTPException(status_code=404, detail="Fault feature not enabled")
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         yacht_id = auth["yacht_id"]
         user_id = auth["user_id"]
 
@@ -530,7 +531,7 @@ async def report_fault(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_mutation_handlers(supabase)
 
         result = await handlers["report_fault"](
@@ -571,7 +572,7 @@ async def acknowledge_fault(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_mutation_handlers(supabase)
 
         result = await handlers["acknowledge_fault"](
@@ -611,7 +612,7 @@ async def close_fault(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_mutation_handlers(supabase)
 
         result = await handlers["close_fault"](
@@ -651,7 +652,7 @@ async def update_fault(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_mutation_handlers(supabase)
 
         result = await handlers["update_fault"](
@@ -694,7 +695,7 @@ async def reopen_fault(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_mutation_handlers(supabase)
 
         result = await handlers["reopen_fault"](
@@ -736,7 +737,7 @@ async def mark_false_alarm(
     check_handlers_available()
 
     try:
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         handlers = get_fault_mutation_handlers(supabase)
 
         result = await handlers["mark_fault_false_alarm"](
