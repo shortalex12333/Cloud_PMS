@@ -38,7 +38,7 @@ from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation, validate_payload_entities
-from action_router.middleware import validate_action_payload, InputValidationError
+from action_router.middleware import validate_action_payload, InputValidationError, validate_state_transition, InvalidStateTransitionError
 from action_router.registry import get_action
 from middleware.auth import lookup_tenant_for_user
 
@@ -1778,10 +1778,23 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Check if fault exists
-            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            # Check if fault exists and get current status
+            check = db_client.table("pms_faults").select("id, status").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
             if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
+
+            # STATE MACHINE: Validate transition (Security Fix 2026-02-10)
+            current_status = check.data.get("status", "open")
+            try:
+                validate_state_transition("fault", current_status, action)
+            except InvalidStateTransitionError as e:
+                logger.warning(f"[STATE] {e.message}")
+                return {
+                    "success": False,
+                    "code": e.code,
+                    "message": e.message,
+                    "current_status": current_status
+                }
 
             update_data = {
                 "status": "closed",
@@ -1833,10 +1846,23 @@ async def execute_action(
             db_client = get_tenant_supabase_client(tenant_alias)
             fault_id = payload.get("fault_id")
 
-            # Check if fault exists
-            check = db_client.table("pms_faults").select("id").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
+            # Check if fault exists and get current status
+            check = db_client.table("pms_faults").select("id, status").eq("id", fault_id).eq("yacht_id", yacht_id).single().execute()
             if not check.data:
                 raise HTTPException(status_code=404, detail="Fault not found")
+
+            # STATE MACHINE: Validate transition - can only reopen closed faults
+            current_status = check.data.get("status", "open")
+            try:
+                validate_state_transition("fault", current_status, action)
+            except InvalidStateTransitionError as e:
+                logger.warning(f"[STATE] {e.message}")
+                return {
+                    "success": False,
+                    "code": e.code,
+                    "message": e.message,
+                    "current_status": current_status
+                }
 
             update_data = {
                 "status": "open",
@@ -4885,6 +4911,29 @@ async def execute_action(
             }
 
             handler_fn = handler_map[action]
+
+            # STATE MACHINE: Validate transition for mutating actions (Security Fix 2026-02-10)
+            if action in ("approve_shopping_list_item", "reject_shopping_list_item", "promote_candidate_to_part"):
+                item_id = payload.get("item_id")
+                if item_id:
+                    try:
+                        tenant_alias = user_context.get("tenant_key_alias", "")
+                        sm_db = get_tenant_supabase_client(tenant_alias)
+                        item = sm_db.table("pms_shopping_list_items").select("status").eq("id", item_id).eq("yacht_id", yacht_id).maybe_single().execute()
+                        if item and item.data:
+                            current_status = item.data.get("status", "candidate")
+                            try:
+                                validate_state_transition("shopping_list", current_status, action)
+                            except InvalidStateTransitionError as e:
+                                logger.warning(f"[STATE] {e.message}")
+                                return {
+                                    "success": False,
+                                    "code": e.code,
+                                    "message": e.message,
+                                    "current_status": current_status
+                                }
+                    except Exception as db_err:
+                        logger.debug(f"[STATE] Could not check item status: {db_err}")
 
             # Add user context to payload
             payload["user_id"] = user_id
