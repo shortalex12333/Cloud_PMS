@@ -490,9 +490,18 @@ async function* streamSearch(
 
     // FALLBACK: Use local database search when pipeline is down
     try {
+      const fallbackHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add Authorization header for fallback (requires auth)
+      if (jwt) {
+        fallbackHeaders['Authorization'] = `Bearer ${jwt}`;
+      }
+
       const fallbackResponse = await fetch('/api/search/fallback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: fallbackHeaders,
         body: JSON.stringify({
           query,
           yacht_id: yachtId,
@@ -566,9 +575,18 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
 
     // FALLBACK: Use local database search when pipeline is down
     try {
+      const fallbackHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add Authorization header for fallback (requires auth)
+      if (jwt) {
+        fallbackHeaders['Authorization'] = `Bearer ${jwt}`;
+      }
+
       const fallbackResponse = await fetch('/api/search/fallback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: fallbackHeaders,
         body: JSON.stringify({
           query,
           yacht_id: yachtId,

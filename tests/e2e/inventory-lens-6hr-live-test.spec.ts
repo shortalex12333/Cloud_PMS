@@ -340,7 +340,7 @@ test.describe('Phase 2: CREW Journey (Base Role - RBAC)', () => {
 
     // Attempt to call log_part_usage via API directly
     const response = await page.evaluate(async (yachtId) => {
-      const res = await fetch('/v1/actions/execute', {
+      const res = await fetch('/api/v1/actions/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
