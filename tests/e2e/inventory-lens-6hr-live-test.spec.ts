@@ -27,6 +27,13 @@ const AUTH_STATES = {
   CHIEF_ENGINEER: 'test-results/.auth-states/chief_engineer-state.json',
 };
 
+// Expected action button counts per role (RBAC verification)
+const TEST_USERS = {
+  HOD: { expectedActionCount: 4 },
+  CREW: { expectedActionCount: 2 },
+  CAPTAIN: { expectedActionCount: 4 },
+};
+
 // Helper: Perform search
 async function performSearch(page: Page, query: string) {
   const searchInput = page.locator('input[placeholder*="Search"], input[type="search"]').first();
