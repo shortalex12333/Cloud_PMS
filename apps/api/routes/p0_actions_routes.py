@@ -38,6 +38,7 @@ from handlers.part_handlers import PartHandlers
 from handlers.shopping_list_handlers import ShoppingListHandlers
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation, validate_payload_entities
+from action_router.middleware import validate_action_payload, InputValidationError
 from action_router.registry import get_action
 from middleware.auth import lookup_tenant_for_user
 
@@ -744,6 +745,24 @@ async def execute_action(
                     "message": f"Missing required field(s): {', '.join(missing)}"
                 }
             )
+
+    # ========================================================================
+    # INPUT VALIDATION - Security Fix 2026-02-10 (Day 3)
+    # ========================================================================
+    # Validate payload fields (UUID format, positive numbers, enums, etc.)
+    try:
+        payload = validate_action_payload(action, payload)
+    except InputValidationError as e:
+        logger.warning(f"[VALIDATION] Action '{action}' failed: {e.field} - {e.message}")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "error_code": e.code,
+                "message": e.message,
+                "field": e.field
+            }
+        )
 
     # ========================================================================
     # RLS ENTITY VALIDATION - Security Fix 2026-02-10
