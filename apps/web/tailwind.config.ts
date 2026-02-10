@@ -2,9 +2,10 @@ import type { Config } from 'tailwindcss'
 
 /**
  * CelesteOS Tailwind Configuration
- * Source: branding/Brand/colour-system.md, branding/Brand/Brand Guidelines.md
+ * Source: BRANDING_V3
  *
  * "Colour is a signal of state, not personality."
+ * Maritime authority through restraint — not cheap blue saturation.
  */
 const config: Config = {
   content: [
@@ -55,49 +56,66 @@ const config: Config = {
         },
 
         // =======================================================================
-        // CELESTE BRAND COLORS
+        // CELESTE MARITIME BRAND COLORS
+        // Source: BRANDING_V3
         // =======================================================================
 
         // Neutral Foundation (80-90% of interface)
         celeste: {
-          // Whites
-          'white': '#FFFFFF',
-          'white-soft': '#FAFAFA',
-          'white-muted': '#F8F8F0',
-          'white-dim': '#F4F4F4',
+          // Light mode backgrounds
+          'white': '#EFEFF1',
+          'white-soft': '#F5F5F7',
+          'white-muted': '#E8E8EA',
+          'white-dim': '#DCDCDE',
 
-          // Blacks
-          'black': '#020202',
-          'black-deep': '#181818',
-          'black-base': '#242424',
+          // Dark mode backgrounds
+          'black': '#0A0A0A',
+          'black-deep': '#0B0D0F',
+          'black-base': '#1A1D1F',
+          'black-elevated': '#121212',
+          'black-tertiary': '#1A1A1A',
 
-          // Functional Blue (selection, focus only)
-          'blue': '#0070FF',
-          'blue-secondary': '#00A4FF',
-          'blue-soft': '#BADDE9',
+          // Maritime Accent (NOT cheap blue)
+          'accent': '#3A7C9D',
+          'accent-hover': '#327189',
+          'accent-soft': 'rgba(58, 124, 157, 0.15)',
 
-          // Semantic Text
-          'text-primary': '#F5F5F7',
-          'text-secondary': '#98989F',
-          'text-muted': '#86868B',
-          'text-disabled': '#636366',
+          // Semantic Text - Dark Mode (primary)
+          'text-title': '#EFEFF1',
+          'text-primary': '#DADDE0',
+          'text-secondary': '#8A9196',
+          'text-muted': '#6A6E72',
+          'text-disabled': '#4A4E52',
 
-          // Semantic Backgrounds
-          'bg-primary': '#1C1C1E',
-          'bg-secondary': '#2C2C2E',
-          'bg-tertiary': '#3D3D3F',
+          // Semantic Text - Light Mode
+          'text-title-light': '#0B0D0F',
+          'text-primary-light': '#1A1D1F',
+          'text-muted-light': '#A0A4A8',
+          'text-disabled-light': '#C0C4C8',
+
+          // Semantic Backgrounds - Dark Mode
+          'bg-primary': '#0A0A0A',
+          'bg-secondary': '#121212',
+          'bg-tertiary': '#1A1A1A',
+
+          // Semantic Backgrounds - Light Mode
+          'bg-primary-light': '#EFEFF1',
+          'bg-secondary-light': '#E5E5E7',
+          'bg-tertiary-light': '#DCDCDE',
 
           // Borders
-          'border': '#3D3D3F',
-          'border-subtle': 'rgba(61, 61, 63, 0.3)',
+          'border': '#2A2A2A',
+          'border-subtle': 'rgba(255, 255, 255, 0.06)',
+          'border-light': '#C8C8CA',
+          'border-subtle-light': 'rgba(0, 0, 0, 0.06)',
         },
 
-        // Restricted Colors (specific contexts only)
+        // Restricted Colors (muted, dignified - specific contexts only)
         restricted: {
-          'red': '#FF3B30',      // Irreversible destructive only
-          'orange': '#FF9500',   // Inspection warnings only
-          'yellow': '#FFCC00',   // Time-sensitive only
-          'green': '#34C759',    // Committed confirmation only
+          'red': '#9D3A3A',      // Dignified warning/destructive
+          'orange': '#9D6B3A',   // Muted inspection warnings
+          'yellow': '#9D8A3A',   // Time-sensitive advisories
+          'green': '#3A9D5C',    // Committed confirmation only
         },
       },
 

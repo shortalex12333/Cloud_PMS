@@ -60,14 +60,14 @@ export const blur = {
 export const overlay = {
   // Light overlays (hover states)
   light: 'rgba(255, 255, 255, 0.05)',
-  lightHover: 'rgba(255, 255, 255, 0.10)',
+  lightHover: 'rgba(255, 255, 255, 0.08)',
 
   // Dark overlays (modals, dimming)
-  dark: 'rgba(0, 0, 0, 0.50)',
-  darkStrong: 'rgba(0, 0, 0, 0.80)', // Commitment overlay per spec
+  dark: 'rgba(10, 10, 10, 0.50)',      // #0A0A0A based
+  darkStrong: 'rgba(10, 10, 10, 0.85)', // Commitment overlay per spec
 
-  // Selection highlight
-  selection: 'rgba(10, 132, 255, 0.10)',
+  // Selection highlight - maritime teal
+  selection: 'rgba(58, 124, 157, 0.12)',  // #3A7C9D
 } as const;
 
 // =============================================================================
@@ -75,25 +75,32 @@ export const overlay = {
 // =============================================================================
 
 export const glass = {
-  // Spotlight panel glass
+  // Spotlight panel glass - dark mode (primary)
   spotlight: {
-    background: 'rgba(28, 28, 30, 0.85)',
+    background: 'rgba(10, 10, 10, 0.94)',  // #0A0A0A
     backdropFilter: blur.spotlight,
-    border: '0.5px solid rgba(255, 255, 255, 0.1)',
+    border: '0.5px solid rgba(255, 255, 255, 0.06)',
+  },
+
+  // Spotlight panel glass - light mode
+  spotlightLight: {
+    background: 'rgba(239, 239, 241, 0.92)',  // #EFEFF1
+    backdropFilter: blur.spotlight,
+    border: '0.5px solid rgba(0, 0, 0, 0.06)',
   },
 
   // Dropdown glass
   dropdown: {
-    background: 'rgba(44, 44, 46, 0.95)',
+    background: 'rgba(18, 18, 18, 0.95)',  // #121212
     backdropFilter: blur.lg,
-    border: '1px solid rgba(61, 61, 63, 0.5)',
+    border: '1px solid rgba(42, 42, 42, 0.5)',  // #2A2A2A
   },
 
   // Card glass (subtle)
   card: {
-    background: 'rgba(44, 44, 46, 0.8)',
+    background: 'rgba(18, 18, 18, 0.8)',  // #121212
     backdropFilter: blur.md,
-    border: '1px solid rgba(61, 61, 63, 0.3)',
+    border: '1px solid rgba(42, 42, 42, 0.3)',  // #2A2A2A
   },
 } as const;
 

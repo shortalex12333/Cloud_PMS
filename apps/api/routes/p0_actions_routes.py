@@ -1237,6 +1237,17 @@ async def execute_action(
             )
 
         elif action == "log_part_usage":
+            # RBAC Check: log_part_usage is HoD+ only (from registry.py)
+            log_usage_roles = ["chief_engineer", "chief_officer", "captain", "manager"]
+            if user_role not in log_usage_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {log_usage_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": log_usage_roles
+                }
+
             if not inventory_handlers:
                 raise HTTPException(status_code=500, detail="Inventory handlers not initialized")
             result = await inventory_handlers.log_part_usage_execute(
@@ -4728,6 +4739,26 @@ async def execute_action(
                        "view_shopping_list_history"):
             if not shopping_list_handlers:
                 raise HTTPException(status_code=503, detail="Shopping list handlers not available")
+
+            # RBAC: Define allowed roles per action (from registry.py)
+            SHOPPING_LIST_ROLES = {
+                "create_shopping_list_item": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+                "approve_shopping_list_item": ["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
+                "reject_shopping_list_item": ["chief_engineer", "chief_officer", "captain", "manager"],  # HoD only
+                "promote_candidate_to_part": ["chief_engineer", "manager"],  # Engineers only
+                "view_shopping_list_history": ["crew", "chief_engineer", "chief_officer", "captain", "manager"],
+            }
+
+            # RBAC Check: Verify user role is authorized
+            allowed_roles = SHOPPING_LIST_ROLES.get(action, [])
+            if user_role not in allowed_roles:
+                logger.warning(f"[RBAC] Role '{user_role}' denied for action '{action}'. Allowed: {allowed_roles}")
+                return {
+                    "success": False,
+                    "code": "FORBIDDEN",
+                    "message": f"Role '{user_role}' is not authorized to perform action '{action}'",
+                    "required_roles": allowed_roles
+                }
 
             # Map action to handler method
             handler_map = {
