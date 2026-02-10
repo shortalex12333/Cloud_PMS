@@ -453,10 +453,11 @@ def _extract_receiving_candidates_adapter(handlers: ReceivingHandlers):
         }
 
         # Store advisory extraction result
+        # Use sentinel UUID for manual extractions (when source_document_id not provided)
         extraction_record = {
             "yacht_id": yacht_id,
             "receiving_id": receiving_id,
-            "source_document_id": source_document_id,
+            "source_document_id": source_document_id or "00000000-0000-0000-0000-000000000000",
             "payload": extraction_payload,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -972,13 +973,13 @@ def _link_invoice_document_adapter(handlers: ReceivingHandlers):
                 "message": "receiving_id is required"
             }
 
-        # Accept either document_id or document_url for flexibility
-        document_id = params.get("document_id") or params.get("document_url")
+        # document_id must be a valid UUID reference to pms_documents
+        document_id = params.get("document_id")
         if not document_id:
             return {
                 "status": "error",
                 "error_code": "MISSING_REQUIRED_FIELD",
-                "message": "Either document_id or document_url is required"
+                "message": "document_id is required"
             }
 
         comment = params.get("comment")

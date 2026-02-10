@@ -795,13 +795,14 @@ async def upload_part_image(
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
 
         # Validate yacht isolation
-        tenant_key = lookup_tenant_for_user(user_id)
+        tenant_info = lookup_tenant_for_user(user_id)
+        tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
         yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
         if not yacht_validation.valid:
             raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
         # Get tenant-specific Supabase client
-        db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
+        db = get_tenant_supabase_client(tenant_key_alias) if tenant_key_alias else get_default_supabase_client()
 
         if not db:
             raise HTTPException(status_code=500, detail="Database connection failed")
@@ -866,13 +867,14 @@ async def update_part_image(
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
 
         # Validate yacht isolation
-        tenant_key = lookup_tenant_for_user(user_id)
+        tenant_info = lookup_tenant_for_user(user_id)
+        tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
         yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, jwt_result.context if jwt_result.context else {})
         if not yacht_validation.valid:
             raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
         # Get tenant-specific Supabase client
-        db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
+        db = get_tenant_supabase_client(tenant_key_alias) if tenant_key_alias else get_default_supabase_client()
 
         if not db:
             raise HTTPException(status_code=500, detail="Database connection failed")
@@ -928,13 +930,14 @@ async def delete_part_image(
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
 
         # Validate yacht isolation
-        tenant_key = lookup_tenant_for_user(user_id)
+        tenant_info = lookup_tenant_for_user(user_id)
+        tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
         yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, jwt_result.context if jwt_result.context else {})
         if not yacht_validation.valid:
             raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
         # Get tenant-specific Supabase client
-        db = get_tenant_supabase_client(tenant_key) if tenant_key else get_default_supabase_client()
+        db = get_tenant_supabase_client(tenant_key_alias) if tenant_key_alias else get_default_supabase_client()
 
         if not db:
             raise HTTPException(status_code=500, detail="Database connection failed")
