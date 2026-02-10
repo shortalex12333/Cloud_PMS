@@ -198,6 +198,68 @@ class Pipeline:
                 'error': str(e),
             }
 
+    async def _text_search_fallback(self, query: str, limit: int = 10) -> Dict[str, Any]:
+        """
+        Fix #6: Text-based search fallback when embeddings not populated.
+
+        When vector search returns empty (because embeddings don't exist yet),
+        fall back to basic text matching on filename and tags. This provides
+        degraded search functionality until embeddings are generated.
+
+        Args:
+            query: The original user query
+            limit: Max results to return
+
+        Returns:
+            Dict with text search results and metadata
+        """
+        try:
+            start = time.time()
+
+            # Query doc_metadata directly with text matching
+            response = self.client.table('doc_metadata') \
+                .select('id, filename, storage_path, yacht_id, document_type, tags') \
+                .eq('yacht_id', self.yacht_id) \
+                .is_('deleted_at', 'null') \
+                .or_(f'filename.ilike.%{query}%,tags.cs.{{"{query}"}}') \
+                .limit(limit) \
+                .execute()
+
+            search_ms = (time.time() - start) * 1000
+
+            # Transform to pipeline result format
+            results = []
+            for doc in (response.data or []):
+                results.append({
+                    'document_id': doc['id'],
+                    'title': doc['filename'],
+                    'storage_path': doc.get('storage_path', ''),
+                    'document_type': doc.get('document_type', 'unknown'),
+                    'score': 0.5,  # Fixed score for text match
+                    'source': 'text_search',
+                })
+
+            logger.info(f"Text fallback: query='{query}', results={len(results)}, "
+                       f"search_ms={search_ms:.1f}")
+
+            return {
+                'success': True,
+                'fallback_type': 'text_search',
+                'results': results,
+                'count': len(results),
+                'search_ms': search_ms,
+            }
+
+        except Exception as e:
+            logger.error(f"Text fallback failed: {e}")
+            return {
+                'success': False,
+                'fallback_type': 'text_search',
+                'results': [],
+                'count': 0,
+                'error': str(e),
+            }
+
     async def search(self, query: str, limit: int = 20) -> PipelineResponse:
         """
         Execute a search query through the full pipeline (async).
@@ -245,10 +307,23 @@ class Pipeline:
                     response.error = None  # Clear error - we found results via fallback
                     logger.info(f"Vector fallback returned {vector_result['count']} results")
                 else:
-                    # Vector search also failed - return empty
-                    response.success = True
-                    response.error = "No entities extracted and vector search returned no results"
-                    logger.info(f"Vector fallback returned no results")
+                    # Vector search returned empty - try text-based fallback
+                    logger.warning(f"Vector search empty - trying text fallback for '{query}'")
+                    text_result = await self._text_search_fallback(query, limit)
+
+                    if text_result.get('success') and text_result.get('results'):
+                        # Text search found results
+                        response.success = True
+                        response.results = text_result['results']
+                        response.total_count = text_result['count']
+                        response.extraction['fallback'] = text_result
+                        response.error = "Using text search (embeddings not populated)"
+                        logger.info(f"Text fallback returned {text_result['count']} results")
+                    else:
+                        # All fallbacks failed - return empty
+                        response.success = True
+                        response.error = "No entities extracted and all search fallbacks returned no results"
+                        logger.info(f"All search fallbacks returned no results")
 
                 response.total_ms = (time.time() - start_total) * 1000
                 return response
