@@ -5232,11 +5232,15 @@ async def execute_action(
                 raise
 
         else:
-            # Unknown action - return 404
+            # Unknown action - return 400 (client error with invalid action name)
             logger.warning(f"[ROUTING] Unknown action requested: {action}")
             raise HTTPException(
-                status_code=404,
-                detail=f"Action '{action}' not found or not implemented"
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "error_code": "INVALID_ACTION",
+                    "message": f"Action '{action}' is not recognized or not implemented"
+                }
             )
 
     except HTTPException:
