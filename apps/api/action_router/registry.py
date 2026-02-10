@@ -903,7 +903,7 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/handover/add-item",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["ETO", "Engineer", "HOD", "Manager"],
+        allowed_roles=["engineer", "eto", "chief_engineer", "chief_officer", "captain", "manager"],
         required_fields=["yacht_id", "title"],
         schema_file=None,
     ),
