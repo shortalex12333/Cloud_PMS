@@ -9,6 +9,12 @@ from .validation_middleware import (
     validate_action_payload,
 )
 
+from .state_machine import (
+    InvalidStateTransitionError,
+    validate_state_transition,
+    get_valid_next_statuses,
+)
+
 __all__ = [
     "InputValidationError",
     "validate_uuid",
@@ -16,4 +22,7 @@ __all__ = [
     "validate_enum",
     "validate_required_string",
     "validate_action_payload",
+    "InvalidStateTransitionError",
+    "validate_state_transition",
+    "get_valid_next_statuses",
 ]
