@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     // PARTS SEARCH (Inventory Lens)
     // ====================================================================
     const { data: parts, error: partsError } = await supabase
-      .from('parts')
+      .from('pms_parts')
       .select('*')
       .eq('yacht_id', yacht_id)
       .or(`part_name.ilike.%${searchTerm}%,part_number.ilike.%${searchTerm}%,manufacturer.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     // EQUIPMENT SEARCH
     // ====================================================================
     const { data: equipment, error: equipmentError } = await supabase
-      .from('equipment')
+      .from('pms_equipment')
       .select('*')
       .eq('yacht_id', yacht_id)
       .or(`equipment_name.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%,manufacturer.ilike.%${searchTerm}%,equipment_type.ilike.%${searchTerm}%`)
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     // WORK ORDERS SEARCH
     // ====================================================================
     const { data: workOrders, error: workOrdersError } = await supabase
-      .from('work_orders')
+      .from('pms_work_orders')
       .select('*')
       .eq('yacht_id', yacht_id)
       .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,work_order_number.ilike.%${searchTerm}%`)
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     // SHOPPING LIST ITEMS
     // ====================================================================
     const { data: shoppingItems, error: shoppingError } = await supabase
-      .from('shopping_list_items')
+      .from('pms_shopping_list_items')
       .select('*')
       .eq('yacht_id', yacht_id)
       .or(`part_name.ilike.%${searchTerm}%,part_number.ilike.%${searchTerm}%,manufacturer.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`)
