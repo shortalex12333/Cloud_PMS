@@ -132,8 +132,8 @@ export function useActionHandler() {
           },
         };
 
-        // Use unified Action Router endpoint
-        const endpoint = '/v1/actions/execute';
+        // Use unified Action Router endpoint (Next.js API route)
+        const endpoint = '/api/v1/actions/execute';
 
         // Log action (for debugging)
         console.log('[useActionHandler] Executing action:', {
@@ -143,7 +143,25 @@ export function useActionHandler() {
           metadata,
         });
 
-        // Call backend API using Action Router
+        // Call Next.js API route directly (not external API)
+        const apiResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `API Error: ${apiResponse.statusText}`);
+        }
+
+        const response = await apiResponse.json() as ActionResponse;
+
+        // Original implementation used callCelesteApi, but Action Router is a Next.js API route
+        // so we call it directly with fetch() instead
+        /* Old code - replaced with direct fetch() above:
         const response = await callCelesteApi<ActionResponse>(
           endpoint,
           {
@@ -151,6 +169,7 @@ export function useActionHandler() {
             body: JSON.stringify(payload),
           }
         );
+        */
 
         // Update state with success
         setState((prev) => ({
