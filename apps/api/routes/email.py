@@ -482,7 +482,7 @@ async def search_emails(
 
     yacht_id = auth['yacht_id']
     user_id = auth.get('user_id', 'unknown')
-    supabase = get_supabase_client()  # Use same client as inbox for consistency
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Telemetry tracking
     telemetry = {
@@ -1926,7 +1926,7 @@ async def reject_link(
 
     yacht_id = auth['yacht_id']
     user_id = auth['user_id']
-    supabase = get_supabase_client()
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
         # Get current link state (yacht_id enforced)
@@ -1987,7 +1987,7 @@ async def create_link(
 
     yacht_id = auth['yacht_id']
     user_id = auth['user_id']
-    supabase = get_supabase_client()
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Validate object_type
     valid_types = ['work_order', 'equipment', 'part', 'fault', 'purchase_order', 'supplier']
@@ -2098,7 +2098,7 @@ async def get_inbox_threads(
 
     yacht_id = auth['yacht_id']
     user_id = auth['user_id']
-    supabase = get_supabase_client()
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
         offset = (page - 1) * page_size
@@ -2469,7 +2469,7 @@ async def search_linkable_objects(
         return {'results': []}
 
     yacht_id = auth['yacht_id']
-    supabase = get_supabase_client()
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     type_list = [t.strip() for t in types.split(',')]
     results = []
@@ -3071,7 +3071,7 @@ async def backfill_embeddings(
     from services.email_embedding_service import EmailEmbeddingUpdater
 
     yacht_id = auth['yacht_id']
-    supabase = get_supabase_client()
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
         updater = EmailEmbeddingUpdater(supabase, yacht_id)
