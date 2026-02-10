@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 interface ActionResponse {
   success: boolean;
@@ -17,6 +17,24 @@ interface ActionResponse {
   message?: string;
   error?: string;
   code?: string;
+}
+
+// Master DB client (using env vars)
+function getMasterClient(accessToken: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables not configured');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ActionResponse>> {
@@ -30,12 +48,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       );
     }
 
-    const supabase = await createClient();
+    // Extract JWT from Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Missing or invalid Authorization header', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+
+    const accessToken = authHeader.replace('Bearer ', '');
+
+    // Create client with user's token
+    const supabase = getMasterClient(accessToken);
+
+    // Verify the token and get user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' },
+        { success: false, error: 'Invalid or expired token', code: 'UNAUTHORIZED' },
         { status: 401 }
       );
     }

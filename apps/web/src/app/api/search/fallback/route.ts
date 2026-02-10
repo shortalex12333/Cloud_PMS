@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 interface SearchResult {
   id: string;
@@ -19,6 +19,24 @@ interface SearchResult {
   metadata: Record<string, any>;
   primary_id?: string;
   source_table?: string;
+}
+
+// Master DB client (using env vars)
+function getMasterClient(accessToken: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables not configured');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -34,14 +52,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const supabase = await createClient();
+    // Extract JWT from Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Missing or invalid Authorization header' },
+        { status: 401 }
+      );
+    }
+
+    const accessToken = authHeader.replace('Bearer ', '');
+
+    // Create client with user's token
+    const supabase = getMasterClient(accessToken);
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
@@ -60,7 +90,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (!partsError && parts) {
-      parts.forEach((part) => {
+      parts.forEach((part: any) => {
         results.push({
           id: part.part_id,
           primary_id: part.part_id,
@@ -91,7 +121,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (!equipmentError && equipment) {
-      equipment.forEach((eq) => {
+      equipment.forEach((eq: any) => {
         results.push({
           id: eq.equipment_id,
           primary_id: eq.equipment_id,
@@ -121,7 +151,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (!workOrdersError && workOrders) {
-      workOrders.forEach((wo) => {
+      workOrders.forEach((wo: any) => {
         results.push({
           id: wo.work_order_id,
           primary_id: wo.work_order_id,
@@ -151,7 +181,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (!shoppingError && shoppingItems) {
-      shoppingItems.forEach((item) => {
+      shoppingItems.forEach((item: any) => {
         results.push({
           id: item.shopping_list_item_id,
           primary_id: item.shopping_list_item_id,
