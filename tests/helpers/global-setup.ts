@@ -64,7 +64,7 @@ async function globalSetup() {
   if (loginAsRole && saveStorageState) {
     console.log('Pre-authenticating multi-role users for E2E tests...');
 
-    const roles: Array<'crew' | 'chief_engineer' | 'captain' | 'manager'> = ['crew', 'chief_engineer', 'captain'];
+    const roles: Array<'crew' | 'chief_engineer' | 'captain' | 'manager' | 'hod'> = ['crew', 'chief_engineer', 'captain', 'hod'];
 
     for (const role of roles) {
       try {
