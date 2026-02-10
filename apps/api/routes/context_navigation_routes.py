@@ -14,6 +14,7 @@ from supabase import create_client, Client
 
 # SECURITY FIX P0-002: Import auth dependency
 from middleware.auth import get_authenticated_user
+from pipeline_service import get_tenant_client
 
 from context_nav.schemas import (
     NavigationContextCreate,
@@ -80,7 +81,7 @@ async def create_context(
         data.yacht_id = auth["yacht_id"]
         data.user_id = auth["user_id"]
 
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         context = create_navigation_context(supabase, data)
         return context
 
@@ -111,7 +112,7 @@ async def update_anchor(
         yacht_id = auth["yacht_id"]
         user_id = auth["user_id"]
 
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         context = update_active_anchor(
             supabase, context_id, yacht_id, user_id, anchor_type, anchor_id
         )
@@ -149,7 +150,7 @@ async def get_related_artifacts(
         if str(data.yacht_id) != str(auth["yacht_id"]):
             raise HTTPException(status_code=403, detail="Yacht ID mismatch")
 
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         response = get_related(supabase, data)
         return response
 
@@ -183,7 +184,7 @@ async def add_relation(
         if str(data.yacht_id) != str(auth["yacht_id"]):
             raise HTTPException(status_code=403, detail="Yacht ID mismatch")
 
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         response = add_user_relation(supabase, data)
         return response
 
@@ -215,7 +216,7 @@ async def end_context(
         yacht_id = auth["yacht_id"]
         user_id = auth["user_id"]
 
-        supabase = get_supabase_client()
+        supabase = get_tenant_client(auth['tenant_key_alias'])
         result = end_navigation_context(supabase, context_id, yacht_id, user_id)
         return result
 

@@ -69,6 +69,7 @@ from services.rate_limit import (
     STREAM_PHASE2_TTL,
 )
 from integrations.supabase import get_supabase_client
+from pipeline_service import get_tenant_client
 from execute.table_capabilities import TABLE_CAPABILITIES
 
 logger = logging.getLogger(__name__)
@@ -138,7 +139,7 @@ REDACTED_ROLES = {"crew", "guest"}  # Roles that don't see document snippets
 # Search Implementation
 # ============================================================================
 
-async def search_parts(yacht_id: str, query: str) -> tuple[List[Dict[str, Any]], int]:
+async def search_parts(yacht_id: str, query: str, tenant_key_alias: str) -> tuple[List[Dict[str, Any]], int]:
     """
     Search parts across multiple columns with preprocessing.
 
@@ -152,7 +153,7 @@ async def search_parts(yacht_id: str, query: str) -> tuple[List[Dict[str, Any]],
     if not clean_query or len(clean_query) < 2:
         clean_query = query.strip()
 
-    supabase = get_supabase_client()
+    supabase = get_tenant_client(tenant_key_alias)
     results = []
     seen_ids = set()
 
@@ -378,7 +379,7 @@ async def stream_search(
             # Phase 1: Counts only
             if phase == 1:
                 # Execute actual search with preprocessing
-                parts_results, parts_count = await search_parts(ctx.yacht_id, nq)
+                parts_results, parts_count = await search_parts(ctx.yacht_id, nq, ctx.tenant_key_alias)
 
                 # Check disconnect again
                 if await request.is_disconnected():
@@ -396,7 +397,7 @@ async def stream_search(
                 return
 
             # Phase 2: Details with role-based redaction
-            parts_results, parts_count = await search_parts(ctx.yacht_id, nq)
+            parts_results, parts_count = await search_parts(ctx.yacht_id, nq, ctx.tenant_key_alias)
 
             if await request.is_disconnected():
                 logger.info(f"[StreamSearch] Client disconnected during P2: {qh[:16]}...")
