@@ -50,7 +50,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
           </div>
           <button
             onClick={openSettingsModal}
-            className="inline-flex items-center gap-1 text-[12px] text-blue-500 hover:text-blue-600 transition-colors"
+            className="inline-flex items-center gap-1 text-[12px] text-celeste-accent hover:text-celeste-accent transition-colors"
           >
             <Settings className="h-3 w-3" />
             Connect Outlook in Settings
@@ -71,7 +71,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
           </div>
           <button
             onClick={openSettingsModal}
-            className="inline-flex items-center gap-1 text-[12px] text-blue-500 hover:text-blue-600 transition-colors"
+            className="inline-flex items-center gap-1 text-[12px] text-celeste-accent hover:text-celeste-accent transition-colors"
           >
             <Settings className="h-3 w-3" />
             Connect Outlook in Settings
@@ -154,7 +154,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
               </p>
               <button
                 onClick={() => refetch()}
-                className="mt-2 text-[13px] text-blue-500 hover:text-blue-600"
+                className="mt-2 text-[13px] text-celeste-accent hover:text-celeste-accent"
               >
                 Retry
               </button>
@@ -170,7 +170,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
               </p>
               <button
                 onClick={() => showEmail({ folder: 'inbox' })}
-                className="inline-flex items-center gap-1.5 text-[13px] text-blue-500 hover:text-blue-600"
+                className="inline-flex items-center gap-1.5 text-[13px] text-celeste-accent hover:text-celeste-accent"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 Link emails from Inbox
@@ -257,7 +257,7 @@ function ThreadItem({ thread, isSelected, onClick, objectType, objectId }: Threa
         <div className="flex items-start justify-between gap-2 mb-1">
           <h4 className={cn(
             'text-[14px] font-medium truncate',
-            isSelected ? 'text-blue-600' : 'text-zinc-800 dark:text-zinc-200'
+            isSelected ? 'text-celeste-accent' : 'text-zinc-800 dark:text-zinc-200'
           )}>
             {thread.latest_subject || '(No subject)'}
           </h4>
@@ -313,8 +313,8 @@ function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
       label: 'Auto-linked',
     },
     user_confirmed: {
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-700 dark:text-blue-400',
+      bg: 'bg-celeste-accent-subtle',
+      text: 'text-celeste-accent',
       label: 'Confirmed',
     },
     suggested: {

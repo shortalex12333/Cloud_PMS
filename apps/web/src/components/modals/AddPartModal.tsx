@@ -117,7 +117,7 @@ export function AddPartModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-celeste-accent" />
             Add Part to Inventory
           </DialogTitle>
           <DialogDescription>

@@ -216,7 +216,7 @@ export function AddToHandoverQuickModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-600" />
+            <FileText className="h-5 w-5 text-celeste-accent" />
             Add to Handover
           </DialogTitle>
           <DialogDescription>
@@ -226,7 +226,7 @@ export function AddToHandoverQuickModal({
 
         {prefillLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
             <span className="ml-3 text-sm text-celeste-text-secondary">Loading context...</span>
           </div>
         ) : prefillError ? (
@@ -239,9 +239,9 @@ export function AddToHandoverQuickModal({
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Entity Type Indicator */}
-            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-              <EntityIcon className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900 capitalize">
+            <div className="flex items-center gap-2 px-3 py-2 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
+              <EntityIcon className="h-4 w-4 text-celeste-accent" />
+              <span className="text-sm font-medium text-celeste-accent capitalize">
                 {entityType.replace('_', ' ')}
               </span>
             </div>
@@ -301,7 +301,7 @@ export function AddToHandoverQuickModal({
                             'h-2 w-2 rounded-full',
                             value === 'urgent' && 'bg-red-500',
                             value === 'high' && 'bg-orange-500',
-                            value === 'normal' && 'bg-blue-500',
+                            value === 'normal' && 'bg-celeste-accent',
                             value === 'low' && 'bg-celeste-text-muted'
                           )}
                         />

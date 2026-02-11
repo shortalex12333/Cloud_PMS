@@ -157,7 +157,7 @@ export function LinkEmailModal({
                   className={cn(
                     'inline-flex items-center gap-1 px-2 py-1 text-[12px] rounded-md transition-colors',
                     isSelected
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      ? 'bg-celeste-accent-subtle text-celeste-accent'
                       : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   )}
                 >
@@ -176,7 +176,7 @@ export function LinkEmailModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, number, serial..."
-              className="w-full pl-9 pr-3 py-2 text-[14px] border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-[14px] border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
               autoFocus
             />
             {isSearching && (
@@ -211,18 +211,18 @@ export function LinkEmailModal({
                       className={cn(
                         'w-full flex items-center gap-3 p-3 text-left transition-colors',
                         isSelected
-                          ? 'bg-blue-50 dark:bg-blue-900/20'
+                          ? 'bg-celeste-accent-subtle'
                           : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
                       )}
                     >
                       <TypeIcon className={cn(
                         'h-4 w-4 flex-shrink-0',
-                        isSelected ? 'text-blue-600' : 'text-zinc-400'
+                        isSelected ? 'text-celeste-accent' : 'text-zinc-400'
                       )} />
                       <div className="flex-1 min-w-0">
                         <p className={cn(
                           'text-[14px] truncate',
-                          isSelected ? 'text-blue-700 dark:text-blue-400 font-medium' : 'text-zinc-800 dark:text-zinc-200'
+                          isSelected ? 'text-celeste-accent font-medium' : 'text-zinc-800 dark:text-zinc-200'
                         )}>
                           {result.label}
                         </p>
@@ -232,7 +232,7 @@ export function LinkEmailModal({
                         </p>
                       </div>
                       {isSelected && (
-                        <CheckCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-celeste-accent flex-shrink-0" />
                       )}
                     </button>
                   );
@@ -243,16 +243,16 @@ export function LinkEmailModal({
 
           {/* Selected Object Display */}
           {selectedObject && (
-            <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-              <CheckCircle className="h-4 w-4 text-blue-600" />
-              <span className="text-[13px] text-blue-700 dark:text-blue-400 flex-1 truncate">
+            <div className="flex items-center gap-2 p-2 bg-celeste-accent-subtle rounded-md">
+              <CheckCircle className="h-4 w-4 text-celeste-accent" />
+              <span className="text-[13px] text-celeste-accent flex-1 truncate">
                 {selectedObject.label}
               </span>
               <button
                 onClick={() => setSelectedObject(null)}
-                className="p-1 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded"
+                className="p-1 hover:bg-celeste-accent-subtle rounded"
               >
-                <X className="h-3 w-3 text-blue-600" />
+                <X className="h-3 w-3 text-celeste-accent" />
               </button>
             </div>
           )}

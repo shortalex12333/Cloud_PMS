@@ -81,7 +81,7 @@ function OpenTokenResolver() {
       <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full shadow-xl border border-celeste-text-secondary">
         {status === 'loading' && (
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white mb-2">
               Opening Link
             </h2>
@@ -114,7 +114,7 @@ function OpenTokenResolver() {
             </p>
             <button
               onClick={() => router.replace('/app')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-lg transition-colors"
             >
               Go to App
             </button>
@@ -130,7 +130,7 @@ export default function OpenPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-celeste-black flex items-center justify-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+          <Loader2 className="w-12 h-12 text-celeste-accent animate-spin" />
         </div>
       }
     >

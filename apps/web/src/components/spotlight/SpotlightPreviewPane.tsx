@@ -36,7 +36,7 @@ interface SpotlightPreviewPaneProps {
 
 const CARD_TYPE_CONFIG: Record<CardType, { icon: keyof typeof LucideIcons; color: string; bgColor: string }> = {
   fault: { icon: 'AlertTriangle', color: 'text-red-500', bgColor: 'bg-red-500/10' },
-  work_order: { icon: 'Wrench', color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+  work_order: { icon: 'Wrench', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
   equipment: { icon: 'Cog', color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
   part: { icon: 'Package', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
   handover: { icon: 'Users', color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
@@ -206,7 +206,7 @@ export default function SpotlightPreviewPane({
         <button
           className={cn(
             'px-3 py-1.5 rounded-md',
-            'bg-blue-500 hover:bg-blue-600',
+            'bg-celeste-accent hover:bg-celeste-accent-hover',
             'text-[12px] font-medium text-white',
             'transition-colors'
           )}

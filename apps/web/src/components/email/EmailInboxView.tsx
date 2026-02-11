@@ -79,7 +79,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
               'px-3 py-1.5 text-[13px] rounded-md transition-colors',
               showLinked
                 ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
-                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                : 'bg-celeste-accent-subtle text-celeste-accent'
             )}
           >
             {showLinked ? 'Showing All' : 'Showing Unlinked Only'}

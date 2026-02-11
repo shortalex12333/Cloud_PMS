@@ -160,7 +160,7 @@ export function FaultHistoryModal({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-blue-600" />
+            <History className="h-5 w-5 text-celeste-accent" />
             Fault History
           </DialogTitle>
           <DialogDescription>
@@ -172,7 +172,7 @@ export function FaultHistoryModal({
 
         {isLoading && faults.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
             <span className="ml-3 text-celeste-text-secondary">Loading history...</span>
           </div>
         )}

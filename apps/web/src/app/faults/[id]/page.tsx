@@ -202,7 +202,7 @@ export default function FaultLensPage() {
     return (
       <div className="min-h-screen bg-celeste-black flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
           <p className="text-celeste-text-muted">Loading fault report...</p>
         </div>
       </div>
@@ -221,7 +221,7 @@ export default function FaultLensPage() {
           <p className="text-celeste-text-muted mb-6">{error}</p>
           <button
             onClick={() => router.push('/app')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-lg transition-colors"
           >
             Return to App
           </button>
@@ -301,7 +301,7 @@ export default function FaultLensPage() {
               </span>
             )}
             {fault.has_work_order && (
-              <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-500/10 text-blue-400">
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-celeste-accent-subtle text-celeste-accent">
                 Work Order Created
               </span>
             )}
