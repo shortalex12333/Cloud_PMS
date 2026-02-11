@@ -76,7 +76,6 @@ export default function EmailOverlay() {
         <EmailSurface
           className="h-full"
           initialThreadId={emailPanel.threadId}
-          initialFolder={emailPanel.folder}
           onClose={hideEmail}
         />
       </div>
