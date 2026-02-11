@@ -194,14 +194,14 @@ export function ComplianceWarningModal({
               ? 'bg-red-50 border-red-200'
               : warning.status === 'acknowledged'
               ? 'bg-amber-50 border-amber-200'
-              : 'bg-gray-50 border-gray-200'
+              : 'bg-celeste-bg-primary border-celeste-border'
           )}>
             {warning.status === 'active' ? (
               <AlertTriangle className="h-6 w-6 text-red-600" />
             ) : warning.status === 'acknowledged' ? (
               <Clock className="h-6 w-6 text-amber-600" />
             ) : (
-              <CheckCircle2 className="h-6 w-6 text-gray-600" />
+              <CheckCircle2 className="h-6 w-6 text-celeste-text-secondary" />
             )}
             <div className="flex-1">
               <p className={cn(
@@ -210,7 +210,7 @@ export function ComplianceWarningModal({
                   ? 'text-red-800'
                   : warning.status === 'acknowledged'
                   ? 'text-amber-800'
-                  : 'text-gray-800'
+                  : 'text-celeste-bg-tertiary'
               )}>
                 {warning.status} Warning
               </p>
@@ -220,7 +220,7 @@ export function ComplianceWarningModal({
                   ? 'text-red-700'
                   : warning.status === 'acknowledged'
                   ? 'text-amber-700'
-                  : 'text-gray-700'
+                  : 'text-celeste-text-secondary'
               )}>
                 {violationType.label}
               </p>
@@ -229,12 +229,12 @@ export function ComplianceWarningModal({
 
           {/* Violation Details */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center gap-2 text-gray-600 mb-1">
+            <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+              <div className="flex items-center gap-2 text-celeste-text-secondary mb-1">
                 <Calendar className="h-4 w-4" />
                 <span className="text-xs font-medium uppercase">Date</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-celeste-black">
                 {new Date(warning.record_date).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -242,12 +242,12 @@ export function ComplianceWarningModal({
                 })}
               </p>
             </div>
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center gap-2 text-gray-600 mb-1">
+            <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+              <div className="flex items-center gap-2 text-celeste-text-secondary mb-1">
                 <User className="h-4 w-4" />
                 <span className="text-xs font-medium uppercase">Crew Member</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-celeste-black">
                 {warning.user_name || 'Unknown'}
               </p>
             </div>
@@ -272,11 +272,11 @@ export function ComplianceWarningModal({
           {warning.description && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-gray-500" />
+                <FileText className="h-4 w-4 text-celeste-text-disabled" />
                 Details
               </Label>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <p className="text-sm text-gray-700">{warning.description}</p>
+              <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+                <p className="text-sm text-celeste-text-secondary">{warning.description}</p>
               </div>
             </div>
           )}
@@ -297,21 +297,21 @@ export function ComplianceWarningModal({
           {/* Dismissed Status */}
           {warning.status === 'dismissed' && warning.dismissed_at && (
             <div className="space-y-3">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-gray-600" />
+              <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-celeste-text-secondary" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-celeste-black">
                     Dismissed by {warning.dismissed_by || 'HOD'}
                   </p>
-                  <p className="text-xs text-gray-700">
+                  <p className="text-xs text-celeste-text-secondary">
                     {new Date(warning.dismissed_at).toLocaleString()}
                   </p>
                 </div>
               </div>
               {warning.hod_justification && (
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <p className="text-xs font-medium text-gray-600 mb-1 uppercase">Justification</p>
-                  <p className="text-sm text-gray-700">{warning.hod_justification}</p>
+                <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+                  <p className="text-xs font-medium text-celeste-text-secondary mb-1 uppercase">Justification</p>
+                  <p className="text-sm text-celeste-text-secondary">{warning.hod_justification}</p>
                 </div>
               )}
             </div>
@@ -383,7 +383,7 @@ export function ComplianceWarningModal({
                 {errors.hod_justification && (
                   <p className="text-sm text-red-600">{errors.hod_justification.message}</p>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-celeste-text-disabled">
                   Minimum 20 characters. This is an audit-sensitive field.
                 </p>
               </div>
@@ -429,9 +429,9 @@ export function ComplianceWarningModal({
 
           {/* Insufficient Permissions */}
           {mode === 'dismiss' && !isHODPlus && (
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-center">
-              <ShieldCheck className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">
+            <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg text-center">
+              <ShieldCheck className="h-8 w-8 text-celeste-text-muted mx-auto mb-2" />
+              <p className="text-sm text-celeste-text-secondary">
                 Only HOD, Captain, or Manager can dismiss warnings
               </p>
             </div>

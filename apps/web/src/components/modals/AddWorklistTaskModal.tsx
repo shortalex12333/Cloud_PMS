@@ -227,7 +227,7 @@ export function AddWorklistTaskModal({
           <div className="space-y-2">
             <Label htmlFor="title">Task Title *</Label>
             <div className="relative">
-              <Hammer className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Hammer className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
               <Input
                 id="title"
                 {...register('title')}
@@ -266,7 +266,7 @@ export function AddWorklistTaskModal({
                       'border',
                       category === cat.value
                         ? cn(cat.color, 'border-current ring-1 ring-current')
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        : 'bg-white border-celeste-border text-celeste-text-secondary hover:bg-celeste-bg-primary'
                     )}
                   >
                     {cat.label}
@@ -288,7 +288,7 @@ export function AddWorklistTaskModal({
                       'border',
                       priority === p.value
                         ? cn('bg-zinc-50 border-zinc-300', p.color)
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        : 'bg-white border-celeste-border text-celeste-text-secondary hover:bg-celeste-bg-primary'
                     )}
                   >
                     {p.label}
@@ -303,7 +303,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="estimated_hours">Estimated Hours</Label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
                 <Input
                   id="estimated_hours"
                   type="number"
@@ -318,7 +318,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="estimated_cost">Estimated Cost ($)</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
                 <Input
                   id="estimated_cost"
                   type="number"
@@ -337,7 +337,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="start_date">Start Date</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
                 <Input
                   id="start_date"
                   type="date"
@@ -349,7 +349,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="due_date">Due Date</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
                 <Input
                   id="due_date"
                   type="date"
@@ -364,7 +364,7 @@ export function AddWorklistTaskModal({
           {contractors.length > 0 && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-gray-500" />
+                <Users className="h-4 w-4 text-celeste-text-disabled" />
                 Assign Contractor
               </Label>
               <select
@@ -389,7 +389,7 @@ export function AddWorklistTaskModal({
           {existingTasks.length > 0 && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-gray-500" />
+                <Link2 className="h-4 w-4 text-celeste-text-disabled" />
                 Dependencies (must complete first)
               </Label>
               <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
@@ -400,7 +400,7 @@ export function AddWorklistTaskModal({
                       key={task.id}
                       className={cn(
                         'flex items-center gap-2 p-2 rounded cursor-pointer',
-                        'hover:bg-gray-50 transition-colors',
+                        'hover:bg-celeste-bg-primary transition-colors',
                         selectedDependencies.includes(task.id) && 'bg-indigo-50'
                       )}
                     >
@@ -408,10 +408,10 @@ export function AddWorklistTaskModal({
                         checked={selectedDependencies.includes(task.id)}
                         onCheckedChange={() => toggleDependency(task.id)}
                       />
-                      <span className="text-sm text-gray-700">{task.title}</span>
+                      <span className="text-sm text-celeste-text-secondary">{task.title}</span>
                       <span className={cn(
                         'text-xs px-1.5 py-0.5 rounded ml-auto',
-                        task.status === 'pending' && 'bg-gray-100 text-gray-600',
+                        task.status === 'pending' && 'bg-celeste-bg-secondary text-celeste-text-secondary',
                         task.status === 'in_progress' && 'bg-blue-100 text-blue-600'
                       )}>
                         {task.status.replace('_', ' ')}

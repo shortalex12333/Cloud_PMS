@@ -38,11 +38,11 @@ export function HandoverCard({ handover, actions = [] }: HandoverCardProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'text-red-600';
+        return 'text-restricted-red';
       case 'medium':
-        return 'text-yellow-600';
+        return 'text-restricted-yellow';
       default:
-        return 'text-gray-600';
+        return 'text-celeste-text-secondary';
     }
   };
 
@@ -68,7 +68,7 @@ export function HandoverCard({ handover, actions = [] }: HandoverCardProps) {
               {formatDate(handover.date)} - {handover.shift}
             </h3>
             {highPriorityCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 font-medium">
+              <span className="text-xs px-2 py-0.5 rounded-full border border-restricted-red/30 bg-restricted-red/10 text-restricted-red font-medium">
                 {highPriorityCount} high priority
               </span>
             )}
@@ -105,7 +105,7 @@ export function HandoverCard({ handover, actions = [] }: HandoverCardProps) {
                       className="text-sm flex items-start gap-1.5"
                     >
                       {item.priority === 'high' && (
-                        <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
+                        <AlertCircle className="h-4 w-4 text-restricted-red mt-0.5" />
                       )}
                       <span className={getPriorityColor(item.priority)}>
                         {item.content}

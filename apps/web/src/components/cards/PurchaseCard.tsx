@@ -35,30 +35,30 @@ export function PurchaseCard({ purchase, actions = [] }: PurchaseCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'received':
-        return 'text-green-700 bg-green-50 border-green-200';
+        return 'text-restricted-green bg-restricted-green/10 border-restricted-green/30';
       case 'approved':
       case 'ordered':
-        return 'text-blue-700 bg-blue-50 border-blue-200';
+        return 'text-celeste-accent bg-celeste-accent/10 border-celeste-accent/30';
       case 'in_transit':
-        return 'text-purple-700 bg-purple-50 border-purple-200';
+        return 'text-celeste-accent bg-celeste-accent/10 border-celeste-accent/30';
       case 'cancelled':
-        return 'text-gray-700 bg-gray-50 border-gray-200';
+        return 'text-celeste-text-muted bg-celeste-bg-secondary border-celeste-border';
       default:
-        return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+        return 'text-restricted-yellow bg-restricted-yellow/10 border-restricted-yellow/30';
     }
   };
 
   const getStatusIcon = () => {
     switch (purchase.status) {
       case 'received':
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        return <CheckCircle2 className="h-5 w-5 text-restricted-green" />;
       case 'in_transit':
-        return <Truck className="h-5 w-5 text-purple-600" />;
+        return <Truck className="h-5 w-5 text-celeste-accent" />;
       case 'approved':
       case 'ordered':
-        return <ShoppingCart className="h-5 w-5 text-blue-600" />;
+        return <ShoppingCart className="h-5 w-5 text-celeste-accent" />;
       default:
-        return <Clock className="h-5 w-5 text-yellow-600" />;
+        return <Clock className="h-5 w-5 text-restricted-yellow" />;
     }
   };
 
@@ -100,7 +100,7 @@ export function PurchaseCard({ purchase, actions = [] }: PurchaseCardProps) {
           {/* Amount */}
           {(purchase.total_amount || purchase.invoice_amount) && (
             <div className="flex items-center gap-1.5 text-sm font-medium mb-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
+              <DollarSign className="h-4 w-4 text-restricted-green" />
               <span>
                 {purchase.currency || '$'}
                 {(purchase.invoice_amount || purchase.total_amount)?.toFixed(2)}
@@ -127,7 +127,7 @@ export function PurchaseCard({ purchase, actions = [] }: PurchaseCardProps) {
               <span>Approved: {formatDate(purchase.approved_at)}</span>
             )}
             {purchase.received_at && (
-              <span className="text-green-600">
+              <span className="text-restricted-green">
                 Received: {formatDate(purchase.received_at)}
               </span>
             )}

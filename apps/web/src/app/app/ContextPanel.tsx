@@ -250,14 +250,14 @@ export default function ContextPanel() {
       default:
         // Generic display for unsupported entity types
         return (
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
             <h3 className="text-lg font-semibold text-white mb-2">
               {(data.title as string) || (data.name as string) || displayName}
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-celeste-text-muted">
               {(data.subtitle as string) || (data.description as string) || 'Details unavailable'}
             </p>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-celeste-text-disabled mt-2">
               Entity type: {entityType} | ID: {entityId}
             </p>
           </div>
@@ -268,7 +268,7 @@ export default function ContextPanel() {
   return (
     <div
       className={cn(
-        'absolute inset-y-0 right-0 w-[520px] bg-gray-900/95 border-l border-gray-700/50',
+        'absolute inset-y-0 right-0 w-[520px] bg-celeste-black/95 border-l border-celeste-text-secondary/50',
         'flex flex-col',
         'transform transition-transform duration-300 ease-out z-[10001]',
         'backdrop-blur-sm shadow-2xl',
@@ -279,23 +279,23 @@ export default function ContextPanel() {
       data-entity-id={entityId}
     >
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-700/50 relative z-50 bg-gray-900/95">
+      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-celeste-text-secondary/50 relative z-50 bg-celeste-black/95">
         <div className="flex items-center gap-4">
           <button
             onClick={hideContext}
-            className="relative z-50 p-2 hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto cursor-pointer"
+            className="relative z-50 p-2 hover:bg-celeste-bg-tertiary rounded-lg transition-colors pointer-events-auto cursor-pointer"
             aria-label="Close context panel"
             data-testid="close-context-panel"
             type="button"
           >
-            <X className="w-5 h-5 text-gray-400 pointer-events-none" />
+            <X className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
           </button>
           <div>
-            <span className="text-xs text-gray-500 uppercase tracking-wider">
+            <span className="text-xs text-celeste-text-disabled uppercase tracking-wider">
               {displayName}
             </span>
             {entityId && (
-              <p className="text-sm text-gray-400 font-mono">
+              <p className="text-sm text-celeste-text-muted font-mono">
                 {entityId.substring(0, 8)}...
               </p>
             )}
@@ -303,11 +303,11 @@ export default function ContextPanel() {
         </div>
         <button
           onClick={hideContext}
-          className="relative z-50 p-2 hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto cursor-pointer"
+          className="relative z-50 p-2 hover:bg-celeste-bg-tertiary rounded-lg transition-colors pointer-events-auto cursor-pointer"
           aria-label="Close panel"
           type="button"
         >
-          <ChevronRight className="w-5 h-5 text-gray-400 pointer-events-none" />
+          <ChevronRight className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
         </button>
       </div>
 
@@ -320,8 +320,8 @@ export default function ContextPanel() {
           </div>
         ) : (
           <div className="text-center py-12" data-testid="context-panel-empty">
-            <AlertCircle className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">
+            <AlertCircle className="w-8 h-8 text-celeste-text-secondary mx-auto mb-3" />
+            <p className="text-celeste-text-muted text-sm">
               Select an item to view details
             </p>
           </div>

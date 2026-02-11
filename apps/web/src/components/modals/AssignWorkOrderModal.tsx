@@ -115,7 +115,7 @@ export function AssignWorkOrderModal({
       case 'important':
         return 'text-amber-700 bg-amber-50 border-amber-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -219,13 +219,13 @@ export function AssignWorkOrderModal({
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         'w-2 h-2 rounded-full',
-                        member.available ? 'bg-emerald-500' : 'bg-gray-400'
+                        member.available ? 'bg-emerald-500' : 'bg-celeste-text-muted'
                       )} />
                       <span>{member.name}</span>
-                      <span className="text-gray-400">·</span>
-                      <span className="text-gray-500">{member.role}</span>
+                      <span className="text-celeste-text-muted">·</span>
+                      <span className="text-celeste-text-disabled">{member.role}</span>
                       {!member.available && (
-                        <span className="text-xs text-gray-400">(Unavailable)</span>
+                        <span className="text-xs text-celeste-text-muted">(Unavailable)</span>
                       )}
                     </div>
                   </SelectItem>
@@ -239,13 +239,13 @@ export function AssignWorkOrderModal({
 
           {/* Selected Assignee Info */}
           {selectedCrewMember && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-celeste-bg-primary rounded-lg">
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <User className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">{selectedCrewMember.name}</p>
-                <p className="text-sm text-gray-500">{selectedCrewMember.role}</p>
+                <p className="font-medium text-celeste-black">{selectedCrewMember.name}</p>
+                <p className="text-sm text-celeste-text-disabled">{selectedCrewMember.role}</p>
               </div>
               {selectedCrewMember.available && (
                 <span className="ml-auto text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
@@ -259,7 +259,7 @@ export function AssignWorkOrderModal({
           <div className="space-y-2">
             <Label htmlFor="due_date">Due Date (Optional Override)</Label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
               <input
                 id="due_date"
                 type="date"
@@ -267,7 +267,7 @@ export function AssignWorkOrderModal({
                 className={cn(
                   'w-full pl-10 pr-4 py-2 border rounded-md',
                   'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  errors.due_date ? 'border-red-500' : 'border-gray-300'
+                  errors.due_date ? 'border-red-500' : 'border-celeste-border'
                 )}
               />
             </div>
@@ -285,7 +285,7 @@ export function AssignWorkOrderModal({
               <SelectContent>
                 <SelectItem value="routine">
                   <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-gray-400" />
+                    <span className="w-2 h-2 rounded-full bg-celeste-text-muted" />
                     Routine
                   </span>
                 </SelectItem>
@@ -325,7 +325,7 @@ export function AssignWorkOrderModal({
               type="checkbox"
               id="notify_assignee"
               {...register('notify_assignee')}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-celeste-border text-blue-600 focus:ring-blue-500"
             />
             <Label
               htmlFor="notify_assignee"

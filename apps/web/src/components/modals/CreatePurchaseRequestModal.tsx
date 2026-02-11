@@ -159,7 +159,7 @@ export function CreatePurchaseRequestModal({
       case 'urgent':
         return 'text-orange-700 bg-orange-50 border-orange-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -180,7 +180,7 @@ export function CreatePurchaseRequestModal({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Request Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Request Details</h3>
+            <h3 className="text-sm font-semibold text-celeste-black">Request Details</h3>
 
             {/* Justification */}
             <div className="space-y-2">
@@ -249,7 +249,7 @@ export function CreatePurchaseRequestModal({
           {/* Line Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">
+              <h3 className="text-sm font-semibold text-celeste-black">
                 Line Items ({fields.length})
               </h3>
               <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
@@ -268,10 +268,10 @@ export function CreatePurchaseRequestModal({
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="p-4 border border-gray-200 rounded-lg space-y-3 bg-gray-50"
+                  className="p-4 border border-celeste-border rounded-lg space-y-3 bg-celeste-bg-primary"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Item #{index + 1}</span>
+                    <span className="text-sm font-medium text-celeste-text-secondary">Item #{index + 1}</span>
                     {fields.length > 1 && (
                       <Button
                         type="button"
@@ -347,7 +347,7 @@ export function CreatePurchaseRequestModal({
                   {/* Line Total */}
                   {lineItems[index] && (
                     <div className="flex justify-end">
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-celeste-text-secondary">
                         Line Total:{' '}
                         <span className="font-semibold">
                           $

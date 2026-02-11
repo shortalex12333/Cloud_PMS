@@ -67,18 +67,18 @@ const CATEGORY_LABELS = {
 };
 
 const CATEGORY_COLORS = {
-  ongoing_fault: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  work_in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  important_info: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  ongoing_fault: 'bg-restricted-red-100 text-restricted-red-700 dark:bg-restricted-red-900/30 dark:text-restricted-red-400',
+  work_in_progress: 'bg-celeste-accent-100 text-celeste-accent-700 dark:bg-celeste-accent-900/30 dark:text-celeste-accent-400',
+  important_info: 'bg-restricted-yellow-100 text-restricted-yellow-700 dark:bg-restricted-yellow-900/30 dark:text-restricted-yellow-400',
   equipment_status: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  general: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
+  general: 'bg-celeste-bg-secondary text-celeste-text-secondary dark:bg-celeste-bg-tertiary dark:text-celeste-text-muted',
 };
 
 const PRIORITY_STYLES: Record<number, { dot: string; label: string }> = {
-  1: { dot: 'bg-gray-400', label: 'Low' },
-  2: { dot: 'bg-blue-500', label: 'Normal' },
-  3: { dot: 'bg-orange-500', label: 'High' },
-  4: { dot: 'bg-red-500', label: 'Urgent' },
+  1: { dot: 'bg-celeste-text-muted', label: 'Low' },
+  2: { dot: 'bg-celeste-accent-500', label: 'Normal' },
+  3: { dot: 'bg-restricted-yellow-500', label: 'High' },
+  4: { dot: 'bg-restricted-red-500', label: 'Urgent' },
 };
 
 export function HandoverItemCard({ item, onViewEntity }: HandoverItemCardProps) {
@@ -168,7 +168,7 @@ export function HandoverItemCard({ item, onViewEntity }: HandoverItemCardProps) 
           {shouldTruncate && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-[13px] text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-3"
+              className="text-[13px] text-celeste-accent-600 hover:text-celeste-accent-700 dark:text-celeste-accent-400 dark:hover:text-celeste-accent-300 mb-3"
             >
               {expanded ? 'Show less' : 'Read more'}
             </button>

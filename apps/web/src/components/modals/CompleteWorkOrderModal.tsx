@@ -179,7 +179,7 @@ export function CompleteWorkOrderModal({
       case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -278,8 +278,8 @@ export function CompleteWorkOrderModal({
             {/* Time Variance Warning */}
             {context.estimated_hours && actualHours > 0 && (
               <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-600">
+                <Clock className="h-4 w-4 text-celeste-text-disabled" />
+                <span className="text-celeste-text-secondary">
                   Estimated: {context.estimated_hours}h | Actual: {actualHours}h
                 </span>
                 <span
@@ -326,8 +326,8 @@ export function CompleteWorkOrderModal({
           </div>
 
           {/* Quality & Documentation Checklist */}
-          <div className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+          <div className="space-y-3 p-4 border border-celeste-border rounded-lg bg-celeste-bg-primary">
+            <h3 className="font-semibold text-celeste-black flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Required Checks
             </h3>

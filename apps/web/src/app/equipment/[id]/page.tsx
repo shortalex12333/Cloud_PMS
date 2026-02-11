@@ -182,7 +182,7 @@ export default function EquipmentLensPage() {
       case 'maintenance':
         return { bg: 'bg-amber-500/10', text: 'text-amber-400', label: 'Under Maintenance' };
       case 'offline':
-        return { bg: 'bg-gray-500/10', text: 'text-gray-400', label: 'Offline' };
+        return { bg: 'bg-celeste-text-disabled/10', text: 'text-celeste-text-muted', label: 'Offline' };
       default:
         return { bg: 'bg-blue-500/10', text: 'text-blue-400', label: status || 'Unknown' };
     }
@@ -214,10 +214,10 @@ export default function EquipmentLensPage() {
   // ---------------------------------------------------------------------------
   if (loading || authLoading || bootstrapping) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading equipment details...</p>
+          <p className="text-celeste-text-muted">Loading equipment details...</p>
         </div>
       </div>
     );
@@ -228,11 +228,11 @@ export default function EquipmentLensPage() {
   // ---------------------------------------------------------------------------
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
+        <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <p className="text-celeste-text-muted mb-6">{error}</p>
           <button
             onClick={() => router.push('/app')}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -258,24 +258,24 @@ export default function EquipmentLensPage() {
   // RENDER
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-celeste-black">
       {/* ===================================================================
           HEADER
           TODO: Add action buttons (Edit, Create Fault, Create WO, etc.)
           =================================================================== */}
-      <header className="bg-gray-800/50 border-b border-gray-700/50 sticky top-0 z-10 backdrop-blur-sm">
+      <header className="bg-celeste-bg-tertiary/50 border-b border-celeste-text-secondary/50 sticky top-0 z-10 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
+              className="p-2 hover:bg-celeste-text-secondary/50 rounded-lg transition-colors"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-400" />
+              <ArrowLeft className="w-5 h-5 text-celeste-text-muted" />
             </button>
             <div className="flex items-center gap-2">
               <Settings className="w-5 h-5 text-blue-400" />
-              <span className="text-sm text-gray-400 uppercase tracking-wider">Equipment</span>
+              <span className="text-sm text-celeste-text-muted uppercase tracking-wider">Equipment</span>
             </div>
             {/* TODO: Add action buttons
             <div className="ml-auto flex gap-2">
@@ -314,7 +314,7 @@ export default function EquipmentLensPage() {
 
           {/* Type / Category - TODO: Make clickable to filter by type */}
           {(equipment.equipment_type || equipment.category) && (
-            <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <div className="flex items-center gap-2 text-celeste-text-muted mb-2">
               <Settings className="w-4 h-4" />
               <span>{equipment.equipment_type || equipment.category}</span>
             </div>
@@ -322,7 +322,7 @@ export default function EquipmentLensPage() {
 
           {/* Location */}
           {equipment.location && (
-            <div className="flex items-center gap-2 text-gray-400">
+            <div className="flex items-center gap-2 text-celeste-text-muted">
               <MapPin className="w-4 h-4" />
               <span>{equipment.location}</span>
             </div>
@@ -346,12 +346,12 @@ export default function EquipmentLensPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* Manufacturer */}
           {equipment.manufacturer && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Factory className="w-5 h-5 text-gray-500" />
+                <Factory className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Manufacturer</p>
-                  <p className="text-gray-200">{equipment.manufacturer}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Manufacturer</p>
+                  <p className="text-celeste-border">{equipment.manufacturer}</p>
                 </div>
               </div>
             </div>
@@ -359,12 +359,12 @@ export default function EquipmentLensPage() {
 
           {/* Model */}
           {equipment.model && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Hash className="w-5 h-5 text-gray-500" />
+                <Hash className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Model</p>
-                  <p className="text-gray-200">{equipment.model}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Model</p>
+                  <p className="text-celeste-border">{equipment.model}</p>
                 </div>
               </div>
             </div>
@@ -372,12 +372,12 @@ export default function EquipmentLensPage() {
 
           {/* Serial Number */}
           {equipment.serial_number && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Hash className="w-5 h-5 text-gray-500" />
+                <Hash className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Serial Number</p>
-                  <p className="text-gray-200 font-mono">{equipment.serial_number}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Serial Number</p>
+                  <p className="text-celeste-border font-mono">{equipment.serial_number}</p>
                 </div>
               </div>
             </div>
@@ -385,12 +385,12 @@ export default function EquipmentLensPage() {
 
           {/* Running Hours */}
           {equipment.running_hours !== undefined && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-gray-500" />
+                <Clock className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Running Hours</p>
-                  <p className="text-gray-200">{equipment.running_hours.toLocaleString()} hrs</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Running Hours</p>
+                  <p className="text-celeste-border">{equipment.running_hours.toLocaleString()} hrs</p>
                 </div>
               </div>
             </div>
@@ -398,12 +398,12 @@ export default function EquipmentLensPage() {
 
           {/* Risk Score */}
           {equipment.risk_score !== undefined && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Activity className={cn('w-5 h-5', risk?.text || 'text-gray-500')} />
+                <Activity className={cn('w-5 h-5', risk?.text || 'text-celeste-text-disabled')} />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Risk Score</p>
-                  <p className={cn(risk?.text || 'text-gray-200')}>{equipment.risk_score}%</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Risk Score</p>
+                  <p className={cn(risk?.text || 'text-celeste-border')}>{equipment.risk_score}%</p>
                 </div>
               </div>
             </div>
@@ -411,12 +411,12 @@ export default function EquipmentLensPage() {
 
           {/* Installation Date */}
           {equipment.installation_date && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Gauge className="w-5 h-5 text-gray-500" />
+                <Gauge className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Installed</p>
-                  <p className="text-gray-200">{formatDate(equipment.installation_date)}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Installed</p>
+                  <p className="text-celeste-border">{formatDate(equipment.installation_date)}</p>
                 </div>
               </div>
             </div>
@@ -424,12 +424,12 @@ export default function EquipmentLensPage() {
 
           {/* Last Maintenance */}
           {equipment.last_maintenance && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-gray-500" />
+                <Clock className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Last Maintenance</p>
-                  <p className="text-gray-200">{formatDate(equipment.last_maintenance)}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Last Maintenance</p>
+                  <p className="text-celeste-border">{formatDate(equipment.last_maintenance)}</p>
                 </div>
               </div>
             </div>
@@ -437,11 +437,11 @@ export default function EquipmentLensPage() {
 
           {/* Next Maintenance */}
           {equipment.next_maintenance && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-amber-500" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Next Maintenance</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Next Maintenance</p>
                   <p className="text-amber-400">{formatDate(equipment.next_maintenance)}</p>
                 </div>
               </div>
@@ -468,8 +468,8 @@ export default function EquipmentLensPage() {
         {/* -----------------------------------------------------------------
             RELATED EMAILS
             ----------------------------------------------------------------- */}
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <div className="bg-celeste-bg-tertiary/50 rounded-lg p-6 border border-celeste-text-secondary/50">
+          <h2 className="text-sm font-semibold text-celeste-text-muted uppercase tracking-wider mb-4">
             Related Emails
           </h2>
           <RelatedEmailsPanel

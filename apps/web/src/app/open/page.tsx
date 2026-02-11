@@ -77,15 +77,15 @@ function OpenTokenResolver() {
   }, [resolveToken]);
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full shadow-xl border border-gray-700">
+    <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
+      <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full shadow-xl border border-celeste-text-secondary">
         {status === 'loading' && (
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white mb-2">
               Opening Link
             </h2>
-            <p className="text-gray-400 text-sm">
+            <p className="text-celeste-text-muted text-sm">
               Resolving handover reference...
             </p>
           </div>
@@ -97,7 +97,7 @@ function OpenTokenResolver() {
             <h2 className="text-xl font-semibold text-white mb-2">
               Link Resolved
             </h2>
-            <p className="text-gray-400 text-sm">
+            <p className="text-celeste-text-muted text-sm">
               Redirecting to item...
             </p>
           </div>
@@ -109,7 +109,7 @@ function OpenTokenResolver() {
             <h2 className="text-xl font-semibold text-white mb-2">
               Unable to Open Link
             </h2>
-            <p className="text-gray-400 text-sm mb-4">
+            <p className="text-celeste-text-muted text-sm mb-4">
               {errorMessage}
             </p>
             <button
@@ -129,7 +129,7 @@ export default function OpenPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="min-h-screen bg-celeste-black flex items-center justify-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
         </div>
       }

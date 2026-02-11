@@ -180,7 +180,7 @@ export function MonthlySignoffModal({
 
         {loadingData ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-celeste-text-muted" />
           </div>
         ) : signoffData ? (
           <div className="space-y-5">
@@ -214,21 +214,21 @@ export function MonthlySignoffModal({
 
             {/* Period Info */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-2 text-gray-600 mb-1">
+              <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+                <div className="flex items-center gap-2 text-celeste-text-secondary mb-1">
                   <Calendar className="h-4 w-4" />
                   <span className="text-xs font-medium uppercase">Period</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-lg font-semibold text-celeste-black">
                   {signoffData.month}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-2 text-gray-600 mb-1">
+              <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+                <div className="flex items-center gap-2 text-celeste-text-secondary mb-1">
                   <User className="h-4 w-4" />
                   <span className="text-xs font-medium uppercase">Department</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-900 capitalize">
+                <p className="text-lg font-semibold text-celeste-black capitalize">
                   {signoffData.department}
                 </p>
               </div>
@@ -237,7 +237,7 @@ export function MonthlySignoffModal({
             {/* Signature Status */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-gray-500" />
+                <Shield className="h-4 w-4 text-celeste-text-disabled" />
                 Signature Chain
               </Label>
               <div className="space-y-2">
@@ -246,17 +246,17 @@ export function MonthlySignoffModal({
                   'p-3 rounded-lg border flex items-center gap-3',
                   signoffData.crew_signature
                     ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-gray-50 border-gray-200'
+                    : 'bg-celeste-bg-primary border-celeste-border'
                 )}>
                   {signoffData.crew_signature ? (
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   ) : (
-                    <Clock className="h-5 w-5 text-gray-400" />
+                    <Clock className="h-5 w-5 text-celeste-text-muted" />
                   )}
                   <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">Crew Member</p>
+                    <p className="font-medium text-sm text-celeste-black">Crew Member</p>
                     {signoffData.crew_signature && (
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-celeste-text-secondary">
                         Signed {new Date(signoffData.crew_signature.signed_at).toLocaleString()} ({signoffData.crew_signature.signature_type})
                       </p>
                     )}
@@ -268,17 +268,17 @@ export function MonthlySignoffModal({
                   'p-3 rounded-lg border flex items-center gap-3',
                   signoffData.hod_signature
                     ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-gray-50 border-gray-200'
+                    : 'bg-celeste-bg-primary border-celeste-border'
                 )}>
                   {signoffData.hod_signature ? (
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   ) : (
-                    <Clock className="h-5 w-5 text-gray-400" />
+                    <Clock className="h-5 w-5 text-celeste-text-muted" />
                   )}
                   <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">Head of Department</p>
+                    <p className="font-medium text-sm text-celeste-black">Head of Department</p>
                     {signoffData.hod_signature && (
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-celeste-text-secondary">
                         Signed {new Date(signoffData.hod_signature.signed_at).toLocaleString()} ({signoffData.hod_signature.signature_type})
                       </p>
                     )}
@@ -290,17 +290,17 @@ export function MonthlySignoffModal({
                   'p-3 rounded-lg border flex items-center gap-3',
                   signoffData.captain_signature
                     ? 'bg-emerald-50 border-emerald-200'
-                    : 'bg-gray-50 border-gray-200'
+                    : 'bg-celeste-bg-primary border-celeste-border'
                 )}>
                   {signoffData.captain_signature ? (
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   ) : (
-                    <Clock className="h-5 w-5 text-gray-400" />
+                    <Clock className="h-5 w-5 text-celeste-text-muted" />
                   )}
                   <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">Captain</p>
+                    <p className="font-medium text-sm text-celeste-black">Captain</p>
                     {signoffData.captain_signature && (
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-celeste-text-secondary">
                         Signed {new Date(signoffData.captain_signature.signed_at).toLocaleString()} ({signoffData.captain_signature.signature_type})
                       </p>
                     )}
@@ -328,7 +328,7 @@ export function MonthlySignoffModal({
                           'flex items-center gap-2 text-sm font-medium capitalize',
                           signatureLevel === level
                             ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500 ring-offset-2'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            : 'border-celeste-border text-celeste-text-secondary hover:border-celeste-border'
                         )}
                       >
                         {level}
@@ -385,8 +385,8 @@ export function MonthlySignoffModal({
             )}
           </div>
         ) : (
-          <div className="py-12 text-center text-gray-500">
-            <AlertCircle className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+          <div className="py-12 text-center text-celeste-text-disabled">
+            <AlertCircle className="h-12 w-12 mx-auto mb-3 text-celeste-text-muted" />
             <p>Failed to load signoff data</p>
           </div>
         )}
