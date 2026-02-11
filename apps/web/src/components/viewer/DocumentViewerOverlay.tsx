@@ -215,7 +215,7 @@ export default function DocumentViewerOverlay({
               <div className="relative" ref={actionsMenuRef}>
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#0a84ff] hover:bg-[#0a84ff]/80 text-white rounded-md transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
                   aria-label="Document actions"
                 >
                   <MoreVertical className="h-4 w-4" />

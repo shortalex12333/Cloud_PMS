@@ -249,7 +249,7 @@ export default function ActionModal({
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
                         'text-[15px] text-white',
-                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
                       required
@@ -264,7 +264,7 @@ export default function ActionModal({
                         'w-full px-3 py-2.5 rounded-lg resize-none',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
                         'text-[15px] text-white placeholder:text-[#636366]',
-                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
@@ -280,7 +280,7 @@ export default function ActionModal({
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
                         'text-[15px] text-white',
-                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
                       required
@@ -302,7 +302,7 @@ export default function ActionModal({
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
                         'text-[15px] text-white',
-                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
                       required
@@ -325,7 +325,7 @@ export default function ActionModal({
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
                         'text-[15px] text-white placeholder:text-[#636366]',
-                        'focus:outline-none focus:ring-2 focus:ring-[#0a84ff] focus:border-transparent',
+                        'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
@@ -357,7 +357,7 @@ export default function ActionModal({
 
                   <div className="space-y-1">
                     <span className="text-[#636366]">Path:</span>
-                    <div className="font-mono text-[12px] text-[#0a84ff] bg-[#0a84ff]/10 px-2 py-1.5 rounded break-all">
+                    <div className="font-mono text-[12px] text-celeste-accent bg-celeste-accent/10 px-2 py-1.5 rounded break-all">
                       {storagePathPreview}
                     </div>
                   </div>
@@ -380,7 +380,7 @@ export default function ActionModal({
                         'w-full px-2 py-1.5 rounded',
                         'bg-[#2c2c2e] border border-[#3d3d3f]',
                         'text-[13px] text-white placeholder:text-[#636366]',
-                        'focus:outline-none focus:ring-1 focus:ring-[#0a84ff]'
+                        'focus:outline-none focus:ring-1 focus:ring-celeste-accent-muted'
                       )}
                     />
                   </div>
@@ -428,7 +428,7 @@ export default function ActionModal({
               className={cn(
                 'px-4 py-2 rounded-lg',
                 'text-[14px] font-medium text-white',
-                'bg-[#0a84ff] hover:bg-[#0a84ff]/80',
+                'bg-celeste-accent hover:bg-celeste-accent/80',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'transition-colors',
                 'inline-flex items-center gap-2'

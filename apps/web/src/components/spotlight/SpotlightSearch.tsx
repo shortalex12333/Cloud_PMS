@@ -589,7 +589,7 @@ export default function SpotlightSearch({
             'spotlight-panel w-full font-body',
             'animate-spotlight-in',
             // Email scope: blue background and border
-            emailScopeActive && 'bg-[#0a84ff]/20 border-2 border-[#0a84ff] ring-2 ring-[#0a84ff]/40'
+            emailScopeActive && 'bg-celeste-accent/20 border-2 border-celeste-accent ring-2 ring-celeste-accent/40'
           )}
           data-email-scope={emailScopeActive}
         >
@@ -602,14 +602,14 @@ export default function SpotlightSearch({
           >
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-[#0a84ff] text-white rounded text-[11px] font-semibold whitespace-nowrap">
+              <div className="px-2 py-0.5 bg-celeste-accent text-white rounded text-[11px] font-semibold whitespace-nowrap">
                 Email
               </div>
             )}
             <Search
               className={cn(
                 'flex-shrink-0 w-5 h-5',
-                emailScopeActive ? 'text-[#0a84ff]' : 'text-[#98989f]'
+                emailScopeActive ? 'text-celeste-accent' : 'text-[#98989f]'
               )}
               strokeWidth={1.8}
             />
@@ -768,7 +768,7 @@ export default function SpotlightSearch({
                   <p className="text-[15px] text-[#98989f]">{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 text-[14px] text-[#0a84ff] hover:text-[#409cff]"
+                    className="mt-2 text-[14px] text-celeste-accent hover:text-celeste-accent-hover"
                   >
                     Try again
                   </button>
@@ -794,7 +794,7 @@ export default function SpotlightSearch({
             className={cn(
               'flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium',
               emailScopeActive
-                ? 'bg-[#0a84ff] text-white hover:bg-[#409cff]'
+                ? 'bg-celeste-accent text-white hover:bg-celeste-accent-hover'
                 : 'text-[#98989f] hover:text-white hover:bg-white/10'
             )}
             aria-label={emailScopeActive ? 'Exit Email Scope' : 'Search Email'}

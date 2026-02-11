@@ -129,7 +129,7 @@ export function ThreadLinksPanel({
           {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-[#0a84ff]" />
+              <Loader2 className="w-6 h-6 animate-spin text-celeste-accent" />
             </div>
           )}
 
@@ -142,7 +142,7 @@ export function ThreadLinksPanel({
               </p>
               <button
                 onClick={() => refetch()}
-                className="text-[13px] text-[#0a84ff] hover:text-[#409cff]"
+                className="text-[13px] text-celeste-accent hover:text-celeste-accent"
               >
                 Retry
               </button>

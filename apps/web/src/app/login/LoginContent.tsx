@@ -83,7 +83,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
           <p className="text-sm text-[#98989f]">Loading...</p>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
           <p className="text-sm text-[#98989f]">Loading your account...</p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
           <p className="text-sm text-[#98989f]">Redirecting...</p>
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
           <p className="text-sm text-[#98989f]">Connecting to server...</p>
           <p className="text-xs text-[#636366]">Retrying...</p>
         </div>
@@ -207,7 +207,7 @@ export default function LoginContent() {
             required
             autoComplete="email"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] text-base text-white placeholder:text-[#636366] focus:outline-none focus:border-[#0a84ff] transition-colors disabled:opacity-50"
+            className="w-full h-[44px] px-4 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] text-base text-white placeholder:text-[#636366] focus:outline-none focus:border-celeste-accent transition-colors disabled:opacity-50"
           />
 
           {/* Password */}
@@ -219,14 +219,14 @@ export default function LoginContent() {
             required
             autoComplete="current-password"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] text-base text-white placeholder:text-[#636366] focus:outline-none focus:border-[#0a84ff] transition-colors disabled:opacity-50"
+            className="w-full h-[44px] px-4 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] text-base text-white placeholder:text-[#636366] focus:outline-none focus:border-celeste-accent transition-colors disabled:opacity-50"
           />
 
           {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[44px] rounded-lg bg-[#0a84ff] hover:bg-[#0077ed] disabled:opacity-50 disabled:cursor-not-allowed text-base font-medium text-white transition-colors flex items-center justify-center gap-2"
+            className="w-full h-[44px] rounded-lg bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-base font-medium text-white transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
