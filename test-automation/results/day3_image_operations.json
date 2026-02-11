@@ -1,0 +1,149 @@
+{
+  "day": 3,
+  "timestamp": "2026-02-10T19:12:05.330371",
+  "total": 9,
+  "passed": 2,
+  "failed": 7,
+  "errors_400": 1,
+  "errors_500": 7,
+  "errors_timeout": 0,
+  "results": [
+    {
+      "test": "Upload: 1KB PNG (minimum)",
+      "expected": 200,
+      "actual": 200,
+      "latency_ms": 2998.8608360290527,
+      "success": true,
+      "details": {
+        "status": "success",
+        "part_id": "80f1a14d-458e-4365-8213-14c70e5ff924",
+        "part_name": "Part for Filter",
+        "storage_path": "85fe1119-b04c-41ac-80f1-829d23322598/parts/80f1a14d-458e-4365-8213-14c70e5ff924/images/20260211_001149_test_1kb.png",
+        "bucket": "pms-part-photos",
+        "image_url": "https://vzsohavtuotocgrfkfyd.supabase.co/storage/v1/object/public/pms-part-photos/85fe1119-b04c-41ac-80f1-829d23322598/parts/80f1a14d-458e-4365-8213-14c70e5ff924/images/20260211_001149_test_1kb.png?",
+        "message": "Image uploaded successfully: test_1kb.png"
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: 100KB PNG (typical)",
+      "expected": 200,
+      "actual": 500,
+      "latency_ms": 1877.9430389404297,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: 1MB PNG (large)",
+      "expected": 200,
+      "actual": 500,
+      "latency_ms": 874.2070198059082,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: 100KB JPEG",
+      "expected": 200,
+      "actual": 500,
+      "latency_ms": 1018.3210372924805,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: 100KB WebP",
+      "expected": 200,
+      "actual": 500,
+      "latency_ms": 994.8079586029053,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: First upload to part",
+      "expected": 200,
+      "actual": 500,
+      "latency_ms": 1056.9381713867188,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: Second upload to same part (duplicate)",
+      "expected": 200,
+      "actual": 500,
+      "latency_ms": 1040.9119129180908,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: Empty file",
+      "expected": 400,
+      "actual": 500,
+      "latency_ms": 1029.8140048980713,
+      "success": false,
+      "details": {
+        "error": {
+          "error": "Failed to upload image: {'code': '23505', 'details': 'Key (source_table, object_id)=(pms_parts, 80f1a14d-458e-4365-8213-14c70e5ff924) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint \"ix_spq_source_object\"'}",
+          "status_code": 500,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    },
+    {
+      "test": "Upload: Invalid part_id",
+      "expected": 400,
+      "actual": 400,
+      "latency_ms": 366.0001754760742,
+      "success": true,
+      "details": {
+        "error": {
+          "error": "Part 00000000-0000-0000-0000-000000000000 not found",
+          "status_code": 400,
+          "path": "https://pipeline-core.int.celeste7.ai/v1/parts/upload-image"
+        }
+      },
+      "error": null
+    }
+  ]
+}
