@@ -88,11 +88,15 @@ class EmailSyncService:
             result['reason'] = 'rate_limit'
             return result
 
+        # Get watcher_id for per-user thread isolation
+        watcher_id = watcher.get('id')
+
         # Sync Inbox
         try:
             inbox_result = await self.sync_folder(
                 user_id=user_id,
                 yacht_id=yacht_id,
+                watcher_id=watcher_id,
                 folder='inbox',
                 delta_link=watcher.get('delta_link_inbox'),
                 max_messages=max_messages
@@ -114,6 +118,7 @@ class EmailSyncService:
             sent_result = await self.sync_folder(
                 user_id=user_id,
                 yacht_id=yacht_id,
+                watcher_id=watcher_id,
                 folder='sentItems',
                 delta_link=watcher.get('delta_link_sent'),
                 max_messages=max_messages
@@ -134,6 +139,7 @@ class EmailSyncService:
         self,
         user_id: str,
         yacht_id: str,
+        watcher_id: str,
         folder: str,
         delta_link: Optional[str] = None,
         max_messages: int = 100
@@ -144,6 +150,7 @@ class EmailSyncService:
         Args:
             user_id: User ID
             yacht_id: Yacht ID
+            watcher_id: Watcher ID for per-user thread isolation
             folder: Folder name (inbox, sentItems)
             delta_link: Previous delta link for incremental sync
             max_messages: Maximum messages to process
@@ -199,7 +206,7 @@ class EmailSyncService:
                         messages_processed += 1
                         continue
 
-                    thread_id = await self._process_message(yacht_id, msg, folder)
+                    thread_id = await self._process_message(yacht_id, watcher_id, msg, folder)
                     if thread_id:
                         thread_ids.add(thread_id)
                         messages_processed += 1
@@ -228,6 +235,7 @@ class EmailSyncService:
     async def _process_message(
         self,
         yacht_id: str,
+        watcher_id: str,
         msg: Dict[str, Any],
         folder: str
     ) -> Optional[str]:
@@ -265,6 +273,7 @@ class EmailSyncService:
             # Upsert thread
             thread_id = await self._upsert_thread(
                 yacht_id=yacht_id,
+                watcher_id=watcher_id,
                 conversation_id=conversation_id,
                 subject=msg.get('subject', ''),
                 participant_hashes=all_participants,
@@ -277,6 +286,7 @@ class EmailSyncService:
             # Insert message
             await self._insert_message(
                 yacht_id=yacht_id,
+                watcher_id=watcher_id,
                 thread_id=thread_id,
                 msg=msg,
                 folder=folder,
@@ -295,6 +305,7 @@ class EmailSyncService:
     async def _upsert_thread(
         self,
         yacht_id: str,
+        watcher_id: str,
         conversation_id: str,
         subject: str,
         participant_hashes: List[str],
@@ -305,10 +316,12 @@ class EmailSyncService:
     ) -> str:
         """Upsert email thread record."""
 
-        # Check if thread exists
+        # Check if thread exists for this watcher (per-user isolation)
         existing = self.supabase.table('email_threads').select('id').eq(
             'yacht_id', yacht_id
-        ).eq('provider_conversation_id', conversation_id).execute()
+        ).eq('watcher_id', watcher_id).eq(
+            'provider_conversation_id', conversation_id
+        ).execute()
 
         activity_time = received_at or sent_at or datetime.utcnow().isoformat()
 
@@ -334,9 +347,10 @@ class EmailSyncService:
             ).execute()
 
         else:
-            # Create new thread
+            # Create new thread with watcher_id for per-user isolation
             thread_data = {
                 'yacht_id': yacht_id,
+                'watcher_id': watcher_id,
                 'provider_conversation_id': conversation_id,
                 'latest_subject': subject,
                 'participant_hashes': participant_hashes,
@@ -368,6 +382,7 @@ class EmailSyncService:
     async def _insert_message(
         self,
         yacht_id: str,
+        watcher_id: str,
         thread_id: str,
         msg: Dict[str, Any],
         folder: str,
@@ -380,10 +395,10 @@ class EmailSyncService:
 
         provider_message_id = msg.get('id')
 
-        # Check if message already exists
+        # Check if message already exists for this watcher
         existing = self.supabase.table('email_messages').select('id').eq(
             'provider_message_id', provider_message_id
-        ).execute()
+        ).eq('watcher_id', watcher_id).execute()
 
         if existing.data:
             return existing.data[0]['id']
@@ -402,6 +417,7 @@ class EmailSyncService:
 
         message_data = {
             'yacht_id': yacht_id,
+            'watcher_id': watcher_id,  # Per-user isolation
             'thread_id': thread_id,
             'provider_message_id': provider_message_id,
             'internet_message_id': msg.get('internetMessageId'),

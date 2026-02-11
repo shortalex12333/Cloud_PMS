@@ -132,8 +132,54 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 }
 
 /**
+ * Outlook auth error - thrown when Outlook OAuth needs reconnection.
+ * This is distinct from Celeste JWT expiry.
+ */
+export class OutlookAuthError extends Error {
+  constructor(
+    public code: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'OutlookAuthError';
+  }
+}
+
+/**
+ * Check if a 401 response is an Outlook OAuth error (vs Celeste JWT error).
+ * Outlook OAuth errors have a structured detail with error_code starting with 'outlook_'.
+ */
+async function isOutlookAuthError(response: Response): Promise<{ isOutlook: boolean; code?: string; message?: string }> {
+  try {
+    const cloned = response.clone();
+    const data = await cloned.json();
+    // Backend returns structured error: { error_code: "outlook_*", message: "...", requires_outlook_reconnect: true }
+    if (data?.error_code?.startsWith('outlook_') || data?.requires_outlook_reconnect) {
+      return {
+        isOutlook: true,
+        code: data.error_code,
+        message: data.message || 'Please reconnect your Outlook account',
+      };
+    }
+    // Also handle legacy format where detail is the message
+    if (typeof data?.detail === 'object' && data.detail?.error_code?.startsWith('outlook_')) {
+      return {
+        isOutlook: true,
+        code: data.detail.error_code,
+        message: data.detail.message || 'Please reconnect your Outlook account',
+      };
+    }
+  } catch {
+    // Not JSON or parsing error - treat as regular 401
+  }
+  return { isOutlook: false };
+}
+
+/**
  * Authenticated fetch with 401 retry.
- * If server returns 401, refreshes token and retries once.
+ * If server returns 401:
+ * - Check if it's an Outlook OAuth error (requires reconnect, NOT JWT refresh)
+ * - Otherwise, refresh Celeste JWT and retry
  */
 async function authFetch(url: string, options?: RequestInit): Promise<Response> {
   const makeRequest = async (): Promise<Response> => {
@@ -149,8 +195,20 @@ async function authFetch(url: string, options?: RequestInit): Promise<Response> 
 
   const response = await makeRequest();
 
-  // Handle 401 with automatic retry
+  // Handle 401 - distinguish Outlook OAuth vs Celeste JWT
   if (response.status === 401) {
+    const outlookCheck = await isOutlookAuthError(response);
+
+    if (outlookCheck.isOutlook) {
+      // Outlook OAuth issue - don't refresh Celeste JWT, throw specific error
+      debugLog('AUTH', `Outlook auth error: ${outlookCheck.code}`);
+      throw new OutlookAuthError(
+        outlookCheck.code || 'outlook_auth_required',
+        outlookCheck.message || 'Please reconnect your Outlook account'
+      );
+    }
+
+    // Regular 401 - try refreshing Celeste JWT
     debugLog('AUTH', '401 received, attempting token refresh...');
     return handle401(makeRequest);
   }
