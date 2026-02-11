@@ -8,11 +8,13 @@
  * call /v1/decisions for server-driven action visibility.
  *
  * Phase 12: Updated to render real card components for E2E testability.
+ * Phase 13: Fetches fresh entity data from backend on open.
  */
 
+import React, { useEffect } from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { useAuth } from '@/hooks/useAuth';
-import { X, ChevronRight, AlertCircle } from 'lucide-react';
+import { X, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FaultCard } from '@/components/cards/FaultCard';
 import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
@@ -20,6 +22,7 @@ import { EquipmentCard } from '@/components/cards/EquipmentCard';
 import { PartCard } from '@/components/cards/PartCard';
 import { ReceivingCard } from '@/components/cards/ReceivingCard';
 import type { MicroAction } from '@/types/actions';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Get available actions for parts based on user role
@@ -95,7 +98,11 @@ function getReceivingActions(status: string, role: string): MicroAction[] {
 export default function ContextPanel() {
   const { contextPanel, hideContext } = useSurface();
   const { user } = useAuth();
-  const { visible, entityType, entityId, entityData } = contextPanel;
+  const { visible, entityType, entityId, entityData: initialData } = contextPanel;
+
+  const [entityData, setEntityData] = React.useState<Record<string, unknown> | undefined>(initialData);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   // Entity type display names
   const entityTypeNames: Record<string, string> = {
@@ -112,6 +119,70 @@ export default function ContextPanel() {
   };
 
   const displayName = entityType ? entityTypeNames[entityType] || entityType : 'Details';
+
+  // Fetch fresh entity data when panel opens
+  useEffect(() => {
+    if (!visible || !entityType || !entityId) {
+      setError(null);
+      return;
+    }
+
+    const fetchEntityData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          console.warn('[ContextPanel] No auth session');
+          setEntityData(initialData);
+          setLoading(false);
+          return;
+        }
+
+        const PIPELINE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+        const response = await fetch(
+          `${PIPELINE_URL}/v1/entity/${entityType}/${entityId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.ok) {
+          const freshData = await response.json();
+          console.log('[ContextPanel] ✅ Fresh data fetched:', entityType, entityId);
+
+          // Validate yacht_id for security
+          if (freshData.yacht_id && user?.yachtId && freshData.yacht_id !== user.yachtId) {
+            throw new Error('Unauthorized: Entity belongs to different yacht');
+          }
+
+          setEntityData(freshData);
+        } else {
+          console.warn('[ContextPanel] Failed to fetch entity, using cached data:', response.status);
+          setEntityData(initialData);
+        }
+      } catch (err) {
+        console.error('[ContextPanel] Error fetching entity:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load entity');
+        setEntityData(initialData); // Fallback to cached data
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEntityData();
+  }, [visible, entityType, entityId, user?.yachtId]);
+
+  // Update local state when initialData changes from parent
+  useEffect(() => {
+    if (initialData) {
+      setEntityData(initialData);
+    }
+  }, [initialData]);
 
   /**
    * Render the appropriate entity card based on entityType
@@ -313,7 +384,27 @@ export default function ContextPanel() {
 
       {/* Content - Render actual entity cards */}
       <div className="flex-1 overflow-y-auto p-4" data-testid="context-panel-content">
-        {visible && entityType && entityId ? (
+        {loading ? (
+          <div className="text-center py-12" data-testid="context-panel-loading">
+            <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
+            <p className="text-celeste-text-muted text-sm">
+              Loading {displayName.toLowerCase()}...
+            </p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12" data-testid="context-panel-error">
+            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+            <p className="text-celeste-text-muted text-sm mb-3">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+            >
+              Reload
+            </button>
+          </div>
+        ) : visible && entityType && entityId ? (
           <div className="space-y-4">
             {/* Render the appropriate card component */}
             {renderEntityCard()}
