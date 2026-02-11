@@ -52,10 +52,18 @@
     --celeste-black-deep: #0B0D0F;
     --celeste-black-base: #1A1D1F;
 
-    /* Functional Accent (maritime teal - selection, focus ONLY) */
+    /* Functional Accent - Tonal Hierarchy (selection, focus, primary action ONLY) */
     --celeste-accent: #3A7C9D;
-    --celeste-accent-soft: rgba(58, 124, 157, 0.15);
     --celeste-accent-hover: #327189;
+    --celeste-accent-muted: rgba(58, 124, 157, 0.7);    /* Focus rings */
+    --celeste-accent-subtle: rgba(58, 124, 157, 0.2);   /* Selected backgrounds */
+    --celeste-accent-line: rgba(58, 124, 157, 0.1);     /* Dividers, borders */
+    --celeste-accent-soft: rgba(58, 124, 157, 0.15);    /* Legacy */
+
+    /* Surface Depth Hierarchy */
+    --celeste-surface: #FFFFFF;      /* Elevated cards */
+    --celeste-panel: #F6F7F8;        /* Nested panels */
+    --celeste-divider: #E0E3E6;      /* Structural separators */
 
     /* Restricted Colors (specific contexts only) */
     --celeste-warning: #9D3A3A;         /* Dignified warning/destructive */
@@ -142,6 +150,11 @@
     --celeste-bg-primary: #0A0A0A;
     --celeste-bg-secondary: #121212;
     --celeste-bg-tertiary: #1A1A1A;
+
+    /* Surface Depth Hierarchy - Dark Mode */
+    --celeste-surface: #111316;      /* Elevated cards */
+    --celeste-panel: #15191C;        /* Nested panels */
+    --celeste-divider: #1E2428;      /* Structural separators */
 
     --celeste-border: #2A2A2A;
     --celeste-border-subtle: rgba(255, 255, 255, 0.06);
