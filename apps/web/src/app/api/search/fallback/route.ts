@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         .select('*')
         .eq('yacht_id', yacht_id)
         .is('deleted_at', null)
-        .or(`filename.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,tags.ilike.%${searchTerm}%,doc_type.ilike.%${searchTerm}%`)
+        .or(`filename.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,doc_type.ilike.%${searchTerm}%`)
         .limit(limit);
 
       if (documentsError) {
