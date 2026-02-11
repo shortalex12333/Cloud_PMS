@@ -138,7 +138,7 @@ export function EditPartQuantityModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-600" />
+            <FileText className="h-5 w-5 text-celeste-accent" />
             Adjust Stock Quantity
           </DialogTitle>
           <DialogDescription>
@@ -148,20 +148,20 @@ export function EditPartQuantityModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Part Information */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
+            <h3 className="font-semibold text-celeste-accent flex items-center gap-2">
               <Package className="h-4 w-4" />
               {context.part_name}
             </h3>
-            <p className="text-sm text-blue-700">P/N: {context.part_number}</p>
-            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-blue-200">
+            <p className="text-sm text-celeste-accent">P/N: {context.part_number}</p>
+            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
               <div>
-                <p className="text-xs text-blue-600">Min Stock Level</p>
-                <p className="text-lg font-bold text-blue-900">{context.min_stock_level}</p>
+                <p className="text-xs text-celeste-accent">Min Stock Level</p>
+                <p className="text-lg font-bold text-celeste-accent">{context.min_stock_level}</p>
               </div>
               <div>
-                <p className="text-xs text-blue-600">Current Stock</p>
-                <p className="text-lg font-bold text-blue-900">{context.current_quantity}</p>
+                <p className="text-xs text-celeste-accent">Current Stock</p>
+                <p className="text-lg font-bold text-celeste-accent">{context.current_quantity}</p>
               </div>
             </div>
           </div>
@@ -226,7 +226,7 @@ export function EditPartQuantityModal({
                 ? 'bg-red-50 border-red-300'
                 : willBeLowStock
                 ? 'bg-orange-50 border-orange-300'
-                : 'bg-blue-50 border-blue-300'
+                : 'bg-celeste-accent-subtle border-celeste-accent-line'
             }`}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

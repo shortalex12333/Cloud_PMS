@@ -75,10 +75,14 @@ const config: Config = {
           'black-elevated': '#121212',
           'black-tertiary': '#1A1A1A',
 
-          // Maritime Accent (NOT cheap blue)
-          'accent': '#3A7C9D',
-          'accent-hover': '#327189',
-          'accent-soft': 'rgba(58, 124, 157, 0.15)',
+          // Maritime Accent - Tonal Hierarchy
+          // "Blue is not an identity wash. Blue is a precision instrument."
+          'accent': '#3A7C9D',           // Primary action, selection, verified state
+          'accent-hover': '#327189',     // Hover on primary actions only
+          'accent-muted': 'rgba(58, 124, 157, 0.7)',   // Focus rings
+          'accent-subtle': 'rgba(58, 124, 157, 0.2)',  // Selected state backgrounds
+          'accent-line': 'rgba(58, 124, 157, 0.1)',    // Dividers, borders
+          'accent-soft': 'rgba(58, 124, 157, 0.15)',   // Legacy compatibility
 
           // Semantic Text - Dark Mode (primary)
           'text-title': '#EFEFF1',
@@ -98,10 +102,21 @@ const config: Config = {
           'bg-secondary': '#121212',
           'bg-tertiary': '#1A1A1A',
 
+          // Surface Depth Hierarchy - Dark Mode
+          // "Variance through structure > variance through color"
+          'surface': '#111316',      // Elevated cards, panels
+          'panel': '#15191C',        // Nested panels, modals
+          'divider': '#1E2428',      // Structural separators
+
           // Semantic Backgrounds - Light Mode
           'bg-primary-light': '#EFEFF1',
           'bg-secondary-light': '#E5E5E7',
           'bg-tertiary-light': '#DCDCDE',
+
+          // Surface Depth Hierarchy - Light Mode
+          'surface-light': '#FFFFFF',
+          'panel-light': '#F6F7F8',
+          'divider-light': '#E0E3E6',
 
           // Borders
           'border': '#2A2A2A',

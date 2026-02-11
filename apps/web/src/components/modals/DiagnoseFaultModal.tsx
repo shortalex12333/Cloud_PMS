@@ -339,7 +339,7 @@ Repair (if pump): 4-6 hours`;
           {similarFaults.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-blue-600" />
+                <AlertCircle className="h-5 w-5 text-celeste-accent" />
                 <h3 className="font-semibold text-celeste-black">
                   Similar Past Faults ({similarFaults.length})
                 </h3>
@@ -349,21 +349,21 @@ Repair (if pump): 4-6 hours`;
                 {similarFaults.map((fault) => (
                   <div
                     key={fault.id}
-                    className="p-3 border border-blue-200 bg-blue-50 rounded-lg"
+                    className="p-3 border border-celeste-accent-line bg-celeste-accent-line rounded-lg"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-blue-900">{fault.title}</h4>
-                        <p className="text-sm text-blue-800 mt-1">
+                        <h4 className="font-medium text-celeste-accent">{fault.title}</h4>
+                        <p className="text-sm text-celeste-accent mt-1">
                           <span className="font-medium">Resolution:</span> {fault.resolution}
                         </p>
-                        <p className="text-xs text-blue-600 mt-1">
+                        <p className="text-xs text-celeste-accent mt-1">
                           Resolved {fault.resolved_days_ago} days ago
                         </p>
                       </div>
                       <div className="ml-3 text-right">
-                        <div className="text-xs text-blue-600">Match</div>
-                        <div className="text-lg font-bold text-blue-700">
+                        <div className="text-xs text-celeste-accent">Match</div>
+                        <div className="text-lg font-bold text-celeste-accent">
                           {(fault.similarity_score * 100).toFixed(0)}%
                         </div>
                       </div>
@@ -449,12 +449,12 @@ Repair (if pump): 4-6 hours`;
                   htmlFor="create_work_order_from_diagnosis"
                   className="text-sm font-normal cursor-pointer flex items-center gap-2"
                 >
-                  <Wrench className="h-4 w-4 text-blue-600" />
+                  <Wrench className="h-4 w-4 text-celeste-accent" />
                   Create work order with this diagnosis
                 </Label>
               </div>
               {createWorkOrder && (
-                <p className="text-xs text-blue-600 ml-6">
+                <p className="text-xs text-celeste-accent ml-6">
                   A work order will be created with the AI diagnosis and suggested parts pre-filled
                 </p>
               )}

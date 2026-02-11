@@ -145,8 +145,8 @@ export function ReportFaultModal({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm font-medium text-blue-900">
+            <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">
+              <p className="text-sm font-medium text-celeste-accent">
                 Equipment: {context.equipment_name}
               </p>
             </div>

@@ -129,7 +129,7 @@ export function ShowManualSectionModal({
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Book className="h-5 w-5 text-blue-600" />
+            <Book className="h-5 w-5 text-celeste-accent" />
             Equipment Manual
           </DialogTitle>
           <DialogDescription>
@@ -141,7 +141,7 @@ export function ShowManualSectionModal({
 
         {isLoading && !section && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
             <span className="ml-3 text-celeste-text-secondary">Loading manual...</span>
           </div>
         )}
@@ -161,13 +161,13 @@ export function ShowManualSectionModal({
         {document && section && (
           <div className="space-y-4">
             {/* Document Info */}
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <FileText className="h-5 w-5 text-celeste-accent mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-900">{document.title}</h4>
-                    <p className="text-sm text-blue-700 mt-0.5">
+                    <h4 className="font-medium text-celeste-accent">{document.title}</h4>
+                    <p className="text-sm text-celeste-accent mt-0.5">
                       {document.manufacturer} {document.model}
                     </p>
                   </div>
@@ -177,7 +177,7 @@ export function ShowManualSectionModal({
                     variant="outline"
                     size="sm"
                     onClick={handleOpenPdf}
-                    className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                    className="text-celeste-accent border-celeste-accent-line hover:bg-celeste-accent-subtle"
                   >
                     <ExternalLink className="h-4 w-4 mr-1" />
                     Open PDF

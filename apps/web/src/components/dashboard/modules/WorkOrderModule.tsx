@@ -50,7 +50,7 @@ export default function WorkOrderModule({
   return (
     <ModuleContainer
       title="Work Orders"
-      icon={<Wrench className="h-4.5 w-4.5 text-blue-500" />}
+      icon={<Wrench className="h-4.5 w-4.5 text-celeste-text-muted" />}
       isExpanded={isExpanded}
       onToggle={onToggle}
       status={overallStatus}
@@ -117,8 +117,8 @@ export default function WorkOrderModule({
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
               'text-[12px] font-medium',
-              'text-blue-500 hover:text-blue-600',
-              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'text-celeste-accent hover:text-celeste-accent-hover',
+              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'
             )}>
               View all →

@@ -128,8 +128,8 @@ export default function DocumentExpiryModule({
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
               'text-[12px] font-medium',
-              'text-blue-500 hover:text-blue-600',
-              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'text-celeste-accent hover:text-celeste-accent-hover',
+              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'
             )}>
               View all →

@@ -193,7 +193,7 @@ export default function DocumentViewerOverlay({
             {outlookUrl && (
               <button
                 onClick={handleOpenInOutlook}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span className="hidden sm:inline">Open in Outlook</span>
@@ -276,7 +276,7 @@ export default function DocumentViewerOverlay({
                 </p>
                 <button
                   onClick={handleDownload}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md"
+                  className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md"
                 >
                   Download PDF
                 </button>
@@ -308,7 +308,7 @@ export default function DocumentViewerOverlay({
                 {outlookUrl && (
                   <button
                     onClick={handleOpenInOutlook}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Open in Outlook

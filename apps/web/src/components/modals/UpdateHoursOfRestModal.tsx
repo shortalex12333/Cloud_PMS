@@ -210,7 +210,7 @@ export function UpdateHoursOfRestModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-500" />
+            <Clock className="h-5 w-5 text-celeste-accent" />
             Log Hours of Rest
           </DialogTitle>
           <DialogDescription>
@@ -353,11 +353,11 @@ export function UpdateHoursOfRestModal({
           </div>
 
           {/* Total Rest Hours (auto-calculated) */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-900">Total Rest Hours</p>
-                <p className="text-xs text-blue-700">Auto-calculated from rest periods</p>
+                <p className="text-sm font-medium text-celeste-accent">Total Rest Hours</p>
+                <p className="text-xs text-celeste-accent">Auto-calculated from rest periods</p>
               </div>
               <p className={cn(
                 'text-3xl font-bold',
@@ -381,7 +381,7 @@ export function UpdateHoursOfRestModal({
             <Button
               type="submit"
               disabled={isLoading || restPeriods.length === 0}
-              className={!isCompliant ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}
+              className={!isCompliant ? 'bg-amber-600 hover:bg-amber-700' : 'bg-celeste-accent hover:bg-celeste-accent-hover'}
             >
               {isLoading ? (
                 <>

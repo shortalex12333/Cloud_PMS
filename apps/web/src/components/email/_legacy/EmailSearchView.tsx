@@ -857,7 +857,7 @@ function MessagePanel({
             <div
               className={cn(
                 'w-1.5 h-1.5 rounded-full',
-                msg.direction === 'inbound' ? 'bg-blue-400' : 'bg-green-400'
+                msg.direction === 'inbound' ? 'bg-celeste-accent' : 'bg-green-400'
               )}
             />
             <span className="truncate max-w-[100px]">{msg.from_display_name || `Message ${index + 1}`}</span>

@@ -168,7 +168,7 @@ export function CreatePurchaseRequestModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-blue-600" />
+            <ShoppingCart className="h-5 w-5 text-celeste-accent" />
             Create Purchase Request
           </DialogTitle>
           <DialogDescription>
@@ -377,15 +377,15 @@ export function CreatePurchaseRequestModal({
           </div>
 
           {/* Cost Summary */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-blue-700" />
-                <span className="font-semibold text-blue-900">Estimated Total Cost</span>
+                <DollarSign className="h-5 w-5 text-celeste-accent" />
+                <span className="font-semibold text-celeste-accent">Estimated Total Cost</span>
               </div>
-              <span className="text-2xl font-bold text-blue-900">${totalCost.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-celeste-accent">${totalCost.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-blue-700 mt-2">
+            <p className="text-xs text-celeste-accent mt-2">
               {lineItems.length} item(s) • {lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} total units
             </p>
             {totalCost > 5000 && (

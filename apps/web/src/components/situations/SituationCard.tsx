@@ -63,12 +63,12 @@ function getSeverityConfig(severity: Situation['severity']) {
     default:
       return {
         icon: Info,
-        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-        borderColor: 'border-blue-200 dark:border-blue-800',
-        textColor: 'text-blue-700 dark:text-blue-300',
-        iconColor: 'text-blue-500',
+        bgColor: 'bg-celeste-accent-subtle dark:bg-celeste-accent/10',
+        borderColor: 'border-celeste-accent-muted dark:border-celeste-accent/30',
+        textColor: 'text-celeste-accent dark:text-celeste-accent',
+        iconColor: 'text-celeste-accent',
         badge: 'Info',
-        badgeBg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+        badgeBg: 'bg-celeste-accent-subtle text-celeste-accent dark:bg-celeste-accent/20 dark:text-celeste-accent',
       };
   }
 }

@@ -198,12 +198,12 @@ export function CompleteWorkOrderModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Work Order Context */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
             <div className="flex items-start gap-3">
-              <Wrench className="h-5 w-5 text-blue-700 mt-0.5" />
+              <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold text-blue-900">{context.work_order_title}</h3>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm text-blue-800">
+                <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm text-celeste-accent">
                   <p>
                     <span className="font-medium">ID:</span> {context.work_order_id.slice(0, 8)}
                   </p>

@@ -209,7 +209,7 @@ export function EditInvoiceAmountModal({
               <div className={`p-4 border rounded-lg ${
                 willTriggerNotification
                   ? 'bg-red-50 border-red-300'
-                  : 'bg-blue-50 border-blue-300'
+                  : 'bg-celeste-accent-subtle border-celeste-accent-line'
               }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

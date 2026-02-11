@@ -205,7 +205,7 @@ export function CreateCrewTemplateModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Layout className="h-5 w-5 text-blue-500" />
+            <Layout className="h-5 w-5 text-celeste-accent" />
             Create Schedule Template
           </DialogTitle>
           <DialogDescription>
@@ -261,7 +261,7 @@ export function CreateCrewTemplateModal({
                     setSelectedPreset(key as any);
                     applyPresetToAll(key as any);
                   }}
-                  className={selectedPreset === key ? 'bg-blue-50 border-blue-500' : ''}
+                  className={selectedPreset === key ? 'bg-celeste-accent-line border-celeste-accent' : ''}
                 >
                   <Copy className="h-3 w-3 mr-1" />
                   {preset.name}
@@ -286,13 +286,13 @@ export function CreateCrewTemplateModal({
                     className={cn(
                       'p-3 rounded-lg border-2 transition-all text-left',
                       isEditing
-                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 ring-offset-1'
+                        ? 'border-celeste-accent bg-celeste-accent-line ring-2 ring-celeste-accent-muted ring-offset-1'
                         : 'border-celeste-border hover:border-celeste-border'
                     )}
                   >
                     <p className={cn(
                       'text-xs font-semibold mb-1',
-                      isEditing ? 'text-blue-900' : 'text-celeste-text-secondary'
+                      isEditing ? 'text-celeste-accent' : 'text-celeste-text-secondary'
                     )}>
                       {day.label.slice(0, 3)}
                     </p>
@@ -315,7 +315,7 @@ export function CreateCrewTemplateModal({
 
           {/* Day Editor */}
           {editingDay && (
-            <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+            <div className="p-4 border-2 border-celeste-accent-line rounded-lg bg-celeste-accent-line">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-celeste-black">
                   Editing: {daysOfWeek.find(d => d.key === editingDay)?.label}
@@ -370,7 +370,7 @@ export function CreateCrewTemplateModal({
             <Button
               type="submit"
               disabled={isLoading || !scheduleName}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-celeste-accent hover:bg-celeste-accent-hover"
             >
               {isLoading ? (
                 <>

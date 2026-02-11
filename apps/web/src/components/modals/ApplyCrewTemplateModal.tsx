@@ -149,7 +149,7 @@ export function ApplyCrewTemplateModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-blue-500" />
+            <CalendarCheck className="h-5 w-5 text-celeste-accent" />
             Apply Schedule Template
           </DialogTitle>
           <DialogDescription>
@@ -159,9 +159,9 @@ export function ApplyCrewTemplateModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Info Box */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-3">
-            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
+          <div className="p-3 bg-celeste-accent-line border border-celeste-accent-line rounded-lg flex gap-3">
+            <Info className="h-5 w-5 text-celeste-accent flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-celeste-accent">
               <p className="font-medium mb-1">Bulk Schedule Creation</p>
               <p>
                 This will create hours of rest records for all 7 days of the selected week
@@ -263,7 +263,7 @@ export function ApplyCrewTemplateModal({
             <Button
               type="submit"
               disabled={isLoading || !weekStartDate}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-celeste-accent hover:bg-celeste-accent-hover"
             >
               {isLoading ? (
                 <>

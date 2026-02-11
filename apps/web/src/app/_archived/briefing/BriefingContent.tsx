@@ -196,7 +196,7 @@ function getTimelineIcon(type: string) {
     case 'fault': return <AlertTriangle className="h-3 w-3 text-destructive" />;
     case 'wo_completed': return <CheckCircle className="h-3 w-3 text-green-600" />;
     case 'risk_spike': return <TrendingUp className="h-3 w-3 text-orange-600" />;
-    case 'note': return <FileText className="h-3 w-3 text-blue-600" />;
+    case 'note': return <FileText className="h-3 w-3 text-celeste-text-muted" />;
     case 'inventory': return <Package className="h-3 w-3 text-purple-600" />;
     default: return <Clock className="h-3 w-3 text-muted-foreground" />;
   }

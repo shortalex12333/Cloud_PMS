@@ -40,7 +40,7 @@ export function ChecklistCard({ checklist, actions = [] }: ChecklistCardProps) {
     <div className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
       <div className="flex items-start gap-3">
         {/* Checklist Icon */}
-        <div className={cn('mt-1', isFullyCompleted ? 'text-green-600' : 'text-blue-600')}>
+        <div className={cn('mt-1', isFullyCompleted ? 'text-green-600' : 'text-celeste-accent')}>
           {isFullyCompleted ? (
             <CheckCircle2 className="h-5 w-5" />
           ) : (
@@ -70,7 +70,7 @@ export function ChecklistCard({ checklist, actions = [] }: ChecklistCardProps) {
               <div
                 className={cn(
                   'h-full transition-all',
-                  isFullyCompleted ? 'bg-green-600' : 'bg-blue-600'
+                  isFullyCompleted ? 'bg-green-600' : 'bg-celeste-accent'
                 )}
                 style={{ width: `${completionPercentage}%` }}
               />
