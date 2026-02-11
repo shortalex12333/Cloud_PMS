@@ -1,30 +1,31 @@
 'use client';
 
 /**
- * EmailSurface - Canonical email interface
+ * EmailSurface - Correspondence Interface
  *
- * Dark-themed email search interface with:
- * - Left panel: Thread list with sender info
- * - Center panel: Selected message body (full HTML render)
- * - Right panel: Attachments for selected message
+ * AUTHORITATIVE SPEC IMPLEMENTATION:
+ * - Email is evidence moving through the system, not a workspace
+ * - Email list shows entity-first (linked work order/equipment/fault)
+ * - No auto-open, no Inbox/Sent tabs, no unread counts
+ * - Mutations FORBIDDEN - view only
+ * - Subordinate visual styling
+ *
+ * Version: 2026-02-10-v1 (Correspondence Overhaul)
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Search,
   X,
-  Mail,
   Paperclip,
   ChevronRight,
   Loader2,
-  ArrowLeft,
-  Inbox,
-  Send,
-  Download,
   AlertCircle,
-  User,
-  RefreshCw,
-  ExternalLink,
+  FileText,
+  Wrench,
+  Package,
+  AlertTriangle,
+  Filter,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -33,114 +34,53 @@ import {
   useThread,
   useMessageContent,
   useThreadLinks,
-  useEmailBackfill,
-  downloadAndSaveAttachment,
   fetchAttachmentBlob,
-  saveAttachmentForPreview,
-  linkDocument,
-  unlinkDocument,
-  getDocumentLinks,
   useWatcherStatus,
   useOutlookConnection,
   usePrefetchThread,
   type EmailThread,
   type EmailMessage,
   type MessageContent as MessageContentType,
-  type EmailSearchResult,
-  type AttachmentBlobResult,
-  type DocumentLink,
+  type ThreadLink,
 } from '@/hooks/useEmailData';
 import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
-import { LinkEmailModal } from '@/components/email/LinkEmailModal';
-import { ThreadLinksPanel } from '@/components/email/ThreadLinksPanel';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
 
 // ============================================================================
 // HTML SANITIZATION CONFIG
 // ============================================================================
 
-// Configure DOMPurify to allow safe HTML tags and block dangerous content
 const SANITIZE_CONFIG = {
   ALLOWED_TAGS: [
-    // Structure
     'p', 'div', 'span', 'br', 'hr',
-    // Headings
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    // Lists
     'ul', 'ol', 'li', 'dl', 'dt', 'dd',
-    // Text formatting
     'b', 'i', 'u', 's', 'strong', 'em', 'mark', 'small', 'sub', 'sup',
-    // Links (with restricted attributes)
     'a',
-    // Tables
     'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-    // Quotes and code
     'blockquote', 'pre', 'code',
-    // Images (cid: references only, external blocked)
     'img',
   ],
   ALLOWED_ATTR: [
-    // Global
     'class', 'id', 'style',
-    // Links
     'href', 'target', 'rel',
-    // Images
     'src', 'alt', 'width', 'height',
-    // Tables
     'colspan', 'rowspan', 'scope',
   ],
-  // Force all links to open in new tab with security
   ADD_ATTR: ['target', 'rel'],
-  // Block data: URIs in images (potential XSS vector)
   ALLOW_DATA_ATTR: false,
-  // Don't allow external images by default (privacy/tracking)
   FORBID_TAGS: ['script', 'style', 'iframe', 'frame', 'object', 'embed', 'form', 'input', 'button'],
   FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
 };
 
-/**
- * Sanitize HTML content for safe rendering
- * - Strips scripts and dangerous attributes
- * - Blocks external image auto-loading
- * - Forces links to open securely in new tabs
- */
 function sanitizeHtml(html: string): string {
-  if (!html) {
-    return '';
-  }
-
-  // First pass: DOMPurify sanitization
+  if (!html) return '';
   let clean = DOMPurify.sanitize(html, SANITIZE_CONFIG);
-
-  // Second pass: Add security attributes to links
-  clean = clean.replace(
-    /<a\s+([^>]*?)>/gi,
-    '<a $1 target="_blank" rel="noopener noreferrer">'
-  );
-
-  // Third pass: Block external images (replace src with data-blocked-src)
-  // Only allow cid: references (inline attachments) and data:image (already sanitized)
-  clean = clean.replace(
-    /<img\s+([^>]*?)src=["'](?!(cid:|data:image))/gi,
-    '<img $1data-blocked-src="'
-  );
-
+  clean = clean.replace(/<a\s+([^>]*?)>/gi, '<a $1 target="_blank" rel="noopener noreferrer">');
+  clean = clean.replace(/<img\s+([^>]*?)src=["'](?!(cid:|data:image))/gi, '<img $1data-blocked-src="');
   return clean;
 }
-
-// ============================================================================
-// ROLLING PLACEHOLDER SUGGESTIONS
-// ============================================================================
-
-const PLACEHOLDER_SUGGESTIONS = [
-  'Search by subject...',
-  'Find invoice emails',
-  'Quote from supplier',
-  'Service report attached',
-  'Work order confirmation',
-  'Parts delivery update',
-];
 
 // ============================================================================
 // TYPES
@@ -148,12 +88,44 @@ const PLACEHOLDER_SUGGESTIONS = [
 
 interface EmailSurfaceProps {
   className?: string;
-  initialThreadId?: string;     // Pre-select thread (overlay mode)
-  initialFolder?: 'inbox' | 'sent';
-  onClose?: () => void;         // Close callback (overlay mode)
+  initialThreadId?: string;
+  onClose?: () => void;
 }
 
-type DirectionFilter = 'all' | 'inbound' | 'outbound';
+type SystemState = 'attached' | 'referenced' | 'archived' | 'unlinked';
+
+const ENTITY_ICONS: Record<string, React.ReactNode> = {
+  work_order: <Wrench className="w-3 h-3" />,
+  equipment: <Package className="w-3 h-3" />,
+  fault: <AlertTriangle className="w-3 h-3" />,
+  part: <Package className="w-3 h-3" />,
+  handover: <FileText className="w-3 h-3" />,
+};
+
+// ============================================================================
+// UTILITY: Format timestamp
+// ============================================================================
+
+function formatTime(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  }
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+}
 
 // ============================================================================
 // MAIN COMPONENT
@@ -162,7 +134,6 @@ type DirectionFilter = 'all' | 'inbound' | 'outbound';
 export default function EmailSurface({
   className,
   initialThreadId,
-  initialFolder,
   onClose,
 }: EmailSurfaceProps) {
   const router = useRouter();
@@ -171,39 +142,18 @@ export default function EmailSurface({
   const [page, setPage] = useState(1);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(initialThreadId || null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>(
-    initialFolder === 'sent' ? 'outbound' : 'all'
-  );
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Determine if in overlay mode (has onClose callback)
   const isOverlayMode = !!onClose;
 
-  // SINGLE-SURFACE: Thread selection is state-only, no URL params
-  // Users select threads from the list in the left panel
-
-  // Fetch threads with search and direction filter
-  const { data, isLoading, error, refetch } = useInboxThreads(
-    page,
-    true,
-    debouncedQuery,
-    directionFilter === 'all' ? undefined : directionFilter
-  );
-
-  // Fetch watcher status for sync indicator
+  const { data, isLoading, error, refetch } = useInboxThreads(page, true, debouncedQuery);
   const { data: watcherStatus } = useWatcherStatus();
-
-  // Outlook connection status for auth recovery
   const { data: outlookStatus, initiateReconnect, isLoading: outlookLoading } = useOutlookConnection();
   const [reconnecting, setReconnecting] = useState(false);
 
   const threads = data?.threads || [];
-  const total = data?.total || 0;
   const hasMore = data?.has_more || false;
 
-  // Handle Outlook reconnect
   const handleReconnect = useCallback(async () => {
     setReconnecting(true);
     const authUrl = await initiateReconnect();
@@ -214,23 +164,11 @@ export default function EmailSurface({
     }
   }, [initiateReconnect]);
 
-  // Determine if we need to show reconnect banner
   const needsReconnect = !outlookLoading && outlookStatus && (!outlookStatus.isConnected || outlookStatus.isExpired);
-
-  // Determine if watcher is degraded (token issues)
   const isDegraded = watcherStatus?.sync_status === 'degraded' || watcherStatus?.sync_status === 'error';
 
-  // Semantic search (uses /email/search endpoint when query present)
-  const {
-    data: searchData,
-    isLoading: searchLoading,
-    error: searchError,
-  } = useEmailSearch(debouncedQuery, {
-    direction: directionFilter === 'all' ? undefined : directionFilter,
-    limit: 20,
-  });
+  const { data: searchData, isLoading: searchLoading, error: searchError } = useEmailSearch(debouncedQuery, { limit: 20 });
 
-  // Use search results when searching, inbox otherwise
   const isSearching = debouncedQuery.length >= 2;
   const displayThreads = isSearching
     ? (searchData?.results || []).map((r) => ({
@@ -242,33 +180,18 @@ export default function EmailSurface({
         source: '',
         first_message_at: null,
         last_activity_at: r.sent_at,
+        from_display_name: r.from_display_name,
       }))
     : threads;
   const displayLoading = isSearching ? searchLoading : isLoading;
   const displayError = isSearching ? searchError : error;
 
-  // Backfill hook for import
-  const {
-    status: backfillStatus,
-    isRunning: isBackfilling,
-    triggerBackfill,
-    isTriggering,
-  } = useEmailBackfill();
+  const { data: selectedThread, isLoading: threadLoading } = useThread(selectedThreadId);
+  const { data: selectedContent, isLoading: contentLoading } = useMessageContent(selectedMessageId);
+  const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.5);
 
-  // Get selected thread details
-  const { data: selectedThread, isLoading: threadLoading, error: threadError } = useThread(selectedThreadId);
-
-  // Get selected message content
-  const { data: selectedContent, isLoading: contentLoading, error: contentError } = useMessageContent(selectedMessageId);
-
-  // Get links for selected thread (for "See related" vs "Link to")
-  const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.6);
-  const hasRelatedLinks = (threadLinksData?.count || 0) > 0;
-
-  // Prefetch hook for performance optimization
   const prefetchThread = usePrefetchThread();
 
-  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
@@ -276,59 +199,6 @@ export default function EmailSurface({
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  // Focus input on mount
-  useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 50);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Rolling placeholder animation
-  useEffect(() => {
-    if (searchQuery) return;
-
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_SUGGESTIONS.length);
-        setIsAnimating(false);
-      }, 200);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [searchQuery]);
-
-  // Auto-trigger backfill if inbox is empty (and not already running)
-  const backfillTriggeredRef = useRef(false);
-  useEffect(() => {
-    if (
-      !isLoading &&
-      !isSearching &&
-      threads.length === 0 &&
-      !isBackfilling &&
-      !backfillTriggeredRef.current &&
-      outlookStatus?.isConnected
-    ) {
-      backfillTriggeredRef.current = true;
-      triggerBackfill();
-    }
-  }, [isLoading, isSearching, threads.length, isBackfilling, outlookStatus?.isConnected, triggerBackfill]);
-
-  // Sync selectedThreadId when initialThreadId prop changes (e.g., from search result click)
-  useEffect(() => {
-    if (initialThreadId && initialThreadId !== selectedThreadId) {
-      setSelectedThreadId(initialThreadId);
-      setSelectedMessageId(null); // Reset message selection for new thread
-    }
-  }, [initialThreadId]);
-
-  // Auto-select first message when thread loads
-  useEffect(() => {
-    if (selectedThread?.messages?.length && !selectedMessageId) {
-      const firstMsgId = selectedThread.messages[0].provider_message_id;
-      setSelectedMessageId(firstMsgId);
-    }
-  }, [selectedThread, selectedMessageId]);
 
   const handleClear = useCallback(() => {
     setSearchQuery('');
@@ -346,12 +216,10 @@ export default function EmailSurface({
 
   const handleThreadClick = useCallback((threadId: string) => {
     setSelectedThreadId(threadId);
-    setSelectedMessageId(null); // Will be auto-set when thread loads
+    setSelectedMessageId(null);
   }, []);
 
-  // Prefetch thread data on hover for faster perceived performance
   const handleThreadHover = useCallback((threadId: string) => {
-    // Only prefetch if not already selected (already loaded)
     if (threadId !== selectedThreadId) {
       prefetchThread(threadId);
     }
@@ -376,392 +244,171 @@ export default function EmailSurface({
     [searchQuery, handleClear, router, onClose]
   );
 
-  // Get attachments for selected message
   const selectedAttachments = selectedContent?.attachments || [];
 
   return (
-    <div data-testid="email-surface" className={cn('h-screen flex flex-col bg-[#1c1c1e] font-body', className)}>
-      {/* Outlook Reconnect Banner */}
+    <div
+      data-testid="email-surface"
+      className={cn('h-screen flex flex-col bg-[#1c1c1e] font-body', className)}
+    >
       {needsReconnect && (
-        <div className="bg-[#3a2a1a] border-b border-[#ff9f0a]/30 px-4 py-3">
+        <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-[#ff9f0a]" />
-              <div>
-                <p className="text-[14px] font-medium text-white">
-                  {outlookStatus?.isExpired ? 'Outlook session expired' : 'Outlook not connected'}
-                </p>
-                <p className="text-[12px] text-[#98989f]">
-                  Reconnect to sync and search your emails
-                </p>
-              </div>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-orange-500" />
+              <span className="text-[12px] text-gray-400">
+                {outlookStatus?.isExpired ? 'Session expired' : 'Not connected'}
+              </span>
             </div>
             <button
               onClick={handleReconnect}
               disabled={reconnecting}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors',
-                reconnecting
-                  ? 'bg-[#48484a] text-[#98989f] cursor-not-allowed'
-                  : 'bg-[#ff9f0a] text-black hover:bg-[#ffb340]'
-              )}
+              className="text-[11px] text-orange-500 hover:underline"
             >
-              {reconnecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  Reconnect Outlook
-                </>
-              )}
+              {reconnecting ? 'Connecting...' : 'Reconnect'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Degraded Token Banner - only show if not already showing reconnect banner */}
       {!needsReconnect && isDegraded && (
-        <div className="bg-[#3a2a1a] border-b border-[#ff9f0a]/30 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-[#ff9f0a]" />
-              <div>
-                <p className="text-[14px] font-medium text-white">
-                  Email sync paused
-                </p>
-                <p className="text-[12px] text-[#98989f]">
-                  {watcherStatus?.last_sync_error === 'token_expired' && 'Your Outlook token has expired. Reconnect to resume syncing.'}
-                  {watcherStatus?.last_sync_error === 'token_user_mismatch' && 'Token configuration issue detected. Reconnect to fix.'}
-                  {!watcherStatus?.last_sync_error && 'Token refresh failed. Reconnect to resume syncing.'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleReconnect}
-              disabled={reconnecting}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors',
-                reconnecting
-                  ? 'bg-[#48484a] text-[#98989f] cursor-not-allowed'
-                  : 'bg-[#ff9f0a] text-black hover:bg-[#ffb340]'
-              )}
-            >
-              {reconnecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  Reconnect Outlook
-                </>
-              )}
-            </button>
+        <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-orange-500" />
+            <span className="text-[12px] text-gray-400">Sync paused</span>
           </div>
         </div>
       )}
 
-      {/* Header - Search Bar */}
-      <div className="sticky top-0 z-10 bg-[#1c1c1e]/95 backdrop-blur-md border-b border-[#3d3d3f]/30 px-4 py-3">
-        <div className="flex items-center gap-3">
-          {/* Back/Close button */}
-          <button
-            onClick={handleBack}
-            className="p-2 -ml-2 rounded-lg text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
-            aria-label={isOverlayMode ? 'Close email' : 'Go back'}
-          >
-            {isOverlayMode ? <X className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
-          </button>
-
-          {/* Search with scope indicator */}
-          <div className="flex-1 flex items-center gap-3">
-            <div className="px-2 py-0.5 bg-[#0a84ff]/20 border border-[#0a84ff]/30 rounded text-[11px] text-[#0a84ff] font-medium whitespace-nowrap">
-              Email Scope
-            </div>
-
-            <div className="flex-1 spotlight-panel ring-1 ring-[#0a84ff]/30">
-              <div className="flex items-center gap-3 px-4 h-[44px]">
-                <Search className="flex-shrink-0 w-5 h-5 text-[#0a84ff]" strokeWidth={1.8} />
-
-                <div className="flex-1 h-full relative">
-                  <input
-                    ref={inputRef}
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className={cn(
-                      'w-full h-full',
-                      'bg-transparent border-none outline-none',
-                      'text-[15px] text-white',
-                      'font-normal tracking-[-0.01em]',
-                      'caret-white',
-                      'relative z-10'
-                    )}
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                  />
-                  {!searchQuery && (
-                    <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
-                      <span
-                        className={cn(
-                          'text-[15px] text-[#98989f] font-normal tracking-[-0.01em]',
-                          'transition-all duration-[400ms] ease-out',
-                          isAnimating ? 'opacity-0 -translate-y-3' : 'opacity-100 translate-y-0'
-                        )}
-                      >
-                        {PLACEHOLDER_SUGGESTIONS[placeholderIndex]}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {searchQuery && (
-                  <button
-                    onClick={handleClear}
-                    className="flex items-center justify-center w-4 h-4 rounded-full bg-[#636366] hover:bg-[#8e8e93] transition-colors"
-                    aria-label="Clear"
-                  >
-                    <X className="w-2.5 h-2.5 text-[#1c1c1e]" strokeWidth={3} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Sync status */}
-          <SyncStatusBadge status={watcherStatus} onRefresh={refetch} />
-        </div>
-
-        {/* Filters row */}
-        <div className="flex items-center gap-3 mt-3 pl-10">
-          {/* Direction chips */}
-          <div className="flex items-center gap-2">
-            <DirectionChip
-              icon={<Mail className="w-3.5 h-3.5" />}
-              label="All"
-              active={directionFilter === 'all'}
-              onClick={() => {
-                setDirectionFilter('all');
-                setPage(1);
-              }}
-            />
-            <DirectionChip
-              icon={<Inbox className="w-3.5 h-3.5" />}
-              label="Inbox"
-              active={directionFilter === 'inbound'}
-              onClick={() => {
-                setDirectionFilter('inbound');
-                setPage(1);
-              }}
-            />
-            <DirectionChip
-              icon={<Send className="w-3.5 h-3.5" />}
-              label="Sent"
-              active={directionFilter === 'outbound'}
-              onClick={() => {
-                setDirectionFilter('outbound');
-                setPage(1);
-              }}
-            />
-          </div>
-
-          <div className="w-px h-5 bg-[#3d3d3f]" />
-
-          {/* Operator chips */}
-          <div className="flex items-center gap-2">
-            <OperatorChip
-              label="from:"
-              onClick={() => setSearchQuery((q) => q + (q && !q.endsWith(' ') ? ' ' : '') + 'from:')}
-            />
-            <OperatorChip
-              label="to:"
-              onClick={() => setSearchQuery((q) => q + (q && !q.endsWith(' ') ? ' ' : '') + 'to:')}
-            />
-            <OperatorChip
-              label="subject:"
-              onClick={() => setSearchQuery((q) => q + (q && !q.endsWith(' ') ? ' ' : '') + 'subject:')}
-            />
-            <OperatorChip
-              label="has:attachment"
-              active={searchQuery.includes('has:attachment')}
-              onClick={() => {
-                if (searchQuery.includes('has:attachment')) {
-                  setSearchQuery((q) => q.replace(/has:attachment\s*/g, '').trim());
-                } else {
-                  setSearchQuery((q) => q + (q && !q.endsWith(' ') ? ' ' : '') + 'has:attachment');
-                }
-              }}
-            />
-          </div>
-
-          {/* Thread count */}
-          {total > 0 && (
-            <span className="ml-auto text-[12px] text-[#636366]">
-              {total} thread{total !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Three-Column Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Thread List */}
-        <div className="w-80 flex-shrink-0 border-r border-[#3d3d3f]/30 overflow-y-auto">
-          {/* Backfill progress indicator */}
-          {isBackfilling && (
-            <div className="p-3 border-b border-[#3d3d3f]/30 bg-[#2c2c2e]">
-              <div className="flex items-center gap-2 text-[12px] text-[#98989f]">
-                <Loader2 className="w-4 h-4 animate-spin text-[#0a84ff]" />
-                <span>Importing emails...</span>
-                {(backfillStatus?.progress ?? 0) > 0 && (
-                  <span className="ml-auto">{backfillStatus?.progress ?? 0}%</span>
+        {/* LEFT: Correspondence List */}
+        <div className="w-[340px] flex-shrink-0 border-r border-white/10 flex flex-col">
+          <div className="px-4 py-3 border-b border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {isOverlayMode && (
+                  <button
+                    onClick={handleBack}
+                    className="p-1.5 -ml-1.5 rounded text-gray-500 hover:text-gray-400 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 )}
+                <h1 className="text-[14px] font-medium text-gray-300">
+                  Correspondence
+                </h1>
               </div>
-              {(backfillStatus?.totalEmails ?? 0) > 0 && (
-                <div className="mt-1 h-1 bg-[#3d3d3f] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#0a84ff] transition-all duration-300"
-                    style={{ width: `${backfillStatus?.progress ?? 0}%` }}
+              <button className="p-1.5 rounded text-gray-500 hover:text-gray-400 transition-colors">
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-white/5 border border-white/10">
+              <Filter className="w-3.5 h-3.5 text-gray-500" />
+              <input
+                ref={inputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Filter..."
+                className="flex-1 bg-transparent text-[12px] text-gray-300 placeholder:text-gray-500 outline-none"
+              />
+              {searchQuery && (
+                <button onClick={handleClear} className="text-gray-500 hover:text-gray-400">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {displayLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+              </div>
+            )}
+
+            {displayError && (
+              <div className="py-6 text-center px-4">
+                <p className="text-[11px] text-red-400">Failed to load</p>
+                <button onClick={() => refetch()} className="text-[11px] text-blue-400 mt-1">
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!displayLoading && !displayError && displayThreads.length === 0 && (
+              <div className="py-8 text-center px-4">
+                <p className="text-[11px] text-gray-500">
+                  {debouncedQuery ? 'No matches' : 'No correspondence'}
+                </p>
+              </div>
+            )}
+
+            {!displayLoading && !displayError && displayThreads.length > 0 && (
+              <>
+                {displayThreads.map((thread) => (
+                  <CorrespondenceRow
+                    key={thread.id}
+                    thread={thread as EmailThread}
+                    isSelected={selectedThreadId === thread.id}
+                    onClick={() => handleThreadClick(thread.id)}
+                    onHover={() => handleThreadHover(thread.id)}
                   />
-                </div>
-              )}
-            </div>
-          )}
+                ))}
 
-          {/* Import All CTA (always visible unless backfilling) */}
-          {!isBackfilling && outlookStatus?.isConnected && (
-            <div className="p-3 border-b border-[#3d3d3f]/30">
-              <button
-                onClick={() => triggerBackfill()}
-                disabled={isTriggering}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#2c2c2e] hover:bg-[#3a3a3c] text-[12px] text-[#98989f] transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                {isTriggering ? 'Starting import...' : 'Import all emails'}
-              </button>
-            </div>
-          )}
-
-          {displayLoading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-[#98989f]" />
-            </div>
-          )}
-
-          {displayError && (
-            <div className="py-8 text-center px-4">
-              <p className="text-[13px] text-[#ff453a]">
-                {displayError instanceof Error ? displayError.message : 'Failed to load emails'}
-              </p>
-              <button
-                onClick={() => refetch()}
-                className="mt-2 text-[13px] text-[#0a84ff] hover:text-[#409cff]"
-              >
-                Try again
-              </button>
-            </div>
-          )}
-
-          {!displayLoading && !displayError && displayThreads.length === 0 && (
-            <div className="py-12 text-center px-4">
-              <Mail className="h-10 w-10 text-[#48484a] mx-auto mb-3" />
-              <p className="text-[13px] text-[#98989f]">
-                {debouncedQuery ? 'No emails match your search' : 'No email threads found'}
-              </p>
-            </div>
-          )}
-
-          {!displayLoading && !displayError && displayThreads.length > 0 && (
-            <>
-              {displayThreads.map((thread) => (
-                <ThreadListItem
-                  key={thread.id}
-                  thread={thread as EmailThread}
-                  isSelected={selectedThreadId === thread.id}
-                  onClick={() => handleThreadClick(thread.id)}
-                  onHover={() => handleThreadHover(thread.id)}
-                />
-              ))}
-
-              {/* Pagination (only for inbox, not search) */}
-              {!isSearching && (page > 1 || hasMore) && (
-                <div className="flex items-center justify-center gap-4 py-4 border-t border-[#3d3d3f]/30">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className={cn(
-                      'px-3 py-1.5 rounded text-[12px] transition-colors',
-                      page === 1
-                        ? 'text-[#48484a] cursor-not-allowed'
-                        : 'text-[#0a84ff] hover:bg-white/5'
-                    )}
-                  >
-                    Prev
-                  </button>
-                  <span className="text-[11px] text-[#636366]">Page {page}</span>
-                  <button
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={!hasMore}
-                    className={cn(
-                      'px-3 py-1.5 rounded text-[12px] transition-colors',
-                      !hasMore
-                        ? 'text-[#48484a] cursor-not-allowed'
-                        : 'text-[#0a84ff] hover:bg-white/5'
-                    )}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+                {!isSearching && (page > 1 || hasMore) && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t border-white/10">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="text-[10px] text-gray-500 disabled:opacity-30"
+                    >
+                      ← Prev
+                    </button>
+                    <span className="text-[10px] text-gray-500">{page}</span>
+                    <button
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={!hasMore}
+                      className="text-[10px] text-gray-500 disabled:opacity-30"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Center Panel - Message Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* RIGHT: Inspector Panel */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           {!selectedThreadId && (
             <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <Mail className="h-12 w-12 text-[#48484a] mx-auto mb-3" />
-                <p className="text-[14px] text-[#98989f]">Select an email to view</p>
-              </div>
+              <p className="text-[13px] text-gray-500">
+                Select a message to inspect correspondence.
+              </p>
             </div>
           )}
 
           {selectedThreadId && threadLoading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-[#98989f]" />
+              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
             </div>
           )}
 
           {selectedThread && selectedThreadId && (
-            <MessagePanel
-              threadId={selectedThreadId}
+            <InspectorPanel
               thread={selectedThread}
               selectedMessageId={selectedMessageId}
               onMessageSelect={handleMessageClick}
               content={selectedContent}
               contentLoading={contentLoading}
-              relatedLinksCount={threadLinksData?.count || 0}
-              hasRelatedLinks={hasRelatedLinks}
+              linkedItems={threadLinksData?.links || []}
+              attachments={selectedAttachments}
             />
           )}
-        </div>
-
-        {/* Right Panel - Attachments */}
-        <div className="w-64 flex-shrink-0 border-l border-[#3d3d3f]/30 overflow-y-auto">
-          <AttachmentsPanel
-            attachments={selectedAttachments}
-            providerMessageId={selectedMessageId}
-            webLink={selectedContent?.web_link || undefined}
-          />
         </div>
       </div>
     </div>
@@ -769,22 +416,23 @@ export default function EmailSurface({
 }
 
 // ============================================================================
-// THREAD LIST ITEM
+// CORRESPONDENCE ROW
 // ============================================================================
 
-interface ThreadListItemProps {
-  thread: EmailThread;
+interface CorrespondenceRowProps {
+  thread: EmailThread & { from_display_name?: string | null };
   isSelected: boolean;
   onClick: () => void;
   onHover?: () => void;
 }
 
-function ThreadListItem({ thread, isSelected, onClick, onHover }: ThreadListItemProps) {
-  // Generate avatar initials from subject
-  const initials = useMemo(() => {
-    const subject = thread.latest_subject || 'E';
-    return subject.charAt(0).toUpperCase();
-  }, [thread.latest_subject]);
+function CorrespondenceRow({ thread, isSelected, onClick, onHover }: CorrespondenceRowProps) {
+  const systemState: SystemState = thread.confidence
+    ? thread.confidence === 'deterministic' ? 'attached' : 'referenced'
+    : 'unlinked';
+
+  const entityTitle = thread.latest_subject || '(No subject)';
+  const sender = thread.from_display_name || '';
 
   return (
     <button
@@ -792,51 +440,86 @@ function ThreadListItem({ thread, isSelected, onClick, onHover }: ThreadListItem
       onClick={onClick}
       onMouseEnter={onHover}
       className={cn(
-        'w-full flex items-start gap-3 p-3 text-left transition-colors',
-        isSelected ? 'bg-[#0a84ff]/20' : 'hover:bg-[#2c2c2e]'
+        'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-l-2',
+        isSelected
+          ? 'bg-blue-500/10 border-l-blue-500'
+          : 'hover:bg-white/5 border-l-transparent'
       )}
     >
-      {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-[#3a3a3c] flex items-center justify-center flex-shrink-0">
-        <span className="text-[14px] font-medium text-[#98989f]">{initials}</span>
+      <div className="mt-1.5">
+        <div className={cn(
+          'w-1.5 h-1.5 rounded-full',
+          isSelected ? 'bg-blue-500' : 'bg-gray-600'
+        )} />
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
-        <h3
-          className={cn(
-            'text-[14px] font-medium truncate',
-            isSelected ? 'text-[#0a84ff]' : 'text-white'
-          )}
-        >
-          {thread.latest_subject || '(No subject)'}
-        </h3>
-
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] text-[#636366]">
-            {thread.message_count} msg{thread.message_count !== 1 ? 's' : ''}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className={cn(
+            'text-[13px] font-medium leading-tight truncate',
+            isSelected ? 'text-white' : 'text-gray-300'
+          )}>
+            {entityTitle}
+          </h3>
+          <span className="text-[10px] text-gray-500 whitespace-nowrap">
+            {formatTime(thread.last_activity_at)}
           </span>
-          {thread.has_attachments && <Paperclip className="w-3 h-3 text-[#636366]" />}
         </div>
 
-        {thread.last_activity_at && (
-          <span className="text-[11px] text-[#48484a] block mt-0.5">
-            {formatRelativeTime(thread.last_activity_at)}
-          </span>
+        <div className="flex items-center gap-2 mt-1">
+          <SystemStateBadge state={systemState} />
+          {thread.has_attachments && (
+            <div className="flex items-center gap-1 text-gray-500">
+              <Paperclip className="w-2.5 h-2.5" />
+              <span className="text-[10px]">{thread.message_count}</span>
+            </div>
+          )}
+        </div>
+
+        {sender && (
+          <p className="text-[11px] text-gray-500 mt-1 truncate">
+            {sender}
+          </p>
         )}
       </div>
 
-      <ChevronRight className="w-4 h-4 text-[#48484a] flex-shrink-0 mt-1" />
+      {thread.message_count > 1 && (
+        <div className="flex items-center gap-0.5 text-gray-500">
+          <span className="text-[10px]">‹</span>
+          <span className="text-[10px]">{thread.message_count}</span>
+        </div>
+      )}
     </button>
   );
 }
 
 // ============================================================================
-// MESSAGE PANEL (Center)
+// SYSTEM STATE BADGE
 // ============================================================================
 
-interface MessagePanelProps {
-  threadId: string;
+function SystemStateBadge({ state }: { state: SystemState }) {
+  const config = {
+    attached: { label: 'Attached', className: 'bg-green-500/20 text-green-400' },
+    referenced: { label: 'Referenced', className: 'bg-blue-500/20 text-blue-400' },
+    archived: { label: 'Archived', className: 'bg-gray-500/20 text-gray-400' },
+    unlinked: { label: '', className: '' },
+  };
+
+  const { label, className: badgeClass } = config[state];
+  if (!label) return null;
+
+  return (
+    <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium', badgeClass)}>
+      {label}
+    </span>
+  );
+}
+
+// ============================================================================
+// INSPECTOR PANEL
+// ============================================================================
+
+interface InspectorPanelProps {
   thread: {
     latest_subject: string | null;
     message_count: number;
@@ -847,653 +530,288 @@ interface MessagePanelProps {
   onMessageSelect: (providerMessageId: string) => void;
   content: MessageContentType | null | undefined;
   contentLoading: boolean;
-  relatedLinksCount: number;
-  hasRelatedLinks: boolean;
-  onLinksChanged?: () => void;
-}
-
-function MessagePanel({
-  threadId,
-  thread,
-  selectedMessageId,
-  onMessageSelect,
-  content,
-  contentLoading,
-  relatedLinksCount,
-  hasRelatedLinks,
-  onLinksChanged,
-}: MessagePanelProps) {
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [showLinksPanel, setShowLinksPanel] = useState(false);
-
-  return (
-    <div data-testid="message-panel" className="h-full flex flex-col">
-      {/* Thread header */}
-      <div className="p-4 border-b border-[#3d3d3f]/30">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <h2 className="text-[16px] font-semibold text-white">
-              {thread.latest_subject || '(No subject)'}
-            </h2>
-            <div className="flex items-center gap-3 mt-1 text-[12px] text-[#636366]">
-              <span>
-                {thread.message_count} message{thread.message_count !== 1 ? 's' : ''}
-              </span>
-              {thread.has_attachments && (
-                <span className="flex items-center gap-1">
-                  <Paperclip className="w-3 h-3" />
-                  Has attachments
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* "See related" vs "Link to" conditional button */}
-          <div className="flex-shrink-0">
-            {hasRelatedLinks ? (
-              <button
-                onClick={() => setShowLinksPanel(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#30d158]/20 text-[#30d158] text-[12px] font-medium hover:bg-[#30d158]/30 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-                See related ({relatedLinksCount})
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowLinkModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a84ff]/20 text-[#0a84ff] text-[12px] font-medium hover:bg-[#0a84ff]/30 transition-colors"
-              >
-                <Mail className="w-4 h-4" />
-                Link to...
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Message tabs */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-[#3d3d3f]/30 overflow-x-auto">
-        {thread.messages.map((msg, index) => (
-          <button
-            key={msg.id}
-            onClick={() => onMessageSelect(msg.provider_message_id)}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded text-[12px] whitespace-nowrap transition-colors',
-              selectedMessageId === msg.provider_message_id
-                ? 'bg-[#0a84ff] text-white'
-                : 'bg-[#2c2c2e] text-[#98989f] hover:bg-[#3a3a3c]'
-            )}
-          >
-            <div
-              className={cn(
-                'w-1.5 h-1.5 rounded-full',
-                msg.direction === 'inbound' ? 'bg-blue-400' : 'bg-green-400'
-              )}
-            />
-            <span className="truncate max-w-[100px]">{msg.from_display_name || `Message ${index + 1}`}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Message content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {contentLoading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-[#98989f]" />
-            <span className="ml-2 text-[13px] text-[#98989f]">Loading email...</span>
-          </div>
-        )}
-
-        {!contentLoading && content && (
-          <div className="space-y-4">
-            {/* From/To details */}
-            <div className="space-y-1 text-[12px] text-[#98989f] pb-4 border-b border-[#3d3d3f]/30">
-              {content.from_address?.emailAddress && (
-                <div>
-                  <span className="text-[#636366]">From: </span>
-                  <span className="text-white">
-                    {content.from_address.emailAddress.name || content.from_address.emailAddress.address}
-                  </span>
-                  {content.from_address.emailAddress.name && (
-                    <span className="text-[#636366]">
-                      {' '}
-                      &lt;{content.from_address.emailAddress.address}&gt;
-                    </span>
-                  )}
-                </div>
-              )}
-              {content.to_recipients?.length > 0 && (
-                <div>
-                  <span className="text-[#636366]">To: </span>
-                  <span className="text-white">
-                    {content.to_recipients
-                      .map((r) => r.emailAddress?.name || r.emailAddress?.address)
-                      .join(', ')}
-                  </span>
-                </div>
-              )}
-              {content.cc_recipients?.length > 0 && (
-                <div>
-                  <span className="text-[#636366]">Cc: </span>
-                  <span className="text-white">
-                    {content.cc_recipients
-                      .map((r) => r.emailAddress?.name || r.emailAddress?.address)
-                      .join(', ')}
-                  </span>
-                </div>
-              )}
-              {content.sent_at && (
-                <div>
-                  <span className="text-[#636366]">Date: </span>
-                  <span className="text-white">
-                    {new Date(content.sent_at).toLocaleString()}
-                  </span>
-                </div>
-              )}
-
-              {/* Open in Outlook button - only show if web_link is a valid OWA URL */}
-              {content.web_link && (
-                content.web_link.startsWith('https://outlook.office.com/') ||
-                content.web_link.startsWith('https://outlook.office365.com/')
-              ) && (
-                <div className="pt-2">
-                  <a
-                    href={content.web_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a84ff]/20 text-[#0a84ff] text-[12px] font-medium hover:bg-[#0a84ff]/30 transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open in Outlook
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {/* Email body - Full HTML render */}
-            <div data-testid="email-body" className="email-body">
-              {content.body?.contentType === 'html' ? (
-                <div
-                  className="prose prose-invert prose-sm max-w-none text-[14px] leading-relaxed
-                    [&_a]:text-[#0a84ff] [&_a]:no-underline [&_a:hover]:underline
-                    [&_img]:max-w-full [&_img]:h-auto
-                    [&_img[data-blocked-src]]:hidden
-                    [&_table]:border-collapse [&_td]:border [&_td]:border-[#3d3d3f] [&_td]:p-2
-                    [&_th]:border [&_th]:border-[#3d3d3f] [&_th]:p-2 [&_th]:bg-[#2c2c2e]"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body.content) }}
-                />
-              ) : (
-                <pre className="text-[14px] text-white whitespace-pre-wrap font-sans leading-relaxed">
-                  {content.body?.content || content.body_preview || '(No content)'}
-                </pre>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!contentLoading && !content && selectedMessageId && (
-          <div className="text-center py-8">
-            <p className="text-[13px] text-[#ff453a]">Failed to load message content</p>
-          </div>
-        )}
-      </div>
-
-      {/* Link Email Modal */}
-      <LinkEmailModal
-        open={showLinkModal}
-        onOpenChange={setShowLinkModal}
-        threadId={threadId}
-        threadSubject={thread.latest_subject || undefined}
-      />
-
-      {/* Thread Links Panel (See Related) */}
-      <ThreadLinksPanel
-        open={showLinksPanel}
-        onClose={() => setShowLinksPanel(false)}
-        threadId={threadId}
-        threadSubject={thread.latest_subject || undefined}
-      />
-    </div>
-  );
-}
-
-// ============================================================================
-// ATTACHMENTS PANEL (Right)
-// ============================================================================
-
-interface AttachmentsPanelProps {
+  linkedItems: ThreadLink[];
   attachments: Array<{
     id: string;
     name: string;
     contentType?: string;
     size?: number;
   }>;
-  providerMessageId: string | null;
-  /** Optional: web_link for "Open in Outlook" button */
-  webLink?: string;
 }
 
-interface ViewerState {
-  open: boolean;
-  fileName: string;
-  contentType: string;
-  blobUrl: string;
-  outlookUrl?: string;
-  /** Document ID if saved to storage (enables micro-actions) */
-  documentId?: string;
-}
+function InspectorPanel({
+  thread,
+  selectedMessageId,
+  onMessageSelect,
+  content,
+  contentLoading,
+  linkedItems,
+  attachments,
+}: InspectorPanelProps) {
+  const [viewer, setViewer] = useState<{
+    open: boolean;
+    fileName: string;
+    contentType: string;
+    blobUrl: string;
+  }>({ open: false, fileName: '', contentType: '', blobUrl: '' });
 
-function AttachmentsPanel({ attachments, providerMessageId, webLink }: AttachmentsPanelProps) {
-  const [viewer, setViewer] = useState<ViewerState>({
-    open: false,
-    fileName: '',
-    contentType: '',
-    blobUrl: '',
-  });
-  const [savingAttachment, setSavingAttachment] = useState(false);
+  const primaryLinkedEntity = useMemo(() => {
+    if (!linkedItems.length) return null;
+    const deterministic = linkedItems.find((l) => l.confidence_level === 'deterministic');
+    if (deterministic) return deterministic;
+    return linkedItems.sort((a, b) => b.confidence - a.confidence)[0];
+  }, [linkedItems]);
 
-  // Handle opening attachment in viewer (with optional save for micro-actions)
-  const handleViewAttachment = useCallback(
-    async (result: AttachmentBlobResult, attachmentId?: string) => {
-      // Revoke previous blob URL if any
-      if (viewer.blobUrl) {
-        URL.revokeObjectURL(viewer.blobUrl);
-      }
+  const panelTitle = primaryLinkedEntity
+    ? `${primaryLinkedEntity.object_type.replace('_', ' ').toUpperCase()}: ${primaryLinkedEntity.object_id.slice(0, 8)}...`
+    : thread.latest_subject || '(No subject)';
 
-      const blobUrl = URL.createObjectURL(result.blob);
-      let documentId: string | undefined;
+  const handleViewAttachment = useCallback(async (att: { id: string; name: string }) => {
+    if (!selectedMessageId) return;
 
-      // Try to save attachment to storage for micro-actions (fire-and-forget)
-      // This enables "Add to Handover", "Attach to WO" etc.
-      if (providerMessageId && attachmentId) {
-        setSavingAttachment(true);
-        try {
-          const saveResult = await saveAttachmentForPreview(
-            providerMessageId,
-            attachmentId,
-            result.fileName
-          );
-          if (saveResult.success) {
-            documentId = saveResult.document_id;
-            console.log('[AttachmentsPanel] Saved for micro-actions:', documentId);
-          }
-        } catch (err) {
-          // Non-blocking - viewer still opens
-          console.warn('[AttachmentsPanel] Save for preview failed:', err);
-        } finally {
-          setSavingAttachment(false);
-        }
-      }
+    try {
+      const result = await fetchAttachmentBlob(selectedMessageId, att.id, true);
+      if (viewer.blobUrl) URL.revokeObjectURL(viewer.blobUrl);
 
       setViewer({
         open: true,
         fileName: result.fileName,
         contentType: result.contentType,
-        blobUrl,
-        outlookUrl: webLink,
-        documentId,
+        blobUrl: URL.createObjectURL(result.blob),
       });
-    },
-    [viewer.blobUrl, webLink, providerMessageId]
-  );
-
-  // Handle micro-actions from viewer dropdown
-  const handleMicroAction = useCallback(async (action: string, documentId: string) => {
-    console.log('[AttachmentsPanel] Micro-action:', action, documentId);
-
-    switch (action) {
-      case 'add_to_handover': {
-        // For now, use existing thread links to find handover context
-        // In production, this would open a handover picker modal
-        const result = await linkDocument(documentId, 'handover', documentId, 'manual_from_email');
-        if (result.success) {
-          alert('✓ Added to Handover');
-        } else {
-          alert(`Failed: ${result.error}`);
-        }
-        break;
-      }
-
-      case 'attach_to_work_order': {
-        // Get thread's existing work order links
-        const linksResult = await getDocumentLinks(documentId);
-        const existingWoLinks = linksResult.links?.filter(l => l.object_type === 'work_order') || [];
-
-        if (existingWoLinks.length > 0) {
-          alert(`Already linked to ${existingWoLinks.length} work order(s)`);
-          return;
-        }
-
-        // Prompt for work order ID (in production, use a picker modal)
-        const workOrderId = prompt('Enter Work Order ID to attach to:');
-        if (!workOrderId) return;
-
-        const result = await linkDocument(
-          documentId,
-          'work_order',
-          workOrderId.trim(),
-          'manual_from_email',
-          { source: 'email_attachment_viewer' }
-        );
-
-        if (result.success) {
-          if (result.already_exists) {
-            alert('Already attached to this work order');
-          } else {
-            alert('✓ Attached to Work Order');
-          }
-        } else {
-          alert(`Failed: ${result.error}`);
-        }
-        break;
-      }
-
-      case 'unlink_from_work_order': {
-        // Get current links to find which WO to unlink from
-        const linksResult = await getDocumentLinks(documentId);
-        const woLinks = linksResult.links?.filter(l => l.object_type === 'work_order') || [];
-
-        if (woLinks.length === 0) {
-          alert('Not linked to any work order');
-          return;
-        }
-
-        // If multiple, let user choose (in production, use a picker)
-        let targetLink = woLinks[0];
-        if (woLinks.length > 1) {
-          const choice = prompt(
-            `Linked to ${woLinks.length} work orders. Enter index (1-${woLinks.length}) to unlink:`
-          );
-          if (!choice) return;
-          const idx = parseInt(choice, 10) - 1;
-          if (idx >= 0 && idx < woLinks.length) {
-            targetLink = woLinks[idx];
-          }
-        }
-
-        if (!confirm(`Unlink from work order ${targetLink.object_id.slice(0, 8)}...?`)) {
-          return;
-        }
-
-        const result = await unlinkDocument(documentId, 'work_order', targetLink.object_id);
-        if (result.success) {
-          alert('✓ Unlinked from Work Order');
-        } else {
-          alert(`Failed: ${result.error}`);
-        }
-        break;
-      }
-
-      default:
-        console.warn('Unknown micro-action:', action);
+    } catch (err) {
+      console.error('Failed to load attachment:', err);
     }
-  }, []);
+  }, [selectedMessageId, viewer.blobUrl]);
 
-  // Handle closing viewer
   const handleCloseViewer = useCallback(() => {
-    if (viewer.blobUrl) {
-      URL.revokeObjectURL(viewer.blobUrl);
-    }
-    setViewer({
-      open: false,
-      fileName: '',
-      contentType: '',
-      blobUrl: '',
-    });
+    if (viewer.blobUrl) URL.revokeObjectURL(viewer.blobUrl);
+    setViewer({ open: false, fileName: '', contentType: '', blobUrl: '' });
   }, [viewer.blobUrl]);
 
-  // Cleanup blob URL on unmount
-  useEffect(() => {
-    return () => {
-      if (viewer.blobUrl) {
-        URL.revokeObjectURL(viewer.blobUrl);
-      }
-    };
-  }, []);
-
   return (
-    <>
-      <div data-testid="attachments-panel" className="h-full flex flex-col">
-        <div className="p-4 border-b border-[#3d3d3f]/30">
-          <h3 className="text-[13px] font-medium text-[#98989f]">
-            Attachments {attachments.length > 0 && `(${attachments.length})`}
-          </h3>
+    <div className="h-full flex flex-col">
+      <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[15px] font-medium text-white truncate">
+            {panelTitle}
+          </h2>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-3">
-          {attachments.length === 0 ? (
-            <div className="text-center py-8">
-              <Paperclip className="h-8 w-8 text-[#48484a] mx-auto mb-2" />
-              <p className="text-[12px] text-[#636366]">No attachments</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {attachments.map((att) => (
-                <AttachmentItem
-                  key={att.id}
-                  attachment={att}
-                  providerMessageId={providerMessageId!}
-                  onViewAttachment={handleViewAttachment}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <button className="p-1.5 rounded text-gray-500 hover:text-gray-400">
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Document Viewer Overlay - allowDownload=false for email attachments (SOC-2) */}
+      <div className="flex-1 overflow-y-auto">
+        {thread.messages.length > 1 && (
+          <div className="px-6 py-2 border-b border-white/10 flex gap-1 overflow-x-auto">
+            {thread.messages.map((msg, i) => (
+              <button
+                key={msg.id}
+                onClick={() => onMessageSelect(msg.provider_message_id)}
+                className={cn(
+                  'px-2.5 py-1 rounded text-[11px] whitespace-nowrap transition-colors',
+                  selectedMessageId === msg.provider_message_id
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-gray-500 hover:text-gray-400'
+                )}
+              >
+                <span className={cn(
+                  'inline-block w-1.5 h-1.5 rounded-full mr-1.5',
+                  msg.direction === 'inbound' ? 'bg-blue-500' : 'bg-green-500'
+                )} />
+                {msg.from_display_name || `Message ${i + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {contentLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+          </div>
+        )}
+
+        {!contentLoading && content && (
+          <div className="px-6 py-4">
+            <div className="space-y-0.5 text-[11px] text-gray-500 mb-4 pb-4 border-b border-white/5">
+              {content.from_address?.emailAddress && (
+                <div>
+                  <span>From: </span>
+                  <span className="text-gray-400">
+                    {content.from_address.emailAddress.name || content.from_address.emailAddress.address}
+                  </span>
+                </div>
+              )}
+              {content.to_recipients?.length > 0 && (
+                <div>
+                  <span>To: </span>
+                  <span className="text-gray-400">
+                    {content.to_recipients.map((r) => r.emailAddress?.address).join(', ')}
+                  </span>
+                </div>
+              )}
+              {content.sent_at && (
+                <div>
+                  <span>Date: </span>
+                  <span className="text-gray-400">
+                    {new Date(content.sent_at).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
+              {content.subject && (
+                <div>
+                  <span>Subject: </span>
+                  <span className="text-gray-400">{content.subject}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="text-[13px] text-gray-300 leading-relaxed">
+              {content.body?.contentType === 'html' ? (
+                <div
+                  className="prose prose-invert prose-sm max-w-none
+                    [&_a]:text-blue-400 [&_a]:no-underline [&_a:hover]:underline
+                    [&_img]:max-w-full [&_img]:h-auto [&_img[data-blocked-src]]:hidden
+                    [&_table]:border-collapse [&_td]:border [&_td]:border-white/10 [&_td]:p-2"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body.content) }}
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap font-sans">
+                  {content.body?.content || content.body_preview || '(No content)'}
+                </pre>
+              )}
+            </div>
+
+            {attachments.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-white/5">
+                <h4 className="text-[11px] font-medium text-gray-500 mb-2">
+                  Attachments
+                </h4>
+                <div className="space-y-1">
+                  {attachments.map((att) => (
+                    <button
+                      key={att.id}
+                      onClick={() => handleViewAttachment(att)}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors text-left"
+                    >
+                      <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <span className="text-[12px] text-gray-300 truncate flex-1">
+                        {att.name}
+                      </span>
+                      {att.size && (
+                        <span className="text-[10px] text-gray-500">
+                          ({formatFileSize(att.size)})
+                        </span>
+                      )}
+                      <Paperclip className="w-3 h-3 text-gray-500" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {linkedItems.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-white/5">
+                <h4 className="text-[11px] font-medium text-gray-500 mb-2">
+                  Linked Items
+                </h4>
+                <div className="space-y-1">
+                  {linkedItems.map((item) => (
+                    <LinkedItemCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!contentLoading && !content && selectedMessageId && (
+          <div className="px-6 py-8 text-center">
+            <p className="text-[11px] text-gray-500">
+              Failed to load message
+            </p>
+          </div>
+        )}
+
+        {!selectedMessageId && thread.messages.length > 0 && (
+          <div className="px-6 py-8 text-center">
+            <p className="text-[11px] text-gray-500">
+              Select a message to view
+            </p>
+            <button
+              onClick={() => onMessageSelect(thread.messages[0].provider_message_id)}
+              className="mt-2 text-[11px] text-blue-400 hover:underline"
+            >
+              View first message
+            </button>
+          </div>
+        )}
+      </div>
+
       <DocumentViewerOverlay
         open={viewer.open}
         onClose={handleCloseViewer}
         fileName={viewer.fileName}
         contentType={viewer.contentType}
         blobUrl={viewer.blobUrl}
-        outlookUrl={viewer.outlookUrl}
         allowDownload={false}
-        documentId={viewer.documentId}
-        onMicroAction={handleMicroAction}
       />
-    </>
-  );
-}
-
-// ============================================================================
-// ATTACHMENT ITEM
-// ============================================================================
-
-interface AttachmentItemProps {
-  attachment: {
-    id: string;
-    name: string;
-    contentType?: string;
-    size?: number;
-  };
-  providerMessageId: string;
-  onViewAttachment: (result: AttachmentBlobResult, attachmentId?: string) => void;
-}
-
-function AttachmentItem({ attachment, providerMessageId, onViewAttachment }: AttachmentItemProps) {
-  const [status, setStatus] = React.useState<'idle' | 'loading' | 'error'>('idle');
-  const [error, setError] = React.useState<string | null>(null);
-
-  // Check if file can be viewed inline (images and PDFs)
-  const contentType = attachment.contentType?.toLowerCase() || '';
-  const isViewable = contentType.startsWith('image/') ||
-    contentType === 'application/pdf' ||
-    contentType.startsWith('text/');
-
-  const handleClick = async () => {
-    setStatus('loading');
-    setError(null);
-
-    try {
-      // Fetch attachment with inline flag for viewer
-      const result = await fetchAttachmentBlob(providerMessageId, attachment.id, true);
-
-      // Always open in document viewer overlay (handles both viewable and non-viewable)
-      // Pass attachmentId for save-for-micro-actions flow
-      onViewAttachment(result, attachment.id);
-      setStatus('idle');
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to load attachment');
-    }
-  };
-
-  return (
-    <div className="flex flex-col">
-      <button
-        onClick={handleClick}
-        disabled={status === 'loading'}
-        className={cn(
-          'flex items-center gap-2 p-3 rounded-lg transition-colors text-left',
-          status === 'error'
-            ? 'bg-[#3a1a1a] border border-[#ff453a]/30'
-            : 'bg-[#2c2c2e] hover:bg-[#3a3a3c]'
-        )}
-      >
-        {status === 'loading' ? (
-          <Loader2 className="w-4 h-4 text-[#98989f] animate-spin flex-shrink-0" />
-        ) : status === 'error' ? (
-          <AlertCircle className="w-4 h-4 text-[#ff453a] flex-shrink-0" />
-        ) : isViewable ? (
-          <ExternalLink className="w-4 h-4 text-[#30d158] flex-shrink-0" />
-        ) : (
-          <Download className="w-4 h-4 text-[#0a84ff] flex-shrink-0" />
-        )}
-        <div className="flex-1 min-w-0">
-          <span
-            className={cn(
-              'text-[13px] block truncate',
-              status === 'error' ? 'text-[#ff453a]' : 'text-white'
-            )}
-          >
-            {attachment.name}
-          </span>
-          <div className="flex items-center gap-2">
-            {attachment.size && status !== 'error' && (
-              <span className="text-[11px] text-[#636366]">{formatFileSize(attachment.size)}</span>
-            )}
-            {isViewable && status !== 'error' && (
-              <span className="text-[10px] text-[#30d158]">Click to view</span>
-            )}
-          </div>
-        </div>
-      </button>
-      {error && <p className="text-[11px] text-[#ff453a] mt-1 px-1">{error}</p>}
     </div>
   );
 }
 
 // ============================================================================
-// SYNC STATUS BADGE
+// LINKED ITEM CARD
 // ============================================================================
 
-interface SyncStatusBadgeProps {
-  status: {
-    is_connected?: boolean;
-    sync_status?: 'active' | 'degraded' | 'error' | 'disconnected';
-    last_sync_at?: string | null;
-    last_sync_error?: string | null;
-  } | null | undefined;
-  onRefresh: () => void;
-}
+function LinkedItemCard({ item }: { item: ThreadLink }) {
+  const icon = ENTITY_ICONS[item.object_type] || <FileText className="w-3 h-3" />;
+  const typeLabel = item.object_type.replace('_', ' ');
 
-function SyncStatusBadge({ status, onRefresh }: SyncStatusBadgeProps) {
-  const lastSyncText = useMemo(() => {
-    if (!status?.last_sync_at) return null;
-    return formatRelativeTime(status.last_sync_at);
-  }, [status?.last_sync_at]);
+  const statusClass = item.confidence_level === 'deterministic'
+    ? 'text-green-400'
+    : item.confidence_level === 'suggested'
+      ? 'text-blue-400'
+      : 'text-gray-400';
 
-  // Degraded state (token issues, need reconnect)
-  if (status?.sync_status === 'degraded' || status?.sync_status === 'error') {
-    return (
-      <button
-        onClick={onRefresh}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#3a2a1a] border border-[#ff9f0a]/30 text-[12px] text-[#ff9f0a] hover:bg-[#3a2a1a]/80 transition-colors"
-        title={status.last_sync_error || 'Sync degraded'}
-      >
-        <AlertCircle className="w-3.5 h-3.5" />
-        Sync degraded
-      </button>
-    );
-  }
-
-  // Not connected (no watcher)
-  if (!status?.is_connected) {
-    return (
-      <button
-        onClick={onRefresh}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#3a1a1a] border border-[#ff453a]/30 text-[12px] text-[#ff453a]"
-      >
-        <AlertCircle className="w-3.5 h-3.5" />
-        Not connected
-      </button>
-    );
-  }
-
-  // Active state
   return (
-    <button
-      onClick={onRefresh}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#2c2c2e] text-[12px] text-[#98989f] hover:bg-[#3a3a3c] transition-colors"
-    >
-      <RefreshCw className="w-3.5 h-3.5" />
-      {lastSyncText ? `Synced ${lastSyncText}` : 'Sync'}
-    </button>
+    <div className="flex items-center gap-3 px-3 py-2 rounded bg-white/5 group">
+      <div className="p-1.5 rounded bg-white/5 text-gray-500">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-medium text-gray-300 truncate">
+            {item.object_id.slice(0, 8)}...
+          </span>
+          <span className={cn('text-[9px] uppercase', statusClass)}>
+            {item.confidence_level === 'deterministic' ? 'In Progress' : typeLabel}
+          </span>
+        </div>
+        {item.suggested_reason && (
+          <p className="text-[10px] text-gray-500 truncate">
+            {item.suggested_reason}
+          </p>
+        )}
+      </div>
+      <ChevronRight className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
   );
 }
 
 // ============================================================================
-// UTILITY COMPONENTS
+// UTILITIES
 // ============================================================================
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-interface DirectionChipProps {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}
-
-function DirectionChip({ icon, label, active, onClick }: DirectionChipProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors',
-        active ? 'bg-[#0a84ff] text-white' : 'bg-[#3a3a3c] text-[#98989f] hover:bg-[#48484a]'
-      )}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-interface OperatorChipProps {
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-}
-
-function OperatorChip({ label, active, onClick }: OperatorChipProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'px-2 py-1 rounded text-[11px] font-mono transition-colors',
-        active
-          ? 'bg-[#30d158]/20 text-[#30d158] border border-[#30d158]/30'
-          : 'bg-[#2c2c2e] text-[#98989f] hover:bg-[#3a3a3c] border border-[#3d3d3f]/30'
-      )}
-    >
-      {label}
-    </button>
-  );
 }
