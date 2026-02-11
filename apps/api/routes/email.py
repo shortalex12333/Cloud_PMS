@@ -2190,10 +2190,9 @@ async def get_inbox_threads(
             count='exact'
         ).eq('yacht_id', yacht_id)
 
-        # Filter by watcher_id if available (new data), allow NULL for legacy data
-        if watcher_id:
-            # Get threads owned by this user OR legacy threads (NULL watcher_id)
-            base_query = base_query.or_(f"watcher_id.eq.{watcher_id},watcher_id.is.null")
+        # NOTE: watcher_id filtering removed - was causing threads to appear in inbox
+        # but fail on detail fetch due to .or_() bypassing yacht_id filter
+        # yacht_id filter alone is sufficient for tenant isolation
 
         # Apply direction filter using timestamp columns
         # inbound = threads that have received messages (last_inbound_at not null)
@@ -2229,9 +2228,7 @@ async def get_inbox_threads(
                     'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
                 ).eq('yacht_id', yacht_id)
 
-                # Filter by watcher_id if available
-                if watcher_id:
-                    fallback_query = fallback_query.or_(f"watcher_id.eq.{watcher_id},watcher_id.is.null")
+                # NOTE: watcher_id filtering removed - yacht_id filter is sufficient
 
                 # Apply direction filter to fallback using timestamp columns
                 if direction == 'inbound':
