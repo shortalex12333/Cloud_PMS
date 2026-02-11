@@ -112,7 +112,7 @@ export function EditInvoiceAmountModal({
   const getChangeColor = () => {
     if (difference > 0) return 'text-red-700';
     if (difference < 0) return 'text-green-700';
-    return 'text-gray-700';
+    return 'text-celeste-text-secondary';
   };
 
   const getChangeSymbol = () => {
@@ -150,14 +150,14 @@ export function EditInvoiceAmountModal({
           </div>
 
           {/* Invoice Details */}
-          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+          <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-celeste-black">
                   Invoice: {context.invoice_number}
                 </p>
                 {context.supplier && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-celeste-text-secondary">
                     Supplier: {context.supplier}
                   </p>
                 )}
@@ -171,14 +171,14 @@ export function EditInvoiceAmountModal({
             <div className="space-y-2">
               <Label htmlFor="old_amount">Current Amount</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-disabled" />
                 <Input
                   id="old_amount"
                   type="number"
                   step="0.01"
                   {...register('old_amount')}
                   readOnly
-                  className="pl-8 bg-gray-100 cursor-not-allowed"
+                  className="pl-8 bg-celeste-bg-secondary cursor-not-allowed"
                 />
               </div>
             </div>
@@ -189,7 +189,7 @@ export function EditInvoiceAmountModal({
                 New Amount <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-disabled" />
                 <Input
                   id="new_amount"
                   type="number"
@@ -213,13 +213,13 @@ export function EditInvoiceAmountModal({
               }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Change:</span>
+                    <span className="text-sm font-medium text-celeste-text-secondary">Change:</span>
                     <span className={`text-lg font-bold ${getChangeColor()}`}>
                       {getChangeSymbol()}${absoluteDifference.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Percentage:</span>
+                    <span className="text-sm font-medium text-celeste-text-secondary">Percentage:</span>
                     <span className={`text-lg font-bold ${getChangeColor()}`}>
                       {getChangeSymbol()}{Math.abs(percentageChange).toFixed(2)}%
                     </span>
@@ -233,7 +233,7 @@ export function EditInvoiceAmountModal({
           <div className="space-y-2">
             <Label htmlFor="reason" className="flex items-center gap-2">
               Reason for Change <span className="text-red-500">*</span>
-              <span className="text-xs text-gray-500">(Min 15 characters)</span>
+              <span className="text-xs text-celeste-text-disabled">(Min 15 characters)</span>
             </Label>
             <Textarea
               id="reason"

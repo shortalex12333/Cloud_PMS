@@ -157,9 +157,9 @@ export function AddNoteModal({
             <div className="flex items-center gap-3">
               <EntityIcon className="h-5 w-5" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{context.entity_title}</p>
+                <p className="font-medium text-celeste-black truncate">{context.entity_title}</p>
                 {context.entity_subtitle && (
-                  <p className="text-sm text-gray-600 truncate">{context.entity_subtitle}</p>
+                  <p className="text-sm text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
                 )}
               </div>
             </div>
@@ -171,7 +171,7 @@ export function AddNoteModal({
               <Label htmlFor="note_text">Note Content *</Label>
               <span className={cn(
                 'text-xs',
-                charCount > 1800 ? 'text-amber-600' : 'text-gray-400'
+                charCount > 1800 ? 'text-amber-600' : 'text-celeste-text-muted'
               )}>
                 {charCount}/2000
               </span>
@@ -203,7 +203,7 @@ export function AddNoteModal({
               <SelectContent>
                 <SelectItem value="normal">
                   <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-gray-400" />
+                    <span className="w-2 h-2 rounded-full bg-celeste-text-muted" />
                     Normal
                   </span>
                 </SelectItem>

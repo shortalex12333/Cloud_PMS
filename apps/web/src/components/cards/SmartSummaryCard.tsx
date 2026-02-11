@@ -36,7 +36,7 @@ export function SmartSummaryCard({ summary, actions = [] }: SmartSummaryCardProp
       case 'warning':
         return <AlertTriangle className="h-4 w-4 text-orange-600" />;
       case 'trend':
-        return <TrendingUp className="h-4 w-4 text-blue-600" />;
+        return <TrendingUp className="h-4 w-4 text-celeste-accent-600" />;
       case 'prediction':
         return <Sparkles className="h-4 w-4 text-purple-600" />;
       default:
@@ -47,11 +47,11 @@ export function SmartSummaryCard({ summary, actions = [] }: SmartSummaryCardProp
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-restricted-red-600 bg-restricted-red-50 border-restricted-red-200';
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        return 'text-restricted-yellow-600 bg-restricted-yellow-50 border-restricted-yellow-200';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 

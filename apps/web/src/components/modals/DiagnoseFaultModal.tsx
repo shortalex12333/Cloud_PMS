@@ -240,7 +240,7 @@ Repair (if pump): 4-6 hours`;
       case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -306,7 +306,7 @@ Repair (if pump): 4-6 hours`;
                 placeholder="Add any additional observations, recent changes, or environmental factors..."
                 rows={3}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-celeste-text-disabled">
                 More context helps the AI provide better diagnosis
               </p>
             </div>
@@ -317,7 +317,7 @@ Repair (if pump): 4-6 hours`;
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-purple-600" />
-                <h3 className="font-semibold text-gray-900">AI Diagnosis</h3>
+                <h3 className="font-semibold text-celeste-black">AI Diagnosis</h3>
                 {isStreaming && <Loader2 className="h-4 w-4 animate-spin text-purple-600" />}
               </div>
 
@@ -326,7 +326,7 @@ Repair (if pump): 4-6 hours`;
                 className="p-4 bg-purple-50 border border-purple-200 rounded-lg max-h-96 overflow-y-auto"
               >
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-celeste-bg-tertiary">
                     {streamedDiagnosis}
                     {isStreaming && <span className="animate-pulse">▊</span>}
                   </pre>
@@ -340,7 +340,7 @@ Repair (if pump): 4-6 hours`;
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-celeste-black">
                   Similar Past Faults ({similarFaults.length})
                 </h3>
               </div>
@@ -379,7 +379,7 @@ Repair (if pump): 4-6 hours`;
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-celeste-black">
                   Suggested Parts ({suggestedParts.length})
                 </h3>
               </div>
@@ -415,17 +415,17 @@ Repair (if pump): 4-6 hours`;
           {manualReferences.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-gray-600" />
-                <h3 className="font-semibold text-gray-900">
+                <FileText className="h-5 w-5 text-celeste-text-secondary" />
+                <h3 className="font-semibold text-celeste-black">
                   Manual References ({manualReferences.length})
                 </h3>
               </div>
 
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
                 <ul className="space-y-1">
                   {manualReferences.map((ref, index) => (
-                    <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                      <Info className="h-4 w-4 text-gray-500 mt-0.5" />
+                    <li key={index} className="text-sm text-celeste-text-secondary flex items-start gap-2">
+                      <Info className="h-4 w-4 text-celeste-text-disabled mt-0.5" />
                       {ref}
                     </li>
                   ))}

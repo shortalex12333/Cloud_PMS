@@ -129,7 +129,7 @@ export function AddPartModal({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Part Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Part Information</h3>
+            <h3 className="text-sm font-semibold text-celeste-black">Part Information</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Part Name */}
@@ -187,7 +187,7 @@ export function AddPartModal({
 
           {/* Stock Levels */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Stock Levels</h3>
+            <h3 className="text-sm font-semibold text-celeste-black">Stock Levels</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Initial Stock Quantity */}
@@ -240,7 +240,7 @@ export function AddPartModal({
 
           {/* Location */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Location</h3>
+            <h3 className="text-sm font-semibold text-celeste-black">Location</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* General Location */}
@@ -293,7 +293,7 @@ export function AddPartModal({
 
           {/* Supplier & Cost */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Supplier & Cost</h3>
+            <h3 className="text-sm font-semibold text-celeste-black">Supplier & Cost</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Unit Cost */}

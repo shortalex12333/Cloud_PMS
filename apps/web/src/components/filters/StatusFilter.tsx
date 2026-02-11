@@ -64,17 +64,17 @@ export function StatusFilter({
   const getColorClasses = (color?: string) => {
     switch (color) {
       case 'green':
-        return 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100';
+        return 'border-restricted-green-200 bg-restricted-green-50 text-restricted-green-700 hover:bg-restricted-green-100';
       case 'yellow':
-        return 'border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100';
+        return 'border-restricted-yellow-200 bg-restricted-yellow-50 text-restricted-yellow-700 hover:bg-restricted-yellow-100';
       case 'orange':
-        return 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100';
+        return 'border-restricted-yellow-200 bg-restricted-yellow-50 text-restricted-yellow-700 hover:bg-restricted-yellow-100';
       case 'red':
-        return 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100';
+        return 'border-restricted-red-200 bg-restricted-red-50 text-restricted-red-700 hover:bg-restricted-red-100';
       case 'blue':
-        return 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100';
+        return 'border-celeste-accent-200 bg-celeste-accent-50 text-celeste-accent-700 hover:bg-celeste-accent-100';
       case 'gray':
-        return 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100';
+        return 'border-celeste-border bg-celeste-bg-primary text-celeste-text-secondary hover:bg-celeste-bg-secondary';
       default:
         return 'border-muted bg-muted text-foreground hover:bg-accent';
     }

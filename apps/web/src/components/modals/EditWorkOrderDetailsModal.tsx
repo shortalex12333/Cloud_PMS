@@ -151,7 +151,7 @@ export function EditWorkOrderDetailsModal({
       case 'routine':
         return 'text-blue-700 bg-blue-50 border-blue-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 

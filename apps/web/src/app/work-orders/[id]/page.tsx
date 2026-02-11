@@ -193,7 +193,7 @@ export default function WorkOrderLensPage() {
       case 'in_progress':
         return { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'In Progress' };
       case 'cancelled':
-        return { bg: 'bg-gray-500/10', text: 'text-gray-400', label: 'Cancelled' };
+        return { bg: 'bg-celeste-text-disabled/10', text: 'text-celeste-text-muted', label: 'Cancelled' };
       case 'pending_parts':
         return { bg: 'bg-purple-500/10', text: 'text-purple-400', label: 'Pending Parts' };
       default:
@@ -212,7 +212,7 @@ export default function WorkOrderLensPage() {
       case 'medium':
         return { bg: 'bg-amber-500/10', text: 'text-amber-400', label: 'Medium' };
       default:
-        return { bg: 'bg-gray-500/10', text: 'text-gray-400', label: 'Low' };
+        return { bg: 'bg-celeste-text-disabled/10', text: 'text-celeste-text-muted', label: 'Low' };
     }
   };
 
@@ -234,10 +234,10 @@ export default function WorkOrderLensPage() {
   // ---------------------------------------------------------------------------
   if (loading || authLoading || bootstrapping) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading work order...</p>
+          <p className="text-celeste-text-muted">Loading work order...</p>
         </div>
       </div>
     );
@@ -248,11 +248,11 @@ export default function WorkOrderLensPage() {
   // ---------------------------------------------------------------------------
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
+        <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <p className="text-celeste-text-muted mb-6">{error}</p>
           <button
             onClick={() => router.push('/app')}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -278,24 +278,24 @@ export default function WorkOrderLensPage() {
   // RENDER
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-celeste-black">
       {/* ===================================================================
           HEADER - Sticky with back navigation
           TODO: Add action buttons here (Edit, Mark Complete, etc.)
           =================================================================== */}
-      <header className="bg-gray-800/50 border-b border-gray-700/50 sticky top-0 z-10 backdrop-blur-sm">
+      <header className="bg-celeste-bg-tertiary/50 border-b border-celeste-text-secondary/50 sticky top-0 z-10 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
+              className="p-2 hover:bg-celeste-text-secondary/50 rounded-lg transition-colors"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-400" />
+              <ArrowLeft className="w-5 h-5 text-celeste-text-muted" />
             </button>
             <div className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-blue-400" />
-              <span className="text-sm text-gray-400 uppercase tracking-wider">Work Order</span>
+              <span className="text-sm text-celeste-text-muted uppercase tracking-wider">Work Order</span>
             </div>
             {/* TODO: Add action buttons here
             <div className="ml-auto flex gap-2">
@@ -336,7 +336,7 @@ export default function WorkOrderLensPage() {
 
           {/* Equipment Link - TODO: Make clickable to navigate to equipment lens */}
           {workOrder.equipment_name && (
-            <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <div className="flex items-center gap-2 text-celeste-text-muted mb-2">
               <Settings className="w-4 h-4" />
               <span>{workOrder.equipment_name}</span>
               {/* TODO: Add link: onClick={() => router.push(`/equipment/${workOrder.equipment_id}`)} */}
@@ -348,11 +348,11 @@ export default function WorkOrderLensPage() {
             DESCRIPTION
             ----------------------------------------------------------------- */}
         {workOrder.description && (
-          <div className="bg-gray-800/50 rounded-lg p-6 mb-6 border border-gray-700/50">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          <div className="bg-celeste-bg-tertiary/50 rounded-lg p-6 mb-6 border border-celeste-text-secondary/50">
+            <h2 className="text-sm font-semibold text-celeste-text-muted uppercase tracking-wider mb-3">
               Description
             </h2>
-            <p className="text-gray-300 whitespace-pre-wrap">
+            <p className="text-celeste-border whitespace-pre-wrap">
               {workOrder.description}
             </p>
           </div>
@@ -365,36 +365,36 @@ export default function WorkOrderLensPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* Assigned To */}
           {workOrder.assigned_to_name && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-gray-500" />
+                <User className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Assigned To</p>
-                  <p className="text-gray-200">{workOrder.assigned_to_name}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Assigned To</p>
+                  <p className="text-celeste-border">{workOrder.assigned_to_name}</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Created Date */}
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
             <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-gray-500" />
+              <Calendar className="w-5 h-5 text-celeste-text-disabled" />
               <div>
-                <p className="text-xs text-gray-500 uppercase">Created</p>
-                <p className="text-gray-200">{formatDate(workOrder.created_at)}</p>
+                <p className="text-xs text-celeste-text-disabled uppercase">Created</p>
+                <p className="text-celeste-border">{formatDate(workOrder.created_at)}</p>
               </div>
             </div>
           </div>
 
           {/* Due Date */}
           {workOrder.due_date && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <Clock className={cn('w-5 h-5', workOrder.is_overdue ? 'text-red-500' : 'text-gray-500')} />
+                <Clock className={cn('w-5 h-5', workOrder.is_overdue ? 'text-red-500' : 'text-celeste-text-disabled')} />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Due Date</p>
-                  <p className={cn(workOrder.is_overdue ? 'text-red-400' : 'text-gray-200')}>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Due Date</p>
+                  <p className={cn(workOrder.is_overdue ? 'text-red-400' : 'text-celeste-border')}>
                     {formatDate(workOrder.due_date)}
                   </p>
                 </div>
@@ -404,11 +404,11 @@ export default function WorkOrderLensPage() {
 
           {/* Completed Date */}
           {workOrder.completed_at && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Completed</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Completed</p>
                   <p className="text-green-400">{formatDate(workOrder.completed_at)}</p>
                 </div>
               </div>
@@ -417,12 +417,12 @@ export default function WorkOrderLensPage() {
 
           {/* Days Open */}
           {workOrder.days_open !== undefined && workOrder.days_open > 0 && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-gray-500" />
+                <FileText className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Days Open</p>
-                  <p className="text-gray-200">{workOrder.days_open} days</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Days Open</p>
+                  <p className="text-celeste-border">{workOrder.days_open} days</p>
                 </div>
               </div>
             </div>
@@ -446,8 +446,8 @@ export default function WorkOrderLensPage() {
             Uses existing RelatedEmailsPanel component
             Fetches emails linked to this work order via object_type/object_id
             ----------------------------------------------------------------- */}
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <div className="bg-celeste-bg-tertiary/50 rounded-lg p-6 border border-celeste-text-secondary/50">
+          <h2 className="text-sm font-semibold text-celeste-text-muted uppercase tracking-wider mb-4">
             Related Emails
           </h2>
           <RelatedEmailsPanel

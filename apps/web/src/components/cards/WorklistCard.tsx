@@ -42,26 +42,26 @@ export function WorklistCard({ worklist, actions = [] }: WorklistCardProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-restricted-red-600 bg-restricted-red-50 border-restricted-red-200';
       case 'high':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
+        return 'text-restricted-yellow-600 bg-restricted-yellow-50 border-restricted-yellow-200';
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        return 'text-restricted-yellow-600 bg-restricted-yellow-50 border-restricted-yellow-200';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+        return <CheckCircle2 className="h-4 w-4 text-restricted-green-600" />;
       case 'in_progress':
-        return <Clock className="h-4 w-4 text-blue-600" />;
+        return <Clock className="h-4 w-4 text-celeste-accent-600" />;
       case 'blocked':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-restricted-red-600" />;
       default:
-        return <ListTodo className="h-4 w-4 text-gray-600" />;
+        return <ListTodo className="h-4 w-4 text-celeste-text-secondary" />;
     }
   };
 
@@ -92,7 +92,7 @@ export function WorklistCard({ worklist, actions = [] }: WorklistCardProps) {
             <div>
               <p className="text-xs text-muted-foreground">Tasks</p>
               <p className="text-sm">
-                <span className="font-medium text-green-600">
+                <span className="font-medium text-restricted-green-600">
                   {worklist.summary.completed_tasks}
                 </span>
                 {' / '}
@@ -105,7 +105,7 @@ export function WorklistCard({ worklist, actions = [] }: WorklistCardProps) {
 
           {/* Blocked Tasks Warning */}
           {worklist.summary.blocked_tasks > 0 && (
-            <div className="flex items-center gap-1.5 text-sm text-red-600 mb-3 bg-red-50 border border-red-200 rounded p-2">
+            <div className="flex items-center gap-1.5 text-sm text-restricted-red-600 mb-3 bg-restricted-red-50 border border-restricted-red-200 rounded p-2">
               <AlertCircle className="h-4 w-4" />
               <span>{worklist.summary.blocked_tasks} blocked task(s)</span>
             </div>

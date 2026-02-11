@@ -87,7 +87,7 @@ const ERROR_DISPLAYS: Record<string, ErrorDisplay> = {
     action: 'Return to App',
   },
   no_token: {
-    icon: <HelpCircle className="w-8 h-8 text-gray-500" />,
+    icon: <HelpCircle className="w-8 h-8 text-celeste-text-disabled" />,
     title: 'No Link Token',
     message: 'No token was provided in the URL.',
     action: 'Return to App',

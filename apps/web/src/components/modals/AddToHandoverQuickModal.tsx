@@ -227,7 +227,7 @@ export function AddToHandoverQuickModal({
         {prefillLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-sm text-gray-600">Loading context...</span>
+            <span className="ml-3 text-sm text-celeste-text-secondary">Loading context...</span>
           </div>
         ) : prefillError ? (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -302,7 +302,7 @@ export function AddToHandoverQuickModal({
                             value === 'urgent' && 'bg-red-500',
                             value === 'high' && 'bg-orange-500',
                             value === 'normal' && 'bg-blue-500',
-                            value === 'low' && 'bg-gray-400'
+                            value === 'low' && 'bg-celeste-text-muted'
                           )}
                         />
                         {label}
@@ -320,7 +320,7 @@ export function AddToHandoverQuickModal({
             <div className="space-y-2">
               <Label htmlFor="summary_text">
                 Details / Your Note
-                <span className="text-xs text-gray-500 ml-2">
+                <span className="text-xs text-celeste-text-disabled ml-2">
                   (Add your observation or instructions below)
                 </span>
               </Label>
@@ -337,7 +337,7 @@ export function AddToHandoverQuickModal({
                     <p className="text-sm text-red-600">{errors.summary_text.message}</p>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-celeste-text-disabled">
                   {watch('summary_text')?.length || 0} / 2000 characters
                 </span>
               </div>
