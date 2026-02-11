@@ -70,7 +70,7 @@ interface AddNoteModalProps {
 
 const ENTITY_CONFIG: Record<EntityType, { icon: React.ElementType; color: string; label: string }> = {
   fault: { icon: AlertCircle, color: 'text-red-500 bg-red-50 border-red-200', label: 'Fault' },
-  work_order: { icon: Wrench, color: 'text-blue-500 bg-blue-50 border-blue-200', label: 'Work Order' },
+  work_order: { icon: Wrench, color: 'text-celeste-accent bg-celeste-accent-line border-celeste-accent-line', label: 'Work Order' },
   equipment: { icon: Cog, color: 'text-violet-500 bg-violet-50 border-violet-200', label: 'Equipment' },
   checklist: { icon: ClipboardList, color: 'text-emerald-500 bg-emerald-50 border-emerald-200', label: 'Checklist' },
 };

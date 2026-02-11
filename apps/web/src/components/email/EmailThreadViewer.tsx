@@ -178,10 +178,10 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
         {/* Direction Icon */}
         <div className={cn(
           'p-1 rounded',
-          isInbound ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'
+          isInbound ? 'bg-celeste-accent-subtle' : 'bg-green-100 dark:bg-green-900/30'
         )}>
           {isInbound ? (
-            <ArrowDownLeft className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+            <ArrowDownLeft className="h-3 w-3 text-celeste-accent" />
           ) : (
             <ArrowUpRight className="h-3 w-3 text-green-600 dark:text-green-400" />
           )}
@@ -246,7 +246,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
           {!showOriginal ? (
             <button
               onClick={() => setShowOriginal(true)}
-              className="inline-flex items-center gap-1.5 text-[13px] text-blue-500 hover:text-blue-600 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[13px] text-celeste-accent hover:text-celeste-accent transition-colors"
             >
               <Eye className="h-3.5 w-3.5" />
               View original

@@ -72,7 +72,7 @@ interface EditHandoverSectionModalProps {
 
 const ITEM_TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
   fault: { icon: AlertCircle, color: 'text-red-500' },
-  work_order: { icon: Wrench, color: 'text-blue-500' },
+  work_order: { icon: Wrench, color: 'text-celeste-accent' },
   equipment: { icon: Package, color: 'text-violet-500' },
   part: { icon: Package, color: 'text-emerald-500' },
   document: { icon: FileText, color: 'text-indigo-500' },

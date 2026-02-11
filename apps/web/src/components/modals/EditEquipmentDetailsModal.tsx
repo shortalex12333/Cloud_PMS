@@ -127,7 +127,7 @@ export function EditEquipmentDetailsModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-blue-600" />
+            <Settings className="h-5 w-5 text-celeste-accent" />
             Edit Equipment Details
           </DialogTitle>
           <DialogDescription>
@@ -237,10 +237,10 @@ export function EditEquipmentDetailsModal({
             <div className={`p-4 border rounded-lg ${
               criticalChange
                 ? 'bg-red-50 border-red-300'
-                : 'bg-blue-50 border-blue-300'
+                : 'bg-celeste-accent-subtle border-celeste-accent-line'
             }`}>
               <p className={`text-sm font-medium ${
-                criticalChange ? 'text-red-900' : 'text-blue-900'
+                criticalChange ? 'text-red-900' : 'text-celeste-accent'
               }`}>
                 {Object.values(changes).filter(Boolean).length} field(s) will be updated.
                 {criticalChange

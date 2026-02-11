@@ -214,7 +214,7 @@ export function LinkPartsToWorkOrderModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-celeste-accent" />
             Link Parts to Work Order
           </DialogTitle>
           <DialogDescription>
@@ -224,12 +224,12 @@ export function LinkPartsToWorkOrderModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Work Order Information */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
             <div className="flex items-start gap-3">
-              <Wrench className="h-5 w-5 text-blue-700 mt-0.5" />
+              <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold text-blue-900">{context.work_order_title}</h3>
-                <p className="text-sm text-blue-700 mt-1">
+                <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
+                <p className="text-sm text-celeste-accent mt-1">
                   Work Order ID: {context.work_order_id.slice(0, 8)}
                   {context.work_order_type && (
                     <span className="ml-2">
@@ -265,9 +265,9 @@ export function LinkPartsToWorkOrderModal({
 
             {/* Part Selector (shown when Add Part is clicked) */}
             {showPartSelector && (
-              <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg space-y-3">
+              <div className="p-4 border border-celeste-accent-line bg-celeste-accent-subtle rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-blue-900">Search Parts</Label>
+                  <Label className="text-celeste-accent">Search Parts</Label>
                   <Button
                     type="button"
                     variant="ghost"

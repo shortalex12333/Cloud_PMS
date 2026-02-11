@@ -63,7 +63,7 @@ interface AddPhotoModalProps {
 
 const ENTITY_CONFIG: Record<EntityType, { icon: React.ElementType; color: string; label: string }> = {
   fault: { icon: AlertCircle, color: 'text-red-500 bg-red-50 border-red-200', label: 'Fault' },
-  work_order: { icon: Wrench, color: 'text-blue-500 bg-blue-50 border-blue-200', label: 'Work Order' },
+  work_order: { icon: Wrench, color: 'text-celeste-accent bg-celeste-accent-line border-celeste-accent-line', label: 'Work Order' },
   equipment: { icon: Cog, color: 'text-violet-500 bg-violet-50 border-violet-200', label: 'Equipment' },
   checklist: { icon: ClipboardList, color: 'text-emerald-500 bg-emerald-50 border-emerald-200', label: 'Checklist' },
 };
@@ -208,7 +208,7 @@ export function AddPhotoModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-blue-500" />
+            <Camera className="h-5 w-5 text-celeste-accent" />
             Add Photo
           </DialogTitle>
           <DialogDescription>
@@ -242,17 +242,17 @@ export function AddPhotoModal({
                 'flex flex-col items-center justify-center gap-3',
                 'cursor-pointer transition-colors',
                 isDragging
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-celeste-accent bg-celeste-accent-line'
                   : 'border-celeste-border hover:border-celeste-text-muted bg-celeste-bg-primary hover:bg-celeste-bg-secondary'
               )}
             >
               <div className={cn(
                 'w-12 h-12 rounded-full flex items-center justify-center',
-                isDragging ? 'bg-blue-100' : 'bg-celeste-border'
+                isDragging ? 'bg-celeste-accent-subtle' : 'bg-celeste-border'
               )}>
                 <Upload className={cn(
                   'h-6 w-6',
-                  isDragging ? 'text-blue-600' : 'text-celeste-text-disabled'
+                  isDragging ? 'text-celeste-accent' : 'text-celeste-text-disabled'
                 )} />
               </div>
               <div className="text-center">

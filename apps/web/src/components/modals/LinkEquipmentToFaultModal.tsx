@@ -192,7 +192,7 @@ export function LinkEquipmentToFaultModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-blue-600" />
+            <Settings className="h-5 w-5 text-celeste-accent" />
             Link Equipment to Fault
           </DialogTitle>
           <DialogDescription>
@@ -261,7 +261,7 @@ export function LinkEquipmentToFaultModal({
                       <div
                         key={equipment.id}
                         className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
-                          isSelected ? 'bg-blue-50' : ''
+                          isSelected ? 'bg-celeste-accent-subtle' : ''
                         }`}
                         onClick={() => handleSelectEquipment(equipment.id)}
                       >
@@ -296,7 +296,7 @@ export function LinkEquipmentToFaultModal({
                           </div>
                           <div className="ml-3">
                             {isSelected ? (
-                              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                              <CheckCircle2 className="h-5 w-5 text-celeste-accent" />
                             ) : (
                               <div className="h-5 w-5 border-2 border-celeste-border rounded-full" />
                             )}
@@ -312,13 +312,13 @@ export function LinkEquipmentToFaultModal({
 
           {/* Selected Equipment Preview */}
           {selectedEquipment && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2">Selected Equipment</p>
+            <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
+              <p className="text-sm font-semibold text-celeste-accent mb-2">Selected Equipment</p>
               <div className="flex items-start gap-3">
-                <Settings className="h-5 w-5 text-blue-700 mt-0.5" />
+                <Settings className="h-5 w-5 text-celeste-accent mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-blue-900">{selectedEquipment.name}</h4>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-sm text-blue-800">
+                  <h4 className="font-medium text-celeste-accent">{selectedEquipment.name}</h4>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-sm text-celeste-accent">
                     {selectedEquipment.model && (
                       <p>
                         <span className="font-medium">Model:</span> {selectedEquipment.model}
@@ -351,12 +351,12 @@ export function LinkEquipmentToFaultModal({
                 htmlFor="create_work_order"
                 className="text-sm font-normal cursor-pointer flex items-center gap-2"
               >
-                <Wrench className="h-4 w-4 text-blue-600" />
+                <Wrench className="h-4 w-4 text-celeste-accent" />
                 Create work order for this fault
               </Label>
             </div>
             {createWorkOrder && (
-              <p className="text-xs text-blue-600 ml-6">
+              <p className="text-xs text-celeste-accent ml-6">
                 A work order will be automatically created and assigned to this equipment
               </p>
             )}

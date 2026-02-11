@@ -44,7 +44,7 @@ function getNoteIconColor(type: CrewNote['type']) {
     case 'concern':
       return 'text-amber-500';
     case 'recommendation':
-      return 'text-blue-500';
+      return 'text-celeste-accent';
     default:
       return 'text-zinc-400';
   }
@@ -102,7 +102,7 @@ export default function CrewNotesModule({
                   className={cn(
                     'p-3 rounded-xl',
                     'bg-zinc-50 dark:bg-zinc-800/50',
-                    note.status === 'new' && 'ring-1 ring-blue-300 dark:ring-blue-700'
+                    note.status === 'new' && 'ring-1 ring-celeste-accent-muted dark:ring-celeste-accent-muted'
                   )}
                 >
                   {/* Header */}
@@ -129,7 +129,7 @@ export default function CrewNotesModule({
                   <div className="flex items-center justify-between">
                     <span className={cn(
                       'text-[10px] px-1.5 py-0.5 rounded',
-                      note.status === 'new' && 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                      note.status === 'new' && 'bg-celeste-accent-subtle text-celeste-accent dark:bg-celeste-accent-subtle dark:text-celeste-accent',
                       note.status === 'reviewed' && 'bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400',
                       note.status === 'actioned' && 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
                     )}>
@@ -158,8 +158,8 @@ export default function CrewNotesModule({
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
               'text-[12px] font-medium',
-              'text-blue-500 hover:text-blue-600',
-              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'text-celeste-accent hover:text-celeste-accent-hover',
+              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'
             )}>
               View all notes →

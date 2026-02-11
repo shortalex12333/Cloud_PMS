@@ -117,20 +117,20 @@ export default function PredictiveRiskModule({
                     'p-1.5 rounded-lg',
                     risk.impact === 'critical' || risk.impact === 'high' ? 'bg-red-100 dark:bg-red-900/30' :
                     risk.impact === 'medium' ? 'bg-amber-100 dark:bg-amber-900/30' :
-                    'bg-blue-100 dark:bg-blue-900/30'
+                    'bg-zinc-100 dark:bg-zinc-800'
                   )}>
                     <AlertTriangle className={cn(
                       'h-4 w-4',
                       risk.impact === 'critical' || risk.impact === 'high' ? 'text-red-500' :
                       risk.impact === 'medium' ? 'text-amber-500' :
-                      'text-blue-500'
+                      'text-celeste-text-muted'
                     )} />
                   </div>
                   <span className={cn(
                     'text-xl font-bold tabular-nums',
                     risk.probability >= 80 ? 'text-red-500' :
                     risk.probability >= 60 ? 'text-amber-500' :
-                    'text-blue-500'
+                    'text-celeste-text-muted'
                   )}>
                     {risk.probability}%
                   </span>
@@ -185,8 +185,8 @@ export default function PredictiveRiskModule({
             <button className={cn(
               'ml-auto px-3 py-1.5 rounded-lg',
               'text-[12px] font-medium',
-              'text-blue-500 hover:text-blue-600',
-              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'text-celeste-accent hover:text-celeste-accent-hover',
+              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors',
               'flex items-center gap-1'
             )}>

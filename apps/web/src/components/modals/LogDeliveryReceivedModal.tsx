@@ -211,19 +211,19 @@ export function LogDeliveryReceivedModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Order Info */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Truck className="h-5 w-5 text-blue-600" />
+                <Truck className="h-5 w-5 text-celeste-accent" />
                 <div>
-                  <p className="font-medium text-blue-900">
+                  <p className="font-medium text-celeste-accent">
                     PO #{context.purchase_order_number}
                   </p>
-                  <p className="text-sm text-blue-700">{context.supplier_name}</p>
+                  <p className="text-sm text-celeste-accent">{context.supplier_name}</p>
                 </div>
               </div>
               {context.expected_date && (
-                <div className="text-right text-sm text-blue-600">
+                <div className="text-right text-sm text-celeste-accent">
                   <p>Expected: {context.expected_date}</p>
                 </div>
               )}

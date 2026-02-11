@@ -191,7 +191,7 @@ export default function WorkOrderLensPage() {
       case 'completed':
         return { bg: 'bg-green-500/10', text: 'text-green-400', label: 'Completed' };
       case 'in_progress':
-        return { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'In Progress' };
+        return { bg: 'bg-celeste-accent-subtle', text: 'text-celeste-accent', label: 'In Progress' };
       case 'cancelled':
         return { bg: 'bg-celeste-text-disabled/10', text: 'text-celeste-text-muted', label: 'Cancelled' };
       case 'pending_parts':
@@ -236,7 +236,7 @@ export default function WorkOrderLensPage() {
     return (
       <div className="min-h-screen bg-celeste-black flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
           <p className="text-celeste-text-muted">Loading work order...</p>
         </div>
       </div>
@@ -255,7 +255,7 @@ export default function WorkOrderLensPage() {
           <p className="text-celeste-text-muted mb-6">{error}</p>
           <button
             onClick={() => router.push('/app')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-lg transition-colors"
           >
             Return to App
           </button>
@@ -294,7 +294,7 @@ export default function WorkOrderLensPage() {
               <ArrowLeft className="w-5 h-5 text-celeste-text-muted" />
             </button>
             <div className="flex items-center gap-2">
-              <Wrench className="w-5 h-5 text-blue-400" />
+              <Wrench className="w-5 h-5 text-celeste-accent" />
               <span className="text-sm text-celeste-text-muted uppercase tracking-wider">Work Order</span>
             </div>
             {/* TODO: Add action buttons here

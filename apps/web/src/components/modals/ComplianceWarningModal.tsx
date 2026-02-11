@@ -320,8 +320,8 @@ export function ComplianceWarningModal({
           {/* Acknowledge Action (CREW) */}
           {mode === 'acknowledge' && warning.status === 'active' && (
             <div className="pt-4 border-t">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                <p className="text-sm text-blue-800">
+              <div className="p-3 bg-celeste-accent-line border border-celeste-accent-line rounded-lg mb-4">
+                <p className="text-sm text-celeste-accent">
                   By acknowledging this warning, you confirm that you are aware of the
                   MLC compliance violation. This does not resolve the warning - only HOD or
                   Captain can dismiss it.
@@ -400,7 +400,7 @@ export function ComplianceWarningModal({
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-celeste-accent hover:bg-celeste-accent-hover"
                 >
                   {isLoading ? (
                     <>

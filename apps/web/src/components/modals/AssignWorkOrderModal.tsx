@@ -155,7 +155,7 @@ export function AssignWorkOrderModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-blue-500" />
+            <UserPlus className="h-5 w-5 text-celeste-accent" />
             Assign Work Order
           </DialogTitle>
           <DialogDescription>
@@ -165,13 +165,13 @@ export function AssignWorkOrderModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Work Order Context */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-3 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
             <div className="flex items-start gap-3">
-              <Wrench className="h-5 w-5 text-blue-600 mt-0.5" />
+              <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold text-blue-900">{context.work_order_title}</h3>
+                <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
                 {context.equipment_name && (
-                  <p className="text-sm text-blue-700 mt-0.5">Equipment: {context.equipment_name}</p>
+                  <p className="text-sm text-celeste-accent mt-0.5">Equipment: {context.equipment_name}</p>
                 )}
                 <div className="flex items-center gap-3 mt-2">
                   <span className={cn(
@@ -181,7 +181,7 @@ export function AssignWorkOrderModal({
                     {context.current_priority.toUpperCase()}
                   </span>
                   {context.due_date && (
-                    <span className="text-xs text-blue-600 flex items-center gap-1">
+                    <span className="text-xs text-celeste-accent flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       Due: {context.due_date}
                     </span>
@@ -240,8 +240,8 @@ export function AssignWorkOrderModal({
           {/* Selected Assignee Info */}
           {selectedCrewMember && (
             <div className="flex items-center gap-3 p-3 bg-celeste-bg-primary rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="h-5 w-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-full bg-celeste-accent-subtle flex items-center justify-center">
+                <User className="h-5 w-5 text-celeste-accent" />
               </div>
               <div>
                 <p className="font-medium text-celeste-black">{selectedCrewMember.name}</p>
@@ -266,7 +266,7 @@ export function AssignWorkOrderModal({
                 {...register('due_date')}
                 className={cn(
                   'w-full pl-10 pr-4 py-2 border rounded-md',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted',
                   errors.due_date ? 'border-red-500' : 'border-celeste-border'
                 )}
               />
@@ -325,7 +325,7 @@ export function AssignWorkOrderModal({
               type="checkbox"
               id="notify_assignee"
               {...register('notify_assignee')}
-              className="h-4 w-4 rounded border-celeste-border text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-celeste-border text-celeste-accent focus:ring-celeste-accent-muted"
             />
             <Label
               htmlFor="notify_assignee"
