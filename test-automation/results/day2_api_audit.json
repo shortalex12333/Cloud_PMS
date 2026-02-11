@@ -1,0 +1,124 @@
+{
+  "day": 2,
+  "timestamp": "2026-02-10T18:49:16.974481",
+  "total": 15,
+  "passed": 8,
+  "failed": 7,
+  "errors_404": 1,
+  "errors_500": 0,
+  "errors_timeout": 0,
+  "results": [
+    {
+      "endpoint": "/health",
+      "test": "Health check",
+      "expected": 200,
+      "actual": 200,
+      "latency_ms": 284.3449115753174,
+      "success": true
+    },
+    {
+      "endpoint": "/version",
+      "test": "Version info",
+      "expected": 200,
+      "actual": 200,
+      "latency_ms": 1007.889986038208,
+      "success": true
+    },
+    {
+      "endpoint": "/search",
+      "test": "Search: valid query",
+      "expected": 200,
+      "actual": 200,
+      "latency_ms": 2197.983980178833,
+      "success": true
+    },
+    {
+      "endpoint": "/search",
+      "test": "Search: no auth",
+      "expected": 401,
+      "actual": 422,
+      "latency_ms": 990.9849166870117,
+      "success": false
+    },
+    {
+      "endpoint": "/search",
+      "test": "Search: invalid JWT",
+      "expected": 401,
+      "actual": 401,
+      "latency_ms": 756.4013004302979,
+      "success": true
+    },
+    {
+      "endpoint": "/search",
+      "test": "Search: empty query",
+      "expected": 200,
+      "actual": 200,
+      "latency_ms": 1579.4868469238281,
+      "success": true
+    },
+    {
+      "endpoint": "/v1/actions/execute",
+      "test": "Execute: valid action",
+      "expected": 400,
+      "actual": 400,
+      "latency_ms": 159.52205657958984,
+      "success": true
+    },
+    {
+      "endpoint": "/v1/actions/execute",
+      "test": "Execute: no auth",
+      "expected": 401,
+      "actual": 422,
+      "latency_ms": 167.90318489074707,
+      "success": false
+    },
+    {
+      "endpoint": "/v1/actions/execute",
+      "test": "Execute: invalid action",
+      "expected": 400,
+      "actual": 404,
+      "latency_ms": 739.7489547729492,
+      "success": false
+    },
+    {
+      "endpoint": "/v1/parts/upload-image",
+      "test": "Upload: missing fields",
+      "expected": 400,
+      "actual": 422,
+      "latency_ms": 360.46814918518066,
+      "success": false
+    },
+    {
+      "endpoint": "/v1/parts/update-image",
+      "test": "Update: no auth",
+      "expected": 401,
+      "actual": 422,
+      "latency_ms": 957.7310085296631,
+      "success": false
+    },
+    {
+      "endpoint": "/v1/parts/delete-image",
+      "test": "Delete: no auth",
+      "expected": 401,
+      "actual": 422,
+      "latency_ms": 785.4609489440918,
+      "success": false
+    },
+    {
+      "endpoint": "/v1/actions/execute",
+      "test": "RBAC: crew own dept",
+      "expected": 409,
+      "actual": 409,
+      "latency_ms": 1092.2911167144775,
+      "success": true
+    },
+    {
+      "endpoint": "/v1/actions/execute",
+      "test": "RBAC: captain any dept",
+      "expected": 409,
+      "actual": 409,
+      "latency_ms": 997.5481033325195,
+      "success": true
+    }
+  ]
+}
