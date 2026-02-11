@@ -157,7 +157,7 @@ export function AuthDebug() {
         className="flex items-center justify-between p-2 border-b border-[#3d3d3f] cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
-        <span className="text-[#0a84ff] font-semibold">Auth Debug</span>
+        <span className="text-celeste-accent font-semibold">Auth Debug</span>
         <span className="text-[#636366]">{expanded ? '▼' : '▲'}</span>
       </div>
 

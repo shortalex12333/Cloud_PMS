@@ -216,7 +216,7 @@ export default function OpenTokenResolver() {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
           <p className="text-sm text-[#98989f]">
             {state === 'authenticating' ? 'Checking authentication...' : 'Loading...'}
           </p>
@@ -230,7 +230,7 @@ export default function OpenTokenResolver() {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
           <p className="text-sm text-[#98989f]">Opening link...</p>
         </div>
       </div>
@@ -288,7 +288,7 @@ export default function OpenTokenResolver() {
         {errorDisplay.action && (
           <button
             onClick={handleAction}
-            className="px-6 py-2.5 rounded-lg bg-[#0a84ff] hover:bg-[#0077ed] text-white text-sm font-medium transition-colors"
+            className="px-6 py-2.5 rounded-lg bg-celeste-accent hover:bg-celeste-accent-hover text-white text-sm font-medium transition-colors"
           >
             {errorDisplay.action}
           </button>

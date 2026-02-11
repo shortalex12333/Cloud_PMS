@@ -86,7 +86,7 @@ export function withAuth<P extends object>(
       return (
         <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+            <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
             <p className="text-sm text-[#98989f]">
               {loading ? 'Loading...' : 'Connecting...'}
             </p>
@@ -100,7 +100,7 @@ export function withAuth<P extends object>(
       return (
         <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+            <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
             <p className="text-sm text-[#98989f]">Redirecting...</p>
           </div>
         </div>
@@ -112,7 +112,7 @@ export function withAuth<P extends object>(
       return (
         <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+            <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
             <p className="text-sm text-[#98989f]">Redirecting...</p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export function withAuth<P extends object>(
       return (
         <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-8 h-8 text-[#0a84ff] animate-spin" />
+            <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
             <p className="text-sm text-[#98989f]">Reconnecting...</p>
             <p className="text-xs text-[#636366]">Please wait...</p>
           </div>

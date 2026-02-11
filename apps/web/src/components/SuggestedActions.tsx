@@ -64,9 +64,9 @@ export default function SuggestedActions({
             className={cn(
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
               'text-[13px] font-medium',
-              'bg-[#0a84ff]/20 text-[#0a84ff]',
-              'hover:bg-[#0a84ff]/30 transition-colors',
-              'border border-[#0a84ff]/30',
+              'bg-celeste-accent/20 text-celeste-accent',
+              'hover:bg-celeste-accent/30 transition-colors',
+              'border border-celeste-accent/30',
               action.variant === 'SIGNED' && 'border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
             )}
             data-testid={`action-btn-${action.action_id}`}
