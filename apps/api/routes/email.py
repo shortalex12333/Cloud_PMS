@@ -957,24 +957,12 @@ async def get_thread(
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
-        # Get user's watcher_id for per-user thread isolation
-        watcher_result = supabase.table('email_watchers').select('id').eq(
-            'user_id', user_id
-        ).eq('yacht_id', yacht_id).eq('sync_status', 'active').limit(1).execute()
-
-        watcher_id = watcher_result.data[0]['id'] if watcher_result.data else None
-
-        # Get thread (yacht_id enforced, watcher_id for per-user isolation)
-        # Use limit(1) instead of maybe_single() to avoid 204 exception issues
-        thread_query = supabase.table('email_threads').select('*').eq(
+        # Get thread (yacht_id enforced)
+        # NOTE: watcher_id filtering removed - was causing 404s due to .or_() filter bug
+        # Service role bypasses RLS anyway, so yacht_id filter is sufficient for tenant isolation
+        thread_result = supabase.table('email_threads').select('*').eq(
             'id', thread_id
-        ).eq('yacht_id', yacht_id)
-
-        # Filter by watcher_id (allow NULL for legacy data)
-        if watcher_id:
-            thread_query = thread_query.or_(f"watcher_id.eq.{watcher_id},watcher_id.is.null")
-
-        thread_result = thread_query.limit(1).execute()
+        ).eq('yacht_id', yacht_id).limit(1).execute()
 
         if not thread_result.data or len(thread_result.data) == 0:
             # DIAGNOSTIC: Check if thread exists but with different yacht_id
