@@ -205,7 +205,7 @@ export function AddToHandoverModal({
     switch (status) {
       case 'open':
       case 'pending':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-celeste-accent-subtle text-celeste-accent';
       case 'in_progress':
         return 'bg-yellow-100 text-yellow-700';
       case 'resolved':
@@ -228,7 +228,7 @@ export function AddToHandoverModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-600" />
+            <FileText className="h-5 w-5 text-celeste-accent" />
             Add Items to Handover
           </DialogTitle>
           <DialogDescription>
@@ -299,7 +299,7 @@ export function AddToHandoverModal({
             <Label>
               Available Items ({filteredEntities.length})
               {selectedEntities.length > 0 && (
-                <span className="ml-2 text-blue-600 font-semibold">
+                <span className="ml-2 text-celeste-accent font-semibold">
                   {selectedEntities.length} selected
                 </span>
               )}
@@ -323,7 +323,7 @@ export function AddToHandoverModal({
                       <div
                         key={entity.id}
                         className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
-                          isSelected ? 'bg-blue-50' : ''
+                          isSelected ? 'bg-celeste-accent-line' : ''
                         }`}
                         onClick={() => toggleEntity(entity.id)}
                       >
@@ -357,7 +357,7 @@ export function AddToHandoverModal({
                           </div>
                           <div className="ml-3">
                             {isSelected ? (
-                              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                              <CheckCircle2 className="h-5 w-5 text-celeste-accent" />
                             ) : (
                               <div className="h-5 w-5 border-2 border-celeste-border rounded" />
                             )}
@@ -384,8 +384,8 @@ export function AddToHandoverModal({
 
           {/* Selected Items Preview */}
           {selectedEntities.length > 0 && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2">
+            <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
+              <p className="text-sm font-semibold text-celeste-accent mb-2">
                 Selected Items ({selectedEntities.length})
               </p>
               <div className="flex flex-wrap gap-2">
@@ -395,7 +395,7 @@ export function AddToHandoverModal({
                   return (
                     <div
                       key={id}
-                      className="flex items-center gap-1 px-2 py-1 bg-white border border-blue-300 rounded text-sm"
+                      className="flex items-center gap-1 px-2 py-1 bg-white border border-celeste-accent rounded text-sm"
                     >
                       {getEntityIcon(entityType)}
                       <span className="text-celeste-black">{entity.name}</span>

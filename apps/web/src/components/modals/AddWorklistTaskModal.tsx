@@ -102,7 +102,7 @@ const CATEGORIES = [
   { value: 'hull', label: 'Hull & Structure', color: 'bg-slate-100 text-slate-700' },
   { value: 'mechanical', label: 'Mechanical', color: 'bg-orange-100 text-orange-700' },
   { value: 'electrical', label: 'Electrical', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'plumbing', label: 'Plumbing', color: 'bg-blue-100 text-blue-700' },
+  { value: 'plumbing', label: 'Plumbing', color: 'bg-celeste-accent-subtle text-celeste-accent' },
   { value: 'hvac', label: 'HVAC', color: 'bg-cyan-100 text-cyan-700' },
   { value: 'interior', label: 'Interior', color: 'bg-pink-100 text-pink-700' },
   { value: 'exterior', label: 'Exterior', color: 'bg-green-100 text-green-700' },
@@ -113,7 +113,7 @@ const CATEGORIES = [
 
 const PRIORITIES = [
   { value: 'low', label: 'Low', color: 'text-zinc-500' },
-  { value: 'medium', label: 'Medium', color: 'text-blue-500' },
+  { value: 'medium', label: 'Medium', color: 'text-celeste-accent' },
   { value: 'high', label: 'High', color: 'text-amber-500' },
   { value: 'critical', label: 'Critical', color: 'text-red-500' },
 ];
@@ -412,7 +412,7 @@ export function AddWorklistTaskModal({
                       <span className={cn(
                         'text-xs px-1.5 py-0.5 rounded ml-auto',
                         task.status === 'pending' && 'bg-celeste-bg-secondary text-celeste-text-secondary',
-                        task.status === 'in_progress' && 'bg-blue-100 text-blue-600'
+                        task.status === 'in_progress' && 'bg-celeste-accent-subtle text-celeste-accent'
                       )}>
                         {task.status.replace('_', ' ')}
                       </span>

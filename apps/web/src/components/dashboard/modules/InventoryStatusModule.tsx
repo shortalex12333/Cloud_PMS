@@ -117,8 +117,8 @@ export default function InventoryStatusModule({
           {stats.pendingOrders > 0 && (
             <div className={cn(
               'mt-3 px-3 py-2 rounded-lg',
-              'bg-blue-50 dark:bg-blue-900/20',
-              'text-[12px] text-blue-600 dark:text-blue-400'
+              'bg-zinc-100 dark:bg-zinc-800',
+              'text-[12px] text-celeste-text-muted dark:text-celeste-text-muted'
             )}>
               {stats.pendingOrders} orders pending delivery
             </div>
@@ -134,8 +134,8 @@ export default function InventoryStatusModule({
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
               'text-[12px] font-medium',
-              'text-blue-500 hover:text-blue-600',
-              'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              'text-celeste-accent hover:text-celeste-accent-hover',
+              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'
             )}>
               View inventory →

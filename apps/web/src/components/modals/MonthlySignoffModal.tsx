@@ -170,7 +170,7 @@ export function MonthlySignoffModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSignature className="h-5 w-5 text-blue-500" />
+            <FileSignature className="h-5 w-5 text-celeste-accent" />
             {mode === 'sign' ? 'Sign Monthly Signoff' : 'Monthly Signoff Details'}
           </DialogTitle>
           <DialogDescription>
@@ -327,7 +327,7 @@ export function MonthlySignoffModal({
                           'px-4 py-2 rounded-lg border-2 transition-all',
                           'flex items-center gap-2 text-sm font-medium capitalize',
                           signatureLevel === level
-                            ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500 ring-offset-2'
+                            ? 'border-celeste-accent bg-celeste-accent-subtle text-celeste-accent ring-2 ring-celeste-accent-muted ring-offset-2'
                             : 'border-celeste-border text-celeste-text-secondary hover:border-celeste-border'
                         )}
                       >
@@ -357,7 +357,7 @@ export function MonthlySignoffModal({
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-celeste-accent hover:bg-celeste-accent-hover"
                   >
                     {isLoading ? (
                       <>

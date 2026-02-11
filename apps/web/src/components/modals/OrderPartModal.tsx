@@ -127,7 +127,7 @@ export function OrderPartModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-blue-600" />
+            <ShoppingCart className="h-5 w-5 text-celeste-accent" />
             Order Part
           </DialogTitle>
           <DialogDescription>
@@ -138,32 +138,32 @@ export function OrderPartModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Part Information */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                <h3 className="font-semibold text-celeste-accent flex items-center gap-2">
                   <Package className="h-4 w-4" />
                   {context.part_name}
                 </h3>
-                <p className="text-sm text-blue-700">
+                <p className="text-sm text-celeste-accent">
                   P/N: {context.part_number}
                 </p>
               </div>
             </div>
 
             {/* Stock Status */}
-            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-blue-200">
+            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
               <div>
-                <p className="text-xs text-blue-600">Current Stock</p>
+                <p className="text-xs text-celeste-accent">Current Stock</p>
                 <p className={`text-lg font-bold ${
-                  isOutOfStock ? 'text-red-700' : isLowStock ? 'text-orange-700' : 'text-blue-900'
+                  isOutOfStock ? 'text-red-700' : isLowStock ? 'text-orange-700' : 'text-celeste-accent'
                 }`}>
                   {context.current_stock}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-blue-600">Min Level</p>
-                <p className="text-lg font-bold text-blue-900">
+                <p className="text-xs text-celeste-accent">Min Level</p>
+                <p className="text-lg font-bold text-celeste-accent">
                   {context.min_stock_level}
                 </p>
               </div>

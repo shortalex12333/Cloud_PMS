@@ -120,7 +120,7 @@ export function LogPartUsageModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-celeste-accent" />
             Log Part Usage
           </DialogTitle>
           <DialogDescription>
@@ -131,31 +131,31 @@ export function LogPartUsageModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Part Information */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
+            <h3 className="font-semibold text-celeste-accent flex items-center gap-2">
               <Package className="h-4 w-4" />
               {context.part_name}
             </h3>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-celeste-accent">
               P/N: {context.part_number}
             </p>
 
             {/* Current Stock */}
-            <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-blue-200">
+            <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
               <div>
-                <p className="text-xs text-blue-600">Available</p>
-                <p className="text-lg font-bold text-blue-900">
+                <p className="text-xs text-celeste-accent">Available</p>
+                <p className="text-lg font-bold text-celeste-accent">
                   {context.current_stock}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-blue-600">Min Level</p>
-                <p className="text-lg font-bold text-blue-900">
+                <p className="text-xs text-celeste-accent">Min Level</p>
+                <p className="text-lg font-bold text-celeste-accent">
                   {context.min_stock_level}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-blue-600">After Usage</p>
+                <p className="text-xs text-celeste-accent">After Usage</p>
                 <p className={`text-lg font-bold ${
                   willBeOutOfStock
                     ? 'text-red-700'

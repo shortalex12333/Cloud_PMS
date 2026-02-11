@@ -155,7 +155,7 @@ export function SuggestPartsModal({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-celeste-accent" />
             Suggested Parts
           </DialogTitle>
           <DialogDescription>
@@ -167,7 +167,7 @@ export function SuggestPartsModal({
 
         {isLoading && parts.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
             <span className="ml-3 text-celeste-text-secondary">Loading suggestions...</span>
           </div>
         )}
@@ -186,8 +186,8 @@ export function SuggestPartsModal({
 
         {/* Fault Code Info */}
         {faultCode && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+          <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
+            <p className="text-sm text-celeste-accent">
               <span className="font-medium">Fault Code:</span> {faultCode}
             </p>
           </div>

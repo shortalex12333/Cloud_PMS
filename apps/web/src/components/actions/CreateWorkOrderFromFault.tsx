@@ -298,7 +298,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
   // Render functions
   const renderLoading = () => (
     <div className="flex items-center justify-center p-8">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-celeste-accent"></div>
       <span className="ml-3 text-celeste-text-secondary">Loading...</span>
     </div>
   );
@@ -335,7 +335,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
       <div className="flex gap-3">
         <button
           onClick={handleViewExisting}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-accent text-white rounded hover:bg-celeste-accent-hover transition-colors"
         >
           View Existing WO
         </button>
@@ -369,7 +369,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
             placeholder="Work order title"
           />
         </div>
@@ -396,7 +396,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
             placeholder="Physical location"
           />
         </div>
@@ -410,7 +410,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
             placeholder="Description of issue and work needed"
           />
         </div>
@@ -423,7 +423,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value as any)}
-            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
           >
             <option value="low">Low</option>
             <option value="normal">Normal</option>
@@ -448,7 +448,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
         </button>
         <button
           onClick={handleNext}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-accent text-white rounded hover:bg-celeste-accent-hover transition-colors"
         >
           Next
         </button>
@@ -503,7 +503,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
         </button>
         <button
           onClick={handleSignAndCreate}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-accent text-white rounded hover:bg-celeste-accent-hover transition-colors"
         >
           Sign & Create
         </button>

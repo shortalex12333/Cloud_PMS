@@ -129,7 +129,7 @@ export function CreateMonthlySignoffModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FilePlus className="h-5 w-5 text-blue-500" />
+            <FilePlus className="h-5 w-5 text-celeste-accent" />
             Create Monthly Signoff
           </DialogTitle>
           <DialogDescription>
@@ -139,9 +139,9 @@ export function CreateMonthlySignoffModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Info Box */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-3">
-            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
+          <div className="p-3 bg-celeste-accent-line border border-celeste-accent-line rounded-lg flex gap-3">
+            <Info className="h-5 w-5 text-celeste-accent flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-celeste-accent">
               <p className="font-medium mb-1">MLC 2006 Compliance</p>
               <p>
                 Monthly signoffs certify that crew members have received adequate rest periods.
@@ -192,7 +192,7 @@ export function CreateMonthlySignoffModal({
                     p-4 rounded-lg border-2 transition-all
                     flex items-center gap-3
                     ${selectedDepartment === dept.value
-                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 ring-offset-2'
+                      ? 'border-celeste-accent bg-celeste-accent-line ring-2 ring-celeste-accent-muted ring-offset-2'
                       : 'border-celeste-border hover:border-celeste-border bg-white'
                     }
                   `}
@@ -201,7 +201,7 @@ export function CreateMonthlySignoffModal({
                   <div className="flex-1 text-left">
                     <p className={`font-medium ${
                       selectedDepartment === dept.value
-                        ? 'text-blue-900'
+                        ? 'text-celeste-accent'
                         : 'text-celeste-black'
                     }`}>
                       {dept.label}
@@ -228,7 +228,7 @@ export function CreateMonthlySignoffModal({
             <Button
               type="submit"
               disabled={isLoading || !selectedDepartment}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-celeste-accent hover:bg-celeste-accent-hover"
             >
               {isLoading ? (
                 <>

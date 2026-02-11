@@ -328,7 +328,7 @@ export function EditFaultDetailsModal({
                   ? 'bg-red-50 border-red-300'
                   : isSeverityIncreasing
                   ? 'bg-orange-50 border-orange-300'
-                  : 'bg-blue-50 border-blue-300'
+                  : 'bg-celeste-accent-line border-celeste-accent-line'
               }`}
             >
               <p
@@ -337,7 +337,7 @@ export function EditFaultDetailsModal({
                     ? 'text-red-900'
                     : isSeverityIncreasing
                     ? 'text-orange-900'
-                    : 'text-blue-900'
+                    : 'text-celeste-accent'
                 }`}
               >
                 {Object.values(changes).filter(Boolean).length} field(s) will be updated.
@@ -421,7 +421,7 @@ function getSeverityTextColor(severity?: string): string {
 function getStatusColor(status?: string): string {
   switch (status) {
     case 'open':
-      return 'border-blue-300 bg-blue-50';
+      return 'border-celeste-accent-line bg-celeste-accent-line';
     case 'in_progress':
       return 'border-yellow-300 bg-yellow-50';
     case 'resolved':
@@ -436,7 +436,7 @@ function getStatusColor(status?: string): string {
 function getStatusTextColor(status?: string): string {
   switch (status) {
     case 'open':
-      return 'text-blue-700';
+      return 'text-celeste-accent';
     case 'in_progress':
       return 'text-yellow-700';
     case 'resolved':

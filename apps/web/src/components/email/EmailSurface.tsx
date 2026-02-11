@@ -332,7 +332,7 @@ export default function EmailSurface({
             {displayError && (
               <div className="py-6 text-center px-4">
                 <p className="text-[11px] text-red-400">Failed to load</p>
-                <button onClick={() => refetch()} className="text-[11px] text-blue-400 mt-1">
+                <button onClick={() => refetch()} className="text-[11px] text-celeste-accent mt-1">
                   Retry
                 </button>
               </div>
@@ -442,14 +442,14 @@ function CorrespondenceRow({ thread, isSelected, onClick, onHover }: Corresponde
       className={cn(
         'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-l-2',
         isSelected
-          ? 'bg-blue-500/10 border-l-blue-500'
+          ? 'bg-celeste-accent-subtle border-l-celeste-accent'
           : 'hover:bg-white/5 border-l-transparent'
       )}
     >
       <div className="mt-1.5">
         <div className={cn(
           'w-1.5 h-1.5 rounded-full',
-          isSelected ? 'bg-blue-500' : 'bg-gray-600'
+          isSelected ? 'bg-celeste-accent' : 'bg-gray-600'
         )} />
       </div>
 
@@ -500,7 +500,7 @@ function CorrespondenceRow({ thread, isSelected, onClick, onHover }: Corresponde
 function SystemStateBadge({ state }: { state: SystemState }) {
   const config = {
     attached: { label: 'Attached', className: 'bg-green-500/20 text-green-400' },
-    referenced: { label: 'Referenced', className: 'bg-blue-500/20 text-blue-400' },
+    referenced: { label: 'Referenced', className: 'bg-celeste-accent-subtle text-celeste-accent' },
     archived: { label: 'Archived', className: 'bg-gray-500/20 text-gray-400' },
     unlinked: { label: '', className: '' },
   };
@@ -612,13 +612,13 @@ function InspectorPanel({
                 className={cn(
                   'px-2.5 py-1 rounded text-[11px] whitespace-nowrap transition-colors',
                   selectedMessageId === msg.provider_message_id
-                    ? 'bg-blue-500/20 text-blue-400'
+                    ? 'bg-celeste-accent-subtle text-celeste-accent'
                     : 'text-gray-500 hover:text-gray-400'
                 )}
               >
                 <span className={cn(
                   'inline-block w-1.5 h-1.5 rounded-full mr-1.5',
-                  msg.direction === 'inbound' ? 'bg-blue-500' : 'bg-green-500'
+                  msg.direction === 'inbound' ? 'bg-celeste-accent' : 'bg-green-500'
                 )} />
                 {msg.from_display_name || `Message ${i + 1}`}
               </button>
@@ -677,7 +677,7 @@ function InspectorPanel({
               {content.body?.contentType === 'html' ? (
                 <div
                   className="prose prose-invert prose-sm max-w-none
-                    [&_a]:text-blue-400 [&_a]:no-underline [&_a:hover]:underline
+                    [&_a]:text-celeste-accent [&_a]:no-underline [&_a:hover]:underline
                     [&_img]:max-w-full [&_img]:h-auto [&_img[data-blocked-src]]:hidden
                     [&_table]:border-collapse [&_td]:border [&_td]:border-white/10 [&_td]:p-2"
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body.content) }}
@@ -747,7 +747,7 @@ function InspectorPanel({
             </p>
             <button
               onClick={() => onMessageSelect(thread.messages[0].provider_message_id)}
-              className="mt-2 text-[11px] text-blue-400 hover:underline"
+              className="mt-2 text-[11px] text-celeste-accent hover:underline"
             >
               View first message
             </button>
@@ -778,7 +778,7 @@ function LinkedItemCard({ item }: { item: ThreadLink }) {
   const statusClass = item.confidence_level === 'deterministic'
     ? 'text-green-400'
     : item.confidence_level === 'suggested'
-      ? 'text-blue-400'
+      ? 'text-celeste-accent'
       : 'text-gray-400';
 
   return (
