@@ -1053,6 +1053,171 @@ async def list_entity_types():
 # ENTITY FETCHING ENDPOINT
 # ============================================================================
 
+@app.get("/v1/entity/fault/{fault_id}")
+async def get_fault_entity(
+    fault_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """Fetch fault by ID for entity viewer (ContextPanel)."""
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).single().execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Fault not found")
+
+        data = response.data
+        return {
+            "id": data.get('id'),
+            "title": data.get('title') or data.get('fault_code', 'Unknown Fault'),
+            "description": data.get('description', ''),
+            "severity": data.get('severity', 'medium'),
+            "equipment_id": data.get('equipment_id'),
+            "equipment_name": data.get('equipment_name'),
+            "reported_at": data.get('reported_at') or data.get('detected_at'),
+            "reporter": data.get('reporter') or data.get('reported_by', 'System'),
+            "status": data.get('status'),
+            "has_work_order": data.get('has_work_order', False),
+            "ai_diagnosis": data.get('ai_diagnosis'),
+            "created_at": data.get('created_at'),
+            "updated_at": data.get('updated_at'),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch fault {fault_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/entity/work_order/{work_order_id}")
+async def get_work_order_entity(
+    work_order_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """Fetch work order by ID for entity viewer (ContextPanel)."""
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        response = supabase.table('pms_work_orders').select('*').eq('work_order_id', work_order_id).eq('yacht_id', yacht_id).single().execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Work order not found")
+
+        data = response.data
+        return {
+            "id": data.get('work_order_id'),
+            "title": data.get('title', 'Untitled Work Order'),
+            "description": data.get('description', ''),
+            "status": data.get('status', 'pending'),
+            "priority": data.get('priority', 'medium'),
+            "equipment_id": data.get('equipment_id'),
+            "equipment_name": data.get('equipment_name'),
+            "assigned_to": data.get('assigned_to'),
+            "assigned_to_name": data.get('assigned_to_name'),
+            "created_at": data.get('created_at'),
+            "completed_at": data.get('completed_at'),
+            "due_date": data.get('due_date'),
+            "updated_at": data.get('updated_at'),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch work order {work_order_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/entity/equipment/{equipment_id}")
+async def get_equipment_entity(
+    equipment_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """Fetch equipment by ID for entity viewer (ContextPanel)."""
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        response = supabase.table('pms_equipment').select('*').eq('equipment_id', equipment_id).eq('yacht_id', yacht_id).single().execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Equipment not found")
+
+        data = response.data
+        return {
+            "id": data.get('equipment_id'),
+            "name": data.get('equipment_name', 'Unknown Equipment'),
+            "equipment_type": data.get('equipment_type') or data.get('category', 'General'),
+            "manufacturer": data.get('manufacturer'),
+            "model": data.get('model'),
+            "serial_number": data.get('serial_number'),
+            "location": data.get('location', 'Unknown'),
+            "status": data.get('status', 'operational'),
+            "installation_date": data.get('installation_date'),
+            "last_maintenance": data.get('last_maintenance'),
+            "next_maintenance": data.get('next_maintenance'),
+            "created_at": data.get('created_at'),
+            "updated_at": data.get('updated_at'),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch equipment {equipment_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/entity/part/{part_id}")
+async def get_part_entity(
+    part_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """Fetch part by ID for entity viewer (ContextPanel)."""
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        response = supabase.table('pms_parts').select('*').eq('part_id', part_id).eq('yacht_id', yacht_id).single().execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Part not found")
+
+        data = response.data
+        return {
+            "id": data.get('part_id'),
+            "part_name": data.get('part_name', 'Unknown Part'),
+            "part_number": data.get('part_number', ''),
+            "stock_quantity": data.get('on_hand') or data.get('quantity_on_hand', 0),
+            "min_stock_level": data.get('minimum_quantity') or data.get('min_stock_level', 0),
+            "location": data.get('location', 'Unknown'),
+            "unit_cost": data.get('unit_cost'),
+            "supplier": data.get('supplier'),
+            "category": data.get('category'),
+            "unit": data.get('unit'),
+            "last_counted_at": data.get('last_counted_at'),
+            "last_counted_by": data.get('last_counted_by'),
+            "created_at": data.get('created_at'),
+            "updated_at": data.get('updated_at'),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch part {part_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/v1/entity/receiving/{receiving_id}")
 async def get_receiving_entity(
     receiving_id: str,
