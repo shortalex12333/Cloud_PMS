@@ -153,7 +153,7 @@ export function CreateMonthlySignoffModal({
           {/* Month Selection */}
           <div className="space-y-2">
             <Label htmlFor="month" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
+              <Calendar className="h-4 w-4 text-celeste-text-disabled" />
               Month *
             </Label>
             <Select
@@ -179,7 +179,7 @@ export function CreateMonthlySignoffModal({
           {/* Department Selection */}
           <div className="space-y-2">
             <Label htmlFor="department" className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-gray-500" />
+              <Users className="h-4 w-4 text-celeste-text-disabled" />
               Department *
             </Label>
             <div className="grid grid-cols-1 gap-2">
@@ -193,7 +193,7 @@ export function CreateMonthlySignoffModal({
                     flex items-center gap-3
                     ${selectedDepartment === dept.value
                       ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 ring-offset-2'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                      : 'border-celeste-border hover:border-celeste-border bg-white'
                     }
                   `}
                 >
@@ -202,7 +202,7 @@ export function CreateMonthlySignoffModal({
                     <p className={`font-medium ${
                       selectedDepartment === dept.value
                         ? 'text-blue-900'
-                        : 'text-gray-900'
+                        : 'text-celeste-black'
                     }`}>
                       {dept.label}
                     </p>

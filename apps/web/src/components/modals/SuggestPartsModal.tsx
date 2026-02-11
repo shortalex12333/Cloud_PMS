@@ -120,7 +120,7 @@ export function SuggestPartsModal({
       case 'OUT_OF_STOCK':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <Package className="h-4 w-4 text-gray-400" />;
+        return <Package className="h-4 w-4 text-celeste-text-muted" />;
     }
   };
 
@@ -133,7 +133,7 @@ export function SuggestPartsModal({
       case 'OUT_OF_STOCK':
         return 'bg-red-50 border-red-200';
       default:
-        return 'bg-gray-50 border-gray-200';
+        return 'bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -168,7 +168,7 @@ export function SuggestPartsModal({
         {isLoading && parts.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-gray-600">Loading suggestions...</span>
+            <span className="ml-3 text-celeste-text-secondary">Loading suggestions...</span>
           </div>
         )}
 
@@ -195,18 +195,18 @@ export function SuggestPartsModal({
 
         {/* Summary */}
         {summary && (
-          <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-3 gap-3 p-3 bg-celeste-bg-primary rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{summary.total_suggested}</div>
-              <div className="text-xs text-gray-500">Total Parts</div>
+              <div className="text-2xl font-bold text-celeste-black">{summary.total_suggested}</div>
+              <div className="text-xs text-celeste-text-disabled">Total Parts</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{summary.available}</div>
-              <div className="text-xs text-gray-500">Available</div>
+              <div className="text-xs text-celeste-text-disabled">Available</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">{summary.unavailable}</div>
-              <div className="text-xs text-gray-500">Need to Order</div>
+              <div className="text-xs text-celeste-text-disabled">Need to Order</div>
             </div>
           </div>
         )}
@@ -223,16 +223,16 @@ export function SuggestPartsModal({
                   <div className="flex items-start gap-2">
                     {getStockStatusIcon(part.stock_status)}
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-celeste-black">
                         {part.name || part.canonical_name || 'Unknown Part'}
                       </h4>
                       {part.part_number && (
-                        <p className="text-sm text-gray-600 mt-0.5">
+                        <p className="text-sm text-celeste-text-secondary mt-0.5">
                           P/N: {part.part_number}
                         </p>
                       )}
                       {part.description && (
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                        <p className="text-sm text-celeste-text-disabled mt-1 line-clamp-2">
                           {part.description}
                         </p>
                       )}
@@ -246,7 +246,7 @@ export function SuggestPartsModal({
                         ? 'bg-yellow-100 text-yellow-700'
                         : part.stock_status === 'OUT_OF_STOCK'
                         ? 'bg-red-100 text-red-700'
-                        : 'bg-gray-100 text-gray-700'
+                        : 'bg-celeste-bg-secondary text-celeste-text-secondary'
                     }`}
                   >
                     {getStockStatusLabel(part.stock_status)}
@@ -259,8 +259,8 @@ export function SuggestPartsModal({
 
         {/* No parts */}
         {!isLoading && !error && parts.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <div className="text-center py-8 text-celeste-text-disabled">
+            <Package className="h-12 w-12 mx-auto mb-3 text-celeste-border" />
             <p>No parts suggestions available</p>
             <p className="text-sm mt-1">This fault may not have associated parts in the system</p>
           </div>

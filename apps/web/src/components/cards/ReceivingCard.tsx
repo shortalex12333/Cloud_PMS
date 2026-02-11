@@ -33,26 +33,26 @@ export function ReceivingCard({ receiving, actions = [] }: ReceivingCardProps) {
         return {
           label: 'Accepted',
           icon: CheckCircle,
-          color: 'text-green-700 bg-green-50 border-green-200',
+          color: 'text-restricted-green bg-restricted-green/10 border-restricted-green/30',
         };
       case 'rejected':
         return {
           label: 'Rejected',
           icon: XCircle,
-          color: 'text-red-700 bg-red-50 border-red-200',
+          color: 'text-restricted-red bg-restricted-red/10 border-restricted-red/30',
         };
       case 'in_review':
         return {
           label: 'In Review',
           icon: AlertCircle,
-          color: 'text-yellow-700 bg-yellow-50 border-yellow-200',
+          color: 'text-restricted-yellow bg-restricted-yellow/10 border-restricted-yellow/30',
         };
       case 'draft':
       default:
         return {
           label: 'Draft',
           icon: Clock,
-          color: 'text-gray-700 bg-gray-50 border-gray-200',
+          color: 'text-celeste-text-muted bg-celeste-bg-secondary border-celeste-border',
         };
     }
   };

@@ -165,7 +165,7 @@ export default function AuthCallbackClient() {
             </svg>
           </div>
           <p className="text-white text-lg">Sign in successful!</p>
-          <p className="text-gray-400 text-sm mt-2">Redirecting...</p>
+          <p className="text-celeste-text-muted text-sm mt-2">Redirecting...</p>
         </div>
       </div>
     );
@@ -181,7 +181,7 @@ export default function AuthCallbackClient() {
           </svg>
         </div>
         <p className="text-white text-lg mb-2">Authentication failed</p>
-        <p className="text-gray-400 text-sm mb-4">{error}</p>
+        <p className="text-celeste-text-muted text-sm mb-4">{error}</p>
         <a
           href="https://auth.celeste7.ai"
           className="inline-block px-6 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-white transition-colors"

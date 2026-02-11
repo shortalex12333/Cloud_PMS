@@ -299,34 +299,34 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
   const renderLoading = () => (
     <div className="flex items-center justify-center p-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <span className="ml-3 text-gray-600">Loading...</span>
+      <span className="ml-3 text-celeste-text-secondary">Loading...</span>
     </div>
   );
 
   const renderDuplicateWarning = () => (
     <div className="p-6 bg-white rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">Work Order Already Exists</h2>
-      <p className="text-gray-600 mb-4">
+      <p className="text-celeste-text-secondary mb-4">
         A work order for this fault already exists:
       </p>
 
       {duplicateCheck?.existing_wo && (
-        <div className="bg-gray-50 p-4 rounded mb-6">
+        <div className="bg-celeste-bg-primary p-4 rounded mb-6">
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="text-gray-600">Work Order:</div>
+            <div className="text-celeste-text-secondary">Work Order:</div>
             <div className="font-medium">{duplicateCheck.existing_wo.number}</div>
 
-            <div className="text-gray-600">Status:</div>
+            <div className="text-celeste-text-secondary">Status:</div>
             <div className="font-medium capitalize">{duplicateCheck.existing_wo.status}</div>
 
             {duplicateCheck.existing_wo.assigned_to && (
               <>
-                <div className="text-gray-600">Assigned:</div>
+                <div className="text-celeste-text-secondary">Assigned:</div>
                 <div className="font-medium">{duplicateCheck.existing_wo.assigned_to}</div>
               </>
             )}
 
-            <div className="text-gray-600">Created:</div>
+            <div className="text-celeste-text-secondary">Created:</div>
             <div className="font-medium">{duplicateCheck.existing_wo.days_ago} days ago</div>
           </div>
         </div>
@@ -341,13 +341,13 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
         </button>
         <button
           onClick={handleOverrideDuplicate}
-          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-border text-celeste-text-secondary rounded hover:bg-celeste-border transition-colors"
         >
           Create New Anyway
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          className="px-4 py-2 text-celeste-text-secondary hover:text-celeste-bg-tertiary"
         >
           Cancel
         </button>
@@ -362,68 +362,68 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
       <div className="space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-celeste-text-secondary mb-1">
             Title *
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Work order title"
           />
         </div>
 
         {/* Equipment (read-only, pre-filled) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-celeste-text-secondary mb-1">
             Equipment *
           </label>
           <input
             type="text"
             value={prefillData?.equipment_name || ''}
             disabled
-            className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 text-gray-600"
+            className="w-full px-3 py-2 border border-celeste-border rounded bg-celeste-bg-primary text-celeste-text-secondary"
           />
         </div>
 
         {/* Location */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-celeste-text-secondary mb-1">
             Location
           </label>
           <input
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Physical location"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-celeste-text-secondary mb-1">
             Description
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Description of issue and work needed"
           />
         </div>
 
         {/* Priority */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-celeste-text-secondary mb-1">
             Priority
           </label>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value as any)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-celeste-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="low">Low</option>
             <option value="normal">Normal</option>
@@ -442,7 +442,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
       <div className="flex gap-3 mt-6">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          className="px-4 py-2 text-celeste-text-secondary hover:text-celeste-bg-tertiary"
         >
           Cancel
         </button>
@@ -460,18 +460,18 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
     <div className="p-6 bg-white rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">Review Work Order</h2>
 
-      <p className="text-gray-600 mb-6">
+      <p className="text-celeste-text-secondary mb-6">
         {previewData?.summary || 'You are about to create:'}
       </p>
 
       {/* Changes */}
       {previewData?.changes && (
-        <div className="bg-gray-50 p-4 rounded mb-6">
+        <div className="bg-celeste-bg-primary p-4 rounded mb-6">
           <h3 className="font-medium mb-3">Work Order</h3>
           <div className="space-y-2 text-sm">
             {Object.entries(previewData.changes).map(([key, value]) => (
               <div key={key} className="grid grid-cols-3 gap-2">
-                <div className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</div>
+                <div className="text-celeste-text-secondary capitalize">{key.replace(/_/g, ' ')}:</div>
                 <div className="col-span-2 font-medium">{value}</div>
               </div>
             ))}
@@ -482,8 +482,8 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
       {/* Side Effects */}
       {previewData?.side_effects && previewData.side_effects.length > 0 && (
         <div className="mb-6">
-          <h3 className="font-medium mb-2 text-sm text-gray-700">Side Effects:</h3>
-          <ul className="text-sm text-gray-600 space-y-1">
+          <h3 className="font-medium mb-2 text-sm text-celeste-text-secondary">Side Effects:</h3>
+          <ul className="text-sm text-celeste-text-secondary space-y-1">
             {previewData.side_effects.map((effect, index) => (
               <li key={index} className="flex items-start">
                 <span className="mr-2">ℹ️</span>
@@ -497,7 +497,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
       <div className="flex gap-3">
         <button
           onClick={() => setStep('form')}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          className="px-4 py-2 text-celeste-text-secondary hover:text-celeste-bg-tertiary"
         >
           Back
         </button>
@@ -515,17 +515,17 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
     <div className="p-6 bg-white rounded-lg shadow text-center">
       <div className="text-green-600 text-5xl mb-4">✓</div>
       <h2 className="text-xl font-semibold mb-2">Work Order Created</h2>
-      <p className="text-gray-600">Redirecting to work order...</p>
+      <p className="text-celeste-text-secondary">Redirecting to work order...</p>
     </div>
   );
 
   const renderError = () => (
     <div className="p-6 bg-white rounded-lg shadow">
       <h2 className="text-xl font-semibold text-red-600 mb-4">Error</h2>
-      <p className="text-gray-700 mb-6">{error}</p>
+      <p className="text-celeste-text-secondary mb-6">{error}</p>
       <button
         onClick={onCancel}
-        className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+        className="px-4 py-2 bg-celeste-border text-celeste-text-secondary rounded hover:bg-celeste-border"
       >
         Close
       </button>

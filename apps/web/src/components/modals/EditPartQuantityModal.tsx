@@ -130,7 +130,7 @@ export function EditPartQuantityModal({
   const getChangeColor = () => {
     if (isIncrease) return 'text-green-700';
     if (isDecrease) return 'text-orange-700';
-    return 'text-gray-700';
+    return 'text-celeste-text-secondary';
   };
 
   return (
@@ -197,7 +197,7 @@ export function EditPartQuantityModal({
                 type="number"
                 {...register('old_quantity')}
                 readOnly
-                className="bg-gray-100 cursor-not-allowed"
+                className="bg-celeste-bg-secondary cursor-not-allowed"
               />
             </div>
 

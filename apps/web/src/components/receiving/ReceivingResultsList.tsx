@@ -82,14 +82,14 @@ export function ReceivingResultsList({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'accepted':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-restricted-green-100 text-restricted-green-800 border-restricted-green-200';
       case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-restricted-red-100 text-restricted-red-800 border-restricted-red-200';
       case 'in_review':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-restricted-yellow-100 text-restricted-yellow-800 border-restricted-yellow-200';
       case 'draft':
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-celeste-bg-secondary text-celeste-bg-tertiary border-celeste-border';
     }
   };
 
@@ -153,8 +153,8 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'draft'
-              ? 'bg-gray-600 text-white border-gray-700'
-              : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+              ? 'bg-celeste-text-secondary text-white border-celeste-text-secondary'
+              : 'bg-celeste-bg-secondary text-celeste-text-secondary border-celeste-border hover:bg-celeste-border'
           )}
         >
           Draft ({statusCounts.draft})
@@ -165,8 +165,8 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'in_review'
-              ? 'bg-yellow-600 text-white border-yellow-700'
-              : 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200'
+              ? 'bg-restricted-yellow-600 text-white border-restricted-yellow-700'
+              : 'bg-restricted-yellow-100 text-restricted-yellow-700 border-restricted-yellow-200 hover:bg-restricted-yellow-200'
           )}
         >
           In Review ({statusCounts.in_review})
@@ -177,8 +177,8 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'accepted'
-              ? 'bg-green-600 text-white border-green-700'
-              : 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
+              ? 'bg-restricted-green-600 text-white border-restricted-green-700'
+              : 'bg-restricted-green-100 text-restricted-green-700 border-restricted-green-200 hover:bg-restricted-green-200'
           )}
         >
           Accepted ({statusCounts.accepted})
@@ -189,8 +189,8 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'rejected'
-              ? 'bg-red-600 text-white border-red-700'
-              : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+              ? 'bg-restricted-red-600 text-white border-restricted-red-700'
+              : 'bg-restricted-red-100 text-restricted-red-700 border-restricted-red-200 hover:bg-restricted-red-200'
           )}
         >
           Rejected ({statusCounts.rejected})
@@ -275,7 +275,7 @@ export function ReceivingResultsList({
                   <div className="flex flex-col items-end gap-2">
                     {result.total !== undefined && result.total !== null && (
                       <div className="flex items-center gap-1 text-sm font-medium text-foreground">
-                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <DollarSign className="h-4 w-4 text-restricted-green-600" />
                         {formatCurrency(result.total, result.currency)}
                       </div>
                     )}

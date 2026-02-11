@@ -391,7 +391,7 @@ function getSeverityLevel(severity?: string): number {
 function getSeverityColor(severity?: string): string {
   switch (severity) {
     case 'low':
-      return 'border-gray-300 bg-gray-50';
+      return 'border-celeste-border bg-celeste-bg-primary';
     case 'medium':
       return 'border-yellow-300 bg-yellow-50';
     case 'high':
@@ -406,7 +406,7 @@ function getSeverityColor(severity?: string): string {
 function getSeverityTextColor(severity?: string): string {
   switch (severity) {
     case 'low':
-      return 'text-gray-700';
+      return 'text-celeste-text-secondary';
     case 'medium':
       return 'text-yellow-700';
     case 'high':
@@ -427,7 +427,7 @@ function getStatusColor(status?: string): string {
     case 'resolved':
       return 'border-green-300 bg-green-50';
     case 'closed':
-      return 'border-gray-300 bg-gray-50';
+      return 'border-celeste-border bg-celeste-bg-primary';
     default:
       return '';
   }
@@ -442,7 +442,7 @@ function getStatusTextColor(status?: string): string {
     case 'resolved':
       return 'text-green-700';
     case 'closed':
-      return 'text-gray-700';
+      return 'text-celeste-text-secondary';
     default:
       return '';
   }

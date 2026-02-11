@@ -43,11 +43,11 @@ export function FleetSummaryCard({ fleetData, actions = [] }: FleetSummaryCardPr
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'operational':
-        return 'text-green-700 bg-green-50 border-green-200';
+        return 'text-restricted-green-700 bg-restricted-green-50 border-restricted-green-200';
       case 'maintenance':
-        return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+        return 'text-restricted-yellow-700 bg-restricted-yellow-50 border-restricted-yellow-200';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-200';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -75,14 +75,14 @@ export function FleetSummaryCard({ fleetData, actions = [] }: FleetSummaryCardPr
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <p className="text-xs text-muted-foreground">Operational</p>
-              <p className="text-lg font-bold text-green-600">
+              <p className="text-lg font-bold text-restricted-green-600">
                 {operationalRate.toFixed(0)}%
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Status</p>
               <p className="text-sm">
-                <span className="font-medium text-green-600">
+                <span className="font-medium text-restricted-green-600">
                   {fleetData.totals.operational_vessels}
                 </span>
                 {' / '}
@@ -98,13 +98,13 @@ export function FleetSummaryCard({ fleetData, actions = [] }: FleetSummaryCardPr
             fleetData.totals.vessels_with_compliance_issues > 0) && (
             <div className="space-y-2 mb-3">
               {fleetData.totals.total_open_faults > 0 && (
-                <div className="flex items-center gap-1.5 text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded p-2">
+                <div className="flex items-center gap-1.5 text-sm text-restricted-yellow-600 bg-restricted-yellow-50 border border-restricted-yellow-200 rounded p-2">
                   <AlertTriangle className="h-4 w-4" />
                   <span>{fleetData.totals.total_open_faults} open faults</span>
                 </div>
               )}
               {fleetData.totals.vessels_with_compliance_issues > 0 && (
-                <div className="flex items-center gap-1.5 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+                <div className="flex items-center gap-1.5 text-sm text-restricted-red-600 bg-restricted-red-50 border border-restricted-red-200 rounded p-2">
                   <AlertTriangle className="h-4 w-4" />
                   <span>
                     {fleetData.totals.vessels_with_compliance_issues} vessel(s) with compliance issues
@@ -139,7 +139,7 @@ export function FleetSummaryCard({ fleetData, actions = [] }: FleetSummaryCardPr
                       {vessel.status}
                     </span>
                     {(vessel.open_faults > 0 || vessel.compliance_issues > 0) && (
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <AlertTriangle className="h-4 w-4 text-restricted-yellow-600" />
                     )}
                   </div>
                 </li>
