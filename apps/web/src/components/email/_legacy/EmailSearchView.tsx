@@ -409,13 +409,13 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
 
           {/* Search with scope indicator */}
           <div className="flex-1 flex items-center gap-3">
-            <div className="px-2 py-0.5 bg-[#0a84ff]/20 border border-[#0a84ff]/30 rounded text-[11px] text-[#0a84ff] font-medium whitespace-nowrap">
+            <div className="px-2 py-0.5 bg-celeste-accent/20 border border-celeste-accent/30 rounded text-[11px] text-celeste-accent font-medium whitespace-nowrap">
               Email Scope
             </div>
 
-            <div className="flex-1 spotlight-panel ring-1 ring-[#0a84ff]/30">
+            <div className="flex-1 spotlight-panel ring-1 ring-celeste-accent/30">
               <div className="flex items-center gap-3 px-4 h-[44px]">
-                <Search className="flex-shrink-0 w-5 h-5 text-[#0a84ff]" strokeWidth={1.8} />
+                <Search className="flex-shrink-0 w-5 h-5 text-celeste-accent" strokeWidth={1.8} />
 
                 <div className="flex-1 h-full relative">
                   <input
@@ -548,7 +548,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
           {isBackfilling && (
             <div className="p-3 border-b border-[#3d3d3f]/30 bg-[#2c2c2e]">
               <div className="flex items-center gap-2 text-[12px] text-[#98989f]">
-                <Loader2 className="w-4 h-4 animate-spin text-[#0a84ff]" />
+                <Loader2 className="w-4 h-4 animate-spin text-celeste-accent" />
                 <span>Importing emails...</span>
                 {(backfillStatus?.progress ?? 0) > 0 && (
                   <span className="ml-auto">{backfillStatus?.progress ?? 0}%</span>
@@ -557,7 +557,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
               {(backfillStatus?.totalEmails ?? 0) > 0 && (
                 <div className="mt-1 h-1 bg-[#3d3d3f] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#0a84ff] transition-all duration-300"
+                    className="h-full bg-celeste-accent transition-all duration-300"
                     style={{ width: `${backfillStatus?.progress ?? 0}%` }}
                   />
                 </div>
@@ -592,7 +592,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
               </p>
               <button
                 onClick={() => refetch()}
-                className="mt-2 text-[13px] text-[#0a84ff] hover:text-[#409cff]"
+                className="mt-2 text-[13px] text-celeste-accent hover:text-celeste-accent"
               >
                 Try again
               </button>
@@ -629,7 +629,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
                       'px-3 py-1.5 rounded text-[12px] transition-colors',
                       page === 1
                         ? 'text-[#48484a] cursor-not-allowed'
-                        : 'text-[#0a84ff] hover:bg-white/5'
+                        : 'text-celeste-accent hover:bg-white/5'
                     )}
                   >
                     Prev
@@ -642,7 +642,7 @@ export default function EmailSearchView({ className }: EmailSearchViewProps) {
                       'px-3 py-1.5 rounded text-[12px] transition-colors',
                       !hasMore
                         ? 'text-[#48484a] cursor-not-allowed'
-                        : 'text-[#0a84ff] hover:bg-white/5'
+                        : 'text-celeste-accent hover:bg-white/5'
                     )}
                   >
                     Next
@@ -718,7 +718,7 @@ function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
       onClick={onClick}
       className={cn(
         'w-full flex items-start gap-3 p-3 text-left transition-colors',
-        isSelected ? 'bg-[#0a84ff]/20' : 'hover:bg-[#2c2c2e]'
+        isSelected ? 'bg-celeste-accent/20' : 'hover:bg-[#2c2c2e]'
       )}
     >
       {/* Avatar */}
@@ -731,7 +731,7 @@ function ThreadListItem({ thread, isSelected, onClick }: ThreadListItemProps) {
         <h3
           className={cn(
             'text-[14px] font-medium truncate',
-            isSelected ? 'text-[#0a84ff]' : 'text-white'
+            isSelected ? 'text-celeste-accent' : 'text-white'
           )}
         >
           {thread.latest_subject || '(No subject)'}
@@ -831,7 +831,7 @@ function MessagePanel({
             ) : (
               <button
                 onClick={() => setShowLinkModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a84ff]/20 text-[#0a84ff] text-[12px] font-medium hover:bg-[#0a84ff]/30 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-celeste-accent/20 text-celeste-accent text-[12px] font-medium hover:bg-celeste-accent/30 transition-colors"
               >
                 <Mail className="w-4 h-4" />
                 Link to...
@@ -850,7 +850,7 @@ function MessagePanel({
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded text-[12px] whitespace-nowrap transition-colors',
               selectedMessageId === msg.provider_message_id
-                ? 'bg-[#0a84ff] text-white'
+                ? 'bg-celeste-accent text-white'
                 : 'bg-[#2c2c2e] text-[#98989f] hover:bg-[#3a3a3c]'
             )}
           >
@@ -927,7 +927,7 @@ function MessagePanel({
               {content.body?.contentType === 'html' ? (
                 <div
                   className="prose prose-invert prose-sm max-w-none text-[14px] leading-relaxed
-                    [&_a]:text-[#0a84ff] [&_a]:no-underline [&_a:hover]:underline
+                    [&_a]:text-celeste-accent [&_a]:no-underline [&_a:hover]:underline
                     [&_img]:max-w-full [&_img]:h-auto
                     [&_img[data-blocked-src]]:hidden
                     [&_table]:border-collapse [&_td]:border [&_td]:border-[#3d3d3f] [&_td]:p-2
@@ -1051,7 +1051,7 @@ function AttachmentItem({ attachment, providerMessageId }: AttachmentItemProps) 
         ) : status === 'error' ? (
           <AlertCircle className="w-4 h-4 text-[#ff453a] flex-shrink-0" />
         ) : (
-          <Download className="w-4 h-4 text-[#0a84ff] flex-shrink-0" />
+          <Download className="w-4 h-4 text-celeste-accent flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <span
@@ -1137,7 +1137,7 @@ function DirectionChip({ icon, label, active, onClick }: DirectionChipProps) {
       onClick={onClick}
       className={cn(
         'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors',
-        active ? 'bg-[#0a84ff] text-white' : 'bg-[#3a3a3c] text-[#98989f] hover:bg-[#48484a]'
+        active ? 'bg-celeste-accent text-white' : 'bg-[#3a3a3c] text-[#98989f] hover:bg-[#48484a]'
       )}
     >
       {icon}
