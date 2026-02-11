@@ -25,7 +25,9 @@ interface SearchResult {
 // Backend search endpoint - security is ensured by yacht_id filtering
 function getTenantClient() {
   const supabaseUrl = process.env.TENANT_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.TENANT_SUPABASE_SERVICE_KEY;
+  const serviceKey = process.env.TENANT_SUPABASE_SERVICE_KEY ||
+                     process.env.TENANT_SUPABASE_SERVICE_ROLE_KEY ||
+                     process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceKey) {
     throw new Error('Tenant Supabase environment variables not configured');
