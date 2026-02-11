@@ -36,13 +36,13 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'operational':
-        return 'text-green-700 bg-green-50 border-green-200';
+        return 'text-restricted-green bg-restricted-green/10 border-restricted-green/30';
       case 'maintenance':
-        return 'text-blue-700 bg-blue-50 border-blue-200';
+        return 'text-celeste-accent bg-celeste-accent/10 border-celeste-accent/30';
       case 'faulty':
-        return 'text-red-700 bg-red-50 border-red-200';
+        return 'text-restricted-red bg-restricted-red/10 border-restricted-red/30';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-200';
+        return 'text-celeste-text-muted bg-celeste-bg-secondary border-celeste-border';
     }
   };
 

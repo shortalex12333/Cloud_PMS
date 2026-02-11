@@ -192,7 +192,7 @@ export function LogDeliveryReceivedModal({
       case 'wrong_item':
         return 'bg-amber-100 text-amber-700 border-amber-200';
       default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
+        return 'bg-celeste-bg-secondary text-celeste-text-secondary border-celeste-border';
     }
   };
 
@@ -235,7 +235,7 @@ export function LogDeliveryReceivedModal({
             <div className="space-y-2">
               <Label htmlFor="delivery_date">Delivery Date *</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
                 <Input
                   id="delivery_date"
                   type="date"
@@ -307,21 +307,21 @@ export function LogDeliveryReceivedModal({
                         'h-5 w-5 mt-0.5',
                         isFullyReceived && item.condition === 'good'
                           ? 'text-emerald-500'
-                          : 'text-gray-400'
+                          : 'text-celeste-text-muted'
                       )} />
 
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm">
+                        <p className="font-medium text-celeste-black text-sm">
                           {item.part_name}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-celeste-text-disabled">
                           P/N: {item.part_number}
                         </p>
 
                         <div className="mt-2 flex items-center gap-3">
                           {/* Quantity Input */}
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">Qty:</span>
+                            <span className="text-xs text-celeste-text-disabled">Qty:</span>
                             <Input
                               type="number"
                               min={0}
@@ -330,7 +330,7 @@ export function LogDeliveryReceivedModal({
                               onChange={(e) => updateItemQty(index, parseInt(e.target.value) || 0)}
                               className="w-16 h-8 text-sm"
                             />
-                            <span className="text-xs text-gray-500">/ {item.ordered_qty}</span>
+                            <span className="text-xs text-celeste-text-disabled">/ {item.ordered_qty}</span>
                           </div>
 
                           {/* Condition Select */}

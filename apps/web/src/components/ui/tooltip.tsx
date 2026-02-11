@@ -92,7 +92,7 @@ export function TooltipContent({ children, className, side = 'top', sideOffset =
   return (
     <div
       className={cn(
-        'absolute z-50 px-3 py-1.5 text-xs bg-gray-900 text-white rounded-md shadow-md',
+        'absolute z-50 px-3 py-1.5 text-xs bg-celeste-black text-celeste-white rounded-md shadow-md',
         'animate-in fade-in-0 zoom-in-95',
         positionClasses[side],
         className

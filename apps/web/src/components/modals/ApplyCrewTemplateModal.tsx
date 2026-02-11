@@ -173,7 +173,7 @@ export function ApplyCrewTemplateModal({
           {/* Week Start Date */}
           <div className="space-y-2">
             <Label htmlFor="week_start_date" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
+              <Calendar className="h-4 w-4 text-celeste-text-disabled" />
               Week Starting (Monday) *
             </Label>
             <Input
@@ -196,12 +196,12 @@ export function ApplyCrewTemplateModal({
           {/* Template Selection */}
           <div className="space-y-2">
             <Label htmlFor="template_id" className="flex items-center gap-2">
-              <Layout className="h-4 w-4 text-gray-500" />
+              <Layout className="h-4 w-4 text-celeste-text-disabled" />
               Schedule Template {templates.length > 0 && '(Optional)'}
             </Label>
             {loadingTemplates ? (
               <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                <Loader2 className="h-5 w-5 animate-spin text-celeste-text-muted" />
               </div>
             ) : templates.length > 0 ? (
               <Select
@@ -221,9 +221,9 @@ export function ApplyCrewTemplateModal({
                 </SelectContent>
               </Select>
             ) : (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
-                <p className="text-sm text-gray-600">No templates available</p>
-                <p className="text-xs text-gray-500 mt-1">
+              <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg text-center">
+                <p className="text-sm text-celeste-text-secondary">No templates available</p>
+                <p className="text-xs text-celeste-text-disabled mt-1">
                   Create a template first, or leave empty to use default schedule
                 </p>
               </div>
@@ -232,18 +232,18 @@ export function ApplyCrewTemplateModal({
 
           {/* Preview */}
           {weekStartDate && (
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 mb-2">Schedule Preview</p>
+            <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+              <p className="text-sm font-medium text-celeste-text-secondary mb-2">Schedule Preview</p>
               <div className="grid grid-cols-7 gap-1">
                 {getWeekDates(weekStartDate).map((date, index) => (
                   <div
                     key={index}
                     className="text-center p-2 bg-white rounded text-xs"
                   >
-                    <p className="font-semibold text-gray-700">
+                    <p className="font-semibold text-celeste-text-secondary">
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index]}
                     </p>
-                    <p className="text-gray-500">{date.split('-')[2]}</p>
+                    <p className="text-celeste-text-disabled">{date.split('-')[2]}</p>
                   </div>
                 ))}
               </div>

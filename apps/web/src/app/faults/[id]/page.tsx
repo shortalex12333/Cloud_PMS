@@ -176,7 +176,7 @@ export default function FaultLensPage() {
       case 'medium':
         return { bg: 'bg-amber-500/10', text: 'text-amber-400', label: 'Medium' };
       default:
-        return { bg: 'bg-gray-500/10', text: 'text-gray-400', label: 'Low' };
+        return { bg: 'bg-celeste-text-disabled/10', text: 'text-celeste-text-muted', label: 'Low' };
     }
   };
 
@@ -200,10 +200,10 @@ export default function FaultLensPage() {
   // ---------------------------------------------------------------------------
   if (loading || authLoading || bootstrapping) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Loading fault report...</p>
+          <p className="text-celeste-text-muted">Loading fault report...</p>
         </div>
       </div>
     );
@@ -214,11 +214,11 @@ export default function FaultLensPage() {
   // ---------------------------------------------------------------------------
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
+        <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Error</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <p className="text-celeste-text-muted mb-6">{error}</p>
           <button
             onClick={() => router.push('/app')}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -244,24 +244,24 @@ export default function FaultLensPage() {
   // RENDER
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-celeste-black">
       {/* ===================================================================
           HEADER
           TODO: Add action buttons (Diagnose, Create WO, etc.)
           =================================================================== */}
-      <header className="bg-gray-800/50 border-b border-gray-700/50 sticky top-0 z-10 backdrop-blur-sm">
+      <header className="bg-celeste-bg-tertiary/50 border-b border-celeste-text-secondary/50 sticky top-0 z-10 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
+              className="p-2 hover:bg-celeste-text-secondary/50 rounded-lg transition-colors"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-400" />
+              <ArrowLeft className="w-5 h-5 text-celeste-text-muted" />
             </button>
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-400" />
-              <span className="text-sm text-gray-400 uppercase tracking-wider">Fault Report</span>
+              <span className="text-sm text-celeste-text-muted uppercase tracking-wider">Fault Report</span>
             </div>
             {/* TODO: Add action buttons
             <div className="ml-auto flex gap-2">
@@ -309,7 +309,7 @@ export default function FaultLensPage() {
 
           {/* Equipment Link - TODO: Make clickable */}
           {fault.equipment_name && (
-            <div className="flex items-center gap-2 text-gray-400 mb-2">
+            <div className="flex items-center gap-2 text-celeste-text-muted mb-2">
               <Settings className="w-4 h-4" />
               <span>{fault.equipment_name}</span>
               {/* TODO: onClick={() => router.push(`/equipment/${fault.equipment_id}`)} */}
@@ -321,11 +321,11 @@ export default function FaultLensPage() {
             DESCRIPTION
             ----------------------------------------------------------------- */}
         {fault.description && (
-          <div className="bg-gray-800/50 rounded-lg p-6 mb-6 border border-gray-700/50">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          <div className="bg-celeste-bg-tertiary/50 rounded-lg p-6 mb-6 border border-celeste-text-secondary/50">
+            <h2 className="text-sm font-semibold text-celeste-text-muted uppercase tracking-wider mb-3">
               Description
             </h2>
-            <p className="text-gray-300 whitespace-pre-wrap">
+            <p className="text-celeste-border whitespace-pre-wrap">
               {fault.description}
             </p>
           </div>
@@ -336,24 +336,24 @@ export default function FaultLensPage() {
             ----------------------------------------------------------------- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* Reported Date */}
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
             <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-gray-500" />
+              <Calendar className="w-5 h-5 text-celeste-text-disabled" />
               <div>
-                <p className="text-xs text-gray-500 uppercase">Reported</p>
-                <p className="text-gray-200">{formatDate(reportedDate)}</p>
+                <p className="text-xs text-celeste-text-disabled uppercase">Reported</p>
+                <p className="text-celeste-border">{formatDate(reportedDate)}</p>
               </div>
             </div>
           </div>
 
           {/* Reported By */}
           {fault.reported_by && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-gray-500" />
+                <User className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Reported By</p>
-                  <p className="text-gray-200">{fault.reported_by}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Reported By</p>
+                  <p className="text-celeste-border">{fault.reported_by}</p>
                 </div>
               </div>
             </div>
@@ -361,11 +361,11 @@ export default function FaultLensPage() {
 
           {/* Resolved Date */}
           {fault.resolved_at && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Resolved</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Resolved</p>
                   <p className="text-green-400">{formatDate(fault.resolved_at)}</p>
                 </div>
               </div>
@@ -374,11 +374,11 @@ export default function FaultLensPage() {
 
           {/* Days Open */}
           {fault.days_open !== undefined && fault.days_open > 0 && !fault.resolved_at && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-amber-500" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Days Open</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Days Open</p>
                   <p className="text-amber-400">{fault.days_open} days</p>
                 </div>
               </div>
@@ -387,12 +387,12 @@ export default function FaultLensPage() {
 
           {/* Fault Code */}
           {fault.fault_code && (
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-gray-500" />
+                <AlertTriangle className="w-5 h-5 text-celeste-text-disabled" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase">Fault Code</p>
-                  <p className="text-gray-200 font-mono">{fault.fault_code}</p>
+                  <p className="text-xs text-celeste-text-disabled uppercase">Fault Code</p>
+                  <p className="text-celeste-border font-mono">{fault.fault_code}</p>
                 </div>
               </div>
             </div>
@@ -412,8 +412,8 @@ export default function FaultLensPage() {
         {/* -----------------------------------------------------------------
             RELATED EMAILS
             ----------------------------------------------------------------- */}
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <div className="bg-celeste-bg-tertiary/50 rounded-lg p-6 border border-celeste-text-secondary/50">
+          <h2 className="text-sm font-semibold text-celeste-text-muted uppercase tracking-wider mb-4">
             Related Emails
           </h2>
           <RelatedEmailsPanel

@@ -212,9 +212,9 @@ export function AddToHandoverModal({
       case 'completed':
         return 'bg-green-100 text-green-700';
       case 'closed':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-celeste-bg-secondary text-celeste-text-secondary';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-celeste-bg-secondary text-celeste-text-secondary';
     }
   };
 
@@ -283,7 +283,7 @@ export function AddToHandoverModal({
           <div className="space-y-2">
             <Label htmlFor="search">Search Items</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
               <Input
                 id="search"
                 value={searchQuery}
@@ -309,20 +309,20 @@ export function AddToHandoverModal({
               <p className="text-sm text-red-600">{errors.selected_entities.message}</p>
             )}
 
-            <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+            <div className="border border-celeste-border rounded-lg max-h-80 overflow-y-auto">
               {filteredEntities.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <Search className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <div className="p-8 text-center text-celeste-text-disabled">
+                  <Search className="h-12 w-12 mx-auto mb-2 text-celeste-border" />
                   <p>No {entityType}s found</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-celeste-border">
                   {filteredEntities.map((entity) => {
                     const isSelected = selectedEntities.includes(entity.id);
                     return (
                       <div
                         key={entity.id}
-                        className={`p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+                        className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
                           isSelected ? 'bg-blue-50' : ''
                         }`}
                         onClick={() => toggleEntity(entity.id)}
@@ -331,11 +331,11 @@ export function AddToHandoverModal({
                           <div className="flex items-start gap-3 flex-1">
                             <div className="mt-1">{getEntityIcon(entityType)}</div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-gray-900 truncate">
+                              <h4 className="font-medium text-celeste-black truncate">
                                 {entity.name}
                               </h4>
                               {entity.description && (
-                                <p className="text-sm text-gray-600 mt-0.5">
+                                <p className="text-sm text-celeste-text-secondary mt-0.5">
                                   {entity.description}
                                 </p>
                               )}
@@ -350,7 +350,7 @@ export function AddToHandoverModal({
                                   </span>
                                 )}
                                 {entity.metadata && (
-                                  <span className="text-xs text-gray-500">{entity.metadata}</span>
+                                  <span className="text-xs text-celeste-text-disabled">{entity.metadata}</span>
                                 )}
                               </div>
                             </div>
@@ -359,7 +359,7 @@ export function AddToHandoverModal({
                             {isSelected ? (
                               <CheckCircle2 className="h-5 w-5 text-blue-600" />
                             ) : (
-                              <div className="h-5 w-5 border-2 border-gray-300 rounded" />
+                              <div className="h-5 w-5 border-2 border-celeste-border rounded" />
                             )}
                           </div>
                         </div>
@@ -398,11 +398,11 @@ export function AddToHandoverModal({
                       className="flex items-center gap-1 px-2 py-1 bg-white border border-blue-300 rounded text-sm"
                     >
                       {getEntityIcon(entityType)}
-                      <span className="text-gray-900">{entity.name}</span>
+                      <span className="text-celeste-black">{entity.name}</span>
                       <button
                         type="button"
                         onClick={() => toggleEntity(id)}
-                        className="ml-1 text-gray-500 hover:text-red-600"
+                        className="ml-1 text-celeste-text-disabled hover:text-red-600"
                       >
                         <X className="h-3 w-3" />
                       </button>

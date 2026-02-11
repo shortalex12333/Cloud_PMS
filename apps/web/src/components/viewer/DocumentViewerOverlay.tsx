@@ -46,12 +46,12 @@ const SAFE_IMAGE_TYPES = [
 
 function getFileIcon(contentType: string) {
   if (SAFE_PDF_TYPES.some((t) => contentType.startsWith(t))) {
-    return <FileText className="h-12 w-12 text-red-400" />;
+    return <FileText className="h-12 w-12 text-restricted-red-400" />;
   }
   if (SAFE_IMAGE_TYPES.some((t) => contentType.startsWith(t))) {
-    return <ImageIcon className="h-12 w-12 text-blue-400" />;
+    return <ImageIcon className="h-12 w-12 text-celeste-accent-400" />;
   }
-  return <File className="h-12 w-12 text-gray-400" />;
+  return <File className="h-12 w-12 text-celeste-text-muted" />;
 }
 
 function canPreview(contentType: string): 'pdf' | 'image' | false {
@@ -228,21 +228,21 @@ export default function DocumentViewerOverlay({
                       onClick={() => handleMicroAction('add_to_handover')}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
                     >
-                      <FileUp className="h-4 w-4 text-green-400" />
+                      <FileUp className="h-4 w-4 text-restricted-green-400" />
                       Add to Handover
                     </button>
                     <button
                       onClick={() => handleMicroAction('attach_to_work_order')}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
                     >
-                      <Link2 className="h-4 w-4 text-blue-400" />
+                      <Link2 className="h-4 w-4 text-celeste-accent-400" />
                       Attach to Work Order
                     </button>
                     <button
                       onClick={() => handleMicroAction('unlink_from_work_order')}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
                     >
-                      <Unlink className="h-4 w-4 text-orange-400" />
+                      <Unlink className="h-4 w-4 text-restricted-yellow-400" />
                       Unlink from Work Order
                     </button>
                   </div>

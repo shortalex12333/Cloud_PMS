@@ -250,7 +250,7 @@ export function UpdateHoursOfRestModal({
           {/* Record Date */}
           <div className="space-y-2">
             <Label htmlFor="record_date" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
+              <Calendar className="h-4 w-4 text-celeste-text-disabled" />
               Date *
             </Label>
             <Input
@@ -303,10 +303,10 @@ export function UpdateHoursOfRestModal({
 
             <div className="space-y-2">
               {restPeriods.map((period, index) => (
-                <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center gap-2 p-3 bg-celeste-bg-primary rounded-lg">
                   <div className="flex-1 grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="text-xs text-gray-600">Start</Label>
+                      <Label className="text-xs text-celeste-text-secondary">Start</Label>
                       <Input
                         type="time"
                         value={period.start}
@@ -315,7 +315,7 @@ export function UpdateHoursOfRestModal({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-600">End</Label>
+                      <Label className="text-xs text-celeste-text-secondary">End</Label>
                       <Input
                         type="time"
                         value={period.end}
@@ -324,7 +324,7 @@ export function UpdateHoursOfRestModal({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-600">Hours</Label>
+                      <Label className="text-xs text-celeste-text-secondary">Hours</Label>
                       <Input
                         type="number"
                         step="0.1"

@@ -171,8 +171,8 @@ export function LogPartUsageModal({
 
           {/* Work Order (if pre-selected) */}
           {context.work_order_title && (
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-              <p className="text-sm font-medium text-gray-900">
+            <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-md">
+              <p className="text-sm font-medium text-celeste-black">
                 Work Order: {context.work_order_title}
               </p>
             </div>

@@ -124,7 +124,7 @@ export function ReportFaultModal({
       case 'low':
         return 'text-green-700 bg-green-50 border-green-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -252,7 +252,7 @@ export function ReportFaultModal({
           </div>
 
           {/* Create Work Order Option */}
-          <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-md">
+          <div className="flex items-center space-x-2 p-3 bg-celeste-bg-primary rounded-md">
             <Checkbox
               id="create_work_order"
               checked={createWorkOrder}

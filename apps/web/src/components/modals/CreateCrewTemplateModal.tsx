@@ -268,7 +268,7 @@ export function CreateCrewTemplateModal({
                 </Button>
               ))}
             </div>
-            <p className="text-xs text-gray-500">Apply a preset to all days, then customize as needed</p>
+            <p className="text-xs text-celeste-text-disabled">Apply a preset to all days, then customize as needed</p>
           </div>
 
           {/* Days Grid */}
@@ -287,12 +287,12 @@ export function CreateCrewTemplateModal({
                       'p-3 rounded-lg border-2 transition-all text-left',
                       isEditing
                         ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 ring-offset-1'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-celeste-border hover:border-celeste-border'
                     )}
                   >
                     <p className={cn(
                       'text-xs font-semibold mb-1',
-                      isEditing ? 'text-blue-900' : 'text-gray-700'
+                      isEditing ? 'text-blue-900' : 'text-celeste-text-secondary'
                     )}>
                       {day.label.slice(0, 3)}
                     </p>
@@ -304,7 +304,7 @@ export function CreateCrewTemplateModal({
                     )}>
                       {template.total_rest_hours}h
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-celeste-text-disabled">
                       {template.rest_periods.length} period{template.rest_periods.length !== 1 ? 's' : ''}
                     </p>
                   </button>
@@ -317,7 +317,7 @@ export function CreateCrewTemplateModal({
           {editingDay && (
             <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-gray-900">
+                <h4 className="font-semibold text-celeste-black">
                   Editing: {daysOfWeek.find(d => d.key === editingDay)?.label}
                 </h4>
                 <div className="flex gap-1">
@@ -338,15 +338,15 @@ export function CreateCrewTemplateModal({
               <div className="space-y-2">
                 {dayTemplates[editingDay].rest_periods.map((period, index) => (
                   <div key={index} className="flex items-center gap-2 bg-white p-2 rounded">
-                    <Clock className="h-4 w-4 text-gray-400" />
+                    <Clock className="h-4 w-4 text-celeste-text-muted" />
                     <span className="text-sm font-medium">{period.start}</span>
-                    <span className="text-gray-400">→</span>
+                    <span className="text-celeste-text-muted">→</span>
                     <span className="text-sm font-medium">{period.end}</span>
-                    <span className="text-sm text-gray-600">({period.hours}h)</span>
+                    <span className="text-sm text-celeste-text-secondary">({period.hours}h)</span>
                   </div>
                 ))}
                 <div className="pt-2">
-                  <p className="text-sm font-semibold text-gray-700">
+                  <p className="text-sm font-semibold text-celeste-text-secondary">
                     Total Rest: {dayTemplates[editingDay].total_rest_hours} hours
                     {dayTemplates[editingDay].total_rest_hours < 10 && (
                       <span className="ml-2 text-red-600 text-xs">⚠️ Below MLC minimum</span>

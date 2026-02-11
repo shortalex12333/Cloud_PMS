@@ -142,7 +142,7 @@ export function ShowManualSectionModal({
         {isLoading && !section && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-gray-600">Loading manual...</span>
+            <span className="ml-3 text-celeste-text-secondary">Loading manual...</span>
           </div>
         )}
 
@@ -189,12 +189,12 @@ export function ShowManualSectionModal({
             {/* Section Content */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{section.title}</h3>
-                <span className="text-sm text-gray-500">Page {section.page_number}</span>
+                <h3 className="font-semibold text-celeste-black">{section.title}</h3>
+                <span className="text-sm text-celeste-text-disabled">Page {section.page_number}</span>
               </div>
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg">
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-celeste-text-secondary">
                     {section.text_preview}
                   </pre>
                 </div>
@@ -204,17 +204,17 @@ export function ShowManualSectionModal({
             {/* Related Sections */}
             {relatedSections.length > 0 && (
               <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900 text-sm">Related Sections</h3>
+                <h3 className="font-semibold text-celeste-black text-sm">Related Sections</h3>
                 <div className="space-y-1">
                   {relatedSections.map((related) => (
                     <button
                       key={related.id}
                       onClick={() => handleSectionClick(related.id)}
                       disabled={isLoading}
-                      className="w-full p-2 text-left bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center justify-between disabled:opacity-50"
+                      className="w-full p-2 text-left bg-white border border-celeste-border rounded hover:bg-celeste-bg-primary transition-colors flex items-center justify-between disabled:opacity-50"
                     >
-                      <span className="text-sm text-gray-700">{related.title}</span>
-                      <div className="flex items-center gap-2 text-gray-400">
+                      <span className="text-sm text-celeste-text-secondary">{related.title}</span>
+                      <div className="flex items-center gap-2 text-celeste-text-muted">
                         <span className="text-xs">Page {related.page_number}</span>
                         <ChevronRight className="h-4 w-4" />
                       </div>

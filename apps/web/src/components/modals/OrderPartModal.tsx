@@ -118,7 +118,7 @@ export function OrderPartModal({
       case 'urgent':
         return 'text-orange-700 bg-orange-50 border-orange-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -215,8 +215,8 @@ export function OrderPartModal({
               {estimatedCost && (
                 <div className="space-y-2">
                   <Label>Estimated Cost</Label>
-                  <div className="h-10 px-3 py-2 rounded-md border border-gray-200 bg-gray-50">
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="h-10 px-3 py-2 rounded-md border border-celeste-border bg-celeste-bg-primary">
+                    <p className="text-lg font-semibold text-celeste-black">
                       ${estimatedCost}
                     </p>
                   </div>

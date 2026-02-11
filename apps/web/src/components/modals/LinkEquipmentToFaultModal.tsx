@@ -183,7 +183,7 @@ export function LinkEquipmentToFaultModal({
       case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-300';
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-300';
+        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
     }
   };
 
@@ -227,7 +227,7 @@ export function LinkEquipmentToFaultModal({
           <div className="space-y-2">
             <Label htmlFor="search">Search Equipment</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
               <Input
                 id="search"
                 value={searchQuery}
@@ -247,48 +247,48 @@ export function LinkEquipmentToFaultModal({
               <p className="text-sm text-red-600">{errors.equipment_id.message}</p>
             )}
 
-            <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+            <div className="border border-celeste-border rounded-lg max-h-80 overflow-y-auto">
               {filteredEquipment.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <Search className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <div className="p-8 text-center text-celeste-text-disabled">
+                  <Search className="h-12 w-12 mx-auto mb-2 text-celeste-border" />
                   <p>No equipment found</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-celeste-border">
                   {filteredEquipment.map((equipment) => {
                     const isSelected = selectedEquipmentId === equipment.id;
                     return (
                       <div
                         key={equipment.id}
-                        className={`p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+                        className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
                           isSelected ? 'bg-blue-50' : ''
                         }`}
                         onClick={() => handleSelectEquipment(equipment.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            <Settings className="h-5 w-5 text-gray-600 mt-1" />
+                            <Settings className="h-5 w-5 text-celeste-text-secondary mt-1" />
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-gray-900">{equipment.name}</h4>
+                              <h4 className="font-medium text-celeste-black">{equipment.name}</h4>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
                                 {equipment.model && (
-                                  <p className="text-sm text-gray-600">
+                                  <p className="text-sm text-celeste-text-secondary">
                                     <span className="font-medium">Model:</span> {equipment.model}
                                   </p>
                                 )}
                                 {equipment.serial_number && (
-                                  <p className="text-sm text-gray-600">
+                                  <p className="text-sm text-celeste-text-secondary">
                                     <span className="font-medium">S/N:</span>{' '}
                                     {equipment.serial_number}
                                   </p>
                                 )}
                                 {equipment.manufacturer && (
-                                  <p className="text-sm text-gray-600">
+                                  <p className="text-sm text-celeste-text-secondary">
                                     <span className="font-medium">Mfr:</span>{' '}
                                     {equipment.manufacturer}
                                   </p>
                                 )}
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-celeste-text-secondary">
                                   <span className="font-medium">Location:</span> {equipment.location}
                                 </p>
                               </div>
@@ -298,7 +298,7 @@ export function LinkEquipmentToFaultModal({
                             {isSelected ? (
                               <CheckCircle2 className="h-5 w-5 text-blue-600" />
                             ) : (
-                              <div className="h-5 w-5 border-2 border-gray-300 rounded-full" />
+                              <div className="h-5 w-5 border-2 border-celeste-border rounded-full" />
                             )}
                           </div>
                         </div>

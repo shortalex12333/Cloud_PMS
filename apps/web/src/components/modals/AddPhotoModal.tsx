@@ -222,9 +222,9 @@ export function AddPhotoModal({
             <div className="flex items-center gap-3">
               <EntityIcon className="h-5 w-5" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{context.entity_title}</p>
+                <p className="font-medium text-celeste-black truncate">{context.entity_title}</p>
                 {context.entity_subtitle && (
-                  <p className="text-sm text-gray-600 truncate">{context.entity_subtitle}</p>
+                  <p className="text-sm text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
                 )}
               </div>
             </div>
@@ -243,23 +243,23 @@ export function AddPhotoModal({
                 'cursor-pointer transition-colors',
                 isDragging
                   ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
+                  : 'border-celeste-border hover:border-celeste-text-muted bg-celeste-bg-primary hover:bg-celeste-bg-secondary'
               )}
             >
               <div className={cn(
                 'w-12 h-12 rounded-full flex items-center justify-center',
-                isDragging ? 'bg-blue-100' : 'bg-gray-200'
+                isDragging ? 'bg-blue-100' : 'bg-celeste-border'
               )}>
                 <Upload className={cn(
                   'h-6 w-6',
-                  isDragging ? 'text-blue-600' : 'text-gray-500'
+                  isDragging ? 'text-blue-600' : 'text-celeste-text-disabled'
                 )} />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-celeste-text-secondary">
                   {isDragging ? 'Drop photo here' : 'Click or drag photo to upload'}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-celeste-text-disabled mt-1">
                   JPEG, PNG, WebP up to 10MB
                 </p>
               </div>
