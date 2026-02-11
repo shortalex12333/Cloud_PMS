@@ -33,8 +33,8 @@ function getPartActions(role: string): MicroAction[] {
                     'chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
 
   if (allRoles.includes(role)) {
-    actions.push('view_part_details' as MicroAction);
-    actions.push('check_stock_level' as MicroAction);
+    actions.push('view_part_location' as MicroAction); // Fixed: use action that exists in registry
+    actions.push('view_part_stock' as MicroAction); // Fixed: use action that exists in registry
   }
 
   // Usage History - elevated roles only
