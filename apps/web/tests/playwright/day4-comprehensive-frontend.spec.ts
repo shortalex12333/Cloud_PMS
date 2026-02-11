@@ -101,13 +101,18 @@ async function waitForSearchResults(page: Page): Promise<void> {
 }
 
 /**
- * Get console errors from page
+ * Get console errors from page (excluding expected fallback warnings)
  */
 function collectConsoleErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
-      errors.push(msg.text());
+      const text = msg.text();
+      // Exclude expected fallback mode warnings (not actual errors)
+      if (!text.includes('Force fallback mode') &&
+          !text.includes('using local database search')) {
+        errors.push(text);
+      }
     }
   });
   return errors;
