@@ -68,6 +68,47 @@ router = APIRouter(prefix="/email", tags=["email"])
 
 
 # ============================================================================
+# OUTLOOK AUTH ERROR HELPERS
+# ============================================================================
+# These helpers create structured error responses that the frontend can
+# distinguish from Celeste JWT errors. The frontend should check
+# response.detail.error_code to determine if this is an Outlook OAuth
+# issue (requires reconnect) vs a Celeste session issue (requires re-login).
+# ============================================================================
+
+def outlook_auth_error(
+    error_code: str,
+    message: str,
+    status_code: int = 401
+) -> HTTPException:
+    """
+    Create an HTTPException for Outlook OAuth errors.
+
+    These use status 401 but include a structured detail with error_code
+    so the frontend can distinguish from Celeste JWT failures.
+
+    Error codes:
+    - outlook_not_connected: User hasn't connected Outlook
+    - outlook_token_expired: OAuth token expired (needs reconnect)
+    - outlook_token_revoked: User revoked access in Outlook
+    - outlook_refresh_failed: Token refresh failed (needs reconnect)
+    - outlook_api_rejected: Microsoft Graph rejected the request
+
+    Frontend handling:
+    - If error_code starts with 'outlook_', show "Reconnect Outlook" UI
+    - Otherwise, treat as session expiry (standard 401 handling)
+    """
+    return HTTPException(
+        status_code=status_code,
+        detail={
+            "error_code": error_code,
+            "message": message,
+            "requires_outlook_reconnect": True,
+        }
+    )
+
+
+# ============================================================================
 # TENANT CLIENT (Avoids circular import from pipeline_service)
 # ============================================================================
 
@@ -896,6 +937,7 @@ async def get_thread(
         raise HTTPException(status_code=503, detail=error_msg)
 
     yacht_id = auth['yacht_id']
+    user_id = auth['user_id']
 
     # Validate thread_id is a valid UUID to prevent DB errors
     import uuid
@@ -915,11 +957,24 @@ async def get_thread(
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     try:
-        # Get thread (yacht_id enforced)
+        # Get user's watcher_id for per-user thread isolation
+        watcher_result = supabase.table('email_watchers').select('id').eq(
+            'user_id', user_id
+        ).eq('yacht_id', yacht_id).eq('sync_status', 'active').limit(1).execute()
+
+        watcher_id = watcher_result.data[0]['id'] if watcher_result.data else None
+
+        # Get thread (yacht_id enforced, watcher_id for per-user isolation)
         # Use limit(1) instead of maybe_single() to avoid 204 exception issues
-        thread_result = supabase.table('email_threads').select('*').eq(
+        thread_query = supabase.table('email_threads').select('*').eq(
             'id', thread_id
-        ).eq('yacht_id', yacht_id).limit(1).execute()
+        ).eq('yacht_id', yacht_id)
+
+        # Filter by watcher_id (allow NULL for legacy data)
+        if watcher_id:
+            thread_query = thread_query.or_(f"watcher_id.eq.{watcher_id},watcher_id.is.null")
+
+        thread_result = thread_query.limit(1).execute()
 
         if not thread_result.data or len(thread_result.data) == 0:
             # DIAGNOSTIC: Check if thread exists but with different yacht_id
@@ -1095,29 +1150,29 @@ async def render_message(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected. Please connect your Outlook account.")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected. Please connect your Outlook account.")
 
     except TokenExpiredError:
         # This shouldn't happen with auto-refresh, but handle gracefully
-        raise HTTPException(status_code=401, detail="Email connection expired. Please reconnect.")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired. Please reconnect.")
 
     except TokenRevokedError:
         await mark_watcher_degraded(supabase, user_id, yacht_id, "Token revoked")
-        raise HTTPException(status_code=401, detail="Email connection revoked. Please reconnect.")
+        raise outlook_auth_error("outlook_token_revoked", "Email connection revoked. Please reconnect.")
 
     except TokenRefreshError as e:
         # Refresh failed - mark watcher degraded
         error_msg = str(e)
         await mark_watcher_degraded(supabase, user_id, yacht_id, f"Token refresh failed: {error_msg}")
         logger.error(f"[email/render] Token refresh failed: {error_msg}")
-        raise HTTPException(status_code=401, detail="Email connection expired and refresh failed. Please reconnect.")
+        raise outlook_auth_error("outlook_refresh_failed", "Email connection expired and refresh failed. Please reconnect.")
 
     except GraphApiError as e:
         # Graph API returned an error after retry
         error_msg = str(e)
         if e.status_code == 401:
             await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph API 401: {error_msg}")
-            raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect your Outlook account.")
+            raise outlook_auth_error("outlook_api_rejected", "Microsoft rejected the request. Please reconnect your Outlook account.")
         elif e.status_code == 404:
             # Message deleted in Outlook - mark as soft deleted in our DB
             from datetime import datetime, timezone
@@ -1150,7 +1205,7 @@ async def render_message(
             graph_status = e.response.status_code
             if graph_status == 401:
                 await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph 401: {error_msg}")
-                raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect.")
+                raise outlook_auth_error("outlook_api_rejected", "Microsoft rejected the request. Please reconnect.")
             elif graph_status == 404:
                 # Message deleted in Outlook - mark as soft deleted in our DB
                 from datetime import datetime, timezone
@@ -1423,23 +1478,23 @@ async def download_attachment(
         )
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected. Please connect your Outlook account.")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected. Please connect your Outlook account.")
 
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired. Please reconnect.")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired. Please reconnect.")
 
     except TokenRevokedError:
         await mark_watcher_degraded(supabase, user_id, yacht_id, "Token revoked during download")
-        raise HTTPException(status_code=401, detail="Email connection revoked. Please reconnect.")
+        raise outlook_auth_error("outlook_token_revoked", "Email connection revoked. Please reconnect.")
 
     except TokenRefreshError as e:
         await mark_watcher_degraded(supabase, user_id, yacht_id, f"Token refresh failed: {str(e)}")
-        raise HTTPException(status_code=401, detail="Email connection expired and refresh failed. Please reconnect.")
+        raise outlook_auth_error("outlook_refresh_failed", "Email connection expired and refresh failed. Please reconnect.")
 
     except GraphApiError as e:
         if e.status_code == 401:
             await mark_watcher_degraded(supabase, user_id, yacht_id, f"Graph API 401: {str(e)}")
-            raise HTTPException(status_code=401, detail="Microsoft rejected the request. Please reconnect.")
+            raise outlook_auth_error("outlook_api_rejected", "Microsoft rejected the request. Please reconnect.")
         elif e.status_code == 404:
             raise HTTPException(status_code=404, detail="Attachment not found in Outlook")
         else:
@@ -2121,20 +2176,32 @@ async def get_inbox_threads(
     try:
         offset = (page - 1) * page_size
 
+        # Get user's watcher_id for per-user thread isolation
+        watcher_result = supabase.table('email_watchers').select('id').eq(
+            'user_id', user_id
+        ).eq('yacht_id', yacht_id).eq('sync_status', 'active').limit(1).execute()
+
+        watcher_id = watcher_result.data[0]['id'] if watcher_result.data else None
+
         # If search query provided, use orchestration layer
         if q and len(q) >= 2:
             return await _search_email_threads(
-                supabase, yacht_id, user_id, q, direction, page, page_size, linked
+                supabase, yacht_id, user_id, q, direction, page, page_size, linked, watcher_id
             )
 
         # No search query - simple inbox scan
         # Note: direction is on email_messages, not email_threads.
         # Use last_inbound_at/last_outbound_at to filter by thread direction.
-        # DIAGNOSTIC: Include yacht_id in response to verify tenant filtering
+        # Filter by watcher_id for per-user isolation (or yacht_id for legacy data)
         base_query = supabase.table('email_threads').select(
-            'id, yacht_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at',
+            'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at',
             count='exact'
         ).eq('yacht_id', yacht_id)
+
+        # Filter by watcher_id if available (new data), allow NULL for legacy data
+        if watcher_id:
+            # Get threads owned by this user OR legacy threads (NULL watcher_id)
+            base_query = base_query.or_(f"watcher_id.eq.{watcher_id},watcher_id.is.null")
 
         # Apply direction filter using timestamp columns
         # inbound = threads that have received messages (last_inbound_at not null)
@@ -2165,10 +2232,14 @@ async def get_inbox_threads(
 
             # Fallback if RPC doesn't exist or returns no data
             if not result or not result.data:
-                # DIAGNOSTIC: Include yacht_id in fallback response
+                # Filter by watcher_id for per-user isolation
                 fallback_query = supabase.table('email_threads').select(
-                    'id, yacht_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
+                    'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
                 ).eq('yacht_id', yacht_id)
+
+                # Filter by watcher_id if available
+                if watcher_id:
+                    fallback_query = fallback_query.or_(f"watcher_id.eq.{watcher_id},watcher_id.is.null")
 
                 # Apply direction filter to fallback using timestamp columns
                 if direction == 'inbound':
@@ -2262,6 +2333,7 @@ async def _search_email_threads(
     page: int,
     page_size: int,
     include_linked: bool,
+    watcher_id: str = None,
 ) -> Dict[str, Any]:
     """
     Search email threads using hybrid search with entity extraction.
@@ -2272,6 +2344,10 @@ async def _search_email_threads(
     3. Vector semantic search on meta_embedding (if available)
 
     Returns results grouped by thread.
+
+    Args:
+        watcher_id: Optional watcher ID for per-user filtering. If provided,
+                   only returns threads owned by this watcher (or legacy NULL).
     """
     offset = (page - 1) * page_size
     thread_ids_with_scores = {}
@@ -2813,11 +2889,11 @@ async def save_attachment(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except TokenRevokedError:
-        raise HTTPException(status_code=401, detail="Email connection revoked")
+        raise outlook_auth_error("outlook_token_revoked", "Email connection revoked")
     except HTTPException:
         raise
     except Exception as e:
@@ -2951,11 +3027,11 @@ async def sync_now(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except TokenRevokedError:
-        raise HTTPException(status_code=401, detail="Email connection revoked")
+        raise outlook_auth_error("outlook_token_revoked", "Email connection revoked")
     except HTTPException:
         raise
     except Exception as e:
@@ -3195,11 +3271,11 @@ async def backfill_weblinks(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected. Please connect Outlook first.")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected. Please connect Outlook first.")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired. Please reconnect.")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired. Please reconnect.")
     except TokenRevokedError:
-        raise HTTPException(status_code=401, detail="Email connection revoked. Please reconnect.")
+        raise outlook_auth_error("outlook_token_revoked", "Email connection revoked. Please reconnect.")
     except HTTPException:
         raise
     except Exception as e:
@@ -3742,9 +3818,9 @@ async def debug_search_folders(
         return results
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except HTTPException:
         raise
     except Exception as e:
@@ -3856,9 +3932,9 @@ async def sync_all_folders(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except HTTPException:
         raise
     except Exception as e:
@@ -3932,9 +4008,9 @@ async def debug_graph_me(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except HTTPException:
         raise
     except Exception as e:
@@ -4033,9 +4109,9 @@ async def debug_inbox_compare(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except HTTPException:
         raise
     except Exception as e:
@@ -4203,9 +4279,9 @@ async def debug_force_sync_missing(
         }
 
     except TokenNotFoundError:
-        raise HTTPException(status_code=401, detail="Email not connected")
+        raise outlook_auth_error("outlook_not_connected", "Email not connected")
     except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Email connection expired")
+        raise outlook_auth_error("outlook_token_expired", "Email connection expired")
     except HTTPException:
         raise
     except Exception as e:
