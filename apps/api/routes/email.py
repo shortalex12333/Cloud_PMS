@@ -922,6 +922,24 @@ async def get_thread(
         ).eq('yacht_id', yacht_id).limit(1).execute()
 
         if not thread_result.data or len(thread_result.data) == 0:
+            # DIAGNOSTIC: Check if thread exists but with different yacht_id
+            # This helps identify data corruption vs auth mismatch
+            try:
+                any_thread_result = supabase.table('email_threads').select(
+                    'id, yacht_id, latest_subject'
+                ).eq('id', thread_id).limit(1).execute()
+                if any_thread_result.data and len(any_thread_result.data) > 0:
+                    actual_thread = any_thread_result.data[0]
+                    logger.warning(
+                        f"[email/thread] YACHT_ID_MISMATCH: thread_id={thread_id} exists with "
+                        f"yacht_id={actual_thread.get('yacht_id')} but user has yacht_id={yacht_id}. "
+                        f"Subject: {actual_thread.get('latest_subject', 'N/A')[:50]}"
+                    )
+                else:
+                    logger.info(f"[email/thread] Thread truly does not exist: thread_id={thread_id}")
+            except Exception as diag_err:
+                logger.debug(f"[email/thread] Diagnostic query failed: {diag_err}")
+
             logger.info(f"[email/thread] Thread not found: thread_id={thread_id}, yacht_id={yacht_id}")
             raise HTTPException(
                 status_code=404,
