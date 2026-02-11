@@ -7,7 +7,6 @@
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { Search, X, Settings, BookOpen, Mail } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,7 +172,6 @@ export default function SpotlightSearch({
     transitionTo,
     resetToIdle,
   } = useSituationState(user?.yachtId ?? null);
-  const router = useRouter();
 
   // SurfaceContext for email overlay (returns null if not in SurfaceProvider)
   const surfaceContext = useSurfaceSafe();
@@ -389,40 +387,29 @@ export default function SpotlightSearch({
       return; // Don't create situation for emails - overlay handles the UX
     }
 
-    // Navigate to detail page based on entity type
-    const routeMap: Record<EntityType, string> = {
-      'work_order': `/work-orders/${result.id}`,
-      'part': `/parts/${result.id}`,
-      'equipment': `/equipment/${result.id}`,
-      'document': `/documents/${result.id}`,
-      'fault': `/faults/${result.id}`,
-      'inventory': `/inventory/${result.id}`,
-      'email_thread': `/email/${result.id}`,
+    // Open entity in ContextPanel (single-surface architecture - no URL fragmentation)
+    // Build metadata for ContextPanel display
+    const contextMetadata = {
+      ...result.metadata,
+      title: result.title,
+      subtitle: result.subtitle,
+      type: result.type,
+      storage_path: result.metadata?.storage_path || result.metadata?.path,
+      name: result.title,
     };
 
-    const targetRoute = routeMap[entityType];
-
-    if (targetRoute) {
-      console.log('[SpotlightSearch] 🧭 Navigating to:', targetRoute);
-      router.push(targetRoute);
-      onClose?.(); // Close spotlight after navigation
+    if (surfaceContext) {
+      console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', entityType, result.id);
+      surfaceContext.showContext(entityType, result.id, contextMetadata);
+      onClose?.(); // Close spotlight after opening context
     } else {
-      console.warn('[SpotlightSearch] ⚠️ No route defined for entity type:', entityType);
-
-      // Fallback: Create situation view if no route exists
-      const situationMetadata = {
-        ...result.metadata,
-        title: result.title,
-        subtitle: result.subtitle,
-        type: result.type,
-        storage_path: result.metadata?.storage_path || result.metadata?.path,
-        name: result.title,
-      };
+      // Fallback for when not in SurfaceProvider (shouldn't happen in /app)
+      console.warn('[SpotlightSearch] ⚠️ No SurfaceContext - falling back to situation');
 
       // Create or transition to ACTIVE situation
       if (situation && situation.state === 'CANDIDATE') {
         await updateSituation({
-          evidence: situationMetadata as any,
+          evidence: contextMetadata as any,
         });
         await transitionTo('ACTIVE', 'User opened entity from CANDIDATE state');
       } else {
@@ -431,11 +418,11 @@ export default function SpotlightSearch({
           entity_id: result.id,
           domain,
           initial_state: 'ACTIVE',
-          metadata: situationMetadata,
+          metadata: contextMetadata,
         });
       }
     }
-  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext, router, onClose]);
+  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext, onClose]);
 
   /**
    * Handle situation close (any viewer)
