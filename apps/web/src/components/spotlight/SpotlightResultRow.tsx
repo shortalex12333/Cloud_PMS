@@ -95,7 +95,7 @@ export default function SpotlightResultRow({
       className={cn(
         'flex items-center gap-3 font-body',
         'mx-1.5 px-2.5 py-1.5',
-        'cursor-default select-none',
+        'cursor-pointer select-none',
         'rounded-celeste-sm',
         'transition-colors duration-celeste-fast',
         isSelected ? 'bg-celeste-blue' : 'bg-transparent'

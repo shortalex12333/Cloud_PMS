@@ -373,10 +373,12 @@ export default function SpotlightSearch({
   }, [createSituation, mapResultTypeToEntityType, mapEntityTypeToDomain]);
 
   /**
-   * Handle result open (double-click or Enter) - Creates ACTIVE situation
+   * Handle result open (double-click or Enter) - Navigate to detail page
    * For email_thread: Opens EmailOverlay with selected thread
    */
   const handleResultOpen = useCallback(async (result: SpotlightResult) => {
+    console.log('[SpotlightSearch] 🖱️ Click registered:', result.type, result.id);
+
     const entityType = mapResultTypeToEntityType(result.type);
     const domain = mapEntityTypeToDomain(entityType);
 
@@ -387,33 +389,53 @@ export default function SpotlightSearch({
       return; // Don't create situation for emails - overlay handles the UX
     }
 
-    // Store full result in metadata for viewer access
-    const situationMetadata = {
-      ...result.metadata,
-      title: result.title,
-      subtitle: result.subtitle,
-      type: result.type,
-      storage_path: result.metadata?.storage_path || result.metadata?.path,
-      name: result.title,
+    // Navigate to detail page based on entity type
+    const routeMap: Record<EntityType, string> = {
+      'work_order': `/work-orders/${result.id}`,
+      'part': `/parts/${result.id}`,
+      'equipment': `/equipment/${result.id}`,
+      'document': `/documents/${result.id}`,
+      'fault': `/faults/${result.id}`,
+      'inventory': `/inventory/${result.id}`,
+      'email_thread': `/email/${result.id}`,
     };
 
-    // Create or transition to ACTIVE situation
-    if (situation && situation.state === 'CANDIDATE') {
-      // Update evidence with metadata before transitioning
-      await updateSituation({
-        evidence: situationMetadata as any,
-      });
-      await transitionTo('ACTIVE', 'User opened entity from CANDIDATE state');
+    const targetRoute = routeMap[entityType];
+
+    if (targetRoute) {
+      console.log('[SpotlightSearch] 🧭 Navigating to:', targetRoute);
+      router.push(targetRoute);
+      onClose?.(); // Close spotlight after navigation
     } else {
-      await createSituation({
-        entity_type: entityType,
-        entity_id: result.id,
-        domain,
-        initial_state: 'ACTIVE',
-        metadata: situationMetadata,
-      });
+      console.warn('[SpotlightSearch] ⚠️ No route defined for entity type:', entityType);
+
+      // Fallback: Create situation view if no route exists
+      const situationMetadata = {
+        ...result.metadata,
+        title: result.title,
+        subtitle: result.subtitle,
+        type: result.type,
+        storage_path: result.metadata?.storage_path || result.metadata?.path,
+        name: result.title,
+      };
+
+      // Create or transition to ACTIVE situation
+      if (situation && situation.state === 'CANDIDATE') {
+        await updateSituation({
+          evidence: situationMetadata as any,
+        });
+        await transitionTo('ACTIVE', 'User opened entity from CANDIDATE state');
+      } else {
+        await createSituation({
+          entity_type: entityType,
+          entity_id: result.id,
+          domain,
+          initial_state: 'ACTIVE',
+          metadata: situationMetadata,
+        });
+      }
     }
-  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext]);
+  }, [situation, createSituation, transitionTo, updateSituation, mapResultTypeToEntityType, mapEntityTypeToDomain, surfaceContext, router, onClose]);
 
   /**
    * Handle situation close (any viewer)
@@ -750,7 +772,7 @@ export default function SpotlightSearch({
                       result={result}
                       isSelected={index === selectedIndex}
                       index={index}
-                      onClick={() => handleResultSelect(result, index)}
+                      onClick={() => handleResultOpen(result)}
                       onDoubleClick={() => handleResultOpen(result)}
                     />
                   ))}
