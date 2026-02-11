@@ -960,9 +960,13 @@ async def get_thread(
         # Get thread (yacht_id enforced)
         # NOTE: watcher_id filtering removed - was causing 404s due to .or_() filter bug
         # Service role bypasses RLS anyway, so yacht_id filter is sufficient for tenant isolation
-        thread_result = supabase.table('email_threads').select('*').eq(
-            'id', thread_id
-        ).eq('yacht_id', yacht_id).limit(1).execute()
+        # NOTE: Using explicit columns instead of select('*') to avoid vector column serialization issues
+        thread_result = supabase.table('email_threads').select(
+            'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, '
+            'has_attachments, participant_hashes, source, first_message_at, last_activity_at, '
+            'last_inbound_at, last_outbound_at, created_at, updated_at, extracted_tokens, '
+            'suggestions_generated_at, active_message_count'
+        ).eq('id', thread_id).eq('yacht_id', yacht_id).limit(1).execute()
 
         if not thread_result.data or len(thread_result.data) == 0:
             # DIAGNOSTIC: Check if thread exists but with different yacht_id
