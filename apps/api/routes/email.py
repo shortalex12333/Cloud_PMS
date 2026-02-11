@@ -2130,8 +2130,9 @@ async def get_inbox_threads(
         # No search query - simple inbox scan
         # Note: direction is on email_messages, not email_threads.
         # Use last_inbound_at/last_outbound_at to filter by thread direction.
+        # DIAGNOSTIC: Include yacht_id in response to verify tenant filtering
         base_query = supabase.table('email_threads').select(
-            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at',
+            'id, yacht_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at',
             count='exact'
         ).eq('yacht_id', yacht_id)
 
@@ -2164,8 +2165,9 @@ async def get_inbox_threads(
 
             # Fallback if RPC doesn't exist or returns no data
             if not result or not result.data:
+                # DIAGNOSTIC: Include yacht_id in fallback response
                 fallback_query = supabase.table('email_threads').select(
-                    'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
+                    'id, yacht_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
                 ).eq('yacht_id', yacht_id)
 
                 # Apply direction filter to fallback using timestamp columns
@@ -4039,6 +4041,86 @@ async def debug_inbox_compare(
     except Exception as e:
         logger.error(f"[email/debug/inbox-compare] Error: {e}")
         raise HTTPException(status_code=500, detail=f"Compare failed: {str(e)}")
+
+
+# ============================================================================
+# GET /email/debug/thread-yacht-check - Check thread yacht_id assignment
+# ============================================================================
+
+@router.get("/debug/thread-yacht-check")
+async def debug_thread_yacht_check(
+    thread_ids: str,  # Comma-separated thread IDs
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Debug endpoint: Check yacht_id assignment for specific threads.
+
+    Shows:
+    - User's current yacht_id from auth token
+    - Each thread's actual yacht_id in the database
+    - Whether there's a mismatch
+
+    Usage: /email/debug/thread-yacht-check?thread_ids=uuid1,uuid2,uuid3
+    """
+    user_yacht_id = auth['yacht_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    # Parse thread IDs
+    ids = [t.strip() for t in thread_ids.split(',') if t.strip()]
+
+    results = []
+    for thread_id in ids[:10]:  # Limit to 10 threads
+        try:
+            # Query thread WITHOUT yacht_id filter to see actual yacht_id
+            thread_result = supabase.table('email_threads').select(
+                'id, yacht_id, latest_subject, created_at'
+            ).eq('id', thread_id).limit(1).execute()
+
+            if thread_result.data:
+                thread = thread_result.data[0]
+                thread_yacht_id = thread.get('yacht_id')
+                results.append({
+                    'thread_id': thread_id,
+                    'exists': True,
+                    'thread_yacht_id': thread_yacht_id,
+                    'user_yacht_id': user_yacht_id,
+                    'match': thread_yacht_id == user_yacht_id,
+                    'subject': thread.get('latest_subject', 'N/A')[:50],
+                })
+            else:
+                results.append({
+                    'thread_id': thread_id,
+                    'exists': False,
+                    'thread_yacht_id': None,
+                    'user_yacht_id': user_yacht_id,
+                    'match': False,
+                    'error': 'Thread not found in database',
+                })
+        except Exception as e:
+            results.append({
+                'thread_id': thread_id,
+                'exists': False,
+                'error': str(e),
+            })
+
+    mismatches = [r for r in results if r.get('exists') and not r.get('match')]
+    not_found = [r for r in results if not r.get('exists')]
+
+    return {
+        'user_yacht_id': user_yacht_id,
+        'tenant_key_alias': auth['tenant_key_alias'],
+        'checked_count': len(results),
+        'mismatch_count': len(mismatches),
+        'not_found_count': len(not_found),
+        'results': results,
+        'diagnosis': (
+            'YACHT_ID_MISMATCH: Threads exist but belong to different yacht'
+            if mismatches else
+            'THREADS_NOT_FOUND: Threads do not exist in this tenant database'
+            if not_found else
+            'OK: All threads match user yacht_id'
+        ),
+    }
 
 
 # ============================================================================
