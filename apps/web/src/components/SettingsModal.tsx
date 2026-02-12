@@ -196,9 +196,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+      {/* Backdrop - semi-transparent with blur to show underlying content */}
       <div
-        className="absolute inset-0 bg-celeste-black/80 backdrop-blur-celeste-spotlight"
+        className="absolute inset-0 bg-celeste-black/60 backdrop-blur-[20px]"
         onClick={onClose}
       />
 
