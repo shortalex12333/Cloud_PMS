@@ -180,9 +180,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleLogout = async () => {
-    await logout();
     onClose();
-    router.push('/login');
+    await logout();
+    // Add logout param to prevent auto-login from cached session
+    router.push('/login?logout=1');
   };
 
   const handleSupport = () => {
