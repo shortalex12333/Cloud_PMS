@@ -373,6 +373,7 @@ async function buildSearchPayload(query: string, streamId: string, yachtId: stri
   return {
     query,
     query_type: 'free-text',
+    limit: 75, // Spotlight-style grouping needs domain diversity
     auth: session?.user ? {
       user_id: session.user.id,
       yacht_id: yachtId,
@@ -505,7 +506,7 @@ async function* streamSearch(
         body: JSON.stringify({
           query,
           yacht_id: yachtId,
-          limit: 20,
+          limit: 75, // Spotlight-style grouping needs domain diversity
         }),
         signal,
       });
@@ -590,7 +591,7 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
         body: JSON.stringify({
           query,
           yacht_id: yachtId,
-          limit: 20,
+          limit: 75, // Spotlight-style grouping needs domain diversity
         }),
         signal,
       });
