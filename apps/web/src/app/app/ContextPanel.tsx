@@ -14,7 +14,7 @@
 import React, { useEffect } from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { useAuth } from '@/hooks/useAuth';
-import { X, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FaultCard } from '@/components/cards/FaultCard';
 import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
@@ -96,9 +96,9 @@ function getReceivingActions(status: string, role: string): MicroAction[] {
 }
 
 export default function ContextPanel() {
-  const { contextPanel, hideContext } = useSurface();
+  const { contextPanel, hideContext, expandContext, collapseContext } = useSurface();
   const { user } = useAuth();
-  const { visible, entityType, entityId, entityData: initialData } = contextPanel;
+  const { visible, expanded, entityType, entityId, entityData: initialData } = contextPanel;
 
   const [entityData, setEntityData] = React.useState<Record<string, unknown> | undefined>(initialData);
   const [loading, setLoading] = React.useState(false);
@@ -183,6 +183,22 @@ export default function ContextPanel() {
       setEntityData(initialData);
     }
   }, [initialData]);
+
+  // Handle ESC key to collapse expanded panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && visible && expanded) {
+        e.preventDefault();
+        e.stopPropagation();
+        collapseContext();
+      }
+    };
+
+    if (visible && expanded) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [visible, expanded, collapseContext]);
 
   /**
    * Render the appropriate entity card based on entityType
@@ -339,15 +355,17 @@ export default function ContextPanel() {
   return (
     <div
       className={cn(
-        'absolute inset-y-0 right-0 w-[520px] bg-celeste-black/95 border-l border-celeste-text-secondary/50',
+        'absolute inset-y-0 right-0 bg-celeste-black/95 border-l border-celeste-text-secondary/50',
         'flex flex-col',
-        'transform transition-transform duration-300 ease-out z-[10001]',
+        'transform transition-all duration-300 ease-out z-[10001]',
         'backdrop-blur-sm shadow-2xl',
+        expanded ? 'w-[calc(100vw-80px)]' : 'w-celeste-context-panel',
         visible ? 'translate-x-0' : 'translate-x-full'
       )}
       data-testid="context-panel"
       data-entity-type={entityType}
       data-entity-id={entityId}
+      data-expanded={expanded}
     >
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-celeste-text-secondary/50 relative z-50 bg-celeste-black/95">
@@ -373,17 +391,33 @@ export default function ContextPanel() {
           </div>
         </div>
         <button
-          onClick={hideContext}
+          onClick={expanded ? collapseContext : hideContext}
           className="relative z-50 p-2 hover:bg-celeste-bg-tertiary rounded-lg transition-colors pointer-events-auto cursor-pointer"
-          aria-label="Close panel"
+          aria-label={expanded ? "Collapse to sidebar" : "Close panel"}
           type="button"
+          data-testid={expanded ? "collapse-context-panel" : "close-context-panel-chevron"}
         >
-          <ChevronRight className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
+          {expanded ? (
+            <ChevronLeft className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
+          ) : (
+            <ChevronRight className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
+          )}
         </button>
       </div>
 
       {/* Content - Render actual entity cards */}
-      <div className="flex-1 overflow-y-auto p-4" data-testid="context-panel-content">
+      <div
+        className={cn(
+          "flex-1 overflow-y-auto p-4",
+          !expanded && "cursor-pointer hover:bg-celeste-bg-tertiary/20 transition-colors"
+        )}
+        data-testid="context-panel-content"
+        onClick={() => {
+          if (!expanded && visible && entityType && entityId) {
+            expandContext();
+          }
+        }}
+      >
         {loading ? (
           <div className="text-center py-12" data-testid="context-panel-loading">
             <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />

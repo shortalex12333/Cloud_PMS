@@ -33,6 +33,7 @@ export interface EmailPanelState {
 
 export interface ContextPanelState {
   visible: boolean;
+  expanded: boolean;
   entityType?: string;
   entityId?: string;
   entityData?: Record<string, unknown>;
@@ -49,6 +50,8 @@ export interface SurfaceContextValue {
   hideEmail: () => void;
   showContext: (entityType: string, entityId: string, data?: Record<string, unknown>) => void;
   hideContext: () => void;
+  expandContext: () => void;
+  collapseContext: () => void;
   reset: () => void;
 
   // Utilities
@@ -79,6 +82,7 @@ export function SurfaceProvider({ children }: SurfaceProviderProps) {
 
   const [contextPanel, setContextPanel] = useState<ContextPanelState>({
     visible: false,
+    expanded: false,
   });
 
   // Show email panel (slides from left)
@@ -108,6 +112,7 @@ export function SurfaceProvider({ children }: SurfaceProviderProps) {
     (entityType: string, entityId: string, data?: Record<string, unknown>) => {
       setContextPanel({
         visible: true,
+        expanded: false,
         entityType,
         entityId,
         entityData: data,
@@ -122,14 +127,24 @@ export function SurfaceProvider({ children }: SurfaceProviderProps) {
 
   // Hide context panel
   const hideContext = useCallback(() => {
-    setContextPanel({ visible: false });
+    setContextPanel({ visible: false, expanded: false });
     setState(emailPanel.visible ? 'email-present' : 'search-dominant');
   }, [emailPanel.visible]);
+
+  // Expand context panel to full-screen
+  const expandContext = useCallback(() => {
+    setContextPanel((prev) => ({ ...prev, expanded: true }));
+  }, []);
+
+  // Collapse context panel back to sidebar
+  const collapseContext = useCallback(() => {
+    setContextPanel((prev) => ({ ...prev, expanded: false }));
+  }, []);
 
   // Reset to default state
   const reset = useCallback(() => {
     setEmailPanel({ visible: false });
-    setContextPanel({ visible: false });
+    setContextPanel({ visible: false, expanded: false });
     setState('search-dominant');
   }, []);
 
@@ -141,6 +156,8 @@ export function SurfaceProvider({ children }: SurfaceProviderProps) {
     hideEmail,
     showContext,
     hideContext,
+    expandContext,
+    collapseContext,
     reset,
     isSearchDominant: state === 'search-dominant',
     hasAnyPanel: emailPanel.visible || contextPanel.visible,
