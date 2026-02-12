@@ -146,8 +146,8 @@
     --celeste-min-h-small-divider: 20px;
 
     /* Custom Heights */
-    --celeste-height-element-xl: 56px;
-    --celeste-height-search-bar: 58px;
+    --celeste-height-element-xl: 92px;
+    --celeste-height-search-bar: 92px;
 
     /* Custom Backdrop Blurs */
     --celeste-backdrop-blur-md: 20px;
@@ -349,15 +349,13 @@
 }
 
 .dark .spotlight-panel {
-  /* Near-black panel like Apple Spotlight */
-  background: rgba(22, 22, 26, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  /* Spotlight-grade: no visible border, subtle elevation */
+  background: rgba(22, 24, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
 
-  /* Subtle shadow */
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    0 8px 32px rgba(0, 0, 0, 0.4);
+  /* Soft elevation - not harsh */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
 
 /* Spotlight scrollbar - thin, subtle */

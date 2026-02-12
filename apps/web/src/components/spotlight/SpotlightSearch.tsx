@@ -669,19 +669,19 @@ export default function SpotlightSearch({
         className
       )}
     >
-      {/* Backdrop - dark blue-gray like reference */}
+      {/* Backdrop - subtle dim, not dark prison */}
       {isModal && (
         <div
-          className="absolute inset-0 bg-[#1a1d24]/90 backdrop-blur-xl"
+          className="absolute inset-0 bg-[#0f1114]/65 backdrop-blur-xl"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
-      {/* Spotlight Container - constrained width */}
+      {/* Spotlight Container - 720px centered, Spotlight-grade */}
       <div
         className={cn(
-          'w-full max-w-celeste-content mx-auto px-4',
+          'w-full max-w-[720px] mx-auto',
           isModal && 'relative z-10'
         )}
       >
@@ -695,11 +695,11 @@ export default function SpotlightSearch({
           )}
           data-email-scope={emailScopeActive}
         >
-          {/* Search Input */}
+          {/* Search Input - 24px padding, 92px height */}
           <div
             className={cn(
-              'flex items-center gap-3 px-4 h-celeste-element-xl',
-              (hasQuery || hasResults) && 'border-b border-celeste-divider'
+              'flex items-center gap-4 px-6 h-celeste-element-xl',
+              (hasQuery || hasResults) && 'border-b border-white/[0.04]'
             )}
           >
             {/* Email Scope Badge */}
@@ -711,7 +711,7 @@ export default function SpotlightSearch({
             <Search
               className={cn(
                 'flex-shrink-0 w-5 h-5',
-                emailScopeActive ? 'text-celeste-accent' : 'text-[#6b7280]'
+                emailScopeActive ? 'text-celeste-accent' : 'text-[#626B78]'
               )}
               strokeWidth={1.5}
             />
@@ -737,7 +737,7 @@ export default function SpotlightSearch({
                 className={cn(
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
-                  'text-celeste-xl text-white',
+                  'text-[22px] text-white',
                   'font-normal tracking-[-0.01em]',
                   'caret-white',
                   'relative z-10'
@@ -747,14 +747,14 @@ export default function SpotlightSearch({
                 autoCapitalize="off"
                 spellCheck={false}
               />
-              {/* Animated rolling placeholder - muted like Apple */}
+              {/* Animated rolling placeholder - maritime grey */}
               {!query && isMounted && placeholderIndex >= 0 && (
                 <div
                   className="absolute inset-0 flex items-center pointer-events-none overflow-hidden"
                 >
                   <span
                     className={cn(
-                      'text-celeste-xl text-[#6b7280] font-normal tracking-[-0.01em]',
+                      'text-[22px] text-[#5E6672] font-normal tracking-[-0.01em]',
                       'transition-all duration-[400ms] ease-out',
                       isAnimating
                         ? 'opacity-0 -translate-y-3'
@@ -1011,7 +1011,7 @@ export default function SpotlightSearch({
               'flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium',
               emailScopeActive
                 ? 'bg-celeste-accent text-white hover:bg-celeste-accent-hover'
-                : 'text-[#9ca3af] hover:text-[#d1d5db] hover:bg-white/5'
+                : 'text-[#727B88] hover:text-[#9AA3B0] hover:bg-white/[0.03]'
             )}
             aria-label={emailScopeActive ? 'Exit Email Scope' : 'Search Email'}
             data-testid="email-scope-toggle"
@@ -1024,7 +1024,7 @@ export default function SpotlightSearch({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="p-2.5 rounded-full text-[#9ca3af] hover:text-[#d1d5db] hover:bg-white/5 transition-colors"
+                className="p-2.5 rounded-full text-[#727B88] hover:text-[#9AA3B0] hover:bg-white/[0.03] transition-colors"
                 aria-label="Ledger"
               >
                 <BookOpen className="w-5 h-5" strokeWidth={1.5} />
@@ -1055,7 +1055,7 @@ export default function SpotlightSearch({
           {/* Settings Button */}
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2.5 rounded-full text-[#9ca3af] hover:text-[#d1d5db] hover:bg-white/5 transition-colors"
+            className="p-2.5 rounded-full text-[#727B88] hover:text-[#9AA3B0] hover:bg-white/[0.03] transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" strokeWidth={1.5} />
