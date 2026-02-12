@@ -225,6 +225,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <SettingsRow label="Role" value={user?.role?.replace('_', ' ') || '—'} />
           <SettingsRow label="Yacht" value={user?.yachtName || '—'} />
 
+          <div className="flex items-center justify-between h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle">
+            <span className="text-celeste-sm text-celeste-text-primary">Switch Yacht</span>
+            <button
+              onClick={() => {/* TODO: wire up yacht switching */}}
+              className="text-celeste-xs text-celeste-accent hover:text-celeste-accent-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
+            >
+              Change
+            </button>
+          </div>
+
           {/* Integrations Section */}
           <SectionHeader>Integrations</SectionHeader>
 
