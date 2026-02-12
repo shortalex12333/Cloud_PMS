@@ -60,31 +60,31 @@ export default function SpotlightResultRow({
         'relative',
         'cursor-pointer select-none',
         'transition-colors duration-celeste-fast',
-        // Height and padding
-        'min-h-[52px] sm:min-h-[56px]',
-        'py-2.5 px-5',
-        // Hover: subtle background
-        'hover:bg-celeste-accent-subtle',
-        // Selected: slightly darker bg (not full teal block)
-        isSelected && 'bg-celeste-accent-subtle',
-        // Top match gets subtle distinction
-        isTopMatch && !isSelected && 'bg-celeste-bg-tertiary/30'
+        // Height and padding - generous like Apple
+        'min-h-[56px]',
+        'py-3 px-5',
+        // Hover: very subtle
+        'hover:bg-celeste-bg-tertiary/40',
+        // Selected: subtle, not bold
+        isSelected && 'bg-celeste-bg-tertiary/60',
+        // Top match gets minimal distinction
+        isTopMatch && !isSelected && 'bg-celeste-bg-tertiary/20'
       )}
     >
-      {/* Left accent bar - appears on selection (OS feel) */}
+      {/* Left accent bar - subtle, appears on selection (OS feel) */}
       {isSelected && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-8 bg-celeste-accent rounded-r-sm"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-celeste-accent rounded-r-sm"
           aria-hidden="true"
         />
       )}
 
       {/* Content - typography carries hierarchy, no icons */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-1">
         <p
           className={cn(
-            // Title: text-celeste-base, weight 600
-            'text-celeste-base font-semibold leading-tight',
+            // Title: slightly larger, medium weight for clarity
+            'text-[15px] font-medium leading-snug',
             'truncate',
             isSelected
               ? 'text-celeste-text-title'
@@ -96,10 +96,10 @@ export default function SpotlightResultRow({
         {result.subtitle && (
           <p
             className={cn(
-              // Subline: text-celeste-sm, weight 400, muted
-              'text-celeste-sm font-normal leading-tight',
+              // Subtitle: smaller, muted - clear hierarchy
+              'text-[13px] font-normal leading-snug',
               'truncate',
-              'text-celeste-text-secondary'
+              'text-celeste-text-muted'
             )}
           >
             {result.subtitle}

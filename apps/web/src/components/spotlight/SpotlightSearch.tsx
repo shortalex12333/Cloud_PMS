@@ -202,8 +202,15 @@ export default function SpotlightSearch({
   const surfaceContext = useSurfaceSafe();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [placeholderIndex, setPlaceholderIndex] = useState(-1); // -1 = not mounted yet
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Fix hydration: only show placeholder after mount
+  useEffect(() => {
+    setIsMounted(true);
+    setPlaceholderIndex(0);
+  }, []);
   const [showSettings, setShowSettings] = useState(false);
   // Local state fallback when not in SurfaceProvider
   const [localShowEmailList, setLocalShowEmailList] = useState(false);
@@ -662,10 +669,10 @@ export default function SpotlightSearch({
         className
       )}
     >
-      {/* Backdrop */}
+      {/* Backdrop - dark blue-gray like reference */}
       {isModal && (
         <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-md"
+          className="absolute inset-0 bg-[#1a1d24]/90 backdrop-blur-xl"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -704,9 +711,9 @@ export default function SpotlightSearch({
             <Search
               className={cn(
                 'flex-shrink-0 w-5 h-5',
-                emailScopeActive ? 'text-celeste-accent' : 'text-celeste-text-secondary'
+                emailScopeActive ? 'text-celeste-accent' : 'text-[#6b7280]'
               )}
-              strokeWidth={1.8}
+              strokeWidth={1.5}
             />
 
             <div className="flex-1 h-full relative">
@@ -740,14 +747,14 @@ export default function SpotlightSearch({
                 autoCapitalize="off"
                 spellCheck={false}
               />
-              {/* Animated rolling placeholder */}
-              {!query && (
+              {/* Animated rolling placeholder - muted like Apple */}
+              {!query && isMounted && placeholderIndex >= 0 && (
                 <div
                   className="absolute inset-0 flex items-center pointer-events-none overflow-hidden"
                 >
                   <span
                     className={cn(
-                      'text-celeste-xl text-celeste-text-secondary font-normal tracking-[-0.01em]',
+                      'text-celeste-xl text-[#6b7280] font-normal tracking-[-0.01em]',
                       'transition-all duration-[400ms] ease-out',
                       isAnimating
                         ? 'opacity-0 -translate-y-3'
@@ -1004,7 +1011,7 @@ export default function SpotlightSearch({
               'flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium',
               emailScopeActive
                 ? 'bg-celeste-accent text-white hover:bg-celeste-accent-hover'
-                : 'text-celeste-text-secondary hover:text-white hover:bg-white/10'
+                : 'text-[#9ca3af] hover:text-[#d1d5db] hover:bg-white/5'
             )}
             aria-label={emailScopeActive ? 'Exit Email Scope' : 'Search Email'}
             data-testid="email-scope-toggle"
@@ -1017,7 +1024,7 @@ export default function SpotlightSearch({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="p-2.5 rounded-full text-celeste-text-secondary hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2.5 rounded-full text-[#9ca3af] hover:text-[#d1d5db] hover:bg-white/5 transition-colors"
                 aria-label="Ledger"
               >
                 <BookOpen className="w-5 h-5" strokeWidth={1.5} />
@@ -1048,7 +1055,7 @@ export default function SpotlightSearch({
           {/* Settings Button */}
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2.5 rounded-full text-celeste-text-secondary hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2.5 rounded-full text-[#9ca3af] hover:text-[#d1d5db] hover:bg-white/5 transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" strokeWidth={1.5} />
