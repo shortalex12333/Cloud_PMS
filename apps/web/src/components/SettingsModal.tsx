@@ -186,7 +186,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleSupport = () => {
-    window.location.href = 'mailto:support@celeste7.ai?subject=CelesteOS Support';
+    window.location.href = 'mailto:contact@celeste7.ai?subject=Reported Issue';
   };
 
   if (!isOpen) return null;
