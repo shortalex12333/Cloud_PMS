@@ -1,15 +1,10 @@
 'use client';
 
 /**
- * SettingsModal - CelesteOS Settings Interface
+ * SettingsModal - CelesteOS Settings
  *
- * OS-style system panel. NOT a form. NOT a dashboard.
- *
- * Design:
- * - ONE outer container with shadow
- * - Flat rows with subtle dividers
- * - No nested boxes
- * - Text-based controls
+ * Apple-quality system panel.
+ * Actions at top. Status rows cascade below.
  */
 
 import { X, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
@@ -18,7 +13,6 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthSession, waitForSession } from '@/hooks/useAuthSession';
-import { SettingsSection, SettingsRow } from '@/components/settings';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -42,16 +36,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user, logout } = useAuth();
   const { accessToken, isReady, isAuthenticated, refreshToken } = useAuthSession();
 
-  // Microsoft integration state
   const [outlookStatus, setOutlookStatus] = useState<IntegrationStatus | null>(null);
   const [outlookLoading, setOutlookLoading] = useState(true);
   const [outlookError, setOutlookError] = useState<string | null>(null);
   const [connectingOutlook, setConnectingOutlook] = useState(false);
-
-  // Theme state
   const [theme, setTheme] = useState<Theme>('system');
 
-  // Load theme preference from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('celeste_theme') as Theme;
@@ -59,109 +49,74 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   }, []);
 
-  // Apply theme
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const root = document.documentElement;
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
     if (theme === 'dark' || (theme === 'system' && systemDark)) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-
     localStorage.setItem('celeste_theme', theme);
   }, [theme]);
 
-  /**
-   * Fetch Microsoft Outlook status with bounded retries
-   */
   const fetchOutlookStatus = useCallback(async (retryCount = 0): Promise<void> => {
     if (!isReady || !isAuthenticated) {
       setOutlookLoading(false);
       return;
     }
-
     let token = accessToken;
-    if (!token) {
-      token = await waitForSession(5000);
-    }
-
+    if (!token) token = await waitForSession(5000);
     if (!token) {
       setOutlookError('Please sign in to view integrations.');
       setOutlookLoading(false);
       return;
     }
-
     try {
       setOutlookError(null);
       const res = await fetch('/api/integrations/outlook/status', {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (res.status === 401) {
         setOutlookError('Session expired. Please sign in again.');
         setOutlookLoading(false);
         return;
       }
-
-      if (!res.ok) {
-        throw new Error(`Status ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Status ${res.status}`);
       const data = await res.json();
       setOutlookStatus(data);
       setOutlookLoading(false);
-
     } catch (error) {
       if (retryCount < MAX_STATUS_RETRIES) {
         const delay = STATUS_RETRY_DELAYS[retryCount] || 4000;
         setTimeout(() => fetchOutlookStatus(retryCount + 1), delay);
         return;
       }
-
       setOutlookError('Unable to load integration status.');
       setOutlookLoading(false);
     }
   }, [isReady, isAuthenticated, accessToken]);
 
-  // Fetch status when modal opens
   useEffect(() => {
-    if (isOpen && isReady) {
-      fetchOutlookStatus();
-    }
+    if (isOpen && isReady) fetchOutlookStatus();
   }, [isOpen, isReady, fetchOutlookStatus]);
 
-  /**
-   * Connect to Microsoft Outlook
-   */
   const handleConnectOutlook = async () => {
     setConnectingOutlook(true);
     setOutlookError(null);
-
     try {
       let token = accessToken;
-      if (!token) {
-        token = await waitForSession(5000);
-      }
-
+      if (!token) token = await waitForSession(5000);
       if (!token) {
         setOutlookError('Unable to authenticate. Please sign in again.');
         setConnectingOutlook(false);
         return;
       }
-
       const res = await fetch('/api/integrations/outlook/auth-url', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
       });
-
       const data = await res.json();
-
       if (res.status === 401) {
         const freshToken = await refreshToken();
         if (!freshToken) {
@@ -169,53 +124,39 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           setConnectingOutlook(false);
           return;
         }
-
         const retryRes = await fetch('/api/integrations/outlook/auth-url', {
-          headers: {
-            Authorization: `Bearer ${freshToken}`,
-            'Cache-Control': 'no-cache',
-          },
+          headers: { Authorization: `Bearer ${freshToken}`, 'Cache-Control': 'no-cache' },
         });
-
         const retryData = await retryRes.json();
         if (retryRes.ok && retryData.url) {
           window.location.href = retryData.url;
           return;
         }
-
         setOutlookError('Authentication failed. Please sign in again.');
         setConnectingOutlook(false);
         return;
       }
-
       if (!res.ok) {
         setOutlookError(data.error || 'Failed to start connection');
         setConnectingOutlook(false);
         return;
       }
-
       if (data.url) {
         window.location.href = data.url;
       } else {
         setOutlookError('Invalid response from server');
         setConnectingOutlook(false);
       }
-
     } catch (error) {
       setOutlookError('Network error. Please check your connection.');
       setConnectingOutlook(false);
     }
   };
 
-  /**
-   * Disconnect from Microsoft Outlook
-   */
   const handleDisconnectOutlook = async () => {
     if (!confirm('Disconnect your Microsoft account?')) return;
-
     setOutlookLoading(true);
     setOutlookError(null);
-
     try {
       let token = accessToken;
       if (!token) token = await waitForSession(5000);
@@ -224,7 +165,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setOutlookLoading(false);
         return;
       }
-
       await fetch('/api/integrations/outlook/disconnect', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -259,158 +199,170 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center font-body">
-      {/* Backdrop */}
+      {/* Backdrop - heavy blur like Spotlight */}
       <div
-        className="absolute inset-0 bg-celeste-black/60 backdrop-blur-celeste-spotlight"
+        className="absolute inset-0 bg-celeste-black/70 backdrop-blur-celeste-spotlight"
         onClick={onClose}
       />
 
-      {/* Modal - ONE container, spotlight aesthetic */}
-      <div className="relative w-full max-w-celeste-modal-lg bg-celeste-bg-primary border border-celeste-border-subtle rounded-celeste-xl shadow-celeste-xl mx-[var(--celeste-spacing-4)] max-h-[85vh] overflow-hidden">
+      {/* Modal */}
+      <div className="relative w-full max-w-celeste-modal-lg bg-celeste-surface/95 backdrop-blur-celeste-spotlight border border-celeste-border-subtle rounded-celeste-xl shadow-celeste-xl mx-[var(--celeste-spacing-4)] max-h-[85vh] overflow-hidden">
 
-        {/* Header - minimal */}
-        <div className="flex items-center justify-between px-[var(--celeste-spacing-6)] py-[var(--celeste-spacing-4)]">
-          <h2 className="text-celeste-lg font-semibold text-celeste-text-primary">Settings</h2>
+        {/* Header */}
+        <div className="flex items-center justify-between px-[var(--celeste-spacing-5)] py-[var(--celeste-spacing-4)]">
+          <span className="text-celeste-base font-semibold text-celeste-text-primary">Settings</span>
           <button
             onClick={onClose}
-            className="p-[var(--celeste-spacing-2)] -mr-[var(--celeste-spacing-2)] hover:bg-celeste-bg-tertiary rounded-celeste-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
+            className="p-[var(--celeste-spacing-1)] hover:bg-celeste-white/10 rounded-celeste-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
           >
-            <X className="h-5 w-5 text-celeste-text-muted" />
+            <X className="h-4 w-4 text-celeste-text-muted" />
           </button>
         </div>
 
-        {/* Content - flat, no nested boxes */}
-        <div className="px-[var(--celeste-spacing-6)] pb-[var(--celeste-spacing-6)] overflow-y-auto max-h-[calc(85vh-72px)]">
+        {/* Content */}
+        <div className="px-[var(--celeste-spacing-5)] pb-[var(--celeste-spacing-5)] overflow-y-auto max-h-[calc(85vh-60px)]">
 
-          {/* Identity */}
-          <SettingsSection title="Identity">
-            <SettingsRow label="Name" value={user?.displayName || '—'} />
-            <SettingsRow label="Email" value={user?.email || '—'} />
-            <SettingsRow label="Role" value={user?.role?.replace('_', ' ') || '—'} />
-            <SettingsRow label="Active Yacht" value={user?.yachtName || '—'} divider={false} />
-          </SettingsSection>
-
-          {/* Spacer */}
-          <div className="h-[var(--celeste-spacing-6)]" />
-
-          {/* Microsoft */}
-          <SettingsSection title="Microsoft">
-            {/* Error */}
-            {outlookError && (
-              <div className="flex items-center gap-[var(--celeste-spacing-2)] py-[var(--celeste-spacing-3)] border-b border-celeste-border-subtle">
-                <AlertCircle className="h-4 w-4 text-restricted-red flex-shrink-0" />
-                <span className="text-celeste-sm text-restricted-red flex-1">{outlookError}</span>
-                <button
-                  onClick={handleRetryStatus}
-                  className="p-[var(--celeste-spacing-1)] hover:bg-celeste-bg-tertiary rounded-celeste-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
-                  aria-label="Retry"
-                >
-                  <RefreshCw className="h-4 w-4 text-restricted-red" />
-                </button>
-              </div>
-            )}
-
-            {/* Status row with inline action */}
-            <SettingsRow label="Status" divider={false}>
-              <div className="flex items-center gap-[var(--celeste-spacing-3)]">
-                {outlookLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-celeste-text-muted" />
-                ) : (
-                  <>
-                    <span className={cn(
-                      'text-celeste-sm font-medium',
-                      outlookStatus?.connected ? 'text-restricted-green' : 'text-celeste-text-secondary'
-                    )}>
-                      {outlookStatus?.connected ? 'Connected' : 'Disconnected'}
-                    </span>
-                    {outlookStatus?.connected ? (
-                      <button
-                        onClick={handleDisconnectOutlook}
-                        className="text-celeste-sm text-celeste-text-muted hover:text-celeste-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm px-[var(--celeste-spacing-2)] py-[var(--celeste-spacing-1)]"
-                      >
-                        Disconnect
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleConnectOutlook}
-                        disabled={showConnectLoading}
-                        className="text-celeste-sm text-celeste-accent hover:text-celeste-accent-hover transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm px-[var(--celeste-spacing-2)] py-[var(--celeste-spacing-1)]"
-                      >
-                        {connectingOutlook ? 'Connecting...' : 'Connect'}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </SettingsRow>
-          </SettingsSection>
-
-          {/* Spacer */}
-          <div className="h-[var(--celeste-spacing-6)]" />
-
-          {/* Appearance */}
-          <SettingsSection title="Appearance">
-            <SettingsRow label="Theme" divider={false}>
-              {/* Text-based segmented control */}
-              <div className="flex items-center text-celeste-sm">
-                <button
-                  onClick={() => setTheme('system')}
-                  className={cn(
-                    'px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-l-celeste-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent',
-                    theme === 'system'
-                      ? 'bg-celeste-bg-tertiary text-celeste-text-primary font-medium'
-                      : 'text-celeste-text-muted hover:text-celeste-text-secondary'
-                  )}
-                >
-                  System
-                </button>
-                <button
-                  onClick={() => setTheme('light')}
-                  className={cn(
-                    'px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent',
-                    theme === 'light'
-                      ? 'bg-celeste-bg-tertiary text-celeste-text-primary font-medium'
-                      : 'text-celeste-text-muted hover:text-celeste-text-secondary'
-                  )}
-                >
-                  Light
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={cn(
-                    'px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-r-celeste-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent',
-                    theme === 'dark'
-                      ? 'bg-celeste-bg-tertiary text-celeste-text-primary font-medium'
-                      : 'text-celeste-text-muted hover:text-celeste-text-secondary'
-                  )}
-                >
-                  Dark
-                </button>
-              </div>
-            </SettingsRow>
-          </SettingsSection>
-
-          {/* Spacer */}
-          <div className="h-[var(--celeste-spacing-6)]" />
-
-          {/* Support & Session - combined for minimal footprint */}
-          <div className="flex items-center justify-between py-[var(--celeste-spacing-3)]">
-            <button
-              onClick={handleOpenSupport}
-              className="text-celeste-sm text-celeste-text-muted hover:text-celeste-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
-            >
-              Report Issue
-            </button>
+          {/* ACTIONS - Top, header treatment */}
+          <div className="flex items-center gap-[var(--celeste-spacing-4)] pb-[var(--celeste-spacing-4)] border-b border-celeste-border-subtle">
             <button
               onClick={handleLogout}
-              className="text-celeste-sm text-celeste-text-muted hover:text-celeste-text-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
+              className="text-celeste-sm font-medium text-celeste-text-primary hover:text-celeste-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
             >
               Sign Out
             </button>
+            <button
+              onClick={handleOpenSupport}
+              className="text-celeste-sm font-medium text-celeste-text-secondary hover:text-celeste-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
+            >
+              Report Issue
+            </button>
+          </div>
+
+          {/* IDENTITY - Cascade rows */}
+          <div className="pt-[var(--celeste-spacing-4)]">
+            <Row label="Name" value={user?.displayName || '—'} />
+            <Row label="Email" value={user?.email || '—'} />
+            <Row label="Role" value={user?.role?.replace('_', ' ') || '—'} emphasis />
+            <Row label="Yacht" value={user?.yachtName || '—'} emphasis />
+          </div>
+
+          {/* MICROSOFT */}
+          <div className="pt-[var(--celeste-spacing-4)]">
+            {outlookError && (
+              <div className="flex items-center gap-[var(--celeste-spacing-2)] py-[var(--celeste-spacing-2)]">
+                <AlertCircle className="h-3.5 w-3.5 text-restricted-red flex-shrink-0" />
+                <span className="text-celeste-xs text-restricted-red flex-1">{outlookError}</span>
+                <button onClick={handleRetryStatus} className="p-1 hover:bg-celeste-white/10 rounded-celeste-sm">
+                  <RefreshCw className="h-3 w-3 text-restricted-red" />
+                </button>
+              </div>
+            )}
+            <Row label="Microsoft">
+              {outlookLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-celeste-text-muted" />
+              ) : (
+                <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+                  <span className={cn(
+                    'inline-flex items-center gap-[var(--celeste-spacing-1)] text-celeste-sm',
+                    outlookStatus?.connected ? 'text-celeste-text-primary' : 'text-celeste-text-muted'
+                  )}>
+                    {outlookStatus?.connected && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-restricted-green" />
+                    )}
+                    {outlookStatus?.connected ? 'Connected' : 'Not connected'}
+                  </span>
+                  {outlookStatus?.connected ? (
+                    <button
+                      onClick={handleDisconnectOutlook}
+                      className="text-celeste-xs text-celeste-text-muted hover:text-celeste-text-secondary transition-colors ml-[var(--celeste-spacing-2)]"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnectOutlook}
+                      disabled={showConnectLoading}
+                      className="text-celeste-xs text-celeste-accent hover:text-celeste-accent-hover transition-colors disabled:opacity-50 ml-[var(--celeste-spacing-2)]"
+                    >
+                      {connectingOutlook ? 'Connecting…' : 'Connect'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </Row>
+          </div>
+
+          {/* APPEARANCE */}
+          <div className="pt-[var(--celeste-spacing-4)]">
+            <Row label="Appearance">
+              <SegmentedControl
+                value={theme}
+                onChange={setTheme}
+                options={[
+                  { value: 'system', label: 'System' },
+                  { value: 'light', label: 'Light' },
+                  { value: 'dark', label: 'Dark' },
+                ]}
+              />
+            </Row>
           </div>
 
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+   COMPONENTS
+   ============================================================================ */
+
+interface RowProps {
+  label: string;
+  value?: string;
+  emphasis?: boolean;
+  children?: React.ReactNode;
+}
+
+function Row({ label, value, emphasis, children }: RowProps) {
+  return (
+    <div className="flex items-center justify-between py-[var(--celeste-spacing-2)] min-h-[36px]">
+      <span className="text-celeste-sm text-celeste-text-muted">{label}</span>
+      {value !== undefined ? (
+        <span className={cn(
+          'text-celeste-sm text-right truncate max-w-[60%]',
+          emphasis ? 'font-medium text-celeste-text-primary' : 'text-celeste-text-secondary'
+        )}>
+          {value}
+        </span>
+      ) : children}
+    </div>
+  );
+}
+
+interface SegmentedControlProps {
+  value: string;
+  onChange: (value: Theme) => void;
+  options: { value: string; label: string }[];
+}
+
+function SegmentedControl({ value, onChange, options }: SegmentedControlProps) {
+  return (
+    <div className="inline-flex items-center bg-celeste-bg-tertiary/50 rounded-celeste-md p-[2px]">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value as Theme)}
+          className={cn(
+            'px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] text-celeste-xs rounded-celeste-sm transition-all',
+            value === option.value
+              ? 'bg-celeste-surface text-celeste-text-primary font-medium shadow-celeste-sm'
+              : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
