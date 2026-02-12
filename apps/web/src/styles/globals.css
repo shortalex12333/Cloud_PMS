@@ -329,32 +329,34 @@
 
 .spotlight-panel {
   /* Glass material - Celeste light mode */
-  background: rgba(239, 239, 241, 0.92);  /* #EFEFF1 */
-  backdrop-filter: blur(72px) saturate(180%);
-  -webkit-backdrop-filter: blur(72px) saturate(180%);
+  background: rgba(239, 239, 241, 0.95);  /* #EFEFF1 */
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
 
-  /* Large radius */
-  border-radius: 18px;
+  /* Radius */
+  border-radius: 14px;
 
-  /* Dramatic shadow - floating effect */
+  /* Subtle border */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  /* Restrained shadow - not dramatic */
   box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.06),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.08),
-    0 24px 48px rgba(0, 0, 0, 0.16);
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.12);
 
   /* Overflow handling */
   overflow: hidden;
 }
 
 .dark .spotlight-panel {
-  /* Glass material - Celeste dark mode (deeper black) */
-  background: rgba(10, 10, 10, 0.94);  /* #0A0A0A */
+  /* Glass material - Celeste dark mode */
+  background: rgba(18, 18, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  /* Subtle shadow in dark mode */
   box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.06),
-    0 2px 4px rgba(0, 0, 0, 0.3),
-    0 8px 16px rgba(0, 0, 0, 0.4),
-    0 24px 48px rgba(0, 0, 0, 0.6);
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 /* Spotlight scrollbar - thin, subtle */
@@ -409,128 +411,45 @@
 
 /* ============================================================================
    SPOTLIGHT RESULT TYPOGRAPHY SYSTEM (sr-*)
-   Font: Eloquia Text (falls back to SF Pro / system)
-   Hierarchy: 600 → 500 → 400 (structural, not loud)
+   Design: Apple Spotlight-inspired, disciplined, restrained
+   Typography carries hierarchy - no icons
    ============================================================================ */
 
-/* Row container - consistent touch targets */
-.sr-row {
-  min-height: 52px;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-@media (max-width: 640px) {
-  .sr-row {
-    min-height: 56px;
-    padding: 12px 16px;
-  }
-}
-
-/* Section Header - domain grouping labels */
+/* Section Header - domain grouping labels
+   - text-celeste-xs
+   - weight 600
+   - uppercase
+   - tracking-wide
+   - muted color
+   - margin-top: 16px (spacing-4)
+   - margin-bottom: 8px (spacing-2)
+*/
 .sr-section-header {
   font-family: var(--celeste-font-body);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.2;
-  color: var(--celeste-text-secondary);
+  color: var(--celeste-text-muted);
 }
 
-/* Result Title - primary entity name (single line, truncate) */
-.sr-title {
-  font-family: var(--celeste-font-body);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--celeste-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .sr-title {
-    font-size: 14px;
-  }
-}
-
-/* Result Subline - context/location/snippet (single line, truncate) */
-.sr-sub {
-  font-family: var(--celeste-font-body);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.3;
-  color: var(--celeste-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .sr-sub {
-    font-size: 12px;
-  }
-}
-
-/* Right Meta - status/date (single line) */
-.sr-meta {
-  font-family: var(--celeste-font-body);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--celeste-text-secondary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Top Match Label - kicker above first result */
-.sr-top-label {
-  font-family: var(--celeste-font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1;
-  color: var(--celeste-text-secondary);
-}
-
-/* Title/Subline gap within result */
-.sr-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-/* Section spacing */
+/* Section spacing - structural, not decorative */
 .sr-section {
-  margin-top: 16px;
+  margin-top: 8px;
 }
 
 .sr-section:first-child {
   margin-top: 0;
 }
 
+/* Section header wrapper - proper spacing */
 .sr-section-header-wrapper {
-  padding-bottom: 8px;
+  padding: 12px 20px 6px 20px;
 }
 
-/* Row divider - hairline, low contrast */
+/* Row divider - hairline, very low contrast */
 .sr-divider {
   height: 1px;
   background: var(--celeste-border-subtle);
-}
-
-/* Selected row state - background + higher title contrast */
-.sr-row-selected {
-  background: var(--celeste-accent-subtle);
-}
-
-.sr-row-selected .sr-title {
-  color: var(--celeste-text-title);
 }

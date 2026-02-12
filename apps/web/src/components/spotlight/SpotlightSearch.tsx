@@ -788,27 +788,7 @@ export default function SpotlightSearch({
             className="px-4 py-2"
           />
 
-          {/* Entity Line - what Celeste understood (shown for ALL queries per UX doctrine) */}
-          {hasQuery && (() => {
-            // MVP: Simple tokenization - extract meaningful terms from query
-            // Remove common stop words for clarity
-            const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'to', 'of', 'in', 'for', 'on', 'at', 'by', 'with', 'from']);
-            const terms = query.toLowerCase()
-              .split(/\s+/)
-              .filter(term => term.length > 0 && !stopWords.has(term))
-              .map(term => term.replace(/[^a-z0-9-]/g, '')) // Remove punctuation
-              .filter(term => term.length > 0);
-
-            const uniqueTerms = Array.from(new Set(terms));
-
-            return (
-              <EntityLine
-                entities={uniqueTerms.length > 0 ? [
-                  { label: 'Understood', value: uniqueTerms.join(', ') }
-                ] : []}
-              />
-            );
-          })()}
+          {/* Entity Line removed - clutter that Apple wouldn't include */}
 
           {/* Suggested Actions - backend-provided action buttons */}
           {hasQuery && actionSuggestions.length > 0 && (
@@ -927,17 +907,11 @@ export default function SpotlightSearch({
 
                     return (
                       <div key={group.domain} className="sr-section">
-                        {/* Domain Header */}
-                        <div className="sr-section-header-wrapper px-4 flex items-center gap-2 border-t border-celeste-divider first:border-t-0">
-                          <DomainIcon className="w-3.5 h-3.5 text-celeste-text-muted" strokeWidth={1.5} />
+                        {/* Domain Header - no icons, no counts (discipline) */}
+                        <div className="sr-section-header-wrapper">
                           <span className="sr-section-header">
                             {group.domain}
                           </span>
-                          {group.totalCount > 4 && (
-                            <span className="sr-meta ml-auto">
-                              {group.totalCount}
-                            </span>
-                          )}
                         </div>
 
                         {/* Domain Results */}
