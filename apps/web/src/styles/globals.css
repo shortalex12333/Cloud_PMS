@@ -100,10 +100,64 @@
     --celeste-spacing-6: 1.5rem;
     --celeste-spacing-8: 2rem;
 
+    /* Border Radius */
+    --celeste-border-radius-sm: 4px;
+    --celeste-border-radius-md: 8px;
+    --celeste-border-radius-xs: 6px;
+    --celeste-border-radius-xl: 20px;
+
     /* Layout */
     --celeste-max-width-search: 680px;
     --celeste-max-width-modal: 400px;
     --celeste-page-top-offset: 18vh;
+
+    /* Custom Widths */
+    --celeste-width-panel-narrow: 340px;
+    --celeste-width-filter-medium: 140px;
+    --celeste-width-filter-small: 120px;
+    --celeste-width-filter-large: 180px;
+    --celeste-width-filter-x-small: 70px;
+    --celeste-width-filter-xx-small: 100px;
+    --celeste-width-context-panel: 520px;
+    --celeste-width-panel-medium: 320px;
+
+    /* Custom Max-Widths */
+    --celeste-max-width-content: 680px;
+    --celeste-max-w-email-overlay: 1400px;
+    --celeste-max-w-modal-lg: 500px;
+    --celeste-max-w-modal-md: 425px;
+    --celeste-max-w-modal-sm: 320px;
+    --celeste-max-w-modal-xs: 280px;
+    --celeste-max-w-panel-medium: 300px;
+
+    /* Custom Max-Heights */
+    --celeste-max-h-search-results: 420px;
+    --celeste-max-h-list-sm: 240px;
+    --celeste-max-h-list-md: 400px;
+    --celeste-max-h-module-full: 600px;
+
+    /* Custom Min-Widths */
+    --celeste-min-w-dropdown-lg: 160px;
+
+    /* Custom Min-Heights */
+    --celeste-min-h-message-body: 200px;
+    --celeste-min-h-page-content: 400px;
+    --celeste-min-h-list-content: 300px;
+    --celeste-min-h-small-divider: 20px;
+
+    /* Custom Heights */
+    --celeste-height-element-xl: 50px;
+    --celeste-height-search-bar: 52px;
+
+    /* Custom Backdrop Blurs */
+    --celeste-backdrop-blur-md: 20px;
+
+    /* Custom Font Sizes */
+    --celeste-font-size-xxs: 9px;
+
+    /* Custom Positions */
+    --celeste-top-header: 89px;
+
 
     /* Motion */
     --celeste-duration-fast: 100ms;
@@ -202,8 +256,8 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: var(--celeste-spacing-2);
+  height: var(--celeste-spacing-2);
 }
 
 ::-webkit-scrollbar-track {
@@ -256,7 +310,7 @@
 @keyframes slide-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(calc(-1 * var(--celeste-spacing-2)));
   }
   to {
     opacity: 1;
@@ -310,17 +364,17 @@
 }
 
 .spotlight-scrollbar::-webkit-scrollbar {
-  width: 8px;
+  width: var(--celeste-spacing-2);
 }
 
 .spotlight-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-  margin: 4px 0;
+  margin: var(--celeste-spacing-1) 0;
 }
 
 .spotlight-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
+  border-radius: var(--celeste-border-radius-sm);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -341,7 +395,7 @@
 @keyframes spotlight-in {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(-8px);
+    transform: scale(0.96) translateY(calc(-1 * var(--celeste-spacing-2)));
   }
   to {
     opacity: 1;
@@ -351,4 +405,132 @@
 
 .animate-spotlight-in {
   animation: spotlight-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================================
+   SPOTLIGHT RESULT TYPOGRAPHY SYSTEM (sr-*)
+   Font: Eloquia Text (falls back to SF Pro / system)
+   Hierarchy: 600 → 500 → 400 (structural, not loud)
+   ============================================================================ */
+
+/* Row container - consistent touch targets */
+.sr-row {
+  min-height: 52px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .sr-row {
+    min-height: 56px;
+    padding: 12px 16px;
+  }
+}
+
+/* Section Header - domain grouping labels */
+.sr-section-header {
+  font-family: var(--celeste-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--celeste-text-secondary);
+}
+
+/* Result Title - primary entity name (single line, truncate) */
+.sr-title {
+  font-family: var(--celeste-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--celeste-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .sr-title {
+    font-size: 14px;
+  }
+}
+
+/* Result Subline - context/location/snippet (single line, truncate) */
+.sr-sub {
+  font-family: var(--celeste-font-body);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--celeste-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .sr-sub {
+    font-size: 12px;
+  }
+}
+
+/* Right Meta - status/date (single line) */
+.sr-meta {
+  font-family: var(--celeste-font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--celeste-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Top Match Label - kicker above first result */
+.sr-top-label {
+  font-family: var(--celeste-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--celeste-text-secondary);
+}
+
+/* Title/Subline gap within result */
+.sr-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Section spacing */
+.sr-section {
+  margin-top: 16px;
+}
+
+.sr-section:first-child {
+  margin-top: 0;
+}
+
+.sr-section-header-wrapper {
+  padding-bottom: 8px;
+}
+
+/* Row divider - hairline, low contrast */
+.sr-divider {
+  height: 1px;
+  background: var(--celeste-border-subtle);
+}
+
+/* Selected row state - background + higher title contrast */
+.sr-row-selected {
+  background: var(--celeste-accent-subtle);
+}
+
+.sr-row-selected .sr-title {
+  color: var(--celeste-text-title);
 }

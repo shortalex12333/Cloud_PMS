@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Settings, BookOpen, Mail } from 'lucide-react';
+import { Search, X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, type LucideIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,31 @@ import { toast } from 'sonner';
 import { executeAction } from '@/lib/actionClient';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  groupResultsByDomain,
+  type GroupedResults,
+  type SpotlightResult as GroupedSpotlightResult,
+  type DomainGroup,
+  DOMAIN_ICONS,
+} from '@/lib/spotlightGrouping';
+
+// Domain icon component mapping
+const DomainIconMap: Record<string, LucideIcon> = {
+  'AlertTriangle': AlertTriangle,
+  'ClipboardList': ClipboardList,
+  'Settings': Settings,
+  'Package': Package,
+  'FileText': FileText,
+  'Mail': Mail,
+  'Award': Award,
+  'ArrowRightLeft': ArrowRightLeft,
+  'ShoppingCart': ShoppingCart,
+  'Receipt': Receipt,
+  'Users': Users,
+  'Clock': Clock,
+  'CheckSquare': CheckSquare,
+  'MoreHorizontal': MoreHorizontal,
+};
 
 // ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
@@ -214,10 +239,71 @@ export default function SpotlightSearch({
   }, []);
   const [emailResults, setEmailResults] = useState<any[]>([]);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
+  const [autoExpandTriggered, setAutoExpandTriggered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollSentinelRef = useRef<HTMLDivElement>(null);
 
-  // Transform API results based on scope
+  // Toggle domain expansion
+  const toggleDomainExpansion = useCallback((domain: string) => {
+    setExpandedDomains(prev => {
+      const next = new Set(prev);
+      if (next.has(domain)) {
+        next.delete(domain);
+      } else {
+        next.add(domain);
+      }
+      return next;
+    });
+  }, []);
+
+  // Reset expanded domains and auto-expand trigger when query changes
+  useEffect(() => {
+    setExpandedDomains(new Set());
+    setAutoExpandTriggered(false);
+  }, [query]);
+
+  // Group results by domain (Spotlight-style)
+  const groupedResults = useMemo((): GroupedResults => {
+    if (emailScopeActive || apiResults.length === 0) {
+      return { topMatch: null, domains: [], totalResults: 0, hasMore: false };
+    }
+    return groupResultsByDomain(apiResults);
+  }, [apiResults, emailScopeActive]);
+
+  // Auto-expand all domains when user scrolls to bottom (IntersectionObserver)
+  useEffect(() => {
+    const sentinel = scrollSentinelRef.current;
+    if (!sentinel || autoExpandTriggered || groupedResults.domains.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && !autoExpandTriggered) {
+          // Expand all domains that have more results
+          const domainsToExpand = groupedResults.domains
+            .filter(g => g.totalCount > 4)
+            .map(g => g.domain);
+
+          if (domainsToExpand.length > 0) {
+            setExpandedDomains(new Set(domainsToExpand));
+            setAutoExpandTriggered(true);
+          }
+        }
+      },
+      {
+        root: resultsRef.current,
+        rootMargin: '100px', // Trigger 100px before reaching the bottom
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [groupedResults.domains, autoExpandTriggered]);
+
+  // Transform API results based on scope (legacy flat list for email)
   const results = useMemo(() => {
     if (emailScopeActive && emailResults.length > 0) {
       // Transform email search results
@@ -564,7 +650,7 @@ export default function SpotlightSearch({
     inputRef.current?.focus();
   }, [clear]);
 
-  const hasResults = results.length > 0;
+  const hasResults = results.length > 0 || groupedResults.totalResults > 0;
   const hasQuery = query.trim().length > 0;
   const effectiveLoading = emailScopeActive ? emailLoading : isLoading;
   const showNoResults = hasQuery && !hasResults && !effectiveLoading && !isStreaming;
@@ -588,7 +674,7 @@ export default function SpotlightSearch({
       {/* Spotlight Container - constrained width */}
       <div
         className={cn(
-          'w-full max-w-[680px] mx-auto px-4',
+          'w-full max-w-celeste-content mx-auto px-4',
           isModal && 'relative z-10'
         )}
       >
@@ -605,20 +691,20 @@ export default function SpotlightSearch({
           {/* Search Input */}
           <div
             className={cn(
-              'flex items-center gap-3 px-4 h-[50px]',
-              (hasQuery || hasResults) && 'border-b border-[#3d3d3f]/30'
+              'flex items-center gap-3 px-4 h-celeste-element-xl',
+              (hasQuery || hasResults) && 'border-b border-celeste-divider'
             )}
           >
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-celeste-accent text-white rounded text-[11px] font-semibold whitespace-nowrap">
+              <div className="px-2 py-0.5 bg-celeste-accent text-white rounded text-celeste-xs font-semibold whitespace-nowrap">
                 Email
               </div>
             )}
             <Search
               className={cn(
                 'flex-shrink-0 w-5 h-5',
-                emailScopeActive ? 'text-celeste-accent' : 'text-[#98989f]'
+                emailScopeActive ? 'text-celeste-accent' : 'text-celeste-text-secondary'
               )}
               strokeWidth={1.8}
             />
@@ -644,7 +730,7 @@ export default function SpotlightSearch({
                 className={cn(
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
-                  'text-[17px] text-white',
+                  'text-celeste-xl text-white',
                   'font-normal tracking-[-0.01em]',
                   'caret-white',
                   'relative z-10'
@@ -661,7 +747,7 @@ export default function SpotlightSearch({
                 >
                   <span
                     className={cn(
-                      'text-[17px] text-[#98989f] font-normal tracking-[-0.01em]',
+                      'text-celeste-xl text-celeste-text-secondary font-normal tracking-[-0.01em]',
                       'transition-all duration-[400ms] ease-out',
                       isAnimating
                         ? 'opacity-0 -translate-y-3'
@@ -678,10 +764,10 @@ export default function SpotlightSearch({
               {query && (
                 <button
                   onClick={handleClear}
-                  className="flex items-center justify-center w-4 h-4 rounded-full bg-[#636366] hover:bg-[#8e8e93] transition-colors"
+                  className="flex items-center justify-center w-4 h-4 rounded-full bg-celeste-text-muted hover:bg-celeste-text-secondary transition-colors"
                   aria-label="Clear"
                 >
-                  <X className="w-2.5 h-2.5 text-[#1c1c1e]" strokeWidth={3} />
+                  <X className="w-2.5 h-2.5 text-celeste-black-base" strokeWidth={3} />
                 </button>
               )}
             </div>
@@ -738,21 +824,22 @@ export default function SpotlightSearch({
               When SurfaceContext is available, EmailOverlay handles the email UI. */}
           {showEmailList && !hasQuery && !surfaceContext && (
             <div
-              className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-[#1c1c1e] rounded-b-2xl"
+              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-celeste-bg-primary rounded-b-2xl"
               data-testid="email-list-inline"
             >
               <EmailInboxView className="p-4" />
             </div>
           )}
 
-          {/* Results */}
+          {/* Results - Spotlight-style grouped by domain */}
           {hasQuery && (
             <div
               ref={resultsRef}
-              className="max-h-[420px] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
+              className="max-h-[60vh] overflow-y-auto overflow-x-hidden spotlight-scrollbar"
             >
-              {hasResults && (
-                <div className="py-1.5" data-testid="search-results">
+              {/* Email scope uses flat list */}
+              {emailScopeActive && hasResults && (
+                <div className="py-1.5" data-testid="search-results-email">
                   {results.map((result, index) => (
                     <SpotlightResultRow
                       key={result.id}
@@ -766,18 +853,157 @@ export default function SpotlightSearch({
                 </div>
               )}
 
+              {/* Non-email: Spotlight-style grouped display */}
+              {!emailScopeActive && (groupedResults.topMatch || groupedResults.domains.length > 0) && (
+                <div className="py-1.5" data-testid="search-results-grouped">
+                  {/* Top Match - only shown when confidence is high */}
+                  {groupedResults.topMatch && (
+                    <div className="sr-section">
+                      <div className="sr-section-header-wrapper px-4">
+                        <span className="sr-top-label text-celeste-accent">
+                          Top Result
+                        </span>
+                      </div>
+                      <SpotlightResultRow
+                        key={groupedResults.topMatch.id}
+                        result={{
+                          id: groupedResults.topMatch.id,
+                          type: groupedResults.topMatch.type,
+                          title: groupedResults.topMatch.title,
+                          subtitle: groupedResults.topMatch.subtitle,
+                          metadata: groupedResults.topMatch.metadata,
+                        }}
+                        isSelected={selectedIndex === 0}
+                        index={0}
+                        onClick={() => handleResultOpen({
+                          id: groupedResults.topMatch!.id,
+                          type: groupedResults.topMatch!.type,
+                          title: groupedResults.topMatch!.title,
+                          subtitle: groupedResults.topMatch!.subtitle,
+                          metadata: groupedResults.topMatch!.metadata,
+                        })}
+                        onDoubleClick={() => handleResultOpen({
+                          id: groupedResults.topMatch!.id,
+                          type: groupedResults.topMatch!.type,
+                          title: groupedResults.topMatch!.title,
+                          subtitle: groupedResults.topMatch!.subtitle,
+                          metadata: groupedResults.topMatch!.metadata,
+                        })}
+                        isTopMatch
+                      />
+                    </div>
+                  )}
+
+                  {/* Domain Groups */}
+                  {groupedResults.domains.map((group, groupIndex) => {
+                    const DomainIcon = DomainIconMap[DOMAIN_ICONS[group.domain]] || MoreHorizontal;
+                    const isExpanded = expandedDomains.has(group.domain);
+                    const displayResults = isExpanded
+                      ? apiResults
+                          .filter(r => {
+                            const type = r.type || r.source_table || '';
+                            const groupType = group.results[0]?.type || '';
+                            return type === groupType || (r as any).object_type === groupType;
+                          })
+                          .slice(0, 12)
+                          .map(r => ({
+                            id: r.primary_id || r.id || '',
+                            type: r.type || r.source_table || '',
+                            title: r.title || (r as any).name || '',
+                            subtitle: r.subtitle || r.snippet || '',
+                            metadata: r.metadata || r.raw_data || r,
+                          }))
+                      : group.results.map(r => ({
+                          id: r.id,
+                          type: r.type,
+                          title: r.title,
+                          subtitle: r.subtitle,
+                          metadata: r.metadata,
+                        }));
+                    const hasMoreInDomain = group.totalCount > (isExpanded ? 12 : 4);
+                    const baseIndex = (groupedResults.topMatch ? 1 : 0) +
+                      groupedResults.domains.slice(0, groupIndex).reduce((sum, g) =>
+                        sum + (expandedDomains.has(g.domain) ? Math.min(12, g.totalCount) : Math.min(4, g.results.length)), 0);
+
+                    return (
+                      <div key={group.domain} className="sr-section">
+                        {/* Domain Header */}
+                        <div className="sr-section-header-wrapper px-4 flex items-center gap-2 border-t border-celeste-divider first:border-t-0">
+                          <DomainIcon className="w-3.5 h-3.5 text-celeste-text-muted" strokeWidth={1.5} />
+                          <span className="sr-section-header">
+                            {group.domain}
+                          </span>
+                          {group.totalCount > 4 && (
+                            <span className="sr-meta ml-auto">
+                              {group.totalCount}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Domain Results */}
+                        {displayResults.map((result, idx) => {
+                          const spotlightResult = {
+                            id: result.id,
+                            type: result.type,
+                            title: result.title,
+                            subtitle: result.subtitle,
+                            metadata: result.metadata as Record<string, unknown> | undefined,
+                          };
+                          return (
+                            <SpotlightResultRow
+                              key={result.id}
+                              result={spotlightResult}
+                              isSelected={selectedIndex === baseIndex + idx}
+                              index={baseIndex + idx}
+                              onClick={() => handleResultOpen(spotlightResult)}
+                              onDoubleClick={() => handleResultOpen(spotlightResult)}
+                            />
+                          );
+                        })}
+
+                        {/* Show More button */}
+                        {(hasMoreInDomain || (group.totalCount > 4 && !isExpanded)) && (
+                          <button
+                            onClick={() => toggleDomainExpansion(group.domain)}
+                            className="w-full px-4 py-2 text-left text-celeste-sm text-celeste-accent hover:bg-celeste-bg-tertiary transition-colors flex items-center gap-2"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "w-3.5 h-3.5 transition-transform",
+                                isExpanded && "rotate-180"
+                              )}
+                            />
+                            {isExpanded
+                              ? `Show less`
+                              : `Show ${Math.min(group.totalCount - 4, 8)} more in ${group.domain}`
+                            }
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Scroll sentinel for auto-loading more results */}
+                  <div
+                    ref={scrollSentinelRef}
+                    className="h-px w-full"
+                    aria-hidden="true"
+                  />
+                </div>
+              )}
+
               {showNoResults && (
                 <div className="py-10 text-center" data-testid="no-results">
-                  <p className="text-[15px] text-[#98989f]">No Results</p>
+                  <p className="text-celeste-lg text-celeste-text-secondary">No Results</p>
                 </div>
               )}
 
               {error && (
                 <div className="py-10 text-center" data-testid="search-error">
-                  <p className="text-[15px] text-[#98989f]">{error}</p>
+                  <p className="text-celeste-lg text-celeste-text-secondary">{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 text-[14px] text-celeste-accent hover:text-celeste-accent-hover"
+                    className="mt-2 text-celeste-md text-celeste-accent hover:text-celeste-accent-hover"
                   >
                     Try again
                   </button>
@@ -804,20 +1030,20 @@ export default function SpotlightSearch({
               'flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium',
               emailScopeActive
                 ? 'bg-celeste-accent text-white hover:bg-celeste-accent-hover'
-                : 'text-[#98989f] hover:text-white hover:bg-white/10'
+                : 'text-celeste-text-secondary hover:text-white hover:bg-white/10'
             )}
             aria-label={emailScopeActive ? 'Exit Email Scope' : 'Search Email'}
             data-testid="email-scope-toggle"
           >
             <Mail className="w-5 h-5" strokeWidth={1.5} />
-            <span className="text-[13px]">{emailScopeActive ? 'Exit Email' : 'Email'}</span>
+            <span className="text-celeste-base">{emailScopeActive ? 'Exit Email' : 'Email'}</span>
           </button>
 
           {/* Ledger Dropdown - Other record access */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2.5 rounded-full text-celeste-text-secondary hover:text-white hover:bg-white/10 transition-colors"
                 aria-label="Ledger"
               >
                 <BookOpen className="w-5 h-5" strokeWidth={1.5} />
@@ -825,7 +1051,7 @@ export default function SpotlightSearch({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="center"
-              className="min-w-[140px] bg-[#2c2c2e] border-[#3d3d3f] text-white"
+              className="min-w-[var(--celeste-width-filter-medium)] bg-celeste-bg-tertiary border-celeste-divider text-white"
             >
               <DropdownMenuItem
                 onClick={() => {
@@ -837,7 +1063,7 @@ export default function SpotlightSearch({
                   }
                   clear(); // Clear search to show email list
                 }}
-                className="flex items-center gap-2 cursor-pointer focus:bg-[#3d3d3f] focus:text-white"
+                className="flex items-center gap-2 cursor-pointer focus:bg-celeste-divider focus:text-white"
               >
                 <Mail className="w-4 h-4" />
                 <span>{showEmailList ? 'Hide Email' : 'Email'}</span>
@@ -848,7 +1074,7 @@ export default function SpotlightSearch({
           {/* Settings Button */}
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2.5 rounded-full text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2.5 rounded-full text-celeste-text-secondary hover:text-white hover:bg-white/10 transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" strokeWidth={1.5} />
