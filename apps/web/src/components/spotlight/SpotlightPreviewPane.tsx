@@ -34,19 +34,20 @@ interface SpotlightPreviewPaneProps {
 // CARD TYPE CONFIG
 // ============================================================================
 
+// Celeste brand colors for card types (dignified, not loud)
 const CARD_TYPE_CONFIG: Record<CardType, { icon: keyof typeof LucideIcons; color: string; bgColor: string }> = {
-  fault: { icon: 'AlertTriangle', color: 'text-red-500', bgColor: 'bg-red-500/10' },
+  fault: { icon: 'AlertTriangle', color: 'text-restricted-red', bgColor: 'bg-restricted-red/10' },
   work_order: { icon: 'Wrench', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
-  equipment: { icon: 'Cog', color: 'text-violet-500', bgColor: 'bg-violet-500/10' },
-  part: { icon: 'Package', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-  handover: { icon: 'Users', color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
-  document: { icon: 'FileText', color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
-  hor_table: { icon: 'Clock', color: 'text-pink-500', bgColor: 'bg-pink-500/10' },
-  purchase: { icon: 'DollarSign', color: 'text-teal-500', bgColor: 'bg-teal-500/10' },
-  checklist: { icon: 'ClipboardList', color: 'text-lime-500', bgColor: 'bg-lime-500/10' },
-  worklist: { icon: 'ClipboardList', color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
-  fleet_summary: { icon: 'Ship', color: 'text-cyan-500', bgColor: 'bg-cyan-500/10' },
-  smart_summary: { icon: 'Sparkles', color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+  equipment: { icon: 'Cog', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  part: { icon: 'Package', color: 'text-restricted-green', bgColor: 'bg-restricted-green/10' },
+  handover: { icon: 'Users', color: 'text-restricted-orange', bgColor: 'bg-restricted-orange/10' },
+  document: { icon: 'FileText', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  hor_table: { icon: 'Clock', color: 'text-restricted-red', bgColor: 'bg-restricted-red/10' },
+  purchase: { icon: 'DollarSign', color: 'text-restricted-orange', bgColor: 'bg-restricted-orange/10' },
+  checklist: { icon: 'ClipboardList', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  worklist: { icon: 'ClipboardList', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  fleet_summary: { icon: 'Ship', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  smart_summary: { icon: 'Sparkles', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
 };
 
 // ============================================================================
@@ -72,13 +73,12 @@ export default function SpotlightPreviewPane({
   return (
     <div
       className={cn(
-        'w-[320px] flex-shrink-0',
-        'bg-white/98 dark:bg-zinc-900/98',
-        'backdrop-blur-[20px]',
-        'border border-zinc-200/60 dark:border-zinc-700/60',
-        'rounded-[14px]',
-        'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]',
-        'dark:shadow-[0_8px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.2)]',
+        'w-celeste-panel-medium flex-shrink-0',
+        'bg-celeste-surface-light/98 dark:bg-celeste-surface/98',
+        'backdrop-blur-celeste-md',
+        'border border-celeste-border-subtle-light dark:border-celeste-border-subtle',
+        'rounded-celeste-xl',
+        'shadow-celeste-lg',
         'overflow-hidden',
         'animate-in slide-in-from-right-2 duration-200'
       )}
@@ -86,23 +86,23 @@ export default function SpotlightPreviewPane({
       {/* Header */}
       <div className={cn(
         'px-4 py-3',
-        'border-b border-zinc-200/60 dark:border-zinc-700/60',
+        'border-b border-celeste-divider-light dark:border-celeste-divider',
         config.bgColor
       )}>
         <div className="flex items-center gap-3">
           <div className={cn(
             'flex items-center justify-center',
             'w-10 h-10 rounded-xl',
-            'bg-white/80 dark:bg-zinc-800/80',
+            'bg-celeste-surface-light/80 dark:bg-celeste-bg-tertiary/80',
             'shadow-sm'
           )}>
             <IconComponent className={cn('h-5 w-5', config.color)} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+            <h3 className="text-celeste-lg font-semibold text-celeste-text-title-light dark:text-celeste-text-title truncate">
               {result.title}
             </h3>
-            <p className="text-[12px] text-zinc-500 dark:text-zinc-400 truncate">
+            <p className="text-celeste-sm text-celeste-text-secondary truncate">
               {result.subtitle}
             </p>
           </div>
@@ -110,9 +110,9 @@ export default function SpotlightPreviewPane({
             onClick={onClose}
             className={cn(
               'p-1.5 rounded-md',
-              'text-zinc-400 hover:text-zinc-600',
-              'dark:text-zinc-500 dark:hover:text-zinc-300',
-              'hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50',
+              'text-celeste-text-muted hover:text-celeste-text-primary-light',
+              'dark:text-celeste-text-muted dark:hover:text-celeste-text-primary',
+              'hover:bg-celeste-bg-secondary-light/50 dark:hover:bg-celeste-bg-tertiary/50',
               'transition-colors'
             )}
           >
@@ -125,21 +125,21 @@ export default function SpotlightPreviewPane({
       <div className="p-4 space-y-4">
         {/* Confidence */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <label className="sr-section-header">
             Match Confidence
           </label>
           <div className="mt-1.5 flex items-center gap-2">
-            <div className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-celeste-bg-secondary-light dark:bg-celeste-bg-tertiary rounded-full overflow-hidden">
               <div
                 className={cn(
                   'h-full rounded-full transition-all duration-500',
-                  result.confidence >= 80 ? 'bg-emerald-500' :
-                  result.confidence >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                  result.confidence >= 80 ? 'bg-restricted-green' :
+                  result.confidence >= 50 ? 'bg-restricted-orange' : 'bg-restricted-red'
                 )}
                 style={{ width: `${result.confidence}%` }}
               />
             </div>
-            <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">
+            <span className="sr-meta tabular-nums">
               {result.confidence}%
             </span>
           </div>
@@ -148,16 +148,16 @@ export default function SpotlightPreviewPane({
         {/* Metadata */}
         {result.metadata && Object.keys(result.metadata).length > 0 && (
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <label className="sr-section-header">
               Details
             </label>
             <div className="mt-1.5 space-y-1.5">
               {Object.entries(result.metadata).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-[13px] text-zinc-500 dark:text-zinc-400 capitalize">
+                  <span className="sr-sub capitalize">
                     {key.replace(/_/g, ' ')}
                   </span>
-                  <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300">
+                  <span className="sr-meta">
                     {String(value)}
                   </span>
                 </div>
@@ -168,13 +168,13 @@ export default function SpotlightPreviewPane({
 
         {/* Actions by cluster */}
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <label className="sr-section-header">
             Available Actions
           </label>
           <div className="mt-2 space-y-3">
             {Object.entries(actionsByCluster).map(([cluster, actions]) => (
               <div key={cluster}>
-                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 capitalize">
+                <span className="text-celeste-xs text-celeste-text-muted capitalize">
                   {cluster.replace(/_/g, ' ')}
                 </span>
                 <div className="mt-1 flex flex-wrap gap-1.5">
@@ -196,18 +196,18 @@ export default function SpotlightPreviewPane({
       {/* Footer */}
       <div className={cn(
         'px-4 py-3',
-        'border-t border-zinc-200/60 dark:border-zinc-700/60',
-        'bg-zinc-50/80 dark:bg-zinc-800/80',
+        'border-t border-celeste-divider-light dark:border-celeste-divider',
+        'bg-celeste-panel-light/80 dark:bg-celeste-panel/80',
         'flex items-center justify-between'
       )}>
-        <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-          Press <kbd className="px-1 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-[10px] font-medium">Tab</kbd> to cycle actions
+        <span className="text-celeste-xs text-celeste-text-muted">
+          Press <kbd className="px-1 py-0.5 rounded bg-celeste-bg-secondary-light dark:bg-celeste-bg-tertiary text-celeste-xs font-medium">Tab</kbd> to cycle actions
         </span>
         <button
           className={cn(
             'px-3 py-1.5 rounded-md',
             'bg-celeste-accent hover:bg-celeste-accent-hover',
-            'text-[12px] font-medium text-white',
+            'text-celeste-sm font-medium text-white',
             'transition-colors'
           )}
         >
