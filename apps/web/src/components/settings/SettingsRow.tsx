@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * SettingsRow - Row component for Settings modal
+ * SettingsRow - Flat row for Settings modal
  *
- * Displays label/value pairs or interactive controls.
- * No hardcoded values - tokens only.
+ * Simple left-right layout. Subtle bottom divider.
+ * NO box, NO form styling.
  */
 
 import { ReactNode } from 'react';
@@ -14,16 +14,16 @@ interface SettingsRowProps {
   label: string;
   value?: string | ReactNode;
   children?: ReactNode;
-  /** Add bottom border (for all rows except last in section) */
-  border?: boolean;
+  /** Show subtle bottom divider */
+  divider?: boolean;
 }
 
-export function SettingsRow({ label, value, children, border = true }: SettingsRowProps) {
+export function SettingsRow({ label, value, children, divider = true }: SettingsRowProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-[var(--celeste-spacing-4)] py-[var(--celeste-spacing-3)]',
-        border && 'border-b border-celeste-border last:border-b-0'
+        'flex items-center justify-between py-[var(--celeste-spacing-3)]',
+        divider && 'border-b border-celeste-border-subtle'
       )}
     >
       <span className="text-celeste-sm text-celeste-text-secondary">{label}</span>
