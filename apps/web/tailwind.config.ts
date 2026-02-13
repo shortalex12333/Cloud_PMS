@@ -189,6 +189,31 @@ const config: Config = {
       },
 
       // =========================================================================
+      // HEIGHT - Element sizes
+      // =========================================================================
+      height: {
+        'celeste-element-sm': '32px',
+        'celeste-element-md': '40px',
+        'celeste-element-lg': '48px',
+        'celeste-element-xl': 'var(--celeste-height-element-xl)',  // 92px - Spotlight search bar
+        'celeste-search-results': '60vh',
+      },
+
+      // =========================================================================
+      // WIDTH - Layout sizes
+      // =========================================================================
+      width: {
+        'celeste-spotlight': 'var(--celeste-spotlight-width)',  // 720px
+        'celeste-panel-sm': '280px',
+        'celeste-panel-medium': '320px',
+        'celeste-panel-lg': '400px',
+      },
+
+      // =========================================================================
+      // MAX-WIDTH - Content constraints
+      // =========================================================================
+
+      // =========================================================================
       // BORDER RADIUS
       // =========================================================================
       borderRadius: {
@@ -255,6 +280,9 @@ const config: Config = {
       maxWidth: {
         'celeste-search': '680px',
         'celeste-modal': '400px',
+        'celeste-modal-lg': '560px',
+        'celeste-content': '1200px',
+        'celeste-spotlight': 'var(--celeste-spotlight-width)',  // 720px
       },
 
       backdropBlur: {
