@@ -1,10 +1,12 @@
 'use client';
 
 /**
- * SettingsModal - ChatGPT-quality settings panel
+ * SettingsModal - CelesteOS Settings Panel
  *
- * All styling uses Celeste design tokens.
- * Zero hardcoded colors or spacing values.
+ * Styling patterns match site-wide conventions:
+ * - CSS variables via [var(--celeste-*)] for spacing/sizing
+ * - Tailwind tokens for colors, radius, shadows
+ * - backdrop-blur-xl for modal overlay (matches SpotlightSearch)
  */
 
 import { X, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
@@ -104,7 +106,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (isOpen && isReady) fetchOutlookStatus();
   }, [isOpen, isReady, fetchOutlookStatus]);
 
-  // Handlers (preserved)
+  // Handlers
   const handleConnectOutlook = async () => {
     setConnectingOutlook(true);
     setOutlookError(null);
@@ -182,7 +184,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleLogout = async () => {
     onClose();
     await logout();
-    // Add logout param to prevent auto-login from cached session
     router.push('/login?logout=1');
   };
 
@@ -196,21 +197,43 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop - semi-transparent with blur to show underlying content */}
+      {/* Backdrop - matches SpotlightSearch pattern */}
       <div
-        className="absolute inset-0 bg-celeste-black/60 backdrop-blur-[20px]"
+        className="absolute inset-0 bg-celeste-black/65 backdrop-blur-xl"
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-celeste-modal-lg mx-[var(--celeste-spacing-4)] bg-celeste-surface border border-celeste-border-subtle rounded-celeste-xl shadow-celeste-xl overflow-hidden">
-
+      {/* Modal Panel */}
+      <div
+        className={cn(
+          'relative w-full mx-[var(--celeste-spacing-4)]',
+          'max-w-[var(--celeste-max-w-modal-lg)]',
+          'bg-celeste-panel border border-celeste-border-subtle',
+          'rounded-celeste-xl shadow-celeste-xl',
+          'overflow-hidden'
+        )}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle">
-          <span className="text-celeste-base font-semibold text-celeste-text-primary">Settings</span>
+        <div
+          className={cn(
+            'flex items-center justify-between',
+            'h-14 px-5',
+            'border-b border-celeste-border-subtle'
+          )}
+        >
+          <span className="text-celeste-base font-semibold text-celeste-text-primary">
+            Settings
+          </span>
           <button
             onClick={onClose}
-            className="w-[var(--celeste-spacing-8)] h-[var(--celeste-spacing-8)] flex items-center justify-center rounded-celeste-md hover:bg-celeste-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
+            className={cn(
+              'w-8 h-8 flex items-center justify-center',
+              'rounded-celeste-md',
+              'hover:bg-celeste-bg-tertiary',
+              'transition-colors duration-celeste-fast',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
+            )}
           >
             <X className="w-5 h-5 text-celeste-text-muted" />
           </button>
@@ -218,7 +241,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Content */}
         <div className="max-h-[70vh] overflow-y-auto">
-
           {/* Account Section */}
           <SectionHeader>Account</SectionHeader>
           <SettingsRow label="Name" value={user?.displayName || '—'} />
@@ -226,36 +248,46 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <SettingsRow label="Role" value={user?.role?.replace('_', ' ') || '—'} />
           <SettingsRow label="Yacht" value={user?.yachtName || '—'} />
 
-          <div className="flex items-center justify-between h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle">
-            <span className="text-celeste-sm text-celeste-text-primary">Switch Yacht</span>
+          <SettingsRow label="Switch Yacht">
             <button
               onClick={() => {/* TODO: wire up yacht switching */}}
-              className="text-celeste-xs text-celeste-accent hover:text-celeste-accent-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
+              className={cn(
+                'text-celeste-sm text-celeste-accent',
+                'hover:text-celeste-accent-hover',
+                'transition-colors duration-celeste-fast',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm'
+              )}
             >
               Change
             </button>
-          </div>
+          </SettingsRow>
 
           {/* Integrations Section */}
           <SectionHeader>Integrations</SectionHeader>
 
           {outlookError && (
-            <div className="mx-[var(--celeste-spacing-6)] mb-[var(--celeste-spacing-2)] px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-2)] bg-restricted-red/10 border border-restricted-red/20 rounded-celeste-md flex items-center gap-[var(--celeste-spacing-2)]">
-              <AlertCircle className="w-4 h-4 text-restricted-red" />
+            <div
+              className={cn(
+                'mx-5 mb-2 px-3 py-2',
+                'bg-restricted-red/10 border border-restricted-red/20',
+                'rounded-celeste-md',
+                'flex items-center gap-2'
+              )}
+            >
+              <AlertCircle className="w-4 h-4 text-restricted-red flex-shrink-0" />
               <span className="text-celeste-xs text-restricted-red">{outlookError}</span>
             </div>
           )}
 
-          <div className="flex items-center justify-between h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle">
-            <span className="text-celeste-sm text-celeste-text-primary">Microsoft</span>
-            <div className="flex items-center gap-[var(--celeste-spacing-3)]">
+          <SettingsRow label="Microsoft">
+            <div className="flex items-center gap-3">
               {outlookLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-celeste-text-muted" />
               ) : (
                 <>
-                  <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+                  <div className="flex items-center gap-2">
                     {outlookStatus?.connected && (
-                      <span className="w-[var(--celeste-spacing-2)] h-[var(--celeste-spacing-2)] rounded-full bg-restricted-green" />
+                      <span className="w-2 h-2 rounded-full bg-restricted-green" />
                     )}
                     <span className="text-celeste-sm text-celeste-text-muted">
                       {outlookStatus?.connected ? 'Connected' : 'Not connected'}
@@ -264,14 +296,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <button
                     onClick={outlookStatus?.connected ? handleDisconnectOutlook : handleConnectOutlook}
                     disabled={connectingOutlook}
-                    className="text-celeste-xs text-celeste-accent hover:text-celeste-accent-hover transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm"
+                    className={cn(
+                      'text-celeste-sm text-celeste-accent',
+                      'hover:text-celeste-accent-hover',
+                      'transition-colors duration-celeste-fast',
+                      'disabled:opacity-50',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent rounded-celeste-sm'
+                    )}
                   >
                     {connectingOutlook ? 'Connecting...' : outlookStatus?.connected ? 'Disconnect' : 'Connect'}
                   </button>
                 </>
               )}
             </div>
-          </div>
+          </SettingsRow>
 
           {/* Appearance Section */}
           <SectionHeader>Appearance</SectionHeader>
@@ -279,24 +317,50 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <div className="relative">
             <button
               onClick={() => setThemeOpen(!themeOpen)}
-              className="w-full flex items-center justify-between h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle hover:bg-celeste-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
+              className={cn(
+                'w-full flex items-center justify-between',
+                'min-h-[48px] px-5 py-3',
+                'border-b border-celeste-border-subtle',
+                'hover:bg-celeste-bg-tertiary/40',
+                'transition-colors duration-celeste-fast',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
+              )}
             >
               <span className="text-celeste-sm text-celeste-text-primary">Theme</span>
-              <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+              <div className="flex items-center gap-2">
                 <span className="text-celeste-sm text-celeste-text-muted">{themeLabel}</span>
-                <ChevronDown className={cn("w-4 h-4 text-celeste-text-muted transition-transform", themeOpen && "rotate-180")} />
+                <ChevronDown
+                  className={cn(
+                    'w-4 h-4 text-celeste-text-muted',
+                    'transition-transform duration-celeste-fast',
+                    themeOpen && 'rotate-180'
+                  )}
+                />
               </div>
             </button>
 
             {themeOpen && (
-              <div className="absolute right-[var(--celeste-spacing-4)] top-[calc(var(--celeste-height-element-xl)-4px)] z-10 w-[140px] bg-celeste-panel border border-celeste-border-subtle rounded-celeste-md shadow-celeste-xl overflow-hidden">
+              <div
+                className={cn(
+                  'absolute right-4 top-[44px] z-10',
+                  'w-[var(--celeste-width-filter-medium)]',
+                  'bg-celeste-panel border border-celeste-border-subtle',
+                  'rounded-celeste-md shadow-celeste-xl',
+                  'overflow-hidden'
+                )}
+              >
                 {(['system', 'light', 'dark'] as Theme[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => { setTheme(t); setThemeOpen(false); }}
                     className={cn(
-                      "w-full px-[var(--celeste-spacing-4)] py-[var(--celeste-spacing-2)] text-left text-celeste-xs hover:bg-celeste-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent",
-                      theme === t ? "text-celeste-text-primary bg-celeste-white/5" : "text-celeste-text-muted"
+                      'w-full px-4 py-2 text-left text-celeste-sm',
+                      'hover:bg-celeste-bg-tertiary/40',
+                      'transition-colors duration-celeste-fast',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent',
+                      theme === t
+                        ? 'text-celeste-text-primary bg-celeste-bg-tertiary/60'
+                        : 'text-celeste-text-muted'
                     )}
                   >
                     {t === 'system' ? 'System' : t === 'light' ? 'Light' : 'Dark'}
@@ -311,20 +375,33 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle hover:bg-celeste-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
+            className={cn(
+              'w-full flex items-center',
+              'min-h-[48px] px-5 py-3',
+              'border-b border-celeste-border-subtle',
+              'hover:bg-celeste-bg-tertiary/40',
+              'transition-colors duration-celeste-fast',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
+            )}
           >
             <span className="text-celeste-sm text-celeste-text-primary">Sign out</span>
           </button>
 
           <button
             onClick={handleSupport}
-            className="w-full flex items-center h-celeste-element-xl px-[var(--celeste-spacing-6)] hover:bg-celeste-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent"
+            className={cn(
+              'w-full flex items-center',
+              'min-h-[48px] px-5 py-3',
+              'hover:bg-celeste-bg-tertiary/40',
+              'transition-colors duration-celeste-fast',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
+            )}
           >
             <span className="text-celeste-sm text-celeste-text-primary">Report issue</span>
           </button>
 
-          {/* Bottom padding */}
-          <div className="h-[var(--celeste-spacing-4)]" />
+          {/* Bottom spacing */}
+          <div className="h-4" />
         </div>
       </div>
     </div>
@@ -332,24 +409,43 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 }
 
 /* ============================================================================
-   COMPONENTS - Using Celeste tokens only
+   SUB-COMPONENTS
+   Following site-wide patterns: cn(), Tailwind tokens, CSS vars for sizing
    ============================================================================ */
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-[var(--celeste-spacing-6)] pt-[var(--celeste-spacing-6)] pb-[var(--celeste-spacing-2)]">
-      <span className="text-celeste-xs font-medium text-celeste-text-muted uppercase tracking-widest">
+    <div className="px-5 pt-6 pb-2">
+      <span className="text-celeste-xs font-semibold text-celeste-text-muted uppercase tracking-wide">
         {children}
       </span>
     </div>
   );
 }
 
-function SettingsRow({ label, value }: { label: string; value: string }) {
+interface SettingsRowProps {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+}
+
+function SettingsRow({ label, value, children }: SettingsRowProps) {
   return (
-    <div className="flex items-center justify-between h-celeste-element-xl px-[var(--celeste-spacing-6)] border-b border-celeste-border-subtle">
+    <div
+      className={cn(
+        'flex items-center justify-between',
+        'min-h-[48px] px-5 py-3',
+        'border-b border-celeste-border-subtle'
+      )}
+    >
       <span className="text-celeste-sm text-celeste-text-primary">{label}</span>
-      <span className="text-celeste-sm text-celeste-text-muted">{value}</span>
+      {value !== undefined ? (
+        <span className="text-celeste-sm text-celeste-text-muted truncate max-w-[60%] text-right">
+          {value}
+        </span>
+      ) : (
+        children
+      )}
     </div>
   );
 }
