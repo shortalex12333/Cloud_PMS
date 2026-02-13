@@ -699,7 +699,7 @@ export default function SpotlightSearch({
           {/* Search Input - tokenized padding and height */}
           <div
             className={cn(
-              'flex items-center gap-4 h-celeste-element-xl',
+              'flex items-center gap-4 h-[var(--celeste-spotlight-height)]',
               (hasQuery || hasResults) && 'border-b border-celeste-border-subtle'
             )}
             style={{ paddingLeft: 'var(--celeste-spotlight-padding-x)', paddingRight: 'var(--celeste-spotlight-padding-x)' }}
