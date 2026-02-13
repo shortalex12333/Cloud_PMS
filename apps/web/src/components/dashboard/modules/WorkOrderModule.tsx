@@ -59,7 +59,7 @@ export default function WorkOrderModule({
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={completionRate} status="healthy" />
-          <span className="text-[11px] text-zinc-500">{completionRate}% done</span>
+          <span className="text-celeste-xs text-zinc-500">{completionRate}% done</span>
         </div>
       }
       className={className}
@@ -116,7 +116,7 @@ export default function WorkOrderModule({
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-[12px] font-medium',
+              'text-celeste-xs font-medium',
               'text-celeste-accent hover:text-celeste-accent-hover',
               'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'

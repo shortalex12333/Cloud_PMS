@@ -181,7 +181,7 @@ export default function ActionModal({
       <div
         className={cn(
           'relative z-10 w-full max-w-md mx-4',
-          'bg-[#2c2c2e] rounded-2xl shadow-2xl',
+          'bg-[#2c2c2e] rounded-2xl shadow-celeste-lg',
           'border border-[#3d3d3f]',
           'animate-in fade-in-0 zoom-in-95 duration-200'
         )}
@@ -194,12 +194,12 @@ export default function ActionModal({
           <div className="flex items-center gap-2">
             <h2
               id="action-modal-title"
-              className="text-[17px] font-semibold text-white"
+              className="text-celeste-lg font-semibold text-celeste-text-title"
             >
               {action.label}
             </h2>
             {action.variant === 'SIGNED' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-celeste-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 <PenLine className="w-3 h-3" />
                 Requires Signature
               </span>
@@ -207,7 +207,7 @@ export default function ActionModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-[#98989f] hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -234,7 +234,7 @@ export default function ActionModal({
                 <div key={field} className="space-y-1.5">
                   <label
                     htmlFor={field}
-                    className="block text-[13px] font-medium text-[#98989f]"
+                    className="block text-celeste-sm font-medium text-[#98989f]"
                   >
                     {label}
                   </label>
@@ -248,7 +248,7 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-[15px] text-white',
+                        'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -263,7 +263,7 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg resize-none',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-[15px] text-white placeholder:text-[#636366]',
+                        'text-celeste-base text-celeste-text-title placeholder:text-[#636366]',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -279,7 +279,7 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-[15px] text-white',
+                        'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -301,7 +301,7 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-[15px] text-white',
+                        'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -324,7 +324,7 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
                         'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-[15px] text-white placeholder:text-[#636366]',
+                        'text-celeste-base text-celeste-text-title placeholder:text-[#636366]',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -342,22 +342,22 @@ export default function ActionModal({
             {/* Storage Confirmation Section */}
             {action.storage_options && (
               <div className="p-3 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] space-y-3">
-                <div className="flex items-center gap-2 text-[13px] font-medium text-[#98989f]">
+                <div className="flex items-center gap-2 text-celeste-sm font-medium text-[#98989f]">
                   <FolderOpen className="w-4 h-4" />
                   Storage Location
                 </div>
 
-                <div className="space-y-2 text-[13px]">
+                <div className="space-y-2 text-celeste-sm">
                   <div className="flex justify-between">
                     <span className="text-[#636366]">Bucket:</span>
-                    <span className="text-white font-mono">
+                    <span className="text-celeste-text-title font-mono">
                       {action.storage_options.bucket}
                     </span>
                   </div>
 
                   <div className="space-y-1">
                     <span className="text-[#636366]">Path:</span>
-                    <div className="font-mono text-[12px] text-celeste-accent bg-celeste-accent/10 px-2 py-1.5 rounded break-all">
+                    <div className="font-mono text-celeste-xs text-celeste-accent bg-celeste-accent/10 px-2 py-1.5 rounded break-all">
                       {storagePathPreview}
                     </div>
                   </div>
@@ -366,7 +366,7 @@ export default function ActionModal({
                   <div className="pt-2">
                     <label
                       htmlFor="filename"
-                      className="block text-[12px] text-[#636366] mb-1"
+                      className="block text-celeste-xs text-[#636366] mb-1"
                     >
                       Filename (optional):
                     </label>
@@ -379,7 +379,7 @@ export default function ActionModal({
                       className={cn(
                         'w-full px-2 py-1.5 rounded',
                         'bg-[#2c2c2e] border border-[#3d3d3f]',
-                        'text-[13px] text-white placeholder:text-[#636366]',
+                        'text-celeste-sm text-celeste-text-title placeholder:text-[#636366]',
                         'focus:outline-none focus:ring-1 focus:ring-celeste-accent-muted'
                       )}
                     />
@@ -387,7 +387,7 @@ export default function ActionModal({
                 </div>
 
                 {action.storage_options.confirmation_required && (
-                  <div className="flex items-start gap-2 pt-2 text-[12px] text-amber-400">
+                  <div className="flex items-start gap-2 pt-2 text-celeste-xs text-amber-400">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <span>
                       This action will store files in the specified location.
@@ -400,7 +400,7 @@ export default function ActionModal({
 
             {/* Error message */}
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-[13px] text-red-400">
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-celeste-sm text-red-400">
                 {error}
               </div>
             )}
@@ -413,8 +413,8 @@ export default function ActionModal({
               onClick={onClose}
               className={cn(
                 'px-4 py-2 rounded-lg',
-                'text-[14px] font-medium text-[#98989f]',
-                'hover:text-white hover:bg-white/10',
+                'text-celeste-sm font-medium text-[#98989f]',
+                'hover:text-celeste-text-title hover:bg-celeste-surface',
                 'transition-colors'
               )}
               disabled={isSubmitting}
@@ -427,7 +427,7 @@ export default function ActionModal({
               disabled={isSubmitting}
               className={cn(
                 'px-4 py-2 rounded-lg',
-                'text-[14px] font-medium text-white',
+                'text-celeste-sm font-medium text-celeste-text-title',
                 'bg-celeste-accent hover:bg-celeste-accent/80',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'transition-colors',

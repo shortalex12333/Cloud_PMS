@@ -44,7 +44,7 @@ export default function EmailSituationView({
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-celeste-lg p-8">
           <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto" />
           <p className="mt-4 text-zinc-600 dark:text-zinc-400 text-center">
             Loading email thread...
@@ -58,7 +58,7 @@ export default function EmailSituationView({
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl p-8 max-w-md">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-celeste-lg p-8 max-w-md">
           <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
           <p className="mt-4 text-zinc-800 dark:text-zinc-200 text-center font-medium">
             Failed to load email thread
@@ -89,12 +89,12 @@ export default function EmailSituationView({
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-3xl mx-4">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-celeste-lg overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-purple-50 dark:bg-purple-900/20">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-500 rounded-lg">
-                <Mail className="h-5 w-5 text-white" />
+                <Mail className="h-5 w-5 text-celeste-text-title" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">

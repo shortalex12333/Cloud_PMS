@@ -102,23 +102,23 @@ export function ThreadLinksPanel({
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-md bg-[#1c1c1e] shadow-2xl border-l border-[#3d3d3f] overflow-hidden">
+      <div className="relative w-full max-w-md bg-[#1c1c1e] shadow-celeste-lg border-l border-[#3d3d3f] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#3d3d3f]">
           <div>
-            <h2 className="text-[16px] font-semibold text-white flex items-center gap-2">
+            <h2 className="text-celeste-base font-semibold text-celeste-text-title flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-[#30d158]" />
               Linked Objects
             </h2>
             {threadSubject && (
-              <p className="text-[12px] text-[#636366] mt-0.5 truncate max-w-[300px]">
+              <p className="text-celeste-xs text-[#636366] mt-0.5 truncate max-w-[300px]">
                 {threadSubject}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#98989f] hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-[#98989f] hover:text-celeste-text-title hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -137,12 +137,12 @@ export function ThreadLinksPanel({
           {error && (
             <div className="p-4 text-center">
               <AlertCircle className="w-8 h-8 text-[#ff453a] mx-auto mb-2" />
-              <p className="text-[13px] text-[#ff453a] mb-2">
+              <p className="text-celeste-sm text-[#ff453a] mb-2">
                 {error instanceof Error ? error.message : 'Failed to load links'}
               </p>
               <button
                 onClick={() => refetch()}
-                className="text-[13px] text-celeste-accent hover:text-celeste-accent"
+                className="text-celeste-sm text-celeste-accent hover:text-celeste-accent"
               >
                 Retry
               </button>
@@ -153,8 +153,8 @@ export function ThreadLinksPanel({
           {!isLoading && !error && links.length === 0 && (
             <div className="p-8 text-center">
               <LinkIcon className="w-10 h-10 text-[#48484a] mx-auto mb-3" />
-              <p className="text-[14px] text-[#98989f] mb-1">No linked objects</p>
-              <p className="text-[12px] text-[#636366]">
+              <p className="text-celeste-sm text-[#98989f] mb-1">No linked objects</p>
+              <p className="text-celeste-xs text-[#636366]">
                 Use "Link to..." to connect this email to work orders, equipment, etc.
               </p>
             </div>
@@ -164,7 +164,7 @@ export function ThreadLinksPanel({
           {!isLoading && !error && acceptedLinks.length > 0 && (
             <div className="border-b border-[#3d3d3f]">
               <div className="px-4 py-2 bg-[#2c2c2e]">
-                <h3 className="text-[12px] font-medium text-[#98989f]">
+                <h3 className="text-celeste-xs font-medium text-[#98989f]">
                   Linked ({acceptedLinks.length})
                 </h3>
               </div>
@@ -184,7 +184,7 @@ export function ThreadLinksPanel({
           {!isLoading && !error && suggestedLinks.length > 0 && (
             <div>
               <div className="px-4 py-2 bg-[#2c2c2e]">
-                <h3 className="text-[12px] font-medium text-[#ff9f0a]">
+                <h3 className="text-celeste-xs font-medium text-[#ff9f0a]">
                   Suggestions ({suggestedLinks.length})
                 </h3>
               </div>
@@ -276,27 +276,27 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-medium text-white truncate">
+            <span className="text-celeste-sm font-medium text-celeste-text-title truncate">
               {typeLabel}
             </span>
             {isSuggested && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ff9f0a]/20 text-[#ff9f0a]">
+              <span className="text-celeste-xs px-1.5 py-0.5 rounded bg-[#ff9f0a]/20 text-[#ff9f0a]">
                 Suggested
               </span>
             )}
           </div>
-          <p className="text-[12px] text-[#636366] truncate">
+          <p className="text-celeste-xs text-[#636366] truncate">
             ID: {link.object_id.substring(0, 8)}...
           </p>
           {link.suggested_reason && (
-            <p className="text-[11px] text-[#48484a] mt-0.5 line-clamp-2">
+            <p className="text-celeste-xs text-[#48484a] mt-0.5 line-clamp-2">
               {link.suggested_reason}
             </p>
           )}
         </div>
 
         {/* Navigate */}
-        <button className="p-1.5 rounded text-[#636366] hover:text-white hover:bg-white/10 transition-colors">
+        <button className="p-1.5 rounded text-[#636366] hover:text-celeste-text-title hover:bg-white/10 transition-colors">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -309,7 +309,7 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
             onClick={handleAccept}
             disabled={acceptMutation.isPending}
             className={cn(
-              'flex items-center gap-1 px-2 py-1 rounded text-[11px] transition-colors',
+              'flex items-center gap-1 px-2 py-1 rounded text-celeste-xs transition-colors',
               'text-[#30d158] hover:bg-[#30d158]/20',
               acceptMutation.isPending && 'opacity-50'
             )}
@@ -326,7 +326,7 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
         {/* Change */}
         <button
           onClick={onChangeClick}
-          className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-[#98989f] hover:bg-white/10 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 rounded text-celeste-xs text-[#98989f] hover:bg-white/10 transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
           Change
@@ -336,7 +336,7 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
         {!showUnlinkConfirm ? (
           <button
             onClick={() => setShowUnlinkConfirm(true)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-[#ff453a] hover:bg-[#ff453a]/20 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-celeste-xs text-[#ff453a] hover:bg-[#ff453a]/20 transition-colors"
           >
             <Unlink className="w-3 h-3" />
             Unlink
@@ -346,7 +346,7 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
             <button
               onClick={handleUnlink}
               disabled={removeMutation.isPending}
-              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-[#ff453a] text-white hover:bg-[#ff453a]/80 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 rounded text-celeste-xs bg-[#ff453a] text-celeste-text-title hover:bg-[#ff453a]/80 transition-colors"
             >
               {removeMutation.isPending ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -356,7 +356,7 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
             </button>
             <button
               onClick={() => setShowUnlinkConfirm(false)}
-              className="px-2 py-1 rounded text-[11px] text-[#98989f] hover:bg-white/10 transition-colors"
+              className="px-2 py-1 rounded text-celeste-xs text-[#98989f] hover:bg-white/10 transition-colors"
             >
               Cancel
             </button>
@@ -365,7 +365,7 @@ function LinkItem({ link, isSuggested, onChangeClick }: LinkItemProps) {
 
         {/* Error indicator */}
         {(acceptMutation.isError || removeMutation.isError) && (
-          <span className="text-[#ff453a] text-[10px] flex items-center gap-0.5">
+          <span className="text-[#ff453a] text-celeste-xs flex items-center gap-0.5">
             <AlertCircle className="w-3 h-3" />
             Failed
           </span>
