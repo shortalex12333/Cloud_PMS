@@ -78,7 +78,7 @@ export default function CrewNotesModule({
       statusLabel={`${notes.length} recent notes`}
       badge={newNotes.length > 0 ? newNotes.length : undefined}
       collapsedContent={
-        <p className="text-[12px] text-zinc-500 truncate">
+        <p className="text-celeste-xs text-zinc-500 truncate">
           Latest: {notes[0]?.content}
         </p>
       }
@@ -110,25 +110,25 @@ export default function CrewNotesModule({
                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700">
                       <User className="h-3 w-3 text-zinc-500" />
                     </div>
-                    <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+                    <span className="text-celeste-xs font-medium text-zinc-700 dark:text-zinc-300">
                       {note.author}
                     </span>
                     <NoteIcon className={cn('h-3 w-3', iconColor)} />
-                    <span className="ml-auto flex items-center gap-1 text-[11px] text-zinc-400">
+                    <span className="ml-auto flex items-center gap-1 text-celeste-xs text-zinc-400">
                       <Clock className="h-3 w-3" />
                       {note.timestamp}
                     </span>
                   </div>
 
                   {/* Content */}
-                  <p className="text-[13px] text-zinc-600 dark:text-zinc-300 mb-2">
+                  <p className="text-celeste-sm text-zinc-600 dark:text-zinc-300 mb-2">
                     {note.content}
                   </p>
 
                   {/* Footer */}
                   <div className="flex items-center justify-between">
                     <span className={cn(
-                      'text-[10px] px-1.5 py-0.5 rounded',
+                      'text-celeste-xs px-1.5 py-0.5 rounded',
                       note.status === 'new' && 'bg-celeste-accent-subtle text-celeste-accent dark:bg-celeste-accent-subtle dark:text-celeste-accent',
                       note.status === 'reviewed' && 'bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400',
                       note.status === 'actioned' && 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
@@ -157,7 +157,7 @@ export default function CrewNotesModule({
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-[12px] font-medium',
+              'text-celeste-xs font-medium',
               'text-celeste-accent hover:text-celeste-accent-hover',
               'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'

@@ -100,7 +100,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
         <div className="flex-1 min-w-0">
           {/* Title Row */}
           <div className="flex items-center justify-between gap-2 mb-1">
-            <h3 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+            <h3 className="text-celeste-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
               {workOrder.title}
             </h3>
             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -115,26 +115,26 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
 
           {/* Equipment - Subtle secondary text */}
           {workOrder.equipment_name && (
-            <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mb-2">
+            <p className="text-celeste-sm text-zinc-500 dark:text-zinc-400 mb-2">
               {workOrder.equipment_name}
             </p>
           )}
 
           {/* Description - Truncated */}
-          <p className="text-[14px] text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
+          <p className="text-celeste-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
             {workOrder.description}
           </p>
 
           {/* Assigned To */}
           {workOrder.assigned_to_name && (
-            <div className="flex items-center gap-1.5 text-[13px] text-zinc-500 dark:text-zinc-400 mb-2">
+            <div className="flex items-center gap-1.5 text-celeste-sm text-zinc-500 dark:text-zinc-400 mb-2">
               <User className="h-3.5 w-3.5" />
               <span>{workOrder.assigned_to_name}</span>
             </div>
           )}
 
           {/* Metadata Row */}
-          <div className="flex items-center gap-3 text-[12px] text-zinc-400 dark:text-zinc-500 mb-4">
+          <div className="flex items-center gap-3 text-celeste-xs text-zinc-400 dark:text-zinc-500 mb-4">
             <span>{formatDate(workOrder.created_at)}</span>
             {workOrder.due_date && (
               <span className="text-[--system-orange] font-medium">
@@ -166,7 +166,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
 
             {/* More indicator */}
             {actions.length > 3 && (
-              <button className="h-8 px-2 text-[13px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+              <button className="h-8 px-2 text-celeste-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}

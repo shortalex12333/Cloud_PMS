@@ -335,7 +335,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
       <div className="flex gap-3">
         <button
           onClick={handleViewExisting}
-          className="flex-1 px-4 py-2 bg-celeste-accent text-white rounded hover:bg-celeste-accent-hover transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-accent text-celeste-text-title rounded hover:bg-celeste-accent-hover transition-colors"
         >
           View Existing WO
         </button>
@@ -448,7 +448,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
         </button>
         <button
           onClick={handleNext}
-          className="flex-1 px-4 py-2 bg-celeste-accent text-white rounded hover:bg-celeste-accent-hover transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-accent text-celeste-text-title rounded hover:bg-celeste-accent-hover transition-colors"
         >
           Next
         </button>
@@ -503,7 +503,7 @@ export default function CreateWorkOrderFromFault({ faultId, onCancel, onSuccess 
         </button>
         <button
           onClick={handleSignAndCreate}
-          className="flex-1 px-4 py-2 bg-celeste-accent text-white rounded hover:bg-celeste-accent-hover transition-colors"
+          className="flex-1 px-4 py-2 bg-celeste-accent text-celeste-text-title rounded hover:bg-celeste-accent-hover transition-colors"
         >
           Sign & Create
         </button>

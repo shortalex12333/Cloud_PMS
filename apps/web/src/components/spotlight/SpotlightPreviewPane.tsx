@@ -92,7 +92,7 @@ export default function SpotlightPreviewPane({
         <div className="flex items-center gap-3">
           <div className={cn(
             'flex items-center justify-center',
-            'w-10 h-10 rounded-xl',
+            'w-10 h-10 rounded-celeste-lg',
             'bg-celeste-surface-light/80 dark:bg-celeste-bg-tertiary/80',
             'shadow-sm'
           )}>
