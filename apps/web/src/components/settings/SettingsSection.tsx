@@ -3,8 +3,8 @@
 /**
  * SettingsSection - Section wrapper for Settings modal
  *
- * Provides consistent section header styling per Celeste design system.
- * No hardcoded values - tokens only.
+ * NO BOXES. Just a header and content.
+ * Content flows flat with subtle dividers.
  */
 
 import { ReactNode } from 'react';
@@ -16,13 +16,11 @@ interface SettingsSectionProps {
 
 export function SettingsSection({ title, children }: SettingsSectionProps) {
   return (
-    <div className="space-y-[var(--celeste-spacing-3)]">
-      <h3 className="text-celeste-xs font-semibold text-celeste-text-muted uppercase tracking-widest">
+    <div>
+      <h3 className="text-celeste-xs font-semibold text-celeste-text-muted uppercase tracking-widest mb-[var(--celeste-spacing-3)]">
         {title}
       </h3>
-      <div className="bg-celeste-bg-primary border border-celeste-border rounded-celeste-md">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

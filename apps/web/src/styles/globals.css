@@ -146,8 +146,8 @@
     --celeste-min-h-small-divider: 20px;
 
     /* Custom Heights */
-    --celeste-height-element-xl: 50px;
-    --celeste-height-search-bar: 52px;
+    --celeste-height-element-xl: 92px;
+    --celeste-height-search-bar: 92px;
 
     /* Custom Backdrop Blurs */
     --celeste-backdrop-blur-md: 20px;
@@ -165,6 +165,29 @@
     --celeste-duration-slow: 300ms;
     --celeste-duration-deliberate: 400ms;
     --celeste-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    /* =========================================================================
+       SPOTLIGHT - System Entry Point Tokens
+       ========================================================================= */
+    --celeste-spotlight-width: 720px;
+    --celeste-spotlight-height: 92px;
+    --celeste-spotlight-radius: 14px;
+    --celeste-spotlight-padding-x: 24px;
+    --celeste-spotlight-font-size: 22px;
+    --celeste-spotlight-backdrop-opacity: 0.65;
+    --celeste-spotlight-panel-opacity: 0.95;
+    --celeste-spotlight-border-opacity: 0.04;
+
+    /* Spotlight result row tokens */
+    --celeste-spotlight-row-min-height: 56px;
+    --celeste-spotlight-row-padding-y: 12px;
+    --celeste-spotlight-row-padding-x: 20px;
+    --celeste-spotlight-accent-bar-width: 2px;
+
+    /* Light mode spotlight colors */
+    --celeste-spotlight-panel-bg: 239, 239, 241;
+    --celeste-spotlight-backdrop-bg: 15, 17, 20;
+    --celeste-spotlight-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
   }
 
   .dark {
@@ -197,8 +220,8 @@
     /* CELESTE DARK MODE OVERRIDES */
     --celeste-text-title: #EFEFF1;
     --celeste-text-primary: #DADDE0;
-    --celeste-text-secondary: #8A9196;
-    --celeste-text-muted: #6A6E72;
+    --celeste-text-secondary: #7A7E82;
+    --celeste-text-muted: #5A5E62;
     --celeste-text-disabled: #4A4E52;
 
     --celeste-bg-primary: #0A0A0A;
@@ -212,6 +235,11 @@
 
     --celeste-border: #2A2A2A;
     --celeste-border-subtle: rgba(255, 255, 255, 0.06);
+
+    /* Spotlight dark mode overrides */
+    --celeste-spotlight-panel-bg: 22, 24, 28;
+    --celeste-spotlight-backdrop-bg: 15, 17, 20;
+    --celeste-spotlight-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -328,33 +356,27 @@
    ============================================================================ */
 
 .spotlight-panel {
-  /* Glass material - Celeste light mode */
-  background: rgba(239, 239, 241, 0.92);  /* #EFEFF1 */
-  backdrop-filter: blur(72px) saturate(180%);
-  -webkit-backdrop-filter: blur(72px) saturate(180%);
+  /* Glass material - tokenized */
+  background: rgba(var(--celeste-spotlight-panel-bg), var(--celeste-spotlight-panel-opacity));
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
 
-  /* Large radius */
-  border-radius: 18px;
+  /* Radius from token */
+  border-radius: var(--celeste-spotlight-radius);
 
-  /* Dramatic shadow - floating effect */
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.06),
-    0 2px 4px rgba(0, 0, 0, 0.04),
-    0 8px 16px rgba(0, 0, 0, 0.08),
-    0 24px 48px rgba(0, 0, 0, 0.16);
+  /* Border with token opacity */
+  border: 1px solid rgba(0, 0, 0, var(--celeste-spotlight-border-opacity));
+
+  /* Shadow from token */
+  box-shadow: var(--celeste-spotlight-shadow);
 
   /* Overflow handling */
   overflow: hidden;
 }
 
 .dark .spotlight-panel {
-  /* Glass material - Celeste dark mode (deeper black) */
-  background: rgba(10, 10, 10, 0.94);  /* #0A0A0A */
-  box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.06),
-    0 2px 4px rgba(0, 0, 0, 0.3),
-    0 8px 16px rgba(0, 0, 0, 0.4),
-    0 24px 48px rgba(0, 0, 0, 0.6);
+  /* Dark mode: border uses white with token opacity */
+  border: 1px solid rgba(255, 255, 255, var(--celeste-spotlight-border-opacity));
 }
 
 /* Spotlight scrollbar - thin, subtle */
@@ -409,128 +431,45 @@
 
 /* ============================================================================
    SPOTLIGHT RESULT TYPOGRAPHY SYSTEM (sr-*)
-   Font: Eloquia Text (falls back to SF Pro / system)
-   Hierarchy: 600 → 500 → 400 (structural, not loud)
+   Design: Apple Spotlight-inspired, disciplined, restrained
+   Typography carries hierarchy - no icons
    ============================================================================ */
 
-/* Row container - consistent touch targets */
-.sr-row {
-  min-height: 52px;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-@media (max-width: 640px) {
-  .sr-row {
-    min-height: 56px;
-    padding: 12px 16px;
-  }
-}
-
-/* Section Header - domain grouping labels */
+/* Section Header - domain grouping labels
+   - text-celeste-xs
+   - weight 600
+   - uppercase
+   - tracking-wide
+   - muted color
+   - margin-top: 16px (spacing-4)
+   - margin-bottom: 8px (spacing-2)
+*/
 .sr-section-header {
   font-family: var(--celeste-font-body);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.2;
-  color: var(--celeste-text-secondary);
+  color: var(--celeste-text-muted);
 }
 
-/* Result Title - primary entity name (single line, truncate) */
-.sr-title {
-  font-family: var(--celeste-font-body);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--celeste-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .sr-title {
-    font-size: 14px;
-  }
-}
-
-/* Result Subline - context/location/snippet (single line, truncate) */
-.sr-sub {
-  font-family: var(--celeste-font-body);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.3;
-  color: var(--celeste-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .sr-sub {
-    font-size: 12px;
-  }
-}
-
-/* Right Meta - status/date (single line) */
-.sr-meta {
-  font-family: var(--celeste-font-body);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--celeste-text-secondary);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Top Match Label - kicker above first result */
-.sr-top-label {
-  font-family: var(--celeste-font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1;
-  color: var(--celeste-text-secondary);
-}
-
-/* Title/Subline gap within result */
-.sr-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-/* Section spacing */
+/* Section spacing - generous like Apple */
 .sr-section {
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .sr-section:first-child {
-  margin-top: 0;
+  margin-top: 8px;
 }
 
+/* Section header wrapper - tight to results */
 .sr-section-header-wrapper {
-  padding-bottom: 8px;
+  padding: 0 20px 6px 20px;
 }
 
-/* Row divider - hairline, low contrast */
+/* Row divider - hairline, very low contrast */
 .sr-divider {
   height: 1px;
   background: var(--celeste-border-subtle);
-}
-
-/* Selected row state - background + higher title contrast */
-.sr-row-selected {
-  background: var(--celeste-accent-subtle);
-}
-
-.sr-row-selected .sr-title {
-  color: var(--celeste-text-title);
 }

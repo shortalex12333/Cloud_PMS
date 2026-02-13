@@ -10,21 +10,41 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { isHOD, isFullyActivated } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, login, loading: authLoading, bootstrapping, error: authError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justLoggedOut, setJustLoggedOut] = useState(false);
+
+  // Detect logout param and clear it from URL
+  useEffect(() => {
+    if (searchParams.get('logout') === '1') {
+      setJustLoggedOut(true);
+      // Clear the logout param from URL without triggering navigation
+      window.history.replaceState({}, '', '/login');
+      // Reset after a short delay to allow auth state to settle
+      const timer = setTimeout(() => setJustLoggedOut(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   // Redirect when user is authenticated and fully activated
   useEffect(() => {
+    // Skip auto-redirect if user just logged out (prevents cache loop)
+    if (justLoggedOut) {
+      console.log('[LoginPage] Just logged out, skipping auto-redirect');
+      return;
+    }
+
     if (!authLoading && user) {
       console.log('[LoginPage] User state:', user.bootstrapStatus);
 
@@ -60,7 +80,7 @@ export default function LoginContent() {
         return;
       }
     }
-  }, [user, authLoading, bootstrapping, router]);
+  }, [user, authLoading, bootstrapping, router, justLoggedOut]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,8 +98,8 @@ export default function LoginContent() {
     }
   };
 
-  // Show loading while auth is initializing
-  if (authLoading) {
+  // Show loading while auth is initializing (but not if just logged out)
+  if (authLoading && !justLoggedOut) {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -90,8 +110,8 @@ export default function LoginContent() {
     );
   }
 
-  // If user exists but still bootstrapping, show loading
-  if (user && bootstrapping) {
+  // If user exists but still bootstrapping, show loading (but not if just logged out)
+  if (user && bootstrapping && !justLoggedOut) {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -102,8 +122,8 @@ export default function LoginContent() {
     );
   }
 
-  // If user is fully activated, show redirecting state
-  if (user && isFullyActivated(user)) {
+  // If user is fully activated, show redirecting state (but not if just logged out)
+  if (user && isFullyActivated(user) && !justLoggedOut) {
     return (
       <div className="min-h-screen bg-[#000000] flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
