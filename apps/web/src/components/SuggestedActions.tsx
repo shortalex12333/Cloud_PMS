@@ -54,7 +54,7 @@ export default function SuggestedActions({
         )}
         data-testid="suggested-actions"
       >
-        <span className="text-[12px] text-[#98989f] self-center mr-1">
+        <span className="text-celeste-xs text-[#98989f] self-center mr-1">
           Actions:
         </span>
         {actions.map((action) => (
@@ -63,7 +63,7 @@ export default function SuggestedActions({
             onClick={() => handleActionClick(action)}
             className={cn(
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-              'text-[13px] font-medium',
+              'text-celeste-sm font-medium',
               'bg-celeste-accent/20 text-celeste-accent',
               'hover:bg-celeste-accent/30 transition-colors',
               'border border-celeste-accent/30',

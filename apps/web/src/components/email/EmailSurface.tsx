@@ -256,14 +256,14 @@ export default function EmailSurface({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-orange-500" />
-              <span className="text-[12px] text-gray-400">
+              <span className="text-celeste-xs text-gray-400">
                 {outlookStatus?.isExpired ? 'Session expired' : 'Not connected'}
               </span>
             </div>
             <button
               onClick={handleReconnect}
               disabled={reconnecting}
-              className="text-[11px] text-orange-500 hover:underline"
+              className="text-celeste-xs text-orange-500 hover:underline"
             >
               {reconnecting ? 'Connecting...' : 'Reconnect'}
             </button>
@@ -275,7 +275,7 @@ export default function EmailSurface({
         <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-orange-500" />
-            <span className="text-[12px] text-gray-400">Sync paused</span>
+            <span className="text-celeste-xs text-gray-400">Sync paused</span>
           </div>
         </div>
       )}
@@ -294,7 +294,7 @@ export default function EmailSurface({
                     <X className="w-4 h-4" />
                   </button>
                 )}
-                <h1 className="text-[14px] font-medium text-gray-300">
+                <h1 className="text-celeste-sm font-medium text-gray-300">
                   Correspondence
                 </h1>
               </div>
@@ -312,7 +312,7 @@ export default function EmailSurface({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Filter..."
-                className="flex-1 bg-transparent text-[12px] text-gray-300 placeholder:text-gray-500 outline-none"
+                className="flex-1 bg-transparent text-celeste-xs text-gray-300 placeholder:text-gray-500 outline-none"
               />
               {searchQuery && (
                 <button onClick={handleClear} className="text-gray-500 hover:text-gray-400">
@@ -331,8 +331,8 @@ export default function EmailSurface({
 
             {displayError && (
               <div className="py-6 text-center px-4">
-                <p className="text-[11px] text-red-400">Failed to load</p>
-                <button onClick={() => refetch()} className="text-[11px] text-celeste-accent mt-1">
+                <p className="text-celeste-xs text-red-400">Failed to load</p>
+                <button onClick={() => refetch()} className="text-celeste-xs text-celeste-accent mt-1">
                   Retry
                 </button>
               </div>
@@ -340,7 +340,7 @@ export default function EmailSurface({
 
             {!displayLoading && !displayError && displayThreads.length === 0 && (
               <div className="py-8 text-center px-4">
-                <p className="text-[11px] text-gray-500">
+                <p className="text-celeste-xs text-gray-500">
                   {debouncedQuery ? 'No matches' : 'No correspondence'}
                 </p>
               </div>
@@ -363,15 +363,15 @@ export default function EmailSurface({
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="text-[10px] text-gray-500 disabled:opacity-30"
+                      className="text-celeste-xs text-gray-500 disabled:opacity-30"
                     >
                       ← Prev
                     </button>
-                    <span className="text-[10px] text-gray-500">{page}</span>
+                    <span className="text-celeste-xs text-gray-500">{page}</span>
                     <button
                       onClick={() => setPage((p) => p + 1)}
                       disabled={!hasMore}
-                      className="text-[10px] text-gray-500 disabled:opacity-30"
+                      className="text-celeste-xs text-gray-500 disabled:opacity-30"
                     >
                       Next →
                     </button>
@@ -386,7 +386,7 @@ export default function EmailSurface({
         <div className="flex-1 flex flex-col overflow-hidden">
           {!selectedThreadId && (
             <div className="h-full flex items-center justify-center">
-              <p className="text-[13px] text-gray-500">
+              <p className="text-celeste-sm text-gray-500">
                 Select a message to inspect correspondence.
               </p>
             </div>
@@ -456,12 +456,12 @@ function CorrespondenceRow({ thread, isSelected, onClick, onHover }: Corresponde
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <h3 className={cn(
-            'text-[13px] font-medium leading-tight truncate',
-            isSelected ? 'text-white' : 'text-gray-300'
+            'text-celeste-sm font-medium leading-tight truncate',
+            isSelected ? 'text-celeste-text-title' : 'text-gray-300'
           )}>
             {entityTitle}
           </h3>
-          <span className="text-[10px] text-gray-500 whitespace-nowrap">
+          <span className="text-celeste-xs text-gray-500 whitespace-nowrap">
             {formatTime(thread.last_activity_at)}
           </span>
         </div>
@@ -471,13 +471,13 @@ function CorrespondenceRow({ thread, isSelected, onClick, onHover }: Corresponde
           {thread.has_attachments && (
             <div className="flex items-center gap-1 text-gray-500">
               <Paperclip className="w-2.5 h-2.5" />
-              <span className="text-[10px]">{thread.message_count}</span>
+              <span className="text-celeste-xs">{thread.message_count}</span>
             </div>
           )}
         </div>
 
         {sender && (
-          <p className="text-[11px] text-gray-500 mt-1 truncate">
+          <p className="text-celeste-xs text-gray-500 mt-1 truncate">
             {sender}
           </p>
         )}
@@ -485,8 +485,8 @@ function CorrespondenceRow({ thread, isSelected, onClick, onHover }: Corresponde
 
       {thread.message_count > 1 && (
         <div className="flex items-center gap-0.5 text-gray-500">
-          <span className="text-[10px]">‹</span>
-          <span className="text-[10px]">{thread.message_count}</span>
+          <span className="text-celeste-xs">‹</span>
+          <span className="text-celeste-xs">{thread.message_count}</span>
         </div>
       )}
     </button>
@@ -509,7 +509,7 @@ function SystemStateBadge({ state }: { state: SystemState }) {
   if (!label) return null;
 
   return (
-    <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium', badgeClass)}>
+    <span className={cn('px-1.5 py-0.5 rounded text-celeste-xs font-medium', badgeClass)}>
       {label}
     </span>
   );
@@ -593,7 +593,7 @@ function InspectorPanel({
     <div className="h-full flex flex-col">
       <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="text-[15px] font-medium text-white truncate">
+          <h2 className="text-celeste-base font-medium text-celeste-text-title truncate">
             {panelTitle}
           </h2>
         </div>
@@ -610,7 +610,7 @@ function InspectorPanel({
                 key={msg.id}
                 onClick={() => onMessageSelect(msg.provider_message_id)}
                 className={cn(
-                  'px-2.5 py-1 rounded text-[11px] whitespace-nowrap transition-colors',
+                  'px-2.5 py-1 rounded text-celeste-xs whitespace-nowrap transition-colors',
                   selectedMessageId === msg.provider_message_id
                     ? 'bg-celeste-accent-subtle text-celeste-accent'
                     : 'text-gray-500 hover:text-gray-400'
@@ -634,7 +634,7 @@ function InspectorPanel({
 
         {!contentLoading && content && (
           <div className="px-6 py-4">
-            <div className="space-y-0.5 text-[11px] text-gray-500 mb-4 pb-4 border-b border-white/5">
+            <div className="space-y-0.5 text-celeste-xs text-gray-500 mb-4 pb-4 border-b border-white/5">
               {content.from_address?.emailAddress && (
                 <div>
                   <span>From: </span>
@@ -673,7 +673,7 @@ function InspectorPanel({
               )}
             </div>
 
-            <div className="text-[13px] text-gray-300 leading-relaxed">
+            <div className="text-celeste-sm text-gray-300 leading-relaxed">
               {content.body?.contentType === 'html' ? (
                 <div
                   className="prose prose-invert prose-sm max-w-none
@@ -691,7 +691,7 @@ function InspectorPanel({
 
             {attachments.length > 0 && (
               <div className="mt-6 pt-4 border-t border-white/5">
-                <h4 className="text-[11px] font-medium text-gray-500 mb-2">
+                <h4 className="text-celeste-xs font-medium text-gray-500 mb-2">
                   Attachments
                 </h4>
                 <div className="space-y-1">
@@ -702,11 +702,11 @@ function InspectorPanel({
                       className="w-full flex items-center gap-2 px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors text-left"
                     >
                       <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className="text-[12px] text-gray-300 truncate flex-1">
+                      <span className="text-celeste-xs text-gray-300 truncate flex-1">
                         {att.name}
                       </span>
                       {att.size && (
-                        <span className="text-[10px] text-gray-500">
+                        <span className="text-celeste-xs text-gray-500">
                           ({formatFileSize(att.size)})
                         </span>
                       )}
@@ -719,7 +719,7 @@ function InspectorPanel({
 
             {linkedItems.length > 0 && (
               <div className="mt-6 pt-4 border-t border-white/5">
-                <h4 className="text-[11px] font-medium text-gray-500 mb-2">
+                <h4 className="text-celeste-xs font-medium text-gray-500 mb-2">
                   Linked Items
                 </h4>
                 <div className="space-y-1">
@@ -734,7 +734,7 @@ function InspectorPanel({
 
         {!contentLoading && !content && selectedMessageId && (
           <div className="px-6 py-8 text-center">
-            <p className="text-[11px] text-gray-500">
+            <p className="text-celeste-xs text-gray-500">
               Failed to load message
             </p>
           </div>
@@ -742,12 +742,12 @@ function InspectorPanel({
 
         {!selectedMessageId && thread.messages.length > 0 && (
           <div className="px-6 py-8 text-center">
-            <p className="text-[11px] text-gray-500">
+            <p className="text-celeste-xs text-gray-500">
               Select a message to view
             </p>
             <button
               onClick={() => onMessageSelect(thread.messages[0].provider_message_id)}
-              className="mt-2 text-[11px] text-celeste-accent hover:underline"
+              className="mt-2 text-celeste-xs text-celeste-accent hover:underline"
             >
               View first message
             </button>
@@ -788,15 +788,15 @@ function LinkedItemCard({ item }: { item: ThreadLink }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-gray-300 truncate">
+          <span className="text-celeste-xs font-medium text-gray-300 truncate">
             {item.object_id.slice(0, 8)}...
           </span>
-          <span className={cn('text-[9px] uppercase', statusClass)}>
+          <span className={cn('text-celeste-xs uppercase', statusClass)}>
             {item.confidence_level === 'deterministic' ? 'In Progress' : typeLabel}
           </span>
         </div>
         {item.suggested_reason && (
-          <p className="text-[10px] text-gray-500 truncate">
+          <p className="text-celeste-xs text-gray-500 truncate">
             {item.suggested_reason}
           </p>
         )}

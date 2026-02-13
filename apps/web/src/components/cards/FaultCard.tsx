@@ -172,7 +172,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
           <div className="flex-1 min-w-0">
             {/* Title Row */}
             <div className="flex items-center justify-between gap-2 mb-1">
-              <h3 className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+              <h3 className="text-celeste-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                 {fault.title}
               </h3>
               <span className={cn('celeste-badge flex-shrink-0', severity.badge)}>
@@ -181,17 +181,17 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
             </div>
 
             {/* Equipment - Subtle secondary text */}
-            <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mb-2">
+            <p className="text-celeste-sm text-zinc-500 dark:text-zinc-400 mb-2">
               {fault.equipment_name}
             </p>
 
             {/* Description - Truncated */}
-            <p className="text-[14px] text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
+            <p className="text-celeste-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
               {fault.description}
             </p>
 
             {/* Metadata Row */}
-            <p className="text-[12px] text-zinc-400 dark:text-zinc-500 mb-4">
+            <p className="text-celeste-xs text-zinc-400 dark:text-zinc-500 mb-4">
               {fault.reporter} · {new Date(fault.reported_at).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -205,7 +205,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {/* FAIL-CLOSED: Show error state if decisions endpoint failed */}
               {failClosed && (
                 <div
-                  className="flex items-center gap-2 px-3 py-2 text-[12px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                  className="flex items-center gap-2 px-3 py-2 text-celeste-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg"
                   data-testid="decisions-error-state"
                 >
                   <AlertCircle className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {/* Loading state while fetching decisions */}
               {decisionsLoading && !failClosed && (
                 <div
-                  className="flex items-center gap-2 px-3 py-2 text-[12px] text-zinc-500"
+                  className="flex items-center gap-2 px-3 py-2 text-celeste-xs text-zinc-500"
                   data-testid="decisions-loading-state"
                 >
                   <span className="animate-pulse">Loading actions...</span>
@@ -227,7 +227,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showDiagnoseButton && (
                 <button
                   onClick={() => setShowDiagnose(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="diagnose-fault-button"
                 >
                   <Stethoscope className="h-3.5 w-3.5" />
@@ -239,7 +239,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showManualButton && (
                 <button
                   onClick={() => setShowManual(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="view-manual-button"
                 >
                   <Book className="h-3.5 w-3.5" />
@@ -251,7 +251,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showHistoryButton && (
                 <button
                   onClick={() => setShowHistory(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="view-history-button"
                 >
                   <History className="h-3.5 w-3.5" />
@@ -263,7 +263,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showSuggestPartsButton && (
                 <button
                   onClick={() => setShowSuggestParts(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="suggest-parts-button"
                 >
                   <Package className="h-3.5 w-3.5" />
@@ -275,7 +275,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showAddNoteButton && (
                 <button
                   onClick={() => setShowAddNote(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="add-note-button"
                 >
                   <StickyNote className="h-3.5 w-3.5" />
@@ -287,7 +287,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showAddPhotoButton && (
                 <button
                   onClick={() => setShowAddPhoto(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="add-photo-button"
                 >
                   <Camera className="h-3.5 w-3.5" />
@@ -299,7 +299,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showAcknowledgeButton && (
                 <button
                   onClick={() => setShowAcknowledge(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="acknowledge-fault-button"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -311,7 +311,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showUpdateButton && (
                 <button
                   onClick={() => setShowUpdate(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="update-fault-button"
                 >
                   <Edit className="h-3.5 w-3.5" />
@@ -323,7 +323,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showHandoverButton && (
                 <button
                   onClick={() => setShowHandover(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
                   data-testid="add-to-handover-button"
                 >
                   <ClipboardList className="h-3.5 w-3.5" />
@@ -335,7 +335,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               {showCreateWOButton && (
                 <button
                   onClick={() => setShowCreateWO(true)}
-                  className="celeste-button celeste-button-primary h-8 px-3 text-[13px]"
+                  className="celeste-button celeste-button-primary h-8 px-3 text-celeste-sm"
                   data-testid="create-work-order-button"
                 >
                   <Wrench className="h-3.5 w-3.5" />
@@ -363,7 +363,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
 
               {/* More indicator */}
               {actions.filter(a => a !== 'create_work_order').length > 2 && (
-                <button className="h-8 px-2 text-[13px] text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                <button className="h-8 px-2 text-celeste-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               )}

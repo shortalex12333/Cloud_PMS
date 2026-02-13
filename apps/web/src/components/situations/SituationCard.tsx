@@ -125,11 +125,11 @@ export function SituationCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className={cn('text-[13px] font-semibold', config.textColor)}>
+            <h4 className={cn('text-celeste-sm font-semibold', config.textColor)}>
               {situation.label}
             </h4>
             <span className={cn(
-              'px-1.5 py-0.5 rounded text-[10px] font-medium uppercase',
+              'px-1.5 py-0.5 rounded text-celeste-xs font-medium uppercase',
               config.badgeBg
             )}>
               {config.badge}
@@ -139,7 +139,7 @@ export function SituationCard({
           {situation.context && (
             <div className="flex items-center gap-1 mt-1">
               <Clock className="h-3 w-3 text-zinc-400" />
-              <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              <span className="text-celeste-xs text-zinc-500 dark:text-zinc-400">
                 {situation.context}
               </span>
             </div>
@@ -152,14 +152,14 @@ export function SituationCard({
       {/* Evidence */}
       {!compact && situation.evidence.length > 0 && (
         <div className="px-4 pb-3">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 mb-1.5">
+          <p className="text-celeste-xs font-medium uppercase tracking-wide text-zinc-500 mb-1.5">
             Evidence
           </p>
           <ul className="space-y-1">
             {situation.evidence.map((item, i) => (
               <li key={i} className="flex items-start gap-2">
                 <ChevronRight className="h-3 w-3 text-zinc-400 mt-0.5 shrink-0" />
-                <span className="text-[12px] text-zinc-600 dark:text-zinc-300">
+                <span className="text-celeste-xs text-zinc-600 dark:text-zinc-300">
                   {item}
                 </span>
               </li>
@@ -175,7 +175,7 @@ export function SituationCard({
           'bg-white/60 dark:bg-zinc-800/40',
           'border-t border-zinc-200/60 dark:border-zinc-700/40'
         )}>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500 mb-2">
+          <p className="text-celeste-xs font-medium uppercase tracking-wide text-zinc-500 mb-2">
             Recommended Actions
           </p>
           <div className="space-y-2">
@@ -188,12 +188,12 @@ export function SituationCard({
                   onSuccess={() => onActionExecuted?.(rec.action)}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] text-zinc-700 dark:text-zinc-300 truncate">
+                  <p className="text-celeste-xs text-zinc-700 dark:text-zinc-300 truncate">
                     {rec.reason}
                   </p>
                   {rec.urgency !== 'normal' && (
                     <span className={cn(
-                      'text-[10px] font-medium uppercase',
+                      'text-celeste-xs font-medium uppercase',
                       getUrgencyColor(rec.urgency)
                     )}>
                       {rec.urgency}

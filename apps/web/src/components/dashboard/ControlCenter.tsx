@@ -108,7 +108,7 @@ export default function ControlCenter() {
               onClick={expandAll}
               className={cn(
                 'px-3 py-1.5 rounded-lg',
-                'text-[13px] font-medium',
+                'text-celeste-sm font-medium',
                 'bg-zinc-100 dark:bg-zinc-800',
                 'text-zinc-600 dark:text-zinc-300',
                 'hover:bg-zinc-200 dark:hover:bg-zinc-700',
@@ -121,7 +121,7 @@ export default function ControlCenter() {
               onClick={collapseAll}
               className={cn(
                 'px-3 py-1.5 rounded-lg',
-                'text-[13px] font-medium',
+                'text-celeste-sm font-medium',
                 'bg-zinc-100 dark:bg-zinc-800',
                 'text-zinc-600 dark:text-zinc-300',
                 'hover:bg-zinc-200 dark:hover:bg-zinc-700',
