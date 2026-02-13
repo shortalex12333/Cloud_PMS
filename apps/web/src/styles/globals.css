@@ -298,13 +298,16 @@
   }
 }
 
-/* Increase Contrast: Strengthen borders */
+/* Increase Contrast: Strengthen borders - values in tokens */
 @media (prefers-contrast: more) {
-  .spotlight-panel {
-    --celeste-rim-outer: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  :root {
+    --celeste-rim-outer-contrast: 0 0 0 1px rgba(0, 0, 0, 0.3);
   }
-  .dark .spotlight-panel {
-    --celeste-rim-outer: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  .dark {
+    --celeste-rim-outer-contrast: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+  .spotlight-panel {
+    --celeste-rim-outer: var(--celeste-rim-outer-contrast);
   }
 }
 
@@ -442,11 +445,11 @@
   /* Overflow handling */
   overflow: hidden;
 
-  /* Smooth state transitions */
+  /* Smooth state transitions - using duration token */
   transition:
-    background 150ms ease-out,
-    box-shadow 150ms ease-out,
-    backdrop-filter 150ms ease-out;
+    background var(--celeste-duration-fast) var(--celeste-ease-out),
+    box-shadow var(--celeste-duration-fast) var(--celeste-ease-out),
+    backdrop-filter var(--celeste-duration-fast) var(--celeste-ease-out);
 }
 
 /* Spotlight scrollbar - thin, subtle */
