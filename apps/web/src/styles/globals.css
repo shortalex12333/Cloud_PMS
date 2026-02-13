@@ -165,6 +165,29 @@
     --celeste-duration-slow: 300ms;
     --celeste-duration-deliberate: 400ms;
     --celeste-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    /* =========================================================================
+       SPOTLIGHT - System Entry Point Tokens
+       ========================================================================= */
+    --celeste-spotlight-width: 720px;
+    --celeste-spotlight-height: 92px;
+    --celeste-spotlight-radius: 14px;
+    --celeste-spotlight-padding-x: 24px;
+    --celeste-spotlight-font-size: 22px;
+    --celeste-spotlight-backdrop-opacity: 0.65;
+    --celeste-spotlight-panel-opacity: 0.95;
+    --celeste-spotlight-border-opacity: 0.04;
+
+    /* Spotlight result row tokens */
+    --celeste-spotlight-row-min-height: 56px;
+    --celeste-spotlight-row-padding-y: 12px;
+    --celeste-spotlight-row-padding-x: 20px;
+    --celeste-spotlight-accent-bar-width: 2px;
+
+    /* Light mode spotlight colors */
+    --celeste-spotlight-panel-bg: 239, 239, 241;
+    --celeste-spotlight-backdrop-bg: 15, 17, 20;
+    --celeste-spotlight-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
   }
 
   .dark {
@@ -212,6 +235,11 @@
 
     --celeste-border: #2A2A2A;
     --celeste-border-subtle: rgba(255, 255, 255, 0.06);
+
+    /* Spotlight dark mode overrides */
+    --celeste-spotlight-panel-bg: 22, 24, 28;
+    --celeste-spotlight-backdrop-bg: 15, 17, 20;
+    --celeste-spotlight-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -328,34 +356,27 @@
    ============================================================================ */
 
 .spotlight-panel {
-  /* Glass material - Celeste light mode */
-  background: rgba(239, 239, 241, 0.95);  /* #EFEFF1 */
+  /* Glass material - tokenized */
+  background: rgba(var(--celeste-spotlight-panel-bg), var(--celeste-spotlight-panel-opacity));
   backdrop-filter: blur(40px) saturate(150%);
   -webkit-backdrop-filter: blur(40px) saturate(150%);
 
-  /* Radius */
-  border-radius: 14px;
+  /* Radius from token */
+  border-radius: var(--celeste-spotlight-radius);
 
-  /* Subtle border */
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  /* Border with token opacity */
+  border: 1px solid rgba(0, 0, 0, var(--celeste-spotlight-border-opacity));
 
-  /* Restrained shadow - not dramatic */
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    0 8px 24px rgba(0, 0, 0, 0.12);
+  /* Shadow from token */
+  box-shadow: var(--celeste-spotlight-shadow);
 
   /* Overflow handling */
   overflow: hidden;
 }
 
 .dark .spotlight-panel {
-  /* Spotlight-grade: no visible border, subtle elevation */
-  background: rgba(22, 24, 28, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 14px;
-
-  /* Soft elevation - not harsh */
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  /* Dark mode: border uses white with token opacity */
+  border: 1px solid rgba(255, 255, 255, var(--celeste-spotlight-border-opacity));
 }
 
 /* Spotlight scrollbar - thin, subtle */
