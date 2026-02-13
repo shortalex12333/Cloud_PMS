@@ -153,7 +153,7 @@ export function SituationPanel({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-purple-500" />
-          <span className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-300">
+          <span className="text-celeste-xs font-semibold text-zinc-700 dark:text-zinc-300">
             AI Insights
           </span>
         </div>
@@ -189,7 +189,7 @@ export function SituationPanel({
           'flex items-center justify-center'
         )}>
           <RefreshCw className="h-5 w-5 text-zinc-400 animate-spin mr-2" />
-          <span className="text-[13px] text-zinc-500">Analyzing...</span>
+          <span className="text-celeste-sm text-zinc-500">Analyzing...</span>
         </div>
       )}
 
@@ -199,7 +199,7 @@ export function SituationPanel({
           'px-4 py-3 rounded-xl',
           'bg-red-50 dark:bg-red-900/20',
           'border border-red-200 dark:border-red-800',
-          'text-[12px] text-red-600 dark:text-red-400'
+          'text-celeste-xs text-red-600 dark:text-red-400'
         )}>
           Failed to analyze: {error}
         </div>
@@ -225,7 +225,7 @@ export function SituationPanel({
           'border border-emerald-200 dark:border-emerald-800',
           'text-center'
         )}>
-          <span className="text-[12px] text-emerald-600 dark:text-emerald-400">
+          <span className="text-celeste-xs text-emerald-600 dark:text-emerald-400">
             No issues detected
           </span>
         </div>

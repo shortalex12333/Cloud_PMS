@@ -157,7 +157,7 @@ export function HandoverItemCard({ item, onViewEntity }: HandoverItemCardProps) 
           {/* Summary Text */}
           <p
             className={cn(
-              'text-[14px] text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap mb-3',
+              'text-celeste-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap mb-3',
               !expanded && 'line-clamp-3'
             )}
           >
@@ -168,14 +168,14 @@ export function HandoverItemCard({ item, onViewEntity }: HandoverItemCardProps) 
           {shouldTruncate && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-[13px] text-celeste-accent-600 hover:text-celeste-accent-700 dark:text-celeste-accent-400 dark:hover:text-celeste-accent-300 mb-3"
+              className="text-celeste-sm text-celeste-accent-600 hover:text-celeste-accent-700 dark:text-celeste-accent-400 dark:hover:text-celeste-accent-300 mb-3"
             >
               {expanded ? 'Show less' : 'Read more'}
             </button>
           )}
 
           {/* Metadata Row */}
-          <div className="flex items-center gap-4 text-[12px] text-zinc-400 dark:text-zinc-500 mb-3">
+          <div className="flex items-center gap-4 text-celeste-xs text-zinc-400 dark:text-zinc-500 mb-3">
             <div className="flex items-center gap-1">
               <User className="h-3 w-3" />
               <span>{item.added_by_name}</span>
@@ -189,7 +189,7 @@ export function HandoverItemCard({ item, onViewEntity }: HandoverItemCardProps) 
           {/* View Entity Action */}
           <button
             onClick={handleViewEntity}
-            className="celeste-button celeste-button-secondary h-8 px-3 text-[13px]"
+            className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
           >
             View {ENTITY_LABELS[item.entity_type]}
             <ChevronRight className="h-3.5 w-3.5 ml-1" />

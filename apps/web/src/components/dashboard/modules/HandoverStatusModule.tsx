@@ -68,7 +68,7 @@ export default function HandoverStatusModule({
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={progress} status={isComplete ? 'healthy' : 'warning'} />
-          <span className="text-[11px] text-zinc-500">{completeSections}/{totalSections} sections</span>
+          <span className="text-celeste-xs text-zinc-500">{completeSections}/{totalSections} sections</span>
         </div>
       }
       className={className}
@@ -82,14 +82,14 @@ export default function HandoverStatusModule({
           {/* Header info */}
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-700/60">
             <div>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Next Handover</p>
-              <p className="text-[13px] font-medium text-zinc-700 dark:text-zinc-200">
+              <p className="text-celeste-xs text-zinc-500 dark:text-zinc-400">Next Handover</p>
+              <p className="text-celeste-sm font-medium text-zinc-700 dark:text-zinc-200">
                 {handover.nextHandover}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Assignment</p>
-              <p className="text-[13px] font-medium text-zinc-700 dark:text-zinc-200">
+              <p className="text-celeste-xs text-zinc-500 dark:text-zinc-400">Assignment</p>
+              <p className="text-celeste-sm font-medium text-zinc-700 dark:text-zinc-200">
                 {handover.assignedTo}
               </p>
             </div>
@@ -127,11 +127,11 @@ export default function HandoverStatusModule({
           {/* Overall progress */}
           <div className="mt-4 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+              <span className="text-celeste-xs font-medium text-zinc-700 dark:text-zinc-300">
                 Overall Progress
               </span>
               <span className={cn(
-                'text-[12px] font-semibold',
+                'text-celeste-xs font-semibold',
                 isComplete ? 'text-emerald-600' : 'text-amber-600'
               )}>
                 {progress}%
@@ -141,7 +141,7 @@ export default function HandoverStatusModule({
           </div>
 
           {/* Last updated */}
-          <p className="mt-3 text-[11px] text-zinc-400 text-center">
+          <p className="mt-3 text-celeste-xs text-zinc-400 text-center">
             Last updated {handover.lastUpdated}
           </p>
 

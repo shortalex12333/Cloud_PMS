@@ -142,7 +142,7 @@ export function AuthDebug() {
 
   if (!debug) {
     return (
-      <div className="fixed bottom-4 right-4 bg-[#1c1c1e] border border-[#3d3d3f] rounded-lg p-3 text-xs text-white font-mono">
+      <div className="fixed bottom-4 right-4 bg-[#1c1c1e] border border-[#3d3d3f] rounded-lg p-3 text-celeste-xs text-celeste-text-title font-mono">
         Diagnosing...
       </div>
     );
@@ -152,7 +152,7 @@ export function AuthDebug() {
   const okClass = (v: boolean) => v ? 'text-green-400' : 'text-red-400';
 
   return (
-    <div className="fixed bottom-4 right-4 bg-[#1c1c1e] border border-[#3d3d3f] rounded-lg text-xs text-white font-mono max-w-[320px] shadow-xl z-50">
+    <div className="fixed bottom-4 right-4 bg-[#1c1c1e] border border-[#3d3d3f] rounded-lg text-celeste-xs text-celeste-text-title font-mono max-w-[320px] shadow-xl z-50">
       <div
         className="flex items-center justify-between p-2 border-b border-[#3d3d3f] cursor-pointer"
         onClick={() => setExpanded(!expanded)}
@@ -210,7 +210,7 @@ export function AuthDebug() {
           </div>
 
           {/* Timestamp */}
-          <div className="text-[#636366] text-[10px] pt-2 border-t border-[#3d3d3f]">
+          <div className="text-[#636366] text-celeste-xs pt-2 border-t border-[#3d3d3f]">
             Last check: {debug.timestamp.split('T')[1].split('.')[0]}
           </div>
         </div>

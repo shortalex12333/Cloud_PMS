@@ -679,10 +679,10 @@ export default function SpotlightSearch({
         />
       )}
 
-      {/* Spotlight Container - tokenized width */}
+      {/* Spotlight Container - uses Tailwind token */}
       <div
         className={cn(
-          'w-full mx-auto max-w-[var(--celeste-spotlight-width)]',
+          'w-full mx-auto max-w-celeste-spotlight',
           isModal && 'relative z-10'
         )}
       >

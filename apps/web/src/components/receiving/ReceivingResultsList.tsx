@@ -153,7 +153,7 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'draft'
-              ? 'bg-celeste-text-secondary text-white border-celeste-text-secondary'
+              ? 'bg-celeste-text-secondary text-celeste-text-title border-celeste-text-secondary'
               : 'bg-celeste-bg-secondary text-celeste-text-secondary border-celeste-border hover:bg-celeste-border'
           )}
         >
@@ -165,7 +165,7 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'in_review'
-              ? 'bg-restricted-yellow-600 text-white border-restricted-yellow-700'
+              ? 'bg-restricted-yellow-600 text-celeste-text-title border-restricted-yellow-700'
               : 'bg-restricted-yellow-100 text-restricted-yellow-700 border-restricted-yellow-200 hover:bg-restricted-yellow-200'
           )}
         >
@@ -177,7 +177,7 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'accepted'
-              ? 'bg-restricted-green-600 text-white border-restricted-green-700'
+              ? 'bg-restricted-green-600 text-celeste-text-title border-restricted-green-700'
               : 'bg-restricted-green-100 text-restricted-green-700 border-restricted-green-200 hover:bg-restricted-green-200'
           )}
         >
@@ -189,7 +189,7 @@ export function ReceivingResultsList({
           className={cn(
             'px-3 py-1 text-xs rounded-full border transition-colors',
             statusFilter === 'rejected'
-              ? 'bg-restricted-red-600 text-white border-restricted-red-700'
+              ? 'bg-restricted-red-600 text-celeste-text-title border-restricted-red-700'
               : 'bg-restricted-red-100 text-restricted-red-700 border-restricted-red-200 hover:bg-restricted-red-200'
           )}
         >
