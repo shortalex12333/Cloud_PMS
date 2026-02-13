@@ -669,11 +669,11 @@ export default function SpotlightSearch({
         className
       )}
     >
-      {/* Backdrop - tokenized opacity */}
+      {/* Backdrop - material-based dim */}
       {isModal && (
         <div
-          className="absolute inset-0 backdrop-blur-xl"
-          style={{ backgroundColor: `rgba(var(--celeste-spotlight-backdrop-bg), var(--celeste-spotlight-backdrop-opacity))` }}
+          className="absolute inset-0 backdrop-blur-md transition-colors duration-150"
+          style={{ backgroundColor: `rgba(var(--celeste-backdrop-color), var(--celeste-backdrop-opacity))` }}
           onClick={onClose}
           aria-hidden="true"
         />
