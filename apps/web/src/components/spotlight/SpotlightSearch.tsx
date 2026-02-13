@@ -669,19 +669,20 @@ export default function SpotlightSearch({
         className
       )}
     >
-      {/* Backdrop - subtle dim, not dark prison */}
+      {/* Backdrop - tokenized opacity */}
       {isModal && (
         <div
-          className="absolute inset-0 bg-[#0f1114]/65 backdrop-blur-xl"
+          className="absolute inset-0 backdrop-blur-xl"
+          style={{ backgroundColor: `rgba(var(--celeste-spotlight-backdrop-bg), var(--celeste-spotlight-backdrop-opacity))` }}
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
-      {/* Spotlight Container - 720px centered, Spotlight-grade */}
+      {/* Spotlight Container - tokenized width */}
       <div
         className={cn(
-          'w-full max-w-[720px] mx-auto',
+          'w-full mx-auto max-w-[var(--celeste-spotlight-width)]',
           isModal && 'relative z-10'
         )}
       >
@@ -695,23 +696,24 @@ export default function SpotlightSearch({
           )}
           data-email-scope={emailScopeActive}
         >
-          {/* Search Input - 24px padding, 92px height */}
+          {/* Search Input - tokenized padding and height */}
           <div
             className={cn(
-              'flex items-center gap-4 px-6 h-celeste-element-xl',
-              (hasQuery || hasResults) && 'border-b border-white/[0.04]'
+              'flex items-center gap-4 h-celeste-element-xl',
+              (hasQuery || hasResults) && 'border-b border-celeste-border-subtle'
             )}
+            style={{ paddingLeft: 'var(--celeste-spotlight-padding-x)', paddingRight: 'var(--celeste-spotlight-padding-x)' }}
           >
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-celeste-accent text-white rounded text-celeste-xs font-semibold whitespace-nowrap">
+              <div className="px-2 py-0.5 bg-celeste-accent text-celeste-text-title rounded text-celeste-xs font-semibold whitespace-nowrap">
                 Email
               </div>
             )}
             <Search
               className={cn(
                 'flex-shrink-0 w-5 h-5',
-                emailScopeActive ? 'text-celeste-accent' : 'text-[#626B78]'
+                emailScopeActive ? 'text-celeste-accent' : 'text-celeste-text-muted'
               )}
               strokeWidth={1.5}
             />
@@ -737,9 +739,9 @@ export default function SpotlightSearch({
                 className={cn(
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
-                  'text-[22px] text-white',
+                  'text-celeste-xl text-celeste-text-title',
                   'font-normal tracking-[-0.01em]',
-                  'caret-white',
+                  'caret-celeste-text-title',
                   'relative z-10'
                 )}
                 autoComplete="off"
@@ -754,8 +756,8 @@ export default function SpotlightSearch({
                 >
                   <span
                     className={cn(
-                      'text-[22px] text-[#5E6672] font-normal tracking-[-0.01em]',
-                      'transition-all duration-[400ms] ease-out',
+                      'text-celeste-xl text-celeste-text-disabled font-normal tracking-[-0.01em]',
+                      'transition-all duration-celeste-deliberate ease-out',
                       isAnimating
                         ? 'opacity-0 -translate-y-3'
                         : 'opacity-100 translate-y-0'
@@ -1010,8 +1012,8 @@ export default function SpotlightSearch({
             className={cn(
               'flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium',
               emailScopeActive
-                ? 'bg-celeste-accent text-white hover:bg-celeste-accent-hover'
-                : 'text-[#727B88] hover:text-[#9AA3B0] hover:bg-white/[0.03]'
+                ? 'bg-celeste-accent text-celeste-text-title hover:bg-celeste-accent-hover'
+                : 'text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-surface'
             )}
             aria-label={emailScopeActive ? 'Exit Email Scope' : 'Search Email'}
             data-testid="email-scope-toggle"
@@ -1024,7 +1026,7 @@ export default function SpotlightSearch({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="p-2.5 rounded-full text-[#727B88] hover:text-[#9AA3B0] hover:bg-white/[0.03] transition-colors"
+                className="p-2.5 rounded-full text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-surface transition-colors"
                 aria-label="Ledger"
               >
                 <BookOpen className="w-5 h-5" strokeWidth={1.5} />
@@ -1032,7 +1034,7 @@ export default function SpotlightSearch({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="center"
-              className="min-w-[var(--celeste-width-filter-medium)] bg-celeste-bg-tertiary border-celeste-divider text-white"
+              className="min-w-[var(--celeste-width-filter-medium)] bg-celeste-bg-tertiary border-celeste-divider text-celeste-text-primary"
             >
               <DropdownMenuItem
                 onClick={() => {
@@ -1044,7 +1046,7 @@ export default function SpotlightSearch({
                   }
                   clear(); // Clear search to show email list
                 }}
-                className="flex items-center gap-2 cursor-pointer focus:bg-celeste-divider focus:text-white"
+                className="flex items-center gap-2 cursor-pointer focus:bg-celeste-divider focus:text-celeste-text-title"
               >
                 <Mail className="w-4 h-4" />
                 <span>{showEmailList ? 'Hide Email' : 'Email'}</span>
@@ -1055,7 +1057,7 @@ export default function SpotlightSearch({
           {/* Settings Button */}
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2.5 rounded-full text-[#727B88] hover:text-[#9AA3B0] hover:bg-white/[0.03] transition-colors"
+            className="p-2.5 rounded-full text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-surface transition-colors"
             aria-label="Settings"
           >
             <Settings className="w-5 h-5" strokeWidth={1.5} />

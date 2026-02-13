@@ -60,9 +60,9 @@ export default function SpotlightResultRow({
         'relative',
         'cursor-pointer select-none',
         'transition-colors duration-celeste-fast',
-        // Height and padding - generous like Apple
-        'min-h-[56px]',
-        'py-3 px-5',
+        // Height and padding - tokenized
+        'min-h-[var(--celeste-spotlight-row-min-height)]',
+        'py-[var(--celeste-spotlight-row-padding-y)] px-[var(--celeste-spotlight-row-padding-x)]',
         // Hover: very subtle
         'hover:bg-celeste-bg-tertiary/40',
         // Selected: subtle, not bold
@@ -74,7 +74,7 @@ export default function SpotlightResultRow({
       {/* Left accent bar - subtle, appears on selection (OS feel) */}
       {isSelected && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-celeste-accent rounded-r-sm"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[var(--celeste-spotlight-accent-bar-width)] h-5 bg-celeste-accent rounded-r-sm"
           aria-hidden="true"
         />
       )}
@@ -84,7 +84,7 @@ export default function SpotlightResultRow({
         <p
           className={cn(
             // Title: slightly larger, medium weight for clarity
-            'text-[15px] font-medium leading-snug',
+            'text-celeste-base font-medium leading-snug',
             'truncate',
             isSelected
               ? 'text-celeste-text-title'
@@ -97,7 +97,7 @@ export default function SpotlightResultRow({
           <p
             className={cn(
               // Subtitle: smaller, muted - clear hierarchy
-              'text-[13px] font-normal leading-snug',
+              'text-celeste-sm font-normal leading-snug',
               'truncate',
               'text-celeste-text-muted'
             )}
