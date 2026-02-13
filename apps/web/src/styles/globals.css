@@ -167,27 +167,41 @@
     --celeste-ease-out: cubic-bezier(0, 0, 0.2, 1);
 
     /* =========================================================================
-       SPOTLIGHT - System Entry Point Tokens
+       SPOTLIGHT - System Entry Point
+       Material-based approach (Apple-grade)
        ========================================================================= */
+
+    /* Dimensions */
     --celeste-spotlight-width: 720px;
     --celeste-spotlight-height: 92px;
     --celeste-spotlight-radius: 14px;
     --celeste-spotlight-padding-x: 24px;
-    --celeste-spotlight-font-size: 22px;
-    --celeste-spotlight-backdrop-opacity: 0.65;
-    --celeste-spotlight-panel-opacity: 0.95;
-    --celeste-spotlight-border-opacity: 0.04;
 
-    /* Spotlight result row tokens */
+    /* Result row */
     --celeste-spotlight-row-min-height: 56px;
     --celeste-spotlight-row-padding-y: 12px;
     --celeste-spotlight-row-padding-x: 20px;
     --celeste-spotlight-accent-bar-width: 2px;
 
-    /* Light mode spotlight colors */
-    --celeste-spotlight-panel-bg: 239, 239, 241;
-    --celeste-spotlight-backdrop-bg: 15, 17, 20;
-    --celeste-spotlight-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    /* =========================================================================
+       MATERIAL RECIPE - Light Mode (Active State)
+       Blur + tint layer, not fixed RGBA
+       ========================================================================= */
+    --celeste-material-blur: 40px;
+    --celeste-material-saturation: 180%;
+    --celeste-material-tint: 255, 255, 255;
+    --celeste-material-tint-opacity: 0.72;
+
+    /* Rim model (inner highlight + outer edge) */
+    --celeste-rim-inner: inset 0 0.5px 0 rgba(255, 255, 255, 0.4);
+    --celeste-rim-outer: 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+
+    /* Shadow - subordinate to rim, not primary hierarchy */
+    --celeste-material-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.08);
+
+    /* Backdrop dim */
+    --celeste-backdrop-color: 0, 0, 0;
+    --celeste-backdrop-opacity: 0.25;
   }
 
   .dark {
@@ -236,10 +250,61 @@
     --celeste-border: #2A2A2A;
     --celeste-border-subtle: rgba(255, 255, 255, 0.06);
 
-    /* Spotlight dark mode overrides */
-    --celeste-spotlight-panel-bg: 22, 24, 28;
-    --celeste-spotlight-backdrop-bg: 15, 17, 20;
-    --celeste-spotlight-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    /* =========================================================================
+       MATERIAL RECIPE - Dark Mode (Active State)
+       ========================================================================= */
+    --celeste-material-tint: 30, 32, 38;
+    --celeste-material-tint-opacity: 0.82;
+    --celeste-material-saturation: 120%;
+
+    /* Rim model - dark mode (subtle light edge on dark) */
+    --celeste-rim-inner: inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+    --celeste-rim-outer: 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+
+    /* Shadow - darker but still subordinate */
+    --celeste-material-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.2);
+
+    /* Backdrop dim - darker */
+    --celeste-backdrop-color: 0, 0, 0;
+    --celeste-backdrop-opacity: 0.5;
+  }
+}
+
+/* ============================================================================
+   MATERIAL STATE: Inactive Window
+   Muted effect when window loses focus (native feel)
+   ============================================================================ */
+.spotlight-panel.inactive,
+.spotlight-panel:not(:focus-within):not(:hover) {
+  --celeste-material-tint-opacity: 0.6;
+  --celeste-material-saturation: 100%;
+}
+
+.dark .spotlight-panel.inactive,
+.dark .spotlight-panel:not(:focus-within):not(:hover) {
+  --celeste-material-tint-opacity: 0.7;
+}
+
+/* ============================================================================
+   ACCESSIBILITY FALLBACKS
+   ============================================================================ */
+
+/* Reduce Transparency: Replace blur with solid colors */
+@media (prefers-reduced-transparency: reduce) {
+  .spotlight-panel {
+    --celeste-material-tint-opacity: 1;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Increase Contrast: Strengthen borders */
+@media (prefers-contrast: more) {
+  .spotlight-panel {
+    --celeste-rim-outer: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  }
+  .dark .spotlight-panel {
+    --celeste-rim-outer: 0 0 0 1px rgba(255, 255, 255, 0.2);
   }
 }
 
@@ -356,27 +421,32 @@
    ============================================================================ */
 
 .spotlight-panel {
-  /* Glass material - tokenized */
-  background: rgba(var(--celeste-spotlight-panel-bg), var(--celeste-spotlight-panel-opacity));
-  backdrop-filter: blur(40px) saturate(150%);
-  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  /* =========================================================================
+     MATERIAL RECIPE - Not fixed RGBA
+     Tint layer over blur creates the "material" effect
+     ========================================================================= */
+  background: rgba(var(--celeste-material-tint), var(--celeste-material-tint-opacity));
+  backdrop-filter: blur(var(--celeste-material-blur)) saturate(var(--celeste-material-saturation));
+  -webkit-backdrop-filter: blur(var(--celeste-material-blur)) saturate(var(--celeste-material-saturation));
 
-  /* Radius from token */
+  /* Radius */
   border-radius: var(--celeste-spotlight-radius);
 
-  /* Border with token opacity */
-  border: 1px solid rgba(0, 0, 0, var(--celeste-spotlight-border-opacity));
-
-  /* Shadow from token */
-  box-shadow: var(--celeste-spotlight-shadow);
+  /* Rim model: inner highlight + outer edge (not heavy border) */
+  border: none;
+  box-shadow:
+    var(--celeste-rim-inner),
+    var(--celeste-rim-outer),
+    var(--celeste-material-shadow);
 
   /* Overflow handling */
   overflow: hidden;
-}
 
-.dark .spotlight-panel {
-  /* Dark mode: border uses white with token opacity */
-  border: 1px solid rgba(255, 255, 255, var(--celeste-spotlight-border-opacity));
+  /* Smooth state transitions */
+  transition:
+    background 150ms ease-out,
+    box-shadow 150ms ease-out,
+    backdrop-filter 150ms ease-out;
 }
 
 /* Spotlight scrollbar - thin, subtle */
