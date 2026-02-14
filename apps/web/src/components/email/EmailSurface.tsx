@@ -1,31 +1,31 @@
 'use client';
 
 /**
- * EmailSurface - Correspondence Interface
+ * EmailSurface - Signal Stream Interface
  *
- * AUTHORITATIVE SPEC IMPLEMENTATION:
- * - Email is evidence moving through the system, not a workspace
- * - Email list shows entity-first (linked work order/equipment/fault)
- * - No auto-open, no Inbox/Sent tabs, no unread counts
- * - Mutations FORBIDDEN - view only
- * - Subordinate visual styling
+ * Design Philosophy:
+ * - Search is the product, not the inbox
+ * - Linked context first, email body secondary
+ * - No inbox clone - operational signal stream
+ * - Break inbox addiction while maintaining trust
  *
- * Version: 2026-02-10-v1 (Correspondence Overhaul)
+ * Version: 2026-02-13-v2 (Spotlight-grade Redesign)
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
+  Search,
   X,
   Paperclip,
   ChevronRight,
+  ChevronDown,
   Loader2,
   AlertCircle,
   FileText,
   Wrench,
   Package,
   AlertTriangle,
-  Filter,
-  MoreHorizontal,
+  ExternalLink,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -48,7 +48,7 @@ import { cn } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
 
 // ============================================================================
-// HTML SANITIZATION CONFIG
+// CONSTANTS & CONFIG
 // ============================================================================
 
 const SANITIZE_CONFIG = {
@@ -74,12 +74,53 @@ const SANITIZE_CONFIG = {
   FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
 };
 
+const ENTITY_ICONS: Record<string, React.ReactNode> = {
+  work_order: <Wrench className="w-4 h-4" />,
+  equipment: <Package className="w-4 h-4" />,
+  fault: <AlertTriangle className="w-4 h-4" />,
+  part: <Package className="w-4 h-4" />,
+  handover: <FileText className="w-4 h-4" />,
+};
+
+type FilterState = 'all' | 'linked' | 'unlinked';
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
 function sanitizeHtml(html: string): string {
   if (!html) return '';
   let clean = DOMPurify.sanitize(html, SANITIZE_CONFIG);
   clean = clean.replace(/<a\s+([^>]*?)>/gi, '<a $1 target="_blank" rel="noopener noreferrer">');
   clean = clean.replace(/<img\s+([^>]*?)src=["'](?!(cid:|data:image))/gi, '<img $1data-blocked-src="');
   return clean;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getTimeGroup(dateStr: string | null): 'today' | 'yesterday' | 'last_week' | 'older' {
+  if (!dateStr) return 'older';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays <= 7) return 'last_week';
+  return 'older';
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
 }
 
 // ============================================================================
@@ -92,39 +133,11 @@ interface EmailSurfaceProps {
   onClose?: () => void;
 }
 
-type SystemState = 'attached' | 'referenced' | 'archived' | 'unlinked';
-
-const ENTITY_ICONS: Record<string, React.ReactNode> = {
-  work_order: <Wrench className="w-3 h-3" />,
-  equipment: <Package className="w-3 h-3" />,
-  fault: <AlertTriangle className="w-3 h-3" />,
-  part: <Package className="w-3 h-3" />,
-  handover: <FileText className="w-3 h-3" />,
-};
-
-// ============================================================================
-// UTILITY: Format timestamp
-// ============================================================================
-
-function formatTime(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  } else if (diffDays === 1) {
-    return 'Yesterday';
-  } else if (diffDays < 7) {
-    return `${diffDays} days ago`;
-  }
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  });
+interface GroupedThreads {
+  today: EmailThread[];
+  yesterday: EmailThread[];
+  last_week: EmailThread[];
+  older: EmailThread[];
 }
 
 // ============================================================================
@@ -139,13 +152,15 @@ export default function EmailSurface({
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [filter, setFilter] = useState<FilterState>('all');
   const [page, setPage] = useState(1);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(initialThreadId || null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const isOverlayMode = !!onClose;
-
+  // Data hooks
   const { data, isLoading, error, refetch } = useInboxThreads(page, true, debouncedQuery);
   const { data: watcherStatus } = useWatcherStatus();
   const { data: outlookStatus, initiateReconnect, isLoading: outlookLoading } = useOutlookConnection();
@@ -154,6 +169,86 @@ export default function EmailSurface({
   const threads = data?.threads || [];
   const hasMore = data?.has_more || false;
 
+  const { data: searchData, isLoading: searchLoading } = useEmailSearch(debouncedQuery, { limit: 50 });
+
+  const isSearching = debouncedQuery.length >= 2;
+
+  // Transform search results to thread format
+  const displayThreads = useMemo(() => {
+    const rawThreads = isSearching
+      ? (searchData?.results || []).map((r) => ({
+          id: r.thread_id,
+          provider_conversation_id: '',
+          latest_subject: r.subject,
+          message_count: 1,
+          has_attachments: r.has_attachments,
+          source: '',
+          first_message_at: null,
+          last_activity_at: r.sent_at,
+          from_display_name: r.from_display_name,
+          confidence: undefined, // Search results don't have link info
+          body_preview: r.preview_text,
+        }))
+      : threads;
+
+    // Apply filter
+    if (filter === 'linked') {
+      return rawThreads.filter((t) => t.confidence);
+    } else if (filter === 'unlinked') {
+      return rawThreads.filter((t) => !t.confidence);
+    }
+    return rawThreads;
+  }, [isSearching, searchData, threads, filter]);
+
+  const displayLoading = isSearching ? searchLoading : isLoading;
+
+  // Group threads by time
+  const groupedThreads = useMemo((): GroupedThreads => {
+    const groups: GroupedThreads = { today: [], yesterday: [], last_week: [], older: [] };
+    displayThreads.forEach((thread) => {
+      const group = getTimeGroup(thread.last_activity_at);
+      groups[group].push(thread as EmailThread);
+    });
+    return groups;
+  }, [displayThreads]);
+
+  // Flat list for keyboard navigation
+  const flatThreadList = useMemo(() => {
+    return [
+      ...groupedThreads.today,
+      ...groupedThreads.yesterday,
+      ...groupedThreads.last_week,
+      ...groupedThreads.older,
+    ];
+  }, [groupedThreads]);
+
+  // Selected thread data
+  const { data: selectedThread, isLoading: threadLoading } = useThread(selectedThreadId);
+  const { data: selectedContent, isLoading: contentLoading } = useMessageContent(selectedMessageId);
+  const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.5);
+
+  const prefetchThread = usePrefetchThread();
+
+  const needsReconnect = !outlookLoading && outlookStatus && (!outlookStatus.isConnected || outlookStatus.isExpired);
+  const isDegraded = watcherStatus?.sync_status === 'degraded' || watcherStatus?.sync_status === 'error';
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Auto-select first message when thread loads
+  useEffect(() => {
+    if (selectedThread?.messages?.length && !selectedMessageId) {
+      setSelectedMessageId(selectedThread.messages[0].provider_message_id);
+    }
+  }, [selectedThread, selectedMessageId]);
+
+  // Handlers
   const handleReconnect = useCallback(async () => {
     setReconnecting(true);
     const authUrl = await initiateReconnect();
@@ -164,59 +259,10 @@ export default function EmailSurface({
     }
   }, [initiateReconnect]);
 
-  const needsReconnect = !outlookLoading && outlookStatus && (!outlookStatus.isConnected || outlookStatus.isExpired);
-  const isDegraded = watcherStatus?.sync_status === 'degraded' || watcherStatus?.sync_status === 'error';
-
-  const { data: searchData, isLoading: searchLoading, error: searchError } = useEmailSearch(debouncedQuery, { limit: 20 });
-
-  const isSearching = debouncedQuery.length >= 2;
-  const displayThreads = isSearching
-    ? (searchData?.results || []).map((r) => ({
-        id: r.thread_id,
-        provider_conversation_id: '',
-        latest_subject: r.subject,
-        message_count: 1,
-        has_attachments: r.has_attachments,
-        source: '',
-        first_message_at: null,
-        last_activity_at: r.sent_at,
-        from_display_name: r.from_display_name,
-      }))
-    : threads;
-  const displayLoading = isSearching ? searchLoading : isLoading;
-  const displayError = isSearching ? searchError : error;
-
-  const { data: selectedThread, isLoading: threadLoading } = useThread(selectedThreadId);
-  const { data: selectedContent, isLoading: contentLoading } = useMessageContent(selectedMessageId);
-  const { data: threadLinksData } = useThreadLinks(selectedThreadId, 0.5);
-
-  const prefetchThread = usePrefetchThread();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const handleClear = useCallback(() => {
-    setSearchQuery('');
-    setDebouncedQuery('');
-    inputRef.current?.focus();
-  }, []);
-
-  const handleBack = useCallback(() => {
-    if (onClose) {
-      onClose();
-    } else {
-      router.back();
-    }
-  }, [router, onClose]);
-
-  const handleThreadClick = useCallback((threadId: string) => {
+  const handleThreadSelect = useCallback((threadId: string, index: number) => {
     setSelectedThreadId(threadId);
     setSelectedMessageId(null);
+    setSelectedIndex(index);
   }, []);
 
   const handleThreadHover = useCallback((threadId: string) => {
@@ -225,45 +271,60 @@ export default function EmailSurface({
     }
   }, [selectedThreadId, prefetchThread]);
 
-  const handleMessageClick = useCallback((providerMessageId: string) => {
-    setSelectedMessageId(providerMessageId);
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setDebouncedQuery('');
+    searchInputRef.current?.focus();
   }, []);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (searchQuery) {
-          handleClear();
-        } else if (onClose) {
-          onClose();
-        } else {
-          router.back();
-        }
+  // Keyboard navigation (Spotlight-style)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const newIndex = Math.min(selectedIndex + 1, flatThreadList.length - 1);
+      if (flatThreadList[newIndex]) {
+        handleThreadSelect(flatThreadList[newIndex].id, newIndex);
       }
-    },
-    [searchQuery, handleClear, router, onClose]
-  );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const newIndex = Math.max(selectedIndex - 1, 0);
+      if (flatThreadList[newIndex]) {
+        handleThreadSelect(flatThreadList[newIndex].id, newIndex);
+      }
+    } else if (e.key === 'Enter' && selectedThreadId) {
+      // Could open full view or trigger primary action
+    } else if (e.key === 'Escape') {
+      if (searchQuery) {
+        handleClearSearch();
+      } else if (onClose) {
+        onClose();
+      }
+    }
+  }, [selectedIndex, flatThreadList, selectedThreadId, searchQuery, handleClearSearch, onClose, handleThreadSelect]);
 
   const selectedAttachments = selectedContent?.attachments || [];
 
   return (
     <div
       data-testid="email-surface"
-      className={cn('h-screen flex flex-col bg-[#1c1c1e] font-body', className)}
+      className={cn('h-screen flex flex-col bg-celeste-black-deep font-body', className)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
     >
+      {/* Connection warnings */}
       {needsReconnect && (
-        <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2">
+        <div className="bg-restricted-red/10 border-b border-restricted-red/30 px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-orange-500" />
-              <span className="text-celeste-xs text-gray-400">
+              <AlertCircle className="w-4 h-4 text-restricted-red" />
+              <span className="text-[12px] text-celeste-text-secondary">
                 {outlookStatus?.isExpired ? 'Session expired' : 'Not connected'}
               </span>
             </div>
             <button
               onClick={handleReconnect}
               disabled={reconnecting}
-              className="text-celeste-xs text-orange-500 hover:underline"
+              className="text-[11px] text-restricted-red hover:underline"
             >
               {reconnecting ? 'Connecting...' : 'Reconnect'}
             </button>
@@ -275,134 +336,171 @@ export default function EmailSurface({
         <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-orange-500" />
-            <span className="text-celeste-xs text-gray-400">Sync paused</span>
+            <span className="text-[12px] text-celeste-text-secondary">Sync paused</span>
           </div>
         </div>
       )}
 
+      {/* TOP BAR: Search dominant */}
+      <div className="px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-4">
+          <h1 className="text-[14px] font-semibold text-celeste-text-title tracking-wide">Email</h1>
+
+          {/* Search - dominant control */}
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-celeste-black-base border border-white/10 focus-within:border-celeste-accent/50">
+            <Search className="w-4 h-4 text-celeste-text-secondary" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search email..."
+              className="flex-1 bg-transparent text-[13px] text-celeste-text-title placeholder:text-celeste-text-secondary/60 outline-none"
+            />
+            {searchQuery && (
+              <button onClick={handleClearSearch} className="text-celeste-text-secondary hover:text-celeste-text-title">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter */}
+          <div className="flex items-center gap-1 text-[11px]">
+            <button
+              onClick={() => setFilter('all')}
+              className={cn(
+                'px-2 py-1 rounded transition-colors',
+                filter === 'all' ? 'bg-white/10 text-celeste-text-title' : 'text-celeste-text-secondary hover:text-celeste-text-title'
+              )}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilter('linked')}
+              className={cn(
+                'px-2 py-1 rounded transition-colors',
+                filter === 'linked' ? 'bg-white/10 text-celeste-text-title' : 'text-celeste-text-secondary hover:text-celeste-text-title'
+              )}
+            >
+              Linked
+            </button>
+            <button
+              onClick={() => setFilter('unlinked')}
+              className={cn(
+                'px-2 py-1 rounded transition-colors',
+                filter === 'unlinked' ? 'bg-white/10 text-celeste-text-title' : 'text-celeste-text-secondary hover:text-celeste-text-title'
+              )}
+            >
+              Unlinked
+            </button>
+          </div>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded text-celeste-text-secondary hover:text-celeste-text-title transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* MAIN CONTENT: Results | Context */}
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Correspondence List */}
-        <div className="w-[340px] flex-shrink-0 border-r border-white/10 flex flex-col">
-          <div className="px-4 py-3 border-b border-white/10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                {isOverlayMode && (
-                  <button
-                    onClick={handleBack}
-                    className="p-1.5 -ml-1.5 rounded text-gray-500 hover:text-gray-400 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-                <h1 className="text-celeste-sm font-medium text-gray-300">
-                  Correspondence
-                </h1>
-              </div>
-              <button className="p-1.5 rounded text-gray-500 hover:text-gray-400 transition-colors">
-                <MoreHorizontal className="w-4 h-4" />
+        {/* LEFT: Results */}
+        <div ref={listRef} className="w-[400px] flex-shrink-0 border-r border-white/10 overflow-y-auto">
+          {displayLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-celeste-text-secondary" />
+            </div>
+          )}
+
+          {error && (
+            <div className="py-8 text-center px-4">
+              <p className="text-[12px] text-restricted-red">Failed to load</p>
+              <button onClick={() => refetch()} className="text-[12px] text-celeste-accent mt-2 hover:underline">
+                Retry
               </button>
             </div>
+          )}
 
-            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-white/5 border border-white/10">
-              <Filter className="w-3.5 h-3.5 text-gray-500" />
-              <input
-                ref={inputRef}
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Filter..."
-                className="flex-1 bg-transparent text-celeste-xs text-gray-300 placeholder:text-gray-500 outline-none"
-              />
-              {searchQuery && (
-                <button onClick={handleClear} className="text-gray-500 hover:text-gray-400">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
+          {!displayLoading && !error && displayThreads.length === 0 && (
+            <div className="py-12 text-center px-4">
+              <p className="text-[13px] text-celeste-text-secondary">
+                {debouncedQuery ? 'No results found' : 'No emails'}
+              </p>
             </div>
-          </div>
+          )}
 
-          <div className="flex-1 overflow-y-auto">
-            {displayLoading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-              </div>
-            )}
+          {!displayLoading && !error && displayThreads.length > 0 && (
+            <>
+              <ResultsSection
+                title="TODAY"
+                threads={groupedThreads.today}
+                selectedId={selectedThreadId}
+                startIndex={0}
+                onSelect={handleThreadSelect}
+                onHover={handleThreadHover}
+              />
+              <ResultsSection
+                title="YESTERDAY"
+                threads={groupedThreads.yesterday}
+                selectedId={selectedThreadId}
+                startIndex={groupedThreads.today.length}
+                onSelect={handleThreadSelect}
+                onHover={handleThreadHover}
+              />
+              <ResultsSection
+                title="LAST WEEK"
+                threads={groupedThreads.last_week}
+                selectedId={selectedThreadId}
+                startIndex={groupedThreads.today.length + groupedThreads.yesterday.length}
+                onSelect={handleThreadSelect}
+                onHover={handleThreadHover}
+              />
+              <ResultsSection
+                title="OLDER"
+                threads={groupedThreads.older}
+                selectedId={selectedThreadId}
+                startIndex={groupedThreads.today.length + groupedThreads.yesterday.length + groupedThreads.last_week.length}
+                onSelect={handleThreadSelect}
+                onHover={handleThreadHover}
+              />
 
-            {displayError && (
-              <div className="py-6 text-center px-4">
-                <p className="text-celeste-xs text-red-400">Failed to load</p>
-                <button onClick={() => refetch()} className="text-celeste-xs text-celeste-accent mt-1">
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {!displayLoading && !displayError && displayThreads.length === 0 && (
-              <div className="py-8 text-center px-4">
-                <p className="text-celeste-xs text-gray-500">
-                  {debouncedQuery ? 'No matches' : 'No correspondence'}
-                </p>
-              </div>
-            )}
-
-            {!displayLoading && !displayError && displayThreads.length > 0 && (
-              <>
-                {displayThreads.map((thread) => (
-                  <CorrespondenceRow
-                    key={thread.id}
-                    thread={thread as EmailThread}
-                    isSelected={selectedThreadId === thread.id}
-                    onClick={() => handleThreadClick(thread.id)}
-                    onHover={() => handleThreadHover(thread.id)}
-                  />
-                ))}
-
-                {!isSearching && (page > 1 || hasMore) && (
-                  <div className="flex items-center justify-between px-4 py-2 border-t border-white/10">
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="text-celeste-xs text-gray-500 disabled:opacity-30"
-                    >
-                      ← Prev
-                    </button>
-                    <span className="text-celeste-xs text-gray-500">{page}</span>
-                    <button
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={!hasMore}
-                      className="text-celeste-xs text-gray-500 disabled:opacity-30"
-                    >
-                      Next →
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              {!isSearching && hasMore && (
+                <div className="px-4 py-3 border-t border-white/10">
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    className="text-[12px] text-celeste-accent hover:underline"
+                  >
+                    Load more
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        {/* RIGHT: Inspector Panel */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* RIGHT: Context + Viewer */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-celeste-black-base">
           {!selectedThreadId && (
             <div className="h-full flex items-center justify-center">
-              <p className="text-celeste-sm text-gray-500">
-                Select a message to inspect correspondence.
+              <p className="text-[13px] text-celeste-text-secondary">
+                Select an email to view context
               </p>
             </div>
           )}
 
           {selectedThreadId && threadLoading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+            <div className="h-full flex items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-celeste-text-secondary" />
             </div>
           )}
 
           {selectedThread && selectedThreadId && (
-            <InspectorPanel
+            <ContextPane
               thread={selectedThread}
-              selectedMessageId={selectedMessageId}
-              onMessageSelect={handleMessageClick}
               content={selectedContent}
               contentLoading={contentLoading}
               linkedItems={threadLinksData?.links || []}
@@ -416,118 +514,126 @@ export default function EmailSurface({
 }
 
 // ============================================================================
-// CORRESPONDENCE ROW
+// RESULTS SECTION (grouped)
 // ============================================================================
 
-interface CorrespondenceRowProps {
-  thread: EmailThread & { from_display_name?: string | null };
-  isSelected: boolean;
-  onClick: () => void;
-  onHover?: () => void;
+interface ResultsSectionProps {
+  title: string;
+  threads: EmailThread[];
+  selectedId: string | null;
+  startIndex: number;
+  onSelect: (id: string, index: number) => void;
+  onHover: (id: string) => void;
 }
 
-function CorrespondenceRow({ thread, isSelected, onClick, onHover }: CorrespondenceRowProps) {
-  const systemState: SystemState = thread.confidence
-    ? thread.confidence === 'deterministic' ? 'attached' : 'referenced'
-    : 'unlinked';
+function ResultsSection({ title, threads, selectedId, startIndex, onSelect, onHover }: ResultsSectionProps) {
+  if (threads.length === 0) return null;
 
-  const entityTitle = thread.latest_subject || '(No subject)';
-  const sender = thread.from_display_name || '';
+  return (
+    <div>
+      <div className="px-4 py-2 sticky top-0 bg-celeste-black-deep z-10">
+        <h2 className="text-[11px] font-semibold text-celeste-text-secondary uppercase tracking-wider">
+          {title}
+        </h2>
+      </div>
+      {threads.map((thread, i) => (
+        <EmailRow
+          key={thread.id}
+          thread={thread}
+          isSelected={selectedId === thread.id}
+          onClick={() => onSelect(thread.id, startIndex + i)}
+          onHover={() => onHover(thread.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// EMAIL ROW
+// ============================================================================
+
+interface EmailRowProps {
+  thread: EmailThread & { from_display_name?: string | null; body_preview?: string };
+  isSelected: boolean;
+  onClick: () => void;
+  onHover: () => void;
+}
+
+function EmailRow({ thread, isSelected, onClick, onHover }: EmailRowProps) {
+  const sender = thread.from_display_name || 'Unknown';
+  const subject = thread.latest_subject || '(No subject)';
+  const snippet = (thread as any).body_preview || '';
+  const isLinked = !!thread.confidence;
+  const isUnread = true; // TODO: track read state
 
   return (
     <button
-      data-testid="thread-row"
+      data-testid="email-row"
       onClick={onClick}
       onMouseEnter={onHover}
       className={cn(
-        'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-l-2',
+        'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors',
         isSelected
-          ? 'bg-celeste-accent-subtle border-l-celeste-accent'
-          : 'hover:bg-white/5 border-l-transparent'
+          ? 'bg-celeste-accent/20'
+          : 'hover:bg-white/5',
+        isUnread && 'border-l-2 border-l-celeste-accent',
+        !isUnread && 'border-l-2 border-l-transparent'
       )}
     >
-      <div className="mt-1.5">
-        <div className={cn(
-          'w-1.5 h-1.5 rounded-full',
-          isSelected ? 'bg-celeste-accent' : 'bg-gray-600'
-        )} />
+      {/* Avatar */}
+      <div className="w-9 h-9 rounded-full bg-celeste-accent/30 flex items-center justify-center flex-shrink-0">
+        <span className="text-[12px] font-medium text-celeste-accent">
+          {getInitials(sender)}
+        </span>
       </div>
 
+      {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className={cn(
-            'text-celeste-sm font-medium leading-tight truncate',
-            isSelected ? 'text-celeste-text-title' : 'text-gray-300'
+        <div className="flex items-center justify-between gap-2">
+          <span className={cn(
+            'text-[13px] truncate',
+            isUnread ? 'font-semibold text-celeste-text-title' : 'font-normal text-celeste-text-title/80'
           )}>
-            {entityTitle}
-          </h3>
-          <span className="text-celeste-xs text-gray-500 whitespace-nowrap">
-            {formatTime(thread.last_activity_at)}
+            {sender}
           </span>
-        </div>
-
-        <div className="flex items-center gap-2 mt-1">
-          <SystemStateBadge state={systemState} />
-          {thread.has_attachments && (
-            <div className="flex items-center gap-1 text-gray-500">
-              <Paperclip className="w-2.5 h-2.5" />
-              <span className="text-celeste-xs">{thread.message_count}</span>
-            </div>
+          {/* Linked indicator */}
+          {isLinked && (
+            <span className="w-2 h-2 rounded-full bg-celeste-accent flex-shrink-0" />
           )}
         </div>
-
-        {sender && (
-          <p className="text-celeste-xs text-gray-500 mt-1 truncate">
-            {sender}
+        <p className={cn(
+          'text-[12px] truncate mt-0.5',
+          isUnread ? 'font-medium text-celeste-text-title/90' : 'font-normal text-celeste-text-title/70'
+        )}>
+          {subject}
+        </p>
+        {snippet && (
+          <p className="text-[11px] text-celeste-text-secondary truncate mt-0.5">
+            {snippet}
           </p>
         )}
       </div>
 
-      {thread.message_count > 1 && (
-        <div className="flex items-center gap-0.5 text-gray-500">
-          <span className="text-celeste-xs">‹</span>
-          <span className="text-celeste-xs">{thread.message_count}</span>
-        </div>
+      {/* Attachment indicator */}
+      {thread.has_attachments && (
+        <Paperclip className="w-3.5 h-3.5 text-celeste-text-secondary flex-shrink-0 mt-1" />
       )}
     </button>
   );
 }
 
 // ============================================================================
-// SYSTEM STATE BADGE
+// CONTEXT PANE
 // ============================================================================
 
-function SystemStateBadge({ state }: { state: SystemState }) {
-  const config = {
-    attached: { label: 'Attached', className: 'bg-green-500/20 text-green-400' },
-    referenced: { label: 'Referenced', className: 'bg-celeste-accent-subtle text-celeste-accent' },
-    archived: { label: 'Archived', className: 'bg-gray-500/20 text-gray-400' },
-    unlinked: { label: '', className: '' },
-  };
-
-  const { label, className: badgeClass } = config[state];
-  if (!label) return null;
-
-  return (
-    <span className={cn('px-1.5 py-0.5 rounded text-celeste-xs font-medium', badgeClass)}>
-      {label}
-    </span>
-  );
-}
-
-// ============================================================================
-// INSPECTOR PANEL
-// ============================================================================
-
-interface InspectorPanelProps {
+interface ContextPaneProps {
   thread: {
     latest_subject: string | null;
     message_count: number;
     has_attachments: boolean;
     messages: EmailMessage[];
   };
-  selectedMessageId: string | null;
-  onMessageSelect: (providerMessageId: string) => void;
   content: MessageContentType | null | undefined;
   contentLoading: boolean;
   linkedItems: ThreadLink[];
@@ -539,15 +645,15 @@ interface InspectorPanelProps {
   }>;
 }
 
-function InspectorPanel({
+function ContextPane({
   thread,
-  selectedMessageId,
-  onMessageSelect,
   content,
   contentLoading,
   linkedItems,
   attachments,
-}: InspectorPanelProps) {
+}: ContextPaneProps) {
+  const [showBody, setShowBody] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
   const [viewer, setViewer] = useState<{
     open: boolean;
     fileName: string;
@@ -555,22 +661,14 @@ function InspectorPanel({
     blobUrl: string;
   }>({ open: false, fileName: '', contentType: '', blobUrl: '' });
 
-  const primaryLinkedEntity = useMemo(() => {
-    if (!linkedItems.length) return null;
-    const deterministic = linkedItems.find((l) => l.confidence_level === 'deterministic');
-    if (deterministic) return deterministic;
-    return linkedItems.sort((a, b) => b.confidence - a.confidence)[0];
-  }, [linkedItems]);
-
-  const panelTitle = primaryLinkedEntity
-    ? `${primaryLinkedEntity.object_type.replace('_', ' ').toUpperCase()}: ${primaryLinkedEntity.object_id.slice(0, 8)}...`
-    : thread.latest_subject || '(No subject)';
+  const firstMessage = thread.messages?.[0];
+  const providerMessageId = firstMessage?.provider_message_id;
 
   const handleViewAttachment = useCallback(async (att: { id: string; name: string }) => {
-    if (!selectedMessageId) return;
+    if (!providerMessageId) return;
 
     try {
-      const result = await fetchAttachmentBlob(selectedMessageId, att.id, true);
+      const result = await fetchAttachmentBlob(providerMessageId, att.id, true);
       if (viewer.blobUrl) URL.revokeObjectURL(viewer.blobUrl);
 
       setViewer({
@@ -582,7 +680,7 @@ function InspectorPanel({
     } catch (err) {
       console.error('Failed to load attachment:', err);
     }
-  }, [selectedMessageId, viewer.blobUrl]);
+  }, [providerMessageId, viewer.blobUrl]);
 
   const handleCloseViewer = useCallback(() => {
     if (viewer.blobUrl) URL.revokeObjectURL(viewer.blobUrl);
@@ -590,169 +688,175 @@ function InspectorPanel({
   }, [viewer.blobUrl]);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-celeste-base font-medium text-celeste-text-title truncate">
-            {panelTitle}
-          </h2>
-        </div>
-        <button className="p-1.5 rounded text-gray-500 hover:text-gray-400">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
-      </div>
-
+    <div className="h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        {thread.messages.length > 1 && (
-          <div className="px-6 py-2 border-b border-white/10 flex gap-1 overflow-x-auto">
-            {thread.messages.map((msg, i) => (
-              <button
-                key={msg.id}
-                onClick={() => onMessageSelect(msg.provider_message_id)}
-                className={cn(
-                  'px-2.5 py-1 rounded text-celeste-xs whitespace-nowrap transition-colors',
-                  selectedMessageId === msg.provider_message_id
-                    ? 'bg-celeste-accent-subtle text-celeste-accent'
-                    : 'text-gray-500 hover:text-gray-400'
-                )}
-              >
-                <span className={cn(
-                  'inline-block w-1.5 h-1.5 rounded-full mr-1.5',
-                  msg.direction === 'inbound' ? 'bg-celeste-accent' : 'bg-green-500'
-                )} />
-                {msg.from_display_name || `Message ${i + 1}`}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* LINKED SECTION - Always first */}
+        <div className="px-6 py-4 border-b border-white/10">
+          <h3 className="text-[11px] font-semibold text-celeste-text-secondary uppercase tracking-wider mb-3">
+            Linked
+          </h3>
 
-        {contentLoading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-          </div>
-        )}
-
-        {!contentLoading && content && (
-          <div className="px-6 py-4">
-            <div className="space-y-0.5 text-celeste-xs text-gray-500 mb-4 pb-4 border-b border-white/5">
-              {content.from_address?.emailAddress && (
-                <div>
-                  <span>From: </span>
-                  <span className="text-gray-400">
-                    {content.from_address.emailAddress.name || content.from_address.emailAddress.address}
-                  </span>
-                </div>
-              )}
-              {content.to_recipients?.length > 0 && (
-                <div>
-                  <span>To: </span>
-                  <span className="text-gray-400">
-                    {content.to_recipients.map((r) => r.emailAddress?.address).join(', ')}
-                  </span>
-                </div>
-              )}
-              {content.sent_at && (
-                <div>
-                  <span>Date: </span>
-                  <span className="text-gray-400">
-                    {new Date(content.sent_at).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              )}
-              {content.subject && (
-                <div>
-                  <span>Subject: </span>
-                  <span className="text-gray-400">{content.subject}</span>
-                </div>
-              )}
+          {linkedItems.length > 0 ? (
+            <div className="space-y-2">
+              {linkedItems.map((item) => (
+                <LinkedItemRow key={item.id} item={item} />
+              ))}
             </div>
-
-            <div className="text-celeste-sm text-gray-300 leading-relaxed">
-              {content.body?.contentType === 'html' ? (
-                <div
-                  className="prose prose-invert prose-sm max-w-none
-                    [&_a]:text-celeste-accent [&_a]:no-underline [&_a:hover]:underline
-                    [&_img]:max-w-full [&_img]:h-auto [&_img[data-blocked-src]]:hidden
-                    [&_table]:border-collapse [&_td]:border [&_td]:border-white/10 [&_td]:p-2"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body.content) }}
-                />
-              ) : (
-                <pre className="whitespace-pre-wrap font-sans">
-                  {content.body?.content || content.body_preview || '(No content)'}
-                </pre>
-              )}
+          ) : (
+            <div className="py-4">
+              <p className="text-[13px] text-celeste-text-secondary mb-4">No links yet.</p>
+              <div className="flex gap-2">
+                <button className="px-4 py-2 rounded bg-celeste-accent text-white text-[12px] font-medium hover:bg-celeste-accent/90 transition-colors">
+                  Link...
+                </button>
+                <button className="px-4 py-2 rounded bg-white/10 text-celeste-text-title text-[12px] font-medium hover:bg-white/15 transition-colors">
+                  Create Work Order
+                </button>
+              </div>
             </div>
+          )}
+        </div>
 
-            {attachments.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-white/5">
-                <h4 className="text-celeste-xs font-medium text-gray-500 mb-2">
-                  Attachments
+        {/* EMAIL VIEWER SECTION */}
+        <div className="px-6 py-4">
+          <h3 className="text-[11px] font-semibold text-celeste-text-secondary uppercase tracking-wider mb-3">
+            Email
+          </h3>
+
+          {contentLoading && (
+            <div className="py-8 flex justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-celeste-text-secondary" />
+            </div>
+          )}
+
+          {!contentLoading && content && (
+            <>
+              {/* Compact header */}
+              <div className="mb-4">
+                <h4 className="text-[14px] font-medium text-celeste-text-title mb-2">
+                  {content.subject || thread.latest_subject || '(No subject)'}
                 </h4>
-                <div className="space-y-1">
-                  {attachments.map((att) => (
-                    <button
-                      key={att.id}
-                      onClick={() => handleViewAttachment(att)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors text-left"
-                    >
-                      <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className="text-celeste-xs text-gray-300 truncate flex-1">
-                        {att.name}
+                <div className="space-y-1 text-[12px]">
+                  {content.from_address?.emailAddress && (
+                    <div className="flex gap-2">
+                      <span className="text-celeste-text-secondary w-12">From</span>
+                      <span className="text-celeste-text-title">
+                        {content.from_address.emailAddress.name || content.from_address.emailAddress.address}
                       </span>
-                      {att.size && (
-                        <span className="text-celeste-xs text-gray-500">
-                          ({formatFileSize(att.size)})
-                        </span>
-                      )}
-                      <Paperclip className="w-3 h-3 text-gray-500" />
-                    </button>
-                  ))}
+                    </div>
+                  )}
+                  {content.to_recipients?.length > 0 && (
+                    <div className="flex gap-2">
+                      <span className="text-celeste-text-secondary w-12">To</span>
+                      <span className="text-celeste-text-title/80 truncate">
+                        {content.to_recipients.map((r) => r.emailAddress?.address).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                  {content.sent_at && (
+                    <div className="flex gap-2">
+                      <span className="text-celeste-text-secondary w-12">Date</span>
+                      <span className="text-celeste-text-title/80">
+                        {new Date(content.sent_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
 
-            {linkedItems.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-white/5">
-                <h4 className="text-celeste-xs font-medium text-gray-500 mb-2">
-                  Linked Items
-                </h4>
-                <div className="space-y-1">
-                  {linkedItems.map((item) => (
-                    <LinkedItemCard key={item.id} item={item} />
-                  ))}
-                </div>
+              {/* Actions */}
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-white/10">
+                <button className="text-[12px] text-celeste-text-title/80 hover:text-celeste-text-title transition-colors">
+                  Reply
+                </button>
+                <button className="text-[12px] text-celeste-text-title/80 hover:text-celeste-text-title transition-colors">
+                  Reply All
+                </button>
+                <button className="text-[12px] text-celeste-text-title/80 hover:text-celeste-text-title transition-colors">
+                  Forward
+                </button>
+                <button className="text-[12px] text-celeste-text-secondary hover:text-celeste-text-title transition-colors flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" />
+                  Open in Outlook
+                </button>
               </div>
-            )}
-          </div>
-        )}
 
-        {!contentLoading && !content && selectedMessageId && (
-          <div className="px-6 py-8 text-center">
-            <p className="text-celeste-xs text-gray-500">
-              Failed to load message
-            </p>
-          </div>
-        )}
+              {/* Body toggle */}
+              <button
+                onClick={() => setShowBody(!showBody)}
+                className="flex items-center gap-2 text-[12px] text-celeste-text-secondary hover:text-celeste-text-title transition-colors mb-3"
+              >
+                {showBody ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                {showBody ? 'Hide body' : 'Show body'}
+              </button>
 
-        {!selectedMessageId && thread.messages.length > 0 && (
-          <div className="px-6 py-8 text-center">
-            <p className="text-celeste-xs text-gray-500">
-              Select a message to view
+              {showBody && (
+                <div className="text-[13px] text-celeste-text-title/90 leading-relaxed mb-4">
+                  {content.body?.contentType === 'html' ? (
+                    <div
+                      className="prose prose-invert prose-sm max-w-none
+                        [&_a]:text-celeste-accent [&_a]:no-underline [&_a:hover]:underline
+                        [&_img]:max-w-full [&_img]:h-auto [&_img[data-blocked-src]]:hidden
+                        [&_table]:border-collapse [&_td]:border [&_td]:border-white/10 [&_td]:p-2"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.body.content) }}
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans">
+                      {content.body?.content || content.body_preview || '(No content)'}
+                    </pre>
+                  )}
+                </div>
+              )}
+
+              {/* Attachments */}
+              {attachments.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowAttachments(!showAttachments)}
+                    className="flex items-center gap-2 text-[12px] text-celeste-text-secondary hover:text-celeste-text-title transition-colors"
+                  >
+                    {showAttachments ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    Attachments ({attachments.length})
+                  </button>
+
+                  {showAttachments && (
+                    <div className="mt-2 space-y-1">
+                      {attachments.map((att) => (
+                        <button
+                          key={att.id}
+                          onClick={() => handleViewAttachment(att)}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors text-left"
+                        >
+                          <FileText className="w-4 h-4 text-celeste-text-secondary flex-shrink-0" />
+                          <span className="text-[12px] text-celeste-text-title truncate flex-1">
+                            {att.name}
+                          </span>
+                          {att.size && (
+                            <span className="text-[11px] text-celeste-text-secondary">
+                              {formatFileSize(att.size)}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {!contentLoading && !content && (
+            <p className="text-[12px] text-celeste-text-secondary">
+              Unable to load email content
             </p>
-            <button
-              onClick={() => onMessageSelect(thread.messages[0].provider_message_id)}
-              className="mt-2 text-celeste-xs text-celeste-accent hover:underline"
-            >
-              View first message
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <DocumentViewerOverlay
@@ -768,50 +872,29 @@ function InspectorPanel({
 }
 
 // ============================================================================
-// LINKED ITEM CARD
+// LINKED ITEM ROW
 // ============================================================================
 
-function LinkedItemCard({ item }: { item: ThreadLink }) {
-  const icon = ENTITY_ICONS[item.object_type] || <FileText className="w-3 h-3" />;
-  const typeLabel = item.object_type.replace('_', ' ');
-
-  const statusClass = item.confidence_level === 'deterministic'
-    ? 'text-green-400'
-    : item.confidence_level === 'suggested'
-      ? 'text-celeste-accent'
-      : 'text-gray-400';
+function LinkedItemRow({ item }: { item: ThreadLink }) {
+  const icon = ENTITY_ICONS[item.object_type] || <FileText className="w-4 h-4" />;
+  const typeLabel = item.object_type.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded bg-white/5 group">
-      <div className="p-1.5 rounded bg-white/5 text-gray-500">
+    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded bg-white/5 hover:bg-white/10 transition-colors text-left group">
+      <div className="p-2 rounded bg-celeste-accent/20 text-celeste-accent">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-celeste-xs font-medium text-gray-300 truncate">
-            {item.object_id.slice(0, 8)}...
-          </span>
-          <span className={cn('text-celeste-xs uppercase', statusClass)}>
-            {item.confidence_level === 'deterministic' ? 'In Progress' : typeLabel}
-          </span>
-        </div>
+        <span className="text-[13px] font-medium text-celeste-text-title">
+          {typeLabel}
+        </span>
         {item.suggested_reason && (
-          <p className="text-celeste-xs text-gray-500 truncate">
+          <p className="text-[11px] text-celeste-text-secondary truncate">
             {item.suggested_reason}
           </p>
         )}
       </div>
-      <ChevronRight className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </div>
+      <ChevronRight className="w-4 h-4 text-celeste-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
   );
-}
-
-// ============================================================================
-// UTILITIES
-// ============================================================================
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
