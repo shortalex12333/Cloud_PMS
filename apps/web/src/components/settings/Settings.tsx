@@ -3,14 +3,27 @@
 /**
  * Settings - CelesteOS Settings Modal
  *
- * Frosted glass modal matching c.os.4.1 reference:
- * - Dark frosted sidebar with white text
- * - White content pane with dark text
- * - Clean, minimal form rows
+ * ChatGPT-style settings modal:
+ * - 960px width, min(720px, calc(100vh - 96px)) height
+ * - 280px left nav, flex right content
+ * - Close button in sidebar (top-left)
+ * - 8px grid spacing system
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, HardDrive, FileText, Palette, HelpCircle, Lock } from 'lucide-react';
+import {
+  X,
+  Settings as SettingsIcon,
+  Bell,
+  User,
+  Grid3X3,
+  Calendar,
+  Database,
+  Shield,
+  Users,
+  CreditCard,
+  Lock,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -23,16 +36,17 @@ interface SettingsProps {
   onClose: () => void;
 }
 
-type SettingsPage = 'general' | 'account' | 'email' | 'nas' | 'handover' | 'appearance' | 'help';
+type SettingsPage = 'general' | 'notifications' | 'personalization' | 'apps' | 'schedules' | 'data' | 'security' | 'account';
 
 const navigationItems: { id: SettingsPage; label: string; icon: typeof User }[] = [
-  { id: 'general', label: 'General', icon: User },
-  { id: 'account', label: 'Account', icon: User },
-  { id: 'email', label: 'Email Connector', icon: Mail },
-  { id: 'nas', label: 'NAS Access', icon: HardDrive },
-  { id: 'handover', label: 'Handover', icon: FileText },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'help', label: 'Help & Support', icon: HelpCircle },
+  { id: 'general', label: 'General', icon: SettingsIcon },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'personalization', label: 'Personalization', icon: User },
+  { id: 'apps', label: 'Apps', icon: Grid3X3 },
+  { id: 'schedules', label: 'Schedules', icon: Calendar },
+  { id: 'data', label: 'Data controls', icon: Database },
+  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'account', label: 'Account', icon: CreditCard },
 ];
 
 // ============================================================================
@@ -45,13 +59,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   const [activePage, setActivePage] = useState<SettingsPage>('general');
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('light');
-  const [dateRange, setDateRange] = useState<'today' | '7d' | '30d' | '60d'>('30d');
-
-  // Contact form
-  const [contactCategory, setContactCategory] = useState('general');
-  const [contactSubject, setContactSubject] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
-  const [sending, setSending] = useState(false);
+  const [language, setLanguage] = useState('auto');
 
   // Load theme from localStorage
   useEffect(() => {
@@ -90,25 +98,6 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
   if (!isOpen) return null;
 
-  const handleSendMessage = async () => {
-    if (!contactSubject.trim() || !contactMessage.trim()) return;
-    setSending(true);
-    try {
-      await new Promise((r) => setTimeout(r, 1500));
-      alert('Message sent to support team.');
-      setContactSubject('');
-      setContactMessage('');
-    } catch {
-      alert('Failed to send. Try again.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleExportHandover = async () => {
-    alert(`Handover report (${dateRange}) will be sent to ${user?.email}`);
-  };
-
   // ============================================================================
   // RENDER PAGE CONTENT
   // ============================================================================
@@ -121,7 +110,38 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
             <h2 className="settings-content-title">General</h2>
 
             <div className="settings-form-row">
-              <div>
+              <div className="settings-label-group">
+                <div className="settings-label">Appearance</div>
+              </div>
+              <select
+                value={appearance}
+                onChange={(e) => setAppearance(e.target.value as 'light' | 'dark' | 'system')}
+                className="settings-select"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Language</div>
+              </div>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="settings-select"
+              >
+                <option value="auto">Auto-detect</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+              </select>
+            </div>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
                 <div className="settings-label">Display name</div>
                 <div className="settings-helper">Shown in handovers and feedback.</div>
               </div>
@@ -133,24 +153,132 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 className="settings-input"
               />
             </div>
+          </>
+        );
 
-            <div className="settings-section-divider">
-              <h3 className="settings-section-title">About</h3>
+      case 'notifications':
+        return (
+          <>
+            <h2 className="settings-content-title">Notifications</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Email notifications</div>
+                <div className="settings-helper">Receive updates about activity.</div>
+              </div>
+              <select className="settings-select">
+                <option>All</option>
+                <option>Important only</option>
+                <option>None</option>
+              </select>
             </div>
 
             <div className="settings-form-row">
-              <div className="settings-label">Application</div>
-              <div className="settings-value">CelesteOS</div>
+              <div className="settings-label-group">
+                <div className="settings-label">Desktop notifications</div>
+                <div className="settings-helper">Show alerts on your device.</div>
+              </div>
+              <select className="settings-select">
+                <option>Enabled</option>
+                <option>Disabled</option>
+              </select>
+            </div>
+          </>
+        );
+
+      case 'personalization':
+        return (
+          <>
+            <h2 className="settings-content-title">Personalization</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Memory</div>
+                <div className="settings-helper">Allow system to remember preferences.</div>
+              </div>
+              <select className="settings-select">
+                <option>Enabled</option>
+                <option>Disabled</option>
+              </select>
+            </div>
+          </>
+        );
+
+      case 'apps':
+        return (
+          <>
+            <h2 className="settings-content-title">Apps</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Connected apps</div>
+                <div className="settings-helper">Manage third-party integrations.</div>
+              </div>
+              <button className="settings-button-secondary">Manage</button>
+            </div>
+          </>
+        );
+
+      case 'schedules':
+        return (
+          <>
+            <h2 className="settings-content-title">Schedules</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Scheduled tasks</div>
+                <div className="settings-helper">Automated actions and reminders.</div>
+              </div>
+              <button className="settings-button-secondary">View all</button>
+            </div>
+          </>
+        );
+
+      case 'data':
+        return (
+          <>
+            <h2 className="settings-content-title">Data controls</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">NAS scope</div>
+                <div className="settings-helper">You are restricted to this folder.</div>
+              </div>
+              <div className="settings-value-locked">
+                <span>/02_engineering</span>
+                <Lock className="settings-nav-icon" />
+              </div>
             </div>
 
             <div className="settings-form-row">
-              <div className="settings-label">Version</div>
-              <div className="settings-value">1.0.0</div>
+              <div className="settings-label-group">
+                <div className="settings-label">Export data</div>
+                <div className="settings-helper">Download a copy of your data.</div>
+              </div>
+              <button className="settings-button-secondary">Export</button>
+            </div>
+          </>
+        );
+
+      case 'security':
+        return (
+          <>
+            <h2 className="settings-content-title">Security</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Two-factor authentication</div>
+                <div className="settings-helper">Add an extra layer of security.</div>
+              </div>
+              <button className="settings-button-secondary">Set up</button>
             </div>
 
             <div className="settings-form-row">
-              <div className="settings-label">Copyright</div>
-              <div className="settings-value-muted">© 2025 Celeste7 LTD. All rights reserved.</div>
+              <div className="settings-label-group">
+                <div className="settings-label">Active sessions</div>
+                <div className="settings-helper">Manage devices where you're signed in.</div>
+              </div>
+              <button className="settings-button-secondary">View</button>
             </div>
           </>
         );
@@ -161,33 +289,41 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
             <h2 className="settings-content-title">Account</h2>
 
             <div className="settings-form-row">
-              <div className="settings-label">Email</div>
+              <div className="settings-label-group">
+                <div className="settings-label">Email</div>
+              </div>
               <div className="settings-value">{user?.email || 'user@example.com'}</div>
             </div>
 
             <div className="settings-form-row">
-              <div>
+              <div className="settings-label-group">
                 <div className="settings-label">Department</div>
                 <div className="settings-helper">Read-only setting.</div>
               </div>
               <div className="settings-value-locked">
                 <span>{user?.role?.replace('_', ' ') || 'Captain'}</span>
-                <Lock className="w-4 h-4 text-slate-400" />
+                <Lock className="settings-nav-icon" />
               </div>
             </div>
 
             <div className="settings-form-row">
-              <div>
+              <div className="settings-label-group">
                 <div className="settings-label">Role</div>
                 <div className="settings-helper">Managed by admin.</div>
               </div>
               <div className="settings-value-locked">
                 <span>Crew</span>
-                <Lock className="w-4 h-4 text-slate-400" />
+                <Lock className="settings-nav-icon" />
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="settings-section-divider" />
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Sign out</div>
+                <div className="settings-helper">Sign out of your account on this device.</div>
+              </div>
               <button
                 onClick={async () => {
                   try {
@@ -205,183 +341,6 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           </>
         );
 
-      case 'email':
-        return (
-          <>
-            <h2 className="settings-content-title">Email Connector</h2>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Mailbox</div>
-                <div className="settings-helper">You only see your mailbox.</div>
-              </div>
-              <div className="settings-value">{user?.email || 'user@example.com'}</div>
-            </div>
-
-            <div className="mt-6">
-              <button className="settings-button-primary">Connect Outlook</button>
-            </div>
-          </>
-        );
-
-      case 'nas':
-        return (
-          <>
-            <h2 className="settings-content-title">NAS Access</h2>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Scope</div>
-                <div className="settings-helper">You are restricted to this folder.</div>
-              </div>
-              <div className="settings-value-locked">
-                <span>/02_engineering</span>
-                <Lock className="w-4 h-4 text-slate-400" />
-              </div>
-            </div>
-          </>
-        );
-
-      case 'handover':
-        return (
-          <>
-            <h2 className="settings-content-title">Handover</h2>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Date Range</div>
-                <div className="settings-helper">Period to include in export.</div>
-              </div>
-              <div className="settings-pills">
-                {(['today', '7d', '30d', '60d'] as const).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setDateRange(range)}
-                    className={cn('settings-pill', dateRange === range && 'settings-pill-active')}
-                  >
-                    {range === 'today' ? 'Today' : range === '7d' ? '7 days' : range === '30d' ? '30 days' : '60 days'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button onClick={handleExportHandover} className="settings-button-primary">
-                Send to my email
-              </button>
-              <div className="settings-helper mt-2">Will be sent to {user?.email}</div>
-            </div>
-          </>
-        );
-
-      case 'appearance':
-        return (
-          <>
-            <h2 className="settings-content-title">Appearance</h2>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Appearance</div>
-                <div className="settings-helper">Applies across the app.</div>
-              </div>
-              <div className="settings-toggle-group">
-                {(['light', 'dark', 'system'] as const).map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => setAppearance(opt)}
-                    className={cn('settings-toggle', appearance === opt && 'settings-toggle-active')}
-                  >
-                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Language</div>
-                <div className="settings-helper">Applies immediately to menus and messages.</div>
-              </div>
-              <select className="settings-select">
-                <option>Auto-detect (English)</option>
-                <option>English</option>
-                <option>Spanish</option>
-                <option>French</option>
-              </select>
-            </div>
-          </>
-        );
-
-      case 'help':
-        return (
-          <>
-            <h2 className="settings-content-title">Contact Support</h2>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Category</div>
-                <div className="settings-helper">What type of request is this?</div>
-              </div>
-              <select
-                value={contactCategory}
-                onChange={(e) => setContactCategory(e.target.value)}
-                className="settings-select"
-              >
-                <option value="general">General Question</option>
-                <option value="bug">Bug Report</option>
-                <option value="feature">Feature Request</option>
-              </select>
-            </div>
-
-            <div className="settings-form-row">
-              <div>
-                <div className="settings-label">Subject *</div>
-                <div className="settings-helper">Brief description of your request</div>
-              </div>
-              <input
-                type="text"
-                value={contactSubject}
-                onChange={(e) => setContactSubject(e.target.value)}
-                placeholder="Enter subject..."
-                className="settings-input settings-input-wide"
-              />
-            </div>
-
-            <div className="settings-form-row items-start">
-              <div>
-                <div className="settings-label">Message *</div>
-                <div className="settings-helper">Provide details about your request</div>
-              </div>
-              <textarea
-                value={contactMessage}
-                onChange={(e) => setContactMessage(e.target.value)}
-                placeholder="Type your message here..."
-                rows={6}
-                className="settings-textarea"
-              />
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => {
-                  setContactSubject('');
-                  setContactMessage('');
-                }}
-                className="settings-button-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSendMessage}
-                disabled={!contactSubject.trim() || !contactMessage.trim() || sending}
-                className="settings-button-primary"
-              >
-                {sending ? 'Sending...' : 'Send'}
-              </button>
-            </div>
-          </>
-        );
-
       default:
         return null;
     }
@@ -394,23 +353,69 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0"
+        style={{ background: 'rgba(0,0,0,0.35)' }}
+        onClick={onClose}
+      />
 
-      {/* Modal */}
-      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="settings-header">
-          <h1 className="settings-header-title">Settings</h1>
-          <button onClick={onClose} className="settings-close-button">
-            <X className="w-5 h-5" />
+      {/* Modal - 547x483 (matching ChatGPT) */}
+      <div
+        className="settings-modal"
+        style={{
+          width: '547px',
+          height: '483px',
+          maxWidth: 'calc(100vw - 48px)',
+          maxHeight: 'calc(100vh - 48px)',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'row',
+          background: 'var(--settings-bg-main, #ffffff)',
+          border: '1px solid var(--settings-border, #e7e7e7)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
+          fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Sidebar - 180px */}
+        <div
+          className="settings-sidebar"
+          style={{
+            width: '180px',
+            flexShrink: 0,
+            background: 'var(--settings-bg-left, #f8f8f8)',
+            borderRight: '1px solid var(--settings-border, #e7e7e7)',
+            padding: '12px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Close button - 28x28 */}
+          <button
+            onClick={onClose}
+            className="settings-close-button"
+            style={{
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '6px',
+              color: 'var(--settings-text-secondary, #5a5a5a)',
+              cursor: 'pointer',
+              marginBottom: '12px',
+              marginLeft: '-4px',
+            }}
+          >
+            <X style={{ width: '18px', height: '18px' }} />
           </button>
-        </div>
 
-        {/* Body */}
-        <div className="settings-body">
-          {/* Sidebar - Dark frosted glass */}
-          <div className="settings-sidebar">
-            <div className="settings-nav-label">NAVIGATION</div>
+          {/* Navigation */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.id;
@@ -418,17 +423,43 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 <button
                   key={item.id}
                   onClick={() => setActivePage(item.id)}
-                  className={cn('settings-nav-item', isActive && 'settings-nav-item-active')}
+                  style={{
+                    width: '100%',
+                    height: '36px',
+                    borderRadius: '8px',
+                    padding: '0 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '13px',
+                    fontWeight: isActive ? 600 : 500,
+                    lineHeight: '20px',
+                    color: 'var(--settings-text-primary, #111111)',
+                    background: isActive ? 'var(--settings-bg-highlight, #eeeeee)' : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
                 >
-                  <Icon className="w-[18px] h-[18px]" />
+                  <Icon style={{ width: '16px', height: '16px', flexShrink: 0, color: 'var(--settings-text-secondary, #5a5a5a)' }} />
                   <span>{item.label}</span>
                 </button>
               );
             })}
-          </div>
+          </nav>
+        </div>
 
-          {/* Content - White pane */}
-          <div className="settings-content">{renderContent()}</div>
+        {/* Content - 32px LR, 28px top, 24px bottom */}
+        <div
+          className="settings-content"
+          style={{
+            flex: 1,
+            background: 'var(--settings-bg-center, #f8f8f8)',
+            padding: '20px 24px 20px',
+            overflowY: 'auto',
+          }}
+        >
+          {renderContent()}
         </div>
       </div>
     </div>
