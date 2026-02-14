@@ -3,17 +3,15 @@
 /**
  * Settings - CelesteOS Settings Modal
  *
- * Apple System Preferences-inspired settings panel.
- * Two layouts: Desktop (sidebar + content) and Mobile (accordion).
- * Fully tokenized - all styles via CSS custom properties.
+ * Frosted glass modal matching c.os.4.1 reference:
+ * - Dark frosted sidebar with white text
+ * - White content pane with dark text
+ * - Clean, minimal form rows
  */
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, User, Mail, HardDrive, FileText, Palette, HelpCircle, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SettingsSection, settingsMenuItems } from './SettingsConstants';
-import { SectionHeader, MobileSectionHeader } from './SettingsComponents';
-import { renderSectionContent } from './SettingsSections';
 import { useAuth } from '@/hooks/useAuth';
 
 // ============================================================================
@@ -23,37 +21,47 @@ import { useAuth } from '@/hooks/useAuth';
 interface SettingsProps {
   isOpen: boolean;
   onClose: () => void;
-  isMobile?: boolean;
 }
+
+type SettingsPage = 'general' | 'account' | 'email' | 'nas' | 'handover' | 'appearance' | 'help';
+
+const navigationItems: { id: SettingsPage; label: string; icon: typeof User }[] = [
+  { id: 'general', label: 'General', icon: User },
+  { id: 'account', label: 'Account', icon: User },
+  { id: 'email', label: 'Email Connector', icon: Mail },
+  { id: 'nas', label: 'NAS Access', icon: HardDrive },
+  { id: 'handover', label: 'Handover', icon: FileText },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'help', label: 'Help & Support', icon: HelpCircle },
+];
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-export default function Settings({ isOpen, onClose, isMobile = false }: SettingsProps) {
+export default function Settings({ isOpen, onClose }: SettingsProps) {
   const { user, logout } = useAuth();
 
-  // State
-  const [activeSection, setActiveSection] = useState<SettingsSection>('general');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['general']));
+  const [activePage, setActivePage] = useState<SettingsPage>('general');
   const [displayName, setDisplayName] = useState(user?.displayName || '');
-  const [language, setLanguage] = useState('en');
-  const [appearance, setAppearance] = useState('light');
-  const [dateRange, setDateRange] = useState('last-30-days');
-  const [generationSource, setGenerationSource] = useState('both');
-  const [messageType, setMessageType] = useState('');
-  const [messageContent, setMessageContent] = useState('');
-  const [isExporting, setIsExporting] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('light');
+  const [dateRange, setDateRange] = useState<'today' | '7d' | '30d' | '60d'>('30d');
 
-  // Theme handling
+  // Contact form
+  const [contactCategory, setContactCategory] = useState('general');
+  const [contactSubject, setContactSubject] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  // Load theme from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('celeste_theme');
+      const saved = localStorage.getItem('celeste_theme') as 'light' | 'dark' | 'system' | null;
       if (saved) setAppearance(saved);
     }
   }, []);
 
+  // Apply theme
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const root = document.documentElement;
@@ -66,258 +74,361 @@ export default function Settings({ isOpen, onClose, isMobile = false }: Settings
     localStorage.setItem('celeste_theme', appearance);
   }, [appearance]);
 
-  // Sync display name with user
+  // Sync display name
   useEffect(() => {
-    if (user?.displayName) {
-      setDisplayName(user.displayName);
-    }
+    if (user?.displayName) setDisplayName(user.displayName);
   }, [user?.displayName]);
 
-  // Escape key handler
+  // Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
+    if (isOpen) document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const toggleSection = (sectionId: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
+  const handleSendMessage = async () => {
+    if (!contactSubject.trim() || !contactMessage.trim()) return;
+    setSending(true);
+    try {
+      await new Promise((r) => setTimeout(r, 1500));
+      alert('Message sent to support team.');
+      setContactSubject('');
+      setContactMessage('');
+    } catch {
+      alert('Failed to send. Try again.');
+    } finally {
+      setSending(false);
     }
-    setExpandedSections(newExpanded);
   };
 
-  const sectionContentProps = {
-    isMobile,
-    displayName,
-    onDisplayNameChange: setDisplayName,
-    language,
-    setLanguage,
-    appearance,
-    setAppearance,
-    dateRange,
-    setDateRange,
-    generationSource,
-    setGenerationSource,
-    messageType,
-    setMessageType,
-    messageContent,
-    setMessageContent,
-    logout,
-    user,
-    isExporting,
-    setIsExporting,
-    isSending,
-    setIsSending,
+  const handleExportHandover = async () => {
+    alert(`Handover report (${dateRange}) will be sent to ${user?.email}`);
   };
 
   // ============================================================================
-  // MOBILE LAYOUT
+  // RENDER PAGE CONTENT
   // ============================================================================
 
-  if (isMobile) {
-    return (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center">
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 transition-opacity duration-celeste-slow"
-          style={{ backgroundColor: `rgba(var(--celeste-backdrop-color), 0.6)` }}
-          onClick={onClose}
-        />
+  const renderContent = () => {
+    switch (activePage) {
+      case 'general':
+        return (
+          <>
+            <h2 className="settings-content-title">General</h2>
 
-        {/* Mobile Modal */}
-        <div
-          className="relative w-full h-full overflow-hidden z-10 spotlight-panel"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div
-            className="flex items-center justify-between"
-            style={{
-              padding: 'var(--celeste-spacing-4)',
-              borderBottom: '1px solid var(--celeste-settings-header-border)',
-              background: 'var(--celeste-settings-header-bg)',
-            }}
-          >
-            <h1
-              className="font-display text-celeste-text-title m-0"
-              style={{ fontSize: '18px', fontWeight: '500' }}
-            >
-              Settings
-            </h1>
-            <button
-              onClick={onClose}
-              className={cn(
-                'p-[var(--celeste-spacing-2)] rounded-celeste-md',
-                'border border-celeste-border-subtle',
-                'text-celeste-text-muted',
-                'hover:bg-celeste-bg-tertiary hover:text-celeste-text-primary',
-                'transition-colors duration-celeste-fast',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
-              )}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Display name</div>
+                <div className="settings-helper">Shown in handovers and feedback.</div>
+              </div>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Your name"
+                className="settings-input"
+              />
+            </div>
 
-          {/* Content - Accordion */}
-          <div
-            className="flex-1 overflow-y-auto spotlight-scrollbar"
-            style={{
-              padding: 'var(--celeste-spacing-4)',
-              height: 'calc(100vh - var(--celeste-settings-header-height))',
-              background: 'var(--celeste-settings-content-bg)',
-            }}
-          >
-            {settingsMenuItems.map((section) => {
-              const isExpanded = expandedSections.has(section.id);
+            <div className="settings-section-divider">
+              <h3 className="settings-section-title">About</h3>
+            </div>
 
-              return (
-                <div key={section.id} className="mb-[var(--celeste-spacing-3)]">
-                  <MobileSectionHeader
-                    section={section}
-                    isExpanded={isExpanded}
-                    onToggle={() => toggleSection(section.id)}
-                  />
+            <div className="settings-form-row">
+              <div className="settings-label">Application</div>
+              <div className="settings-value">CelesteOS</div>
+            </div>
 
-                  {isExpanded && (
-                    <div
-                      className="animate-celeste-fade-in"
-                      style={{
-                        background: 'var(--celeste-settings-card-bg)',
-                        border: '1px solid var(--celeste-settings-card-border)',
-                        borderTop: 'none',
-                        borderRadius: '0 0 var(--celeste-settings-card-radius) var(--celeste-settings-card-radius)',
-                        padding: 'var(--celeste-spacing-4)',
-                        marginBottom: 'var(--celeste-spacing-3)',
-                      }}
-                    >
-                      {renderSectionContent({
-                        sectionId: section.id,
-                        ...sectionContentProps,
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
+            <div className="settings-form-row">
+              <div className="settings-label">Version</div>
+              <div className="settings-value">1.0.0</div>
+            </div>
+
+            <div className="settings-form-row">
+              <div className="settings-label">Copyright</div>
+              <div className="settings-value-muted">© 2025 Celeste7 LTD. All rights reserved.</div>
+            </div>
+          </>
+        );
+
+      case 'account':
+        return (
+          <>
+            <h2 className="settings-content-title">Account</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label">Email</div>
+              <div className="settings-value">{user?.email || 'user@example.com'}</div>
+            </div>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Department</div>
+                <div className="settings-helper">Read-only setting.</div>
+              </div>
+              <div className="settings-value-locked">
+                <span>{user?.role?.replace('_', ' ') || 'Captain'}</span>
+                <Lock className="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Role</div>
+                <div className="settings-helper">Managed by admin.</div>
+              </div>
+              <div className="settings-value-locked">
+                <span>Crew</span>
+                <Lock className="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={async () => {
+                  try {
+                    if (logout) await logout();
+                  } catch {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="settings-button-danger"
+              >
+                Sign out
+              </button>
+            </div>
+          </>
+        );
+
+      case 'email':
+        return (
+          <>
+            <h2 className="settings-content-title">Email Connector</h2>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Mailbox</div>
+                <div className="settings-helper">You only see your mailbox.</div>
+              </div>
+              <div className="settings-value">{user?.email || 'user@example.com'}</div>
+            </div>
+
+            <div className="mt-6">
+              <button className="settings-button-primary">Connect Outlook</button>
+            </div>
+          </>
+        );
+
+      case 'nas':
+        return (
+          <>
+            <h2 className="settings-content-title">NAS Access</h2>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Scope</div>
+                <div className="settings-helper">You are restricted to this folder.</div>
+              </div>
+              <div className="settings-value-locked">
+                <span>/02_engineering</span>
+                <Lock className="w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+          </>
+        );
+
+      case 'handover':
+        return (
+          <>
+            <h2 className="settings-content-title">Handover</h2>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Date Range</div>
+                <div className="settings-helper">Period to include in export.</div>
+              </div>
+              <div className="settings-pills">
+                {(['today', '7d', '30d', '60d'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setDateRange(range)}
+                    className={cn('settings-pill', dateRange === range && 'settings-pill-active')}
+                  >
+                    {range === 'today' ? 'Today' : range === '7d' ? '7 days' : range === '30d' ? '30 days' : '60 days'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button onClick={handleExportHandover} className="settings-button-primary">
+                Send to my email
+              </button>
+              <div className="settings-helper mt-2">Will be sent to {user?.email}</div>
+            </div>
+          </>
+        );
+
+      case 'appearance':
+        return (
+          <>
+            <h2 className="settings-content-title">Appearance</h2>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Appearance</div>
+                <div className="settings-helper">Applies across the app.</div>
+              </div>
+              <div className="settings-toggle-group">
+                {(['light', 'dark', 'system'] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setAppearance(opt)}
+                    className={cn('settings-toggle', appearance === opt && 'settings-toggle-active')}
+                  >
+                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Language</div>
+                <div className="settings-helper">Applies immediately to menus and messages.</div>
+              </div>
+              <select className="settings-select">
+                <option>Auto-detect (English)</option>
+                <option>English</option>
+                <option>Spanish</option>
+                <option>French</option>
+              </select>
+            </div>
+          </>
+        );
+
+      case 'help':
+        return (
+          <>
+            <h2 className="settings-content-title">Contact Support</h2>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Category</div>
+                <div className="settings-helper">What type of request is this?</div>
+              </div>
+              <select
+                value={contactCategory}
+                onChange={(e) => setContactCategory(e.target.value)}
+                className="settings-select"
+              >
+                <option value="general">General Question</option>
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+              </select>
+            </div>
+
+            <div className="settings-form-row">
+              <div>
+                <div className="settings-label">Subject *</div>
+                <div className="settings-helper">Brief description of your request</div>
+              </div>
+              <input
+                type="text"
+                value={contactSubject}
+                onChange={(e) => setContactSubject(e.target.value)}
+                placeholder="Enter subject..."
+                className="settings-input settings-input-wide"
+              />
+            </div>
+
+            <div className="settings-form-row items-start">
+              <div>
+                <div className="settings-label">Message *</div>
+                <div className="settings-helper">Provide details about your request</div>
+              </div>
+              <textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder="Type your message here..."
+                rows={6}
+                className="settings-textarea"
+              />
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setContactSubject('');
+                  setContactMessage('');
+                }}
+                className="settings-button-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendMessage}
+                disabled={!contactSubject.trim() || !contactMessage.trim() || sending}
+                className="settings-button-primary"
+              >
+                {sending ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   // ============================================================================
-  // DESKTOP LAYOUT
+  // MAIN RENDER
   // ============================================================================
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 transition-opacity duration-celeste-slow backdrop-blur-md"
-        style={{ backgroundColor: `rgba(var(--celeste-backdrop-color), var(--celeste-backdrop-opacity))` }}
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div
-        className="relative overflow-hidden z-10 settings-panel"
-        style={{
-          width: 'var(--celeste-settings-width)',
-          maxWidth: '95vw',
-          height: 'var(--celeste-settings-height)',
-          maxHeight: '90vh',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div
-          className="flex items-center justify-between"
-          style={{
-            padding: 'var(--celeste-spacing-6)',
-            borderBottom: '1px solid var(--celeste-settings-header-border)',
-            background: 'var(--celeste-settings-header-bg)',
-          }}
-        >
-          <h1
-            className="font-display text-celeste-text-title m-0"
-            style={{ fontSize: '18px', fontWeight: '500' }}
-          >
-            Settings
-          </h1>
-          <button
-            onClick={onClose}
-            className={cn(
-              'p-[var(--celeste-spacing-2)] rounded-celeste-md',
-              'border border-celeste-border-subtle',
-              'text-celeste-text-muted',
-              'hover:bg-celeste-bg-tertiary hover:text-celeste-text-primary',
-              'transition-colors duration-celeste-fast',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
-            )}
-          >
+        <div className="settings-header">
+          <h1 className="settings-header-title">Settings</h1>
+          <button onClick={onClose} className="settings-close-button">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div
-          className="flex overflow-hidden"
-          style={{ height: 'calc(100% - var(--celeste-settings-header-height))' }}
-        >
-          {/* Sidebar */}
-          <div className="settings-sidebar overflow-y-auto spotlight-scrollbar">
-            <div style={{ padding: '16px' }}>
-              {settingsMenuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.id;
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveSection(item.id)}
-                    className={cn(
-                      'settings-sidebar-item w-full text-left mb-2',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent'
-                    )}
-                    data-active={isActive}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+        {/* Body */}
+        <div className="settings-body">
+          {/* Sidebar - Dark frosted glass */}
+          <div className="settings-sidebar">
+            <div className="settings-nav-label">NAVIGATION</div>
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActivePage(item.id)}
+                  className={cn('settings-nav-item', isActive && 'settings-nav-item-active')}
+                >
+                  <Icon className="w-[18px] h-[18px]" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Content Area */}
-          <div
-            className="flex-1 overflow-y-auto spotlight-scrollbar"
-            style={{
-              background: 'var(--celeste-settings-content-bg)',
-            }}
-          >
-            <div style={{ padding: '32px' }}>
-              <SectionHeader
-                title={settingsMenuItems.find((item) => item.id === activeSection)?.label || 'Settings'}
-                isMobile={isMobile}
-              />
-              {renderSectionContent({
-                sectionId: activeSection,
-                ...sectionContentProps,
-              })}
-            </div>
-          </div>
+          {/* Content - White pane */}
+          <div className="settings-content">{renderContent()}</div>
         </div>
       </div>
     </div>

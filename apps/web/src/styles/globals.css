@@ -548,254 +548,392 @@
 }
 
 /* ============================================================================
-   SETTINGS MODAL - System Preferences Pattern
-   Apple Settings-inspired, full tokenization
+   SETTINGS MODAL - Frosted Glass Design (c.os.4.1 reference)
+   Dark frosted sidebar + White content pane
    ============================================================================ */
 
-:root {
-  /* Settings Modal - Dimensions */
-  --celeste-settings-width: 800px;
-  --celeste-settings-height: 600px;
-  --celeste-settings-sidebar-width: 224px;
-  --celeste-settings-header-height: 56px;
-  --celeste-settings-radius: 16px;
-
-  /* Settings Row */
-  --celeste-settings-row-height: 56px;
-  --celeste-settings-row-padding-x: 16px;
-  --celeste-settings-row-padding-y: 12px;
-
-  /* Settings Card */
-  --celeste-settings-card-radius: 8px;
-  --celeste-settings-card-padding: 16px;
-  --celeste-settings-card-margin: 24px;
-
-  /* Settings Typography */
-  --celeste-settings-title-size: 24px;
-  --celeste-settings-title-weight: 500;
-  --celeste-settings-label-size: 14px;
-  --celeste-settings-label-weight: 500;
-  --celeste-settings-value-size: 14px;
-  --celeste-settings-helper-size: 13px;
-
-  /* Settings Button */
-  --celeste-settings-button-height: 48px;
-  --celeste-settings-button-padding-x: 20px;
-  --celeste-settings-button-radius: 4px;
-  --celeste-settings-button-font-size: 15px;
-  --celeste-settings-button-font-weight: 600;
-
-  /* Settings Primary Button */
-  --celeste-settings-button-primary-bg: #0078fa;
-  --celeste-settings-button-primary-bg-hover: #004aff;
-  --celeste-settings-button-primary-text: #ffffff;
-
-  /* Settings Secondary Button */
-  --celeste-settings-button-secondary-bg: #f8f8f8;
-  --celeste-settings-button-secondary-bg-hover: #eeeeee;
-  --celeste-settings-button-secondary-text: #6b7280;
-  --celeste-settings-button-secondary-border: #e7e7e7;
-
-  /* Settings Input */
-  --celeste-settings-input-bg: #f7fafc;
-  --celeste-settings-input-bg-focus: #ffffff;
-  --celeste-settings-input-border: #e7e7e7;
-  --celeste-settings-input-border-focus: #0078fa;
-  --celeste-settings-input-text: #1f2937;
-  --celeste-settings-input-text-muted: #6b7280;
-  --celeste-settings-input-radius: 8px;
-  --celeste-settings-input-padding: 10px 16px;
-
-  /* Settings Card Background - Light */
-  --celeste-settings-card-bg: #ffffff;
-  --celeste-settings-card-border: #e7e7e7;
-
-  /* Settings Sidebar - Light */
-  --celeste-settings-sidebar-bg: #f1f5f9;
-  --celeste-settings-sidebar-border: #d1d5db;
-  --celeste-settings-sidebar-item-bg: #f8fafc;
-  --celeste-settings-sidebar-item-bg-active: #e2e8f0;
-  --celeste-settings-sidebar-item-border: #e5e7eb;
-  --celeste-settings-sidebar-item-border-active: #d1d5db;
-
-  /* Settings Modal Background - Light */
-  --celeste-settings-modal-bg: #ffffff;
-  --celeste-settings-header-bg: #f8fafc;
-  --celeste-settings-header-border: #e2e8f0;
-  --celeste-settings-content-bg: #ffffff;
-}
-
-.dark {
-  /* Settings Card Background - Dark */
-  --celeste-settings-card-bg: #292929;
-  --celeste-settings-card-border: #343434;
-
-  /* Settings Sidebar - Dark */
-  --celeste-settings-sidebar-bg: #1e293b;
-  --celeste-settings-sidebar-border: #334155;
-  --celeste-settings-sidebar-item-bg: #1e293b;
-  --celeste-settings-sidebar-item-bg-active: #334155;
-  --celeste-settings-sidebar-item-border: #334155;
-  --celeste-settings-sidebar-item-border-active: #475569;
-
-  /* Settings Modal Background - Dark */
-  --celeste-settings-modal-bg: #0f172a;
-  --celeste-settings-header-bg: #1e293b;
-  --celeste-settings-header-border: #334155;
-  --celeste-settings-content-bg: #0f172a;
-
-  /* Settings Input - Dark */
-  --celeste-settings-input-bg: #1a202c;
-  --celeste-settings-input-bg-focus: #1e293b;
-  --celeste-settings-input-border: #343434;
-  --celeste-settings-input-border-focus: #0078fa;
-  --celeste-settings-input-text: #f8fafc;
-  --celeste-settings-input-text-muted: #94a3b8;
-
-  /* Settings Secondary Button - Dark */
-  --celeste-settings-button-secondary-bg: #343434;
-  --celeste-settings-button-secondary-bg-hover: #404040;
-  --celeste-settings-button-secondary-text: #94a3b8;
-  --celeste-settings-button-secondary-border: #343434;
-}
-
-/* Settings Panel Material */
-.settings-panel {
-  background: var(--celeste-settings-modal-bg);
-  border-radius: var(--celeste-settings-radius);
-  box-shadow:
-    var(--celeste-rim-inner),
-    var(--celeste-rim-outer),
-    var(--celeste-material-shadow);
+/* Modal Container */
+.settings-modal {
+  width: 900px;
+  max-width: 95vw;
+  height: 580px;
+  max-height: 90vh;
+  border-radius: 20px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
 }
 
-/* Settings Card */
-.settings-card {
-  background: var(--celeste-settings-card-bg);
-  border: 1px solid var(--celeste-settings-card-border);
-  border-radius: var(--celeste-settings-card-radius);
-  padding: var(--celeste-settings-card-padding);
-  margin: 0 var(--celeste-settings-card-margin);
-}
-
-/* Settings Row */
-.settings-row {
+/* Header - Dark frosted glass */
+.settings-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: var(--celeste-settings-row-height);
-  padding: var(--celeste-settings-row-padding-y) 0;
-  border-bottom: 1px solid var(--celeste-settings-card-border);
-  transition: background var(--celeste-duration-fast) var(--celeste-ease-out);
+  padding: 16px 24px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.settings-row:last-child {
+.settings-header-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0;
+}
+
+.settings-close-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-close-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Body - Sidebar + Content */
+.settings-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar - Dark frosted glass */
+.settings-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.settings-nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+  padding-left: 12px;
+}
+
+.settings-nav-item {
+  position: relative;
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.settings-nav-item-active {
+  background: rgba(59, 130, 246, 0.25);
+  color: rgba(255, 255, 255, 1);
+}
+
+.settings-nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 24px;
+  background: rgba(59, 130, 246, 0.8);
+  border-radius: 2px;
+}
+
+/* Content - White pane */
+.settings-content {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 32px 40px;
+  overflow-y: auto;
+  color: #0f172a;
+}
+
+.settings-content-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 24px 0;
+}
+
+/* Form Row */
+.settings-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  min-height: 56px;
+}
+
+.settings-form-row:last-child {
   border-bottom: none;
 }
 
-/* Settings Input */
+.settings-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.settings-helper {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.settings-value {
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.settings-value-muted {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.settings-value-locked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+/* Section Divider */
+.settings-section-divider {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 16px 0;
+}
+
+/* Inputs */
 .settings-input {
-  background: var(--celeste-settings-input-bg);
-  border: 1px solid var(--celeste-settings-input-border);
-  border-radius: var(--celeste-settings-input-radius);
-  padding: var(--celeste-settings-input-padding);
-  color: var(--celeste-settings-input-text);
-  font-family: var(--celeste-font-body);
-  font-size: var(--celeste-settings-value-size);
-  transition:
-    background var(--celeste-duration-fast) var(--celeste-ease-out),
-    border-color var(--celeste-duration-fast) var(--celeste-ease-out);
+  width: 280px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 15px;
+  color: #0f172a;
+  transition: all 0.15s ease;
 }
 
 .settings-input:focus {
   outline: none;
-  background: var(--celeste-settings-input-bg-focus);
-  border-color: var(--celeste-settings-input-border-focus);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .settings-input::placeholder {
-  color: var(--celeste-settings-input-text-muted);
+  color: #94a3b8;
 }
 
-/* Settings Button - Primary */
-.settings-button-primary {
-  height: var(--celeste-settings-button-height);
-  padding: 0 var(--celeste-settings-button-padding-x);
-  background: var(--celeste-settings-button-primary-bg);
-  color: var(--celeste-settings-button-primary-text);
-  border: none;
-  border-radius: var(--celeste-settings-button-radius);
-  font-family: var(--celeste-font-body);
-  font-size: var(--celeste-settings-button-font-size);
-  font-weight: var(--celeste-settings-button-font-weight);
+.settings-input-wide {
+  width: 100%;
+  max-width: 400px;
+}
+
+.settings-textarea {
+  width: 100%;
+  max-width: 400px;
+  min-height: 120px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  color: #0f172a;
+  resize: vertical;
+  transition: all 0.15s ease;
+}
+
+.settings-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.settings-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.settings-select {
+  width: 280px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 15px;
+  color: #0f172a;
   cursor: pointer;
-  transition:
-    background var(--celeste-duration-fast) var(--celeste-ease-out),
-    transform var(--celeste-duration-fast) var(--celeste-ease-out);
+  transition: all 0.15s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Toggle Group (Light/Dark/System) */
+.settings-toggle-group {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.settings-toggle {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-toggle:hover {
+  color: #334155;
+}
+
+.settings-toggle-active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Pills (Date Range) */
+.settings-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-pill {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-pill:hover {
+  background: #e2e8f0;
+}
+
+.settings-pill-active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.settings-pill-active:hover {
+  background: #2563eb;
+}
+
+/* Buttons */
+.settings-button-primary {
+  padding: 12px 24px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .settings-button-primary:hover {
-  background: var(--celeste-settings-button-primary-bg-hover);
-  transform: translateY(-1px);
+  background: #2563eb;
 }
 
-/* Settings Button - Secondary */
+.settings-button-primary:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
 .settings-button-secondary {
-  height: var(--celeste-settings-button-height);
-  padding: 0 var(--celeste-settings-button-padding-x);
-  background: var(--celeste-settings-button-secondary-bg);
-  color: var(--celeste-settings-button-secondary-text);
-  border: 1px solid var(--celeste-settings-button-secondary-border);
-  border-radius: var(--celeste-settings-button-radius);
-  font-family: var(--celeste-font-body);
-  font-size: var(--celeste-settings-button-font-size);
+  padding: 12px 24px;
+  background: transparent;
+  color: #334155;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition:
-    background var(--celeste-duration-fast) var(--celeste-ease-out),
-    color var(--celeste-duration-fast) var(--celeste-ease-out);
+  transition: all 0.15s ease;
 }
 
 .settings-button-secondary:hover {
-  background: var(--celeste-settings-button-secondary-bg-hover);
-  color: var(--celeste-text-primary);
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
-/* Settings Sidebar */
-.settings-sidebar {
-  width: var(--celeste-settings-sidebar-width);
-  background: var(--celeste-settings-sidebar-bg);
-  border-right: 1px solid var(--celeste-settings-sidebar-border);
-  overflow-y: auto;
-}
-
-/* Settings Sidebar Item */
-.settings-sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: var(--celeste-spacing-4);
-  padding: var(--celeste-spacing-4);
-  background: var(--celeste-settings-sidebar-item-bg);
-  border: 1px solid var(--celeste-settings-sidebar-item-border);
-  border-radius: var(--celeste-settings-card-radius);
-  font-family: var(--celeste-font-body);
-  font-size: var(--celeste-settings-label-size);
-  color: var(--celeste-text-muted);
+.settings-button-danger {
+  padding: 12px 24px;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition:
-    background var(--celeste-duration-fast) var(--celeste-ease-out),
-    border-color var(--celeste-duration-fast) var(--celeste-ease-out),
-    color var(--celeste-duration-fast) var(--celeste-ease-out);
+  transition: all 0.15s ease;
 }
 
-.settings-sidebar-item:hover {
-  background: var(--celeste-settings-sidebar-item-bg-active);
-  color: var(--celeste-text-primary);
-}
-
-.settings-sidebar-item[data-active="true"] {
-  background: var(--celeste-settings-sidebar-item-bg-active);
-  border-color: var(--celeste-settings-sidebar-item-border-active);
-  color: var(--celeste-text-primary);
+.settings-button-danger:hover {
+  background: #dc2626;
 }
