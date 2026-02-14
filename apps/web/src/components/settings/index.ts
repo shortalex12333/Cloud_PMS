@@ -1,9 +1,37 @@
 /**
- * Settings Components
+ * CelesteOS Settings - Public API
  *
- * Presentational components for the Settings modal.
- * All use Celeste design tokens - no hardcoded values.
+ * Export all settings components and types for external use.
  */
 
-export { SettingsSection } from './SettingsSection';
-export { SettingsRow } from './SettingsRow';
+// Main Component
+export { default as Settings } from './Settings';
+
+// Constants & Types
+export {
+  type SettingsSection,
+  type SettingsMenuItem,
+  type SelectOption,
+  settingsMenuItems,
+  languageOptions,
+  appearanceOptions,
+  dateRangeOptions,
+  generationSourceOptions,
+  accountScopeOptions,
+  messageTypeOptions,
+} from './SettingsConstants';
+
+// UI Components
+export {
+  SectionHeader,
+  FormGroup,
+  SettingsRow,
+  SwitchRow,
+  UnifiedTextarea,
+  MobileSectionHeader,
+  SettingsButton,
+  DateRangeButtonGroup,
+} from './SettingsComponents';
+
+// Section Content Renderer
+export { renderSectionContent } from './SettingsSections';
