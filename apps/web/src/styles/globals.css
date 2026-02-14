@@ -546,3 +546,256 @@
   height: 1px;
   background: var(--celeste-border-subtle);
 }
+
+/* ============================================================================
+   SETTINGS MODAL - System Preferences Pattern
+   Apple Settings-inspired, full tokenization
+   ============================================================================ */
+
+:root {
+  /* Settings Modal - Dimensions */
+  --celeste-settings-width: 800px;
+  --celeste-settings-height: 600px;
+  --celeste-settings-sidebar-width: 224px;
+  --celeste-settings-header-height: 56px;
+  --celeste-settings-radius: 16px;
+
+  /* Settings Row */
+  --celeste-settings-row-height: 56px;
+  --celeste-settings-row-padding-x: 16px;
+  --celeste-settings-row-padding-y: 12px;
+
+  /* Settings Card */
+  --celeste-settings-card-radius: 8px;
+  --celeste-settings-card-padding: 16px;
+  --celeste-settings-card-margin: 24px;
+
+  /* Settings Typography */
+  --celeste-settings-title-size: 24px;
+  --celeste-settings-title-weight: 500;
+  --celeste-settings-label-size: 14px;
+  --celeste-settings-label-weight: 500;
+  --celeste-settings-value-size: 14px;
+  --celeste-settings-helper-size: 13px;
+
+  /* Settings Button */
+  --celeste-settings-button-height: 48px;
+  --celeste-settings-button-padding-x: 20px;
+  --celeste-settings-button-radius: 4px;
+  --celeste-settings-button-font-size: 15px;
+  --celeste-settings-button-font-weight: 600;
+
+  /* Settings Primary Button */
+  --celeste-settings-button-primary-bg: #0078fa;
+  --celeste-settings-button-primary-bg-hover: #004aff;
+  --celeste-settings-button-primary-text: #ffffff;
+
+  /* Settings Secondary Button */
+  --celeste-settings-button-secondary-bg: #f8f8f8;
+  --celeste-settings-button-secondary-bg-hover: #eeeeee;
+  --celeste-settings-button-secondary-text: #6b7280;
+  --celeste-settings-button-secondary-border: #e7e7e7;
+
+  /* Settings Input */
+  --celeste-settings-input-bg: #f7fafc;
+  --celeste-settings-input-bg-focus: #ffffff;
+  --celeste-settings-input-border: #e7e7e7;
+  --celeste-settings-input-border-focus: #0078fa;
+  --celeste-settings-input-text: #1f2937;
+  --celeste-settings-input-text-muted: #6b7280;
+  --celeste-settings-input-radius: 8px;
+  --celeste-settings-input-padding: 10px 16px;
+
+  /* Settings Card Background - Light */
+  --celeste-settings-card-bg: #ffffff;
+  --celeste-settings-card-border: #e7e7e7;
+
+  /* Settings Sidebar - Light */
+  --celeste-settings-sidebar-bg: #f1f5f9;
+  --celeste-settings-sidebar-border: #d1d5db;
+  --celeste-settings-sidebar-item-bg: #f8fafc;
+  --celeste-settings-sidebar-item-bg-active: #e2e8f0;
+  --celeste-settings-sidebar-item-border: #e5e7eb;
+  --celeste-settings-sidebar-item-border-active: #d1d5db;
+
+  /* Settings Modal Background - Light */
+  --celeste-settings-modal-bg: #ffffff;
+  --celeste-settings-header-bg: #f8fafc;
+  --celeste-settings-header-border: #e2e8f0;
+  --celeste-settings-content-bg: #ffffff;
+}
+
+.dark {
+  /* Settings Card Background - Dark */
+  --celeste-settings-card-bg: #292929;
+  --celeste-settings-card-border: #343434;
+
+  /* Settings Sidebar - Dark */
+  --celeste-settings-sidebar-bg: #1e293b;
+  --celeste-settings-sidebar-border: #334155;
+  --celeste-settings-sidebar-item-bg: #1e293b;
+  --celeste-settings-sidebar-item-bg-active: #334155;
+  --celeste-settings-sidebar-item-border: #334155;
+  --celeste-settings-sidebar-item-border-active: #475569;
+
+  /* Settings Modal Background - Dark */
+  --celeste-settings-modal-bg: #0f172a;
+  --celeste-settings-header-bg: #1e293b;
+  --celeste-settings-header-border: #334155;
+  --celeste-settings-content-bg: #0f172a;
+
+  /* Settings Input - Dark */
+  --celeste-settings-input-bg: #1a202c;
+  --celeste-settings-input-bg-focus: #1e293b;
+  --celeste-settings-input-border: #343434;
+  --celeste-settings-input-border-focus: #0078fa;
+  --celeste-settings-input-text: #f8fafc;
+  --celeste-settings-input-text-muted: #94a3b8;
+
+  /* Settings Secondary Button - Dark */
+  --celeste-settings-button-secondary-bg: #343434;
+  --celeste-settings-button-secondary-bg-hover: #404040;
+  --celeste-settings-button-secondary-text: #94a3b8;
+  --celeste-settings-button-secondary-border: #343434;
+}
+
+/* Settings Panel Material */
+.settings-panel {
+  background: var(--celeste-settings-modal-bg);
+  border-radius: var(--celeste-settings-radius);
+  box-shadow:
+    var(--celeste-rim-inner),
+    var(--celeste-rim-outer),
+    var(--celeste-material-shadow);
+  overflow: hidden;
+}
+
+/* Settings Card */
+.settings-card {
+  background: var(--celeste-settings-card-bg);
+  border: 1px solid var(--celeste-settings-card-border);
+  border-radius: var(--celeste-settings-card-radius);
+  padding: var(--celeste-settings-card-padding);
+  margin: 0 var(--celeste-settings-card-margin);
+}
+
+/* Settings Row */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--celeste-settings-row-height);
+  padding: var(--celeste-settings-row-padding-y) 0;
+  border-bottom: 1px solid var(--celeste-settings-card-border);
+  transition: background var(--celeste-duration-fast) var(--celeste-ease-out);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+/* Settings Input */
+.settings-input {
+  background: var(--celeste-settings-input-bg);
+  border: 1px solid var(--celeste-settings-input-border);
+  border-radius: var(--celeste-settings-input-radius);
+  padding: var(--celeste-settings-input-padding);
+  color: var(--celeste-settings-input-text);
+  font-family: var(--celeste-font-body);
+  font-size: var(--celeste-settings-value-size);
+  transition:
+    background var(--celeste-duration-fast) var(--celeste-ease-out),
+    border-color var(--celeste-duration-fast) var(--celeste-ease-out);
+}
+
+.settings-input:focus {
+  outline: none;
+  background: var(--celeste-settings-input-bg-focus);
+  border-color: var(--celeste-settings-input-border-focus);
+}
+
+.settings-input::placeholder {
+  color: var(--celeste-settings-input-text-muted);
+}
+
+/* Settings Button - Primary */
+.settings-button-primary {
+  height: var(--celeste-settings-button-height);
+  padding: 0 var(--celeste-settings-button-padding-x);
+  background: var(--celeste-settings-button-primary-bg);
+  color: var(--celeste-settings-button-primary-text);
+  border: none;
+  border-radius: var(--celeste-settings-button-radius);
+  font-family: var(--celeste-font-body);
+  font-size: var(--celeste-settings-button-font-size);
+  font-weight: var(--celeste-settings-button-font-weight);
+  cursor: pointer;
+  transition:
+    background var(--celeste-duration-fast) var(--celeste-ease-out),
+    transform var(--celeste-duration-fast) var(--celeste-ease-out);
+}
+
+.settings-button-primary:hover {
+  background: var(--celeste-settings-button-primary-bg-hover);
+  transform: translateY(-1px);
+}
+
+/* Settings Button - Secondary */
+.settings-button-secondary {
+  height: var(--celeste-settings-button-height);
+  padding: 0 var(--celeste-settings-button-padding-x);
+  background: var(--celeste-settings-button-secondary-bg);
+  color: var(--celeste-settings-button-secondary-text);
+  border: 1px solid var(--celeste-settings-button-secondary-border);
+  border-radius: var(--celeste-settings-button-radius);
+  font-family: var(--celeste-font-body);
+  font-size: var(--celeste-settings-button-font-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--celeste-duration-fast) var(--celeste-ease-out),
+    color var(--celeste-duration-fast) var(--celeste-ease-out);
+}
+
+.settings-button-secondary:hover {
+  background: var(--celeste-settings-button-secondary-bg-hover);
+  color: var(--celeste-text-primary);
+}
+
+/* Settings Sidebar */
+.settings-sidebar {
+  width: var(--celeste-settings-sidebar-width);
+  background: var(--celeste-settings-sidebar-bg);
+  border-right: 1px solid var(--celeste-settings-sidebar-border);
+  overflow-y: auto;
+}
+
+/* Settings Sidebar Item */
+.settings-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--celeste-spacing-4);
+  padding: var(--celeste-spacing-4);
+  background: var(--celeste-settings-sidebar-item-bg);
+  border: 1px solid var(--celeste-settings-sidebar-item-border);
+  border-radius: var(--celeste-settings-card-radius);
+  font-family: var(--celeste-font-body);
+  font-size: var(--celeste-settings-label-size);
+  color: var(--celeste-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--celeste-duration-fast) var(--celeste-ease-out),
+    border-color var(--celeste-duration-fast) var(--celeste-ease-out),
+    color var(--celeste-duration-fast) var(--celeste-ease-out);
+}
+
+.settings-sidebar-item:hover {
+  background: var(--celeste-settings-sidebar-item-bg-active);
+  color: var(--celeste-text-primary);
+}
+
+.settings-sidebar-item[data-active="true"] {
+  background: var(--celeste-settings-sidebar-item-bg-active);
+  border-color: var(--celeste-settings-sidebar-item-border-active);
+  color: var(--celeste-text-primary);
+}
