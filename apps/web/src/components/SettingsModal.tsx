@@ -3,8 +3,8 @@
 /**
  * SettingsModal - CelesteOS Settings Entry Point
  *
- * Wrapper component that renders the new tokenized Settings panel.
- * Maintains backward compatibility with existing usage.
+ * Wrapper component that renders the frosted glass Settings panel.
+ * Matches c.os.4.1 reference design.
  */
 
 import { Settings } from './settings';
@@ -12,9 +12,8 @@ import { Settings } from './settings';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  isMobile?: boolean;
 }
 
-export default function SettingsModal({ isOpen, onClose, isMobile }: SettingsModalProps) {
-  return <Settings isOpen={isOpen} onClose={onClose} isMobile={isMobile} />;
+export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  return <Settings isOpen={isOpen} onClose={onClose} />;
 }
