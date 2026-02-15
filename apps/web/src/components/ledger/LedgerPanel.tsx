@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 
+const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -122,7 +124,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
 
   const LIMIT = 50;
 
-  // Fetch ledger events
+  // Fetch ledger events from Render API (tenant DB)
   const fetchEvents = useCallback(async (reset = false) => {
     if (!user || loading) return;
 
@@ -130,24 +132,43 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
     try {
       const offset = reset ? 0 : events.length;
 
-      const { data, error } = await supabase
-        .from('ledger_events')
-        .select('*')
-        .order('event_timestamp', { ascending: false })
-        .range(offset, offset + LIMIT - 1);
+      // Get auth token for Render API
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
-      if (error) {
-        console.error('Failed to fetch ledger events:', error);
+      if (!token) {
+        console.error('No auth token available for ledger fetch');
         return;
       }
 
-      if (reset) {
-        setEvents(data || []);
-      } else {
-        setEvents((prev) => [...prev, ...(data || [])]);
+      // Call Render API (which has access to tenant DB)
+      const response = await fetch(
+        `${RENDER_API_URL}/v1/ledger/events?limit=${LIMIT}&offset=${offset}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to fetch ledger events:', errorData);
+        return;
       }
 
-      setHasMore((data?.length || 0) === LIMIT);
+      const result = await response.json();
+      const fetchedEvents = result.events || [];
+
+      if (reset) {
+        setEvents(fetchedEvents);
+      } else {
+        setEvents((prev) => [...prev, ...fetchedEvents]);
+      }
+
+      setHasMore(result.has_more ?? fetchedEvents.length === LIMIT);
     } catch (err) {
       console.error('Ledger fetch error:', err);
     } finally {
