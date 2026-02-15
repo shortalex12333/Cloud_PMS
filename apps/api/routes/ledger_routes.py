@@ -10,8 +10,8 @@ from typing import Optional, List
 from datetime import datetime, date
 import logging
 
-from middleware.auth_middleware import get_current_user_context
-from utils.tenant_db import get_tenant_supabase_client
+from middleware.auth import get_authenticated_user
+from pipeline_service import get_tenant_client
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ async def get_ledger_events(
     entity_type: Optional[str] = Query(default=None, description="Filter by entity_type: work_order, fault, etc."),
     date_from: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
-    user_context: dict = Depends(get_current_user_context)
+    user_context: dict = Depends(get_authenticated_user)
 ):
     """
     Fetch ledger events for the current user's yacht.
@@ -39,7 +39,7 @@ async def get_ledger_events(
         if not yacht_id:
             raise HTTPException(status_code=400, detail="No yacht_id in user context")
 
-        db_client = get_tenant_supabase_client(tenant_alias)
+        db_client = get_tenant_client(tenant_alias)
 
         # Build query
         query = db_client.table("ledger_events").select("*")
@@ -87,7 +87,7 @@ async def get_entity_ledger_events(
     entity_type: str,
     entity_id: str,
     limit: int = Query(default=50, le=100),
-    user_context: dict = Depends(get_current_user_context)
+    user_context: dict = Depends(get_authenticated_user)
 ):
     """
     Fetch ledger events for a specific entity.
@@ -100,7 +100,7 @@ async def get_entity_ledger_events(
         if not yacht_id:
             raise HTTPException(status_code=400, detail="No yacht_id in user context")
 
-        db_client = get_tenant_supabase_client(tenant_alias)
+        db_client = get_tenant_client(tenant_alias)
 
         result = db_client.table("ledger_events").select("*").eq(
             "yacht_id", yacht_id
@@ -129,7 +129,7 @@ async def get_entity_ledger_events(
 @router.get("/day-anchors")
 async def get_day_anchors(
     days: int = Query(default=30, le=90, description="Number of days to fetch"),
-    user_context: dict = Depends(get_current_user_context)
+    user_context: dict = Depends(get_authenticated_user)
 ):
     """
     Fetch day anchor summaries for the ledger UI.
@@ -142,7 +142,7 @@ async def get_day_anchors(
         if not yacht_id:
             raise HTTPException(status_code=400, detail="No yacht_id in user context")
 
-        db_client = get_tenant_supabase_client(tenant_alias)
+        db_client = get_tenant_client(tenant_alias)
 
         # Get day anchors
         result = db_client.table("ledger_day_anchors").select("*").eq(
