@@ -19,8 +19,8 @@ interface ActionResponse {
   code?: string;
 }
 
-// Master DB client (using env vars)
-function getMasterClient(accessToken: string) {
+// User-scoped client (RLS enforced via user token)
+function getUserClient(accessToken: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -35,6 +35,30 @@ function getMasterClient(accessToken: string) {
       },
     },
   });
+}
+
+// Service role client (bypasses RLS for lookups, use with caution)
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error('Supabase service role not configured');
+  }
+
+  return createClient(supabaseUrl, serviceKey);
+}
+
+// Get user's yacht_id from auth_role_assignments
+async function getUserYachtId(userId: string): Promise<string | null> {
+  const serviceClient = getServiceClient();
+  const { data } = await serviceClient
+    .from('auth_role_assignments')
+    .select('yacht_id')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .single();
+  return data?.yacht_id || null;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ActionResponse>> {
@@ -59,11 +83,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
     const accessToken = authHeader.replace('Bearer ', '');
 
-    // Create client with user's token
-    const supabase = getMasterClient(accessToken);
+    // Create clients - user client for auth, service client for lookups
+    const userClient = getUserClient(accessToken);
+    const supabase = getServiceClient(); // Use service role for data operations
 
     // Verify the token and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(
@@ -72,7 +97,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       );
     }
 
-    const enrichedContext = { ...context, user_id: user.id };
+    // Get user's yacht_id for tenant isolation
+    const userYachtId = await getUserYachtId(user.id);
+    if (!userYachtId) {
+      return NextResponse.json(
+        { success: false, error: 'User not assigned to any yacht', code: 'NO_YACHT_ASSIGNMENT' },
+        { status: 403 }
+      );
+    }
+
+    const enrichedContext = { ...context, user_id: user.id, yacht_id: userYachtId };
 
     // ===== INVENTORY ACTIONS =====
     if (action === 'check_part_stock') {
@@ -288,7 +322,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
         );
       }
 
-      // Verify work order exists and user has access (RLS will enforce yacht_id)
+      // Verify work order exists
       const { data: workOrder, error: woError } = await supabase
         .from('pms_work_orders')
         .select('id, title, yacht_id')
@@ -297,8 +331,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
       if (woError || !workOrder) {
         return NextResponse.json(
-          { success: false, error: 'Work order not found or access denied', code: 'NOT_FOUND' },
+          { success: false, error: 'Work order not found', code: 'NOT_FOUND' },
           { status: 404 }
+        );
+      }
+
+      // Validate user has access to this work order's yacht
+      if (workOrder.yacht_id !== userYachtId) {
+        console.error('[Action Router] Yacht mismatch:', { workOrderYacht: workOrder.yacht_id, userYacht: userYachtId });
+        return NextResponse.json(
+          { success: false, error: 'Access denied - work order belongs to different yacht', code: 'ACCESS_DENIED' },
+          { status: 403 }
         );
       }
 
@@ -462,8 +505,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
       if (woError || !workOrder) {
         return NextResponse.json(
-          { success: false, error: 'Work order not found or access denied', code: 'NOT_FOUND' },
+          { success: false, error: 'Work order not found', code: 'NOT_FOUND' },
           { status: 404 }
+        );
+      }
+
+      // Validate user has access to this work order's yacht
+      if (workOrder.yacht_id !== userYachtId) {
+        console.error('[Action Router] Yacht mismatch:', { workOrderYacht: workOrder.yacht_id, userYacht: userYachtId });
+        return NextResponse.json(
+          { success: false, error: 'Access denied - work order belongs to different yacht', code: 'ACCESS_DENIED' },
+          { status: 403 }
         );
       }
 
