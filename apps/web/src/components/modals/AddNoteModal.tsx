@@ -111,11 +111,25 @@ export function AddNoteModal({
   const onSubmit = async (data: AddNoteFormData) => {
     const actionName = `add_${context.entity_type}_note` as const;
 
+    // Build context with the correct ID field name for the entity type
+    const actionContext: Record<string, any> = {
+      entity_type: data.entity_type,
+      entity_id: data.entity_id,
+    };
+
+    // Map entity_id to the specific field name expected by the backend
+    if (data.entity_type === 'work_order') {
+      actionContext.work_order_id = data.entity_id;
+    } else if (data.entity_type === 'fault') {
+      actionContext.fault_id = data.entity_id;
+    } else if (data.entity_type === 'equipment') {
+      actionContext.equipment_id = data.entity_id;
+    }
+
     const response = await executeAction(
       actionName,
       {
-        entity_type: data.entity_type,
-        entity_id: data.entity_id,
+        ...actionContext,
         note_text: data.note_text,
         importance: data.importance,
         add_to_handover: data.add_to_handover,
