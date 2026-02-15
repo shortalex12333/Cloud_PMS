@@ -13,7 +13,7 @@ const PASSWORD = 'Password2!';
 const TEST_USERS = {
   hod: { email: 'hod.test@alex-short.com', role: 'HOD' },
   crew: { email: 'crew.test@alex-short.com', role: 'Crew' },
-  captain: { email: 'captain.test@alex-short.com', role: 'Captain' },
+  captain: { email: 'x@alex-short.com', role: 'Captain' },
 };
 
 // Special characters to test JSONB storage
