@@ -126,16 +126,30 @@ export function AddNoteModal({
       actionContext.equipment_id = data.entity_id;
     }
 
+    // Build parameters object - these go into payload
+    const parameters: Record<string, any> = {
+      note_text: data.note_text,
+      importance: data.importance,
+      add_to_handover: data.add_to_handover,
+    };
+
+    // Include entity ID in parameters (backend expects it in payload)
+    if (data.entity_type === 'work_order') {
+      parameters.work_order_id = data.entity_id;
+    } else if (data.entity_type === 'fault') {
+      parameters.fault_id = data.entity_id;
+    } else if (data.entity_type === 'equipment') {
+      parameters.equipment_id = data.entity_id;
+    } else if (data.entity_type === 'checklist') {
+      parameters.checklist_item_id = data.entity_id;
+    }
+
     const response = await executeAction(
       actionName,
       {
         ...actionContext,
         // Pass form data as parameters so it goes into payload
-        parameters: {
-          note_text: data.note_text,
-          importance: data.importance,
-          add_to_handover: data.add_to_handover,
-        },
+        parameters,
       },
       {
         successMessage: 'Note added successfully',

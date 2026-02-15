@@ -74,7 +74,9 @@ export function AddChecklistItemModal({
         entity_id: context.work_order_id,
         work_order_id: context.work_order_id,
         // Pass form data as parameters so it goes into payload
+        // Include work_order_id in parameters (backend expects it in payload)
         parameters: {
+          work_order_id: context.work_order_id,
           title: data.title.trim(),
           description: data.description?.trim() || undefined,
         },
