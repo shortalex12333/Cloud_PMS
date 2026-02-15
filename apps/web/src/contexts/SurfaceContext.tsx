@@ -107,12 +107,13 @@ export function SurfaceProvider({ children }: SurfaceProviderProps) {
     setState(contextPanel.visible ? 'context-open' : 'search-dominant');
   }, [contextPanel.visible]);
 
-  // Show context panel (slides from right)
+  // Show context panel (slides from right) - Opens FULL-SCREEN immediately
+  // Per user requirement: no sidebar step, go directly to expanded view
   const showContext = useCallback(
     (entityType: string, entityId: string, data?: Record<string, unknown>) => {
       setContextPanel({
         visible: true,
-        expanded: false,
+        expanded: true, // Open full-screen immediately
         entityType,
         entityId,
         entityData: data,

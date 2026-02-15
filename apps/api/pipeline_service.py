@@ -31,11 +31,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 # Git commit for /version endpoint
-# Updated: 2026-02-09 12:31 - FORCE REBUILD: Image upload MVP + RBAC fix deployment
-# Version: 2026.02.09.003 - Force Render to deploy PRs #194, #195, #196, #197, #198
+# Updated: 2026-02-15 - Enriched work order endpoint + full-screen ContextPanel
+# Version: 2026.02.15.001 - Deploy PR #285: Enriched /v1/entity/work_order endpoint
 GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", os.environ.get("GIT_COMMIT", "dev"))
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-DEPLOY_TIMESTAMP = "2026-02-09T17:31:00Z"  # Force rebuild trigger
+DEPLOY_TIMESTAMP = "2026-02-15T12:00:00Z"  # Force rebuild trigger
 
 # Setup path for imports
 from pathlib import Path
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="CelesteOS Pipeline V1",
     description="Unified search pipeline: Extract → Prepare → Execute → Actions",
-    version="2026.02.09.003",
+    version="2026.02.15.001",
 )
 
 # ============================================================================
