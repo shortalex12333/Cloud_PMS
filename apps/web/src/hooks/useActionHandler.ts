@@ -63,7 +63,7 @@ interface ActionHandlerState {
 
 export function useActionHandler() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [state, setState] = useState<ActionHandlerState>({
     isLoading: false,
     error: null,
@@ -84,7 +84,7 @@ export function useActionHandler() {
         const metadata = getActionMetadata(action);
 
         // Check user permissions
-        if (!user) {
+        if (!user || !session?.access_token) {
           throw new Error('User not authenticated');
         }
 
@@ -148,6 +148,7 @@ export function useActionHandler() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify(payload),
         });
@@ -229,7 +230,7 @@ export function useActionHandler() {
         return null;
       }
     },
-    [user, router]
+    [user, session, router]
   );
 
   /**
