@@ -130,9 +130,12 @@ export function AddNoteModal({
       actionName,
       {
         ...actionContext,
-        note_text: data.note_text,
-        importance: data.importance,
-        add_to_handover: data.add_to_handover,
+        // Pass form data as parameters so it goes into payload
+        parameters: {
+          note_text: data.note_text,
+          importance: data.importance,
+          add_to_handover: data.add_to_handover,
+        },
       },
       {
         successMessage: 'Note added successfully',
