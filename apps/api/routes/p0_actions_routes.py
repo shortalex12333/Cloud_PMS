@@ -3438,9 +3438,9 @@ async def execute_action(
                 raise HTTPException(status_code=400, detail="title is required")
 
             try:
-                # Verify work order exists and belongs to yacht
+                # Verify work order exists and belongs to yacht (include title for ledger)
                 wo = db_client.table("pms_work_orders").select(
-                    "id, yacht_id"
+                    "id, yacht_id, title, number"
                 ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
                 if not wo.data:
@@ -3470,6 +3470,35 @@ async def execute_action(
                 }
 
                 insert_result = db_client.table("pms_work_order_checklist").insert(new_item).execute()
+
+                # Record ledger event
+                try:
+                    wo_title = wo.data.get("title", "Untitled")
+                    wo_number = wo.data.get("number", "")
+                    display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
+                    user_name = user_context.get("name") or user_context.get("email", "Unknown")
+                    user_role = user_context.get("role", "member")
+
+                    ledger_event = {
+                        "yacht_id": yacht_id,
+                        "user_id": user_id,
+                        "user_name": user_name,
+                        "user_role": user_role,
+                        "event_class": "mutation",
+                        "event_verb": "Added Checklist Item",
+                        "entity_type": "work_order",
+                        "entity_id": work_order_id,
+                        "entity_display_name": display_name,
+                        "domain": "Work Orders",
+                        "context_data": {
+                            "checklist_item_id": new_item["id"],
+                            "checklist_title": title.strip(),
+                            "sequence": next_sequence
+                        }
+                    }
+                    db_client.table("ledger_events").insert(ledger_event).execute()
+                except Exception as ledger_err:
+                    logger.warning(f"Failed to write ledger event for add_checklist_item: {ledger_err}")
 
                 result = {
                     "status": "success",
@@ -4873,9 +4902,9 @@ async def execute_action(
             if not note_text:
                 raise HTTPException(status_code=400, detail="note_text is required")
 
-            # Get current work order
+            # Get current work order (include title for ledger display)
             wo = db_client.table("pms_work_orders").select(
-                "id, metadata"
+                "id, title, number, metadata"
             ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
 
             if not wo.data:
@@ -4894,6 +4923,34 @@ async def execute_action(
             db_client.table("pms_work_orders").update({
                 "metadata": metadata
             }).eq("id", work_order_id).execute()
+
+            # Record ledger event
+            try:
+                wo_title = wo.data.get("title", "Untitled")
+                wo_number = wo.data.get("number", "")
+                display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
+                user_name = user_context.get("name") or user_context.get("email", "Unknown")
+                user_role = user_context.get("role", "member")
+
+                ledger_event = {
+                    "yacht_id": yacht_id,
+                    "user_id": user_id,
+                    "user_name": user_name,
+                    "user_role": user_role,
+                    "event_class": "mutation",
+                    "event_verb": "Added Note",
+                    "entity_type": "work_order",
+                    "entity_id": work_order_id,
+                    "entity_display_name": display_name,
+                    "domain": "Work Orders",
+                    "context_data": {
+                        "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text,
+                        "notes_count": len(notes)
+                    }
+                }
+                db_client.table("ledger_events").insert(ledger_event).execute()
+            except Exception as ledger_err:
+                logger.warning(f"Failed to write ledger event for add_work_order_note: {ledger_err}")
 
             result = {
                 "status": "success",
