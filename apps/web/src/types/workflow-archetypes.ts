@@ -275,6 +275,7 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   add_work_order_note: 'CREATE',
   add_equipment_note: 'CREATE',
   add_checklist_note: 'CREATE',
+  add_checklist_item: 'CREATE',
   add_parts_to_work_order: 'CREATE',
   order_part: 'CREATE',
   upload_photo: 'CREATE',
