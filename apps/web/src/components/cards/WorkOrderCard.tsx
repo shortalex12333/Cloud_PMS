@@ -645,11 +645,11 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
               let summary = '';
               if (entry.new_values) {
                 if (entry.new_values.note_text) {
-                  summary = entry.new_values.note_text;
+                  summary = String(entry.new_values.note_text);
                 } else if (entry.new_values.title) {
-                  summary = entry.new_values.title;
+                  summary = String(entry.new_values.title);
                 } else if (entry.new_values.part_name) {
-                  summary = entry.new_values.part_name;
+                  summary = String(entry.new_values.part_name);
                 }
               }
 
