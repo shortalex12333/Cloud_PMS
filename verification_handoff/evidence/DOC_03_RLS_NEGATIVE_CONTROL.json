@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-02-11T15:49:25.261Z",
+  "tests": [
+    {
+      "test": "ANON_ACCESS",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}
