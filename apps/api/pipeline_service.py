@@ -1114,10 +1114,11 @@ async def get_work_order_entity(
     """
     try:
         yacht_id = auth['yacht_id']
-        tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use local get_supabase_client (uses DEFAULT_YACHT_CODE env var)
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Database connection unavailable")
 
         # 1. Fetch main work order
         # Try both 'id' and 'work_order_id' columns for compatibility
