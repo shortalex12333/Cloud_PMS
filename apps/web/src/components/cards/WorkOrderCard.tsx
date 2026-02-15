@@ -4,11 +4,13 @@
  * Full-screen entity view with enriched data:
  * - Notes, Parts, Checklist, Audit History
  * - Empty state CTAs for missing data
+ * - Modal flows for data entry
  * - Tokenized styling (no hardcoded values)
  */
 
 'use client';
 
+import { useState } from 'react';
 import {
   Wrench,
   Clock,
@@ -21,8 +23,13 @@ import {
   Plus,
   ChevronRight,
   AlertCircle,
+  StickyNote,
 } from 'lucide-react';
 import { ActionButton } from '@/components/actions/ActionButton';
+import { Button } from '@/components/ui/button';
+import { AddNoteModal } from '@/components/modals/AddNoteModal';
+import { LinkPartsToWorkOrderModal } from '@/components/modals/LinkPartsToWorkOrderModal';
+import { AddChecklistItemModal } from '@/components/modals/AddChecklistItemModal';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
@@ -182,6 +189,11 @@ function SectionHeader({ icon, title, count, action, actionLabel, context }: Sec
 // ============================================================================
 
 export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
+  // Modal state
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
+  const [showAddPartModal, setShowAddPartModal] = useState(false);
+  const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
+
   // Get status styling
   const getStatusStyles = (status: string) => {
     switch (status) {
@@ -340,24 +352,48 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           NOTES SECTION
           ================================================================ */}
       <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <SectionHeader
-          icon={<MessageSquare className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
-          title="Notes"
-          count={notes.length}
-          action={notes.length > 0 ? 'add_work_order_note' : undefined}
-          actionLabel="Add Note"
-          context={actionContext}
-        />
+        <div className="flex items-center justify-between mb-[var(--celeste-spacing-3)]">
+          <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+            <MessageSquare className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
+            <h3 className="text-[var(--celeste-text-primary)] font-semibold">Notes</h3>
+            {notes.length > 0 && (
+              <span className="text-[var(--celeste-text-muted)] text-sm">({notes.length})</span>
+            )}
+          </div>
+          {notes.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddNoteModal(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              <span>Add Note</span>
+            </Button>
+          )}
+        </div>
 
         {notes.length === 0 ? (
-          <EmptyStateCTA
-            icon={<MessageSquare className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
-            title="No notes yet"
-            description="Add notes to track progress, issues, or important observations."
-            actionLabel="Add Note"
-            action="add_work_order_note"
-            context={actionContext}
-          />
+          <div className="flex flex-col items-center justify-center py-[var(--celeste-spacing-6)] px-[var(--celeste-spacing-4)] text-center">
+            <div className="w-12 h-12 rounded-[var(--celeste-border-radius-md)] bg-[var(--celeste-bg-tertiary)] flex items-center justify-center mb-[var(--celeste-spacing-3)]">
+              <MessageSquare className="h-6 w-6 text-[var(--celeste-text-muted)]" />
+            </div>
+            <p className="text-[var(--celeste-text-primary)] font-medium mb-[var(--celeste-spacing-1)]">
+              No notes yet
+            </p>
+            <p className="text-[var(--celeste-text-muted)] text-sm mb-[var(--celeste-spacing-4)]">
+              Add notes to track progress, issues, or important observations.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAddNoteModal(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              <span>Add Note</span>
+            </Button>
+          </div>
         ) : (
           <div className="space-y-[var(--celeste-spacing-3)]">
             {notes.map((note) => (
@@ -383,24 +419,48 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           PARTS SECTION
           ================================================================ */}
       <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <SectionHeader
-          icon={<Package className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
-          title="Parts Used"
-          count={parts.length}
-          action={parts.length > 0 ? 'add_parts_to_work_order' : undefined}
-          actionLabel="Add Part"
-          context={actionContext}
-        />
+        <div className="flex items-center justify-between mb-[var(--celeste-spacing-3)]">
+          <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+            <Package className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
+            <h3 className="text-[var(--celeste-text-primary)] font-semibold">Parts Used</h3>
+            {parts.length > 0 && (
+              <span className="text-[var(--celeste-text-muted)] text-sm">({parts.length})</span>
+            )}
+          </div>
+          {parts.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddPartModal(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <Package className="h-3.5 w-3.5" />
+              <span>Add Part</span>
+            </Button>
+          )}
+        </div>
 
         {parts.length === 0 ? (
-          <EmptyStateCTA
-            icon={<Package className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
-            title="No parts linked"
-            description="Track parts used for this work order to maintain accurate inventory."
-            actionLabel="Add Part"
-            action="add_parts_to_work_order"
-            context={actionContext}
-          />
+          <div className="flex flex-col items-center justify-center py-[var(--celeste-spacing-6)] px-[var(--celeste-spacing-4)] text-center">
+            <div className="w-12 h-12 rounded-[var(--celeste-border-radius-md)] bg-[var(--celeste-bg-tertiary)] flex items-center justify-center mb-[var(--celeste-spacing-3)]">
+              <Package className="h-6 w-6 text-[var(--celeste-text-muted)]" />
+            </div>
+            <p className="text-[var(--celeste-text-primary)] font-medium mb-[var(--celeste-spacing-1)]">
+              No parts linked
+            </p>
+            <p className="text-[var(--celeste-text-muted)] text-sm mb-[var(--celeste-spacing-4)]">
+              Track parts used for this work order to maintain accurate inventory.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAddPartModal(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <Package className="h-3.5 w-3.5" />
+              <span>Add Part</span>
+            </Button>
+          </div>
         ) : (
           <div className="space-y-[var(--celeste-spacing-2)]">
             {parts.map((part) => (
@@ -439,24 +499,48 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           CHECKLIST SECTION
           ================================================================ */}
       <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <SectionHeader
-          icon={<ClipboardList className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
-          title="Checklist"
-          count={checklist.length}
-          action={checklist.length > 0 ? 'add_checklist_note' : undefined}
-          actionLabel="Add Item"
-          context={actionContext}
-        />
+        <div className="flex items-center justify-between mb-[var(--celeste-spacing-3)]">
+          <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+            <ClipboardList className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
+            <h3 className="text-[var(--celeste-text-primary)] font-semibold">Checklist</h3>
+            {checklist.length > 0 && (
+              <span className="text-[var(--celeste-text-muted)] text-sm">({checklist.length})</span>
+            )}
+          </div>
+          {checklist.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddChecklistModal(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span>Add Item</span>
+            </Button>
+          )}
+        </div>
 
         {checklist.length === 0 ? (
-          <EmptyStateCTA
-            icon={<ClipboardList className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
-            title="No checklist items"
-            description="Add checklist items to ensure all steps are completed."
-            actionLabel="Add Checklist Item"
-            action="add_checklist_note"
-            context={actionContext}
-          />
+          <div className="flex flex-col items-center justify-center py-[var(--celeste-spacing-6)] px-[var(--celeste-spacing-4)] text-center">
+            <div className="w-12 h-12 rounded-[var(--celeste-border-radius-md)] bg-[var(--celeste-bg-tertiary)] flex items-center justify-center mb-[var(--celeste-spacing-3)]">
+              <ClipboardList className="h-6 w-6 text-[var(--celeste-text-muted)]" />
+            </div>
+            <p className="text-[var(--celeste-text-primary)] font-medium mb-[var(--celeste-spacing-1)]">
+              No checklist items
+            </p>
+            <p className="text-[var(--celeste-text-muted)] text-sm mb-[var(--celeste-spacing-4)]">
+              Add checklist items to ensure all steps are completed.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAddChecklistModal(true)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span>Add Checklist Item</span>
+            </Button>
+          </div>
         ) : (
           <div className="space-y-[var(--celeste-spacing-2)]">
             {/* Progress bar */}
@@ -585,6 +669,47 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           </div>
         )}
       </div>
+
+      {/* ================================================================
+          MODALS
+          ================================================================ */}
+      <AddNoteModal
+        open={showAddNoteModal}
+        onOpenChange={setShowAddNoteModal}
+        context={{
+          entity_type: 'work_order',
+          entity_id: workOrder.id,
+          entity_title: workOrder.title,
+          entity_subtitle: workOrder.equipment_name,
+        }}
+        onSuccess={() => {
+          // Optionally trigger a refresh here
+        }}
+      />
+
+      <LinkPartsToWorkOrderModal
+        open={showAddPartModal}
+        onOpenChange={setShowAddPartModal}
+        context={{
+          work_order_id: workOrder.id,
+          work_order_title: workOrder.title,
+        }}
+        onSuccess={() => {
+          // Optionally trigger a refresh here
+        }}
+      />
+
+      <AddChecklistItemModal
+        open={showAddChecklistModal}
+        onOpenChange={setShowAddChecklistModal}
+        context={{
+          work_order_id: workOrder.id,
+          work_order_title: workOrder.title,
+        }}
+        onSuccess={() => {
+          // Optionally trigger a refresh here
+        }}
+      />
     </div>
   );
 }
