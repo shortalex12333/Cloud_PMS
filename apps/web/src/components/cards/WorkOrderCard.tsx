@@ -344,7 +344,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           icon={<MessageSquare className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
           title="Notes"
           count={notes.length}
-          action={notes.length > 0 ? 'add_note_to_work_order' as MicroAction : undefined}
+          action={notes.length > 0 ? 'add_work_order_note' : undefined}
           actionLabel="Add Note"
           context={actionContext}
         />
@@ -355,7 +355,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             title="No notes yet"
             description="Add notes to track progress, issues, or important observations."
             actionLabel="Add Note"
-            action={'add_note_to_work_order' as MicroAction}
+            action="add_work_order_note"
             context={actionContext}
           />
         ) : (
@@ -387,7 +387,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           icon={<Package className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
           title="Parts Used"
           count={parts.length}
-          action={parts.length > 0 ? 'add_parts_to_work_order' as MicroAction : undefined}
+          action={parts.length > 0 ? 'add_parts_to_work_order' : undefined}
           actionLabel="Add Part"
           context={actionContext}
         />
@@ -398,7 +398,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             title="No parts linked"
             description="Track parts used for this work order to maintain accurate inventory."
             actionLabel="Add Part"
-            action={'add_parts_to_work_order' as MicroAction}
+            action="add_parts_to_work_order"
             context={actionContext}
           />
         ) : (
@@ -443,7 +443,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           icon={<ClipboardList className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
           title="Checklist"
           count={checklist.length}
-          action={checklist.length > 0 ? 'add_checklist_note' as MicroAction : undefined}
+          action={checklist.length > 0 ? 'add_checklist_note' : undefined}
           actionLabel="Add Item"
           context={actionContext}
         />
@@ -454,7 +454,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             title="No checklist items"
             description="Add checklist items to ensure all steps are completed."
             actionLabel="Add Checklist Item"
-            action={'add_checklist_note' as MicroAction}
+            action="add_checklist_note"
             context={actionContext}
           />
         ) : (
