@@ -96,9 +96,10 @@ export type MicroAction =
   | 'reject_receiving'
   | 'link_receiving_to_invoice'
 
-  // OPERATIONAL CHECKLISTS (4 actions)
+  // OPERATIONAL CHECKLISTS (5 actions)
   | 'view_checklist'
   | 'mark_checklist_item_complete'
+  | 'add_checklist_item'
   | 'add_checklist_note'
   | 'add_checklist_photo'
 
@@ -924,6 +925,14 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     side_effect_type: 'mutation_light',
     icon: 'CheckSquare',
     description: 'Tick off checklist item',
+  },
+  add_checklist_item: {
+    action_name: 'add_checklist_item',
+    label: 'Add Checklist Item',
+    cluster: 'do_maintenance',
+    side_effect_type: 'mutation_light',
+    icon: 'ListPlus',
+    description: 'Add new checklist item to work order',
   },
   add_checklist_note: {
     action_name: 'add_checklist_note',
