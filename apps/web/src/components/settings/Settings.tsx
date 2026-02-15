@@ -13,18 +13,16 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Settings as SettingsIcon,
-  Bell,
-  User,
   Grid3X3,
-  Calendar,
   Database,
   Shield,
-  Users,
   CreditCard,
   Lock,
+  Key,
+  HelpCircle,
+  Info,
+  Send,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 // ============================================================================
@@ -36,17 +34,15 @@ interface SettingsProps {
   onClose: () => void;
 }
 
-type SettingsPage = 'general' | 'notifications' | 'personalization' | 'apps' | 'schedules' | 'data' | 'security' | 'account';
+type SettingsPage = 'apps' | 'data' | 'security' | 'account' | 'help' | 'about';
 
-const navigationItems: { id: SettingsPage; label: string; icon: typeof User }[] = [
-  { id: 'general', label: 'General', icon: SettingsIcon },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'personalization', label: 'Personalization', icon: User },
+const navigationItems: { id: SettingsPage; label: string; icon: typeof Grid3X3 }[] = [
   { id: 'apps', label: 'Apps', icon: Grid3X3 },
-  { id: 'schedules', label: 'Schedules', icon: Calendar },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'account', label: 'Account', icon: CreditCard },
+  { id: 'help', label: 'Help & Support', icon: HelpCircle },
+  { id: 'about', label: 'About', icon: Info },
 ];
 
 // ============================================================================
@@ -56,10 +52,10 @@ const navigationItems: { id: SettingsPage; label: string; icon: typeof User }[] 
 export default function Settings({ isOpen, onClose }: SettingsProps) {
   const { user, logout } = useAuth();
 
-  const [activePage, setActivePage] = useState<SettingsPage>('general');
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [activePage, setActivePage] = useState<SettingsPage>('apps');
   const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('light');
-  const [language, setLanguage] = useState('auto');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportSending, setSupportSending] = useState(false);
 
   // Load theme from localStorage
   useEffect(() => {
@@ -82,11 +78,6 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     localStorage.setItem('celeste_theme', appearance);
   }, [appearance]);
 
-  // Sync display name
-  useEffect(() => {
-    if (user?.displayName) setDisplayName(user.displayName);
-  }, [user?.displayName]);
-
   // Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -104,106 +95,6 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
   const renderContent = () => {
     switch (activePage) {
-      case 'general':
-        return (
-          <>
-            <h2 className="settings-content-title">General</h2>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Appearance</div>
-              </div>
-              <select
-                value={appearance}
-                onChange={(e) => setAppearance(e.target.value as 'light' | 'dark' | 'system')}
-                className="settings-select"
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="system">System</option>
-              </select>
-            </div>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Language</div>
-              </div>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="settings-select"
-              >
-                <option value="auto">Auto-detect</option>
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-              </select>
-            </div>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Display name</div>
-                <div className="settings-helper">Shown in handovers and feedback.</div>
-              </div>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your name"
-                className="settings-input"
-              />
-            </div>
-          </>
-        );
-
-      case 'notifications':
-        return (
-          <>
-            <h2 className="settings-content-title">Notifications</h2>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Email notifications</div>
-                <div className="settings-helper">Receive updates about activity.</div>
-              </div>
-              <select className="settings-select">
-                <option>All</option>
-                <option>Important only</option>
-                <option>None</option>
-              </select>
-            </div>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Desktop notifications</div>
-                <div className="settings-helper">Show alerts on your device.</div>
-              </div>
-              <select className="settings-select">
-                <option>Enabled</option>
-                <option>Disabled</option>
-              </select>
-            </div>
-          </>
-        );
-
-      case 'personalization':
-        return (
-          <>
-            <h2 className="settings-content-title">Personalization</h2>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Memory</div>
-                <div className="settings-helper">Allow system to remember preferences.</div>
-              </div>
-              <select className="settings-select">
-                <option>Enabled</option>
-                <option>Disabled</option>
-              </select>
-            </div>
-          </>
-        );
-
       case 'apps':
         return (
           <>
@@ -211,25 +102,10 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
             <div className="settings-form-row">
               <div className="settings-label-group">
-                <div className="settings-label">Connected apps</div>
-                <div className="settings-helper">Manage third-party integrations.</div>
+                <div className="settings-label">Microsoft 365</div>
+                <div className="settings-helper">Connect to access Outlook email and calendar.</div>
               </div>
-              <button className="settings-button-secondary">Manage</button>
-            </div>
-          </>
-        );
-
-      case 'schedules':
-        return (
-          <>
-            <h2 className="settings-content-title">Schedules</h2>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Scheduled tasks</div>
-                <div className="settings-helper">Automated actions and reminders.</div>
-              </div>
-              <button className="settings-button-secondary">View all</button>
+              <button className="settings-button-secondary">Connect</button>
             </div>
           </>
         );
@@ -249,14 +125,6 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 <Lock className="settings-nav-icon" />
               </div>
             </div>
-
-            <div className="settings-form-row">
-              <div className="settings-label-group">
-                <div className="settings-label">Export data</div>
-                <div className="settings-helper">Download a copy of your data.</div>
-              </div>
-              <button className="settings-button-secondary">Export</button>
-            </div>
           </>
         );
 
@@ -264,6 +132,17 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
         return (
           <>
             <h2 className="settings-content-title">Security</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Reset password</div>
+                <div className="settings-helper">Change your account password.</div>
+              </div>
+              <button className="settings-button-secondary">
+                <Key style={{ width: '14px', height: '14px', marginRight: '6px' }} />
+                Reset
+              </button>
+            </div>
 
             <div className="settings-form-row">
               <div className="settings-label-group">
@@ -321,6 +200,24 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
             <div className="settings-form-row">
               <div className="settings-label-group">
+                <div className="settings-label">Appearance</div>
+                <div className="settings-helper">Choose your preferred theme.</div>
+              </div>
+              <select
+                value={appearance}
+                onChange={(e) => setAppearance(e.target.value as 'light' | 'dark' | 'system')}
+                className="settings-select"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+
+            <div className="settings-section-divider" />
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
                 <div className="settings-label">Sign out</div>
                 <div className="settings-helper">Sign out of your account on this device.</div>
               </div>
@@ -337,6 +234,114 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               >
                 Sign out
               </button>
+            </div>
+          </>
+        );
+
+      case 'help':
+        return (
+          <>
+            <h2 className="settings-content-title">Help & Support</h2>
+
+            <div className="settings-info-box" style={{
+              padding: '12px 16px',
+              background: 'var(--settings-bg-highlight, #f0f0f0)',
+              borderRadius: '8px',
+              marginBottom: '16px',
+            }}>
+              <div style={{ fontSize: '13px', color: 'var(--settings-text-primary, #111111)', marginBottom: '4px', fontWeight: 500 }}>
+                We're here to help
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--settings-text-secondary, #5a5a5a)' }}>
+                Replies usually within 24 hours.
+              </div>
+            </div>
+
+            <div className="settings-form-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+              <div className="settings-label">Send us a message</div>
+              <textarea
+                value={supportMessage}
+                onChange={(e) => setSupportMessage(e.target.value)}
+                placeholder="Describe your issue or question..."
+                className="settings-textarea"
+                style={{
+                  width: '100%',
+                  minHeight: '100px',
+                  padding: '10px 12px',
+                  fontSize: '13px',
+                  border: '1px solid var(--settings-border, #e7e7e7)',
+                  borderRadius: '8px',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  background: 'var(--settings-bg-main, #ffffff)',
+                  color: 'var(--settings-text-primary, #111111)',
+                }}
+              />
+              <button
+                onClick={async () => {
+                  if (!supportMessage.trim() || !user?.email) return;
+                  setSupportSending(true);
+                  try {
+                    const mailtoLink = `mailto:contact@celeste7.ai?subject=${encodeURIComponent(
+                      `CelesteOS Support Request from ${user.email}`
+                    )}&body=${encodeURIComponent(
+                      `From: ${user.email}\nDepartment: ${user.role || 'Unknown'}\n\n${supportMessage}`
+                    )}`;
+                    window.location.href = mailtoLink;
+                    setSupportMessage('');
+                  } finally {
+                    setSupportSending(false);
+                  }
+                }}
+                disabled={!supportMessage.trim() || supportSending}
+                className="settings-button-primary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  alignSelf: 'flex-end',
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  background: supportMessage.trim() ? 'var(--settings-accent, #3A7C9D)' : 'var(--settings-bg-highlight, #eeeeee)',
+                  color: supportMessage.trim() ? '#ffffff' : 'var(--settings-text-secondary, #5a5a5a)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: supportMessage.trim() ? 'pointer' : 'not-allowed',
+                }}
+              >
+                <Send style={{ width: '14px', height: '14px' }} />
+                {supportSending ? 'Opening...' : 'Send'}
+              </button>
+            </div>
+          </>
+        );
+
+      case 'about':
+        return (
+          <>
+            <h2 className="settings-content-title">About</h2>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Application</div>
+              </div>
+              <div className="settings-value">CelesteOS</div>
+            </div>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Version</div>
+              </div>
+              <div className="settings-value">1.0.0</div>
+            </div>
+
+            <div className="settings-form-row">
+              <div className="settings-label-group">
+                <div className="settings-label">Copyright</div>
+              </div>
+              <div className="settings-value" style={{ fontSize: '12px' }}>© 2025 Celeste7 LTD. All rights reserved.</div>
             </div>
           </>
         );
