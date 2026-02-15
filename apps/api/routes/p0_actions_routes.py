@@ -3497,6 +3497,7 @@ async def execute_action(
                         "new_state": {"checklist_item_id": new_item["id"], "sequence": next_sequence},
                         "proof_hash": proof_hash,
                         "event_timestamp": event_ts,
+                        "created_at": event_ts,
                         "metadata": {
                             "display_name": display_name,
                             "user_name": user_name,
@@ -4958,6 +4959,7 @@ async def execute_action(
                     "new_state": {"notes_count": len(notes)},
                     "proof_hash": proof_hash,
                     "event_timestamp": event_ts,
+                    "created_at": event_ts,
                     "metadata": {
                         "display_name": display_name,
                         "user_name": user_name,

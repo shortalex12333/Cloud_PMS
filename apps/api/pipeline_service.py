@@ -202,6 +202,18 @@ except Exception as e:
     logger.error("P0 Actions will not be available via API")
 
 # ============================================================================
+# LEDGER ROUTES
+# ============================================================================
+
+try:
+    from routes.ledger_routes import router as ledger_router
+    app.include_router(ledger_router)
+    logger.info("✅ Ledger routes registered at /v1/ledger/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Ledger routes: {e}")
+    logger.error("Ledger endpoints will not be available")
+
+# ============================================================================
 # EMAIL TRANSPORT LAYER ROUTES
 # ============================================================================
 
