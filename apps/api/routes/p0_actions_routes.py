@@ -3473,27 +3473,35 @@ async def execute_action(
 
                 # Record ledger event
                 try:
+                    import hashlib
                     wo_title = wo.data.get("title", "Untitled")
                     wo_number = wo.data.get("number", "")
                     display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
                     user_name = user_context.get("name") or user_context.get("email", "Unknown")
                     user_role = user_context.get("role", "member")
+                    event_ts = datetime.now(timezone.utc).isoformat()
+
+                    # Generate proof hash
+                    proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_checklist_item:{event_ts}"
+                    proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                     ledger_event = {
                         "yacht_id": yacht_id,
                         "user_id": user_id,
-                        "user_name": user_name,
                         "user_role": user_role,
-                        "event_class": "mutation",
-                        "event_verb": "Added Checklist Item",
+                        "event_type": "mutation",
+                        "action": "add_checklist_item",
                         "entity_type": "work_order",
                         "entity_id": work_order_id,
-                        "entity_display_name": display_name,
-                        "domain": "Work Orders",
-                        "context_data": {
-                            "checklist_item_id": new_item["id"],
-                            "checklist_title": title.strip(),
-                            "sequence": next_sequence
+                        "change_summary": f"Added checklist item '{title.strip()}' to {display_name}",
+                        "new_state": {"checklist_item_id": new_item["id"], "sequence": next_sequence},
+                        "proof_hash": proof_hash,
+                        "event_timestamp": event_ts,
+                        "metadata": {
+                            "display_name": display_name,
+                            "user_name": user_name,
+                            "domain": "Work Orders",
+                            "checklist_title": title.strip()
                         }
                     }
                     db_client.table("ledger_events").insert(ledger_event).execute()
@@ -4926,26 +4934,35 @@ async def execute_action(
 
             # Record ledger event
             try:
+                import hashlib
                 wo_title = wo.data.get("title", "Untitled")
                 wo_number = wo.data.get("number", "")
                 display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
                 user_name = user_context.get("name") or user_context.get("email", "Unknown")
                 user_role = user_context.get("role", "member")
+                event_ts = datetime.now(timezone.utc).isoformat()
+
+                # Generate proof hash
+                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_note:{event_ts}"
+                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                 ledger_event = {
                     "yacht_id": yacht_id,
                     "user_id": user_id,
-                    "user_name": user_name,
                     "user_role": user_role,
-                    "event_class": "mutation",
-                    "event_verb": "Added Note",
+                    "event_type": "mutation",
+                    "action": "add_note",
                     "entity_type": "work_order",
                     "entity_id": work_order_id,
-                    "entity_display_name": display_name,
-                    "domain": "Work Orders",
-                    "context_data": {
-                        "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text,
-                        "notes_count": len(notes)
+                    "change_summary": f"Added note to {display_name}",
+                    "new_state": {"notes_count": len(notes)},
+                    "proof_hash": proof_hash,
+                    "event_timestamp": event_ts,
+                    "metadata": {
+                        "display_name": display_name,
+                        "user_name": user_name,
+                        "domain": "Work Orders",
+                        "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text
                     }
                 }
                 db_client.table("ledger_events").insert(ledger_event).execute()
