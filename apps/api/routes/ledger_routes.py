@@ -11,9 +11,14 @@ from datetime import datetime, date
 import logging
 
 from middleware.auth import get_authenticated_user
-from pipeline_service import get_tenant_client
 
 logger = logging.getLogger(__name__)
+
+
+def _get_tenant_client(tenant_key_alias: str):
+    """Get tenant-specific Supabase client. Lazy import to avoid circular deps."""
+    from pipeline_service import get_tenant_client
+    return get_tenant_client(tenant_key_alias)
 
 router = APIRouter(prefix="/v1/ledger", tags=["ledger"])
 
@@ -39,7 +44,7 @@ async def get_ledger_events(
         if not yacht_id:
             raise HTTPException(status_code=400, detail="No yacht_id in user context")
 
-        db_client = get_tenant_client(tenant_alias)
+        db_client = _get_tenant_client(tenant_alias)
 
         # Build query
         query = db_client.table("ledger_events").select("*")
@@ -100,7 +105,7 @@ async def get_entity_ledger_events(
         if not yacht_id:
             raise HTTPException(status_code=400, detail="No yacht_id in user context")
 
-        db_client = get_tenant_client(tenant_alias)
+        db_client = _get_tenant_client(tenant_alias)
 
         result = db_client.table("ledger_events").select("*").eq(
             "yacht_id", yacht_id
@@ -142,7 +147,7 @@ async def get_day_anchors(
         if not yacht_id:
             raise HTTPException(status_code=400, detail="No yacht_id in user context")
 
-        db_client = get_tenant_client(tenant_alias)
+        db_client = _get_tenant_client(tenant_alias)
 
         # Get day anchors
         result = db_client.table("ledger_day_anchors").select("*").eq(
