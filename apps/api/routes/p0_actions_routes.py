@@ -3486,6 +3486,7 @@ async def execute_action(
                     proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                     ledger_event = {
+                        "id": str(uuid_module.uuid4()),
                         "yacht_id": yacht_id,
                         "user_id": user_id,
                         "user_role": user_role,
@@ -4948,6 +4949,7 @@ async def execute_action(
                 proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                 ledger_event = {
+                    "id": str(uuid_module.uuid4()),
                     "yacht_id": yacht_id,
                     "user_id": user_id,
                     "user_role": user_role,
