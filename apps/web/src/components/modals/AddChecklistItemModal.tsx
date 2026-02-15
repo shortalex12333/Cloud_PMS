@@ -73,8 +73,11 @@ export function AddChecklistItemModal({
         entity_type: 'work_order',
         entity_id: context.work_order_id,
         work_order_id: context.work_order_id,
-        title: data.title.trim(),
-        description: data.description?.trim() || undefined,
+        // Pass form data as parameters so it goes into payload
+        parameters: {
+          title: data.title.trim(),
+          description: data.description?.trim() || undefined,
+        },
       },
       {
         successMessage: 'Checklist item added successfully',
