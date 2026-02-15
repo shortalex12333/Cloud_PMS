@@ -268,6 +268,261 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
       });
     }
 
+    // ===== WORK ORDER ACTIONS =====
+
+    if (action === 'add_work_order_note') {
+      const { work_order_id } = enrichedContext;
+      const { note_text, note_type = 'general' } = payload;
+
+      if (!work_order_id) {
+        return NextResponse.json(
+          { success: false, error: 'Missing work_order_id in context', code: 'MISSING_REQUIRED_FIELD' },
+          { status: 400 }
+        );
+      }
+
+      if (!note_text || note_text.trim() === '') {
+        return NextResponse.json(
+          { success: false, error: 'Note text is required', code: 'MISSING_REQUIRED_FIELD' },
+          { status: 400 }
+        );
+      }
+
+      // Verify work order exists and user has access (RLS will enforce yacht_id)
+      const { data: workOrder, error: woError } = await supabase
+        .from('pms_work_orders')
+        .select('id, title, yacht_id')
+        .eq('id', work_order_id)
+        .single();
+
+      if (woError || !workOrder) {
+        return NextResponse.json(
+          { success: false, error: 'Work order not found or access denied', code: 'NOT_FOUND' },
+          { status: 404 }
+        );
+      }
+
+      // Insert note
+      const { data: note, error: insertError } = await supabase
+        .from('pms_work_order_notes')
+        .insert({
+          work_order_id,
+          note_text: note_text.trim(),
+          note_type,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[Action Router] Insert note error:', insertError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to add note', code: 'DATABASE_ERROR' },
+          { status: 500 }
+        );
+      }
+
+      // Create audit log entry
+      await supabase.from('pms_audit_log').insert({
+        yacht_id: workOrder.yacht_id,
+        action: 'add_work_order_note',
+        entity_type: 'work_order_note',
+        entity_id: note.id,
+        user_id: user.id,
+        actor_id: user.id,
+        new_values: { note_text, note_type, work_order_id },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: note,
+        message: 'Note added to work order',
+      });
+    }
+
+    if (action === 'add_parts_to_work_order') {
+      const { work_order_id } = enrichedContext;
+      const { part_id, quantity = 1, notes } = payload;
+
+      if (!work_order_id) {
+        return NextResponse.json(
+          { success: false, error: 'Missing work_order_id in context', code: 'MISSING_REQUIRED_FIELD' },
+          { status: 400 }
+        );
+      }
+
+      if (!part_id) {
+        return NextResponse.json(
+          { success: false, error: 'Missing part_id', code: 'MISSING_REQUIRED_FIELD' },
+          { status: 400 }
+        );
+      }
+
+      if (quantity <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'Quantity must be greater than 0', code: 'VALIDATION_ERROR' },
+          { status: 400 }
+        );
+      }
+
+      // Verify work order exists
+      const { data: workOrder, error: woError } = await supabase
+        .from('pms_work_orders')
+        .select('id, title, yacht_id')
+        .eq('id', work_order_id)
+        .single();
+
+      if (woError || !workOrder) {
+        return NextResponse.json(
+          { success: false, error: 'Work order not found or access denied', code: 'NOT_FOUND' },
+          { status: 404 }
+        );
+      }
+
+      // Verify part exists
+      const { data: part, error: partError } = await supabase
+        .from('pms_parts')
+        .select('part_id, part_name, on_hand')
+        .eq('part_id', part_id)
+        .single();
+
+      if (partError || !part) {
+        return NextResponse.json(
+          { success: false, error: 'Part not found', code: 'NOT_FOUND' },
+          { status: 404 }
+        );
+      }
+
+      // Insert work order part link
+      const { data: woPart, error: insertError } = await supabase
+        .from('pms_work_order_parts')
+        .insert({
+          work_order_id,
+          part_id,
+          quantity,
+          notes: notes || null,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[Action Router] Insert part link error:', insertError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to link part to work order', code: 'DATABASE_ERROR' },
+          { status: 500 }
+        );
+      }
+
+      // Create audit log entry
+      await supabase.from('pms_audit_log').insert({
+        yacht_id: workOrder.yacht_id,
+        action: 'add_parts_to_work_order',
+        entity_type: 'work_order_part',
+        entity_id: woPart.id,
+        user_id: user.id,
+        actor_id: user.id,
+        new_values: { part_id, part_name: part.part_name, quantity, work_order_id },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: { ...woPart, part_name: part.part_name },
+        message: `Added ${quantity}x ${part.part_name} to work order`,
+      });
+    }
+
+    if (action === 'add_checklist_note' || action === 'add_checklist_item') {
+      const { work_order_id, yacht_id } = enrichedContext;
+      const { title, description, is_required = true } = payload;
+
+      if (!work_order_id) {
+        return NextResponse.json(
+          { success: false, error: 'Missing work_order_id in context', code: 'MISSING_REQUIRED_FIELD' },
+          { status: 400 }
+        );
+      }
+
+      if (!title || title.trim() === '') {
+        return NextResponse.json(
+          { success: false, error: 'Checklist item title is required', code: 'MISSING_REQUIRED_FIELD' },
+          { status: 400 }
+        );
+      }
+
+      // Verify work order exists
+      const { data: workOrder, error: woError } = await supabase
+        .from('pms_work_orders')
+        .select('id, title, yacht_id')
+        .eq('id', work_order_id)
+        .single();
+
+      if (woError || !workOrder) {
+        return NextResponse.json(
+          { success: false, error: 'Work order not found or access denied', code: 'NOT_FOUND' },
+          { status: 404 }
+        );
+      }
+
+      // Get next sequence number
+      const { data: existingItems } = await supabase
+        .from('pms_work_order_checklist')
+        .select('sequence')
+        .eq('work_order_id', work_order_id)
+        .order('sequence', { ascending: false })
+        .limit(1);
+
+      const nextSequence = (existingItems?.[0]?.sequence || 0) + 1;
+
+      // Insert checklist item
+      const { data: checklistItem, error: insertError } = await supabase
+        .from('pms_work_order_checklist')
+        .insert({
+          yacht_id: workOrder.yacht_id,
+          work_order_id,
+          title: title.trim(),
+          description: description || null,
+          sequence: nextSequence,
+          is_completed: false,
+          is_required,
+          requires_photo: false,
+          requires_signature: false,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[Action Router] Insert checklist item error:', insertError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to add checklist item', code: 'DATABASE_ERROR' },
+          { status: 500 }
+        );
+      }
+
+      // Create audit log entry
+      await supabase.from('pms_audit_log').insert({
+        yacht_id: workOrder.yacht_id,
+        action: 'add_checklist_item',
+        entity_type: 'work_order_checklist',
+        entity_id: checklistItem.id,
+        user_id: user.id,
+        actor_id: user.id,
+        new_values: { title, work_order_id, sequence: nextSequence },
+        created_at: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: checklistItem,
+        message: 'Checklist item added',
+      });
+    }
+
     // Unknown action
     return NextResponse.json(
       { success: false, error: `Unknown action: ${action}`, code: 'UNKNOWN_ACTION' },
