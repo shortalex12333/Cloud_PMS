@@ -74,6 +74,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
 
     const enrichedContext = { ...context, user_id: user.id };
 
+    // Debug: Log user info
+    console.log('[Action Router] User authenticated:', {
+      user_id: user.id,
+      email: user.email,
+      action,
+    });
+
     // ===== INVENTORY ACTIONS =====
     if (action === 'check_part_stock') {
       const { part_id } = payload;
@@ -295,9 +302,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ActionRes
         .eq('id', work_order_id)
         .single();
 
+      // Debug logging
+      console.log('[Action Router] Work order lookup:', {
+        work_order_id,
+        user_id: user.id,
+        found: !!workOrder,
+        error: woError?.message,
+      });
+
       if (woError || !workOrder) {
         return NextResponse.json(
-          { success: false, error: 'Work order not found or access denied', code: 'NOT_FOUND' },
+          { success: false, error: `Work order not found: ${woError?.message || 'RLS blocked'}`, code: 'NOT_FOUND' },
           { status: 404 }
         );
       }
