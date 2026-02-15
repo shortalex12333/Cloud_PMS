@@ -1,21 +1,76 @@
 /**
  * WorkOrderCard Component
  *
- * Apple-inspired design with:
- * - Status dot indicator (not pill badge)
- * - 12px card radius
- * - Subtle shadows
- * - Precise typography
+ * Full-screen entity view with enriched data:
+ * - Notes, Parts, Checklist, Audit History
+ * - Empty state CTAs for missing data
+ * - Tokenized styling (no hardcoded values)
  */
 
 'use client';
 
-import { Wrench, Clock, User, CheckCircle2, ChevronRight } from 'lucide-react';
+import {
+  Wrench,
+  Clock,
+  User,
+  CheckCircle2,
+  MessageSquare,
+  Package,
+  ClipboardList,
+  History,
+  Plus,
+  ChevronRight,
+  AlertCircle,
+} from 'lucide-react';
 import { ActionButton } from '@/components/actions/ActionButton';
-import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface WorkOrderNote {
+  id: string;
+  note_text: string;
+  note_type?: string;
+  created_by?: string;
+  created_at: string;
+}
+
+interface WorkOrderPart {
+  id: string;
+  part_id: string;
+  quantity: number;
+  notes?: string;
+  created_at: string;
+  pms_parts?: {
+    id: string;
+    name: string;
+    part_number?: string;
+    location?: string;
+  };
+}
+
+interface WorkOrderChecklistItem {
+  id: string;
+  title: string;
+  description?: string;
+  is_completed: boolean;
+  completed_by?: string;
+  completed_at?: string;
+  sequence?: number;
+}
+
+interface WorkOrderAuditEntry {
+  id: string;
+  action: string;
+  old_values?: Record<string, unknown>;
+  new_values?: Record<string, unknown>;
+  user_id?: string;
+  created_at: string;
+}
 
 interface WorkOrderCardProps {
   workOrder: {
@@ -31,40 +86,131 @@ interface WorkOrderCardProps {
     created_at: string;
     completed_at?: string;
     due_date?: string;
+    // Enriched data
+    notes?: WorkOrderNote[];
+    parts?: WorkOrderPart[];
+    checklist?: WorkOrderChecklistItem[];
+    audit_history?: WorkOrderAuditEntry[];
+    notes_count?: number;
+    parts_count?: number;
+    checklist_count?: number;
+    checklist_completed?: number;
   };
   actions?: MicroAction[];
 }
 
+// ============================================================================
+// EMPTY STATE CTA COMPONENT
+// ============================================================================
+
+interface EmptyStateCTAProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  actionLabel: string;
+  action: MicroAction;
+  context: Record<string, unknown>;
+}
+
+function EmptyStateCTA({ icon, title, description, actionLabel, action, context }: EmptyStateCTAProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-[var(--celeste-spacing-6)] px-[var(--celeste-spacing-4)] text-center">
+      <div className="w-12 h-12 rounded-[var(--celeste-border-radius-md)] bg-[var(--celeste-bg-tertiary)] flex items-center justify-center mb-[var(--celeste-spacing-3)]">
+        {icon}
+      </div>
+      <p className="text-[var(--celeste-text-primary)] font-medium mb-[var(--celeste-spacing-1)]">
+        {title}
+      </p>
+      <p className="text-[var(--celeste-text-muted)] text-sm mb-[var(--celeste-spacing-4)]">
+        {description}
+      </p>
+      <ActionButton
+        action={action}
+        context={context}
+        variant="secondary"
+        size="sm"
+        showIcon={true}
+        label={actionLabel}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
+// SECTION HEADER COMPONENT
+// ============================================================================
+
+interface SectionHeaderProps {
+  icon: React.ReactNode;
+  title: string;
+  count?: number;
+  action?: MicroAction;
+  actionLabel?: string;
+  context?: Record<string, unknown>;
+}
+
+function SectionHeader({ icon, title, count, action, actionLabel, context }: SectionHeaderProps) {
+  return (
+    <div className="flex items-center justify-between mb-[var(--celeste-spacing-3)]">
+      <div className="flex items-center gap-[var(--celeste-spacing-2)]">
+        {icon}
+        <h3 className="text-[var(--celeste-text-primary)] font-semibold">
+          {title}
+        </h3>
+        {count !== undefined && count > 0 && (
+          <span className="text-[var(--celeste-text-muted)] text-sm">
+            ({count})
+          </span>
+        )}
+      </div>
+      {action && actionLabel && context && (
+        <ActionButton
+          action={action}
+          context={context}
+          variant="ghost"
+          size="sm"
+          showIcon={true}
+          label={actionLabel}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
-  // Get status styling (Apple-style: dot + badge)
+  // Get status styling
   const getStatusStyles = (status: string) => {
     switch (status) {
       case 'completed':
         return {
-          dot: 'celeste-dot-success',
-          badge: 'celeste-badge-success',
-          icon: <CheckCircle2 className="h-4 w-4 text-[--system-green]" />,
+          bg: 'bg-[var(--celeste-green)]/10',
+          text: 'text-[var(--celeste-green)]',
+          icon: <CheckCircle2 className="h-5 w-5 text-[var(--celeste-green)]" />,
           label: 'Completed',
         };
       case 'in_progress':
         return {
-          dot: 'celeste-dot-info',
-          badge: 'celeste-badge-info',
-          icon: <Clock className="h-4 w-4 text-[--system-blue]" />,
+          bg: 'bg-[var(--celeste-accent)]/10',
+          text: 'text-[var(--celeste-accent)]',
+          icon: <Clock className="h-5 w-5 text-[var(--celeste-accent)]" />,
           label: 'In Progress',
         };
       case 'cancelled':
         return {
-          dot: 'celeste-dot-low',
-          badge: 'celeste-badge-low',
-          icon: <Wrench className="h-4 w-4 text-zinc-400" />,
+          bg: 'bg-[var(--celeste-text-muted)]/10',
+          text: 'text-[var(--celeste-text-muted)]',
+          icon: <AlertCircle className="h-5 w-5 text-[var(--celeste-text-muted)]" />,
           label: 'Cancelled',
         };
       default:
         return {
-          dot: 'celeste-dot-medium',
-          badge: 'celeste-badge-medium',
-          icon: <Wrench className="h-4 w-4 text-amber-500" />,
+          bg: 'bg-[var(--celeste-orange)]/10',
+          text: 'text-[var(--celeste-orange)]',
+          icon: <Wrench className="h-5 w-5 text-[var(--celeste-orange)]" />,
           label: 'Pending',
         };
     }
@@ -74,111 +220,370 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
   const getPriorityStyles = (priority: string) => {
     switch (priority) {
       case 'urgent':
-        return { badge: 'celeste-badge-critical', label: 'Urgent' };
+        return { bg: 'bg-[var(--celeste-warning)]/10', text: 'text-[var(--celeste-warning)]', label: 'Urgent' };
       case 'high':
-        return { badge: 'celeste-badge-high', label: 'High' };
+        return { bg: 'bg-[var(--celeste-orange)]/10', text: 'text-[var(--celeste-orange)]', label: 'High' };
       case 'medium':
-        return { badge: 'celeste-badge-medium', label: 'Medium' };
+        return { bg: 'bg-[var(--celeste-yellow)]/10', text: 'text-[var(--celeste-yellow)]', label: 'Medium' };
       default:
-        return { badge: 'celeste-badge-low', label: 'Low' };
+        return { bg: 'bg-[var(--celeste-text-muted)]/10', text: 'text-[var(--celeste-text-muted)]', label: 'Low' };
     }
   };
 
   const status = getStatusStyles(workOrder.status);
   const priority = getPriorityStyles(workOrder.priority);
 
+  const notes = workOrder.notes || [];
+  const parts = workOrder.parts || [];
+  const checklist = workOrder.checklist || [];
+  const auditHistory = workOrder.audit_history || [];
+
+  const actionContext = {
+    work_order_id: workOrder.id,
+    equipment_id: workOrder.equipment_id,
+  };
+
   return (
-    <div className="celeste-card p-4 hover:shadow-[var(--shadow-md)] transition-shadow duration-200">
-      <div className="flex items-start gap-3">
-        {/* Status Indicator - Minimal dot + icon */}
-        <div className="flex flex-col items-center gap-2 pt-0.5">
-          <span className={cn('celeste-dot', status.dot)} />
-          {status.icon}
+    <div className="flex flex-col gap-[var(--celeste-spacing-6)]">
+      {/* ================================================================
+          HEADER SECTION
+          ================================================================ */}
+      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+        {/* Status & Priority Row */}
+        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-4)]">
+          <span className={cn(
+            'inline-flex items-center gap-[var(--celeste-spacing-1)] px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-[var(--celeste-border-radius-sm)] text-sm font-medium',
+            status.bg, status.text
+          )}>
+            {status.icon}
+            {status.label}
+          </span>
+          <span className={cn(
+            'inline-flex items-center px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-[var(--celeste-border-radius-sm)] text-sm font-medium',
+            priority.bg, priority.text
+          )}>
+            {priority.label}
+          </span>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Title Row */}
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <h3 className="text-celeste-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-              {workOrder.title}
-            </h3>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <span className={cn('celeste-badge', status.badge)}>
-                {status.label}
-              </span>
-              <span className={cn('celeste-badge', priority.badge)}>
-                {priority.label}
-              </span>
-            </div>
-          </div>
+        {/* Title */}
+        <h1 className="text-2xl font-semibold text-[var(--celeste-text-title)] mb-[var(--celeste-spacing-2)]">
+          {workOrder.title}
+        </h1>
 
-          {/* Equipment - Subtle secondary text */}
-          {workOrder.equipment_name && (
-            <p className="text-celeste-sm text-zinc-500 dark:text-zinc-400 mb-2">
-              {workOrder.equipment_name}
-            </p>
-          )}
+        {/* Equipment */}
+        {workOrder.equipment_name && (
+          <p className="text-[var(--celeste-text-secondary)] mb-[var(--celeste-spacing-4)]">
+            {workOrder.equipment_name}
+          </p>
+        )}
 
-          {/* Description - Truncated */}
-          <p className="text-celeste-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
+        {/* Description */}
+        {workOrder.description && (
+          <p className="text-[var(--celeste-text-primary)] mb-[var(--celeste-spacing-4)]">
             {workOrder.description}
           </p>
+        )}
 
-          {/* Assigned To */}
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
           {workOrder.assigned_to_name && (
-            <div className="flex items-center gap-1.5 text-celeste-sm text-zinc-500 dark:text-zinc-400 mb-2">
-              <User className="h-3.5 w-3.5" />
-              <span>{workOrder.assigned_to_name}</span>
+            <div>
+              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Assigned To</p>
+              <div className="flex items-center gap-[var(--celeste-spacing-1)]">
+                <User className="h-4 w-4 text-[var(--celeste-text-secondary)]" />
+                <span className="text-[var(--celeste-text-primary)]">{workOrder.assigned_to_name}</span>
+              </div>
             </div>
           )}
-
-          {/* Metadata Row */}
-          <div className="flex items-center gap-3 text-celeste-xs text-zinc-400 dark:text-zinc-500 mb-4">
-            <span>{formatDate(workOrder.created_at)}</span>
-            {workOrder.due_date && (
-              <span className="text-[--system-orange] font-medium">
-                Due: {formatDate(workOrder.due_date)}
-              </span>
-            )}
-            {workOrder.completed_at && (
-              <span className="text-[--system-green]">
-                Completed: {formatDate(workOrder.completed_at)}
-              </span>
-            )}
+          <div>
+            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Created</p>
+            <span className="text-[var(--celeste-text-primary)]">{formatDate(workOrder.created_at)}</span>
           </div>
+          {workOrder.due_date && (
+            <div>
+              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Due Date</p>
+              <span className="text-[var(--celeste-orange)]">{formatDate(workOrder.due_date)}</span>
+            </div>
+          )}
+          {workOrder.completed_at && (
+            <div>
+              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Completed</p>
+              <span className="text-[var(--celeste-green)]">{formatDate(workOrder.completed_at)}</span>
+            </div>
+          )}
+        </div>
 
-          {/* Actions - Apple-style buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            {actions.slice(0, 3).map((action) => (
+        {/* Primary Actions */}
+        {actions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
+            {actions.slice(0, 4).map((action) => (
               <ActionButton
                 key={action}
                 action={action}
-                context={{
-                  work_order_id: workOrder.id,
-                  equipment_id: workOrder.equipment_id,
-                }}
+                context={actionContext}
                 variant="secondary"
                 size="sm"
                 showIcon={true}
               />
             ))}
-
-            {/* More indicator */}
-            {actions.length > 3 && (
-              <button className="h-8 px-2 text-celeste-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+            {actions.length > 4 && (
+              <button className="h-8 px-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-muted)] hover:text-[var(--celeste-text-primary)] transition-colors">
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
           </div>
+        )}
+      </div>
 
-          {/* Related Emails - Evidence panel */}
-          <RelatedEmailsPanel
-            objectType="work_order"
-            objectId={workOrder.id}
-            className="mt-4"
+      {/* ================================================================
+          NOTES SECTION
+          ================================================================ */}
+      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+        <SectionHeader
+          icon={<MessageSquare className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
+          title="Notes"
+          count={notes.length}
+          action={notes.length > 0 ? 'add_note_to_work_order' as MicroAction : undefined}
+          actionLabel="Add Note"
+          context={actionContext}
+        />
+
+        {notes.length === 0 ? (
+          <EmptyStateCTA
+            icon={<MessageSquare className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
+            title="No notes yet"
+            description="Add notes to track progress, issues, or important observations."
+            actionLabel="Add Note"
+            action={'add_note_to_work_order' as MicroAction}
+            context={actionContext}
           />
-        </div>
+        ) : (
+          <div className="space-y-[var(--celeste-spacing-3)]">
+            {notes.map((note) => (
+              <div
+                key={note.id}
+                className="p-[var(--celeste-spacing-4)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]"
+              >
+                <p className="text-[var(--celeste-text-primary)] whitespace-pre-wrap">
+                  {note.note_text}
+                </p>
+                <div className="flex items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-2)] text-xs text-[var(--celeste-text-muted)]">
+                  {note.created_by && <span>{note.created_by}</span>}
+                  {note.created_by && note.created_at && <span>•</span>}
+                  {note.created_at && <span>{formatDate(note.created_at)}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ================================================================
+          PARTS SECTION
+          ================================================================ */}
+      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+        <SectionHeader
+          icon={<Package className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
+          title="Parts Used"
+          count={parts.length}
+          action={parts.length > 0 ? 'add_parts_to_work_order' as MicroAction : undefined}
+          actionLabel="Add Part"
+          context={actionContext}
+        />
+
+        {parts.length === 0 ? (
+          <EmptyStateCTA
+            icon={<Package className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
+            title="No parts linked"
+            description="Track parts used for this work order to maintain accurate inventory."
+            actionLabel="Add Part"
+            action={'add_parts_to_work_order' as MicroAction}
+            context={actionContext}
+          />
+        ) : (
+          <div className="space-y-[var(--celeste-spacing-2)]">
+            {parts.map((part) => (
+              <div
+                key={part.id}
+                className="flex items-center justify-between p-[var(--celeste-spacing-3)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]"
+              >
+                <div className="flex-1">
+                  <p className="text-[var(--celeste-text-primary)] font-medium">
+                    {part.pms_parts?.name || 'Unknown Part'}
+                  </p>
+                  <div className="flex items-center gap-[var(--celeste-spacing-2)] text-xs text-[var(--celeste-text-muted)]">
+                    {part.pms_parts?.part_number && (
+                      <span>#{part.pms_parts.part_number}</span>
+                    )}
+                    {part.pms_parts?.location && (
+                      <>
+                        <span>•</span>
+                        <span>{part.pms_parts.location}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[var(--celeste-text-primary)] font-medium">
+                    Qty: {part.quantity}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ================================================================
+          CHECKLIST SECTION
+          ================================================================ */}
+      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+        <SectionHeader
+          icon={<ClipboardList className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
+          title="Checklist"
+          count={checklist.length}
+          action={checklist.length > 0 ? 'add_checklist_note' as MicroAction : undefined}
+          actionLabel="Add Item"
+          context={actionContext}
+        />
+
+        {checklist.length === 0 ? (
+          <EmptyStateCTA
+            icon={<ClipboardList className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
+            title="No checklist items"
+            description="Add checklist items to ensure all steps are completed."
+            actionLabel="Add Checklist Item"
+            action={'add_checklist_note' as MicroAction}
+            context={actionContext}
+          />
+        ) : (
+          <div className="space-y-[var(--celeste-spacing-2)]">
+            {/* Progress bar */}
+            {checklist.length > 0 && (
+              <div className="mb-[var(--celeste-spacing-4)]">
+                <div className="flex items-center justify-between text-sm mb-[var(--celeste-spacing-1)]">
+                  <span className="text-[var(--celeste-text-muted)]">Progress</span>
+                  <span className="text-[var(--celeste-text-primary)]">
+                    {checklist.filter(c => c.is_completed).length} / {checklist.length}
+                  </span>
+                </div>
+                <div className="h-2 bg-[var(--celeste-bg-tertiary)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--celeste-green)] transition-all duration-[var(--celeste-duration-normal)]"
+                    style={{
+                      width: `${(checklist.filter(c => c.is_completed).length / checklist.length) * 100}%`
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {checklist.map((item) => (
+              <div
+                key={item.id}
+                className={cn(
+                  'flex items-start gap-[var(--celeste-spacing-3)] p-[var(--celeste-spacing-3)] rounded-[var(--celeste-border-radius-sm)] border',
+                  item.is_completed
+                    ? 'bg-[var(--celeste-green)]/5 border-[var(--celeste-green)]/20'
+                    : 'bg-[var(--celeste-panel)] border-[var(--celeste-border-subtle)]'
+                )}
+              >
+                <div className={cn(
+                  'flex-shrink-0 w-5 h-5 rounded-[var(--celeste-border-radius-sm)] border-2 flex items-center justify-center mt-0.5',
+                  item.is_completed
+                    ? 'bg-[var(--celeste-green)] border-[var(--celeste-green)]'
+                    : 'border-[var(--celeste-border)]'
+                )}>
+                  {item.is_completed && (
+                    <CheckCircle2 className="h-3 w-3 text-white" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className={cn(
+                    'text-[var(--celeste-text-primary)]',
+                    item.is_completed && 'line-through opacity-70'
+                  )}>
+                    {item.title}
+                  </p>
+                  {item.description && (
+                    <p className="text-sm text-[var(--celeste-text-muted)] mt-1">
+                      {item.description}
+                    </p>
+                  )}
+                  {item.completed_at && (
+                    <p className="text-xs text-[var(--celeste-text-muted)] mt-1">
+                      Completed {formatDate(item.completed_at)}
+                      {item.completed_by && ` by ${item.completed_by}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ================================================================
+          AUDIT HISTORY SECTION
+          ================================================================ */}
+      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+        <SectionHeader
+          icon={<History className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
+          title="History"
+          count={auditHistory.length}
+        />
+
+        {auditHistory.length === 0 ? (
+          <div className="text-center py-[var(--celeste-spacing-6)]">
+            <History className="h-8 w-8 text-[var(--celeste-text-muted)] mx-auto mb-[var(--celeste-spacing-2)]" />
+            <p className="text-[var(--celeste-text-muted)]">
+              No history recorded yet
+            </p>
+            <p className="text-sm text-[var(--celeste-text-disabled)]">
+              Changes to this work order will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="relative pl-[var(--celeste-spacing-4)]">
+            {/* Timeline line */}
+            <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-[var(--celeste-border-subtle)]" />
+
+            <div className="space-y-[var(--celeste-spacing-4)]">
+              {auditHistory.map((entry, index) => (
+                <div key={entry.id} className="relative flex gap-[var(--celeste-spacing-3)]">
+                  {/* Timeline dot */}
+                  <div className={cn(
+                    'absolute -left-[var(--celeste-spacing-4)] w-[14px] h-[14px] rounded-full border-2 bg-[var(--celeste-surface)]',
+                    index === 0
+                      ? 'border-[var(--celeste-accent)]'
+                      : 'border-[var(--celeste-border)]'
+                  )} />
+
+                  <div className="flex-1 pb-[var(--celeste-spacing-4)]">
+                    <p className="text-[var(--celeste-text-primary)] font-medium">
+                      {entry.action}
+                    </p>
+                    <p className="text-xs text-[var(--celeste-text-muted)]">
+                      {formatDate(entry.created_at)}
+                      {entry.user_id && ` • ${entry.user_id.substring(0, 8)}...`}
+                    </p>
+                    {entry.new_values && Object.keys(entry.new_values).length > 0 && (
+                      <div className="mt-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-secondary)]">
+                        {Object.entries(entry.new_values).slice(0, 3).map(([key, value]) => (
+                          <div key={key} className="flex gap-[var(--celeste-spacing-2)]">
+                            <span className="text-[var(--celeste-text-muted)]">{key}:</span>
+                            <span>{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

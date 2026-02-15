@@ -14,7 +14,7 @@
 import React, { useEffect } from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { useAuth } from '@/hooks/useAuth';
-import { X, ChevronRight, ChevronLeft, AlertCircle, Loader2 } from 'lucide-react';
+import { X, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FaultCard } from '@/components/cards/FaultCard';
 import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
@@ -96,9 +96,9 @@ function getReceivingActions(status: string, role: string): MicroAction[] {
 }
 
 export default function ContextPanel() {
-  const { contextPanel, hideContext, expandContext, collapseContext } = useSurface();
+  const { contextPanel, hideContext } = useSurface();
   const { user } = useAuth();
-  const { visible, expanded, entityType, entityId, entityData: initialData } = contextPanel;
+  const { visible, entityType, entityId, entityData: initialData } = contextPanel;
 
   const [entityData, setEntityData] = React.useState<Record<string, unknown> | undefined>(initialData);
   const [loading, setLoading] = React.useState(false);
@@ -184,21 +184,21 @@ export default function ContextPanel() {
     }
   }, [initialData]);
 
-  // Handle ESC key to collapse expanded panel
+  // Handle ESC key to close panel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && visible && expanded) {
+      if (e.key === 'Escape' && visible) {
         e.preventDefault();
         e.stopPropagation();
-        collapseContext();
+        hideContext();
       }
     };
 
-    if (visible && expanded) {
+    if (visible) {
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [visible, expanded, collapseContext]);
+  }, [visible, hideContext]);
 
   /**
    * Render the appropriate entity card based on entityType
@@ -234,6 +234,7 @@ export default function ContextPanel() {
         );
 
       case 'work_order':
+        // Build enriched work order data with all related data
         const workOrderData = {
           id: entityId,
           title: (data.title as string) || 'Work Order',
@@ -247,6 +248,48 @@ export default function ContextPanel() {
           created_at: (data.created_at as string) || new Date().toISOString(),
           completed_at: data.completed_at as string | undefined,
           due_date: data.due_date as string | undefined,
+          // Enriched data from /v1/entity/work_order endpoint
+          notes: (data.notes as Array<{
+            id: string;
+            note_text: string;
+            note_type?: string;
+            created_by?: string;
+            created_at: string;
+          }>) || [],
+          parts: (data.parts as Array<{
+            id: string;
+            part_id: string;
+            quantity: number;
+            notes?: string;
+            created_at: string;
+            pms_parts?: {
+              id: string;
+              name: string;
+              part_number?: string;
+              location?: string;
+            };
+          }>) || [],
+          checklist: (data.checklist as Array<{
+            id: string;
+            title: string;
+            description?: string;
+            is_completed: boolean;
+            completed_by?: string;
+            completed_at?: string;
+            sequence?: number;
+          }>) || [],
+          audit_history: (data.audit_history as Array<{
+            id: string;
+            action: string;
+            old_values?: Record<string, unknown>;
+            new_values?: Record<string, unknown>;
+            user_id?: string;
+            created_at: string;
+          }>) || [],
+          notes_count: (data.notes_count as number) || 0,
+          parts_count: (data.parts_count as number) || 0,
+          checklist_count: (data.checklist_count as number) || 0,
+          checklist_completed: (data.checklist_completed as number) || 0,
         };
         return (
           <div data-testid="context-panel-work-order-card">
@@ -352,6 +395,7 @@ export default function ContextPanel() {
     }
   };
 
+  // Always full-screen mode - no sidebar step
   return (
     <div
       className={cn(
@@ -359,13 +403,13 @@ export default function ContextPanel() {
         'flex flex-col',
         'transform transition-all duration-300 ease-out z-[10001]',
         'backdrop-blur-sm shadow-2xl',
-        expanded ? 'w-[calc(100vw-80px)]' : 'w-celeste-context-panel',
+        'w-[calc(100vw-80px)]', // Always full-screen
         visible ? 'translate-x-0' : 'translate-x-full'
       )}
       data-testid="context-panel"
       data-entity-type={entityType}
       data-entity-id={entityId}
-      data-expanded={expanded}
+      data-expanded="true"
     >
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-celeste-text-secondary/50 relative z-50 bg-celeste-black/95">
@@ -390,33 +434,22 @@ export default function ContextPanel() {
             )}
           </div>
         </div>
+        {/* No sidebar mode - only close button on right side */}
         <button
-          onClick={expanded ? collapseContext : hideContext}
+          onClick={hideContext}
           className="relative z-50 p-2 hover:bg-celeste-bg-tertiary rounded-lg transition-colors pointer-events-auto cursor-pointer"
-          aria-label={expanded ? "Collapse to sidebar" : "Close panel"}
+          aria-label="Close panel"
           type="button"
-          data-testid={expanded ? "collapse-context-panel" : "close-context-panel-chevron"}
+          data-testid="close-context-panel-right"
         >
-          {expanded ? (
-            <ChevronLeft className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
-          )}
+          <X className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
         </button>
       </div>
 
-      {/* Content - Render actual entity cards */}
+      {/* Content - Render actual entity cards (always full-screen) */}
       <div
-        className={cn(
-          "flex-1 overflow-y-auto p-4",
-          !expanded && "cursor-pointer hover:bg-celeste-bg-tertiary/20 transition-colors"
-        )}
+        className="flex-1 overflow-y-auto p-4"
         data-testid="context-panel-content"
-        onClick={() => {
-          if (!expanded && visible && entityType && entityId) {
-            expandContext();
-          }
-        }}
       >
         {loading ? (
           <div className="text-center py-12" data-testid="context-panel-loading">
