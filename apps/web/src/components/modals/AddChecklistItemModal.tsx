@@ -68,7 +68,7 @@ export function AddChecklistItemModal({
 
   const onSubmit = async (data: FormData) => {
     const response = await executeAction(
-      'add_checklist_note',
+      'add_checklist_item',
       {
         entity_type: 'work_order',
         entity_id: context.work_order_id,

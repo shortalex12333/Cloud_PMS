@@ -701,6 +701,7 @@ async def execute_action(
         "view_checklist": ["checklist_id"],
         "mark_checklist_item_complete": ["checklist_item_id"],
         "add_checklist_note": ["checklist_item_id", "note_text"],
+        "add_checklist_item": ["work_order_id", "title"],
         "add_checklist_photo": ["checklist_item_id", "photo_url"],
         # Tier 5 - Handover/Communication
         "add_document_to_handover": ["handover_id", "document_id"],
@@ -3420,6 +3421,67 @@ async def execute_action(
                     "message": "Checklist feature not yet configured",
                     "checklist_item_id": checklist_item_id
                 }
+
+        elif action == "add_checklist_item":
+            # Create a new checklist item on a work order
+            from datetime import datetime, timezone
+            import uuid
+            tenant_alias = user_context.get("tenant_key_alias", "")
+            db_client = get_tenant_supabase_client(tenant_alias)
+            work_order_id = payload.get("work_order_id")
+            title = payload.get("title")
+            description = payload.get("description")
+
+            if not work_order_id:
+                raise HTTPException(status_code=400, detail="work_order_id is required")
+            if not title:
+                raise HTTPException(status_code=400, detail="title is required")
+
+            try:
+                # Verify work order exists and belongs to yacht
+                wo = db_client.table("pms_work_orders").select(
+                    "id, yacht_id"
+                ).eq("id", work_order_id).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not wo.data:
+                    raise HTTPException(status_code=404, detail="Work order not found or access denied")
+
+                # Get next sequence number
+                existing = db_client.table("pms_work_order_checklist").select(
+                    "sequence"
+                ).eq("work_order_id", work_order_id).order("sequence", desc=True).limit(1).execute()
+
+                next_sequence = (existing.data[0]["sequence"] + 1) if existing.data else 1
+
+                # Insert new checklist item
+                new_item = {
+                    "id": str(uuid.uuid4()),
+                    "yacht_id": yacht_id,
+                    "work_order_id": work_order_id,
+                    "title": title.strip(),
+                    "description": description.strip() if description else None,
+                    "sequence": next_sequence,
+                    "is_completed": False,
+                    "is_required": True,
+                    "requires_photo": False,
+                    "requires_signature": False,
+                    "created_by": user_id,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+                insert_result = db_client.table("pms_work_order_checklist").insert(new_item).execute()
+
+                result = {
+                    "status": "success",
+                    "success": True,
+                    "message": "Checklist item added",
+                    "data": insert_result.data[0] if insert_result.data else new_item
+                }
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"add_checklist_item failed: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail=f"Failed to add checklist item: {str(e)}")
 
         elif action == "add_checklist_photo":
             # Add a photo to a checklist item
