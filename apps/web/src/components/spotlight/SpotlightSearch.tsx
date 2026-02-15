@@ -25,6 +25,7 @@ import { EntityLine, StatusLine } from '@/components/celeste';
 import { EmailInboxView } from '@/components/email/EmailInboxView';
 import SituationRouter from '@/components/situations/SituationRouter';
 import SuggestedActions from '@/components/SuggestedActions';
+import { LedgerPanel } from '@/components/ledger';
 import { toast } from 'sonner';
 import { executeAction } from '@/lib/actionClient';
 import { supabase } from '@/lib/supabaseClient';
@@ -212,6 +213,7 @@ export default function SpotlightSearch({
     setPlaceholderIndex(0);
   }, []);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLedger, setShowLedger] = useState(false);
   // Local state fallback when not in SurfaceProvider
   const [localShowEmailList, setLocalShowEmailList] = useState(false);
   const [localEmailScopeActive, setLocalEmailScopeActive] = useState(false);
@@ -1037,6 +1039,13 @@ export default function SpotlightSearch({
               className="min-w-[var(--celeste-width-filter-medium)] bg-celeste-bg-tertiary border-celeste-divider text-celeste-text-primary"
             >
               <DropdownMenuItem
+                onClick={() => setShowLedger(true)}
+                className="flex items-center gap-2 cursor-pointer focus:bg-celeste-divider focus:text-celeste-text-title"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Ledger</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => {
                   // Show email overlay (uses SurfaceContext when available)
                   const newShowEmail = !showEmailList;
@@ -1069,6 +1078,12 @@ export default function SpotlightSearch({
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      {/* Ledger Panel */}
+      <LedgerPanel
+        isOpen={showLedger}
+        onClose={() => setShowLedger(false)}
       />
 
       {/* Situation Router - Renders appropriate viewer based on situation type */}
