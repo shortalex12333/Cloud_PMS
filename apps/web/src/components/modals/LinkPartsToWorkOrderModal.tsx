@@ -188,15 +188,20 @@ export function LinkPartsToWorkOrderModal({
   };
 
   const onSubmit = async (data: LinkPartsToWorkOrderFormData) => {
+    // Add parts one at a time (backend expects single part per call)
+    const firstPart = data.parts[0];
+    if (!firstPart) return;
+
     const response = await executeAction(
-      'link_parts_to_work_order',
+      'add_parts_to_work_order',
       {
         work_order_id: data.work_order_id,
-        parts: data.parts,
-        reserve_parts: data.reserve_parts,
+        part_id: firstPart.part_id,
+        quantity: firstPart.quantity_required,
+        notes: firstPart.notes,
       },
       {
-        successMessage: `Linked ${data.parts.length} part(s) to work order`,
+        successMessage: `Linked part to work order`,
         refreshData: true,
       }
     );
