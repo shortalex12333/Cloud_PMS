@@ -3471,44 +3471,9 @@ async def execute_action(
 
                 insert_result = db_client.table("pms_work_order_checklist").insert(new_item).execute()
 
-                # Record ledger event
-                try:
-                    import hashlib
-                    wo_title = wo.data.get("title", "Untitled")
-                    wo_number = wo.data.get("number", "")
-                    display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
-                    user_name = user_context.get("name") or user_context.get("email", "Unknown")
-                    user_role = user_context.get("role", "member")
-                    event_ts = datetime.now(timezone.utc).isoformat()
-
-                    # Generate proof hash
-                    proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_checklist_item:{event_ts}"
-                    proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
-                    ledger_event = {
-                        "id": str(uuid_module.uuid4()),
-                        "yacht_id": yacht_id,
-                        "user_id": user_id,
-                        "user_role": user_role,
-                        "event_type": "mutation",
-                        "action": "add_checklist_item",
-                        "entity_type": "work_order",
-                        "entity_id": work_order_id,
-                        "change_summary": f"Added checklist item '{title.strip()}' to {display_name}",
-                        "new_state": {"checklist_item_id": new_item["id"], "sequence": next_sequence},
-                        "proof_hash": proof_hash,
-                        "event_timestamp": event_ts,
-                        "created_at": event_ts,
-                        "metadata": {
-                            "display_name": display_name,
-                            "user_name": user_name,
-                            "domain": "Work Orders",
-                            "checklist_title": title.strip()
-                        }
-                    }
-                    db_client.table("ledger_events").insert(ledger_event).execute()
-                except Exception as ledger_err:
-                    logger.warning(f"Failed to write ledger event for add_checklist_item: {ledger_err}")
+                # Record ledger event (disabled until ledger_events table is verified)
+                # TODO: Re-enable once ledger_events table schema is confirmed
+                logger.info(f"[Ledger] Would log add_checklist_item event for work_order {work_order_id}")
 
                 result = {
                     "status": "success",
@@ -4934,44 +4899,9 @@ async def execute_action(
                 "metadata": metadata
             }).eq("id", work_order_id).execute()
 
-            # Record ledger event
-            try:
-                import hashlib
-                wo_title = wo.data.get("title", "Untitled")
-                wo_number = wo.data.get("number", "")
-                display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
-                user_name = user_context.get("name") or user_context.get("email", "Unknown")
-                user_role = user_context.get("role", "member")
-                event_ts = datetime.now(timezone.utc).isoformat()
-
-                # Generate proof hash
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_note:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
-                ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_role,
-                    "event_type": "mutation",
-                    "action": "add_note",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Added note to {display_name}",
-                    "new_state": {"notes_count": len(notes)},
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {
-                        "display_name": display_name,
-                        "user_name": user_name,
-                        "domain": "Work Orders",
-                        "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text
-                    }
-                }
-                db_client.table("ledger_events").insert(ledger_event).execute()
-            except Exception as ledger_err:
-                logger.warning(f"Failed to write ledger event for add_work_order_note: {ledger_err}")
+            # Record ledger event (disabled until ledger_events table is verified)
+            # TODO: Re-enable once ledger_events table schema is confirmed
+            logger.info(f"[Ledger] Would log add_note event for work_order {work_order_id}")
 
             result = {
                 "status": "success",
