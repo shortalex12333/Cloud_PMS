@@ -1099,7 +1099,19 @@ async def get_work_order_entity(
     work_order_id: str,
     auth: dict = Depends(get_authenticated_user)
 ):
-    """Fetch work order by ID for entity viewer (ContextPanel)."""
+    """
+    Fetch work order by ID with ALL related data for entity viewer (ContextPanel).
+
+    Returns enriched work order with:
+    - Main work order details
+    - Notes (from pms_work_order_notes)
+    - Parts used (from pms_work_order_parts with joined part details)
+    - Checklist items (from pms_work_order_checklist)
+    - Audit history (from pms_audit_log)
+
+    Empty arrays [] are returned when no related data exists,
+    enabling frontend to show empty states with CTAs.
+    """
     try:
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
@@ -1107,26 +1119,88 @@ async def get_work_order_entity(
         from integrations.supabase import get_supabase_client
         supabase = get_supabase_client(tenant_key)
 
-        response = supabase.table('pms_work_orders').select('*').eq('work_order_id', work_order_id).eq('yacht_id', yacht_id).single().execute()
+        # 1. Fetch main work order
+        # Try both 'id' and 'work_order_id' columns for compatibility
+        response = supabase.table('pms_work_orders').select('*').eq('id', work_order_id).eq('yacht_id', yacht_id).maybe_single().execute()
+
+        if not response.data:
+            # Fallback: try work_order_id column
+            response = supabase.table('pms_work_orders').select('*').eq('work_order_id', work_order_id).eq('yacht_id', yacht_id).maybe_single().execute()
 
         if not response.data:
             raise HTTPException(status_code=404, detail="Work order not found")
 
         data = response.data
+        wo_id = data.get('id') or data.get('work_order_id')
+
+        # 2. Fetch notes
+        notes_response = supabase.table('pms_work_order_notes').select(
+            'id, note_text, note_type, created_by, created_at'
+        ).eq('work_order_id', wo_id).order('created_at', desc=True).execute()
+        notes = notes_response.data if notes_response.data else []
+
+        # 3. Fetch parts with joined part details
+        parts_response = supabase.table('pms_work_order_parts').select(
+            'id, part_id, quantity, notes, created_at, pms_parts(id, name, part_number, location)'
+        ).eq('work_order_id', wo_id).execute()
+        parts = parts_response.data if parts_response.data else []
+
+        # 4. Fetch checklist items
+        try:
+            checklist_response = supabase.table('pms_work_order_checklist').select(
+                'id, title, description, is_completed, completed_by, completed_at, sequence'
+            ).eq('work_order_id', wo_id).order('sequence').execute()
+            checklist = checklist_response.data if checklist_response.data else []
+        except Exception:
+            # Table might not exist in all environments
+            checklist = []
+
+        # 5. Fetch audit history
+        audit_response = supabase.table('pms_audit_log').select(
+            'id, action, old_values, new_values, user_id, created_at'
+        ).eq('entity_type', 'work_order').eq('entity_id', wo_id).eq('yacht_id', yacht_id).order('created_at', desc=True).limit(50).execute()
+        audit_history = audit_response.data if audit_response.data else []
+
+        # 6. Build enriched response
         return {
-            "id": data.get('work_order_id'),
+            # Core work order data
+            "id": wo_id,
+            "wo_number": data.get('wo_number'),
             "title": data.get('title', 'Untitled Work Order'),
             "description": data.get('description', ''),
             "status": data.get('status', 'pending'),
             "priority": data.get('priority', 'medium'),
+            "type": data.get('type') or data.get('work_order_type'),
+
+            # Related equipment
             "equipment_id": data.get('equipment_id'),
             "equipment_name": data.get('equipment_name'),
+
+            # Assignment
             "assigned_to": data.get('assigned_to'),
             "assigned_to_name": data.get('assigned_to_name'),
+
+            # Dates
             "created_at": data.get('created_at'),
-            "completed_at": data.get('completed_at'),
-            "due_date": data.get('due_date'),
             "updated_at": data.get('updated_at'),
+            "due_date": data.get('due_date'),
+            "completed_at": data.get('completed_at'),
+            "completed_by": data.get('completed_by'),
+
+            # Related fault (if created from fault)
+            "fault_id": data.get('fault_id'),
+
+            # === ENRICHED DATA (empty arrays if none exist) ===
+            "notes": notes,
+            "parts": parts,
+            "checklist": checklist,
+            "audit_history": audit_history,
+
+            # Counts for quick display
+            "notes_count": len(notes),
+            "parts_count": len(parts),
+            "checklist_count": len(checklist),
+            "checklist_completed": len([c for c in checklist if c.get('is_completed')]),
         }
     except HTTPException:
         raise
