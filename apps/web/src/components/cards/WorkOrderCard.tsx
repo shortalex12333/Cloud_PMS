@@ -612,60 +612,73 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           AUDIT HISTORY SECTION
           ================================================================ */}
       <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <SectionHeader
-          icon={<History className="h-5 w-5 text-[var(--celeste-text-secondary)]" />}
-          title="History"
-          count={auditHistory.length}
-        />
+        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
+          <History className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
+          <h3 className="text-[var(--celeste-text-primary)] font-semibold">Activity</h3>
+          {auditHistory.length > 0 && (
+            <span className="text-[var(--celeste-text-muted)] text-sm">({auditHistory.length})</span>
+          )}
+        </div>
 
         {auditHistory.length === 0 ? (
           <div className="text-center py-[var(--celeste-spacing-6)]">
             <History className="h-8 w-8 text-[var(--celeste-text-muted)] mx-auto mb-[var(--celeste-spacing-2)]" />
-            <p className="text-[var(--celeste-text-muted)]">
-              No history recorded yet
-            </p>
-            <p className="text-sm text-[var(--celeste-text-disabled)]">
-              Changes to this work order will appear here
-            </p>
+            <p className="text-[var(--celeste-text-muted)]">No activity yet</p>
           </div>
         ) : (
-          <div className="relative pl-[var(--celeste-spacing-4)]">
-            {/* Timeline line */}
-            <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-[var(--celeste-border-subtle)]" />
+          <div className="space-y-[var(--celeste-spacing-3)]">
+            {auditHistory.slice(0, 10).map((entry) => {
+              // Convert action to human-readable label
+              const actionLabels: Record<string, string> = {
+                'add_work_order_note': 'Note added',
+                'add_parts_to_work_order': 'Part linked',
+                'add_checklist_note': 'Checklist item added',
+                'mark_work_order_complete': 'Marked complete',
+                'complete_work_order': 'Completed',
+                'assign_work_order': 'Assigned',
+                'update_work_order': 'Updated',
+                'create_work_order': 'Created',
+              };
+              const label = actionLabels[entry.action] || entry.action.replace(/_/g, ' ');
 
-            <div className="space-y-[var(--celeste-spacing-4)]">
-              {auditHistory.map((entry, index) => (
-                <div key={entry.id} className="relative flex gap-[var(--celeste-spacing-3)]">
-                  {/* Timeline dot */}
-                  <div className={cn(
-                    'absolute -left-[var(--celeste-spacing-4)] w-[14px] h-[14px] rounded-full border-2 bg-[var(--celeste-surface)]',
-                    index === 0
-                      ? 'border-[var(--celeste-accent)]'
-                      : 'border-[var(--celeste-border)]'
-                  )} />
+              // Extract summary from new_values
+              let summary = '';
+              if (entry.new_values) {
+                if (entry.new_values.note_text) {
+                  summary = entry.new_values.note_text;
+                } else if (entry.new_values.title) {
+                  summary = entry.new_values.title;
+                } else if (entry.new_values.part_name) {
+                  summary = entry.new_values.part_name;
+                }
+              }
 
-                  <div className="flex-1 pb-[var(--celeste-spacing-4)]">
-                    <p className="text-[var(--celeste-text-primary)] font-medium">
-                      {entry.action}
+              return (
+                <div
+                  key={entry.id}
+                  className="p-[var(--celeste-spacing-3)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]"
+                >
+                  <div className="flex items-start justify-between gap-[var(--celeste-spacing-2)]">
+                    <p className="text-[var(--celeste-text-primary)] font-medium text-sm">
+                      {label}
                     </p>
-                    <p className="text-xs text-[var(--celeste-text-muted)]">
+                    <span className="text-xs text-[var(--celeste-text-muted)] whitespace-nowrap">
                       {formatDate(entry.created_at)}
-                      {entry.user_id && ` • ${entry.user_id.substring(0, 8)}...`}
-                    </p>
-                    {entry.new_values && Object.keys(entry.new_values).length > 0 && (
-                      <div className="mt-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-secondary)]">
-                        {Object.entries(entry.new_values).slice(0, 3).map(([key, value]) => (
-                          <div key={key} className="flex gap-[var(--celeste-spacing-2)]">
-                            <span className="text-[var(--celeste-text-muted)]">{key}:</span>
-                            <span>{String(value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    </span>
                   </div>
+                  {summary && (
+                    <p className="text-sm text-[var(--celeste-text-secondary)] mt-1 line-clamp-2">
+                      {summary}
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
+            {auditHistory.length > 10 && (
+              <p className="text-xs text-[var(--celeste-text-muted)] text-center pt-2">
+                +{auditHistory.length - 10} more activities
+              </p>
+            )}
           </div>
         )}
       </div>
