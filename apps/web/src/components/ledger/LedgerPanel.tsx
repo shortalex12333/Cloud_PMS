@@ -124,6 +124,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const [hasMore, setHasMore] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [showReads, setShowReads] = useState(false);
+  const [viewMode, setViewMode] = useState<'me' | 'department'>('me');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -146,9 +147,18 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
         return;
       }
 
+      // Build query params - filter by user_id when viewMode is 'me'
+      const params = new URLSearchParams({
+        limit: String(LIMIT),
+        offset: String(offset),
+      });
+      if (viewMode === 'me' && user?.id) {
+        params.set('user_id', user.id);
+      }
+
       // Call Render API (which has access to tenant DB)
       const response = await fetch(
-        `${RENDER_API_URL}/v1/ledger/events?limit=${LIMIT}&offset=${offset}`,
+        `${RENDER_API_URL}/v1/ledger/events?${params.toString()}`,
         {
           method: 'GET',
           headers: {
@@ -179,7 +189,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, loading, events.length]);
+  }, [user, loading, events.length, viewMode]);
 
   // Initial load when panel opens
   useEffect(() => {
@@ -187,6 +197,16 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
       fetchEvents(true);
     }
   }, [isOpen, events.length, fetchEvents]);
+
+  // Reset and refetch when viewMode changes
+  useEffect(() => {
+    if (isOpen) {
+      setEvents([]);
+      setHasMore(true);
+      fetchEvents(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -258,6 +278,35 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             <BookOpen className="w-5 h-5 text-celeste-accent" strokeWidth={1.5} />
             <h2 className="text-celeste-text-title font-medium">Ledger</h2>
           </div>
+
+          {/* Me / Department Pill Toggle - Centered */}
+          <div className="flex items-center bg-celeste-panel rounded-full p-1" data-testid="view-mode-toggle">
+            <button
+              onClick={() => setViewMode('me')}
+              className={cn(
+                'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+                viewMode === 'me'
+                  ? 'bg-celeste-accent text-celeste-white'
+                  : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+              )}
+              data-testid="view-mode-me"
+            >
+              Me
+            </button>
+            <button
+              onClick={() => setViewMode('department')}
+              className={cn(
+                'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+                viewMode === 'department'
+                  ? 'bg-celeste-accent text-celeste-white'
+                  : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+              )}
+              data-testid="view-mode-department"
+            >
+              Department
+            </button>
+          </div>
+
           <div className="flex items-center gap-3">
             {/* Show/Hide Reads Toggle */}
             <button
