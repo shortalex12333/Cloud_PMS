@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, type LucideIcon } from 'lucide-react';
+import { Search, X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, type LucideIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1074,17 +1074,68 @@ export default function SpotlightSearch({
         </div>
 
         {/* Action Buttons - below panel, centered */}
-        <div className="flex justify-center items-center gap-2 mt-4">
-          {/* Log Receiving - Primary entry point for receiving journey */}
-          <button
-            onClick={() => setShowReceivingUpload(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium bg-celeste-accent text-celeste-text-title hover:bg-celeste-accent-hover"
-            aria-label="Log Receiving"
-            data-testid="log-receiving-button"
-          >
-            <Plus className="w-5 h-5" strokeWidth={2} />
-            <span className="text-celeste-base">Log</span>
-          </button>
+        <div className="flex justify-center items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-4)]">
+          {/* "+" Attachment Control — Single Action: Add photos & files
+              Spec: 36x36 circle, neutral, calm, one responsibility */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  // Geometry: 36x36 circle
+                  'w-9 h-9 rounded-full',
+                  // Flex center for icon
+                  'flex items-center justify-center',
+                  // Closed state styling (dark mode - spec compliant)
+                  'bg-[#1b1b1b] border border-[#404040]',
+                  // Icon color
+                  'text-[#b5b5b5]',
+                  // Hover/Active states - 120ms ease-out, bg + opacity only
+                  'transition-[background-color,opacity] duration-[120ms] ease-out',
+                  'hover:bg-[var(--celeste-surface)]',
+                  'active:opacity-90',
+                  'focus:outline-none focus:border-[var(--celeste-accent)]',
+                  'disabled:opacity-40'
+                )}
+                aria-label="Add photos and files"
+                data-testid="attachment-control-button"
+              >
+                <Plus className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="center"
+              sideOffset={8}
+              className={cn(
+                // Container: 240px width, 12px radius, 8px padding
+                'w-60 rounded-xl p-2',
+                // Open state styling (dark mode)
+                'bg-[#171717] border border-[#404040]',
+                // Shadow: modal shadow only
+                'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]'
+              )}
+            >
+              {/* Single Action Row — "Add photos & files" */}
+              <DropdownMenuItem
+                onClick={() => setShowReceivingUpload(true)}
+                className={cn(
+                  // Layout: 40px height, 12px padding X, 12px gap
+                  'h-10 px-3 gap-3',
+                  // Alignment
+                  'flex items-center cursor-pointer',
+                  // Text styling: 14px 500 weight
+                  'text-sm font-medium',
+                  // Colors (dark mode)
+                  'text-[#f2f2f2]',
+                  // Hover state
+                  'focus:bg-[var(--celeste-surface)] focus:text-[#f2f2f2]',
+                  'hover:bg-[var(--celeste-surface)]'
+                )}
+              >
+                <Paperclip className="w-4 h-4 text-[#b5b5b5]" strokeWidth={1.5} />
+                <span>Add photos & files</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Email Scope Toggle - Prominent button to switch search scope */}
           <button
