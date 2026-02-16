@@ -3469,7 +3469,17 @@ async def execute_action(
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
 
-                insert_result = db_client.table("pms_work_order_checklist").insert(new_item).execute()
+                # Handle 204 No Content response from Supabase
+                try:
+                    insert_result = db_client.table("pms_work_order_checklist").insert(new_item).execute()
+                    result_data = insert_result.data[0] if insert_result.data else new_item
+                except Exception as insert_err:
+                    # postgrest-py throws APIError on 204 responses - treat as success
+                    if "204" in str(insert_err):
+                        logger.info(f"Checklist insert succeeded with 204 for {work_order_id}")
+                        result_data = new_item
+                    else:
+                        raise
 
                 # Record ledger event (disabled until ledger_events table is verified)
                 # TODO: Re-enable once ledger_events table schema is confirmed
@@ -3479,7 +3489,7 @@ async def execute_action(
                     "status": "success",
                     "success": True,
                     "message": "Checklist item added",
-                    "data": insert_result.data[0] if insert_result.data else new_item
+                    "data": result_data
                 }
             except HTTPException:
                 raise
@@ -4895,12 +4905,17 @@ async def execute_action(
             })
             metadata["notes"] = notes
 
-            update_result = db_client.table("pms_work_orders").update({
-                "metadata": metadata
-            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
-
-            if not update_result.data:
-                logger.warning(f"Work order update returned no data (204) for {work_order_id}")
+            # Handle 204 No Content response from Supabase (operation succeeded but no data returned)
+            try:
+                update_result = db_client.table("pms_work_orders").update({
+                    "metadata": metadata
+                }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+            except Exception as update_err:
+                # postgrest-py throws APIError on 204 responses - treat as success
+                if "204" in str(update_err):
+                    logger.info(f"Work order update succeeded with 204 for {work_order_id}")
+                else:
+                    raise
 
             # Record ledger event (disabled until ledger_events table is verified)
             # TODO: Re-enable once ledger_events table schema is confirmed
