@@ -1273,7 +1273,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/receiving/create",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        # All crew can START a receiving (draft status); HOD+ required for acceptance
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
         required_fields=["yacht_id"],
         domain="receiving",
         variant=ActionVariant.MUTATE,
@@ -1295,7 +1296,8 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
         endpoint="/v1/receiving/attach-image",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        # All crew can attach documents to receiving; HOD+ required for acceptance
+        allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", "eto", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
         required_fields=["yacht_id", "receiving_id", "document_id"],
         domain="receiving",
         variant=ActionVariant.MUTATE,
