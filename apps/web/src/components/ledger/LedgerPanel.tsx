@@ -30,21 +30,22 @@ interface LedgerEvent {
   id: string;
   yacht_id: string;
   user_id: string;
-  user_role: string | null;
-  event_type: string;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  change_summary: string | null;
-  new_state: Record<string, unknown> | null;
-  metadata: {
-    display_name?: string;
-    user_name?: string;
+  event_name: string;
+  payload: {
     domain?: string;
+    user_role?: string;
+    user_name?: string;
+    work_order_id?: string;
+    checklist_item_id?: string;
     note_text?: string;
+    note_preview?: string;
     checklist_title?: string;
+    display_name?: string;
+    artefact_type?: string;
+    artefact_id?: string;
+    situation_id?: string;
+    [key: string]: unknown;
   } | null;
-  event_timestamp: string;
   created_at: string;
 }
 
@@ -76,16 +77,19 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-GB', options);
 }
 
+// Read events are navigation/view events; mutations are changes
+const READ_EVENT_NAMES = ['artefact_opened', 'situation_ended', 'view', 'open'];
+
 function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
   const groups: Map<string, DayGroup> = new Map();
 
   for (const event of events) {
-    const date = new Date(event.event_timestamp).toISOString().split('T')[0];
+    const date = new Date(event.created_at).toISOString().split('T')[0];
 
     if (!groups.has(date)) {
       groups.set(date, {
         date,
-        displayDate: formatDate(event.event_timestamp),
+        displayDate: formatDate(event.created_at),
         mutationCount: 0,
         readCount: 0,
         events: [],
@@ -95,10 +99,11 @@ function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
     const group = groups.get(date)!;
     group.events.push(event);
 
-    if (event.event_type === 'mutation') {
-      group.mutationCount++;
-    } else if (event.event_type === 'read') {
+    // Classify based on event_name
+    if (READ_EVENT_NAMES.includes(event.event_name)) {
       group.readCount++;
+    } else {
+      group.mutationCount++;
     }
   }
 
@@ -328,7 +333,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                 {expandedDays.has(group.date) && (
                   <div className="mt-2 space-y-1 pl-6">
                     {group.events
-                      .filter((e) => showReads || e.event_type === 'mutation')
+                      .filter((e) => showReads || !READ_EVENT_NAMES.includes(e.event_name))
                       .map((event) => (
                         <LedgerEventRow key={event.id} event={event} />
                       ))}
@@ -361,13 +366,21 @@ interface LedgerEventRowProps {
 }
 
 function LedgerEventRow({ event }: LedgerEventRowProps) {
-  const displayName = event.metadata?.display_name || `${event.entity_type} ${event.entity_id.slice(0, 8)}`;
-  const userName = event.metadata?.user_name || 'Unknown';
-  const actionVerb = formatActionVerb(event.action);
-  const time = new Date(event.event_timestamp).toLocaleTimeString('en-GB', {
+  // Build display name from payload
+  const displayName = event.payload?.display_name
+    || event.payload?.checklist_title
+    || event.payload?.artefact_type
+    || event.payload?.domain
+    || 'Action';
+
+  const userName = event.payload?.user_name || event.payload?.user_role || 'User';
+  const actionVerb = formatActionVerb(event.event_name);
+  const time = new Date(event.created_at).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const isMutation = !READ_EVENT_NAMES.includes(event.event_name);
 
   return (
     <div
@@ -381,12 +394,12 @@ function LedgerEventRow({ event }: LedgerEventRowProps) {
       <div
         className={cn(
           'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-          event.event_type === 'mutation'
+          isMutation
             ? 'bg-celeste-green/10 text-celeste-green'
             : 'bg-celeste-orange/10 text-celeste-orange'
         )}
       >
-        {event.event_type === 'mutation' ? (
+        {isMutation ? (
           <Edit3 className="w-4 h-4" strokeWidth={1.5} />
         ) : (
           <Eye className="w-4 h-4" strokeWidth={1.5} />
@@ -414,17 +427,31 @@ function LedgerEventRow({ event }: LedgerEventRowProps) {
 // HELPERS
 // ============================================================================
 
-function formatActionVerb(action: string): string {
+function formatActionVerb(eventName: string): string {
   const verbMap: Record<string, string> = {
+    // Mutation events
     add_note: 'Added Note',
     add_checklist_item: 'Added Checklist Item',
+    add_checklist_note: 'Added Checklist Note',
+    add_checklist_photo: 'Added Checklist Photo',
+    add_work_order_photo: 'Added Photo',
+    add_parts_to_work_order: 'Added Parts',
+    mark_checklist_item_complete: 'Completed Item',
+    mark_work_order_complete: 'Completed Work Order',
+    reassign_work_order: 'Reassigned',
+    archive_work_order: 'Archived',
     create: 'Created',
     update: 'Updated',
     delete: 'Deleted',
+    // Read events
+    artefact_opened: 'Opened',
+    situation_ended: 'Ended Situation',
     view: 'Viewed',
     open: 'Opened',
     close: 'Closed',
     complete: 'Completed',
+    // Navigation events
+    relation_added: 'Added Relation',
   };
 
   return verbMap[action] || action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

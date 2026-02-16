@@ -1198,32 +1198,24 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Record ledger event
+            # Record ledger event (using correct schema: event_name + payload)
             try:
-                import hashlib
-                import uuid as uuid_module
                 from datetime import datetime, timezone
                 tenant_alias = user_context.get("tenant_key_alias", "")
                 db_client = get_tenant_supabase_client(tenant_alias)
-                event_ts = datetime.now(timezone.utc).isoformat()
                 work_order_id = payload["work_order_id"]
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:mark_work_order_complete:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                 ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_context.get("role", "member"),
-                    "event_type": "mutation",
-                    "action": "mark_work_order_complete",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Marked work order as complete",
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {"domain": "Work Orders", "work_order_id": work_order_id, "completion_notes": payload.get("completion_notes", ""), "parts_used_count": len(payload.get("parts_used", []))}
+                    "yacht_id": str(yacht_id),
+                    "user_id": str(user_id),
+                    "event_name": "mark_work_order_complete",
+                    "payload": {
+                        "work_order_id": work_order_id,
+                        "user_role": user_context.get("role", "member"),
+                        "completion_notes": payload.get("completion_notes", ""),
+                        "parts_used_count": len(payload.get("parts_used", [])),
+                        "domain": "Work Orders"
+                    }
                 }
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
@@ -1325,32 +1317,24 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Record ledger event
+            # Record ledger event (using correct schema: event_name + payload)
             try:
-                import hashlib
-                import uuid as uuid_module
                 from datetime import datetime, timezone
                 tenant_alias = user_context.get("tenant_key_alias", "")
                 db_client = get_tenant_supabase_client(tenant_alias)
-                event_ts = datetime.now(timezone.utc).isoformat()
                 work_order_id = payload["work_order_id"]
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:reassign_work_order:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                 ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_context.get("role", "member"),
-                    "event_type": "mutation",
-                    "action": "reassign_work_order",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Reassigned work order to {payload['assignee_id']}",
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {"domain": "Work Orders", "work_order_id": work_order_id, "new_assignee_id": payload["assignee_id"], "reason": payload.get("reason", "Reassigned")}
+                    "yacht_id": str(yacht_id),
+                    "user_id": str(user_id),
+                    "event_name": "reassign_work_order",
+                    "payload": {
+                        "work_order_id": work_order_id,
+                        "user_role": user_context.get("role", "member"),
+                        "new_assignee_id": payload["assignee_id"],
+                        "reason": payload.get("reason", "Reassigned"),
+                        "domain": "Work Orders"
+                    }
                 }
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
@@ -1380,32 +1364,23 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Record ledger event
+            # Record ledger event (using correct schema: event_name + payload)
             try:
-                import hashlib
-                import uuid as uuid_module
                 from datetime import datetime, timezone
                 tenant_alias = user_context.get("tenant_key_alias", "")
                 db_client = get_tenant_supabase_client(tenant_alias)
-                event_ts = datetime.now(timezone.utc).isoformat()
                 work_order_id = payload["work_order_id"]
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:archive_work_order:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
 
                 ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_context.get("role", "member"),
-                    "event_type": "mutation",
-                    "action": "archive_work_order",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Archived work order",
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {"domain": "Work Orders", "work_order_id": work_order_id, "deletion_reason": payload.get("deletion_reason", "Archived")}
+                    "yacht_id": str(yacht_id),
+                    "user_id": str(user_id),
+                    "event_name": "archive_work_order",
+                    "payload": {
+                        "work_order_id": work_order_id,
+                        "user_role": user_context.get("role", "member"),
+                        "deletion_reason": payload.get("deletion_reason", "Archived"),
+                        "domain": "Work Orders"
+                    }
                 }
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
@@ -2597,28 +2572,19 @@ async def execute_action(
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
 
-            # Record ledger event
+            # Record ledger event (using correct schema: event_name + payload)
             try:
-                import hashlib
-                import uuid as uuid_module
-                event_ts = datetime.now(timezone.utc).isoformat()
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_work_order_photo:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
                 ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_context.get("role", "member"),
-                    "event_type": "mutation",
-                    "action": "add_work_order_photo",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Added photo to work order",
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {"domain": "Work Orders", "work_order_id": work_order_id, "photo_url": photo_url, "caption": payload.get("caption", "")}
+                    "yacht_id": str(yacht_id),
+                    "user_id": str(user_id),
+                    "event_name": "add_work_order_photo",
+                    "payload": {
+                        "work_order_id": work_order_id,
+                        "user_role": user_context.get("role", "member"),
+                        "photo_url": photo_url,
+                        "caption": payload.get("caption", ""),
+                        "domain": "Work Orders"
+                    }
                 }
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
@@ -2684,28 +2650,19 @@ async def execute_action(
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
 
-            # Record ledger event
+            # Record ledger event (using correct schema: event_name + payload)
             try:
-                import hashlib
-                import uuid as uuid_module
-                event_ts = datetime.now(timezone.utc).isoformat()
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_parts_to_work_order:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
                 ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_context.get("role", "member"),
-                    "event_type": "mutation",
-                    "action": "add_parts_to_work_order",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Added part to work order",
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {"domain": "Work Orders", "work_order_id": work_order_id, "part_id": part_id, "quantity": payload.get("quantity", 1)}
+                    "yacht_id": str(yacht_id),
+                    "user_id": str(user_id),
+                    "event_name": "add_parts_to_work_order",
+                    "payload": {
+                        "work_order_id": work_order_id,
+                        "user_role": user_context.get("role", "member"),
+                        "part_id": part_id,
+                        "quantity": payload.get("quantity", 1),
+                        "domain": "Work Orders"
+                    }
                 }
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
@@ -3529,28 +3486,18 @@ async def execute_action(
                     "id", checklist_item_id
                 ).execute()
 
-                # Record ledger event
+                # Record ledger event (using correct schema: event_name + payload)
                 try:
-                    import hashlib
-                    import uuid as uuid_module
-                    event_ts = datetime.now(timezone.utc).isoformat()
-                    proof_data = f"{yacht_id}:{user_id}:{checklist_item_id}:mark_checklist_item_complete:{event_ts}"
-                    proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
                     ledger_event = {
-                        "id": str(uuid_module.uuid4()),
-                        "yacht_id": yacht_id,
-                        "user_id": user_id,
-                        "user_role": user_context.get("role", "member"),
-                        "event_type": "mutation",
-                        "action": "mark_checklist_item_complete",
-                        "entity_type": "work_order",
-                        "entity_id": checklist_item_id,
-                        "change_summary": f"Marked checklist item as complete",
-                        "proof_hash": proof_hash,
-                        "event_timestamp": event_ts,
-                        "created_at": event_ts,
-                        "metadata": {"domain": "Work Orders", "checklist_item_id": checklist_item_id, "completion_notes": completion_notes}
+                        "yacht_id": str(yacht_id),
+                        "user_id": str(user_id),
+                        "event_name": "mark_checklist_item_complete",
+                        "payload": {
+                            "checklist_item_id": checklist_item_id,
+                            "user_role": user_context.get("role", "member"),
+                            "completion_notes": completion_notes,
+                            "domain": "Work Orders"
+                        }
                     }
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
@@ -3615,28 +3562,18 @@ async def execute_action(
                     "updated_by": user_id
                 }).eq("id", checklist_item_id).execute()
 
-                # Record ledger event
+                # Record ledger event (using correct schema: event_name + payload)
                 try:
-                    import hashlib
-                    import uuid as uuid_module
-                    event_ts = datetime.now(timezone.utc).isoformat()
-                    proof_data = f"{yacht_id}:{user_id}:{checklist_item_id}:add_checklist_note:{event_ts}"
-                    proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
                     ledger_event = {
-                        "id": str(uuid_module.uuid4()),
-                        "yacht_id": yacht_id,
-                        "user_id": user_id,
-                        "user_role": user_context.get("role", "member"),
-                        "event_type": "mutation",
-                        "action": "add_checklist_note",
-                        "entity_type": "work_order",
-                        "entity_id": checklist_item_id,
-                        "change_summary": f"Added note to checklist item",
-                        "proof_hash": proof_hash,
-                        "event_timestamp": event_ts,
-                        "created_at": event_ts,
-                        "metadata": {"domain": "Work Orders", "checklist_item_id": checklist_item_id, "note_preview": note_text[:100] if len(note_text) > 100 else note_text}
+                        "yacht_id": str(yacht_id),
+                        "user_id": str(user_id),
+                        "event_name": "add_checklist_note",
+                        "payload": {
+                            "checklist_item_id": checklist_item_id,
+                            "user_role": user_context.get("role", "member"),
+                            "note_preview": note_text[:100] if len(note_text) > 100 else note_text,
+                            "domain": "Work Orders"
+                        }
                     }
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
@@ -3724,27 +3661,19 @@ async def execute_action(
                     else:
                         raise
 
-                # Record ledger event
+                # Record ledger event (using correct schema: event_name + payload)
                 try:
-                    import hashlib
-                    event_ts = datetime.now(timezone.utc).isoformat()
-                    proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_checklist_item:{event_ts}"
-                    proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
                     ledger_event = {
-                        "id": str(uuid.uuid4()),
-                        "yacht_id": yacht_id,
-                        "user_id": user_id,
-                        "user_role": user_context.get("role", "member"),
-                        "event_type": "mutation",
-                        "action": "add_checklist_item",
-                        "entity_type": "work_order",
-                        "entity_id": work_order_id,
-                        "change_summary": f"Added checklist item '{title}' to work order {wo.data.get('number', work_order_id)}",
-                        "proof_hash": proof_hash,
-                        "event_timestamp": event_ts,
-                        "created_at": event_ts,
-                        "metadata": {"domain": "Work Orders", "checklist_item_id": new_item["id"], "checklist_title": title}
+                        "yacht_id": str(yacht_id),
+                        "user_id": str(user_id),
+                        "event_name": "add_checklist_item",
+                        "payload": {
+                            "work_order_id": work_order_id,
+                            "user_role": user_context.get("role", "member"),
+                            "checklist_item_id": new_item["id"],
+                            "checklist_title": title,
+                            "domain": "Work Orders"
+                        }
                     }
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
@@ -3806,28 +3735,18 @@ async def execute_action(
                     "updated_by": user_id
                 }).eq("id", checklist_item_id).execute()
 
-                # Record ledger event
+                # Record ledger event (using correct schema: event_name + payload)
                 try:
-                    import hashlib
-                    import uuid as uuid_module
-                    event_ts = datetime.now(timezone.utc).isoformat()
-                    proof_data = f"{yacht_id}:{user_id}:{checklist_item_id}:add_checklist_photo:{event_ts}"
-                    proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
-
                     ledger_event = {
-                        "id": str(uuid_module.uuid4()),
-                        "yacht_id": yacht_id,
-                        "user_id": user_id,
-                        "user_role": user_context.get("role", "member"),
-                        "event_type": "mutation",
-                        "action": "add_checklist_photo",
-                        "entity_type": "work_order",
-                        "entity_id": checklist_item_id,
-                        "change_summary": f"Added photo to checklist item",
-                        "proof_hash": proof_hash,
-                        "event_timestamp": event_ts,
-                        "created_at": event_ts,
-                        "metadata": {"domain": "Work Orders", "checklist_item_id": checklist_item_id, "photo_url": photo_url}
+                        "yacht_id": str(yacht_id),
+                        "user_id": str(user_id),
+                        "event_name": "add_checklist_photo",
+                        "payload": {
+                            "checklist_item_id": checklist_item_id,
+                            "user_role": user_context.get("role", "member"),
+                            "photo_url": photo_url,
+                            "domain": "Work Orders"
+                        }
                     }
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
@@ -5221,38 +5140,26 @@ async def execute_action(
                 else:
                     raise
 
-            # Record ledger event
+            # Record ledger event (using correct schema: event_name + payload)
             try:
-                import hashlib
                 wo_title = wo.data.get("title", "Untitled")
                 wo_number = wo.data.get("number", "")
                 display_name = f"Work Order #{wo_number} — {wo_title}" if wo_number else f"Work Order — {wo_title}"
                 user_name = user_context.get("name") or user_context.get("email", "Unknown")
-                user_role = user_context.get("role", "member")
-                event_ts = datetime.now(timezone.utc).isoformat()
-
-                proof_data = f"{yacht_id}:{user_id}:{work_order_id}:add_note:{event_ts}"
-                proof_hash = hashlib.sha256(proof_data.encode()).hexdigest()
+                user_role_str = user_context.get("role", "member")
 
                 ledger_event = {
-                    "id": str(uuid_module.uuid4()),
-                    "yacht_id": yacht_id,
-                    "user_id": user_id,
-                    "user_role": user_role,
-                    "event_type": "mutation",
-                    "action": "add_note",
-                    "entity_type": "work_order",
-                    "entity_id": work_order_id,
-                    "change_summary": f"Added note to {display_name}",
-                    "new_state": {"notes_count": len(notes)},
-                    "proof_hash": proof_hash,
-                    "event_timestamp": event_ts,
-                    "created_at": event_ts,
-                    "metadata": {
+                    "yacht_id": str(yacht_id),
+                    "user_id": str(user_id),
+                    "event_name": "add_note",
+                    "payload": {
+                        "work_order_id": work_order_id,
                         "display_name": display_name,
+                        "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text,
                         "user_name": user_name,
-                        "domain": "Work Orders",
-                        "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text
+                        "user_role": user_role_str,
+                        "notes_count": len(notes),
+                        "domain": "Work Orders"
                     }
                 }
                 try:
