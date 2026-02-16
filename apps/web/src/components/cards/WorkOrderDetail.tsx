@@ -1,7 +1,7 @@
 /**
  * WorkOrderDetail Component
  *
- * ChatGPT-style Work Order template in dark mode.
+ * ChatGPT-style Work Order template supporting light and dark mode.
  * Source: /Desktop/work_order_ux.md
  *
  * Design Philosophy:
@@ -16,7 +16,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Mail, FileText, Image as ImageIcon, Book, Clock } from 'lucide-react';
+import { Mail, FileText, Image as ImageIcon, Book, Clock, File } from 'lucide-react';
 
 // ============================================================================
 // TYPES
@@ -42,7 +42,6 @@ export interface WorkOrderActivity {
 export interface WorkOrderData {
   id: string;
   title: string;
-  subtitle?: string;
   status: 'Open' | 'In Progress' | 'Waiting' | 'Completed' | 'Closed';
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   createdAt: string;
@@ -66,9 +65,25 @@ export interface WorkOrderDetailProps {
 }
 
 // ============================================================================
-// EVIDENCE ICON HELPER
+// HELPER FUNCTIONS
 // ============================================================================
 
+/** Get status dot class based on status */
+function getStatusDotClass(status: WorkOrderData['status']): string {
+  switch (status) {
+    case 'In Progress':
+      return 'wo-status-dot wo-status-dot--active';
+    case 'Completed':
+    case 'Closed':
+      return 'wo-status-dot wo-status-dot--success';
+    case 'Waiting':
+      return 'wo-status-dot wo-status-dot--warning';
+    default:
+      return 'wo-status-dot';
+  }
+}
+
+/** Get evidence icon based on type */
 function getEvidenceIcon(type: WorkOrderEvidence['type']) {
   switch (type) {
     case 'email':
@@ -76,11 +91,27 @@ function getEvidenceIcon(type: WorkOrderEvidence['type']) {
     case 'photo':
       return <ImageIcon className="wo-evidence-icon" />;
     case 'manual':
-      return <Book className="wo-evidence-icon" />;
+      return <FileText className="wo-evidence-icon" />;
     case 'log':
       return <Clock className="wo-evidence-icon" />;
     default:
-      return <FileText className="wo-evidence-icon" />;
+      return <File className="wo-evidence-icon" />;
+  }
+}
+
+/** Get evidence type label */
+function getEvidenceTypeLabel(type: WorkOrderEvidence['type']): string {
+  switch (type) {
+    case 'email':
+      return 'Email';
+    case 'photo':
+      return 'Photo';
+    case 'manual':
+      return 'Manual';
+    case 'log':
+      return 'Log Entry';
+    default:
+      return 'File';
   }
 }
 
@@ -119,27 +150,39 @@ export function WorkOrderDetail({
     <div className="wo-container">
       {/* ================================================================
           HEADER BLOCK
-          Title: 18/600/24, Subtitle: 13/400, gap: 4px
+          Title: 18/600/24, Subtitle: 13/400 "Created on [date] by [author]."
           ================================================================ */}
       <header className="wo-header">
         <h1 className="wo-title">Work Order #{workOrder.id}</h1>
-        {workOrder.subtitle && (
-          <p className="wo-subtitle">{workOrder.subtitle}</p>
-        )}
+        <p className="wo-subtitle">
+          Created on {workOrder.createdAt} by {workOrder.createdBy}.
+        </p>
 
-        {/* Header Meta Row - status, priority, created, author */}
+        {/* Header Meta Row - status dot + text, priority dot + text, created time, author */}
         <div className="wo-header-meta">
-          <div className="wo-header-meta-item">
-            <span className="wo-status-pill">{workOrder.status}</span>
+          {/* Status with colored dot */}
+          <div className="wo-status-indicator">
+            <span className={getStatusDotClass(workOrder.status)} />
+            <span className={workOrder.status === 'In Progress' ? 'wo-status-text--active' : ''}>
+              Status: <strong>{workOrder.status}</strong>
+            </span>
           </div>
-          <div className="wo-header-meta-item">
-            <span>Priority:</span>
-            <span className="wo-header-meta-value">{workOrder.priority}</span>
+
+          {/* Priority with gray dot */}
+          <div className="wo-status-indicator">
+            <span className="wo-status-dot" />
+            <span>
+              Priority: <strong>{workOrder.priority}</strong>
+            </span>
           </div>
+
+          {/* Created time */}
           <div className="wo-header-meta-item">
             <span>Created:</span>
             <span className="wo-header-meta-value">{workOrder.createdAt}</span>
           </div>
+
+          {/* Author */}
           <div className="wo-header-meta-item">
             <span>Author:</span>
             <span className="wo-header-meta-value">{workOrder.createdBy}</span>
@@ -149,45 +192,56 @@ export function WorkOrderDetail({
 
       {/* ================================================================
           METADATA GRID
-          2-column, column-gap: 24px, row-gap: 12px
+          2-column with vertical divider, column-gap: 24px, row-gap: 12px
+          Format: Label: Value
           ================================================================ */}
       <div className="wo-metadata">
-        {workOrder.equipment && (
-          <div className="wo-metadata-field">
-            <span className="wo-metadata-label">Equipment</span>
-            <span className="wo-metadata-value">{workOrder.equipment}</span>
-          </div>
-        )}
-        {workOrder.location && (
-          <div className="wo-metadata-field">
-            <span className="wo-metadata-label">Location</span>
-            <span className="wo-metadata-value">{workOrder.location}</span>
-          </div>
-        )}
-        {workOrder.category && (
-          <div className="wo-metadata-field">
-            <span className="wo-metadata-label">Category</span>
-            <span className="wo-metadata-value">{workOrder.category}</span>
-          </div>
-        )}
-        {workOrder.dueDate && (
-          <div className="wo-metadata-field">
-            <span className="wo-metadata-label">Due Date</span>
-            <span className="wo-metadata-value">{workOrder.dueDate}</span>
-          </div>
-        )}
-        {workOrder.assignedTo && (
-          <div className="wo-metadata-field">
-            <span className="wo-metadata-label">Assigned To</span>
-            <span className="wo-metadata-value">{workOrder.assignedTo}</span>
-          </div>
-        )}
-        {workOrder.linkedFault && (
-          <div className="wo-metadata-field">
-            <span className="wo-metadata-label">Linked Fault</span>
-            <span className="wo-metadata-value">{workOrder.linkedFault}</span>
-          </div>
-        )}
+        {/* Left column */}
+        <div className="wo-metadata-col-left">
+          {workOrder.equipment && (
+            <div className="wo-metadata-field">
+              <span className="wo-metadata-label">Equipment</span>
+              <span className="wo-metadata-value">{workOrder.equipment}</span>
+            </div>
+          )}
+          {workOrder.category && (
+            <div className="wo-metadata-field">
+              <span className="wo-metadata-label">Category</span>
+              <span className="wo-metadata-value">{workOrder.category}</span>
+            </div>
+          )}
+          {workOrder.assignedTo && (
+            <div className="wo-metadata-field">
+              <span className="wo-metadata-label">Assigned To</span>
+              <span className="wo-metadata-value">{workOrder.assignedTo}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Vertical divider */}
+        <div className="wo-metadata-divider" />
+
+        {/* Right column */}
+        <div className="wo-metadata-col-right">
+          {workOrder.location && (
+            <div className="wo-metadata-field">
+              <span className="wo-metadata-label">Location</span>
+              <span className="wo-metadata-value">{workOrder.location}</span>
+            </div>
+          )}
+          {workOrder.dueDate && (
+            <div className="wo-metadata-field">
+              <span className="wo-metadata-label">Due Date</span>
+              <span className="wo-metadata-value">{workOrder.dueDate}</span>
+            </div>
+          )}
+          {workOrder.linkedFault && (
+            <div className="wo-metadata-field">
+              <span className="wo-metadata-label">Linked Fault</span>
+              <span className="wo-metadata-value">{workOrder.linkedFault}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ================================================================
@@ -195,7 +249,7 @@ export function WorkOrderDetail({
           "This is not the truth - it is the claim."
           Max 6 lines collapsed, Show more control
           ================================================================ */}
-      <section className="wo-section">
+      <section className="wo-section wo-description-section">
         <h2 className="wo-section-header">Description</h2>
         <p
           className={`wo-description-text ${
@@ -218,10 +272,11 @@ export function WorkOrderDetail({
       {/* ================================================================
           EVIDENCE / SOURCES SECTION
           Evidence is immutable, click opens source
-          Hover: bg-highlight (#323232)
+          Format: Icon Type: "Title" – timestamp
+          Hover: bg-highlight
           ================================================================ */}
       <section className="wo-evidence-section">
-        <h2 className="wo-section-header">Evidence</h2>
+        <h2 className="wo-section-header">Evidence / Sources</h2>
         {workOrder.evidence.length === 0 ? (
           <p className="wo-empty-state">No evidence attached</p>
         ) : (
@@ -242,13 +297,9 @@ export function WorkOrderDetail({
                 }}
               >
                 {getEvidenceIcon(item.type)}
-                <div className="wo-evidence-content">
-                  <span className="wo-evidence-title">{item.title}</span>
-                  <span className="wo-evidence-meta">
-                    {item.source ? `${item.source} · ` : ''}
-                    {item.timestamp}
-                  </span>
-                </div>
+                <span className="wo-evidence-text">
+                  {getEvidenceTypeLabel(item.type)}: {item.title} – {item.timestamp}
+                </span>
               </div>
             ))}
           </div>
@@ -257,7 +308,7 @@ export function WorkOrderDetail({
 
       {/* ================================================================
           ACTIVITY LOG (AUDIT TRAIL)
-          Font: 12/400/16, color: #8f8f8f
+          Font: 12/400/16, color: meta
           Format: [timestamp] Action (User)
           No hiding. No grouping. No summarisation.
           ================================================================ */}
@@ -268,52 +319,33 @@ export function WorkOrderDetail({
         ) : (
           <div className="wo-activity-list">
             {workOrder.activity.map((entry) => (
-              <p key={entry.id} className="wo-activity-entry">
-                [{entry.timestamp}]{' '}
-                {entry.oldValue && entry.newValue
-                  ? `${entry.action} from ${entry.oldValue} → ${entry.newValue}`
-                  : entry.action}{' '}
-                ({entry.user})
-              </p>
+              <div key={entry.id} className="wo-activity-entry">
+                <File className="wo-activity-icon" />
+                <span>
+                  [{entry.timestamp}]{' '}
+                  {entry.oldValue && entry.newValue
+                    ? `${entry.action} from ${entry.oldValue} to ${entry.newValue}`
+                    : entry.action}{' '}
+                  ({entry.user})
+                </span>
+              </div>
             ))}
           </div>
         )}
       </section>
 
       {/* ================================================================
-          STATUS CONTROL
-          Select: 36px height, 10px radius, focus: border accent only
-          ================================================================ */}
-      <div className="wo-section">
-        <label htmlFor="wo-status-select" className="wo-section-header">
-          Status
-        </label>
-        <select
-          id="wo-status-select"
-          className="wo-select"
-          value={selectedStatus}
-          onChange={handleStatusChange}
-        >
-          <option value="Open">Open</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Waiting">Waiting</option>
-          <option value="Completed">Completed</option>
-          <option value="Closed">Closed</option>
-        </select>
-      </div>
-
-      {/* ================================================================
           BOTTOM ACTION BAR
           Right-aligned, gap: 8px, padding-top: 16px, border-top
-          Buttons: Primary, Secondary, Danger
+          Order: Update Status (Primary), Add Evidence (Secondary), Close Work Order (Danger)
           ================================================================ */}
       <div className="wo-action-bar">
         <button
           type="button"
-          className="wo-btn-danger"
-          onClick={onClose}
+          className="wo-btn-primary"
+          onClick={() => onStatusChange?.(selectedStatus)}
         >
-          Close Work Order
+          Update Status
         </button>
         <button
           type="button"
@@ -324,10 +356,10 @@ export function WorkOrderDetail({
         </button>
         <button
           type="button"
-          className="wo-btn-primary"
-          onClick={() => onStatusChange?.(selectedStatus)}
+          className="wo-btn-danger"
+          onClick={onClose}
         >
-          Update Status
+          Close Work Order
         </button>
       </div>
     </div>

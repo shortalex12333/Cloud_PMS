@@ -2,7 +2,7 @@
  * TEST PAGE: WorkOrderDetail Component
  *
  * Route: /test/work-order-detail
- * Purpose: Verify WorkOrderDetail component renders correctly in dark mode
+ * Purpose: Verify WorkOrderDetail component renders correctly in light and dark mode
  *
  * This page uses mock data to demonstrate the component without requiring
  * authentication or database access.
@@ -10,103 +10,109 @@
 
 'use client';
 
+import { useState } from 'react';
 import { WorkOrderDetail, type WorkOrderData } from '@/components/cards/WorkOrderDetail';
 
-// Mock data for testing
+// Mock data matching the mockup exactly
 const mockWorkOrder: WorkOrderData = {
   id: '0142',
-  title: 'Replace hydraulic pump seals',
-  subtitle: 'Engine Room - Main Generator',
+  title: 'Hydraulic Pump Inspection',
   status: 'In Progress',
-  priority: 'High',
-  createdAt: '2026-02-10 09:15',
-  createdBy: 'Alex Chen',
-  equipment: 'Caterpillar 3512B Generator',
-  location: 'Engine Room - Starboard',
-  category: 'Preventive Maintenance',
-  dueDate: '2026-02-20',
-  assignedTo: 'Marcus Webb',
-  linkedFault: 'FLT-0089 - Oil leak detected',
-  description: `During routine inspection, hydraulic pump seals showed signs of wear and minor leakage.
+  priority: 'Medium',
+  createdAt: 'Feb 10, 2026 at 08:45 AM',
+  createdBy: 'John Doe',
+  equipment: 'Hydraulic Pump HX-23',
+  location: 'Engine Room',
+  category: 'Mechanical',
+  dueDate: 'Feb 15, 2026',
+  assignedTo: 'Alex Johnson',
+  linkedFault: 'Oil Leak #1087',
+  description: `Inspect and repair hydraulic pump HX-23. Check for abnormal noise and reduced pressure output.
 
-Scope of work:
-1. Isolate hydraulic system
-2. Drain hydraulic fluid into approved containers
-3. Remove pump assembly
-4. Replace all seals (kit P/N: HYD-SEAL-3512)
-5. Reinstall pump and refill system
-6. Bleed air from lines
-7. Test under load for 30 minutes
-8. Verify no leaks
-
-Note: Coordinate with Chief Engineer before system isolation. Expected downtime: 4 hours.`,
+Additional details:
+- Verify seal integrity
+- Check pressure readings at inlet and outlet
+- Document any unusual vibration
+- Replace filters if necessary`,
   evidence: [
     {
       id: 'ev-001',
       type: 'email',
-      title: 'Re: Generator maintenance schedule',
-      timestamp: '2026-02-10 08:30',
-      source: 'operations@yachtname.com',
+      title: '"Pump Noise Issue"',
+      timestamp: 'Feb 10, 2026, 09:02 AM',
     },
     {
       id: 'ev-002',
       type: 'photo',
-      title: 'IMG_2024_hydraulic_leak.jpg',
-      timestamp: '2026-02-09 14:22',
+      title: 'leak_hx23.jpg',
+      timestamp: 'Feb 10, 2026, 08:50 AM',
     },
     {
       id: 'ev-003',
       type: 'manual',
-      title: 'Caterpillar 3512B Service Manual',
-      timestamp: 'Section 4.3.2',
-      source: 'Page 142',
+      title: 'Maintenance Manual, Page 47',
+      timestamp: '',
     },
     {
       id: 'ev-004',
       type: 'log',
-      title: 'Engine room inspection log',
-      timestamp: '2026-02-09 11:00',
-      source: 'Daily Rounds',
+      title: 'Engine Room Inspection',
+      timestamp: 'Feb 09, 2026, 02:15 PM',
     },
   ],
   activity: [
     {
       id: 'act-001',
-      timestamp: '2026-02-14 09:32',
+      timestamp: 'Feb 12, 2026 10:14',
       action: 'Status changed',
-      user: 'Alex Chen',
+      user: 'Alex Johnson',
       oldValue: 'Open',
       newValue: 'In Progress',
     },
     {
       id: 'act-002',
-      timestamp: '2026-02-12 15:45',
-      action: 'Assigned to Marcus Webb',
-      user: 'Alex Chen',
-    },
-    {
-      id: 'act-003',
-      timestamp: '2026-02-10 09:15',
-      action: 'Work order created',
-      user: 'Alex Chen',
+      timestamp: 'Feb 10, 2026 09:00',
+      action: 'Work Order created',
+      user: 'John Doe',
     },
   ],
 };
 
 export default function WorkOrderDetailTestPage() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   return (
-    <div className="min-h-screen bg-wo-bg-main dark">
-      {/* Force dark mode for testing */}
-      <div className="dark bg-wo-bg-main min-h-screen py-wo-py">
+    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
+      <div
+        className="min-h-screen py-wo-py"
+        style={{ background: 'var(--wo-bg-main)' }}
+      >
         <div className="max-w-wo-container mx-auto px-wo-px">
-          {/* Page header */}
-          <div className="mb-wo-gap">
-            <h1 className="text-wo-text-primary font-semibold text-lg mb-2">
-              WorkOrderDetail Component Test
-            </h1>
-            <p className="text-wo-text-meta text-sm">
-              This page demonstrates the tokenized Work Order detail view in dark mode.
-            </p>
+          {/* Page header with mode toggle */}
+          <div className="mb-wo-gap flex items-center justify-between">
+            <div>
+              <h1
+                className="font-semibold text-lg mb-2"
+                style={{ color: 'var(--wo-text-primary)' }}
+              >
+                WorkOrderDetail Component Test
+              </h1>
+              <p
+                className="text-sm"
+                style={{ color: 'var(--wo-text-meta)' }}
+              >
+                Testing tokenized Work Order detail view - {isDarkMode ? 'Dark' : 'Light'} Mode
+              </p>
+            </div>
+
+            {/* Dark/Light mode toggle */}
+            <button
+              type="button"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="wo-btn-secondary"
+            >
+              Switch to {isDarkMode ? 'Light' : 'Dark'} Mode
+            </button>
           </div>
 
           {/* Component under test */}
