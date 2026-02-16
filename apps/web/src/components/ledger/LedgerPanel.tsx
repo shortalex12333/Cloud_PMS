@@ -503,7 +503,7 @@ function formatActionVerb(eventName: string): string {
     relation_added: 'Added Relation',
   };
 
-  return verbMap[action] || action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return verbMap[eventName] || eventName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default LedgerPanel;
