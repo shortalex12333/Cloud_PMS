@@ -1059,3 +1059,475 @@
 .settings-button-danger:hover {
   background: #dc2626;
 }
+
+/* ============================================================================
+   WORK ORDER DETAIL - ChatGPT-Style Dark Mode Template
+   Source: /Desktop/work_order_ux.md
+
+   Design Philosophy:
+   - Single primary surface, no cards
+   - Evidence-first, description is the claim
+   - Mutation is explicit, status is factual
+   - Dark mode via tonal separation, not elevation
+   ============================================================================ */
+
+:root {
+  /* ==========================================================================
+     WORK ORDER TOKENS - GEOMETRY
+     ========================================================================== */
+  --wo-container-width: 760px;
+  --wo-max-line-width: 680px;
+  --wo-padding-x: 32px;
+  --wo-padding-y: 24px;
+  --wo-section-gap: 24px;
+  --wo-column-gap: 24px;
+  --wo-row-gap: 12px;
+  --wo-header-padding-bottom: 16px;
+  --wo-title-meta-gap: 4px;
+  --wo-action-bar-padding-top: 16px;
+  --wo-action-bar-gap: 8px;
+  --wo-evidence-row-padding-y: 12px;
+
+  /* ==========================================================================
+     WORK ORDER TOKENS - RADII
+     ========================================================================== */
+  --wo-radius-container: 16px;
+  --wo-radius-control: 10px;
+  --wo-radius-close: 8px;
+  --wo-radius-pill: 6px;
+
+  /* ==========================================================================
+     WORK ORDER TOKENS - SIZING
+     ========================================================================== */
+  --wo-control-height: 36px;
+  --wo-nav-item-height: 40px;
+
+  /* ==========================================================================
+     WORK ORDER TOKENS - TYPOGRAPHY (sizes in rem for accessibility)
+     ========================================================================== */
+  --wo-font-title-size: 1.125rem;      /* 18px */
+  --wo-font-title-weight: 600;
+  --wo-font-title-lh: 1.5rem;          /* 24px */
+
+  --wo-font-section-size: 0.875rem;    /* 14px */
+  --wo-font-section-weight: 600;
+  --wo-font-section-lh: 1.25rem;       /* 20px */
+
+  --wo-font-label-size: 0.8125rem;     /* 13px */
+  --wo-font-label-weight: 500;
+  --wo-font-label-lh: 1.125rem;        /* 18px */
+
+  --wo-font-body-size: 0.8125rem;      /* 13px */
+  --wo-font-body-weight: 400;
+  --wo-font-body-lh: 1.125rem;         /* 18px */
+
+  --wo-font-meta-size: 0.75rem;        /* 12px */
+  --wo-font-meta-weight: 400;
+  --wo-font-meta-lh: 1rem;             /* 16px */
+
+  /* ==========================================================================
+     WORK ORDER TOKENS - MOTION (spec: 120ms ease-out only)
+     ========================================================================== */
+  --wo-transition-duration: 120ms;
+  --wo-transition-timing: ease-out;
+
+  /* ==========================================================================
+     WORK ORDER TOKENS - LIGHT MODE COLORS
+     ========================================================================== */
+  --wo-bg-main: #ffffff;
+  --wo-bg-content: #f8f8f8;
+  --wo-bg-sidebar: #f8f8f8;
+  --wo-bg-highlight: #eeeeee;
+  --wo-border-default: #e7e7e7;
+  --wo-text-primary: #111111;
+  --wo-text-label: #5a5a5a;
+  --wo-text-meta: #8a8a8a;
+  --wo-btn-primary-bg: #111111;
+  --wo-btn-primary-text: #ffffff;
+  --wo-btn-danger-bg: #dc2626;
+  --wo-btn-danger-text: #ffffff;
+}
+
+.dark {
+  /* ==========================================================================
+     WORK ORDER TOKENS - DARK MODE COLORS (PRIMARY SPEC)
+     Source: work_order_ux.md - Dark Mode Specification
+     ========================================================================== */
+  --wo-bg-main: #1e1e1e;               /* App shell background */
+  --wo-bg-content: #171717;            /* Content surface */
+  --wo-bg-sidebar: #1b1b1b;            /* Sidebar surface */
+  --wo-bg-highlight: #323232;          /* Hover/highlight surface */
+  --wo-border-default: #404040;        /* All borders */
+  --wo-text-primary: #f2f2f2;          /* Primary text, titles, body */
+  --wo-text-label: #b5b5b5;            /* Labels, secondary */
+  --wo-text-meta: #8f8f8f;             /* Meta text, timestamps */
+  --wo-btn-primary-bg: #f2f2f2;        /* Primary button bg (inverted) */
+  --wo-btn-primary-text: #1e1e1e;      /* Primary button text */
+  --wo-btn-danger-bg: #dc2626;         /* Danger button bg */
+  --wo-btn-danger-text: #ffffff;       /* Danger button text */
+}
+
+/* ============================================================================
+   WORK ORDER CONTAINER
+   Width: 760px, max-line: 680px, padding: 32x24, radius: 16
+   ============================================================================ */
+.wo-container {
+  width: var(--wo-container-width);
+  max-width: 100%;
+  background: var(--wo-bg-content);
+  border: 1px solid var(--wo-border-default);
+  border-radius: var(--wo-radius-container);
+  padding: var(--wo-padding-y) var(--wo-padding-x);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+}
+
+.wo-container > * {
+  max-width: var(--wo-max-line-width);
+}
+
+/* ============================================================================
+   WORK ORDER HEADER
+   Title: 18/600/24, Subtitle: 13/400, gap: 4px, padding-bottom: 16px
+   ============================================================================ */
+.wo-header {
+  padding-bottom: var(--wo-header-padding-bottom);
+  border-bottom: 1px solid var(--wo-border-default);
+  margin-bottom: var(--wo-section-gap);
+}
+
+.wo-title {
+  font-size: var(--wo-font-title-size);
+  font-weight: var(--wo-font-title-weight);
+  line-height: var(--wo-font-title-lh);
+  color: var(--wo-text-primary);
+  margin: 0;
+}
+
+.wo-subtitle {
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  line-height: var(--wo-font-body-lh);
+  color: var(--wo-text-label);
+  margin-top: var(--wo-title-meta-gap);
+}
+
+/* Header meta row - status, priority, created, author */
+.wo-header-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--wo-column-gap);
+  margin-top: var(--wo-row-gap);
+}
+
+.wo-header-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--wo-font-body-size);
+  line-height: var(--wo-font-body-lh);
+  color: var(--wo-text-label);
+}
+
+.wo-header-meta-value {
+  color: var(--wo-text-primary);
+}
+
+/* Status pill - text only, no color drama */
+.wo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--wo-radius-pill);
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-label-weight);
+  background: transparent;
+  border: 1px solid var(--wo-border-default);
+  color: var(--wo-text-primary);
+}
+
+/* ============================================================================
+   WORK ORDER METADATA GRID
+   2-column, column-gap: 24px, row-gap: 12px
+   Label: 13/500/18 (#b5b5b5), Value: 13/400/18 (#f2f2f2)
+   ============================================================================ */
+.wo-metadata {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--wo-column-gap);
+  row-gap: var(--wo-row-gap);
+  padding-bottom: var(--wo-section-gap);
+  border-bottom: 1px solid var(--wo-border-default);
+  margin-bottom: var(--wo-section-gap);
+}
+
+.wo-metadata-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wo-metadata-label {
+  font-size: var(--wo-font-label-size);
+  font-weight: var(--wo-font-label-weight);
+  line-height: var(--wo-font-label-lh);
+  color: var(--wo-text-label);
+}
+
+.wo-metadata-value {
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  line-height: var(--wo-font-body-lh);
+  color: var(--wo-text-primary);
+}
+
+/* ============================================================================
+   WORK ORDER DESCRIPTION
+   Label: "Description", Body: 13/400/18, max 6 lines collapsed
+   ============================================================================ */
+.wo-section {
+  margin-bottom: var(--wo-section-gap);
+}
+
+.wo-section-header {
+  font-size: var(--wo-font-section-size);
+  font-weight: var(--wo-font-section-weight);
+  line-height: var(--wo-font-section-lh);
+  color: var(--wo-text-primary);
+  margin-bottom: var(--wo-row-gap);
+}
+
+.wo-description-text {
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  line-height: var(--wo-font-body-lh);
+  color: var(--wo-text-primary);
+}
+
+.wo-description-text.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wo-expand-control {
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  color: var(--celeste-accent);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.wo-expand-control:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   WORK ORDER EVIDENCE / SOURCES
+   Vertical list, row padding: 12px, divider between rows
+   Hover: bg-highlight (#323232)
+   ============================================================================ */
+.wo-evidence-section {
+  padding-bottom: var(--wo-section-gap);
+  border-bottom: 1px solid var(--wo-border-default);
+  margin-bottom: var(--wo-section-gap);
+}
+
+.wo-evidence-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.wo-evidence-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--wo-row-gap);
+  padding: var(--wo-evidence-row-padding-y) 0;
+  border-bottom: 1px solid var(--wo-border-default);
+  cursor: pointer;
+  transition: background var(--wo-transition-duration) var(--wo-transition-timing);
+}
+
+.wo-evidence-row:last-child {
+  border-bottom: none;
+}
+
+.wo-evidence-row:hover {
+  background: var(--wo-bg-highlight);
+  margin-left: calc(-1 * var(--wo-padding-x));
+  margin-right: calc(-1 * var(--wo-padding-x));
+  padding-left: var(--wo-padding-x);
+  padding-right: var(--wo-padding-x);
+}
+
+.wo-evidence-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--wo-text-meta);
+}
+
+.wo-evidence-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.wo-evidence-title {
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  line-height: var(--wo-font-body-lh);
+  color: var(--wo-text-primary);
+}
+
+.wo-evidence-meta {
+  font-size: var(--wo-font-meta-size);
+  font-weight: var(--wo-font-meta-weight);
+  line-height: var(--wo-font-meta-lh);
+  color: var(--wo-text-meta);
+}
+
+.wo-empty-state {
+  font-size: var(--wo-font-body-size);
+  color: var(--wo-text-meta);
+  padding: var(--wo-padding-y) 0;
+}
+
+/* ============================================================================
+   WORK ORDER ACTIVITY LOG (AUDIT TRAIL)
+   Font: 12/400/16, color: #8f8f8f
+   Format: [timestamp] Action (User)
+   ============================================================================ */
+.wo-activity-section {
+  margin-bottom: var(--wo-section-gap);
+}
+
+.wo-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wo-activity-entry {
+  font-size: var(--wo-font-meta-size);
+  font-weight: var(--wo-font-meta-weight);
+  line-height: var(--wo-font-meta-lh);
+  color: var(--wo-text-meta);
+}
+
+/* ============================================================================
+   WORK ORDER CONTROLS
+   Select: height 36px, radius 10px, border 1px
+   Focus: border accent only, NO glow
+   ============================================================================ */
+.wo-select {
+  height: var(--wo-control-height);
+  min-width: 140px;
+  background: var(--wo-bg-content);
+  border: 1px solid var(--wo-border-default);
+  border-radius: var(--wo-radius-control);
+  padding: 0 32px 0 12px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  color: var(--wo-text-primary);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238f8f8f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color var(--wo-transition-duration) var(--wo-transition-timing);
+}
+
+.wo-select:focus {
+  outline: none;
+  border-color: var(--celeste-accent);
+}
+
+/* ============================================================================
+   WORK ORDER ACTION BAR (BOTTOM)
+   Layout: right-aligned, gap: 8px, padding-top: 16px, border-top
+   ============================================================================ */
+.wo-action-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--wo-action-bar-gap);
+  padding-top: var(--wo-action-bar-padding-top);
+  border-top: 1px solid var(--wo-border-default);
+}
+
+/* Primary Button: bg #f2f2f2, text #1e1e1e (inverted in dark) */
+.wo-btn-primary {
+  height: var(--wo-control-height);
+  padding: 0 16px;
+  background: var(--wo-btn-primary-bg);
+  color: var(--wo-btn-primary-text);
+  border: 1px solid var(--wo-btn-primary-bg);
+  border-radius: var(--wo-radius-control);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-label-weight);
+  cursor: pointer;
+  transition: opacity var(--wo-transition-duration) var(--wo-transition-timing);
+}
+
+.wo-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.wo-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Secondary Button: transparent + border, hover bg-highlight */
+.wo-btn-secondary {
+  height: var(--wo-control-height);
+  padding: 0 16px;
+  background: transparent;
+  color: var(--wo-text-primary);
+  border: 1px solid var(--wo-border-default);
+  border-radius: var(--wo-radius-control);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-label-weight);
+  cursor: pointer;
+  transition: background var(--wo-transition-duration) var(--wo-transition-timing);
+}
+
+.wo-btn-secondary:hover {
+  background: var(--wo-bg-highlight);
+}
+
+/* Danger Button: bg #dc2626, text #ffffff */
+.wo-btn-danger {
+  height: var(--wo-control-height);
+  padding: 0 16px;
+  background: var(--wo-btn-danger-bg);
+  color: var(--wo-btn-danger-text);
+  border: 1px solid var(--wo-btn-danger-bg);
+  border-radius: var(--wo-radius-control);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-label-weight);
+  cursor: pointer;
+  transition: opacity var(--wo-transition-duration) var(--wo-transition-timing);
+}
+
+.wo-btn-danger:hover {
+  opacity: 0.9;
+}
+
+/* ============================================================================
+   WORK ORDER DIVIDER
+   1px solid border-default
+   ============================================================================ */
+.wo-divider {
+  height: 1px;
+  background: var(--wo-border-default);
+  margin: var(--wo-section-gap) 0;
+}
