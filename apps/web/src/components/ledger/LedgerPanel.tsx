@@ -30,10 +30,14 @@ interface LedgerEvent {
   id: string;
   yacht_id: string;
   user_id: string;
-  event_name: string;
-  payload: {
+  event_type: string;  // create, update, delete, status_change, assignment, etc.
+  entity_type: string; // work_order, checklist_item, fault, etc.
+  entity_id: string;
+  action: string;      // add_note, add_checklist_item, artefact_opened, etc.
+  change_summary?: string;
+  user_role?: string;
+  metadata: {
     domain?: string;
-    user_role?: string;
     user_name?: string;
     work_order_id?: string;
     checklist_item_id?: string;
@@ -43,7 +47,6 @@ interface LedgerEvent {
     display_name?: string;
     artefact_type?: string;
     artefact_id?: string;
-    situation_id?: string;
     [key: string]: unknown;
   } | null;
   created_at: string;
@@ -78,7 +81,7 @@ function formatDate(dateStr: string): string {
 }
 
 // Read events are navigation/view events; mutations are changes
-const READ_EVENT_NAMES = ['artefact_opened', 'situation_ended', 'view', 'open'];
+const READ_ACTIONS = ['artefact_opened', 'situation_ended', 'view', 'open'];
 
 function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
   const groups: Map<string, DayGroup> = new Map();
@@ -99,8 +102,8 @@ function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
     const group = groups.get(date)!;
     group.events.push(event);
 
-    // Classify based on event_name
-    if (READ_EVENT_NAMES.includes(event.event_name)) {
+    // Classify based on action field
+    if (READ_ACTIONS.includes(event.action)) {
       group.readCount++;
     } else {
       group.mutationCount++;
@@ -382,7 +385,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                 {expandedDays.has(group.date) && (
                   <div className="mt-2 space-y-1 pl-6">
                     {group.events
-                      .filter((e) => showReads || !READ_EVENT_NAMES.includes(e.event_name))
+                      .filter((e) => showReads || !READ_ACTIONS.includes(e.action))
                       .map((event) => (
                         <LedgerEventRow key={event.id} event={event} />
                       ))}
@@ -415,21 +418,23 @@ interface LedgerEventRowProps {
 }
 
 function LedgerEventRow({ event }: LedgerEventRowProps) {
-  // Build display name from payload
-  const displayName = event.payload?.display_name
-    || event.payload?.checklist_title
-    || event.payload?.artefact_type
-    || event.payload?.domain
+  // Build display name from metadata or change_summary
+  const displayName = event.change_summary
+    || event.metadata?.display_name
+    || event.metadata?.checklist_title
+    || event.metadata?.artefact_type
+    || event.metadata?.domain
+    || event.entity_type
     || 'Action';
 
-  const userName = event.payload?.user_name || event.payload?.user_role || 'User';
-  const actionVerb = formatActionVerb(event.event_name);
+  const userName = event.metadata?.user_name || event.user_role || 'User';
+  const actionVerb = formatActionVerb(event.action);
   const time = new Date(event.created_at).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  const isMutation = !READ_EVENT_NAMES.includes(event.event_name);
+  const isMutation = !READ_ACTIONS.includes(event.action);
 
   return (
     <div

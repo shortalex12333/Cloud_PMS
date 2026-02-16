@@ -18,6 +18,9 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import logging
 import os
+import hashlib
+import json
+from datetime import datetime
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -43,6 +46,61 @@ from action_router.registry import get_action
 from middleware.auth import lookup_tenant_for_user
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# LEDGER HELPER
+# ============================================================================
+
+def build_ledger_event(
+    yacht_id: str,
+    user_id: str,
+    event_type: str,  # Must be: create, update, delete, status_change, assignment, etc.
+    entity_type: str,  # e.g., 'work_order', 'fault', 'equipment'
+    entity_id: str,
+    action: str,  # e.g., 'add_note', 'add_checklist_item'
+    user_role: str = None,
+    change_summary: str = None,
+    metadata: dict = None
+) -> dict:
+    """Build a ledger event with correct schema for ledger_events table.
+
+    Required columns (NOT NULL):
+    - yacht_id, event_type, entity_type, entity_id, action, user_id, proof_hash
+
+    event_type must be one of:
+    - create, update, delete, status_change, assignment, approval, rejection,
+      escalation, handover, import, export
+    """
+    event_data = {
+        "yacht_id": str(yacht_id),
+        "user_id": str(user_id),
+        "event_type": event_type,
+        "entity_type": entity_type,
+        "entity_id": str(entity_id),
+        "action": action,
+        "source_context": "microaction",
+        "metadata": metadata or {},
+    }
+
+    if user_role:
+        event_data["user_role"] = user_role
+    if change_summary:
+        event_data["change_summary"] = change_summary
+
+    # Generate proof_hash (SHA-256 of event data)
+    hash_input = json.dumps({
+        "yacht_id": event_data["yacht_id"],
+        "user_id": event_data["user_id"],
+        "event_type": event_type,
+        "entity_type": entity_type,
+        "entity_id": str(entity_id),
+        "action": action,
+        "timestamp": datetime.utcnow().isoformat()
+    }, sort_keys=True)
+    event_data["proof_hash"] = hashlib.sha256(hash_input.encode()).hexdigest()
+
+    return event_data
+
 
 # ============================================================================
 # SUPABASE CLIENT
@@ -1198,27 +1256,30 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Record ledger event (using correct schema: event_name + payload)
+            # Record ledger event
             try:
-                from datetime import datetime, timezone
                 tenant_alias = user_context.get("tenant_key_alias", "")
                 db_client = get_tenant_supabase_client(tenant_alias)
                 work_order_id = payload["work_order_id"]
 
-                ledger_event = {
-                    "yacht_id": str(yacht_id),
-                    "user_id": str(user_id),
-                    "event_name": "mark_work_order_complete",
-                    "payload": {
-                        "work_order_id": work_order_id,
-                        "user_role": user_context.get("role", "member"),
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="status_change",
+                    entity_type="work_order",
+                    entity_id=work_order_id,
+                    action="mark_work_order_complete",
+                    user_role=user_context.get("role", "member"),
+                    change_summary="Work order marked as complete",
+                    metadata={
                         "completion_notes": payload.get("completion_notes", ""),
                         "parts_used_count": len(payload.get("parts_used", [])),
                         "domain": "Work Orders"
                     }
-                }
+                )
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
+                    logger.info(f"[Ledger] mark_work_order_complete recorded for {work_order_id}")
                 except Exception as e:
                     if "204" in str(e):
                         logger.info(f"[Ledger] mark_work_order_complete recorded (204)")
@@ -1317,27 +1378,30 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Record ledger event (using correct schema: event_name + payload)
+            # Record ledger event
             try:
-                from datetime import datetime, timezone
                 tenant_alias = user_context.get("tenant_key_alias", "")
                 db_client = get_tenant_supabase_client(tenant_alias)
                 work_order_id = payload["work_order_id"]
 
-                ledger_event = {
-                    "yacht_id": str(yacht_id),
-                    "user_id": str(user_id),
-                    "event_name": "reassign_work_order",
-                    "payload": {
-                        "work_order_id": work_order_id,
-                        "user_role": user_context.get("role", "member"),
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="assignment",
+                    entity_type="work_order",
+                    entity_id=work_order_id,
+                    action="reassign_work_order",
+                    user_role=user_context.get("role", "member"),
+                    change_summary=f"Work order reassigned: {payload.get('reason', 'Reassigned')}",
+                    metadata={
                         "new_assignee_id": payload["assignee_id"],
                         "reason": payload.get("reason", "Reassigned"),
                         "domain": "Work Orders"
                     }
-                }
+                )
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
+                    logger.info(f"[Ledger] reassign_work_order recorded for {work_order_id}")
                 except Exception as e:
                     if "204" in str(e):
                         logger.info(f"[Ledger] reassign_work_order recorded (204)")
@@ -1364,26 +1428,29 @@ async def execute_action(
                 user_id=user_id
             )
 
-            # Record ledger event (using correct schema: event_name + payload)
+            # Record ledger event
             try:
-                from datetime import datetime, timezone
                 tenant_alias = user_context.get("tenant_key_alias", "")
                 db_client = get_tenant_supabase_client(tenant_alias)
                 work_order_id = payload["work_order_id"]
 
-                ledger_event = {
-                    "yacht_id": str(yacht_id),
-                    "user_id": str(user_id),
-                    "event_name": "archive_work_order",
-                    "payload": {
-                        "work_order_id": work_order_id,
-                        "user_role": user_context.get("role", "member"),
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="delete",
+                    entity_type="work_order",
+                    entity_id=work_order_id,
+                    action="archive_work_order",
+                    user_role=user_context.get("role", "member"),
+                    change_summary=f"Work order archived: {payload.get('deletion_reason', 'Archived')}",
+                    metadata={
                         "deletion_reason": payload.get("deletion_reason", "Archived"),
                         "domain": "Work Orders"
                     }
-                }
+                )
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
+                    logger.info(f"[Ledger] archive_work_order recorded for {work_order_id}")
                 except Exception as e:
                     if "204" in str(e):
                         logger.info(f"[Ledger] archive_work_order recorded (204)")
@@ -2572,22 +2639,26 @@ async def execute_action(
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
 
-            # Record ledger event (using correct schema: event_name + payload)
+            # Record ledger event
             try:
-                ledger_event = {
-                    "yacht_id": str(yacht_id),
-                    "user_id": str(user_id),
-                    "event_name": "add_work_order_photo",
-                    "payload": {
-                        "work_order_id": work_order_id,
-                        "user_role": user_context.get("role", "member"),
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="work_order",
+                    entity_id=work_order_id,
+                    action="add_work_order_photo",
+                    user_role=user_context.get("role", "member"),
+                    change_summary="Photo added to work order",
+                    metadata={
                         "photo_url": photo_url,
                         "caption": payload.get("caption", ""),
                         "domain": "Work Orders"
                     }
-                }
+                )
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
+                    logger.info(f"[Ledger] add_work_order_photo recorded for {work_order_id}")
                 except Exception as e:
                     if "204" in str(e):
                         logger.info(f"[Ledger] add_work_order_photo recorded (204)")
@@ -2650,22 +2721,26 @@ async def execute_action(
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
 
-            # Record ledger event (using correct schema: event_name + payload)
+            # Record ledger event
             try:
-                ledger_event = {
-                    "yacht_id": str(yacht_id),
-                    "user_id": str(user_id),
-                    "event_name": "add_parts_to_work_order",
-                    "payload": {
-                        "work_order_id": work_order_id,
-                        "user_role": user_context.get("role", "member"),
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="work_order",
+                    entity_id=work_order_id,
+                    action="add_parts_to_work_order",
+                    user_role=user_context.get("role", "member"),
+                    change_summary=f"Part {part_id} added (qty: {payload.get('quantity', 1)})",
+                    metadata={
                         "part_id": part_id,
                         "quantity": payload.get("quantity", 1),
                         "domain": "Work Orders"
                     }
-                }
+                )
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
+                    logger.info(f"[Ledger] add_parts_to_work_order recorded for {work_order_id}")
                 except Exception as e:
                     if "204" in str(e):
                         logger.info(f"[Ledger] add_parts_to_work_order recorded (204)")
@@ -3486,21 +3561,25 @@ async def execute_action(
                     "id", checklist_item_id
                 ).execute()
 
-                # Record ledger event (using correct schema: event_name + payload)
+                # Record ledger event
                 try:
-                    ledger_event = {
-                        "yacht_id": str(yacht_id),
-                        "user_id": str(user_id),
-                        "event_name": "mark_checklist_item_complete",
-                        "payload": {
-                            "checklist_item_id": checklist_item_id,
-                            "user_role": user_context.get("role", "member"),
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="status_change",
+                        entity_type="checklist_item",
+                        entity_id=checklist_item_id,
+                        action="mark_checklist_item_complete",
+                        user_role=user_context.get("role", "member"),
+                        change_summary="Checklist item marked as complete",
+                        metadata={
                             "completion_notes": completion_notes,
                             "domain": "Work Orders"
                         }
-                    }
+                    )
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
+                        logger.info(f"[Ledger] mark_checklist_item_complete recorded for {checklist_item_id}")
                     except Exception as e:
                         if "204" in str(e):
                             logger.info(f"[Ledger] mark_checklist_item_complete recorded (204)")
@@ -3562,21 +3641,25 @@ async def execute_action(
                     "updated_by": user_id
                 }).eq("id", checklist_item_id).execute()
 
-                # Record ledger event (using correct schema: event_name + payload)
+                # Record ledger event
                 try:
-                    ledger_event = {
-                        "yacht_id": str(yacht_id),
-                        "user_id": str(user_id),
-                        "event_name": "add_checklist_note",
-                        "payload": {
-                            "checklist_item_id": checklist_item_id,
-                            "user_role": user_context.get("role", "member"),
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="checklist_item",
+                        entity_id=checklist_item_id,
+                        action="add_checklist_note",
+                        user_role=user_context.get("role", "member"),
+                        change_summary="Note added to checklist item",
+                        metadata={
                             "note_preview": note_text[:100] if len(note_text) > 100 else note_text,
                             "domain": "Work Orders"
                         }
-                    }
+                    )
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
+                        logger.info(f"[Ledger] add_checklist_note recorded for {checklist_item_id}")
                     except Exception as e:
                         if "204" in str(e):
                             logger.info(f"[Ledger] add_checklist_note recorded (204)")
@@ -3661,22 +3744,26 @@ async def execute_action(
                     else:
                         raise
 
-                # Record ledger event (using correct schema: event_name + payload)
+                # Record ledger event
                 try:
-                    ledger_event = {
-                        "yacht_id": str(yacht_id),
-                        "user_id": str(user_id),
-                        "event_name": "add_checklist_item",
-                        "payload": {
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="create",
+                        entity_type="checklist_item",
+                        entity_id=new_item["id"],
+                        action="add_checklist_item",
+                        user_role=user_context.get("role", "member"),
+                        change_summary=f"Checklist item added: {title}",
+                        metadata={
                             "work_order_id": work_order_id,
-                            "user_role": user_context.get("role", "member"),
-                            "checklist_item_id": new_item["id"],
                             "checklist_title": title,
                             "domain": "Work Orders"
                         }
-                    }
+                    )
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
+                        logger.info(f"[Ledger] add_checklist_item recorded for {new_item['id']}")
                     except Exception as e:
                         if "204" in str(e):
                             logger.info(f"[Ledger] add_checklist_item recorded (204)")
@@ -3735,21 +3822,25 @@ async def execute_action(
                     "updated_by": user_id
                 }).eq("id", checklist_item_id).execute()
 
-                # Record ledger event (using correct schema: event_name + payload)
+                # Record ledger event
                 try:
-                    ledger_event = {
-                        "yacht_id": str(yacht_id),
-                        "user_id": str(user_id),
-                        "event_name": "add_checklist_photo",
-                        "payload": {
-                            "checklist_item_id": checklist_item_id,
-                            "user_role": user_context.get("role", "member"),
+                    ledger_event = build_ledger_event(
+                        yacht_id=yacht_id,
+                        user_id=user_id,
+                        event_type="update",
+                        entity_type="checklist_item",
+                        entity_id=checklist_item_id,
+                        action="add_checklist_photo",
+                        user_role=user_context.get("role", "member"),
+                        change_summary="Photo added to checklist item",
+                        metadata={
                             "photo_url": photo_url,
                             "domain": "Work Orders"
                         }
-                    }
+                    )
                     try:
                         db_client.table("ledger_events").insert(ledger_event).execute()
+                        logger.info(f"[Ledger] add_checklist_photo recorded for {checklist_item_id}")
                     except Exception as e:
                         if "204" in str(e):
                             logger.info(f"[Ledger] add_checklist_photo recorded (204)")
@@ -5140,7 +5231,7 @@ async def execute_action(
                 else:
                     raise
 
-            # Record ledger event (using correct schema: event_name + payload)
+            # Record ledger event
             try:
                 wo_title = wo.data.get("title", "Untitled")
                 wo_number = wo.data.get("number", "")
@@ -5148,20 +5239,23 @@ async def execute_action(
                 user_name = user_context.get("name") or user_context.get("email", "Unknown")
                 user_role_str = user_context.get("role", "member")
 
-                ledger_event = {
-                    "yacht_id": str(yacht_id),
-                    "user_id": str(user_id),
-                    "event_name": "add_note",
-                    "payload": {
-                        "work_order_id": work_order_id,
+                ledger_event = build_ledger_event(
+                    yacht_id=yacht_id,
+                    user_id=user_id,
+                    event_type="update",
+                    entity_type="work_order",
+                    entity_id=work_order_id,
+                    action="add_note",
+                    user_role=user_role_str,
+                    change_summary=f"Note added to {display_name}",
+                    metadata={
                         "display_name": display_name,
                         "note_text": note_text[:200] + "..." if len(note_text) > 200 else note_text,
                         "user_name": user_name,
-                        "user_role": user_role_str,
                         "notes_count": len(notes),
                         "domain": "Work Orders"
                     }
-                }
+                )
                 try:
                     db_client.table("ledger_events").insert(ledger_event).execute()
                     logger.info(f"[Ledger] Recorded add_note for {work_order_id}")
