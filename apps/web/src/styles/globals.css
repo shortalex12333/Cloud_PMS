@@ -1132,19 +1132,35 @@
   --wo-transition-timing: ease-out;
 
   /* ==========================================================================
+     WORK ORDER TOKENS - SHADOW (modal context only)
+     ========================================================================== */
+  --wo-shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* ==========================================================================
+     WORK ORDER TOKENS - STATUS INDICATOR COLORS
+     ========================================================================== */
+  --wo-status-active: #3A7C9D;           /* In Progress - teal accent */
+  --wo-status-default: #8a8a8a;          /* Default/Medium - gray */
+  --wo-status-success: #3A9D5C;          /* Completed - green */
+  --wo-status-warning: #9D6B3A;          /* Waiting - orange */
+
+  /* ==========================================================================
      WORK ORDER TOKENS - LIGHT MODE COLORS
      ========================================================================== */
-  --wo-bg-main: #ffffff;
-  --wo-bg-content: #f8f8f8;
+  --wo-bg-main: #e8e8e8;                 /* App shell background (gray) */
+  --wo-bg-content: #ffffff;              /* Content surface (white card) */
   --wo-bg-sidebar: #f8f8f8;
-  --wo-bg-highlight: #eeeeee;
-  --wo-border-default: #e7e7e7;
+  --wo-bg-highlight: #f0f0f0;
+  --wo-border-default: #e0e0e0;
+  --wo-border-divider: #e7e7e7;          /* Vertical divider in metadata */
   --wo-text-primary: #111111;
-  --wo-text-label: #5a5a5a;
+  --wo-text-label: #666666;
   --wo-text-meta: #8a8a8a;
-  --wo-btn-primary-bg: #111111;
+  --wo-btn-primary-bg: #3A7C9D;          /* Accent teal for light mode */
   --wo-btn-primary-text: #ffffff;
-  --wo-btn-danger-bg: #dc2626;
+  --wo-btn-secondary-bg: transparent;
+  --wo-btn-secondary-border: #d0d0d0;
+  --wo-btn-danger-bg: #b91c1c;
   --wo-btn-danger-text: #ffffff;
 }
 
@@ -1158,18 +1174,23 @@
   --wo-bg-sidebar: #1b1b1b;            /* Sidebar surface */
   --wo-bg-highlight: #323232;          /* Hover/highlight surface */
   --wo-border-default: #404040;        /* All borders */
+  --wo-border-divider: #404040;        /* Vertical divider in metadata */
   --wo-text-primary: #f2f2f2;          /* Primary text, titles, body */
   --wo-text-label: #b5b5b5;            /* Labels, secondary */
   --wo-text-meta: #8f8f8f;             /* Meta text, timestamps */
   --wo-btn-primary-bg: #f2f2f2;        /* Primary button bg (inverted) */
   --wo-btn-primary-text: #1e1e1e;      /* Primary button text */
+  --wo-btn-secondary-bg: transparent;
+  --wo-btn-secondary-border: #404040;
   --wo-btn-danger-bg: #dc2626;         /* Danger button bg */
   --wo-btn-danger-text: #ffffff;       /* Danger button text */
+  --wo-shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================================================
    WORK ORDER CONTAINER
    Width: 760px, max-line: 680px, padding: 32x24, radius: 16
+   Shadow: modal context
    ============================================================================ */
 .wo-container {
   width: var(--wo-container-width);
@@ -1178,6 +1199,7 @@
   border: 1px solid var(--wo-border-default);
   border-radius: var(--wo-radius-container);
   padding: var(--wo-padding-y) var(--wo-padding-x);
+  box-shadow: var(--wo-shadow-modal, 0 24px 64px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06));
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
 }
 
@@ -1233,7 +1255,42 @@
   color: var(--wo-text-primary);
 }
 
-/* Status pill - text only, no color drama */
+/* Status indicator with dot - per mockup */
+.wo-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-label-weight);
+  color: var(--wo-text-primary);
+}
+
+.wo-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--wo-status-default);
+  flex-shrink: 0;
+}
+
+.wo-status-dot--active {
+  background: var(--wo-status-active);
+}
+
+.wo-status-dot--success {
+  background: var(--wo-status-success);
+}
+
+.wo-status-dot--warning {
+  background: var(--wo-status-warning);
+}
+
+/* Status text styling based on state */
+.wo-status-text--active {
+  color: var(--wo-status-active);
+}
+
+/* Status pill - text only, no color drama (fallback) */
 .wo-status-pill {
   display: inline-flex;
   align-items: center;
@@ -1248,12 +1305,12 @@
 
 /* ============================================================================
    WORK ORDER METADATA GRID
-   2-column, column-gap: 24px, row-gap: 12px
+   2-column with vertical divider, column-gap: 24px, row-gap: 12px
    Label: 13/500/18 (#b5b5b5), Value: 13/400/18 (#f2f2f2)
    ============================================================================ */
 .wo-metadata {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1px 1fr;
   column-gap: var(--wo-column-gap);
   row-gap: var(--wo-row-gap);
   padding-bottom: var(--wo-section-gap);
@@ -1261,10 +1318,32 @@
   margin-bottom: var(--wo-section-gap);
 }
 
-.wo-metadata-field {
+/* Left column fields */
+.wo-metadata-col-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--wo-row-gap);
+}
+
+/* Vertical divider between columns */
+.wo-metadata-divider {
+  background: var(--wo-border-divider);
+  width: 1px;
+  min-height: 80px;
+  align-self: stretch;
+}
+
+/* Right column fields */
+.wo-metadata-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wo-row-gap);
+}
+
+.wo-metadata-field {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .wo-metadata-label {
@@ -1272,6 +1351,12 @@
   font-weight: var(--wo-font-label-weight);
   line-height: var(--wo-font-label-lh);
   color: var(--wo-text-label);
+  flex-shrink: 0;
+}
+
+/* Colon after label */
+.wo-metadata-label::after {
+  content: ':';
 }
 
 .wo-metadata-value {
@@ -1326,6 +1411,12 @@
   text-decoration: underline;
 }
 
+/* Description section with border */
+.wo-description-section {
+  padding-bottom: var(--wo-section-gap);
+  border-bottom: 1px solid var(--wo-border-default);
+}
+
 /* ============================================================================
    WORK ORDER EVIDENCE / SOURCES
    Vertical list, row padding: 12px, divider between rows
@@ -1369,6 +1460,15 @@
   width: 18px;
   height: 18px;
   color: var(--wo-text-meta);
+  margin-top: 1px;
+}
+
+/* Single-line evidence text format: Type: "Title" – timestamp */
+.wo-evidence-text {
+  font-size: var(--wo-font-body-size);
+  font-weight: var(--wo-font-body-weight);
+  line-height: var(--wo-font-body-lh);
+  color: var(--wo-text-primary);
 }
 
 .wo-evidence-content {
@@ -1412,10 +1512,21 @@
 }
 
 .wo-activity-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: var(--wo-font-meta-size);
   font-weight: var(--wo-font-meta-weight);
   line-height: var(--wo-font-meta-lh);
   color: var(--wo-text-meta);
+}
+
+.wo-activity-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--wo-text-meta);
+  margin-top: 1px;
 }
 
 /* ============================================================================
