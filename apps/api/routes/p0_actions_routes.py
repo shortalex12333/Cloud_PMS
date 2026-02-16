@@ -5351,8 +5351,18 @@ async def execute_action(
         elif e.__class__.__name__ == "ConflictError":
             logger.warning(f"Conflict detected: {e}")
             raise HTTPException(status_code=409, detail=str(e))
-        logger.error(f"Action execution failed: {e}", exc_info=True)
         error_str = str(e).lower()
+
+        # Handle 204 No Content - postgrest-py throws but operation succeeded
+        if "204" in error_str and "missing response" in error_str:
+            logger.info(f"Action completed with 204 No Content (success): {action}")
+            return JSONResponse(content={
+                "status": "success",
+                "success": True,
+                "message": f"Action {action} completed successfully"
+            })
+
+        logger.error(f"Action execution failed: {e}", exc_info=True)
 
         # Parse database errors to return appropriate status codes (Phase 8)
         # 404 - Resource not found
