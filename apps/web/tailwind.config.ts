@@ -132,6 +132,25 @@ const config: Config = {
           'yellow': '#9D8A3A',   // Time-sensitive advisories
           'green': '#3A9D5C',    // Committed confirmation only
         },
+
+        // =======================================================================
+        // WORK ORDER - Dark Mode Tokenized Colors
+        // Source: /Desktop/work_order_ux.md
+        // =======================================================================
+        wo: {
+          'bg-main': 'var(--wo-bg-main)',
+          'bg-content': 'var(--wo-bg-content)',
+          'bg-sidebar': 'var(--wo-bg-sidebar)',
+          'bg-highlight': 'var(--wo-bg-highlight)',
+          'border': 'var(--wo-border-default)',
+          'text-primary': 'var(--wo-text-primary)',
+          'text-label': 'var(--wo-text-label)',
+          'text-meta': 'var(--wo-text-meta)',
+          'btn-primary-bg': 'var(--wo-btn-primary-bg)',
+          'btn-primary-text': 'var(--wo-btn-primary-text)',
+          'btn-danger-bg': 'var(--wo-btn-danger-bg)',
+          'btn-danger-text': 'var(--wo-btn-danger-text)',
+        },
       },
 
       // =========================================================================
@@ -186,6 +205,12 @@ const config: Config = {
         'celeste-4': '1rem',      // 16px
         'celeste-6': '1.5rem',    // 24px
         'celeste-8': '2rem',      // 32px
+        // Work Order specific spacing (from spec)
+        'wo-px': 'var(--wo-padding-x)',      // 32px
+        'wo-py': 'var(--wo-padding-y)',      // 24px
+        'wo-gap': 'var(--wo-section-gap)',   // 24px
+        'wo-row': 'var(--wo-row-gap)',       // 12px
+        'wo-col': 'var(--wo-column-gap)',    // 24px
       },
 
       // =========================================================================
@@ -197,6 +222,9 @@ const config: Config = {
         'celeste-element-lg': '48px',
         'celeste-element-xl': 'var(--celeste-height-element-xl)',  // 92px - Spotlight search bar
         'celeste-search-results': '60vh',
+        // Work Order heights (from spec)
+        'wo-control': 'var(--wo-control-height)',     // 36px
+        'wo-nav-item': 'var(--wo-nav-item-height)',   // 40px
       },
 
       // =========================================================================
@@ -207,6 +235,9 @@ const config: Config = {
         'celeste-panel-sm': '280px',
         'celeste-panel-medium': '320px',
         'celeste-panel-lg': '400px',
+        // Work Order widths (from spec)
+        'wo-container': 'var(--wo-container-width)',  // 760px
+        'wo-content': 'var(--wo-max-line-width)',     // 680px
       },
 
       // =========================================================================
@@ -222,6 +253,11 @@ const config: Config = {
         'celeste-lg': '12px',
         'celeste-xl': '16px',
         'celeste-2xl': '18px',    // Spotlight panel
+        // Work Order radii (from spec)
+        'wo-container': 'var(--wo-radius-container)',  // 16px
+        'wo-control': 'var(--wo-radius-control)',      // 10px
+        'wo-close': 'var(--wo-radius-close)',          // 8px
+        'wo-pill': 'var(--wo-radius-pill)',            // 6px
       },
 
       // =========================================================================
