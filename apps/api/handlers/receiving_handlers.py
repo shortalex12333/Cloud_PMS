@@ -161,10 +161,24 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
     RLS: Enforced via user JWT
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not user_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "user_id is required"
+            }
 
         # Create database client for RPC call
         # RPC function uses SECURITY DEFINER and checks permissions internally
@@ -174,7 +188,11 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
 
         # Optional fields
         vendor_name = params.get("vendor_name")
@@ -282,10 +300,32 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
     Storage path validation: {yacht_id}/receiving/{receiving_id}/{filename}
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
+        document_id = params.get("document_id")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
+        if not document_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "document_id is required"
+            }
 
         # Use service role for database operations
         # RBAC is already enforced at the route level (p0_actions_routes.py)
@@ -295,9 +335,11 @@ def _attach_receiving_image_with_comment_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
-        document_id = params["document_id"]
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
         doc_type = params.get("doc_type")  # 'invoice', 'packing_slip', 'photo'
         comment = params.get("comment")
         request_context = params.get("request_context")
@@ -864,10 +906,32 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
+        receiving_item_id = params.get("receiving_item_id")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
+        if not receiving_item_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_item_id is required"
+            }
 
         # Use service role for database operations
         # RBAC is already enforced at the route level (p0_actions_routes.py)
@@ -877,9 +941,11 @@ def _adjust_receiving_item_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
-        receiving_item_id = params["receiving_item_id"]
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
 
         # Optional update fields
         quantity_received = params.get("quantity_received")
@@ -1153,10 +1219,25 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
     EXECUTE: Mark status='accepted', freeze monetary fields, write signed audit
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
 
         # Use service role for database operations
         # RBAC is already enforced at the route level (p0_actions_routes.py)
@@ -1166,8 +1247,11 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
         signature = params.get("signature")
         request_context = params.get("request_context")
 
@@ -1265,7 +1349,7 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
             "subtotal": subtotal,
             "tax_total": tax_total,
             "total": total,
-        }).eq("id", receiving_id).select("*").execute()
+        }).eq("id", receiving_id).execute()
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -1317,10 +1401,26 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
     Allowed roles: HOD+
     """
     async def _fn(**params):
-        # Extract required params
-        yacht_id = params["yacht_id"]
-        user_id = params["user_id"]
+        # Extract and validate required params
+        yacht_id = params.get("yacht_id")
+        user_id = params.get("user_id")
         user_jwt = params.get("user_jwt")
+        receiving_id = params.get("receiving_id")
+        reason = params.get("reason")
+
+        # Validate required parameters
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
+        if not receiving_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "receiving_id is required"
+            }
 
         # Use service role for database operations
         # RBAC is already enforced at the route level (p0_actions_routes.py)
@@ -1330,9 +1430,11 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
             db = get_service_db(yacht_id)
         except Exception as e:
             logger.error(f"Failed to create database client: {e}")
-            return map_postgrest_error(e, "DB_CLIENT_ERROR")
-        receiving_id = params["receiving_id"]
-        reason = params.get("reason")
+            return {
+                "status": "error",
+                "error_code": "DB_CLIENT_ERROR",
+                "message": "Failed to create database client"
+            }
         request_context = params.get("request_context")
 
         if not reason:
@@ -1368,7 +1470,7 @@ def _reject_receiving_adapter(handlers: ReceivingHandlers):
         db.table("pms_receiving").update({
             "status": "rejected",
             "notes": reason,  # Store reason in notes
-        }).eq("id", receiving_id).select("*").execute()
+        }).eq("id", receiving_id).execute()
 
         # Extract audit metadata
         audit_meta = extract_audit_metadata(request_context)
@@ -1420,11 +1522,17 @@ def _view_receiving_history_adapter(handlers: ReceivingHandlers):
     """
     async def _fn(**params):
         # Extract required params - yacht_id comes from JWT context
-        yacht_id = params["yacht_id"]
-        receiving_id = params["receiving_id"]
+        yacht_id = params.get("yacht_id")
+        receiving_id = params.get("receiving_id")
         user_jwt = params.get("user_jwt")
 
         # Validate required fields (400 for invalid payload)
+        if not yacht_id:
+            return {
+                "status": "error",
+                "error_code": "MISSING_REQUIRED_FIELD",
+                "message": "yacht_id is required"
+            }
         if not receiving_id:
             return {
                 "status": "error",
