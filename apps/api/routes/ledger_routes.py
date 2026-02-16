@@ -27,8 +27,8 @@ router = APIRouter(prefix="/v1/ledger", tags=["ledger"])
 async def get_ledger_events(
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
-    event_type: Optional[str] = Query(default=None, description="Filter by event_type: mutation, read"),
-    entity_type: Optional[str] = Query(default=None, description="Filter by entity_type: work_order, fault, etc."),
+    user_id: Optional[str] = Query(default=None, description="Filter by specific user_id (for 'Me' view)"),
+    event_name: Optional[str] = Query(default=None, description="Filter by event_name: add_note, artefact_opened, etc."),
     date_from: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
     user_context: dict = Depends(get_authenticated_user)
@@ -36,6 +36,8 @@ async def get_ledger_events(
     """
     Fetch ledger events for the current user's yacht.
     Returns events in reverse chronological order.
+    - If user_id is provided, filters to only that user's events (Me view)
+    - If user_id is not provided, returns all yacht events (Department view)
     """
     try:
         tenant_alias = user_context.get("tenant_key_alias", "")
@@ -52,21 +54,22 @@ async def get_ledger_events(
         # Filter by yacht (RLS should handle this, but be explicit)
         query = query.eq("yacht_id", yacht_id)
 
-        # Apply filters
-        if event_type:
-            query = query.eq("event_type", event_type)
+        # Filter by user_id if provided (Me view)
+        if user_id:
+            query = query.eq("user_id", user_id)
 
-        if entity_type:
-            query = query.eq("entity_type", entity_type)
+        # Filter by event_name if provided
+        if event_name:
+            query = query.eq("event_name", event_name)
 
         if date_from:
-            query = query.gte("event_timestamp", f"{date_from}T00:00:00Z")
+            query = query.gte("created_at", f"{date_from}T00:00:00Z")
 
         if date_to:
-            query = query.lte("event_timestamp", f"{date_to}T23:59:59Z")
+            query = query.lte("created_at", f"{date_to}T23:59:59Z")
 
-        # Order and paginate
-        query = query.order("event_timestamp", desc=True)
+        # Order and paginate (use created_at since that's the actual column)
+        query = query.order("created_at", desc=True)
         query = query.range(offset, offset + limit - 1)
 
         result = query.execute()
@@ -167,3 +170,58 @@ async def get_day_anchors(
     except Exception as e:
         logger.error(f"Failed to fetch day anchors: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch day anchors: {str(e)}")
+
+
+@router.post("/record")
+async def record_ledger_event(
+    event_data: dict,
+    user_context: dict = Depends(get_authenticated_user)
+):
+    """
+    Record a ledger event from the frontend.
+    Used for tracking read events like artefact_opened.
+    """
+    try:
+        tenant_alias = user_context.get("tenant_key_alias", "")
+        yacht_id = user_context.get("yacht_id")
+        user_id = user_context.get("user_id")
+
+        if not yacht_id or not user_id:
+            raise HTTPException(status_code=400, detail="Missing yacht_id or user_id in context")
+
+        event_name = event_data.get("event_name")
+        payload = event_data.get("payload", {})
+
+        if not event_name:
+            raise HTTPException(status_code=400, detail="event_name is required")
+
+        db_client = _get_tenant_client(tenant_alias)
+
+        # Build ledger event using correct schema
+        ledger_event = {
+            "yacht_id": str(yacht_id),
+            "user_id": str(user_id),
+            "event_name": event_name,
+            "payload": {
+                **payload,
+                "user_role": user_context.get("role", "member"),
+            }
+        }
+
+        try:
+            db_client.table("ledger_events").insert(ledger_event).execute()
+            logger.info(f"[Ledger] Recorded {event_name} for user {user_id}")
+        except Exception as insert_err:
+            if "204" in str(insert_err):
+                logger.info(f"[Ledger] {event_name} recorded (204)")
+            else:
+                logger.warning(f"[Ledger] Failed to record {event_name}: {insert_err}")
+                raise
+
+        return {"success": True, "message": f"Event {event_name} recorded"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to record ledger event: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to record ledger event: {str(e)}")
