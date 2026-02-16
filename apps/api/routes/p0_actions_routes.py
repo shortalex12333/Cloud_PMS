@@ -4895,9 +4895,12 @@ async def execute_action(
             })
             metadata["notes"] = notes
 
-            db_client.table("pms_work_orders").update({
+            update_result = db_client.table("pms_work_orders").update({
                 "metadata": metadata
-            }).eq("id", work_order_id).execute()
+            }).eq("id", work_order_id).eq("yacht_id", yacht_id).execute()
+
+            if not update_result.data:
+                logger.warning(f"Work order update returned no data (204) for {work_order_id}")
 
             # Record ledger event (disabled until ledger_events table is verified)
             # TODO: Re-enable once ledger_events table schema is confirmed
