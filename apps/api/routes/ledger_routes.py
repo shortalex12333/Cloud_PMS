@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, List
 from datetime import datetime, date
 import logging
+import hashlib
+import json
 
 from middleware.auth import get_authenticated_user
 
@@ -28,7 +30,7 @@ async def get_ledger_events(
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
     user_id: Optional[str] = Query(default=None, description="Filter by specific user_id (for 'Me' view)"),
-    event_name: Optional[str] = Query(default=None, description="Filter by event_name: add_note, artefact_opened, etc."),
+    action: Optional[str] = Query(default=None, description="Filter by action: add_note, artefact_opened, etc."),
     date_from: Optional[str] = Query(default=None, description="Start date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(default=None, description="End date (YYYY-MM-DD)"),
     user_context: dict = Depends(get_authenticated_user)
@@ -58,9 +60,9 @@ async def get_ledger_events(
         if user_id:
             query = query.eq("user_id", user_id)
 
-        # Filter by event_name if provided
-        if event_name:
-            query = query.eq("event_name", event_name)
+        # Filter by action if provided
+        if action:
+            query = query.eq("action", action)
 
         if date_from:
             query = query.gte("created_at", f"{date_from}T00:00:00Z")
@@ -180,6 +182,14 @@ async def record_ledger_event(
     """
     Record a ledger event from the frontend.
     Used for tracking read events like artefact_opened.
+
+    Required fields:
+    - action: The action being performed (e.g., artefact_opened)
+    - entity_type: Type of entity (e.g., work_order, fault)
+    - entity_id: UUID of the entity
+
+    Optional:
+    - metadata: Additional context data
     """
     try:
         tenant_alias = user_context.get("tenant_key_alias", "")
@@ -189,36 +199,69 @@ async def record_ledger_event(
         if not yacht_id or not user_id:
             raise HTTPException(status_code=400, detail="Missing yacht_id or user_id in context")
 
-        event_name = event_data.get("event_name")
-        payload = event_data.get("payload", {})
+        # Support both old (event_name) and new (action) field names for backwards compatibility
+        action_name = event_data.get("action") or event_data.get("event_name")
+        entity_type = event_data.get("entity_type") or event_data.get("payload", {}).get("artefact_type", "unknown")
+        entity_id = event_data.get("entity_id") or event_data.get("payload", {}).get("artefact_id")
+        metadata = event_data.get("metadata") or event_data.get("payload", {})
 
-        if not event_name:
-            raise HTTPException(status_code=400, detail="event_name is required")
+        if not action_name:
+            raise HTTPException(status_code=400, detail="action or event_name is required")
+
+        if not entity_id:
+            raise HTTPException(status_code=400, detail="entity_id is required")
 
         db_client = _get_tenant_client(tenant_alias)
+
+        # Map action to event_type (read events map to specific types)
+        event_type_map = {
+            "artefact_opened": "update",  # Read events are tracked as updates
+            "situation_ended": "status_change",
+            "view": "update",
+            "open": "update",
+        }
+        event_type = event_type_map.get(action_name, "update")
+
+        # Generate proof_hash
+        hash_input = json.dumps({
+            "yacht_id": str(yacht_id),
+            "user_id": str(user_id),
+            "event_type": event_type,
+            "entity_type": entity_type,
+            "entity_id": str(entity_id),
+            "action": action_name,
+            "timestamp": datetime.utcnow().isoformat()
+        }, sort_keys=True)
+        proof_hash = hashlib.sha256(hash_input.encode()).hexdigest()
 
         # Build ledger event using correct schema
         ledger_event = {
             "yacht_id": str(yacht_id),
             "user_id": str(user_id),
-            "event_name": event_name,
-            "payload": {
-                **payload,
+            "event_type": event_type,
+            "entity_type": entity_type,
+            "entity_id": str(entity_id),
+            "action": action_name,
+            "user_role": user_context.get("role", "member"),
+            "source_context": "search",  # Frontend events come from search
+            "metadata": {
+                **metadata,
                 "user_role": user_context.get("role", "member"),
-            }
+            },
+            "proof_hash": proof_hash
         }
 
         try:
             db_client.table("ledger_events").insert(ledger_event).execute()
-            logger.info(f"[Ledger] Recorded {event_name} for user {user_id}")
+            logger.info(f"[Ledger] Recorded {action_name} for user {user_id}")
         except Exception as insert_err:
             if "204" in str(insert_err):
-                logger.info(f"[Ledger] {event_name} recorded (204)")
+                logger.info(f"[Ledger] {action_name} recorded (204)")
             else:
-                logger.warning(f"[Ledger] Failed to record {event_name}: {insert_err}")
+                logger.warning(f"[Ledger] Failed to record {action_name}: {insert_err}")
                 raise
 
-        return {"success": True, "message": f"Event {event_name} recorded"}
+        return {"success": True, "message": f"Event {action_name} recorded"}
 
     except HTTPException:
         raise
