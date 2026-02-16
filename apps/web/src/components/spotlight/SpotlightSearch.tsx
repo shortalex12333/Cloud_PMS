@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, type LucideIcon } from 'lucide-react';
+import { Search, X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, type LucideIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,8 @@ import { EmailInboxView } from '@/components/email/EmailInboxView';
 import SituationRouter from '@/components/situations/SituationRouter';
 import SuggestedActions from '@/components/SuggestedActions';
 import { LedgerPanel } from '@/components/ledger';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ReceivingDocumentUpload } from '@/components/receiving/ReceivingDocumentUpload';
 import { toast } from 'sonner';
 import { executeAction } from '@/lib/actionClient';
 import { supabase } from '@/lib/supabaseClient';
@@ -250,6 +252,7 @@ export default function SpotlightSearch({
   }, []);
   const [showSettings, setShowSettings] = useState(false);
   const [showLedger, setShowLedger] = useState(false);
+  const [showReceivingUpload, setShowReceivingUpload] = useState(false);
   // Local state fallback when not in SurfaceProvider
   const [localShowEmailList, setLocalShowEmailList] = useState(false);
   const [localEmailScopeActive, setLocalEmailScopeActive] = useState(false);
@@ -704,6 +707,33 @@ export default function SpotlightSearch({
     inputRef.current?.focus();
   }, [clear]);
 
+  /**
+   * Handle receiving upload complete - navigate to new receiving
+   */
+  const handleReceivingUploadComplete = useCallback((receivingId: string, documentId: string, extractedData: any) => {
+    setShowReceivingUpload(false);
+
+    // Open the new receiving in the context panel
+    if (surfaceContext) {
+      surfaceContext.showContext('receiving', receivingId, {
+        title: 'New Receiving',
+        subtitle: extractedData?.supplier_name || 'Document uploaded',
+        type: 'receiving',
+      });
+
+      // Record ledger event for receiving created
+      recordLedgerEvent('receiving_created', {
+        receiving_id: receivingId,
+        document_id: documentId,
+        has_extracted_data: !!extractedData,
+      });
+
+      toast.success('Receiving logged', {
+        description: extractedData?.supplier_name || 'Document uploaded successfully',
+      });
+    }
+  }, [surfaceContext]);
+
   const hasResults = results.length > 0 || groupedResults.totalResults > 0;
   const hasQuery = query.trim().length > 0;
   const effectiveLoading = emailScopeActive ? emailLoading : isLoading;
@@ -1045,6 +1075,17 @@ export default function SpotlightSearch({
 
         {/* Action Buttons - below panel, centered */}
         <div className="flex justify-center items-center gap-2 mt-4">
+          {/* Log Receiving - Primary entry point for receiving journey */}
+          <button
+            onClick={() => setShowReceivingUpload(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full transition-colors font-medium bg-celeste-accent text-celeste-text-title hover:bg-celeste-accent-hover"
+            aria-label="Log Receiving"
+            data-testid="log-receiving-button"
+          >
+            <Plus className="w-5 h-5" strokeWidth={2} />
+            <span className="text-celeste-base">Log</span>
+          </button>
+
           {/* Email Scope Toggle - Prominent button to switch search scope */}
           <button
             onClick={() => {
@@ -1130,6 +1171,25 @@ export default function SpotlightSearch({
         isOpen={showLedger}
         onClose={() => setShowLedger(false)}
       />
+
+      {/* Receiving Upload Modal - Global entry point for logging receivings */}
+      <Dialog open={showReceivingUpload} onOpenChange={setShowReceivingUpload}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-celeste-bg-secondary border-celeste-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-celeste-text-title">
+              <Camera className="h-5 w-5 text-[var(--celeste-accent)]" />
+              Log Receiving
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-celeste-sm text-celeste-text-secondary mb-4">
+            Capture or upload an invoice, packing slip, or photo of received goods.
+            We'll extract the details automatically.
+          </p>
+          <ReceivingDocumentUpload
+            onComplete={handleReceivingUploadComplete}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Situation Router - Renders appropriate viewer based on situation type */}
       <SituationRouter
