@@ -57,6 +57,42 @@ const DomainIconMap: Record<string, LucideIcon> = {
 };
 
 // ============================================================================
+// LEDGER TRACKING
+// ============================================================================
+
+const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+async function recordLedgerEvent(
+  eventName: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return;
+
+    // Call Render API to record ledger event
+    const response = await fetch(`${RENDER_API_URL}/v1/ledger/record`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        event_name: eventName,
+        payload,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[Ledger] Failed to record event:', eventName, response.status);
+    }
+  } catch (err) {
+    console.warn('[Ledger] Error recording event:', err);
+  }
+}
+
+// ============================================================================
 // ROLLING PLACEHOLDER SUGGESTIONS
 // ============================================================================
 
@@ -496,6 +532,15 @@ export default function SpotlightSearch({
     if (surfaceContext) {
       console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', entityType, result.id);
       surfaceContext.showContext(entityType, result.id, contextMetadata);
+
+      // Record ledger event for artefact opened
+      recordLedgerEvent('artefact_opened', {
+        artefact_type: entityType,
+        artefact_id: result.id,
+        display_name: result.title,
+        domain: domain,
+      });
+
       onClose?.(); // Close spotlight after opening context
     } else {
       // Fallback for when not in SurfaceProvider (shouldn't happen in /app)
