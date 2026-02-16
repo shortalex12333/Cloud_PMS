@@ -1438,19 +1438,20 @@ ACTION_REGISTRY: Dict[str, ActionDefinition] = {
 
     "reject_receiving": ActionDefinition(
         action_id="reject_receiving",
-        label="Reject Receiving",
+        label="Flag Receiving Issue",
         endpoint="/v1/receiving/reject",
         handler_type=HandlerType.INTERNAL,
         method="POST",
-        allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"],
+        # ALL roles can flag receiving issues - crew discovers discrepancies, HOD gets notified
+        allowed_roles=["crew", "deckhand", "steward", "engineer", "eto", "chief_engineer", "chief_officer", "chief_steward", "purser", "captain", "manager"],
         required_fields=["yacht_id", "receiving_id", "reason"],
         domain="receiving",
         variant=ActionVariant.MUTATE,
-        search_keywords=["reject", "decline", "refuse", "cancel"],
+        search_keywords=["reject", "flag", "issue", "discrepancy", "damaged", "missing", "wrong"],
         field_metadata=[
             FieldMetadata("yacht_id", FieldClassification.CONTEXT),
             FieldMetadata("receiving_id", FieldClassification.REQUIRED, description="Receiving record ID"),
-            FieldMetadata("reason", FieldClassification.REQUIRED, description="Reason for rejection"),
+            FieldMetadata("reason", FieldClassification.REQUIRED, description="Reason for flagging issue (dropdown selection)"),
         ],
     ),
 
