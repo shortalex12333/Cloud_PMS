@@ -8,22 +8,31 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Camera, Upload, FileText, CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw, Save } from 'lucide-react';
+import { Camera, Upload, FileText, CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw, Save, Plus } from 'lucide-react';
 import { receivingApi, CelesteApiError } from '@/lib/apiClient';
 import { saveExtractedData, autoPopulateLineItems, updateReceivingHeader } from '@/lib/receiving/saveExtractedData';
 import { supabase } from '@/lib/supabaseClient';
+import { executeAction } from '@/lib/actionClient';
 import { cn } from '@/lib/utils';
 
 interface ReceivingDocumentUploadProps {
-  receivingId: string;
-  onComplete?: (documentId: string, extractedData: any) => void;
+  /**
+   * Receiving ID to attach document to.
+   * If not provided, a new receiving record will be created.
+   */
+  receivingId?: string;
+  /**
+   * Callback when upload + save is complete
+   * Returns the receiving ID (new or existing) and extracted data
+   */
+  onComplete?: (receivingId: string, documentId: string, extractedData: any) => void;
   defaultDocType?: 'invoice' | 'packing_slip' | 'photo' | 'other';
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'processing' | 'success' | 'error' | 'retrying';
 
 export function ReceivingDocumentUpload({
-  receivingId,
+  receivingId: initialReceivingId,
   onComplete,
   defaultDocType = 'other',
 }: ReceivingDocumentUploadProps) {
@@ -38,6 +47,9 @@ export function ReceivingDocumentUpload({
   const [retryCount, setRetryCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  // Track the receiving ID - either from props or created during upload
+  const [effectiveReceivingId, setEffectiveReceivingId] = useState<string | null>(initialReceivingId || null);
+  const isNewReceiving = !initialReceivingId;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -123,8 +135,43 @@ export function ReceivingDocumentUpload({
     }
   };
 
+  // Create new receiving record if needed
+  const createReceivingIfNeeded = async (): Promise<string> => {
+    // If we already have a receiving ID, use it
+    if (effectiveReceivingId) {
+      return effectiveReceivingId;
+    }
+
+    // Get yacht_id from current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    const yachtId = user.user_metadata?.yacht_id;
+    if (!yachtId) {
+      throw new Error('Yacht ID not found');
+    }
+
+    // Create a new draft receiving via the action system
+    console.log('[ReceivingDocumentUpload] Creating new receiving record...');
+    const actionResult = await executeAction('create_receiving', {
+      yacht_id: yachtId,
+      status: 'draft',
+      received_date: new Date().toISOString().split('T')[0],
+    });
+
+    if (actionResult.status !== 'success' || !actionResult.result?.receiving_id) {
+      throw new Error(actionResult.message || 'Failed to create receiving record');
+    }
+
+    const newReceivingId = actionResult.result.receiving_id as string;
+    setEffectiveReceivingId(newReceivingId);
+    console.log('[ReceivingDocumentUpload] Created receiving:', newReceivingId);
+    return newReceivingId;
+  };
+
   // Upload with retry logic for 503
-  const uploadWithRetry = async (file: File, attempt: number = 1): Promise<any> => {
+  const uploadWithRetry = async (recvId: string, file: File, attempt: number = 1): Promise<any> => {
     const maxAttempts = 3;
     const retryDelay = 30000; // 30 seconds for Render spin-up
 
@@ -132,14 +179,14 @@ export function ReceivingDocumentUpload({
       setStatus(attempt > 1 ? 'retrying' : 'uploading');
       setRetryCount(attempt);
 
-      const result = await receivingApi.uploadDocument(receivingId, file, docType, comment);
+      const result = await receivingApi.uploadDocument(recvId, file, docType, comment);
       return result;
     } catch (err) {
       if (err instanceof CelesteApiError && err.status === 503 && attempt < maxAttempts) {
         // 503 Service Unavailable - Render service spinning up
         console.log(`[Upload] Attempt ${attempt} failed with 503, retrying in ${retryDelay / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        return uploadWithRetry(file, attempt + 1);
+        return uploadWithRetry(recvId, file, attempt + 1);
       }
       throw err;
     }
@@ -154,18 +201,22 @@ export function ReceivingDocumentUpload({
     setRetryCount(0);
 
     try {
-      const result = await uploadWithRetry(selectedFile);
+      // Step 1: Create receiving if needed (for "+" new receiving flow)
+      const recvId = await createReceivingIfNeeded();
+
+      // Step 2: Upload document to the receiving
+      const result = await uploadWithRetry(recvId, selectedFile);
 
       setStatus('success');
       setDocumentId(result.document_id);
       setExtractedData(result.extracted_data || {});
 
-      if (onComplete) {
-        onComplete(result.document_id, result.extracted_data);
-      }
+      // Don't call onComplete yet - wait for user to save
     } catch (err) {
       setStatus('error');
       if (err instanceof CelesteApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('Upload failed. Please try again.');
@@ -175,7 +226,7 @@ export function ReceivingDocumentUpload({
 
   // Handle save to database
   const handleSave = async () => {
-    if (!documentId) return;
+    if (!documentId || !effectiveReceivingId) return;
 
     setIsSaving(true);
     setError(null);
@@ -194,7 +245,7 @@ export function ReceivingDocumentUpload({
 
       // Save document link and extraction results
       const saveResult = await saveExtractedData(
-        receivingId,
+        effectiveReceivingId,
         yachtId,
         documentId,
         docType,
@@ -208,12 +259,12 @@ export function ReceivingDocumentUpload({
 
       // Optionally auto-populate line items if extracted
       if (extractedData?.line_items && Array.isArray(extractedData.line_items)) {
-        await autoPopulateLineItems(receivingId, yachtId, extractedData.line_items);
+        await autoPopulateLineItems(effectiveReceivingId, yachtId, extractedData.line_items);
       }
 
       // Optionally update header fields if empty
       if (extractedData?.vendor_name || extractedData?.vendor_reference || extractedData?.total) {
-        await updateReceivingHeader(receivingId, {
+        await updateReceivingHeader(effectiveReceivingId, {
           vendor_name: extractedData.vendor_name,
           vendor_reference: extractedData.vendor_reference,
           total: extractedData.total,
@@ -223,6 +274,11 @@ export function ReceivingDocumentUpload({
 
       setSaveSuccess(true);
       setIsSaving(false);
+
+      // Notify parent that save is complete
+      if (onComplete && effectiveReceivingId && documentId) {
+        onComplete(effectiveReceivingId, documentId, extractedData);
+      }
     } catch (err) {
       setIsSaving(false);
       if (err instanceof Error) {
@@ -241,6 +297,10 @@ export function ReceivingDocumentUpload({
     setExtractedData(null);
     setDocumentId(null);
     setError(null);
+    // Only reset effectiveReceivingId if this was a new receiving flow
+    if (isNewReceiving) {
+      setEffectiveReceivingId(null);
+    }
     setRetryCount(0);
     setIsSaving(false);
     setSaveSuccess(false);
@@ -251,8 +311,21 @@ export function ReceivingDocumentUpload({
     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <FileText className="h-6 w-6 text-primary" />
-        <h3 className="text-lg font-semibold text-foreground">Upload Document</h3>
+        {isNewReceiving ? (
+          <Plus className="h-6 w-6 text-primary" />
+        ) : (
+          <FileText className="h-6 w-6 text-primary" />
+        )}
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">
+            {isNewReceiving ? 'Log New Receiving' : 'Add Document'}
+          </h3>
+          {isNewReceiving && (
+            <p className="text-sm text-muted-foreground">
+              Take a photo of your invoice, packing slip, or delivered items
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Document Type Selector */}

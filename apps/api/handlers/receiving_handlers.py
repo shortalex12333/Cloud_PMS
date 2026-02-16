@@ -203,27 +203,23 @@ def _create_receiving_adapter(handlers: ReceivingHandlers):
         linked_work_order_id = params.get("linked_work_order_id")
         request_context = params.get("request_context")
 
-        # HARDENING: Validate vendor_name (prevent NULL, empty, too long)
-        if vendor_name is None:
-            return {
-                "status": "error",
-                "error_code": "INVALID_VALUE",
-                "message": "vendor_name cannot be null"
-            }
-        if isinstance(vendor_name, str):
-            vendor_name = vendor_name.strip()
-            if len(vendor_name) == 0:
-                return {
-                    "status": "error",
-                    "error_code": "INVALID_VALUE",
-                    "message": "vendor_name cannot be empty"
-                }
-            if len(vendor_name) > 255:
-                return {
-                    "status": "error",
-                    "error_code": "INVALID_LENGTH",
-                    "message": "vendor_name must be 255 characters or less"
-                }
+        # HARDENING: Validate vendor_name if provided (optional for draft)
+        # For "+" flow: vendor_name is not known yet - will be populated from OCR later
+        if vendor_name is not None:
+            if isinstance(vendor_name, str):
+                vendor_name = vendor_name.strip()
+                if len(vendor_name) == 0:
+                    vendor_name = None  # Treat empty string as NULL
+                elif len(vendor_name) > 255:
+                    return {
+                        "status": "error",
+                        "error_code": "INVALID_LENGTH",
+                        "message": "vendor_name must be 255 characters or less"
+                    }
+
+        # Use placeholder if vendor_name is not provided (draft receiving)
+        if not vendor_name:
+            vendor_name = "Pending OCR"
 
         # Insert receiving record via RPC function (bypasses MASTER/TENANT JWT issue)
         # The RPC function uses SECURITY DEFINER and checks auth_users_roles internally
