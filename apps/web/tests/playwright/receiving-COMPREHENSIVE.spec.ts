@@ -163,7 +163,7 @@ test.describe('RECEIVING LENS - COMPREHENSIVE', () => {
   // SECTION 2: PERMISSION BOUNDARIES
   // ==========================================================================
 
-  test('PERMISSIONS: HOD can create/edit but NOT accept', async ({ page }) => {
+  test('PERMISSIONS: HOD can create/edit AND accept (per registry)', async ({ page }) => {
     console.log('\n🎯 SECTION 2: HOD Permissions\n');
 
     await loginAs(page, 'hod');
@@ -194,49 +194,59 @@ test.describe('RECEIVING LENS - COMPREHENSIVE', () => {
     expect(prepareResult.status).toBe(200);
     console.log('✓ HOD can prepare acceptance');
 
-    // CANNOT execute (not in allowed roles)
+    // CAN execute (chief_engineer IS in allowed roles per registry.py)
+    // Registry: allowed_roles=["chief_engineer", "chief_officer", "purser", "captain", "manager"]
     const executeResult = await apiCall(jwt, 'accept_receiving', {
       receiving_id: receivingId,
       mode: 'execute',
       signature: { name: 'HOD', title: 'Chief Engineer', timestamp: new Date().toISOString() },
     });
-    expect([403, 401]).toContain(executeResult.status);
-    console.log('✓ HOD blocked from executing acceptance');
+    expect(executeResult.status).toBe(200);
+    expect(executeResult.data.new_status).toBe('accepted');
+    console.log('✓ HOD (chief_engineer) CAN execute acceptance per registry');
 
     console.log('\n✅ SECTION 2 COMPLETE: HOD permissions correct\n');
   });
 
-  test('PERMISSIONS: Crew can view but NOT mutate', async ({ page }) => {
+  test('PERMISSIONS: Crew can create (draft mode) and view, but NOT accept', async ({ page }) => {
     console.log('\n🎯 SECTION 3: Crew Permissions\n');
 
     await loginAs(page, 'crew');
     const jwt = await getJWT(page);
 
-    // CANNOT create
+    // CAN create (per registry - all crew can create draft receivings)
+    // Registry: allowed_roles=["crew", "deckhand", "steward", "chef", "bosun", "engineer", ...]
     const createResult = await apiCall(jwt, 'create_receiving', {
       vendor_reference: `E2E-CREW-${Date.now()}`,
     });
-    expect(createResult.status).toBe(403);
-    console.log('✓ Crew blocked from creating');
+    expect(createResult.status).toBe(200);
+    const receivingId = createResult.data.receiving_id;
+    console.log('✓ Crew CAN create receiving (draft mode per registry)');
 
-    // CAN view (find an existing one first)
-    // Create one as captain first
-    await loginAs(page, 'captain');
-    const captainJwt = await getJWT(page);
-    const setup = await apiCall(captainJwt, 'create_receiving', {
-      vendor_reference: `E2E-FOR-CREW-${Date.now()}`,
+    // CAN add items (owner can add items to their own receiving)
+    const itemResult = await apiCall(jwt, 'add_receiving_item', {
+      receiving_id: receivingId,
+      description: 'Crew Test Item',
+      quantity_received: 5,
     });
-    const testId = setup.data.receiving_id;
+    expect(itemResult.status).toBe(200);
+    console.log('✓ Crew can add items to own receiving');
 
-    // Switch back to crew
-    await loginAs(page, 'crew');
-    const crewJwt = await getJWT(page);
-
-    const viewResult = await apiCall(crewJwt, 'view_receiving_history', {
-      receiving_id: testId,
+    // CAN view
+    const viewResult = await apiCall(jwt, 'view_receiving_history', {
+      receiving_id: receivingId,
     });
     expect(viewResult.status).toBe(200);
     console.log('✓ Crew can view receiving');
+
+    // CANNOT accept (not in accept_receiving allowed_roles)
+    const acceptResult = await apiCall(jwt, 'accept_receiving', {
+      receiving_id: receivingId,
+      mode: 'execute',
+      signature: { name: 'Crew', title: 'Deckhand', timestamp: new Date().toISOString() },
+    });
+    expect([403, 401]).toContain(acceptResult.status);
+    console.log('✓ Crew blocked from accepting (financial accountability)');
 
     console.log('\n✅ SECTION 3 COMPLETE: Crew permissions correct\n');
   });
