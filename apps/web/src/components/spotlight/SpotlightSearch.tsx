@@ -2,20 +2,21 @@
 
 /**
  * CelesteOS Spotlight Search
- * ChatGPT-style search bar - pill shape, fully tokenized
+ * ChatGPT-style search bar - pill shape, shadow only, no border
  *
  * Design Spec:
  * - Pill shape (999px border-radius)
  * - 56px height, max 760px width
- * - Leading "+" button (36x36px circle)
- * - Trailing Mic and Action icons
- * - Secondary search surface (48px height)
+ * - Leading "+" button opens Log Receiving modal
+ * - NO mic icon, NO search icon (minimal per ChatGPT)
+ * - NO category buttons (Faults, Work Orders, etc.)
+ * - Shadow only, no border
  * - Utility icon row (Email, Menu, Settings)
  * - ALL values tokenized via CSS custom properties
  */
 
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Search, X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, Mic, Menu, type LucideIcon } from 'lucide-react';
+import { X, Settings, BookOpen, Mail, ChevronDown, AlertTriangle, ClipboardList, Package, FileText, Award, ArrowRightLeft, ShoppingCart, Receipt, Users, Clock, CheckSquare, MoreHorizontal, Plus, Camera, Paperclip, Menu, type LucideIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -774,20 +775,21 @@ export default function SpotlightSearch({
         style={{ maxWidth: 'var(--celeste-spotlight-width)' }}
       >
         {/* Main Spotlight Panel - ChatGPT-style pill shape
+            NO border, shadow only (per ChatGPT spec)
             ALL values tokenized via CSS custom properties */}
         <div
           className={cn(
             // ChatGPT-style pill shape with tokenized dimensions
             'w-full font-body',
             'bg-[var(--celeste-spotlight-bg)]',
-            'border border-[var(--celeste-spotlight-border)]',
             'rounded-[var(--celeste-spotlight-radius)]',
-            // Shadow and blur effects
-            'shadow-[var(--celeste-material-shadow)]',
+            // Shadow only - NO border (ChatGPT spec)
+            'shadow-[0_2px_20px_rgba(0,0,0,0.12),0_8px_32px_rgba(0,0,0,0.08)]',
+            'dark:shadow-[0_2px_20px_rgba(0,0,0,0.4),0_8px_32px_rgba(0,0,0,0.3)]',
             'backdrop-blur-[var(--celeste-material-blur)]',
             'animate-spotlight-in',
-            // Email scope: accent background and border
-            emailScopeActive && 'bg-celeste-accent/20 border-2 border-celeste-accent ring-2 ring-celeste-accent/40'
+            // Email scope: accent ring only (no border)
+            emailScopeActive && 'bg-celeste-accent/20 ring-2 ring-celeste-accent/40'
           )}
           data-email-scope={emailScopeActive}
         >
@@ -797,12 +799,10 @@ export default function SpotlightSearch({
               'flex items-center',
               'h-[var(--celeste-spotlight-height)]',
               'px-[var(--celeste-spotlight-padding-x)]',
-              'gap-[var(--celeste-spotlight-btn-gap)]',
-              // Border only when showing results
-              (hasQuery || hasResults) && 'border-b border-[var(--celeste-spotlight-border)]'
+              'gap-[var(--celeste-spotlight-btn-gap)]'
             )}
           >
-            {/* Leading "+" Button - 36x36 circle */}
+            {/* Leading "+" Button - 36x36 circle, no border */}
             <button
               onClick={() => setShowReceivingUpload(true)}
               className={cn(
@@ -811,14 +811,13 @@ export default function SpotlightSearch({
                 'rounded-[var(--celeste-spotlight-btn-radius)]',
                 'flex items-center justify-center',
                 'bg-[var(--celeste-spotlight-btn-bg)]',
-                'border border-[var(--celeste-spotlight-btn-border)]',
                 'text-[var(--celeste-spotlight-btn-text)]',
                 'transition-[background-color,opacity] duration-[120ms] ease-out',
                 'hover:bg-[var(--celeste-spotlight-btn-hover-bg)]',
                 'active:opacity-90',
-                'focus:outline-none focus:border-[var(--celeste-accent)]'
+                'focus:outline-none focus:ring-2 focus:ring-[var(--celeste-accent)]/50'
               )}
-              aria-label="Add attachment"
+              aria-label="Log Receiving"
               data-testid="spotlight-add-button"
             >
               <Plus className="w-[var(--celeste-spotlight-btn-icon-size)] h-[var(--celeste-spotlight-btn-icon-size)]" strokeWidth={1.5} />
@@ -891,45 +890,6 @@ export default function SpotlightSearch({
                   <X className="w-3 h-3 text-[var(--celeste-spotlight-bg)]" strokeWidth={3} />
                 </button>
               )}
-
-              {/* Mic Button */}
-              <button
-                className={cn(
-                  'flex items-center justify-center',
-                  'w-[var(--celeste-spotlight-btn-size)] h-[var(--celeste-spotlight-btn-size)]',
-                  'rounded-[var(--celeste-spotlight-btn-radius)]',
-                  'text-[var(--celeste-spotlight-icon)]',
-                  'transition-colors duration-[120ms] ease-out',
-                  'hover:text-[var(--celeste-spotlight-icon-hover)]',
-                  'hover:bg-[var(--celeste-spotlight-btn-hover-bg)]',
-                  'focus:outline-none'
-                )}
-                aria-label="Voice input"
-                data-testid="spotlight-mic-button"
-              >
-                <Mic className="w-[var(--celeste-spotlight-btn-icon-size)] h-[var(--celeste-spotlight-btn-icon-size)]" strokeWidth={1.5} />
-              </button>
-
-              {/* Search/Action Button */}
-              <button
-                onClick={() => query && search(query)}
-                className={cn(
-                  'flex items-center justify-center',
-                  'w-[var(--celeste-spotlight-btn-size)] h-[var(--celeste-spotlight-btn-size)]',
-                  'rounded-[var(--celeste-spotlight-btn-radius)]',
-                  query
-                    ? 'bg-celeste-accent text-[var(--celeste-spotlight-bg)]'
-                    : 'text-[var(--celeste-spotlight-icon)]',
-                  'transition-all duration-[120ms] ease-out',
-                  !query && 'hover:text-[var(--celeste-spotlight-icon-hover)] hover:bg-[var(--celeste-spotlight-btn-hover-bg)]',
-                  query && 'hover:bg-celeste-accent-hover',
-                  'focus:outline-none'
-                )}
-                aria-label={query ? 'Search' : 'Submit'}
-                data-testid="spotlight-search-button"
-              >
-                <Search className="w-[var(--celeste-spotlight-btn-icon-size)] h-[var(--celeste-spotlight-btn-icon-size)]" strokeWidth={1.5} />
-              </button>
             </div>
           </div>
 
@@ -1147,43 +1107,6 @@ export default function SpotlightSearch({
           )}
         </div>
 
-        {/* Secondary Search Surface - Suggestion bar (ChatGPT-style)
-            Height: 48px, radius: 24px, tokenized */}
-        {!hasQuery && !hasResults && (
-          <div
-            className={cn(
-              'flex items-center justify-center',
-              'h-[var(--celeste-spotlight-secondary-height)]',
-              'mt-[var(--celeste-spotlight-secondary-gap)]',
-              'px-[var(--celeste-spotlight-padding-x)]',
-              'gap-[var(--celeste-spotlight-secondary-gap)]'
-            )}
-          >
-            {/* Quick suggestion chips */}
-            {['Faults', 'Work Orders', 'Equipment', 'Documents'].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => {
-                  handleQueryChange(suggestion.toLowerCase());
-                  search(suggestion.toLowerCase());
-                }}
-                className={cn(
-                  'px-4 py-2',
-                  'rounded-[var(--celeste-spotlight-secondary-radius)]',
-                  'text-celeste-sm font-medium',
-                  'bg-[var(--celeste-spotlight-btn-bg)]',
-                  'border border-[var(--celeste-spotlight-btn-border)]',
-                  'text-[var(--celeste-spotlight-btn-text)]',
-                  'transition-all duration-[120ms] ease-out',
-                  'hover:bg-[var(--celeste-spotlight-btn-hover-bg)]',
-                  'hover:text-[var(--celeste-spotlight-icon-hover)]'
-                )}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Utility Icon Row - Email ≡, Menu ≡, Settings ⚙
             Centered below search bar, tokenized spacing */}
