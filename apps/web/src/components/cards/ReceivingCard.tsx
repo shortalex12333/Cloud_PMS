@@ -1,7 +1,8 @@
 /**
  * ReceivingCard Component
  *
- * Displays receiving record information (PO, invoice, delivery) with status and actions
+ * Displays receiving record information (PO, invoice, delivery) with status and actions.
+ * Includes child table sections for line items and attached documents.
  */
 
 'use client';
@@ -10,23 +11,55 @@ import { Package, Calendar, FileText, CheckCircle, Clock, XCircle, AlertCircle }
 import { ActionButton } from '@/components/actions/ActionButton';
 import { cn } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
+import {
+  ReceivingLineItemsSection,
+  ReceivingDocumentsSection,
+  type ReceivingLineItem,
+  type ReceivingDocument,
+} from '@/components/lens/receiving-sections';
 
 interface ReceivingCardProps {
   receiving: {
     id: string;
     vendor_name?: string;
     vendor_reference?: string; // PO number, invoice number, etc.
+    po_number?: string; // Alternative PO field
     received_date?: string;
     status?: 'draft' | 'in_review' | 'accepted' | 'rejected';
     total?: number;
     currency?: string;
     notes?: string;
     received_by?: string;
+    /** Line items from pms_receiving_items */
+    items?: ReceivingLineItem[];
+    /** Documents from pms_receiving_documents */
+    documents?: ReceivingDocument[];
   };
   actions?: MicroAction[];
+  /** Whether user can add items (HOD+ roles) */
+  canAddItem?: boolean;
+  /** Whether user can add documents (HOD+ roles) */
+  canAddDocument?: boolean;
+  /** Callback when Add Item is clicked */
+  onAddItem?: () => void;
+  /** Callback when Add Document is clicked */
+  onAddDocument?: () => void;
+  /** Callback when a part is clicked (navigate to Part lens) */
+  onPartClick?: (partId: string) => void;
+  /** Callback when a document is clicked (navigate to Document lens) */
+  onDocumentClick?: (documentId: string) => void;
 }
 
-export function ReceivingCard({ receiving, actions = [] }: ReceivingCardProps) {
+export function ReceivingCard({
+  receiving,
+  actions = [],
+  canAddItem = false,
+  canAddDocument = false,
+  onAddItem,
+  onAddDocument,
+  onPartClick,
+  onDocumentClick,
+}: ReceivingCardProps) {
   const getStatusInfo = (status?: string) => {
     switch (status) {
       case 'accepted':
@@ -109,7 +142,16 @@ export function ReceivingCard({ receiving, actions = [] }: ReceivingCardProps) {
             </span>
           </div>
 
-          {/* Reference Number (PO/Invoice) */}
+          {/* PO Number (if different from vendor_reference) */}
+          {receiving.po_number && receiving.po_number !== receiving.vendor_reference && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+              <FileText className="h-4 w-4" />
+              <span className="font-medium">PO:</span>
+              <span>{receiving.po_number}</span>
+            </div>
+          )}
+
+          {/* Reference Number (Invoice/AWB) */}
           {receiving.vendor_reference && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
               <FileText className="h-4 w-4" />
@@ -156,6 +198,39 @@ export function ReceivingCard({ receiving, actions = [] }: ReceivingCardProps) {
           )}
         </div>
       </div>
+
+      {/* Child Table Sections - Line Items and Documents */}
+      {(receiving.items || receiving.documents) && (
+        <div className="mt-4 space-y-4 border-t border-border pt-4">
+          {/* Line Items Section */}
+          {receiving.items !== undefined && (
+            <ReceivingLineItemsSection
+              items={receiving.items.map((item) => ({
+                ...item,
+                onPartClick: item.part_id && onPartClick
+                  ? () => onPartClick(item.part_id!)
+                  : undefined,
+              }))}
+              canAddItem={canAddItem}
+              onAddItem={onAddItem}
+            />
+          )}
+
+          {/* Documents Section */}
+          {receiving.documents !== undefined && (
+            <ReceivingDocumentsSection
+              documents={receiving.documents.map((doc) => ({
+                ...doc,
+                onDocumentClick: onDocumentClick
+                  ? () => onDocumentClick(doc.document_id)
+                  : undefined,
+              }))}
+              canAddDocument={canAddDocument}
+              onAddDocument={onAddDocument}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
