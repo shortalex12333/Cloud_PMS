@@ -10,7 +10,7 @@
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
-| 0 | Design System | Implement design tokens, base components, remove dead code | DS-01, DS-02, DS-03, DS-04, DS-05 | ○ |
+| 0 | Design System | Complete    | 2026-02-17 | ○ |
 | 1 | Receiving | Complete receiving lens end-to-end | RECV-01, RECV-02, RECV-03, RECV-04 | ○ |
 | 2 | Parts/Inventory | Complete parts and inventory lens end-to-end | PART-01, PART-02, PART-03, PART-04, PART-05 | ○ |
 | 3 | Equipment | Complete equipment lens end-to-end | EQUIP-01, EQUIP-02, EQUIP-03, EQUIP-04, EQUIP-05 | ○ |
@@ -255,7 +255,7 @@
 
 **Requirements:** WO-03, CERT-03, CERT-04, HAND-02, HAND-03, WARR-03, WARR-04, WARR-05, SHOP-05, EMAIL-01, CLEAN-01, CLEAN-04
 
-**Plans:** 8/8 plans complete
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 13-01-PLAN.md — WorkOrder reassign/archive + remove email disabled message

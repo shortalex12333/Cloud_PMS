@@ -11,11 +11,11 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 ### Design System (DS) — BLOCKING
 
-- [ ] **DS-01**: tokens.css implemented with dark + light CSS custom properties
-- [ ] **DS-02**: tailwind.config.js extended with semantic token mappings
-- [ ] **DS-03**: Base components built (StatusPill, SectionContainer, GhostButton, PrimaryButton, EntityLink, Toast)
-- [ ] **DS-04**: VitalSignsRow component built and rendering
-- [ ] **DS-05**: All "email integration is off" instances removed
+- [x] **DS-01**: tokens.css implemented with dark + light CSS custom properties
+- [x] **DS-02**: tailwind.config.js extended with semantic token mappings
+- [x] **DS-03**: Base components built (StatusPill, SectionContainer, GhostButton, PrimaryButton, EntityLink, Toast)
+- [x] **DS-04**: VitalSignsRow component built and rendering
+- [x] **DS-05**: All "email integration is off" instances removed
 
 ### Receiving Lens (RECV)
 
