@@ -168,20 +168,57 @@
 
     /* =========================================================================
        SPOTLIGHT - System Entry Point
-       Material-based approach (Apple-grade)
+       ChatGPT-style search bar - pill shape, tokenized
        ========================================================================= */
 
-    /* Dimensions */
-    --celeste-spotlight-width: 720px;
+    /* Primary Search Bar - Pill shape */
+    --celeste-spotlight-width: 760px;
     --celeste-spotlight-height: 56px;
-    --celeste-spotlight-radius: 14px;
-    --celeste-spotlight-padding-x: 24px;
+    --celeste-spotlight-radius: 999px;         /* Full pill radius */
+    --celeste-spotlight-padding-x: 20px;
+    --celeste-spotlight-padding-y: 10px;
+
+    /* Secondary Search Surface (suggestion bar) */
+    --celeste-spotlight-secondary-height: 48px;
+    --celeste-spotlight-secondary-radius: 24px;
+    --celeste-spotlight-secondary-gap: 8px;
+
+    /* Control Buttons */
+    --celeste-spotlight-btn-size: 36px;
+    --celeste-spotlight-btn-radius: 999px;     /* Circular buttons */
+    --celeste-spotlight-btn-icon-size: 18px;
+    --celeste-spotlight-btn-gap: 8px;
+
+    /* Utility Icon Row */
+    --celeste-spotlight-utility-gap: 16px;
+    --celeste-spotlight-utility-icon-size: 20px;
+    --celeste-spotlight-utility-btn-padding: 10px;
 
     /* Result row */
     --celeste-spotlight-row-min-height: 56px;
     --celeste-spotlight-row-padding-y: 12px;
     --celeste-spotlight-row-padding-x: 20px;
     --celeste-spotlight-accent-bar-width: 2px;
+
+    /* Search Bar Colors - Light Mode */
+    --celeste-spotlight-bg: rgba(255, 255, 255, 0.92);
+    --celeste-spotlight-border: rgba(0, 0, 0, 0.08);
+    --celeste-spotlight-text: var(--celeste-text-title);
+    --celeste-spotlight-placeholder: var(--celeste-text-disabled);
+    --celeste-spotlight-icon: var(--celeste-text-muted);
+    --celeste-spotlight-icon-hover: var(--celeste-text-secondary);
+
+    /* Control Button Colors - Light Mode */
+    --celeste-spotlight-btn-bg: var(--celeste-bg-secondary);
+    --celeste-spotlight-btn-border: var(--celeste-border);
+    --celeste-spotlight-btn-text: var(--celeste-text-secondary);
+    --celeste-spotlight-btn-hover-bg: var(--celeste-bg-tertiary);
+
+    /* Dropdown/Menu Colors - Light Mode */
+    --celeste-spotlight-dropdown-bg: var(--celeste-bg-primary);
+    --celeste-spotlight-dropdown-border: var(--celeste-border);
+    --celeste-spotlight-dropdown-text: var(--celeste-text-primary);
+    --celeste-spotlight-dropdown-hover: var(--celeste-bg-secondary);
 
     /* =========================================================================
        MATERIAL RECIPE - Light Mode (Active State)
@@ -267,6 +304,28 @@
     /* Backdrop dim - darker */
     --celeste-backdrop-color: 0, 0, 0;
     --celeste-backdrop-opacity: 0.5;
+
+    /* =========================================================================
+       SPOTLIGHT - Dark Mode Colors (ChatGPT-style)
+       ========================================================================= */
+    --celeste-spotlight-bg: #1b1b1b;
+    --celeste-spotlight-border: #404040;
+    --celeste-spotlight-text: #f2f2f2;
+    --celeste-spotlight-placeholder: #6a6e72;
+    --celeste-spotlight-icon: #b5b5b5;
+    --celeste-spotlight-icon-hover: #dadde0;
+
+    /* Control Button Colors - Dark Mode */
+    --celeste-spotlight-btn-bg: #1b1b1b;
+    --celeste-spotlight-btn-border: #404040;
+    --celeste-spotlight-btn-text: #b5b5b5;
+    --celeste-spotlight-btn-hover-bg: #2a2a2a;
+
+    /* Dropdown/Menu Colors - Dark Mode */
+    --celeste-spotlight-dropdown-bg: #171717;
+    --celeste-spotlight-dropdown-border: #404040;
+    --celeste-spotlight-dropdown-text: #f2f2f2;
+    --celeste-spotlight-dropdown-hover: #2a2a2a;
   }
 }
 
