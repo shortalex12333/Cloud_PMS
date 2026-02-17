@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | 00 (Design System) COMPLETE |
-| Plan | 05 of 5 COMPLETE |
-| Status | Phase 0 complete - all design tokens, Tailwind mappings, base UI components, VitalSignsRow, dead code removed |
-| Last activity | 2026-02-17 — All 5 plans complete, build passes |
+| Phase | FE-01-work-order-lens (IN PROGRESS) |
+| Plan | 02 of N (FE-01-02 COMPLETE) |
+| Status | FE-01-02 complete - all 4 section containers built: NotesSection, PartsSection, AttachmentsSection, HistorySection |
+| Last activity | 2026-02-17 — FE-01-02 complete, build passes (16 routes), 5 commits |
 
 ---
 
@@ -72,6 +72,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Remove useEmailFeatureEnabled hook entirely | No dead code per rules.md | 2026-02-17 |
 | Middle dot separator for vital signs | Visual distinction per UI_SPEC.md | 2026-02-17 |
 | StatusPill integration via color prop | Conditional rendering pattern | 2026-02-17 |
+| getAttachmentKind uses extension set not MIME type | MIME unreliable from signed storage URLs | 2026-02-17 |
+| HistorySection has defensive empty state | Guards edge cases even though spec says always has creation entry | 2026-02-17 |
+| Section count badge omitted when count==0 | Avoids "Parts Used (0)" display; empty state provides the signal | 2026-02-17 |
+| Document cards use role=button + tabIndex=0 | Valid HTML pattern for block-level interactive elements | 2026-02-17 |
 
 ---
 
@@ -204,4 +208,14 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Build passes after clearing stale .next cache: 25 routes generated
 - Commit: 9b8dfb52 (feat: remove email integration feature flag dead code)
 - Phase 00-design-system COMPLETE - all 5 plans executed
+
+### 2026-02-17 (FE-01-02) - Work Order Section Containers
+- Plan FE-01-02: Built all 4 section containers for Work Order lens
+- NotesSection: 3-line clamp/expand, relative/absolute timestamps, Add Note CTA
+- PartsSection: EntityLink to Parts lens, StatusPill (consumed=success, reserved=warning)
+- AttachmentsSection: media inline max-h 240px, document File Preview Cards with onDocumentClick
+- HistorySection: read-only, 20-entry pagination, collapsible details, no action button
+- 1 auto-fix: StatusPill prop mismatch (color→status) found during Task 2
+- Commits: 4eab661c, 4c5e443c, 572c712f, c83c7843, aeab7c8e
+- Build: 16/16 routes, 0 TS errors
 
