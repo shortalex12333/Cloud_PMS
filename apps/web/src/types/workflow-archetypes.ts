@@ -321,6 +321,28 @@ export const ACTION_TO_ARCHETYPE_MAP: Record<MicroAction, WorkflowArchetype> = {
   accept_receiving: 'UPDATE',
   reject_receiving: 'UPDATE',
   link_receiving_to_invoice: 'LINKING',
+
+  // FAULT ADDITIONAL ACTIONS (3)
+  close_fault: 'UPDATE',
+  mark_fault_false_alarm: 'UPDATE',
+  reopen_fault: 'UPDATE',
+
+  // EQUIPMENT ADDITIONAL ACTIONS (6)
+  update_equipment_status: 'UPDATE',
+  decommission_equipment: 'UPDATE',
+  flag_equipment_attention: 'UPDATE',
+  attach_file_to_equipment: 'CREATE',
+  link_part_to_equipment: 'LINKING',
+  create_work_order_for_equipment: 'CREATE',
+
+  // PARTS ADDITIONAL ACTIONS (7)
+  consume_part: 'UPDATE',
+  receive_part: 'UPDATE',
+  transfer_part: 'UPDATE',
+  add_to_shopping_list: 'CREATE',
+  generate_part_labels: 'EXPORT',
+  adjust_stock_quantity: 'UPDATE',
+  write_off_part: 'UPDATE',
 };
 
 // ============================================================================
@@ -370,12 +392,12 @@ export const ARCHETYPE_STATS = {
   RAG: RAG_ACTIONS.length,         // 4
   LINKING: LINKING_ACTIONS.length, // 8
   DELETE: DELETE_ACTIONS.length,   // 1
-  TOTAL: 83,
+  TOTAL: 99,
 };
 
-// Validation: Ensure all 83 actions are accounted for
-// (Original spec was 67, expanded to 83 with edit/addendum actions)
+// Validation: Ensure all 99 actions are accounted for
+// (Original spec was 67, expanded to 83, then to 99 with additional actions)
 const totalMapped = Object.keys(ACTION_TO_ARCHETYPE_MAP).length;
-if (totalMapped !== 83) {
-  console.warn(`⚠️ Action count mismatch: ${totalMapped}/83 actions mapped`);
+if (totalMapped !== 99) {
+  console.warn(`⚠️ Action count mismatch: ${totalMapped}/99 actions mapped`);
 }
