@@ -1,9 +1,0 @@
-         table_name         | rls_enabled 
-----------------------------+-------------
- pms_inventory_stock        | t
- pms_inventory_transactions | t
- pms_part_locations         | t
- pms_part_usage             | t
- pms_shopping_list_items    | t
-(5 rows)
-
