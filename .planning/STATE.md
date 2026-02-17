@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 13 (Gap Remediation) |
-| Plan | 07 of 8 complete |
+| Plan | 08 of 8 remaining |
 | Status | Executing gap remediation plans |
-| Last activity | 2026-02-17 — Completed 13-04 (email_handlers.py) |
+| Last activity | 2026-02-17 — Completed 13-07 (certificate/warranty E2E + ledger triggers) |
 
 ---
 
@@ -37,10 +37,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 3 | Equipment | EQUIP-01..05 | ● 5/5 COMPLETE |
 | 4 | Fault | FAULT-01..05 | ● 5/5 COMPLETE |
 | 5 | Work Order | WO-01..05 | ● 5/5 COMPLETE (13-01 added reassign/archive) |
-| 6 | Certificate | CERT-01..05 | ◐ 3/5 (CertificateCard.tsx done, E2E missing) |
+| 6 | Certificate | CERT-01..05 | ◐ 4/5 (CertificateCard.tsx + E2E done, CERT-04 complete) |
 | 7 | Handover | HAND-01..05 | ◐ 4/5 (HAND-02 done, role tests partial) |
 | 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
-| 9 | Warranty | WARR-01..05 | ◐ 3/5 (WarrantyCard.tsx done, E2E/ledger missing) |
+| 9 | Warranty | WARR-01..05 | ● 5/5 COMPLETE (E2E + ledger triggers added) |
 | 10 | Shopping List | SHOP-01..05 | ● 5/5 COMPLETE (state history trigger added) |
 | 11 | Email | EMAIL-01..06 | ◐ 4/6 (EMAIL-01 done - email_handlers.py) |
 | 12 | Cross-Lens Cleanup | CLEAN-01..04 | ● 4/4 COMPLETE (13-01 fixed CLEAN-01) |
@@ -62,6 +62,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Use pms_audit_log for shopping list state tracking | Consistency with other lenses | 2026-02-17 |
 | SignaturePrompt renders as full overlay replacing modal | UX spec ownership transfer pattern | 2026-02-17 |
 | Email handlers follow warranty_handlers.py pattern | Consistency with existing codebase | 2026-02-17 |
+| API-driven E2E tests over UI tests | Reliability and speed | 2026-02-17 |
+| Warranty trigger fires on INSERT and UPDATE | Complete audit trail | 2026-02-17 |
 
 ---
 
@@ -146,4 +148,4 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 ## Next Single Action
 
-**Continue Phase 13 Gap Remediation - execute plan 13-07.**
+**Continue Phase 13 Gap Remediation - execute plan 13-08 (final plan).**
