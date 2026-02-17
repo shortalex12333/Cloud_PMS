@@ -8,6 +8,7 @@
 
 // Base UI Components (Design System)
 export { StatusPill, type StatusPillProps } from './StatusPill';
+export { VitalSignsRow, type VitalSign, type VitalSignsRowProps } from './VitalSignsRow';
 export { SectionContainer, type SectionContainerProps } from './SectionContainer';
 export { GhostButton, type GhostButtonProps } from './GhostButton';
 export { PrimaryButton, type PrimaryButtonProps } from './PrimaryButton';
