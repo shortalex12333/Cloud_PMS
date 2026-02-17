@@ -202,11 +202,12 @@
 
     /* Search Bar Colors - Light Mode */
     --celeste-spotlight-bg: rgba(255, 255, 255, 0.92);
-    --celeste-spotlight-border: rgba(0, 0, 0, 0.08);
     --celeste-spotlight-text: var(--celeste-text-title);
     --celeste-spotlight-placeholder: var(--celeste-text-disabled);
     --celeste-spotlight-icon: var(--celeste-text-muted);
     --celeste-spotlight-icon-hover: var(--celeste-text-secondary);
+    /* Shadow only - no border (ChatGPT spec) */
+    --celeste-spotlight-shadow: 0 2px 20px rgba(0, 0, 0, 0.12), 0 8px 32px rgba(0, 0, 0, 0.08);
 
     /* Control Button Colors - Light Mode */
     --celeste-spotlight-btn-bg: var(--celeste-bg-secondary);
@@ -309,11 +310,12 @@
        SPOTLIGHT - Dark Mode Colors (ChatGPT-style)
        ========================================================================= */
     --celeste-spotlight-bg: #1b1b1b;
-    --celeste-spotlight-border: #404040;
     --celeste-spotlight-text: #f2f2f2;
     --celeste-spotlight-placeholder: #6a6e72;
     --celeste-spotlight-icon: #b5b5b5;
     --celeste-spotlight-icon-hover: #dadde0;
+    /* Shadow only - no border (ChatGPT spec) */
+    --celeste-spotlight-shadow: 0 2px 20px rgba(0, 0, 0, 0.4), 0 8px 32px rgba(0, 0, 0, 0.3);
 
     /* Control Button Colors - Dark Mode */
     --celeste-spotlight-btn-bg: #1b1b1b;
