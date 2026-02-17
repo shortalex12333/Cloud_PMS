@@ -7,12 +7,14 @@
  * - Equipment/fault references
  * - Vendor/manufacturer information
  * - Financial summary (claimed vs approved amounts)
+ * - Documents section (certificates, claims, correspondence)
  * - Audit history timeline
  * - Tokenized styling (no hardcoded values)
  */
 
 'use client';
 
+import { useCallback } from 'react';
 import {
   FileWarning,
   CheckCircle2,
@@ -37,6 +39,11 @@ import { ActionButton } from '@/components/actions/ActionButton';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
+import {
+  WarrantyDocumentsSection,
+  type WarrantyDocument,
+  type WarrantyDocumentType,
+} from '@/components/lens/sections/warranty';
 
 // ============================================================================
 // TYPES
@@ -88,8 +95,16 @@ interface WarrantyCardProps {
     rejection_reason?: string;
     // Enriched data
     audit_history?: WarrantyAuditEntry[];
+    // Documents (certificates, claims, correspondence)
+    documents?: WarrantyDocument[];
   };
   actions?: MicroAction[];
+  /** Permission: can this user add documents to the claim? */
+  canAddDocument?: boolean;
+  /** Callback when a document is clicked - opens Document lens */
+  onDocumentClick?: (documentId: string) => void;
+  /** Callback to open Add Document modal */
+  onAddDocument?: () => void;
 }
 
 // ============================================================================
@@ -181,10 +196,17 @@ function formatCurrency(amount: number | undefined, currency: string): string {
 // MAIN COMPONENT
 // ============================================================================
 
-export function WarrantyCard({ warrantyClaim, actions = [] }: WarrantyCardProps) {
+export function WarrantyCard({
+  warrantyClaim,
+  actions = [],
+  canAddDocument = false,
+  onDocumentClick,
+  onAddDocument,
+}: WarrantyCardProps) {
   const status = getStatusStyles(warrantyClaim.status);
   const claimType = getClaimTypeStyles(warrantyClaim.claim_type);
   const auditHistory = warrantyClaim.audit_history || [];
+  const documents = warrantyClaim.documents || [];
 
   const actionContext = {
     warranty_claim_id: warrantyClaim.id,
@@ -192,6 +214,19 @@ export function WarrantyCard({ warrantyClaim, actions = [] }: WarrantyCardProps)
     equipment_id: warrantyClaim.equipment_id,
     fault_id: warrantyClaim.fault_id,
   };
+
+  // Handle add document action
+  const handleAddDocument = useCallback(() => {
+    onAddDocument?.();
+  }, [onAddDocument]);
+
+  // Handle document click - opens Document lens
+  const handleDocumentClick = useCallback(
+    (documentId: string) => {
+      onDocumentClick?.(documentId);
+    },
+    [onDocumentClick]
+  );
 
   return (
     <div className="flex flex-col gap-[var(--celeste-spacing-6)]">
@@ -391,6 +426,16 @@ export function WarrantyCard({ warrantyClaim, actions = [] }: WarrantyCardProps)
           )}
         </div>
       </div>
+
+      {/* ================================================================
+          DOCUMENTS SECTION
+          ================================================================ */}
+      <WarrantyDocumentsSection
+        documents={documents}
+        onAddDocument={handleAddDocument}
+        canAddDocument={canAddDocument}
+        onDocumentClick={handleDocumentClick}
+      />
 
       {/* ================================================================
           DATES SECTION

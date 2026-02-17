@@ -29,7 +29,24 @@ import { ActionButton } from '@/components/actions/ActionButton';
 import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
 import { useActionDecisions } from '@/lib/microactions/hooks/useActionDecisions';
+import { SectionContainer } from '@/components/ui/SectionContainer';
 import type { MicroAction } from '@/types/actions';
+
+/**
+ * Fault note type definition for display in FaultCard
+ * Maps to pms_notes table with entity_type='fault'
+ */
+export interface FaultNote {
+  id: string;
+  /** Note content text */
+  text: string;
+  /** Note category: observation, inspection, handover, defect, maintenance, general */
+  note_type: 'observation' | 'inspection' | 'handover' | 'defect' | 'maintenance' | 'general';
+  /** ISO timestamp of creation */
+  created_at: string;
+  /** Display name of the author */
+  author_name?: string;
+}
 
 interface FaultCardProps {
   fault: {
@@ -49,15 +66,203 @@ interface FaultCardProps {
     };
     // Whether a work order already exists for this fault
     has_work_order?: boolean;
+    // Fault notes for display in NotesSection
+    notes?: FaultNote[];
   };
   actions?: MicroAction[];
   // User role for permission checks
   userRole?: string;
   // Callback when auto-run action executes
   onAutoRun?: (actionName: string, result: unknown) => void;
+  // Callback to refresh data after adding a note
+  onRefresh?: () => void;
 }
 
-export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCardProps) {
+// =============================================================================
+// FAULT NOTES SECTION COMPONENT
+// =============================================================================
+
+/**
+ * Format timestamp for note display
+ * - Today: "Today at 14:32"
+ * - Within 7 days: "Yesterday", "2 days ago"
+ * - Older: "Jan 23, 2026"
+ */
+function formatNoteTimestamp(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    const hh = date.getHours().toString().padStart(2, '0');
+    const mm = date.getMinutes().toString().padStart(2, '0');
+    return `Today at ${hh}:${mm}`;
+  }
+
+  if (diffDays < 7) {
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} days ago`;
+  }
+
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Get note type styling based on category
+ * Uses --celeste-* design tokens for consistent theming
+ */
+function getNoteTypeStyles(noteType: FaultNote['note_type']): {
+  bgClass: string;
+  borderClass: string;
+  labelClass: string;
+  label: string;
+} {
+  switch (noteType) {
+    case 'defect':
+    case 'inspection':
+      return {
+        bgClass: 'bg-red-50 dark:bg-red-900/10',
+        borderClass: 'border-l-red-400 dark:border-l-red-500',
+        labelClass: 'text-red-600 dark:text-red-400',
+        label: noteType === 'defect' ? 'Defect' : 'Inspection',
+      };
+    case 'maintenance':
+      return {
+        bgClass: 'bg-amber-50 dark:bg-amber-900/10',
+        borderClass: 'border-l-amber-400 dark:border-l-amber-500',
+        labelClass: 'text-amber-600 dark:text-amber-400',
+        label: 'Update',
+      };
+    case 'handover':
+      return {
+        bgClass: 'bg-blue-50 dark:bg-blue-900/10',
+        borderClass: 'border-l-blue-400 dark:border-l-blue-500',
+        labelClass: 'text-blue-600 dark:text-blue-400',
+        label: 'Handover',
+      };
+    case 'observation':
+    case 'general':
+    default:
+      return {
+        bgClass: 'bg-zinc-50 dark:bg-zinc-800/50',
+        borderClass: 'border-l-zinc-300 dark:border-l-zinc-600',
+        labelClass: 'text-zinc-500 dark:text-zinc-400',
+        label: noteType === 'observation' ? 'Observation' : 'Note',
+      };
+  }
+}
+
+interface FaultNotesSectionProps {
+  notes: FaultNote[];
+  onAddNote: () => void;
+  canAddNote: boolean;
+}
+
+/**
+ * FaultNotesSection - Compact notes display for FaultCard
+ *
+ * Uses SectionContainer with "Add Note" action button.
+ * Notes are styled by note_type with left border color coding.
+ * Shows most recent 3 notes with expand option.
+ */
+function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Sort notes chronologically (oldest first for display, newest at bottom)
+  const sortedNotes = [...notes].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  // Show first 3 notes unless expanded
+  const visibleNotes = isExpanded ? sortedNotes : sortedNotes.slice(-3);
+  const hasMoreNotes = notes.length > 3;
+
+  if (notes.length === 0 && !canAddNote) {
+    return null; // Don't render empty section if user can't add notes
+  }
+
+  return (
+    <SectionContainer
+      title="Notes"
+      icon={<StickyNote className="h-4 w-4" />}
+      count={notes.length}
+      action={canAddNote ? { label: '+ Add Note', onClick: onAddNote } : undefined}
+    >
+      {notes.length === 0 ? (
+        <p className="text-celeste-sm text-zinc-500 dark:text-zinc-400 py-2">
+          No notes yet. Add the first note to document progress.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {/* Show expand button if more than 3 notes */}
+          {hasMoreNotes && !isExpanded && (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="text-celeste-xs text-brand-interactive hover:text-brand-hover transition-colors mb-2"
+            >
+              Show {notes.length - 3} earlier notes...
+            </button>
+          )}
+
+          {visibleNotes.map((note) => {
+            const styles = getNoteTypeStyles(note.note_type);
+            return (
+              <div
+                key={note.id}
+                className={cn(
+                  'rounded-md border-l-2 px-3 py-2',
+                  styles.bgClass,
+                  styles.borderClass
+                )}
+              >
+                {/* Note header: author, type badge, timestamp */}
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-celeste-xs font-medium text-zinc-900 dark:text-zinc-100">
+                      {note.author_name || 'Unknown'}
+                    </span>
+                    <span className={cn('text-[10px] font-semibold uppercase tracking-wide', styles.labelClass)}>
+                      {styles.label}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                    {formatNoteTimestamp(note.created_at)}
+                  </span>
+                </div>
+
+                {/* Note content */}
+                <p className="text-celeste-sm text-zinc-700 dark:text-zinc-300 leading-relaxed line-clamp-3">
+                  {note.text}
+                </p>
+              </div>
+            );
+          })}
+
+          {/* Collapse button when expanded */}
+          {hasMoreNotes && isExpanded && (
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="text-celeste-xs text-brand-interactive hover:text-brand-hover transition-colors mt-1"
+            >
+              Show less
+            </button>
+          )}
+        </div>
+      )}
+    </SectionContainer>
+  );
+}
+
+// =============================================================================
+// FAULT CARD COMPONENT
+// =============================================================================
+
+export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh }: FaultCardProps) {
   const [showCreateWO, setShowCreateWO] = useState(false);
   const [showDiagnose, setShowDiagnose] = useState(false);
   const [showManual, setShowManual] = useState(false);
@@ -369,6 +574,17 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
               )}
             </div>
 
+            {/* Fault Notes Section - displays notes with add action */}
+            {(fault.notes && fault.notes.length > 0 || showAddNoteButton) && (
+              <div className="mt-4">
+                <FaultNotesSection
+                  notes={fault.notes || []}
+                  onAddNote={() => setShowAddNote(true)}
+                  canAddNote={showAddNoteButton}
+                />
+              </div>
+            )}
+
             {/* Related Emails - Evidence panel */}
             <RelatedEmailsPanel
               objectType="fault"
@@ -449,6 +665,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun }: FaultCar
           entity_title: fault.title,
           entity_subtitle: fault.equipment_name,
         }}
+        onSuccess={onRefresh}
       />
 
       {/* Add Photo Modal */}

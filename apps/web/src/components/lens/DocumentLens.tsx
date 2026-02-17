@@ -34,7 +34,8 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { formatRelativeTime } from '@/lib/utils';
 import { formatFileSize, getDocumentIcon, getFileCategoryFromExtension } from '@/components/media/fileUtils';
 import { loadDocumentWithBackend, type DocumentLoadResult } from '@/lib/documentLoader';
-import { classifyDocument, getClassificationLabel, type DocumentClassification } from '@/lib/documentTypes';
+import { classifyDocument, getClassificationLabel } from '@/lib/documentTypes';
+import type { DocumentClassification } from '@/types/situation';
 import { useAuth } from '@/hooks/useAuth';
 
 // ---------------------------------------------------------------------------

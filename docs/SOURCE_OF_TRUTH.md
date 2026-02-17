@@ -164,7 +164,19 @@
 
 ## Current State (2026-02-17)
 
-### Milestone M1: Lens Completion
+### Frontend Phases (FE-0 through FE-6)
+
+| Phase | Name | Status | Evidence |
+|-------|------|--------|----------|
+| FE-0 | Design System | ✓ COMPLETE | 5/5 verified, tokens.css + 6 components |
+| FE-1 | Work Order Lens | ○ NEXT | Reference lens for all others |
+| FE-2 | Batch 1 (Fault, Equipment, Parts, Certificate) | ○ | - |
+| FE-3 | Batch 2 (Receiving, Handover, HOR, Warranty, Shopping List) | ○ | - |
+| FE-4 | Batch 3 + Navigation | ○ | - |
+| FE-5 | Email Lens | ○ | Blocked on backend |
+| FE-6 | Integration, Polish, QA | ○ | - |
+
+### Milestone M1: Lens Completion (Backend Reference)
 
 | Phase | Lens | Status | Blockers |
 |-------|------|--------|----------|
