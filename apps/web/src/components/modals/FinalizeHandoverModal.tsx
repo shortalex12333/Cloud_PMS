@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 13: SignaturePrompt integration
 /**
  * FinalizeHandoverModal Component
  *
