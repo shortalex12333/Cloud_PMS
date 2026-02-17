@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * AddPartModal Component
  *
@@ -73,7 +72,7 @@ export function AddPartModal({
     setValue,
     watch,
   } = useForm<AddPartFormData>({
-    resolver: zodResolver(addPartSchema),
+    resolver: zodResolver(addPartSchema) as any,
     defaultValues: {
       part_name: context.suggested_name || '',
       part_number: context.suggested_part_number || '',
@@ -126,7 +125,7 @@ export function AddPartModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-celeste-black">Part Information</h3>

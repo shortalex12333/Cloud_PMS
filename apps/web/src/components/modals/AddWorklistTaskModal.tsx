@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * AddWorklistTaskModal Component
  *
@@ -135,7 +134,7 @@ export function AddWorklistTaskModal({
     watch,
     reset,
   } = useForm<AddWorklistTaskFormData>({
-    resolver: zodResolver(addWorklistTaskSchema),
+    resolver: zodResolver(addWorklistTaskSchema) as any,
     defaultValues: {
       worklist_id: context.worklist_id,
       title: '',
@@ -222,7 +221,7 @@ export function AddWorklistTaskModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Task Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Task Title *</Label>
