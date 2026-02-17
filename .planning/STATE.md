@@ -40,7 +40,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 6 | Certificate | CERT-01..05 | ◐ 3/5 (CertificateCard.tsx done, E2E missing) |
 | 7 | Handover | HAND-01..05 | ◐ 4/5 (HAND-02 done, role tests partial) |
 | 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
-| 9 | Warranty | WARR-01..05 | ◐ 2/5 (no frontend/E2E/ledger) |
+| 9 | Warranty | WARR-01..05 | ◐ 3/5 (WarrantyCard.tsx done, E2E/ledger missing) |
 | 10 | Shopping List | SHOP-01..05 | ● 5/5 COMPLETE (state history trigger added) |
 | 11 | Email | EMAIL-01..06 | ◐ 3/6 (email_handlers.py missing) |
 | 12 | Cross-Lens Cleanup | CLEAN-01..04 | ● 4/4 COMPLETE (13-01 fixed CLEAN-01) |
@@ -135,7 +135,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 **Critical gaps requiring remediation:**
 1. ~~CertificateCard.tsx - create frontend component~~ DONE (13-02)
-2. WarrantyCard.tsx - create frontend component
+2. ~~WarrantyCard.tsx - create frontend component~~ DONE (13-03)
 3. email_handlers.py - create registry handler file
 4. ~~Shopping list state_history trigger - deploy migration~~ DONE (13-05)
 5. ~~SignaturePrompt - wire to finalize/approve modals~~ DONE (13-06)
