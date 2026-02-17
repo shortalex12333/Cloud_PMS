@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | 13 (Gap Remediation) |
-| Plan | 08 of 8 COMPLETE |
-| Status | Phase 13 complete - all gap remediation plans executed |
-| Last activity | 2026-02-17 — Completed 13-08 (handover signature + role tests) |
+| Phase | 00 (Design System) |
+| Plan | 01 of 5 COMPLETE |
+| Status | DS-01 verified - design tokens CSS implemented |
+| Last activity | 2026-02-17 — Verified 00-01 (design tokens CSS) |
 
 ---
 
@@ -156,3 +156,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Plan 00-05: Verified "email integration is off" dead code removal (DS-05)
 - Primary work committed in 9b8dfb52
 - Pre-existing TypeScript error in AddNoteModal.tsx logged to deferred-items.md
+
+### 2026-02-17 (Session 5) - Design System Plan 00-01
+- Plan 00-01: Verified design tokens CSS implementation (DS-01)
+- All tokens present: surface, text, brand, status, shadow, spacing, radius, transitions, z-index
+- Dark theme default, light theme via [data-theme="light"]
+- Prior commits: d7eb6ed2, 1d5cc028, 6a27bf89
+- SUMMARY.md created documenting previously completed work
