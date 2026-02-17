@@ -79,5 +79,29 @@
 
 ---
 
+## Live Playwright Testing (2026-02-17)
+
+### Bugs Found & Fixed
+
+| Issue | Root Cause | Fix | File |
+|-------|------------|-----|------|
+| Equipment lens 500 error | Wrong column name `.eq('equipment_id')` | Changed to `.eq('id')` + field mapping fixes | `pipeline_service.py:1238` |
+| Parts lens 500 error | Wrong column name `.eq('part_id')` | Changed to `.eq('id')` + field mapping fixes | `pipeline_service.py:1286` |
+| "Email integration is off" showing | RelatedEmailsPanel in cards | Removed from EquipmentCard, FaultCard | `EquipmentCard.tsx`, `FaultCard.tsx` |
+| Email Link/Create WO no modal | No onClick handlers | Added modal state + handlers | `EmailSurface.tsx` |
+
+### Verified Working (Live Testing)
+- ✅ Login (x@alex-short.com)
+- ✅ Search ("generator" returns results)
+- ✅ Work Order lens (shows Notes, Parts, Checklist, Activity)
+- ✅ Email panel (emails load, filters work, view works)
+
+### Pending Deployment
+All fixes require deployment to take effect:
+- Backend: `apps/api/pipeline_service.py`
+- Frontend: `apps/web/src/components/`
+
+---
+
 *Last Updated: 2026-02-17*
-*Frontend Engineering Complete*
+*Frontend Engineering Complete + Live Testing Bugs Fixed*

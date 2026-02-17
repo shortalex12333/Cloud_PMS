@@ -1235,24 +1235,31 @@ async def get_equipment_entity(
         from integrations.supabase import get_supabase_client
         supabase = get_supabase_client(tenant_key)
 
-        response = supabase.table('pms_equipment').select('*').eq('equipment_id', equipment_id).eq('yacht_id', yacht_id).single().execute()
+        # Fixed: Use correct column name 'id' not 'equipment_id'
+        response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).single().execute()
 
         if not response.data:
             raise HTTPException(status_code=404, detail="Equipment not found")
 
         data = response.data
+        # Fixed: Map to actual database column names
+        metadata = data.get('metadata') or {}
         return {
-            "id": data.get('equipment_id'),
-            "name": data.get('equipment_name', 'Unknown Equipment'),
-            "equipment_type": data.get('equipment_type') or data.get('category', 'General'),
+            "id": data.get('id'),
+            "name": data.get('name', 'Unknown Equipment'),
+            "equipment_type": data.get('system_type') or metadata.get('category', 'General'),
             "manufacturer": data.get('manufacturer'),
             "model": data.get('model'),
             "serial_number": data.get('serial_number'),
             "location": data.get('location', 'Unknown'),
-            "status": data.get('status', 'operational'),
-            "installation_date": data.get('installation_date'),
-            "last_maintenance": data.get('last_maintenance'),
-            "next_maintenance": data.get('next_maintenance'),
+            "status": metadata.get('status', 'operational'),
+            "criticality": data.get('criticality'),
+            "installation_date": data.get('installed_date'),
+            "last_maintenance": metadata.get('last_maintenance'),
+            "next_maintenance": metadata.get('next_maintenance'),
+            "description": data.get('description'),
+            "attention_flag": data.get('attention_flag'),
+            "attention_reason": data.get('attention_reason'),
             "created_at": data.get('created_at'),
             "updated_at": data.get('updated_at'),
         }
@@ -1276,23 +1283,28 @@ async def get_part_entity(
         from integrations.supabase import get_supabase_client
         supabase = get_supabase_client(tenant_key)
 
-        response = supabase.table('pms_parts').select('*').eq('part_id', part_id).eq('yacht_id', yacht_id).single().execute()
+        # Fixed: Use correct column name 'id' not 'part_id'
+        response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).single().execute()
 
         if not response.data:
             raise HTTPException(status_code=404, detail="Part not found")
 
         data = response.data
+        # Fixed: Map to actual database column names
+        metadata = data.get('metadata') or {}
         return {
-            "id": data.get('part_id'),
-            "part_name": data.get('part_name', 'Unknown Part'),
+            "id": data.get('id'),
+            "part_name": data.get('name', 'Unknown Part'),
             "part_number": data.get('part_number', ''),
-            "stock_quantity": data.get('on_hand') or data.get('quantity_on_hand', 0),
-            "min_stock_level": data.get('minimum_quantity') or data.get('min_stock_level', 0),
+            "stock_quantity": data.get('quantity_on_hand', 0),
+            "min_stock_level": data.get('minimum_quantity') or data.get('min_level', 0),
             "location": data.get('location', 'Unknown'),
-            "unit_cost": data.get('unit_cost'),
-            "supplier": data.get('supplier'),
+            "unit_cost": metadata.get('unit_cost'),
+            "supplier": metadata.get('supplier'),
             "category": data.get('category'),
             "unit": data.get('unit'),
+            "manufacturer": data.get('manufacturer'),
+            "description": data.get('description'),
             "last_counted_at": data.get('last_counted_at'),
             "last_counted_by": data.get('last_counted_by'),
             "created_at": data.get('created_at'),
