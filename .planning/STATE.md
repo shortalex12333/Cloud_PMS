@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | FE-01-work-order-lens (IN PROGRESS) |
-| Plan | 02 of N (FE-01-02 COMPLETE) |
-| Status | FE-01-02 complete - all 4 section containers built: NotesSection, PartsSection, AttachmentsSection, HistorySection |
-| Last activity | 2026-02-17 — FE-01-01 executed (retroactive): LensHeader + WorkOrderLens + page refactor |
+| Plan | 04 of N (FE-01-04 COMPLETE) |
+| Status | FE-01-04 complete - MediaRenderer, DocumentCard, fileUtils, AttachmentsSection refactored |
+| Last activity | 2026-02-17 — FE-01-04 executed: file rendering components (MediaRenderer + DocumentCard) |
 
 ---
 
@@ -80,6 +80,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | wo_number (WO-YYYY-NNN) as display title prefix | Never expose raw UUID to users | 2026-02-17 |
 | Equipment link uses VitalSign href prop | VitalSignsRow renders teal links natively — no extra markup | 2026-02-17 |
 | Status/priority color mappers local to each lens | Domain-specific logic stays with domain component | 2026-02-17 |
+| MediaRenderer uses MIME-based getFileCategory | Reliable when typed file object available (vs storage URL) | 2026-02-17 |
+| Signed URL staleTime 55min | Auto-refetch 5min before 1hr expiry prevents 401s | 2026-02-17 |
+| fileUtils.ts canonical file utility location | MediaRenderer + DocumentCard share without circular imports | 2026-02-17 |
+| Lightbox z-[9999] | Above all other overlays (modals z-50, z-header lower) | 2026-02-17 |
 
 ---
 
@@ -164,7 +168,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 ## Next Single Action
 
-**FE-01-01 COMPLETE — LensHeader + WorkOrderLens reference implementation built. FE-01-02 (section containers) already complete. Continue with FE-01-03.**
+**FE-01-04 COMPLETE — MediaRenderer + DocumentCard + fileUtils created. AttachmentsSection wired. Continue with FE-01-05.**
 
 ### 2026-02-17 (Session 4) - Design System Phase 00
 - Plan 00-05: Verified "email integration is off" dead code removal (DS-05)
@@ -232,5 +236,15 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - HistorySection: read-only, 20-entry pagination, collapsible details, no action button
 - 1 auto-fix: StatusPill prop mismatch (color→status) found during Task 2
 - Commits: 4eab661c, 4c5e443c, 572c712f, c83c7843, aeab7c8e
+- Build: 16/16 routes, 0 TS errors
+
+### 2026-02-17 (FE-01-04) - File Rendering Components
+- Plan FE-01-04: Created standalone MediaRenderer and DocumentCard in /components/media/
+- MediaRenderer: loading skeleton, error state, lightbox (z-9999), signed URL via useQuery (55min staleTime)
+- DocumentCard: 48px preview card, icon + filename/size + chevron, role=button keyboard accessible
+- fileUtils.ts: getFileCategory (MIME), getFileCategoryFromExtension, getAttachmentKind (extension), formatFileSize, getDocumentIcon
+- AttachmentsSection refactored: imports standalone components, onDocumentClick typed as (fileId) => void
+- 2 auto-fixes: merged duplicate authHelpers imports, added backward-compat re-export for getAttachmentKind
+- Commits: adf1c94d (fileUtils), dff941ae (MediaRenderer), 9733e87f (DocumentCard), 7fec203b (index), a8437390 (AttachmentsSection)
 - Build: 16/16 routes, 0 TS errors
 
