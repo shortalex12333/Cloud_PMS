@@ -39,11 +39,27 @@ export const spacing = {
 // =============================================================================
 
 export const componentSpacing = {
-  // Search bar
-  searchPaddingX: spacing[4],        // 16px
-  searchPaddingY: spacing[3],        // 12px
-  searchHeight: '50px',
-  searchMaxWidth: '680px',
+  // Search bar - ChatGPT-style pill
+  searchPaddingX: spacing[5],        // 20px
+  searchPaddingY: spacing[2.5],      // 10px
+  searchHeight: '56px',
+  searchMaxWidth: '760px',
+  searchRadius: '999px',             // Full pill radius
+
+  // Search bar controls
+  searchBtnSize: '36px',
+  searchBtnIconSize: '18px',
+  searchBtnGap: spacing[2],          // 8px
+
+  // Secondary search surface
+  searchSecondaryHeight: '48px',
+  searchSecondaryRadius: '24px',
+  searchSecondaryGap: spacing[2],    // 8px
+
+  // Utility row
+  searchUtilityGap: spacing[4],      // 16px
+  searchUtilityIconSize: '20px',
+  searchUtilityBtnPadding: spacing[2.5], // 10px
 
   // Result cards
   cardPaddingX: spacing[4],          // 16px
@@ -80,7 +96,7 @@ export const componentSpacing = {
 
 export const layout = {
   // Page
-  pageMaxWidth: '680px',
+  pageMaxWidth: '760px',             // Updated for ChatGPT-style search bar
   pagePaddingX: spacing[4],          // 16px on mobile
   pageTopOffset: '18vh',             // Spotlight position from top
 
@@ -113,8 +129,9 @@ export const radius = {
   md: '8px',
   lg: '12px',
   xl: '16px',
-  '2xl': '18px',  // Spotlight panel
-  full: '9999px', // Pills, circular buttons
+  '2xl': '18px',  // Legacy spotlight panel
+  '3xl': '24px',  // Secondary surfaces
+  full: '9999px', // Pills, circular buttons, ChatGPT-style search bar
 } as const;
 
 // =============================================================================
@@ -134,7 +151,16 @@ export const cssVars = {
   '--radius-lg': radius.lg,
   '--radius-xl': radius.xl,
   '--radius-2xl': radius['2xl'],
+  '--radius-3xl': radius['3xl'],
+  '--radius-full': radius.full,
 
   '--page-max-width': layout.pageMaxWidth,
   '--page-top-offset': layout.pageTopOffset,
+
+  // Search bar tokens
+  '--search-height': componentSpacing.searchHeight,
+  '--search-max-width': componentSpacing.searchMaxWidth,
+  '--search-radius': componentSpacing.searchRadius,
+  '--search-btn-size': componentSpacing.searchBtnSize,
+  '--search-secondary-height': componentSpacing.searchSecondaryHeight,
 } as const;
