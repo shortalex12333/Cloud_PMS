@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | FE-03-batch2-lenses |
-| Plan | 05 of 06 |
-| Status | FE-03-01 complete - ReceivingLens + useReceivingActions hook + RejectModal + receiving/[id] page, TypeScript build passing |
-| Last activity | 2026-02-17 — FE-03-01 executed: Receiving Lens Rebuild |
+| Plan | 03 of 06 complete |
+| Status | FE-03-03 complete - HoursOfRestLens with STCW compliance indicators, 24h visual timeline, warnings acknowledge, monthly sign-off flow |
+| Last activity | 2026-02-17 — FE-03-03 executed: Hours of Rest Lens Rebuild |
 
 ---
 
@@ -113,6 +113,13 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | ReceivingLens uses supplier_name as display title | Supplier name is most meaningful identifier for receiving records | 2026-02-17 |
 | RejectModal standard reasons + Other with required free-text | Rejection audit trail requires specificity; 6 common reasons + custom | 2026-02-17 |
 | SignaturePrompt replaces modal during rejection sign step | Ownership transfer UX per CLAUDE.md spec | 2026-02-17 |
+| Derive handover status from export signatures (not a column) | signoff_complete + signed_at fields are the ground truth; no separate status column needed | 2026-02-17 |
+| HandoverLens SignatureStep state machine (none/outgoing/incoming) | Renders SignaturePrompt overlay without extra modal layer; ownership transfer pattern | 2026-02-17 |
+| Direct Supabase query in handover/[id]/page.tsx | No viewHandover microaction handler; consistent with certificates pattern | 2026-02-17 |
+| STCW compliance colors: success=compliant, warning=near threshold, critical=violation | Matches UI_SPEC.md 3-level pattern; domain-specific to HOR lens | 2026-02-17 |
+| TimelineBar uses CSS percentage-positioned divs on 1440-minute axis | No charting library needed; 24h bar fully renderable with CSS | 2026-02-17 |
+| Overnight rest periods: endMins += 1440 if endMins <= startMins | STCW 22:00–06:00 pattern spans midnight; must wrap correctly | 2026-02-17 |
+| entity_type 'hor_table' in ActionContext (not 'hours_of_rest') | CardType union in types.ts uses hor_table as canonical HOR card type | 2026-02-17 |
 
 ---
 
@@ -374,6 +381,20 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Zero TypeScript errors in new files; pre-existing errors out of scope
 - Commits: 0d9f7a88 (lens + modals), 80d28205 (hook), 942e3fa9 (page)
 
+### 2026-02-17 (FE-03-02) - Handover Lens Rebuild
+- Plan FE-03-02: Created HandoverLens with dual signature workflow
+- VitalSignsRow: 5 indicators (Status, Outgoing crew, Incoming crew, Items count, Export status)
+- HandoverItemsSection: items grouped critical/action/fyi, entity icons, category badges, EntityLink, Acknowledge CTA
+- SignaturesSection: dual-signature cards (outgoing + incoming), completion banner, sequence guidance
+- HandoverExportsSection: PDF export rows with outgoing/incoming signature tracking, download links
+- Dual signature flow: finalize (HOD+) → outgoing signs → incoming signs → complete
+- SignaturePrompt overlay state machine: none/outgoing/incoming steps
+- useHandoverActions: 8 typed helpers, execute() injects yacht_id + handover_id
+- useHandoverPermissions: 7 role flags (crew can add/sign, HOD+ finalize, captain+ export)
+- handover/[id]/page.tsx: direct Supabase query (no viewHandover handler), status derived from export signatures
+- Zero TS errors in new files; /handover/[id] = ƒ dynamic route confirmed
+- Commits: d1327a9a (lens + sections), 0397816b (useHandoverActions), e5cde0f3 (page.tsx + build)
+
 ### Next Action
-**FE-03-04 complete — Continue with FE-03-05.**
+**FE-03-02 complete — Continue with FE-03-03.**
 
