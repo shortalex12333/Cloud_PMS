@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | FE-03-batch2-lenses |
-| Plan | 04 of 06 |
-| Status | FE-03-04 complete - WarrantyLens + useWarrantyActions hook + warranty/[id] page, TypeScript build passing |
-| Last activity | 2026-02-17 — FE-03-04 executed: Warranty Lens Rebuild |
+| Plan | 05 of 06 |
+| Status | FE-03-01 complete - ReceivingLens + useReceivingActions hook + RejectModal + receiving/[id] page, TypeScript build passing |
+| Last activity | 2026-02-17 — FE-03-01 executed: Receiving Lens Rebuild |
 
 ---
 
@@ -110,6 +110,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | ApproveClaimModal warns on amount diff but does not block | Financial review responsibility belongs to HOD, not UI | 2026-02-17 |
 | RejectClaimModal requires non-empty reason | Rejection reason mandatory for audit trail | 2026-02-17 |
 | WarrantyDocumentsSection reused from sections/warranty/ unchanged | Pre-existing section was complete; no rebuild needed | 2026-02-17 |
+| ReceivingLens uses supplier_name as display title | Supplier name is most meaningful identifier for receiving records | 2026-02-17 |
+| RejectModal standard reasons + Other with required free-text | Rejection audit trail requires specificity; 6 common reasons + custom | 2026-02-17 |
+| SignaturePrompt replaces modal during rejection sign step | Ownership transfer UX per CLAUDE.md spec | 2026-02-17 |
 
 ---
 
