@@ -151,17 +151,24 @@
 - [ ] Mobile responsiveness
 
 ### Known Issues
-- [ ] `accept_receiving` handler missing status validation (allows accept after reject)
-- [ ] Tests expect wrong role permissions (outdated test expectations)
-- [ ] HOD/Crew test users not in Supabase auth
+- [x] `accept_receiving` handler missing status validation → **FIXED** (added `ALREADY_REJECTED` check, line 1275)
+- [x] Tests expect wrong role permissions → **FIXED** (test expectations now match registry)
+- [ ] Crew test user not in Supabase auth (`crew.test@alex-short.com` → login fails → 403)
+- [ ] Handler fix not deployed to staging (reject→accept test still fails against remote API)
 
 ### Test Results Summary
 | Suite | Passed | Failed | Notes |
 |-------|--------|--------|-------|
 | receiving-plus-button-journey | 9/9 | 0 | Fixed |
-| receiving-COMPREHENSIVE | 7/10 | 3 | Role expectation mismatches |
+| receiving-COMPREHENSIVE | 8/10 | 2 | Remaining: crew user missing, handler not deployed |
 | receiving-simple-test | 1/1 | 0 | |
 | receiving-lens-ui-smoke | 1/1 | 0 | |
+
+### Remaining Failures Analysis
+| Test | Status | Root Cause | Fix Required |
+|------|--------|------------|--------------|
+| Crew create (403) | BLOCKED | `crew.test@alex-short.com` not in Supabase auth | Provision test user |
+| Reject→Accept (200) | BLOCKED | Handler fix local only, not deployed to staging | Deploy `receiving_handlers.py` |
 
 ---
 
@@ -183,7 +190,10 @@
 
 ### Cloud_PMS Repo
 - `apps/web/tests/playwright/receiving-plus-button-journey.spec.ts` - Fixed selectors
+- `apps/web/tests/playwright/receiving-COMPREHENSIVE.spec.ts` - Fixed test expectations (HOD can accept, Crew can create)
+- `apps/api/handlers/receiving_handlers.py` - Added `ALREADY_REJECTED` status check (line 1275)
 - `docs/OCR_ACTION_MAP.md` - Updated with evidence
+- `docs/SOURCE_OF_TRUTH.md` - This file
 - `docker-compose.ocr.yml` - Unified Docker compose
 
 ---
