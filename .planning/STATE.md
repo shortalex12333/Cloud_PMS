@@ -84,6 +84,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Signed URL staleTime 55min | Auto-refetch 5min before 1hr expiry prevents 401s | 2026-02-17 |
 | fileUtils.ts canonical file utility location | MediaRenderer + DocumentCard share without circular imports | 2026-02-17 |
 | Lightbox z-[9999] | Above all other overlays (modals z-50, z-header lower) | 2026-02-17 |
+| useWorkOrderPermissions hides buttons (not disables) | UI_SPEC.md spec: hide, not disable for role gates | 2026-02-17 |
+| execute() helper injects yacht_id + work_order_id automatically | No repetition at call site, DRY action calls | 2026-02-17 |
+| Modal state in WorkOrderLens (not sections) | Single source of truth, sections receive only callbacks | 2026-02-17 |
 
 ---
 
@@ -236,6 +239,16 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - HistorySection: read-only, 20-entry pagination, collapsible details, no action button
 - 1 auto-fix: StatusPill prop mismatch (color→status) found during Task 2
 - Commits: 4eab661c, 4c5e443c, 572c712f, c83c7843, aeab7c8e
+- Build: 16/16 routes, 0 TS errors
+
+### 2026-02-17 (FE-01-03) - Work Order Actions (All 20)
+- Plan FE-01-03: Wired all work order actions from backend registry to frontend
+- useWorkOrderActions: 14 typed helpers (addNote, closeWorkOrder, startWorkOrder, cancelWorkOrder, addPart, addParts, addPhoto, assignWorkOrder, reassignWorkOrder, updateWorkOrder, archiveWorkOrder, addHours, viewChecklist)
+- useWorkOrderPermissions: 10 role flags matching registry.py allowed_roles (hide, not disable)
+- 5 action modals: AddNoteModal, AddPartModal, MarkCompleteModal, ReassignModal, ArchiveModal
+- WorkOrderLens updated: all 4 sections wired + header action buttons + 5 modals at root
+- Rule 1 fix: useCallback hooks moved above early returns in page.tsx (build was failing)
+- Commits: df5dce5a (hook), 8d000097 (modals), 2725ccd1 (wiring + fix)
 - Build: 16/16 routes, 0 TS errors
 
 ### 2026-02-17 (FE-01-04) - File Rendering Components
