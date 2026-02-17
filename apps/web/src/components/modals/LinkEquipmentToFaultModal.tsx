@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * LinkEquipmentToFaultModal Component
  *
@@ -75,7 +74,7 @@ export function LinkEquipmentToFaultModal({
     setValue,
     watch,
   } = useForm<LinkEquipmentToFaultFormData>({
-    resolver: zodResolver(linkEquipmentToFaultSchema),
+    resolver: zodResolver(linkEquipmentToFaultSchema) as any,
     defaultValues: {
       fault_id: context.fault_id,
       equipment_id: '',
@@ -200,7 +199,7 @@ export function LinkEquipmentToFaultModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Fault Information */}
           <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
             <div className="flex items-start gap-3">
