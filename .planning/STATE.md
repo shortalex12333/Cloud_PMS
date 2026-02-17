@@ -65,6 +65,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | API-driven E2E tests over UI tests | Reliability and speed | 2026-02-17 |
 | Warranty trigger fires on INSERT and UPDATE | Complete audit trail | 2026-02-17 |
 | Handover tests use existing fullLogin helper | Consistency with auth patterns | 2026-02-17 |
+| Email panel gates on Outlook connection, not env flag | Real service state vs configuration | 2026-02-17 |
 
 ---
 
@@ -150,3 +151,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 ## Next Single Action
 
 **Phase 13 Gap Remediation COMPLETE - all 8 plans executed. Ready for final verification pass.**
+
+### 2026-02-17 (Session 4) - Design System Phase 00
+- Plan 00-05: Verified "email integration is off" dead code removal (DS-05)
+- Primary work committed in 9b8dfb52
+- Pre-existing TypeScript error in AddNoteModal.tsx logged to deferred-items.md
