@@ -127,3 +127,24 @@
   --z-search: 50;
   --z-toast: 60;
 }
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATIONS
+   Component-level keyframes for UI elements
+   ═══════════════════════════════════════════════════════ */
+
+/* Toast slide up + fade in animation */
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 200ms var(--ease-out) forwards;
+}
