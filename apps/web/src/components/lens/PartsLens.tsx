@@ -8,7 +8,12 @@
  * - Title block: part name, description
  * - VitalSignsRow: 5 indicators (stock level, location, unit, reorder point, supplier)
  * - Low stock warning: StatusPill with "warning" color when stock_level < reorder_point
- * - 4 sections: StockInfoSection, TransactionHistorySection, LinkedEquipmentSection, DocumentsSection
+ * - 5 sections:
+ *   1. StockInfoSection - Current stock, min/max, reorder point, unit cost
+ *   2. TransactionHistorySection - Inventory transaction ledger (pms_inventory_transactions)
+ *   3. UsageLogSection - Part usage history with work order/equipment links (pms_part_usage)
+ *   4. LinkedEquipmentSection - Equipment that uses this part
+ *   5. DocumentsSection - Spec sheets, MSDS, manuals
  * - All semantic tokens, zero raw hex values
  * - Glass transition animation via LensContainer (300ms ease-out)
  * - Body scroll locked when open
@@ -29,9 +34,11 @@ import {
   TransactionHistorySection,
   LinkedEquipmentSection,
   DocumentsSection,
+  UsageLogSection,
   type PartTransaction,
   type LinkedEquipment,
   type PartDocument,
+  type PartUsageEntry,
 } from './parts-sections';
 
 // Action hook + permissions
@@ -74,6 +81,8 @@ export interface PartData {
   equipment_name?: string;
   /** Transaction history: consume, receive, transfer, adjust, write-off */
   transactions?: PartTransaction[];
+  /** Usage log: records of when parts were consumed with context (work order, equipment, reason) */
+  usage_log?: PartUsageEntry[];
   /** Equipment that uses this part */
   linked_equipment?: LinkedEquipment[];
   /** Attached documents (spec sheets, MSDS) */
@@ -203,6 +212,7 @@ export const PartsLens = React.forwardRef<
 
   // Section data (safe fallbacks)
   const transactions = part.transactions ?? [];
+  const usageLog = part.usage_log ?? [];
   const linkedEquipment = part.linked_equipment ?? [];
   const documents = part.documents ?? [];
 
@@ -383,6 +393,16 @@ export const PartsLens = React.forwardRef<
         <div className="mt-6">
           <TransactionHistorySection
             transactions={transactions}
+            stickyTop={56}
+          />
+        </div>
+
+        {/* ---------------------------------------------------------------
+            Usage Log Section — detailed usage records with work order/equipment links
+            --------------------------------------------------------------- */}
+        <div className="mt-6">
+          <UsageLogSection
+            usageLog={usageLog}
             stickyTop={56}
           />
         </div>
