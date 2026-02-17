@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * OrderPartModal Component
  *
@@ -75,7 +74,7 @@ export function OrderPartModal({
     setValue,
     watch,
   } = useForm<OrderPartFormData>({
-    resolver: zodResolver(orderPartSchema),
+    resolver: zodResolver(orderPartSchema) as any,
     defaultValues: {
       part_id: context.part_id,
       quantity: Math.max(context.min_stock_level - context.current_stock, 1),
@@ -136,7 +135,7 @@ export function OrderPartModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
           <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
             <div className="flex items-start justify-between">
