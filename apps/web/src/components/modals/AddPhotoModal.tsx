@@ -174,7 +174,7 @@ export function AddPhotoModal({
 
     // In production, this would upload to storage and get URL
     const response = await executeAction(
-      actionName,
+      actionName as any,
       {
         entity_type: data.entity_type,
         entity_id: data.entity_id,
