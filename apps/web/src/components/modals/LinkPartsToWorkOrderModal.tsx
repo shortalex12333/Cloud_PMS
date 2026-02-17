@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * LinkPartsToWorkOrderModal Component
  *
@@ -94,7 +93,7 @@ export function LinkPartsToWorkOrderModal({
     watch,
     control,
   } = useForm<LinkPartsToWorkOrderFormData>({
-    resolver: zodResolver(linkPartsToWorkOrderSchema),
+    resolver: zodResolver(linkPartsToWorkOrderSchema) as any,
     defaultValues: {
       work_order_id: context.work_order_id,
       parts: [],
@@ -227,7 +226,7 @@ export function LinkPartsToWorkOrderModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Work Order Information */}
           <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
             <div className="flex items-start gap-3">

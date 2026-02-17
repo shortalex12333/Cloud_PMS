@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 13: SignaturePrompt integration
 /**
  * ApproveWarrantyModal Component
  *
@@ -62,7 +61,7 @@ export function ApproveWarrantyModal({
   const [formData, setFormData] = useState<ApproveFormData | null>(null);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<ApproveFormData>({
-    resolver: zodResolver(approveSchema),
+    resolver: zodResolver(approveSchema) as any,
     defaultValues: {
       approved_amount: context.claimed_amount,
       notes: '',
@@ -154,7 +153,7 @@ export function ApproveWarrantyModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
           {/* Claim Summary */}
           <div className="p-4 bg-celeste-bg-secondary rounded-lg">
             <div className="flex items-center gap-2 mb-2">
