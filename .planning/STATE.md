@@ -161,11 +161,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Pre-existing TypeScript error in AddNoteModal.tsx logged to deferred-items.md
 
 ### 2026-02-17 (Session 5) - Design System Plan 00-01
-- Plan 00-01: Verified design tokens CSS implementation (DS-01)
+- Plan 00-01: Implemented design tokens CSS (DS-01)
 - All tokens present: surface, text, brand, status, shadow, spacing, radius, transitions, z-index
-- Dark theme default, light theme via [data-theme="light"]
-- Prior commits: d7eb6ed2, 1d5cc028, 6a27bf89
-- SUMMARY.md created documenting previously completed work
+- Dark theme default (:root), light theme via [data-theme="light"] attribute
+- Commits: d7eb6ed2 (tokens.css), 1d5cc028 (globals.css import), 6a27bf89 (layout.tsx data-theme), 8a30f9e9 (25 tests)
+- 25/25 design token tests pass
+- SUMMARY.md updated with complete execution record
+
+### Key decisions from 00-01:
+- Dark theme as :root default (prevents FOUC)
+- data-theme attribute for theme switching (not className)
+- tokens.css imported before @tailwind directives
 
 ### 2026-02-17 (Session 6) - Design System Plan 00-02
 - Plan 00-02: Verified Tailwind config semantic tokens (DS-02)
