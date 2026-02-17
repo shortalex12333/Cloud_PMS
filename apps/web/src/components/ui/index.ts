@@ -1,77 +1,78 @@
 /**
- * UI Components - Re-exports
- * Centralized exports for shared UI components
+ * UI Components Barrel Export
+ * CelesteOS Design System
+ *
+ * Usage:
+ * import { StatusPill, Toast, PrimaryButton } from '@/components/ui';
  */
 
-// Core UI components
-export { Button, buttonVariants } from './button';
+// Base UI Components (Design System)
 export { StatusPill, type StatusPillProps } from './StatusPill';
-export { VitalSignsRow, type VitalSign, type VitalSignsRowProps } from './VitalSignsRow';
+export { SectionContainer, type SectionContainerProps } from './SectionContainer';
+export { GhostButton, type GhostButtonProps } from './GhostButton';
+export { PrimaryButton, type PrimaryButtonProps } from './PrimaryButton';
+export { EntityLink, type EntityLinkProps } from './EntityLink';
+export { Toast, type ToastProps } from './Toast';
 
-// Form components
+// Existing shadcn/ui Components
+export { Button, buttonVariants, type ButtonProps } from './button';
+export { Checkbox } from './checkbox';
 export { Input } from './input';
 export { Label } from './label';
-export { Checkbox } from './checkbox';
 export { Textarea } from './textarea';
 export {
   Select,
-  SelectGroup,
-  SelectValue,
-  SelectTrigger,
   SelectContent,
-  SelectLabel,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectSeparator,
-  SelectScrollUpButton,
-  SelectScrollDownButton,
+  SelectTrigger,
+  SelectValue,
 } from './select';
-
-// Dialog/Modal components
 export {
   Dialog,
-  DialogPortal,
-  DialogOverlay,
   DialogClose,
-  DialogTrigger,
   DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
 } from './dialog';
 export {
   AlertDialog,
-  AlertDialogPortal,
-  AlertDialogOverlay,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from './alert-dialog';
-
-// Navigation components
 export {
   DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuCheckboxItem,
-  DropdownMenuRadioItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuGroup,
-  DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuRadioGroup,
+  DropdownMenuTrigger,
 } from './dropdown-menu';
 
-// Utility components
-export { Pagination, type PaginationProps } from './Pagination';
-export { SortControls, type SortControlsProps } from './SortControls';
+// Utility Components
+export { Pagination } from './Pagination';
+export { SortControls } from './SortControls';
