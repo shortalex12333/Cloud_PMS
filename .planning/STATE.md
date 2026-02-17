@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | FE-01-work-order-lens (COMPLETE) |
-| Plan | 06 of 06 (FE-01-06 COMPLETE) |
-| Status | FE-01-06 complete - E2E test suite: 15 tests (13 passed, 2 skipped), no failures; all 6 plans done |
-| Last activity | 2026-02-17 — FE-01-06 executed: Work Order lens E2E tests + verification |
+| Phase | FE-02-batch1-lenses |
+| Plan | 04 of ?? (FE-02-04 COMPLETE) |
+| Status | FE-02-04 complete - CertificateLens (vessel+crew), useCertificateActions (6 actions), /certificates/[id] route, build passes 16 routes |
+| Last activity | 2026-02-17 — FE-02-04 executed: Certificate Lens Rebuild |
 
 ---
 
@@ -94,6 +94,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | E2E tests in tests/playwright/ not e2e/ | playwright.config.ts testDir is ./tests/playwright | 2026-02-17 |
 | openWorkOrderLens returns bool (not void) | Enables graceful skip when staging data unavailable | 2026-02-17 |
 | WO-LENS-009 in separate describe block | Avoids beforeEach HOD auth conflict when testing crew role gate | 2026-02-17 |
+| Expiry color: critical/warning/success by daysUntilExpiry | critical=expired, warning=<=30d, success=valid — matches UI_SPEC.md | 2026-02-17 |
+| certificateType prop drives entity link (crew_member vs vessel_name) | Two distinct entity contexts with different link targets | 2026-02-17 |
+| SectionContainer action: {label,onClick} not ReactNode | Typed interface enforced at build time — use action.label pattern | 2026-02-17 |
+| Fetch /v1/certificates/{id}?type=vessel|crew direct in page.tsx | No microaction handler for certificates yet; consistent with other lens pages | 2026-02-17 |
 
 ---
 
@@ -294,6 +298,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Build: 16/16 routes, 0 TS errors
 - FE-01-work-order-lens PHASE COMPLETE (all 6 plans executed)
 
+### 2026-02-17 (FE-02-04) - Certificate Lens Rebuild
+- Plan FE-02-04: Created CertificateLens component for vessel + crew certificates
+- VitalSignsRow: 5 indicators with expiry color logic (critical/warning/success)
+- DetailsSection, LinkedDocumentsSection, RenewalHistorySection (SectionContainer pattern)
+- useCertificateActions: 6 typed helpers (view, create, update, findExpiring, linkDocument, supersede)
+- useCertificatePermissions: 6 role flags (HOD+ / MANAGE_ROLES / captain+manager)
+- /certificates/[id] page.tsx: ?type=vessel|crew query param, fire-and-forget ledger logging
+- Rule 3 auto-fix: Pre-existing TS error in ReceivingLineItemsSection (string|number vs number)
+- Commits: 39f54e95 (component), a738e191 (hook), 79cd00a2 (page), 892c3c23 (auto-fix)
+- Build: TypeScript compiled successfully, 16/16 routes, /certificates/[id] = ƒ dynamic
+
 ### Next Action
-**FE-01 phase complete — Work Order Lens fully implemented and tested.**
+**FE-02-04 complete — Certificate Lens implemented. Continue with next FE-02 plan.**
 
