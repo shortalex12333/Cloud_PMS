@@ -1273,6 +1273,14 @@ def _accept_receiving_adapter(handlers: ReceivingHandlers):
                 "message": "Receiving record is already accepted"
             }
 
+        # Check if rejected (cannot accept rejected - state is terminal)
+        if receiving.get("status") == "rejected":
+            return {
+                "status": "error",
+                "error_code": "ALREADY_REJECTED",
+                "message": "Cannot accept a rejected receiving record"
+            }
+
         # Get line items
         items_result = db.table("pms_receiving_items").select(
             "id, quantity_received, unit_price, currency"
