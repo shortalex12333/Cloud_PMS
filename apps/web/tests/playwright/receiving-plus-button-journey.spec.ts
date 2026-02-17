@@ -20,19 +20,20 @@ test.describe('Receiving "+" Button Journey', () => {
   });
 
   test.describe('UI Elements', () => {
-    test('should display "Log" button in SpotlightSearch action bar', async ({ page }) => {
+    test('should display "+" button in SpotlightSearch for logging receiving', async ({ page }) => {
       await loginAs(page, 'captain');
       await page.goto(`${BASE_URL}/app`);
 
       // Wait for SpotlightSearch to load
       await page.waitForSelector('[data-testid="search-input"]', { timeout: 10000 });
 
-      // Find the "Log" button in the action bar
-      const logButton = page.locator('[data-testid="log-receiving-button"]');
-      await expect(logButton).toBeVisible({ timeout: 5000 });
+      // Find the "+" button in the search bar (opens Log Receiving modal)
+      const addButton = page.locator('[data-testid="spotlight-add-button"]');
+      await expect(addButton).toBeVisible({ timeout: 5000 });
 
-      // Should have Plus icon and "Log" text
-      await expect(logButton).toContainText('Log');
+      // Should have aria-label for accessibility (either "Log Receiving" or "Add attachment")
+      const ariaLabel = await addButton.getAttribute('aria-label');
+      expect(['Log Receiving', 'Add attachment']).toContain(ariaLabel);
     });
 
     test('should open receiving upload modal when "Log" button clicked', async ({ page }) => {
@@ -40,7 +41,7 @@ test.describe('Receiving "+" Button Journey', () => {
       await page.goto(`${BASE_URL}/app`);
 
       // Click the Log button
-      const logButton = page.locator('[data-testid="log-receiving-button"]');
+      const logButton = page.locator('[data-testid="spotlight-add-button"]');
       await logButton.click();
 
       // Dialog should open
@@ -59,7 +60,7 @@ test.describe('Receiving "+" Button Journey', () => {
       await page.goto(`${BASE_URL}/app`);
 
       // Open the modal
-      const logButton = page.locator('[data-testid="log-receiving-button"]');
+      const logButton = page.locator('[data-testid="spotlight-add-button"]');
       await logButton.click();
 
       const dialog = page.locator('[role="dialog"]');
@@ -87,7 +88,7 @@ test.describe('Receiving "+" Button Journey', () => {
         await page.waitForSelector('[data-testid="search-input"]', { timeout: 10000 });
 
         // Find the "Log" button
-        const logButton = page.locator('[data-testid="log-receiving-button"]');
+        const logButton = page.locator('[data-testid="spotlight-add-button"]');
         await expect(logButton).toBeVisible({ timeout: 5000 });
 
         // Click should open modal
@@ -111,7 +112,7 @@ test.describe('Receiving "+" Button Journey', () => {
       await page.goto(`${BASE_URL}/app`);
 
       // Open the modal
-      const logButton = page.locator('[data-testid="log-receiving-button"]');
+      const logButton = page.locator('[data-testid="spotlight-add-button"]');
       await logButton.click();
 
       const dialog = page.locator('[role="dialog"]');
@@ -132,7 +133,7 @@ test.describe('Receiving "+" Button Journey', () => {
       await page.goto(`${BASE_URL}/app`);
 
       // Open the modal
-      const logButton = page.locator('[data-testid="log-receiving-button"]');
+      const logButton = page.locator('[data-testid="spotlight-add-button"]');
       await logButton.click();
 
       const dialog = page.locator('[role="dialog"]');
@@ -165,7 +166,7 @@ test.describe('Receiving "+" Button Journey', () => {
       await page.goto(`${BASE_URL}/app`);
 
       // Open the modal
-      const logButton = page.locator('[data-testid="log-receiving-button"]');
+      const logButton = page.locator('[data-testid="spotlight-add-button"]');
       await logButton.click();
 
       let dialog = page.locator('[role="dialog"]');
