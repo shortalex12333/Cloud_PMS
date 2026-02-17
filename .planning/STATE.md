@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | FE-03-batch2-lenses |
-| Plan | 03 of 06 complete |
-| Status | FE-03-03 complete - HoursOfRestLens with STCW compliance indicators, 24h visual timeline, warnings acknowledge, monthly sign-off flow |
-| Last activity | 2026-02-17 — FE-03-03 executed: Hours of Rest Lens Rebuild |
+| Plan | 05 of 06 complete |
+| Status | FE-03-05 complete - ShoppingListLens with per-item approval workflow, VitalSignsRow (status/items/requester/approver/created), ItemsSection, ApprovalHistorySection, useShoppingListActions hook, /shopping-list/[id] route |
+| Last activity | 2026-02-17 — FE-03-05 executed: Shopping List Lens Rebuild |
 
 ---
 
@@ -106,6 +106,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | TransactionType union includes DB schema + legacy types | Backward compat; pms_inventory_transactions uses received/consumed/adjusted etc. | 2026-02-17 |
 | UsageLogSection as 5th section (separate from TransactionHistory) | Distinguishes consumptions-with-context (WO, equipment, reason) from raw ledger | 2026-02-17 |
 | Fetch /v1/certificates/{id}?type=vessel|crew direct in page.tsx | No microaction handler for certificates yet; consistent with other lens pages | 2026-02-17 |
+| Per-item approval via modal context (not whole-list) | SHOP-03 spec: HOD reviews each item individually | 2026-02-17 |
+| shopping-sections/ directory co-located with lens | Consistent with handover-sections/, sections/equipment/ patterns | 2026-02-17 |
+| onRefresh re-fetches full list from Supabase | Simpler than optimistic updates; consistent with other lens pages | 2026-02-17 |
 | Warranty workflow buttons hidden (not disabled) for unauthorized roles | UI_SPEC.md spec: hide, not disable for role gates | 2026-02-17 |
 | ApproveClaimModal warns on amount diff but does not block | Financial review responsibility belongs to HOD, not UI | 2026-02-17 |
 | RejectClaimModal requires non-empty reason | Rejection reason mandatory for audit trail | 2026-02-17 |
@@ -406,6 +409,18 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - 2 Rule 1 auto-fixes: entity_type 'hor_table', null→undefined for monthly_signoff
 - Commits: f4ecf190 (lens), df9af994 (sections), f34c91b1 (hook), 302d0b6c (page+build)
 
+### 2026-02-17 (FE-03-05) - Shopping List Lens Rebuild
+- Plan FE-03-05: Created ShoppingListLens with per-item approval workflow
+- VitalSignsRow: 5 indicators (status, items count, requester, approver, created)
+- ItemsSection: reuses ShoppingListCard, HOD pending review banner, per-item Approve/Reject callbacks
+- ApprovalHistorySection: timeline audit log, action icons (approve/reject/create/order), timestamps
+- useShoppingListActions: 6 typed helpers (createItem, updateItem, removeItem, approveItem, rejectItem, markOrdered)
+- useShoppingListPermissions: CREW_ROLES/HOD_ROLES/ORDER_ROLES — hide not disable
+- /shopping-list/[id] route: direct Supabase query (pms_shopping_lists + pms_shopping_list_items), onRefresh pattern
+- Reused existing modals: ApproveShoppingListItemModal (quantity + signature), RejectShoppingListItemModal (required reason)
+- Build: tsc --noEmit 0 errors, /shopping-list/[id] = ƒ dynamic route
+- Commits: 0d35e219 (lens + sections), 4a4be30b (hook), 7944a5e0 (page+build)
+
 ### Next Action
-**FE-03-03 complete — Continue with FE-03-04.**
+**FE-03-05 complete — Continue with FE-03-06.**
 
