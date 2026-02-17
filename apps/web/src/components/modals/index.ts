@@ -48,6 +48,11 @@ export { LogDeliveryReceivedModal } from './LogDeliveryReceivedModal';
 // Phase 5 - Shipyard Worklist Modal
 export { AddWorklistTaskModal } from './AddWorklistTaskModal';
 
+// SHOP-03 - Shopping List Lens Modals
+export { CreateShoppingListItemModal } from './CreateShoppingListItemModal';
+export { ApproveShoppingListItemModal } from './ApproveShoppingListItemModal';
+export { RejectShoppingListItemModal } from './RejectShoppingListItemModal';
+
 /**
  * Modal Coverage Summary:
  *
@@ -96,4 +101,9 @@ export { AddWorklistTaskModal } from './AddWorklistTaskModal';
  *
  * SHIPYARD/WORKLIST:
  * - add_worklist_task: AddWorklistTaskModal
+ *
+ * SHOPPING LIST (SHOP-03):
+ * - create_shopping_list_item: CreateShoppingListItemModal
+ * - approve_shopping_list_item: ApproveShoppingListItemModal
+ * - reject_shopping_list_item: RejectShoppingListItemModal
  */
