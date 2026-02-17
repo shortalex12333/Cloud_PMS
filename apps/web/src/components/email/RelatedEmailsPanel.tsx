@@ -39,25 +39,9 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   const { data: watcherStatus } = useWatcherStatus();
   const { data, isLoading, error, refetch } = useRelatedThreads(objectType, objectId);
 
-  // Feature disabled state - fail closed with CTA
+  // Feature disabled state - don't render panel at all
   if (!featureEnabled) {
-    return (
-      <div className={cn('celeste-card p-3', className)}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <Mail className="h-4 w-4" />
-            <span className="text-celeste-sm">Email integration is off</span>
-          </div>
-          <button
-            onClick={openSettingsModal}
-            className="inline-flex items-center gap-1 text-celeste-xs text-celeste-accent hover:text-celeste-accent transition-colors"
-          >
-            <Settings className="h-3 w-3" />
-            Connect Outlook in Settings
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Not connected state - no watcher configured
