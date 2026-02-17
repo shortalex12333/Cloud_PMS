@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * AddNoteModal Component
  *
@@ -95,7 +94,7 @@ export function AddNoteModal({
     watch,
     reset,
   } = useForm<AddNoteFormData>({
-    resolver: zodResolver(addNoteSchema),
+    resolver: zodResolver(addNoteSchema) as any,
     defaultValues: {
       entity_type: context.entity_type,
       entity_id: context.entity_id,
@@ -182,7 +181,7 @@ export function AddNoteModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Entity Context */}
           <div className={cn('p-3 rounded-lg border', config.color)}>
             <div className="flex items-center gap-3">

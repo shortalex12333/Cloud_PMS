@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * AddToHandoverQuickModal Component
  *
@@ -117,7 +116,7 @@ export function AddToHandoverQuickModal({
     watch,
     reset,
   } = useForm<AddToHandoverQuickFormData>({
-    resolver: zodResolver(addToHandoverQuickSchema),
+    resolver: zodResolver(addToHandoverQuickSchema) as any,
     defaultValues: {
       entity_type: entityType,
       entity_id: entityId,
@@ -237,7 +236,7 @@ export function AddToHandoverQuickModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
             {/* Entity Type Indicator */}
             <div className="flex items-center gap-2 px-3 py-2 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
               <EntityIcon className="h-4 w-4 text-celeste-accent" />
