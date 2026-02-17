@@ -13,6 +13,8 @@ eggs/
 # lib/ - commented out to allow apps/web/src/lib
 lib64/
 parts/
+# Negate parts/ for apps/web/src/app/parts (Next.js route directory)
+!apps/web/src/app/parts/
 sdist/
 var/
 wheels/
