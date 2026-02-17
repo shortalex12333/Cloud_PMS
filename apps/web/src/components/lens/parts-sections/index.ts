@@ -1,7 +1,13 @@
 /**
  * Parts Lens Section Components
  *
- * All four section containers for the Parts/Inventory lens.
+ * Section containers for the Parts/Inventory lens:
+ * 1. StockInfoSection - Current stock, min/max, reorder point, unit cost
+ * 2. TransactionHistorySection - Inventory transaction ledger (pms_inventory_transactions)
+ * 3. UsageLogSection - Part usage history with work order/equipment links (pms_part_usage)
+ * 4. LinkedEquipmentSection - Equipment that uses this part
+ * 5. DocumentsSection - Spec sheets, MSDS, manuals
+ *
  * Each section uses SectionContainer for sticky header behavior via IntersectionObserver.
  */
 
@@ -29,3 +35,10 @@ export {
   type PartDocument,
   type DocumentKind,
 } from './DocumentsSection';
+
+export {
+  UsageLogSection,
+  type UsageLogSectionProps,
+  type PartUsageEntry,
+  type UsageReason,
+} from './UsageLogSection';

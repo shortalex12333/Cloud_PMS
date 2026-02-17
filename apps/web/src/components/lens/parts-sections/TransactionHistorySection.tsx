@@ -8,22 +8,34 @@ import { StatusPill } from '@/components/ui/StatusPill';
 // TYPES
 // ============================================================================
 
+/**
+ * Transaction types per pms_inventory_transactions schema.
+ * Maps to CHECK constraint in database.
+ */
 export type TransactionType =
+  | 'received'         // Parts received from supplier
+  | 'consumed'         // Parts consumed for work/maintenance
+  | 'adjusted'         // Manual stock adjustment (SIGNED action)
+  | 'transferred_in'   // Received from transfer
+  | 'transferred_out'  // Sent via transfer
+  | 'write_off'        // Written off (SIGNED action)
+  | 'returned'         // Returned to supplier
+  | 'initial'          // Initial stock count
+  // Legacy types for backward compatibility
   | 'consume'
   | 'receive'
   | 'transfer'
-  | 'adjust'
-  | 'write_off';
+  | 'adjust';
 
 export interface PartTransaction {
   id: string;
-  /** Transaction type: consume, receive, transfer, adjust, write_off */
+  /** Transaction type per pms_inventory_transactions schema */
   type: TransactionType;
-  /** Positive = stock added (receive), negative = stock removed (consume/write_off) */
+  /** Positive = stock added (received), negative = stock removed (consumed/write_off) */
   quantity_change: number;
   /** Stock level after this transaction */
   stock_after?: number;
-  /** Actor who performed the transaction */
+  /** Actor who performed the transaction — NEVER show raw UUID */
   actor: string;
   actor_id?: string;
   /** ISO timestamp */
@@ -31,6 +43,8 @@ export interface PartTransaction {
   /** Linked work order id if applicable */
   work_order_id?: string;
   work_order_number?: string;
+  /** Reason for adjustment or write-off (required for adjusted/write_off types) */
+  reason?: string;
   /** Free-text notes */
   notes?: string;
 }
@@ -73,15 +87,35 @@ function formatTimestamp(isoString: string): string {
 
 /**
  * Map transaction type to human-readable label and StatusPill color.
- * consume/write_off = stock removed → warning/critical
- * receive = stock added → success
- * transfer/adjust = neutral
+ * consumed/write_off = stock removed → warning/critical
+ * received/returned = stock change → success/neutral
+ * transferred_in/out = transfer → neutral
+ * adjusted = manual correction → neutral
+ * initial = opening balance → neutral
  */
 function mapTransactionType(type: TransactionType): {
   label: string;
   color: 'critical' | 'warning' | 'success' | 'neutral';
 } {
   switch (type) {
+    // New canonical types from pms_inventory_transactions
+    case 'received':
+      return { label: 'Received', color: 'success' };
+    case 'consumed':
+      return { label: 'Consumed', color: 'warning' };
+    case 'adjusted':
+      return { label: 'Adjusted', color: 'neutral' };
+    case 'transferred_in':
+      return { label: 'Transferred In', color: 'success' };
+    case 'transferred_out':
+      return { label: 'Transferred Out', color: 'warning' };
+    case 'write_off':
+      return { label: 'Written Off', color: 'critical' };
+    case 'returned':
+      return { label: 'Returned', color: 'neutral' };
+    case 'initial':
+      return { label: 'Initial Count', color: 'neutral' };
+    // Legacy types for backward compatibility
     case 'consume':
       return { label: 'Consumed', color: 'warning' };
     case 'receive':
@@ -90,8 +124,6 @@ function mapTransactionType(type: TransactionType): {
       return { label: 'Transferred', color: 'neutral' };
     case 'adjust':
       return { label: 'Adjusted', color: 'neutral' };
-    case 'write_off':
-      return { label: 'Written Off', color: 'critical' };
     default:
       return { label: String(type).replace(/_/g, ' '), color: 'neutral' };
   }
@@ -113,7 +145,7 @@ interface TransactionRowProps {
 function TransactionRow({ tx }: TransactionRowProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { label, color } = mapTransactionType(tx.type);
-  const hasDetails = !!tx.notes || !!tx.work_order_number || tx.stock_after !== undefined;
+  const hasDetails = !!tx.notes || !!tx.reason || !!tx.work_order_number || tx.stock_after !== undefined;
 
   return (
     <div
@@ -165,12 +197,23 @@ function TransactionRow({ tx }: TransactionRowProps) {
             <div className="mt-2 space-y-1">
               {tx.work_order_number && (
                 <p className="text-[13px] text-txt-secondary leading-[1.6]">
-                  Work order: <span className="font-medium text-txt-primary">{tx.work_order_number}</span>
+                  Work order:{' '}
+                  <a
+                    href={`/work-orders/${tx.work_order_id}`}
+                    className="font-medium text-brand-interactive hover:underline underline-offset-2 transition-colors"
+                  >
+                    {tx.work_order_number}
+                  </a>
+                </p>
+              )}
+              {tx.reason && (
+                <p className="text-[13px] text-txt-secondary leading-[1.6]">
+                  Reason: <span className="font-medium text-txt-primary">{tx.reason}</span>
                 </p>
               )}
               {tx.stock_after !== undefined && (
                 <p className="text-[13px] text-txt-tertiary leading-[1.6]">
-                  Stock after: {tx.stock_after}
+                  Balance after: {tx.stock_after}
                 </p>
               )}
               {tx.notes && (
@@ -193,7 +236,15 @@ function TransactionRow({ tx }: TransactionRowProps) {
 /**
  * TransactionHistorySection - Paginated read-only ledger of stock movements.
  *
- * Transaction types: consume, receive, transfer, adjust, write_off
+ * Transaction types per pms_inventory_transactions schema:
+ * - received: Parts received from supplier
+ * - consumed: Parts consumed for work/maintenance
+ * - adjusted: Manual stock adjustment (SIGNED action)
+ * - transferred_in/transferred_out: Transfer between locations
+ * - write_off: Written off (SIGNED action)
+ * - returned: Returned to supplier
+ * - initial: Opening balance
+ *
  * Most recent first (caller responsible for sort order).
  * Paginated with "Load more" for > pageSize entries.
  *
