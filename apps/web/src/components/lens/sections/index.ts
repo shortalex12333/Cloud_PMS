@@ -23,8 +23,10 @@ export {
   type AttachmentsSectionProps,
   type Attachment,
   type AttachmentKind,
-  getAttachmentKind,
 } from './AttachmentsSection';
+
+// getAttachmentKind is now in the media utilities package
+export { getAttachmentKind } from '@/components/media/fileUtils';
 
 export {
   HistorySection,
