@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | FE-01-work-order-lens (IN PROGRESS) |
-| Plan | 05 of N (FE-01-05 COMPLETE) |
-| Status | FE-01-05 complete - LensContainer, glass transitions (300ms CSS), body scroll lock, useLensNavigation hook, stickyTop fix for section headers |
-| Last activity | 2026-02-17 — FE-01-05 executed: full-screen lens layout + glass transitions |
+| Phase | FE-01-work-order-lens (COMPLETE) |
+| Plan | 06 of 06 (FE-01-06 COMPLETE) |
+| Status | FE-01-06 complete - E2E test suite: 15 tests (13 passed, 2 skipped), no failures; all 6 plans done |
+| Last activity | 2026-02-17 — FE-01-06 executed: Work Order lens E2E tests + verification |
 
 ---
 
@@ -91,6 +91,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | useWorkOrderPermissions hides buttons (not disables) | UI_SPEC.md spec: hide, not disable for role gates | 2026-02-17 |
 | execute() helper injects yacht_id + work_order_id automatically | No repetition at call site, DRY action calls | 2026-02-17 |
 | Modal state in WorkOrderLens (not sections) | Single source of truth, sections receive only callbacks | 2026-02-17 |
+| E2E tests in tests/playwright/ not e2e/ | playwright.config.ts testDir is ./tests/playwright | 2026-02-17 |
+| openWorkOrderLens returns bool (not void) | Enables graceful skip when staging data unavailable | 2026-02-17 |
+| WO-LENS-009 in separate describe block | Avoids beforeEach HOD auth conflict when testing crew role gate | 2026-02-17 |
 
 ---
 
@@ -276,4 +279,21 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - 2 auto-fixes: stickyTop missing (sections would stick behind header), useCallback hooks before early returns
 - Commits: 3bc868d6 (LensContainer+CSS), 7100dc80 (wiring+ledger), 9789e888 (hook), a49edd78 (stickyTop)
 - Build: 16/16 routes, 0 TS errors
+
+### 2026-02-17 (FE-01-06) - Work Order E2E Tests + Verification
+- Plan FE-01-06: Created Playwright E2E test suite for Work Order lens
+- 15 tests covering: no UUID in header, 5 vital signs, crew add note, HOD mark complete, role gate, ledger
+- Test location: tests/playwright/work-order-lens.spec.ts (not e2e/ — matches playwright.config.ts testDir)
+- Auth: loginAs() helper (not login()) per auth.helper.ts pattern
+- Selectors: text/role-based (no data-testid on lens components)
+- Test results: 13 passed, 2 skipped (staging credentials required), 0 failures
+- Ledger SQL reference documented in WO-LENS-012 test
+- 3 Rule 3 auto-fixes: testDir, auth helper, selector strategy
+- 2 Rule 1 auto-fixes: openWorkOrderLens bool return, WO-LENS-009 describe conflict
+- Commits: 7fc4fbc7 (spec file), e1889adc (robustness fixes)
+- Build: 16/16 routes, 0 TS errors
+- FE-01-work-order-lens PHASE COMPLETE (all 6 plans executed)
+
+### Next Action
+**FE-01 phase complete — Work Order Lens fully implemented and tested.**
 
