@@ -70,7 +70,7 @@ export function FinalizeHandoverModal({
 
   const handleSign = async () => {
     const response = await executeAction(
-      'finalize_handover',
+      'finalize_handover' as any,
       {
         handover_id: context.handover_id,
         signature: {
