@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * EditHandoverSectionModal Component
  *
@@ -97,7 +96,7 @@ export function EditHandoverSectionModal({
     watch,
     reset,
   } = useForm<EditHandoverSectionFormData>({
-    resolver: zodResolver(editHandoverSectionSchema),
+    resolver: zodResolver(editHandoverSectionSchema) as any,
     defaultValues: {
       section_id: context.section_id,
       section_name: context.section_name,
@@ -204,7 +203,7 @@ export function EditHandoverSectionModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Section Name */}
           <div className="space-y-2">
             <Label htmlFor="section_name">Section Name</Label>
