@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 13 (Gap Remediation) |
-| Plan | 05 of 8 complete |
+| Plan | 06 of 8 complete |
 | Status | Executing gap remediation plans |
-| Last activity | 2026-02-17 — Completed 13-05 (SHOP-05 state history trigger) |
+| Last activity | 2026-02-17 — Completed 13-06 (SignaturePrompt modal wiring) |
 
 ---
 
@@ -36,14 +36,14 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 2 | Parts/Inventory | PART-01..05 | ● 5/5 COMPLETE |
 | 3 | Equipment | EQUIP-01..05 | ● 5/5 COMPLETE |
 | 4 | Fault | FAULT-01..05 | ● 5/5 COMPLETE |
-| 5 | Work Order | WO-01..05 | ◐ 4/5 (WO-03 reassign/archive UI missing) |
+| 5 | Work Order | WO-01..05 | ● 5/5 COMPLETE (13-01 added reassign/archive) |
 | 6 | Certificate | CERT-01..05 | ◐ 3/5 (CertificateCard.tsx done, E2E missing) |
-| 7 | Handover | HAND-01..05 | ◐ 3/5 (signature display + role tests partial) |
+| 7 | Handover | HAND-01..05 | ◐ 4/5 (HAND-02 done, role tests partial) |
 | 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
 | 9 | Warranty | WARR-01..05 | ◐ 2/5 (no frontend/E2E/ledger) |
 | 10 | Shopping List | SHOP-01..05 | ● 5/5 COMPLETE (state history trigger added) |
 | 11 | Email | EMAIL-01..06 | ◐ 3/6 (email_handlers.py missing) |
-| 12 | Cross-Lens Cleanup | CLEAN-01..04 | ◐ 2/4 (CLEAN-01 + CLEAN-04 fail) |
+| 12 | Cross-Lens Cleanup | CLEAN-01..04 | ● 4/4 COMPLETE (13-01 fixed CLEAN-01) |
 
 ---
 
@@ -60,6 +60,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Skip research for M1 | Brownfield — codebase mapped, specs exist | 2026-02-17 |
 | 12 phases, 60 requirements | One lens per phase | 2026-02-17 |
 | Use pms_audit_log for shopping list state tracking | Consistency with other lenses | 2026-02-17 |
+| SignaturePrompt renders as full overlay replacing modal | UX spec ownership transfer pattern | 2026-02-17 |
 
 ---
 
@@ -137,11 +138,11 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 2. WarrantyCard.tsx - create frontend component
 3. email_handlers.py - create registry handler file
 4. ~~Shopping list state_history trigger - deploy migration~~ DONE (13-05)
-5. SignaturePrompt - wire to finalize/approve modals
-6. Remove "email integration is off" message
+5. ~~SignaturePrompt - wire to finalize/approve modals~~ DONE (13-06)
+6. ~~Remove "email integration is off" message~~ DONE (13-01)
 
 ---
 
 ## Next Single Action
 
-**Continue Phase 13 Gap Remediation - execute plan 13-06.**
+**Continue Phase 13 Gap Remediation - execute plan 13-07.**
