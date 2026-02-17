@@ -27,6 +27,8 @@ export interface PartsSectionProps {
   parts: WorkOrderPart[];
   onAddPart: () => void;
   canAddPart: boolean;
+  /** Top offset for sticky header (56 when inside lens to clear the fixed LensHeader) */
+  stickyTop?: number;
 }
 
 // ============================================================================
@@ -109,7 +111,7 @@ function PartRow({ part }: PartRowProps) {
  *
  * Empty state: contextual, not generic.
  */
-export function PartsSection({ parts, onAddPart, canAddPart }: PartsSectionProps) {
+export function PartsSection({ parts, onAddPart, canAddPart, stickyTop }: PartsSectionProps) {
   return (
     <SectionContainer
       title="Parts Used"
@@ -119,6 +121,7 @@ export function PartsSection({ parts, onAddPart, canAddPart }: PartsSectionProps
           ? { label: '+ Add Part', onClick: onAddPart }
           : undefined
       }
+      stickyTop={stickyTop}
     >
       {parts.length === 0 ? (
         // Contextual empty state: specific + actionable per UI_SPEC.md language rules

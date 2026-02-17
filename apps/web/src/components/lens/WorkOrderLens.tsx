@@ -419,12 +419,14 @@ export const WorkOrderLens = React.forwardRef<
 
         {/* ---------------------------------------------------------------
             Notes Section — Add Note CTA shown for HOD+
+            stickyTop={56}: sticky headers clear the 56px fixed LensHeader
             --------------------------------------------------------------- */}
         <div className="mt-6">
           <NotesSection
             notes={notes}
             onAddNote={() => setAddNoteOpen(true)}
             canAddNote={perms.canAddNote}
+            stickyTop={56}
           />
         </div>
 
@@ -436,6 +438,7 @@ export const WorkOrderLens = React.forwardRef<
             parts={parts}
             onAddPart={() => setAddPartOpen(true)}
             canAddPart={perms.canAddPart}
+            stickyTop={56}
           />
         </div>
 
@@ -449,6 +452,7 @@ export const WorkOrderLens = React.forwardRef<
               // Photo upload — future file-picker integration (add_work_order_photo)
             }}
             canAddFile={perms.canAddPhoto}
+            stickyTop={56}
           />
         </div>
 
@@ -456,7 +460,7 @@ export const WorkOrderLens = React.forwardRef<
             History Section — read-only, no action button per spec
             --------------------------------------------------------------- */}
         <div className="mt-6">
-          <HistorySection history={history} />
+          <HistorySection history={history} stickyTop={56} />
         </div>
       </main>
 
