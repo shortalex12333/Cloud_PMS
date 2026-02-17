@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | 1 (Receiving) |
-| Plan | — |
-| Status | Ready to plan Phase 1 |
-| Last activity | 2026-02-17 — Roadmap created (12 phases) |
+| Phase | 13 (Gap Remediation) |
+| Plan | 05 of 8 complete |
+| Status | Executing gap remediation plans |
+| Last activity | 2026-02-17 — Completed 13-05 (SHOP-05 state history trigger) |
 
 ---
 
@@ -32,18 +32,18 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 | # | Phase | Requirements | Status |
 |---|-------|--------------|--------|
-| 1 | Receiving | RECV-01..04 | ○ Ready |
-| 2 | Parts/Inventory | PART-01..05 | ○ Pending |
-| 3 | Equipment | EQUIP-01..05 | ○ Pending |
-| 4 | Fault | FAULT-01..05 | ○ Pending |
-| 5 | Work Order | WO-01..05 | ○ Pending |
-| 6 | Certificate | CERT-01..05 | ○ Pending |
-| 7 | Handover | HAND-01..05 | ○ Pending |
-| 8 | Hours of Rest | HOR-01..05 | ○ Pending |
-| 9 | Warranty | WARR-01..05 | ○ Pending |
-| 10 | Shopping List | SHOP-01..05 | ○ Pending |
-| 11 | Email | EMAIL-01..06 | ○ Pending |
-| 12 | Cross-Lens Cleanup | CLEAN-01..04 | ○ Pending |
+| 1 | Receiving | RECV-01..04 | ◐ 1/4 (RECV-04 ✓, rest blocked) |
+| 2 | Parts/Inventory | PART-01..05 | ● 5/5 COMPLETE |
+| 3 | Equipment | EQUIP-01..05 | ● 5/5 COMPLETE |
+| 4 | Fault | FAULT-01..05 | ● 5/5 COMPLETE |
+| 5 | Work Order | WO-01..05 | ◐ 4/5 (WO-03 reassign/archive UI missing) |
+| 6 | Certificate | CERT-01..05 | ◐ 2/5 (CertificateCard.tsx + E2E missing) |
+| 7 | Handover | HAND-01..05 | ◐ 3/5 (signature display + role tests partial) |
+| 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
+| 9 | Warranty | WARR-01..05 | ◐ 2/5 (no frontend/E2E/ledger) |
+| 10 | Shopping List | SHOP-01..05 | ● 5/5 COMPLETE (state history trigger added) |
+| 11 | Email | EMAIL-01..06 | ◐ 3/6 (email_handlers.py missing) |
+| 12 | Cross-Lens Cleanup | CLEAN-01..04 | ◐ 2/4 (CLEAN-01 + CLEAN-04 fail) |
 
 ---
 
@@ -59,6 +59,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Confidence in payload | No separate column | 2026-02-17 |
 | Skip research for M1 | Brownfield — codebase mapped, specs exist | 2026-02-17 |
 | 12 phases, 60 requirements | One lens per phase | 2026-02-17 |
+| Use pms_audit_log for shopping list state tracking | Consistency with other lenses | 2026-02-17 |
 
 ---
 
@@ -74,6 +75,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 ---
 
 ## Accumulated Context
+
+### Roadmap Evolution
+- Phase 13 added: Gap Remediation - Fix all failing requirements from verification
 
 ### From Codebase Mapping
 - 7 documents in `.planning/codebase/` (4,120 lines total)
@@ -102,10 +106,42 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - GSD milestone M1 initialized
 - Requirements defined: 60 REQ-IDs across 12 categories
 - Roadmap created: 12 phases
-- Ready for Phase 1 planning
+
+### 2026-02-17 (Session 2)
+- Phase 1 assessment: 8/10 E2E tests passing
+- RECV-04 VERIFIED: All 9 receiving actions write to pms_audit_log
+- RECV-01/02/03 BLOCKED by user actions (PR merge, crew user, staging deploy)
+- Proceeding to Phase 2 while Phase 1 blockers resolved
+
+### 2026-02-17 (Session 3) - Full Verification Run
+**Phases 2-12 verified via parallel GSD agents:**
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 2 Parts/Inventory | 5/5 ✓ | All requirements verified |
+| 3 Equipment | 5/5 ✓ | All requirements verified |
+| 4 Fault | 5/5 ✓ | 57/57 E2E tests passed |
+| 5 Work Order | 4/5 | WO-03: reassign/archive UI missing |
+| 6 Certificate | 2/5 | CertificateCard.tsx + E2E tests missing |
+| 7 Handover | 3/5 | Signature display + role tests partial |
+| 8 Hours of Rest | 5/5 ✓ | All requirements verified |
+| 9 Warranty | 2/5 | No frontend, E2E, or ledger triggers |
+| 10 Shopping List | 4/5 | State history table missing |
+| 11 Email | 3/6 | email_handlers.py missing from registry |
+| 12 Cross-Lens | 2/4 | Email message + SignaturePrompt not wired |
+
+**Total: 42/54 requirements verified (78%)**
+
+**Critical gaps requiring remediation:**
+1. CertificateCard.tsx - create frontend component
+2. WarrantyCard.tsx - create frontend component
+3. email_handlers.py - create registry handler file
+4. ~~Shopping list state_history trigger - deploy migration~~ DONE (13-05)
+5. SignaturePrompt - wire to finalize/approve modals
+6. Remove "email integration is off" message
 
 ---
 
 ## Next Single Action
 
-**Run `/gsd:plan-phase 1` to create execution plans for Receiving Lens.**
+**Continue Phase 13 Gap Remediation - execute plan 13-06.**
