@@ -9,6 +9,14 @@
 
 Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rules.md`.
 
+### Design System (DS) — BLOCKING
+
+- [ ] **DS-01**: tokens.css implemented with dark + light CSS custom properties
+- [ ] **DS-02**: tailwind.config.js extended with semantic token mappings
+- [ ] **DS-03**: Base components built (StatusPill, SectionContainer, GhostButton, PrimaryButton, EntityLink, Toast)
+- [ ] **DS-04**: VitalSignsRow component built and rendering
+- [ ] **DS-05**: All "email integration is off" instances removed
+
 ### Receiving Lens (RECV)
 
 - [ ] **RECV-01**: PR #332 merged and deployed
@@ -44,7 +52,7 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 - [ ] **WO-01**: DB schema verified (RLS, FK, constraints)
 - [ ] **WO-02**: Backend handler tests passing (all roles)
-- [ ] **WO-03**: Frontend gaps fixed (6 actions missing)
+- [x] **WO-03**: Frontend gaps fixed (6 actions missing)
 - [ ] **WO-04**: E2E tests for CRUD operations
 - [ ] **WO-05**: Ledger triggers verified
 
@@ -52,15 +60,15 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 - [ ] **CERT-01**: DB schema verified (RLS, FK, constraints)
 - [ ] **CERT-02**: Backend handler tests passing (all roles)
-- [ ] **CERT-03**: Frontend renders all required values
-- [ ] **CERT-04**: E2E tests for CRUD operations
+- [x] **CERT-03**: Frontend renders all required values
+- [x] **CERT-04**: E2E tests for CRUD operations
 - [ ] **CERT-05**: Ledger triggers verified
 
 ### Handover Lens (HAND)
 
 - [ ] **HAND-01**: DB schema verified (RLS, FK, constraints)
-- [ ] **HAND-02**: Backend handler tests passing (all roles)
-- [ ] **HAND-03**: Frontend renders all required values
+- [x] **HAND-02**: Backend handler tests passing (all roles)
+- [x] **HAND-03**: Frontend renders all required values
 - [ ] **HAND-04**: E2E tests for CRUD operations
 - [ ] **HAND-05**: Ledger triggers verified
 
@@ -76,9 +84,9 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 - [ ] **WARR-01**: DB schema verified (RLS, FK, constraints)
 - [ ] **WARR-02**: Backend handler tests passing (all roles)
-- [ ] **WARR-03**: Frontend renders all required values
-- [ ] **WARR-04**: E2E tests for CRUD operations
-- [ ] **WARR-05**: Ledger triggers verified
+- [x] **WARR-03**: Frontend renders all required values
+- [x] **WARR-04**: E2E tests for CRUD operations
+- [x] **WARR-05**: Ledger triggers verified
 
 ### Shopping List Lens (SHOP)
 
@@ -86,11 +94,11 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 - [ ] **SHOP-02**: Backend handler tests passing (all roles)
 - [ ] **SHOP-03**: Frontend renders all required values
 - [ ] **SHOP-04**: E2E tests for CRUD operations
-- [ ] **SHOP-05**: Ledger triggers verified
+- [x] **SHOP-05**: Ledger triggers verified
 
 ### Email Lens (EMAIL)
 
-- [ ] **EMAIL-01**: Handler file created (email_handlers.py)
+- [x] **EMAIL-01**: Handler file created (email_handlers.py)
 - [ ] **EMAIL-02**: 5 actions implemented per registry
 - [ ] **EMAIL-03**: DB schema verified (RLS, FK, constraints)
 - [ ] **EMAIL-04**: Backend handler tests passing (all roles)
@@ -99,10 +107,10 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 ### Cross-Lens Cleanup (CLEAN)
 
-- [ ] **CLEAN-01**: Remove "email integration is off" from all lenses
+- [x] **CLEAN-01**: Remove "email integration is off" from all lenses
 - [ ] **CLEAN-02**: All lenses open to full screen (not side-view-card)
 - [ ] **CLEAN-03**: Action buttons adjacent to their sections
-- [ ] **CLEAN-04**: Signature confirmation where required
+- [x] **CLEAN-04**: Signature confirmation where required
 
 ---
 
@@ -156,17 +164,17 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 | FAULT-05 | 4 | Pending |
 | WO-01 | 5 | Pending |
 | WO-02 | 5 | Pending |
-| WO-03 | 5 | Pending |
+| WO-03 | 5 | Complete |
 | WO-04 | 5 | Pending |
 | WO-05 | 5 | Pending |
 | CERT-01 | 6 | Pending |
 | CERT-02 | 6 | Pending |
-| CERT-03 | 6 | Pending |
-| CERT-04 | 6 | Pending |
+| CERT-03 | 6 | Complete |
+| CERT-04 | 6 | Complete |
 | CERT-05 | 6 | Pending |
 | HAND-01 | 7 | Pending |
-| HAND-02 | 7 | Pending |
-| HAND-03 | 7 | Pending |
+| HAND-02 | 7 | Complete |
+| HAND-03 | 7 | Complete |
 | HAND-04 | 7 | Pending |
 | HAND-05 | 7 | Pending |
 | HOR-01 | 8 | Pending |
@@ -176,24 +184,24 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 | HOR-05 | 8 | Pending |
 | WARR-01 | 9 | Pending |
 | WARR-02 | 9 | Pending |
-| WARR-03 | 9 | Pending |
-| WARR-04 | 9 | Pending |
-| WARR-05 | 9 | Pending |
+| WARR-03 | 9 | Complete |
+| WARR-04 | 9 | Complete |
+| WARR-05 | 9 | Complete |
 | SHOP-01 | 10 | Pending |
 | SHOP-02 | 10 | Pending |
 | SHOP-03 | 10 | Pending |
 | SHOP-04 | 10 | Pending |
-| SHOP-05 | 10 | Pending |
-| EMAIL-01 | 11 | Pending |
+| SHOP-05 | 10 | Complete |
+| EMAIL-01 | 11 | Complete |
 | EMAIL-02 | 11 | Pending |
 | EMAIL-03 | 11 | Pending |
 | EMAIL-04 | 11 | Pending |
 | EMAIL-05 | 11 | Pending |
 | EMAIL-06 | 11 | Pending |
-| CLEAN-01 | 12 | Pending |
+| CLEAN-01 | 12 | Complete |
 | CLEAN-02 | 12 | Pending |
 | CLEAN-03 | 12 | Pending |
-| CLEAN-04 | 12 | Pending |
+| CLEAN-04 | 12 | Complete |
 
 **Coverage:**
 - v1 requirements: 60 total

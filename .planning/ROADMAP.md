@@ -1,8 +1,8 @@
 # ROADMAP — CelesteOS v1.0 Lens Completion
 
 **Milestone:** v1.0 — Lens Completion
-**Phases:** 12
-**Requirements:** 60
+**Phases:** 14
+**Requirements:** 77
 
 ---
 
@@ -10,6 +10,7 @@
 
 | # | Phase | Goal | Requirements | Status |
 |---|-------|------|--------------|--------|
+| 0 | Design System | Implement design tokens, base components, remove dead code | DS-01, DS-02, DS-03, DS-04, DS-05 | ○ |
 | 1 | Receiving | Complete receiving lens end-to-end | RECV-01, RECV-02, RECV-03, RECV-04 | ○ |
 | 2 | Parts/Inventory | Complete parts and inventory lens end-to-end | PART-01, PART-02, PART-03, PART-04, PART-05 | ○ |
 | 3 | Equipment | Complete equipment lens end-to-end | EQUIP-01, EQUIP-02, EQUIP-03, EQUIP-04, EQUIP-05 | ○ |
@@ -22,6 +23,24 @@
 | 10 | Shopping List | Complete shopping list lens end-to-end | SHOP-01, SHOP-02, SHOP-03, SHOP-04, SHOP-05 | ○ |
 | 11 | Email | Complete email lens end-to-end | EMAIL-01, EMAIL-02, EMAIL-03, EMAIL-04, EMAIL-05, EMAIL-06 | ○ |
 | 12 | Cross-Lens Cleanup | Resolve cross-lens UX issues across all lenses | CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04 | ○ |
+| 13 | Gap Remediation | Complete    | 2026-02-17 | ○ |
+
+---
+
+## Phase 0: Design System Implementation
+
+**Goal:** Implement complete design token system, build base UI components, extend Tailwind config, and remove dead code — BLOCKING for all other phases.
+
+**Requirements:** DS-01, DS-02, DS-03, DS-04, DS-05
+
+**Success Criteria:**
+1. `tokens.css` implemented with all CSS custom properties (dark + light themes) wired into app root.
+2. `tailwind.config.js` extended with semantic token mappings.
+3. 6 base components built: StatusPill, SectionContainer, GhostButton, PrimaryButton, EntityLink, Toast.
+4. VitalSignsRow component built and rendering correctly.
+5. All "email integration is off" instances removed from codebase.
+
+**Status:** ○ Pending
 
 ---
 
@@ -228,4 +247,34 @@
 
 ---
 
+## Phase 13: Gap Remediation
+
+**Goal:** Fix all failing requirements from phases 1-12 verification. Close the gap from 78% to 100% requirement coverage.
+
+**Depends on:** Phase 12
+
+**Requirements:** WO-03, CERT-03, CERT-04, HAND-02, HAND-03, WARR-03, WARR-04, WARR-05, SHOP-05, EMAIL-01, CLEAN-01, CLEAN-04
+
+**Plans:** 8/8 plans complete
+
+Plans:
+- [ ] 13-01-PLAN.md — WorkOrder reassign/archive + remove email disabled message
+- [ ] 13-02-PLAN.md — Create CertificateCard.tsx component
+- [ ] 13-03-PLAN.md — Create WarrantyCard.tsx component
+- [ ] 13-04-PLAN.md — Create email_handlers.py and register
+- [ ] 13-05-PLAN.md — Shopping list state_history trigger migration
+- [ ] 13-06-PLAN.md — Wire SignaturePrompt to finalize/approve modals
+- [ ] 13-07-PLAN.md — Certificate and warranty E2E tests + warranty ledger triggers
+- [ ] 13-08-PLAN.md — Handover role tests and signature flow E2E
+
+**Success Criteria:**
+1. All 12 requirements addressed by plans are verified passing.
+2. Total verification coverage increases from 78% (42/54) to 100% (54/54).
+3. No new regressions introduced.
+
+**Status:** ○ Pending
+
+---
+
 *Created: 2026-02-17*
+*Updated: 2026-02-17 — Phase 13 planned*
