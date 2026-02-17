@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 00 (Design System) |
-| Plan | 01 of 5 COMPLETE |
-| Status | DS-01 verified - design tokens CSS implemented |
-| Last activity | 2026-02-17 — Verified 00-01 (design tokens CSS) |
+| Plan | 03 of 5 COMPLETE |
+| Status | DS-03 complete - 6 base UI components built |
+| Last activity | 2026-02-17 — Completed 00-03 (base UI components) |
 
 ---
 
@@ -66,6 +66,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Warranty trigger fires on INSERT and UPDATE | Complete audit trail | 2026-02-17 |
 | Handover tests use existing fullLogin helper | Consistency with auth patterns | 2026-02-17 |
 | Email panel gates on Outlook connection, not env flag | Real service state vs configuration | 2026-02-17 |
+| ds-* prefix for Tailwind spacing tokens | Avoid collision with default numeric spacing | 2026-02-17 |
+| IntersectionObserver for sticky headers | Performant, no scroll listener overhead | 2026-02-17 |
+| forwardRef for all UI components | Consistent ref forwarding pattern | 2026-02-17 |
 
 ---
 
@@ -163,3 +166,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Dark theme default, light theme via [data-theme="light"]
 - Prior commits: d7eb6ed2, 1d5cc028, 6a27bf89
 - SUMMARY.md created documenting previously completed work
+
+### 2026-02-17 (Session 6) - Design System Plan 00-02
+- Plan 00-02: Verified Tailwind config semantic tokens (DS-02)
+- All mappings present: brand/status/surface/txt colors, ds-* spacing, radius, shadow
+- Tailwind build compiles in 852ms
+- Prior commit: a245820f (work order dark mode tokens)
+- SUMMARY.md created documenting previously completed work
+
+### 2026-02-17 (Session 7) - Design System Plan 00-03
+- Plan 00-03: Built 6 base UI components (DS-03)
+- StatusPill, SectionContainer, GhostButton, PrimaryButton, EntityLink, Toast
+- Zero raw hex values - all semantic tokens
+- 7 atomic commits: 1c259f25, 650c713a, 04314162, 4116ce59, 7f9a3a42, 0ca498ab, d9668a5a
+- Pre-existing build issue (AddNoteModal.tsx) logged to deferred-items.md

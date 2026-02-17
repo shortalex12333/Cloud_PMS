@@ -1,25 +1,23 @@
 # Deferred Items - Phase 00 Design System
 
-Items discovered during plan execution that are out of scope and should be addressed later.
+## Pre-existing Build Issues
 
-## Pre-existing TypeScript Error in AddNoteModal.tsx
+### AddNoteModal.tsx Type Error
 
-**Discovered during:** 00-05 execution (build verification step)
+**File:** `apps/web/src/components/modals/AddNoteModal.tsx:157`
 
-**File:** `apps/web/src/components/modals/AddNoteModal.tsx`
-
-**Issue:** Type error - `ENTITY_CONFIG` is missing entries for `part`, `document`, `supplier`, `purchase_order`, `receiving` but the `EntityType` union includes these types.
-
-**Error message:**
+**Error:**
 ```
-Type '{ fault: ...; work_order: ...; equipment: ...; checklist: ...; }' is missing the following properties from type 'Record<EntityType, ...>': part, document, supplier, purchase_order, receiving
+Type error: Argument of type '"add_fault_note" | "add_work_order_note" | "add_equipment_note" | "add_checklist_note" | "add_part_note" | "add_document_note" | "add_supplier_note" | "add_purchase_order_note" | "add_receiving_note"' is not assignable to parameter of type 'MicroAction'.
+Type '"add_part_note"' is not assignable to type 'MicroAction'. Did you mean '"add_fault_note"'?
 ```
 
-**Why deferred:** Pre-existing issue unrelated to 00-05 plan objective (remove "email integration is off" dead code). The plan objective was already completed in plan 13-01.
+**Context:** This type mismatch existed before 00-03 plan execution. The MicroAction type definition is missing some action types that the component references.
 
-**Recommended fix:** Either:
-1. Add missing entity type configs to `ENTITY_CONFIG`, OR
-2. Narrow the `EntityType` union to only supported types, OR
-3. Make `ENTITY_CONFIG` partial: `Partial<Record<EntityType, ...>>`
+**Recommended Fix:** Update MicroAction type to include all note action types, or fix the actionName mapping.
 
-**Priority:** Medium - blocks production build
+**Impact:** Blocks full production builds but does not affect the new UI components.
+
+---
+
+*Logged during 00-03 plan execution, 2026-02-17*
