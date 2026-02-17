@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 00 (Design System) |
-| Plan | 03 of 5 COMPLETE |
-| Status | DS-03 complete - 6 base UI components built |
-| Last activity | 2026-02-17 — Completed 00-03 (base UI components) |
+| Plan | 05 of 5 COMPLETE |
+| Status | DS-05 complete - email integration dead code removed, build passes |
+| Last activity | 2026-02-17 — Completed 00-05 (remove email integration feature flag dead code) |
 
 ---
 
@@ -69,11 +69,11 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | ds-* prefix for Tailwind spacing tokens | Avoid collision with default numeric spacing | 2026-02-17 |
 | IntersectionObserver for sticky headers | Performant, no scroll listener overhead | 2026-02-17 |
 | forwardRef for all UI components | Consistent ref forwarding pattern | 2026-02-17 |
+| Remove useEmailFeatureEnabled hook entirely | No dead code per rules.md | 2026-02-17 |
+| Middle dot separator for vital signs | Visual distinction per UI_SPEC.md | 2026-02-17 |
+| StatusPill integration via color prop | Conditional rendering pattern | 2026-02-17 |
 
 ---
-- [Phase 00-design-system]: Tailwind semantic tokens use var(--token-name) CSS custom properties — zero raw hex values in config
-- [Phase 00-design-system]: Legacy celeste-* Tailwind tokens preserved alongside new semantic tokens for backward compatibility
-- [Phase 00-design-system]: Spacing tokens prefixed ds- to avoid collision with Tailwind numeric scale
 
 ## Blockers
 
@@ -189,3 +189,11 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Zero raw hex values - all semantic tokens
 - 7 atomic commits: 1c259f25, 650c713a, 04314162, 4116ce59, 7f9a3a42, 0ca498ab, d9668a5a
 - Pre-existing build issue (AddNoteModal.tsx) logged to deferred-items.md
+
+### 2026-02-17 (Session 8) - Design System Plan 00-04
+- Plan 00-04: Built VitalSignsRow component (DS-04)
+- Generic horizontal row for 3-5 factual database values
+- Middle-dot separators, StatusPill integration, clickable entity links
+- Typography: 13px label, 14px value per UI_SPEC.md
+- 2 atomic commits: bf95999c (interface), 53640e13 (implementation + index export)
+- Pre-existing build issue (AddPhotoModal.tsx @ts-nocheck) fixed as blocking issue
