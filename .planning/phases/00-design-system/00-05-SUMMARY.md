@@ -120,3 +120,8 @@ Commit verification:
 Dead code removal verification:
 - grep -ri "email integration" apps/web/src/ returns 0 matches
 - grep -ri "integration is off" apps/web/src/ returns 0 matches
+
+Build verification (2026-02-17 re-execution):
+- Build passes after clearing stale .next cache: 25 routes generated successfully
+- TypeScript check: zero errors in RelatedEmailsPanel.tsx and useEmailData.ts
+- Pre-existing build error in AddNoteModal.tsx resolved by clearing .next cache (stale type files)
