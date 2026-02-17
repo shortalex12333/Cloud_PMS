@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | FE-02-batch1-lenses |
-| Plan | 05 of 05 — ALL COMPLETE |
-| Status | FE-02-05 complete - 49 Playwright E2E tests for all 4 Batch 1 lenses, TypeScript build passing |
-| Last activity | 2026-02-17 — FE-02-05 executed: Batch 1 E2E Tests |
+| Phase | FE-03-batch2-lenses |
+| Plan | 04 of 06 |
+| Status | FE-03-04 complete - WarrantyLens + useWarrantyActions hook + warranty/[id] page, TypeScript build passing |
+| Last activity | 2026-02-17 — FE-03-04 executed: Warranty Lens Rebuild |
 
 ---
 
@@ -106,6 +106,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | TransactionType union includes DB schema + legacy types | Backward compat; pms_inventory_transactions uses received/consumed/adjusted etc. | 2026-02-17 |
 | UsageLogSection as 5th section (separate from TransactionHistory) | Distinguishes consumptions-with-context (WO, equipment, reason) from raw ledger | 2026-02-17 |
 | Fetch /v1/certificates/{id}?type=vessel|crew direct in page.tsx | No microaction handler for certificates yet; consistent with other lens pages | 2026-02-17 |
+| Warranty workflow buttons hidden (not disabled) for unauthorized roles | UI_SPEC.md spec: hide, not disable for role gates | 2026-02-17 |
+| ApproveClaimModal warns on amount diff but does not block | Financial review responsibility belongs to HOD, not UI | 2026-02-17 |
+| RejectClaimModal requires non-empty reason | Rejection reason mandatory for audit trail | 2026-02-17 |
+| WarrantyDocumentsSection reused from sections/warranty/ unchanged | Pre-existing section was complete; no rebuild needed | 2026-02-17 |
 
 ---
 
@@ -352,6 +356,21 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - TypeScript: tsc --noEmit passes with zero errors
 - Commits: 770ddaf1 (fault), bd9a2c4b (equipment), 67caf375 (parts), c270699b (certificate)
 
+### 2026-02-17 (FE-03-04) - Warranty Lens Rebuild
+- Plan FE-03-04: Created WarrantyLens component with full claim workflow
+- VitalSignsRow: 5 indicators (Status, Equipment link, Fault link, Supplier, Submitted)
+- Entity links: equipment → /equipment/{id}, fault → /faults/{id} via VitalSign href prop
+- ClaimDetailsSection: description, claimed/approved amounts, resolution notes
+- LinkedEntitiesSection: deep links to equipment and fault entities
+- WarrantyDocumentsSection: reused from existing sections/warranty/ (no rebuild needed)
+- HistorySection: reused from Work Order lens (shared section)
+- useWarrantyActions: 6 typed helpers (draftClaim, submitClaim, approveClaim, rejectClaim, addDocument, updateClaim)
+- useWarrantyPermissions: canSubmit (crew), canApprove (HOD+), canUpdate (HOD+), canAddDocument (crew)
+- 3 action modals: SubmitClaimModal, ApproveClaimModal (amount + notes), RejectClaimModal (required reason)
+- warranty/[id]/page.tsx: POST /v1/warranty/view data fetching, onRefresh, ledger logging
+- Zero TypeScript errors in new files; pre-existing errors out of scope
+- Commits: 0d9f7a88 (lens + modals), 80d28205 (hook), 942e3fa9 (page)
+
 ### Next Action
-**FE-02-05 complete — FE-02-batch1-lenses phase FULLY COMPLETE. All 5 plans executed.**
+**FE-03-04 complete — Continue with FE-03-05.**
 
