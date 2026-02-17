@@ -395,6 +395,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Zero TS errors in new files; /handover/[id] = ƒ dynamic route confirmed
 - Commits: d1327a9a (lens + sections), 0397816b (useHandoverActions), e5cde0f3 (page.tsx + build)
 
+### 2026-02-17 (FE-03-03) - Hours of Rest Lens Rebuild
+- Plan FE-03-03: Created HoursOfRestLens for STCW compliance tracking
+- VitalSignsRow: 5 indicators (compliance color, crew member, period, violations count, sign-off status)
+- DailyLogSection: 24-hour visual timeline bar (CSS % blocks on 1440-min axis), expandable rows
+- WarningsSection: STCW violations with per-row Acknowledge button + loading/error state
+- MonthlySignOffSection: crew/HOD/captain 3-level signature flow, inline confirm panel
+- useHoursOfRestActions: 9 typed helpers + useHoursOfRestPermissions (7 flags)
+- /hours-of-rest/[id] route: 8.21 kB dynamic, 20 routes total, 0 TS errors
+- 2 Rule 1 auto-fixes: entity_type 'hor_table', null→undefined for monthly_signoff
+- Commits: f4ecf190 (lens), df9af994 (sections), f34c91b1 (hook), 302d0b6c (page+build)
+
 ### Next Action
-**FE-03-02 complete — Continue with FE-03-03.**
+**FE-03-03 complete — Continue with FE-03-04.**
 
