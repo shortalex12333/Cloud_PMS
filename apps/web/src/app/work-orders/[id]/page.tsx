@@ -173,6 +173,25 @@ export default function WorkOrderLensPage() {
   }, [workOrderId, user, authLoading, bootstrapping]);
 
   // ---------------------------------------------------------------------------
+  // NAVIGATION HANDLERS — Must be declared before any early returns (Rules of Hooks)
+  // ---------------------------------------------------------------------------
+  const handleBack = useCallback(() => {
+    logNavigationEvent('navigate_back', {
+      entity_type: 'work_order',
+      entity_id: workOrderId,
+    });
+    router.back();
+  }, [workOrderId, router]);
+
+  const handleClose = useCallback(() => {
+    logNavigationEvent('close_lens', {
+      entity_type: 'work_order',
+      entity_id: workOrderId,
+    });
+    router.push('/app');
+  }, [workOrderId, router]);
+
+  // ---------------------------------------------------------------------------
   // LOADING STATE — Skeleton per UI_SPEC.md (no full-page spinners)
   // ---------------------------------------------------------------------------
   if (loading || authLoading || bootstrapping) {
@@ -215,25 +234,6 @@ export default function WorkOrderLensPage() {
   if (!workOrder) {
     return null;
   }
-
-  // ---------------------------------------------------------------------------
-  // NAVIGATION HANDLERS — Log to ledger before navigating
-  // ---------------------------------------------------------------------------
-  const handleBack = useCallback(() => {
-    logNavigationEvent('navigate_back', {
-      entity_type: 'work_order',
-      entity_id: workOrderId,
-    });
-    router.back();
-  }, [workOrderId, router]);
-
-  const handleClose = useCallback(() => {
-    logNavigationEvent('close_lens', {
-      entity_type: 'work_order',
-      entity_id: workOrderId,
-    });
-    router.push('/app');
-  }, [workOrderId, router]);
 
   // ---------------------------------------------------------------------------
   // RENDER — Delegate entirely to WorkOrderLens component
