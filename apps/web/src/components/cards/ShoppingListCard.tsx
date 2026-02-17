@@ -1,0 +1,517 @@
+/**
+ * ShoppingListCard Component
+ *
+ * Displays shopping list item information with status, urgency, and actions.
+ * Part of SHOP-03 requirement - Shopping List Lens v1.
+ *
+ * Features:
+ * - Display: part_name, quantity_requested, status (with StatusPill), urgency, source_type
+ * - Show approval info when approved
+ * - Show rejection info when rejected
+ * - Action buttons based on user role (HoD approval/rejection, Engineer promotion)
+ */
+
+'use client';
+
+import { useState } from 'react';
+import {
+  ShoppingCart,
+  Package,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  User,
+  FileText,
+  ChevronRight,
+  Sparkles,
+} from 'lucide-react';
+import { ActionButton } from '@/components/actions/ActionButton';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { EntityLink } from '@/components/ui/EntityLink';
+import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import type { MicroAction } from '@/types/actions';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface ShoppingListItemData {
+  id: string;
+  part_name: string;
+  part_number?: string;
+  manufacturer?: string;
+  quantity_requested: number;
+  quantity_approved?: number;
+  unit?: string;
+  status: 'candidate' | 'under_review' | 'approved' | 'ordered' | 'partially_fulfilled' | 'fulfilled' | 'installed' | 'rejected';
+  urgency?: 'low' | 'normal' | 'high' | 'critical';
+  source_type: 'inventory_low' | 'inventory_oos' | 'work_order_usage' | 'receiving_missing' | 'receiving_damaged' | 'manual_add';
+  source_notes?: string;
+  // Linked entities
+  part_id?: string;
+  is_candidate_part?: boolean;
+  candidate_promoted_to_part_id?: string;
+  source_work_order_id?: string;
+  source_receiving_id?: string;
+  // Timestamps and users
+  created_at: string;
+  created_by?: string;
+  created_by_name?: string;
+  approved_at?: string;
+  approved_by?: string;
+  approved_by_name?: string;
+  approval_notes?: string;
+  rejected_at?: string;
+  rejected_by?: string;
+  rejected_by_name?: string;
+  rejection_reason?: string;
+  rejection_notes?: string;
+  promoted_at?: string;
+  promoted_by?: string;
+  promoted_by_name?: string;
+}
+
+interface ShoppingListCardProps {
+  item: ShoppingListItemData;
+  actions?: MicroAction[];
+  userRole?: string;
+  isHoD?: boolean;
+  isEngineer?: boolean;
+  onApprove?: () => void;
+  onReject?: () => void;
+  onPromote?: () => void;
+  onViewHistory?: () => void;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Map shopping list status to StatusPill color
+ */
+function mapStatusToColor(
+  status: ShoppingListItemData['status'],
+  isRejected?: boolean
+): 'critical' | 'warning' | 'success' | 'neutral' {
+  if (isRejected) return 'critical';
+
+  switch (status) {
+    case 'rejected':
+      return 'critical';
+    case 'candidate':
+    case 'under_review':
+      return 'warning';
+    case 'approved':
+    case 'ordered':
+    case 'partially_fulfilled':
+      return 'neutral';
+    case 'fulfilled':
+    case 'installed':
+      return 'success';
+    default:
+      return 'neutral';
+  }
+}
+
+/**
+ * Map urgency to display config
+ */
+function getUrgencyConfig(urgency?: ShoppingListItemData['urgency']): {
+  label: string;
+  color: string;
+  icon?: React.ReactNode;
+} {
+  switch (urgency) {
+    case 'critical':
+      return {
+        label: 'Critical',
+        color: 'text-red-600 bg-red-50 border-red-200',
+        icon: <AlertTriangle className="h-3 w-3" />,
+      };
+    case 'high':
+      return {
+        label: 'High',
+        color: 'text-orange-600 bg-orange-50 border-orange-200',
+      };
+    case 'normal':
+      return {
+        label: 'Normal',
+        color: 'text-blue-600 bg-blue-50 border-blue-200',
+      };
+    case 'low':
+    default:
+      return {
+        label: 'Low',
+        color: 'text-gray-600 bg-gray-50 border-gray-200',
+      };
+  }
+}
+
+/**
+ * Map source type to human-readable label
+ */
+function getSourceTypeLabel(sourceType: ShoppingListItemData['source_type']): string {
+  const labels: Record<ShoppingListItemData['source_type'], string> = {
+    inventory_low: 'Low Stock',
+    inventory_oos: 'Out of Stock',
+    work_order_usage: 'Work Order',
+    receiving_missing: 'Missing from Delivery',
+    receiving_damaged: 'Damaged on Arrival',
+    manual_add: 'Manual Request',
+  };
+  return labels[sourceType] || sourceType.replace(/_/g, ' ');
+}
+
+/**
+ * Format status for display
+ */
+function formatStatusLabel(status: ShoppingListItemData['status'], isRejected?: boolean): string {
+  if (isRejected) return 'Rejected';
+
+  const labels: Record<ShoppingListItemData['status'], string> = {
+    candidate: 'Pending Review',
+    under_review: 'Under Review',
+    approved: 'Approved',
+    ordered: 'Ordered',
+    partially_fulfilled: 'Partial',
+    fulfilled: 'Fulfilled',
+    installed: 'Installed',
+    rejected: 'Rejected',
+  };
+  return labels[status] || status.replace(/_/g, ' ');
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export function ShoppingListCard({
+  item,
+  actions = [],
+  userRole,
+  isHoD = false,
+  isEngineer = false,
+  onApprove,
+  onReject,
+  onPromote,
+  onViewHistory,
+}: ShoppingListCardProps) {
+  const isRejected = !!item.rejected_at;
+  const isApproved = item.status === 'approved' && !isRejected;
+  const isPending = (item.status === 'candidate' || item.status === 'under_review') && !isRejected;
+  const canBePromoted = item.is_candidate_part && !item.candidate_promoted_to_part_id && isEngineer;
+
+  const statusColor = mapStatusToColor(item.status, isRejected);
+  const statusLabel = formatStatusLabel(item.status, isRejected);
+  const urgencyConfig = getUrgencyConfig(item.urgency);
+  const sourceLabel = getSourceTypeLabel(item.source_type);
+
+  const actionContext = {
+    shopping_list_item_id: item.id,
+    part_id: item.part_id,
+  };
+
+  return (
+    <div
+      className={cn(
+        'bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-4)] border',
+        isRejected
+          ? 'border-red-200 bg-red-50/30'
+          : 'border-[var(--celeste-border-subtle)]',
+        'hover:shadow-sm transition-shadow'
+      )}
+      data-testid="shopping-list-card"
+      data-entity-type="shopping_list_item"
+      data-entity-id={item.id}
+    >
+      <div className="flex items-start gap-[var(--celeste-spacing-3)]">
+        {/* Icon */}
+        <div
+          className={cn(
+            'mt-0.5 p-2 rounded-[var(--celeste-border-radius-sm)]',
+            isRejected
+              ? 'bg-red-100 text-red-600'
+              : isApproved
+              ? 'bg-green-100 text-green-600'
+              : 'bg-[var(--celeste-accent)]/10 text-[var(--celeste-accent)]'
+          )}
+        >
+          {isRejected ? (
+            <XCircle className="h-5 w-5" />
+          ) : isApproved ? (
+            <CheckCircle2 className="h-5 w-5" />
+          ) : (
+            <ShoppingCart className="h-5 w-5" />
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header Row: Part Name + Status */}
+          <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-2)] flex-wrap">
+            <h3 className="font-semibold text-[var(--celeste-text-primary)] truncate">
+              {item.part_name}
+            </h3>
+            <StatusPill
+              status={statusColor}
+              label={statusLabel}
+              showDot={isPending}
+            />
+            {item.urgency && item.urgency !== 'normal' && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
+                  urgencyConfig.color
+                )}
+              >
+                {urgencyConfig.icon}
+                {urgencyConfig.label}
+              </span>
+            )}
+          </div>
+
+          {/* Part Details */}
+          <div className="space-y-[var(--celeste-spacing-1)] mb-[var(--celeste-spacing-3)]">
+            {/* Part Number & Manufacturer */}
+            {(item.part_number || item.manufacturer) && (
+              <p className="text-sm text-[var(--celeste-text-secondary)]">
+                {item.part_number && (
+                  <span className="font-medium">P/N: {item.part_number}</span>
+                )}
+                {item.part_number && item.manufacturer && ' | '}
+                {item.manufacturer && <span>{item.manufacturer}</span>}
+              </p>
+            )}
+
+            {/* Quantity */}
+            <div className="flex items-center gap-[var(--celeste-spacing-4)] text-sm">
+              <span className="text-[var(--celeste-text-primary)]">
+                <span className="font-medium">Requested:</span>{' '}
+                <span className="text-[var(--celeste-accent)] font-semibold">
+                  {item.quantity_requested}
+                </span>
+                {item.unit && (
+                  <span className="text-[var(--celeste-text-muted)] ml-1">
+                    {item.unit}
+                  </span>
+                )}
+              </span>
+              {item.quantity_approved !== undefined && item.quantity_approved !== null && (
+                <span className="text-[var(--celeste-text-primary)]">
+                  <span className="font-medium">Approved:</span>{' '}
+                  <span className="text-green-600 font-semibold">
+                    {item.quantity_approved}
+                  </span>
+                  {item.unit && (
+                    <span className="text-[var(--celeste-text-muted)] ml-1">
+                      {item.unit}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+
+            {/* Source Type */}
+            <div className="flex items-center gap-[var(--celeste-spacing-2)] text-xs text-[var(--celeste-text-muted)]">
+              <FileText className="h-3.5 w-3.5" />
+              <span>Source: {sourceLabel}</span>
+              {item.source_work_order_id && (
+                <>
+                  <span>|</span>
+                  <EntityLink
+                    entityType="work_order"
+                    entityId={item.source_work_order_id}
+                    label="View Work Order"
+                    className="text-xs"
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Candidate Part Badge */}
+            {item.is_candidate_part && !item.candidate_promoted_to_part_id && (
+              <div className="flex items-center gap-[var(--celeste-spacing-1)] text-xs text-amber-600">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Candidate part (not in catalog)</span>
+              </div>
+            )}
+
+            {/* Linked Part */}
+            {item.part_id && !item.is_candidate_part && (
+              <div className="flex items-center gap-[var(--celeste-spacing-2)] text-xs">
+                <Package className="h-3.5 w-3.5 text-[var(--celeste-text-muted)]" />
+                <EntityLink
+                  entityType="part"
+                  entityId={item.part_id}
+                  label="View Part"
+                  className="text-xs"
+                />
+              </div>
+            )}
+
+            {/* Source Notes */}
+            {item.source_notes && (
+              <p className="text-sm text-[var(--celeste-text-secondary)] italic mt-1">
+                "{item.source_notes}"
+              </p>
+            )}
+          </div>
+
+          {/* Approval Info */}
+          {isApproved && item.approved_at && (
+            <div className="p-[var(--celeste-spacing-3)] bg-green-50 rounded-[var(--celeste-border-radius-sm)] border border-green-200 mb-[var(--celeste-spacing-3)]">
+              <div className="flex items-center gap-[var(--celeste-spacing-2)] text-sm text-green-700">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="font-medium">Approved</span>
+                {item.approved_by_name && (
+                  <>
+                    <span>by</span>
+                    <span className="font-medium">{item.approved_by_name}</span>
+                  </>
+                )}
+                <span className="text-green-600">
+                  {formatDate(item.approved_at)}
+                </span>
+              </div>
+              {item.approval_notes && (
+                <p className="text-sm text-green-600 mt-1 pl-6">
+                  {item.approval_notes}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Rejection Info */}
+          {isRejected && item.rejected_at && (
+            <div className="p-[var(--celeste-spacing-3)] bg-red-50 rounded-[var(--celeste-border-radius-sm)] border border-red-200 mb-[var(--celeste-spacing-3)]">
+              <div className="flex items-center gap-[var(--celeste-spacing-2)] text-sm text-red-700">
+                <XCircle className="h-4 w-4" />
+                <span className="font-medium">Rejected</span>
+                {item.rejected_by_name && (
+                  <>
+                    <span>by</span>
+                    <span className="font-medium">{item.rejected_by_name}</span>
+                  </>
+                )}
+                <span className="text-red-600">
+                  {formatDate(item.rejected_at)}
+                </span>
+              </div>
+              {item.rejection_reason && (
+                <p className="text-sm text-red-700 mt-1 pl-6 font-medium">
+                  Reason: {item.rejection_reason}
+                </p>
+              )}
+              {item.rejection_notes && (
+                <p className="text-sm text-red-600 mt-1 pl-6">
+                  {item.rejection_notes}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Metadata Row */}
+          <div className="flex items-center gap-[var(--celeste-spacing-4)] text-xs text-[var(--celeste-text-muted)] mb-[var(--celeste-spacing-3)]">
+            {item.created_by_name && (
+              <div className="flex items-center gap-1">
+                <User className="h-3.5 w-3.5" />
+                <span>{item.created_by_name}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{formatDate(item.created_at)}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)]">
+            {/* HoD Actions: Approve/Reject (only for pending items) */}
+            {isHoD && isPending && (
+              <>
+                {onApprove && (
+                  <button
+                    onClick={onApprove}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                      'text-sm font-medium',
+                      'bg-green-600 text-white hover:bg-green-700',
+                      'transition-colors'
+                    )}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Approve
+                  </button>
+                )}
+                {onReject && (
+                  <button
+                    onClick={onReject}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                      'text-sm font-medium',
+                      'bg-red-600 text-white hover:bg-red-700',
+                      'transition-colors'
+                    )}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Engineer Action: Promote to Part Catalog */}
+            {canBePromoted && onPromote && (
+              <button
+                onClick={onPromote}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                  'text-sm font-medium',
+                  'bg-amber-500 text-white hover:bg-amber-600',
+                  'transition-colors'
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+                Add to Catalog
+              </button>
+            )}
+
+            {/* View History */}
+            {onViewHistory && (
+              <button
+                onClick={onViewHistory}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                  'text-sm font-medium',
+                  'text-[var(--celeste-text-secondary)] hover:text-[var(--celeste-text-primary)]',
+                  'bg-[var(--celeste-bg-tertiary)] hover:bg-[var(--celeste-border)]',
+                  'transition-colors'
+                )}
+              >
+                <Clock className="h-4 w-4" />
+                History
+              </button>
+            )}
+
+            {/* Backend-provided actions */}
+            {actions.map((action) => (
+              <ActionButton
+                key={action}
+                action={action}
+                context={actionContext}
+                variant="secondary"
+                size="sm"
+                showIcon={true}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ShoppingListCard;

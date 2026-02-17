@@ -77,8 +77,8 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 - [x] **HOR-01**: DB schema verified (RLS, FK, constraints) (001_pms_hours_of_rest.sql, 011_hor_rls_policy_fixes_v2.sql)
 - [x] **HOR-02**: Backend handler tests passing (all roles) (test_hours_of_rest_lens_v3.py, test_hor_rls_security.py, test_hor_signature_invariants.py)
 - [x] **HOR-03**: Frontend renders all required values (UpdateHoursOfRestModal.tsx with MLC/STCW compliance)
-- [ ] **HOR-04**: E2E tests for CRUD operations (in progress - hours-of-rest-lifecycle.spec.ts)
-- [ ] **HOR-05**: Ledger triggers verified (in progress - creating state change trigger)
+- [x] **HOR-04**: E2E tests for CRUD operations (hours-of-rest-lifecycle.spec.ts 47KB, MLC/STCW compliance tests)
+- [x] **HOR-05**: Ledger triggers verified (20260217000003_hor_ledger_triggers.sql with state change tracking)
 
 ### Warranty Lens (WARR)
 
@@ -92,7 +92,7 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 - [x] **SHOP-01**: DB schema verified (RLS, FK, constraints) (45-column schema, 6 RLS policies, state machine)
 - [x] **SHOP-02**: Backend handler tests passing (all roles) (shopping_list_handlers.py with 5 handlers)
-- [ ] **SHOP-03**: Frontend renders all required values (in progress - creating ShoppingListCard + modals)
+- [x] **SHOP-03**: Frontend renders all required values (ShoppingListCard.tsx 17KB + CreateShoppingListItemModal + ApproveShoppingListItemModal + RejectShoppingListItemModal)
 - [x] **SHOP-04**: E2E tests for CRUD operations (6 test files, 50+ cases, shopping-list-lens-comprehensive.spec.ts)
 - [x] **SHOP-05**: Ledger triggers verified (20260217000001_shopping_list_state_history.sql 126 lines)
 
@@ -180,8 +180,8 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 | HOR-01 | 8 | Complete |
 | HOR-02 | 8 | Complete |
 | HOR-03 | 8 | Complete |
-| HOR-04 | 8 | In Progress |
-| HOR-05 | 8 | In Progress |
+| HOR-04 | 8 | Complete |
+| HOR-05 | 8 | Complete |
 | WARR-01 | 9 | Complete |
 | WARR-02 | 9 | Complete |
 | WARR-03 | 9 | Complete |
@@ -189,7 +189,7 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 | WARR-05 | 9 | Complete |
 | SHOP-01 | 10 | Complete |
 | SHOP-02 | 10 | Complete |
-| SHOP-03 | 10 | In Progress |
+| SHOP-03 | 10 | Complete |
 | SHOP-04 | 10 | Complete |
 | SHOP-05 | 10 | Complete |
 | EMAIL-01 | 11 | Complete |
@@ -205,10 +205,9 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 **Coverage:**
 - v1 requirements: 60 total
-- Complete: 54
-- In Progress: 3 (HOR-04, HOR-05, SHOP-03)
-- Blocked: 2 (RECV-01, RECV-03 - external PR dependency)
-- Pending: 1 (none - all non-blocked items in progress or complete)
+- Complete: 57
+- Blocked: 2 (RECV-01, RECV-03 - external PR #332 dependency)
+- Pending: 1 (none - all non-blocked items complete)
 
 ---
 *Requirements defined: 2026-02-17*
