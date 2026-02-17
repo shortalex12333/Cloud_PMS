@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | FE-01-work-order-lens (IN PROGRESS) |
-| Plan | 04 of N (FE-01-04 COMPLETE) |
-| Status | FE-01-04 complete - MediaRenderer, DocumentCard, fileUtils, AttachmentsSection refactored |
-| Last activity | 2026-02-17 — FE-01-04 executed: file rendering components (MediaRenderer + DocumentCard) |
+| Plan | 05 of N (FE-01-05 COMPLETE) |
+| Status | FE-01-05 complete - LensContainer, glass transitions (300ms CSS), body scroll lock, useLensNavigation hook, stickyTop fix for section headers |
+| Last activity | 2026-02-17 — FE-01-05 executed: full-screen lens layout + glass transitions |
 
 ---
 
@@ -84,6 +84,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Signed URL staleTime 55min | Auto-refetch 5min before 1hr expiry prevents 401s | 2026-02-17 |
 | fileUtils.ts canonical file utility location | MediaRenderer + DocumentCard share without circular imports | 2026-02-17 |
 | Lightbox z-[9999] | Above all other overlays (modals z-50, z-header lower) | 2026-02-17 |
+| CSS state machine for glass transitions | No Framer Motion dependency; CSS opacity+scale+blur sufficient | 2026-02-17 |
+| stickyTop=0 default on SectionContainer | Full backward compat; lens usage passes 56 to clear header | 2026-02-17 |
+| Ledger logging fire-and-forget | Auth token fetch never blocks navigation UX | 2026-02-17 |
+| useLensNavigation hook per lens instance | Per-page architecture matches Next.js routing model | 2026-02-17 |
 | useWorkOrderPermissions hides buttons (not disables) | UI_SPEC.md spec: hide, not disable for role gates | 2026-02-17 |
 | execute() helper injects yacht_id + work_order_id automatically | No repetition at call site, DRY action calls | 2026-02-17 |
 | Modal state in WorkOrderLens (not sections) | Single source of truth, sections receive only callbacks | 2026-02-17 |
@@ -171,7 +175,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 ## Next Single Action
 
-**FE-01-04 COMPLETE — MediaRenderer + DocumentCard + fileUtils created. AttachmentsSection wired. Continue with FE-01-05.**
+**FE-01-05 COMPLETE — LensContainer + glass transitions + body scroll lock + useLensNavigation + stickyTop. Continue with FE-01-06.**
 
 ### 2026-02-17 (Session 4) - Design System Phase 00
 - Plan 00-05: Verified "email integration is off" dead code removal (DS-05)
@@ -259,5 +263,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - AttachmentsSection refactored: imports standalone components, onDocumentClick typed as (fileId) => void
 - 2 auto-fixes: merged duplicate authHelpers imports, added backward-compat re-export for getAttachmentKind
 - Commits: adf1c94d (fileUtils), dff941ae (MediaRenderer), 9733e87f (DocumentCard), 7fec203b (index), a8437390 (AttachmentsSection)
+- Build: 16/16 routes, 0 TS errors
+
+### 2026-02-17 (FE-01-05) - Full-Screen Lens Layout + Glass Transitions
+- Plan FE-01-05: LensContainer, glass transitions, body scroll lock, navigation stack hook, sticky header fix
+- LensContainer: fixed inset-0 (100vw x 100vh), z-modal (40), overflow-y auto, overscroll-contain, Escape handler
+- lens.css: lens-entering/entered/exiting/exited CSS state machine; enter 300ms ease-out, exit 200ms ease-in; prefers-reduced-motion fallback
+- Body scroll lock: document.body.style.overflow hidden + scrollbar-width compensation
+- useLensNavigation hook: linear stack (max 9), push/back/close, each logs to ledger via callback
+- WorkOrderLensPage: logNavigationEvent (navigate_to_lens, navigate_back, close_lens) — fire-and-forget
+- stickyTop prop: SectionContainer + all 4 sections; WorkOrderLens passes stickyTop={56}
+- 2 auto-fixes: stickyTop missing (sections would stick behind header), useCallback hooks before early returns
+- Commits: 3bc868d6 (LensContainer+CSS), 7100dc80 (wiring+ledger), 9789e888 (hook), a49edd78 (stickyTop)
 - Build: 16/16 routes, 0 TS errors
 
