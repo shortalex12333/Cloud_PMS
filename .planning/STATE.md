@@ -126,7 +126,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 6 Certificate | 3/5 | CertificateCard.tsx done (13-02), E2E tests missing |
 | 7 Handover | 3/5 | Signature display + role tests partial |
 | 8 Hours of Rest | 5/5 ✓ | All requirements verified |
-| 9 Warranty | 2/5 | No frontend, E2E, or ledger triggers |
+| 9 Warranty | 3/5 | WarrantyCard.tsx done (13-03), E2E/ledger missing |
 | 10 Shopping List | 4/5 | State history table missing |
 | 11 Email | 3/6 | email_handlers.py missing from registry |
 | 12 Cross-Lens | 2/4 | Email message + SignaturePrompt not wired |
