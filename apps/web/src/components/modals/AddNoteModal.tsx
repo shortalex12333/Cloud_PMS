@@ -54,7 +54,7 @@ const addNoteSchema = z.object({
 
 type AddNoteFormData = z.infer<typeof addNoteSchema>;
 
-type EntityType = 'fault' | 'work_order' | 'equipment' | 'checklist';
+type EntityType = 'fault' | 'work_order' | 'equipment' | 'checklist' | 'document' | 'part' | 'purchase_order' | 'receiving' | 'supplier';
 
 interface AddNoteModalProps {
   open: boolean;
