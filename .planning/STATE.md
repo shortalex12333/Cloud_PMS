@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | FE-02-batch1-lenses |
-| Plan | 04 of ?? (FE-02-03 + FE-02-04 COMPLETE) |
-| Status | FE-02-03 complete - PartsLens with low-stock StatusPill warning, 5 sections, usePartActions, /parts/[id] route, 17 routes build passing |
-| Last activity | 2026-02-17 — FE-02-03 executed: Parts/Inventory Lens Rebuild |
+| Plan | 05 of 05 — ALL COMPLETE |
+| Status | FE-02-05 complete - 49 Playwright E2E tests for all 4 Batch 1 lenses, TypeScript build passing |
+| Last activity | 2026-02-17 — FE-02-05 executed: Batch 1 E2E Tests |
 
 ---
 
@@ -341,6 +341,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Commits: 8edefc29 (hook), 892c3c23 (sections), 0fcb8149 (FaultLens), 65444c17 (page.tsx)
 - Build: TypeScript compiled successfully, 16/16 routes, 0 TS errors in new files
 
+### 2026-02-17 (FE-02-05) - Batch 1 E2E Tests
+- Plan FE-02-05: Created Playwright E2E tests for all 4 Batch 1 lenses
+- fault-lens.spec.ts: 12 tests — FLT-YYYY-NNNNNN header, 5 vitals, severity colors, equipment link, crew note, HOD gate
+- equipment-lens.spec.ts: 11 tests — equipment name header, 5 vitals (Faults/WOs as EntityLinks), HOD gate
+- parts-lens.spec.ts: 10 tests — part name header, 5 vitals, low stock warning+role=alert, consume crew role, HOD gate
+- certificate-lens.spec.ts: 12 tests — cert name header, expiry colors (critical/warning/success), linked docs, cert type entity link
+- All tests tagged [BATCH1] for targeted runs: `npx playwright test --grep "BATCH1"`
+- 49 total tests discovered across 4 files
+- TypeScript: tsc --noEmit passes with zero errors
+- Commits: 770ddaf1 (fault), bd9a2c4b (equipment), 67caf375 (parts), c270699b (certificate)
+
 ### Next Action
-**FE-02-01 complete — Fault Lens rebuilt. FE-02-02/03/04 already executed. Continue with FE-02-05.**
+**FE-02-05 complete — FE-02-batch1-lenses phase FULLY COMPLETE. All 5 plans executed.**
 
