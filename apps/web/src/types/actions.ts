@@ -24,6 +24,9 @@ export type MicroAction =
   | 'acknowledge_fault'
   | 'update_fault'
   | 'view_fault_detail'
+  | 'close_fault'
+  | 'mark_fault_false_alarm'
+  | 'reopen_fault'
 
   // WORK ORDER / PMS (11 actions)
   | 'create_work_order'
@@ -37,15 +40,21 @@ export type MicroAction =
   | 'view_work_order_checklist'
   | 'assign_work_order'
 
-  // EQUIPMENT (6 actions)
+  // EQUIPMENT (12 actions)
   | 'view_equipment_details'
   | 'view_equipment_history'
   | 'view_equipment_parts'
   | 'view_linked_faults'
   | 'view_equipment_manual'
   | 'add_equipment_note'
+  | 'update_equipment_status'
+  | 'decommission_equipment'
+  | 'flag_equipment_attention'
+  | 'attach_file_to_equipment'
+  | 'link_part_to_equipment'
+  | 'create_work_order_for_equipment'
 
-  // INVENTORY / PARTS (9 actions)
+  // INVENTORY / PARTS (16 actions)
   | 'view_part_stock'
   | 'add_part'
   | 'order_part'
@@ -55,6 +64,13 @@ export type MicroAction =
   | 'edit_part_quantity'
   | 'scan_part_barcode'
   | 'view_linked_equipment'
+  | 'consume_part'
+  | 'receive_part'
+  | 'transfer_part'
+  | 'add_to_shopping_list'
+  | 'generate_part_labels'
+  | 'adjust_stock_quantity'
+  | 'write_off_part'
 
   // HANDOVER (6 actions)
   | 'add_to_handover'
@@ -75,7 +91,7 @@ export type MicroAction =
   | 'export_hours_of_rest'
   | 'view_compliance_status'
 
-  // PURCHASING / SUPPLIER (7 actions)
+  // PURCHASING / SUPPLIER (8 actions)
   | 'create_purchase_request'
   | 'add_item_to_purchase'
   | 'approve_purchase'
@@ -83,6 +99,7 @@ export type MicroAction =
   | 'track_delivery'
   | 'log_delivery_received'
   | 'update_purchase_status'
+  | 'edit_purchase_details'
 
   // RECEIVING (10 actions)
   | 'create_receiving'
@@ -409,6 +426,30 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     icon: 'Eye',
     description: 'View full fault details',
   },
+  close_fault: {
+    action_name: 'close_fault',
+    label: 'Close Fault',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_light',
+    icon: 'CheckCircle',
+    description: 'Mark fault as resolved',
+  },
+  mark_fault_false_alarm: {
+    action_name: 'mark_fault_false_alarm',
+    label: 'False Alarm',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_light',
+    icon: 'XCircle',
+    description: 'Mark fault as false alarm',
+  },
+  reopen_fault: {
+    action_name: 'reopen_fault',
+    label: 'Reopen',
+    cluster: 'fix_something',
+    side_effect_type: 'mutation_light',
+    icon: 'RefreshCw',
+    description: 'Reopen a closed fault',
+  },
   report_fault: {
     action_name: 'report_fault',
     label: 'Report Fault',
@@ -562,6 +603,56 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     icon: 'StickyNote',
     description: 'Add observation about equipment condition',
   },
+  update_equipment_status: {
+    action_name: 'update_equipment_status',
+    label: 'Update Status',
+    cluster: 'manage_equipment',
+    side_effect_type: 'mutation_light',
+    icon: 'RefreshCw',
+    description: 'Update equipment operational status',
+  },
+  decommission_equipment: {
+    action_name: 'decommission_equipment',
+    label: 'Decommission',
+    cluster: 'manage_equipment',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'Archive',
+    description: 'Mark equipment as decommissioned',
+  },
+  flag_equipment_attention: {
+    action_name: 'flag_equipment_attention',
+    label: 'Flag Attention',
+    cluster: 'manage_equipment',
+    side_effect_type: 'mutation_light',
+    icon: 'Flag',
+    description: 'Flag equipment for attention',
+  },
+  attach_file_to_equipment: {
+    action_name: 'attach_file_to_equipment',
+    label: 'Attach File',
+    cluster: 'manage_equipment',
+    side_effect_type: 'mutation_light',
+    icon: 'Paperclip',
+    description: 'Attach document or image to equipment',
+  },
+  link_part_to_equipment: {
+    action_name: 'link_part_to_equipment',
+    label: 'Link Part',
+    cluster: 'manage_equipment',
+    side_effect_type: 'mutation_light',
+    icon: 'Link',
+    description: 'Link spare part to equipment',
+  },
+  create_work_order_for_equipment: {
+    action_name: 'create_work_order_for_equipment',
+    label: 'Create Work Order',
+    cluster: 'manage_equipment',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'Wrench',
+    description: 'Create work order for this equipment',
+  },
 
   // INVENTORY / PARTS
   view_part_stock: {
@@ -639,6 +730,69 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     side_effect_type: 'read_only',
     icon: 'Cog',
     description: 'Show which equipment uses this part',
+  },
+  consume_part: {
+    action_name: 'consume_part',
+    label: 'Consume',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'MinusCircle',
+    description: 'Record part consumption',
+  },
+  receive_part: {
+    action_name: 'receive_part',
+    label: 'Receive',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'PlusCircle',
+    description: 'Receive part into inventory',
+  },
+  transfer_part: {
+    action_name: 'transfer_part',
+    label: 'Transfer',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    icon: 'ArrowRightLeft',
+    description: 'Transfer part between locations',
+  },
+  add_to_shopping_list: {
+    action_name: 'add_to_shopping_list',
+    label: 'Add to List',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_light',
+    icon: 'ShoppingCart',
+    description: 'Add part to shopping list',
+  },
+  generate_part_labels: {
+    action_name: 'generate_part_labels',
+    label: 'Print Labels',
+    cluster: 'control_inventory',
+    side_effect_type: 'read_only',
+    icon: 'Printer',
+    description: 'Generate labels for part',
+  },
+  adjust_stock_quantity: {
+    action_name: 'adjust_stock_quantity',
+    label: 'Adjust Stock',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    requires_reason: true,
+    icon: 'Edit',
+    description: 'Adjust stock quantity with reason',
+  },
+  write_off_part: {
+    action_name: 'write_off_part',
+    label: 'Write Off',
+    cluster: 'control_inventory',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    requires_reason: true,
+    icon: 'Trash2',
+    description: 'Write off part from inventory',
   },
 
   // HANDOVER
