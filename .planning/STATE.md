@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 13 (Gap Remediation) |
-| Plan | 06 of 8 complete |
+| Plan | 07 of 8 complete |
 | Status | Executing gap remediation plans |
-| Last activity | 2026-02-17 — Completed 13-06 (SignaturePrompt modal wiring) |
+| Last activity | 2026-02-17 — Completed 13-04 (email_handlers.py) |
 
 ---
 
@@ -42,7 +42,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
 | 9 | Warranty | WARR-01..05 | ◐ 3/5 (WarrantyCard.tsx done, E2E/ledger missing) |
 | 10 | Shopping List | SHOP-01..05 | ● 5/5 COMPLETE (state history trigger added) |
-| 11 | Email | EMAIL-01..06 | ◐ 3/6 (email_handlers.py missing) |
+| 11 | Email | EMAIL-01..06 | ◐ 4/6 (EMAIL-01 done - email_handlers.py) |
 | 12 | Cross-Lens Cleanup | CLEAN-01..04 | ● 4/4 COMPLETE (13-01 fixed CLEAN-01) |
 
 ---
@@ -61,6 +61,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 12 phases, 60 requirements | One lens per phase | 2026-02-17 |
 | Use pms_audit_log for shopping list state tracking | Consistency with other lenses | 2026-02-17 |
 | SignaturePrompt renders as full overlay replacing modal | UX spec ownership transfer pattern | 2026-02-17 |
+| Email handlers follow warranty_handlers.py pattern | Consistency with existing codebase | 2026-02-17 |
 
 ---
 
@@ -71,7 +72,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | PR #332 pending merge | Receiving 8/10 tests | User | OPEN |
 | crew.test@alex-short.com not in Supabase | Crew create test fails | User | OPEN |
 | Handler not deployed to staging | Reject→accept test fails against remote | DevOps | OPEN |
-| Email lens handler missing | 5 actions unimplemented | Claude (Phase 11) | OPEN |
+| ~~Email lens handler missing~~ | ~~5 actions unimplemented~~ | Claude (Phase 11) | RESOLVED (13-04) |
 
 ---
 
@@ -128,7 +129,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 8 Hours of Rest | 5/5 ✓ | All requirements verified |
 | 9 Warranty | 3/5 | WarrantyCard.tsx done (13-03), E2E/ledger missing |
 | 10 Shopping List | 4/5 | State history table missing |
-| 11 Email | 3/6 | email_handlers.py missing from registry |
+| 11 Email | 4/6 | email_handlers.py done (13-04) |
 | 12 Cross-Lens | 2/4 | Email message + SignaturePrompt not wired |
 
 **Total: 42/54 requirements verified (78%)**
@@ -136,7 +137,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 **Critical gaps requiring remediation:**
 1. ~~CertificateCard.tsx - create frontend component~~ DONE (13-02)
 2. ~~WarrantyCard.tsx - create frontend component~~ DONE (13-03)
-3. email_handlers.py - create registry handler file
+3. ~~email_handlers.py - create registry handler file~~ DONE (13-04)
 4. ~~Shopping list state_history trigger - deploy migration~~ DONE (13-05)
 5. ~~SignaturePrompt - wire to finalize/approve modals~~ DONE (13-06)
 6. ~~Remove "email integration is off" message~~ DONE (13-01)
