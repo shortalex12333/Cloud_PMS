@@ -156,6 +156,21 @@ export function useEquipmentActions(equipmentId: string) {
     [execute]
   );
 
+  /**
+   * log_hours — log a new running hours reading for this equipment.
+   * Records to pms_equipment_hours_log table.
+   */
+  const logHours = useCallback(
+    (equipId: string, hoursReading: number, readingType?: string, notes?: string) =>
+      execute('/v1/equipment/log-hours', {
+        equipment_id: equipId,
+        hours_reading: hoursReading,
+        reading_type: readingType ?? 'manual',
+        notes,
+      }),
+    [execute]
+  );
+
   // -------------------------------------------------------------------------
   // Return
   // -------------------------------------------------------------------------
@@ -171,6 +186,7 @@ export function useEquipmentActions(equipmentId: string) {
     linkDocument,
     createWorkOrder,
     reportFault,
+    logHours,
   };
 }
 
@@ -190,6 +206,9 @@ const CREATE_WO_ROLES = ['chief_engineer', 'eto', 'chief_officer', 'captain', 'm
 /** Roles allowed to link documents */
 const LINK_DOC_ROLES = ['chief_engineer', 'eto', 'captain', 'manager'];
 
+/** Roles allowed to log running hours */
+const LOG_HOURS_ROLES = ['chief_engineer', 'eto', 'engineer', 'captain', 'manager'];
+
 export interface EquipmentPermissions {
   /** Can view equipment details (all crew) */
   canView: boolean;
@@ -201,6 +220,8 @@ export interface EquipmentPermissions {
   canCreateWorkOrder: boolean;
   /** Can report a fault on this equipment */
   canReportFault: boolean;
+  /** Can log running hours for this equipment */
+  canLogHours: boolean;
 }
 
 /**
@@ -219,5 +240,6 @@ export function useEquipmentPermissions(): EquipmentPermissions {
     canLinkDocument: LINK_DOC_ROLES.includes(role),
     canCreateWorkOrder: CREATE_WO_ROLES.includes(role),
     canReportFault: HOD_ROLES.includes(role),
+    canLogHours: LOG_HOURS_ROLES.includes(role),
   };
 }

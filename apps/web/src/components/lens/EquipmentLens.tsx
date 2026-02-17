@@ -29,11 +29,15 @@ import {
   LinkedFaultsSection,
   LinkedWorkOrdersSection,
   DocumentsSection,
+  HoursLogSection,
+  StatusHistorySection,
   type EquipmentSpecification,
   type MaintenanceHistoryEntry,
   type LinkedFault,
   type LinkedWorkOrder,
   type EquipmentDocument,
+  type HoursLogEntry,
+  type StatusHistoryEntry,
 } from './sections/equipment';
 
 // Action hook + permissions
@@ -78,6 +82,10 @@ export interface EquipmentLensData {
   maintenance_history?: MaintenanceHistoryEntry[];
   /** Linked documents (manuals, certificates) */
   documents?: EquipmentDocument[];
+  /** Running hours log entries (pms_equipment_hours_log) */
+  hours_log?: HoursLogEntry[];
+  /** Status change history (pms_equipment_status_log) */
+  status_history?: StatusHistoryEntry[];
 }
 
 export interface EquipmentLensProps {
@@ -213,6 +221,8 @@ export const EquipmentLens = React.forwardRef<
   const workOrders = equipment.work_orders ?? [];
   const maintenanceHistory = equipment.maintenance_history ?? [];
   const documents = equipment.documents ?? [];
+  const hoursLog = equipment.hours_log ?? [];
+  const statusHistory = equipment.status_history ?? [];
 
   // Handle close with exit animation: flip isOpen → false, then call onClose after 200ms
   const handleClose = React.useCallback(() => {
@@ -339,6 +349,53 @@ export const EquipmentLens = React.forwardRef<
             stickyTop={56}
           />
         </div>
+
+        {/* ---------------------------------------------------------------
+            Hours Log Section - Running hours tracking
+            Only show if equipment has running hours capability
+            --------------------------------------------------------------- */}
+        {(equipment.running_hours !== undefined || hoursLog.length > 0) && (
+          <div className="mt-6">
+            <HoursLogSection
+              entries={hoursLog}
+              canAddReading={perms.canLogHours}
+              onAddReading={() => {
+                // TODO: Open hours log form modal
+                // For now, prompt for hours reading
+                const hoursInput = window.prompt('Enter current hours reading:');
+                if (hoursInput) {
+                  const hours = parseFloat(hoursInput);
+                  if (!isNaN(hours) && hours >= 0) {
+                    actions.logHours(equipment.id, hours, 'manual').then((result) => {
+                      if (result.success) onRefresh?.();
+                    });
+                  }
+                }
+              }}
+              stickyTop={56}
+            />
+          </div>
+        )}
+
+        {/* ---------------------------------------------------------------
+            Status History Section - Equipment status change timeline
+            --------------------------------------------------------------- */}
+        {statusHistory.length > 0 && (
+          <div className="mt-6">
+            <StatusHistorySection
+              entries={statusHistory}
+              stickyTop={56}
+              onWorkOrderClick={(woId) => {
+                // Navigate to work order lens
+                window.location.href = `/work-orders/${woId}`;
+              }}
+              onFaultClick={(faultId) => {
+                // Navigate to fault lens
+                window.location.href = `/faults/${faultId}`;
+              }}
+            />
+          </div>
+        )}
 
         {/* ---------------------------------------------------------------
             Linked Faults Section
