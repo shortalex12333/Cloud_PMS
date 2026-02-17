@@ -7,14 +7,13 @@
  * - NOT an inbox - this is a "related evidence panel"
  * - Shows link confidence (why this thread is linked)
  * - Allows explicit user actions (accept/change/unlink)
- * - Fails gracefully when feature is disabled
  */
 
 'use client';
 
 import { useState } from 'react';
 import { Mail, ChevronDown, ChevronRight, Link2, AlertCircle, Loader2, Settings, RefreshCw, AlertTriangle } from 'lucide-react';
-import { useRelatedThreads, useEmailFeatureEnabled, useWatcherStatus, type EmailThread, type LinkConfidence } from '@/hooks/useEmailData';
+import { useRelatedThreads, useWatcherStatus, type EmailThread, type LinkConfidence } from '@/hooks/useEmailData';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { EmailThreadViewer } from './EmailThreadViewer';
 import { EmailLinkActions } from './EmailLinkActions';
@@ -35,14 +34,8 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   const [selectedThreadForLinking, setSelectedThreadForLinking] = useState<{id: string; subject: string} | null>(null);
 
   const { showEmail } = useSurface();
-  const { enabled: featureEnabled } = useEmailFeatureEnabled();
   const { data: watcherStatus } = useWatcherStatus();
   const { data, isLoading, error, refetch } = useRelatedThreads(objectType, objectId);
-
-  // Feature disabled state - don't render panel at all
-  if (!featureEnabled) {
-    return null;
-  }
 
   // Not connected state - no watcher configured
   if (watcherStatus && !watcherStatus.is_connected) {
