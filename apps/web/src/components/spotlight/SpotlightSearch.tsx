@@ -783,9 +783,8 @@ export default function SpotlightSearch({
             'w-full font-body',
             'bg-[var(--celeste-spotlight-bg)]',
             'rounded-[var(--celeste-spotlight-radius)]',
-            // Shadow only - NO border (ChatGPT spec)
-            'shadow-[0_2px_20px_rgba(0,0,0,0.12),0_8px_32px_rgba(0,0,0,0.08)]',
-            'dark:shadow-[0_2px_20px_rgba(0,0,0,0.4),0_8px_32px_rgba(0,0,0,0.3)]',
+            // Shadow only - NO border (ChatGPT spec) - FULLY TOKENIZED
+            'shadow-[var(--celeste-spotlight-shadow)]',
             'backdrop-blur-[var(--celeste-material-blur)]',
             'animate-spotlight-in',
             // Email scope: accent ring only (no border)
