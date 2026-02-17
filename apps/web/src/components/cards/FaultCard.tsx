@@ -26,7 +26,6 @@ import { AcknowledgeFaultModal } from '@/components/modals/AcknowledgeFaultModal
 import { EditFaultDetailsModal } from '@/components/modals/EditFaultDetailsModal';
 import { AddToHandoverQuickModal } from '@/components/modals/AddToHandoverQuickModal';
 import { ActionButton } from '@/components/actions/ActionButton';
-import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
 import { useActionDecisions } from '@/lib/microactions/hooks/useActionDecisions';
 import { SectionContainer } from '@/components/ui/SectionContainer';
@@ -585,12 +584,6 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               </div>
             )}
 
-            {/* Related Emails - Evidence panel */}
-            <RelatedEmailsPanel
-              objectType="fault"
-              objectId={fault.id}
-              className="mt-4"
-            />
           </div>
         </div>
       </div>
