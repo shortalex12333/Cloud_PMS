@@ -843,21 +843,6 @@ export function useThreadLinks(threadId: string | null, confidenceThreshold: num
 }
 
 // ============================================================================
-// FEATURE FLAG CHECK
-// ============================================================================
-
-/**
- * Check if email features are enabled
- * Returns a simple boolean based on env var or API check
- */
-export function useEmailFeatureEnabled() {
-  // For now, check environment variable
-  // In production, this could call an API endpoint
-  const enabled = process.env.NEXT_PUBLIC_EMAIL_ENABLED === 'true';
-  return { enabled, isLoading: false };
-}
-
-// ============================================================================
 // OUTLOOK CONNECTION STATUS HOOK
 // ============================================================================
 
