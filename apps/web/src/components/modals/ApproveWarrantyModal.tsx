@@ -98,7 +98,7 @@ export function ApproveWarrantyModal({
     if (!formData) return;
 
     const response = await executeAction(
-      'approve_warranty_claim',
+      'approve_warranty_claim' as any,
       {
         claim_id: context.claim_id,
         approved_amount: formData.approved_amount,
