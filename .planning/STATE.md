@@ -94,6 +94,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | E2E tests in tests/playwright/ not e2e/ | playwright.config.ts testDir is ./tests/playwright | 2026-02-17 |
 | openWorkOrderLens returns bool (not void) | Enables graceful skip when staging data unavailable | 2026-02-17 |
 | WO-LENS-009 in separate describe block | Avoids beforeEach HOD auth conflict when testing crew role gate | 2026-02-17 |
+| acknowledged_at flag drives status label (not enum value) | DB stores acknowledgement as timestamp; open fault can be acknowledged without changing status | 2026-02-17 |
+| Fault open status = critical color (not neutral) | Unacknowledged open fault is urgent; open=critical, acknowledged+open=warning | 2026-02-17 |
+| Fault severity cosmetic/minor=neutral, major=warning, critical/safety=critical | 5 severity values mapped to 3 visual levels | 2026-02-17 |
 | Expiry color: critical/warning/success by daysUntilExpiry | critical=expired, warning=<=30d, success=valid — matches UI_SPEC.md | 2026-02-17 |
 | certificateType prop drives entity link (crew_member vs vessel_name) | Two distinct entity contexts with different link targets | 2026-02-17 |
 | SectionContainer action: {label,onClick} not ReactNode | Typed interface enforced at build time — use action.label pattern | 2026-02-17 |
@@ -326,6 +329,18 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Commits: 8c92612f (PartsLens), 1892bec4 (sections), 2a8b8d36 (hook), 2da15688 (page+gitignore), d8cb25c0 (build)
 - Build: 17/17 routes, 0 TS errors (+1 route vs previous)
 
+### 2026-02-17 (FE-02-01) - Fault Lens Rebuild
+- Plan FE-02-01: FaultLens replacing old skeleton with WorkOrderLens-pattern implementation
+- LensContainer + LensHeader + LensTitleBlock + VitalSignsRow (5: status/severity/equipment link/reporter/age)
+- 4 sections: DescriptionSection (conditional), FaultPhotosSection, NotesSection (reused), HistorySection (reused)
+- useFaultActions: acknowledge, close, diagnose, reopen, addNote, addPhoto typed helpers
+- useFaultPermissions: 6 role flags — HOD+ for status transitions, crew+ for note/photo
+- acknowledged_at flag drives "Acknowledged" label (not a status enum)
+- faults/[id]/page.tsx: replaced old skeleton with FaultLens + viewFault + fire-and-forget ledger log
+- No UUID visible: fault_code (FLT-YYYY-000001) used as display prefix
+- Commits: 8edefc29 (hook), 892c3c23 (sections), 0fcb8149 (FaultLens), 65444c17 (page.tsx)
+- Build: TypeScript compiled successfully, 16/16 routes, 0 TS errors in new files
+
 ### Next Action
-**FE-02-03 complete — Parts Lens implemented. FE-02-04 also complete (Certificate Lens). Continue with FE-02-05.**
+**FE-02-01 complete — Fault Lens rebuilt. FE-02-02/03/04 already executed. Continue with FE-02-05.**
 
