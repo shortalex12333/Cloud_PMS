@@ -19,10 +19,10 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 
 ### Receiving Lens (RECV)
 
-- [ ] **RECV-01**: PR #332 merged and deployed
-- [ ] **RECV-02**: Crew test user provisioned in Supabase auth
-- [ ] **RECV-03**: All 10 E2E tests passing
-- [ ] **RECV-04**: Ledger triggers verified for receiving actions
+- [ ] **RECV-01**: PR #332 merged and deployed (blocked - requires code review)
+- [x] **RECV-02**: Crew test user provisioned in Supabase auth (crew.test@alex-short.com verified)
+- [ ] **RECV-03**: All 10 E2E tests passing (8/10 - blocked by RECV-01)
+- [x] **RECV-04**: Ledger triggers verified for receiving actions (pms_audit_log verified)
 
 ### Parts/Inventory Lens (PART)
 
