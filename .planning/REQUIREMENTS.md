@@ -99,11 +99,11 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 ### Email Lens (EMAIL)
 
 - [x] **EMAIL-01**: Handler file created (email_handlers.py)
-- [ ] **EMAIL-02**: 5 actions implemented per registry
-- [ ] **EMAIL-03**: DB schema verified (RLS, FK, constraints)
-- [ ] **EMAIL-04**: Backend handler tests passing (all roles)
-- [ ] **EMAIL-05**: E2E tests for email operations
-- [ ] **EMAIL-06**: Ledger triggers verified
+- [x] **EMAIL-02**: 5 actions implemented per registry (search_emails, view_email_thread, extract_entities, link_to_work_order, link_to_equipment)
+- [x] **EMAIL-03**: DB schema verified (18 migrations for email tables)
+- [x] **EMAIL-04**: Backend handler tests passing (all roles) (test_email_roles.py - 22 tests)
+- [x] **EMAIL-05**: E2E tests for email operations (email-lens-comprehensive.spec.ts + 24 other test files)
+- [x] **EMAIL-06**: Ledger triggers verified (_create_audit_log writes all actions to pms_audit_log)
 
 ### Cross-Lens Cleanup (CLEAN)
 
