@@ -22,18 +22,28 @@ export interface SectionContainerProps {
   action?: { label: string; onClick: () => void };
   children: React.ReactNode;
   className?: string;
+  /**
+   * Top offset for sticky header positioning.
+   * Default: 0 (no fixed header above).
+   * Set to 56 when used inside LensContainer (clears the 56px fixed LensHeader).
+   */
+  stickyTop?: number;
 }
 
 export const SectionContainer = React.forwardRef<
   HTMLDivElement,
   SectionContainerProps
->(({ title, icon, count, action, children, className }, ref) => {
+>(({ title, icon, count, action, children, className, stickyTop = 0 }, ref) => {
   const [isPinned, setIsPinned] = React.useState(false);
   const headerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
+
+    // rootMargin top offset accounts for any fixed headers above the sticky header
+    // so IntersectionObserver fires at the correct threshold point
+    const topOffset = stickyTop > 0 ? `-${stickyTop + 1}px` : '-1px';
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -42,13 +52,13 @@ export const SectionContainer = React.forwardRef<
       },
       {
         threshold: 1,
-        rootMargin: '-1px 0px 0px 0px',
+        rootMargin: `${topOffset} 0px 0px 0px`,
       }
     );
 
     observer.observe(header);
     return () => observer.disconnect();
-  }, []);
+  }, [stickyTop]);
 
   return (
     <div
@@ -62,9 +72,12 @@ export const SectionContainer = React.forwardRef<
       {/* Sticky header - 44px height */}
       <div
         ref={headerRef}
+        style={{ top: stickyTop > 0 ? `${stickyTop}px` : undefined }}
         className={cn(
           // Header layout
-          'sticky top-0 z-10 flex items-center justify-between',
+          'sticky z-10 flex items-center justify-between',
+          // Use top-0 when no fixed header, otherwise top is set via inline style
+          stickyTop === 0 && 'top-0',
           'h-11 px-4',
           // Transitions between states
           'transition-colors duration-200',

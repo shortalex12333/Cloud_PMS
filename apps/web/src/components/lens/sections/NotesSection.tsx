@@ -19,6 +19,8 @@ export interface NotesSectionProps {
   notes: WorkOrderNote[];
   onAddNote: () => void;
   canAddNote: boolean;
+  /** Top offset for sticky header (56 when inside lens to clear the fixed LensHeader) */
+  stickyTop?: number;
 }
 
 // ============================================================================
@@ -141,7 +143,7 @@ function NoteRow({ note }: NoteRowProps) {
  *
  * Empty state: contextual, not generic.
  */
-export function NotesSection({ notes, onAddNote, canAddNote }: NotesSectionProps) {
+export function NotesSection({ notes, onAddNote, canAddNote, stickyTop }: NotesSectionProps) {
   return (
     <SectionContainer
       title="Notes"
@@ -151,6 +153,7 @@ export function NotesSection({ notes, onAddNote, canAddNote }: NotesSectionProps
           ? { label: '+ Add Note', onClick: onAddNote }
           : undefined
       }
+      stickyTop={stickyTop}
     >
       {notes.length === 0 ? (
         // Contextual empty state per UI_SPEC.md language rules

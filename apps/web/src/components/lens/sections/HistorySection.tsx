@@ -23,6 +23,8 @@ export interface HistorySectionProps {
   history: AuditLogEntry[];
   /** Number of entries to show before "Load more" (default: 20) */
   pageSize?: number;
+  /** Top offset for sticky header (56 when inside lens to clear the fixed LensHeader) */
+  stickyTop?: number;
 }
 
 // ============================================================================
@@ -193,6 +195,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
 export function HistorySection({
   history,
   pageSize = DEFAULT_PAGE_SIZE,
+  stickyTop,
 }: HistorySectionProps) {
   const [visibleCount, setVisibleCount] = React.useState(pageSize);
 
@@ -207,7 +210,7 @@ export function HistorySection({
 
   return (
     // No action prop: HistorySection is read-only, no adjacent button
-    <SectionContainer title="History">
+    <SectionContainer title="History" stickyTop={stickyTop}>
       {history.length === 0 ? (
         // Defensive empty state — should not normally render per spec
         // (work orders always have creation entry), but handle gracefully

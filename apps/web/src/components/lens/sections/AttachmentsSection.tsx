@@ -28,6 +28,8 @@ export interface AttachmentsSectionProps {
   canAddFile: boolean;
   /** Called when a document card is clicked — opens Document lens */
   onDocumentClick?: (fileId: string) => void;
+  /** Top offset for sticky header (56 when inside lens to clear the fixed LensHeader) */
+  stickyTop?: number;
 }
 
 // ============================================================================
@@ -51,6 +53,7 @@ export function AttachmentsSection({
   onAddFile,
   canAddFile,
   onDocumentClick,
+  stickyTop,
 }: AttachmentsSectionProps) {
   // Partition attachments into media and documents using extension-based detection
   // (MIME unreliable from signed storage URLs — per STATE.md decision)
@@ -70,6 +73,7 @@ export function AttachmentsSection({
           ? { label: '+ Add File', onClick: onAddFile }
           : undefined
       }
+      stickyTop={stickyTop}
     >
       {attachments.length === 0 ? (
         // Contextual empty state per UI_SPEC.md language rules
