@@ -34,3 +34,23 @@ export {
   type DocumentsSectionProps,
   type EquipmentDocument,
 } from './DocumentsSection';
+
+export {
+  HoursLogSection,
+  type HoursLogSectionProps,
+  type HoursLogEntry,
+} from './HoursLogSection';
+
+export {
+  StatusHistorySection,
+  type StatusHistorySectionProps,
+  type StatusHistoryEntry,
+  type EquipmentStatus as StatusHistoryEquipmentStatus,
+} from './StatusHistorySection';
+
+export {
+  EquipmentDocumentsSection,
+  type EquipmentDocumentsSectionProps,
+  type EquipmentDocumentFile,
+  type EquipmentDocumentType,
+} from './EquipmentDocumentsSection';
