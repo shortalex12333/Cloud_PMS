@@ -71,6 +71,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | forwardRef for all UI components | Consistent ref forwarding pattern | 2026-02-17 |
 
 ---
+- [Phase 00-design-system]: Tailwind semantic tokens use var(--token-name) CSS custom properties — zero raw hex values in config
+- [Phase 00-design-system]: Legacy celeste-* Tailwind tokens preserved alongside new semantic tokens for backward compatibility
+- [Phase 00-design-system]: Spacing tokens prefixed ds- to avoid collision with Tailwind numeric scale
 
 ## Blockers
 
