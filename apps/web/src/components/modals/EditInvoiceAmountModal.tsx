@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * EditInvoiceAmountModal Component
  *
@@ -67,7 +66,7 @@ export function EditInvoiceAmountModal({
     formState: { errors },
     watch,
   } = useForm<EditInvoiceAmountFormData>({
-    resolver: zodResolver(editInvoiceAmountSchema),
+    resolver: zodResolver(editInvoiceAmountSchema) as any,
     defaultValues: {
       purchase_id: context.purchase_id,
       invoice_id: context.invoice_id,
@@ -134,7 +133,7 @@ export function EditInvoiceAmountModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Invoice Information */}
           <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
             <div className="flex items-start gap-3">
