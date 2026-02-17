@@ -37,7 +37,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 3 | Equipment | EQUIP-01..05 | ● 5/5 COMPLETE |
 | 4 | Fault | FAULT-01..05 | ● 5/5 COMPLETE |
 | 5 | Work Order | WO-01..05 | ◐ 4/5 (WO-03 reassign/archive UI missing) |
-| 6 | Certificate | CERT-01..05 | ◐ 2/5 (CertificateCard.tsx + E2E missing) |
+| 6 | Certificate | CERT-01..05 | ◐ 3/5 (CertificateCard.tsx done, E2E missing) |
 | 7 | Handover | HAND-01..05 | ◐ 3/5 (signature display + role tests partial) |
 | 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
 | 9 | Warranty | WARR-01..05 | ◐ 2/5 (no frontend/E2E/ledger) |
@@ -122,7 +122,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 3 Equipment | 5/5 ✓ | All requirements verified |
 | 4 Fault | 5/5 ✓ | 57/57 E2E tests passed |
 | 5 Work Order | 4/5 | WO-03: reassign/archive UI missing |
-| 6 Certificate | 2/5 | CertificateCard.tsx + E2E tests missing |
+| 6 Certificate | 3/5 | CertificateCard.tsx done (13-02), E2E tests missing |
 | 7 Handover | 3/5 | Signature display + role tests partial |
 | 8 Hours of Rest | 5/5 ✓ | All requirements verified |
 | 9 Warranty | 2/5 | No frontend, E2E, or ledger triggers |
@@ -133,7 +133,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 **Total: 42/54 requirements verified (78%)**
 
 **Critical gaps requiring remediation:**
-1. CertificateCard.tsx - create frontend component
+1. ~~CertificateCard.tsx - create frontend component~~ DONE (13-02)
 2. WarrantyCard.tsx - create frontend component
 3. email_handlers.py - create registry handler file
 4. ~~Shopping list state_history trigger - deploy migration~~ DONE (13-05)
