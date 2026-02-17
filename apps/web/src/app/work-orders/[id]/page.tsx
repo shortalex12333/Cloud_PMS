@@ -44,13 +44,43 @@
  * =============================================================================
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { viewWorkOrder } from '@/lib/microactions/handlers/workOrders';
 import type { ActionContext } from '@/lib/microactions/types';
 import { WorkOrderLens, type WorkOrderLensData } from '@/components/lens/WorkOrderLens';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+
+// ---------------------------------------------------------------------------
+// LEDGER LOGGING
+// Logs navigation events to pms_audit_log via backend API.
+// Per CLAUDE.md: Every user action logged to ledger. Every navigate — all of it.
+// ---------------------------------------------------------------------------
+const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+
+async function logNavigationEvent(
+  eventName: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return;
+
+    await fetch(`${RENDER_API_URL}/v1/ledger/record`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ event_name: eventName, payload }),
+    });
+  } catch {
+    // Navigation logging is fire-and-forget — never block UX on failure
+  }
+}
 
 export default function WorkOrderLensPage() {
   // ---------------------------------------------------------------------------
@@ -125,6 +155,14 @@ export default function WorkOrderLensPage() {
 
         setWorkOrder(data);
         setLoading(false);
+
+        // Log navigate_to_lens event — per CLAUDE.md every navigate is logged
+        logNavigationEvent('navigate_to_lens', {
+          entity_type: 'work_order',
+          entity_id: workOrderId,
+          wo_number: data.wo_number,
+          title: data.title,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load work order');
         setLoading(false);
@@ -179,13 +217,32 @@ export default function WorkOrderLensPage() {
   }
 
   // ---------------------------------------------------------------------------
+  // NAVIGATION HANDLERS — Log to ledger before navigating
+  // ---------------------------------------------------------------------------
+  const handleBack = useCallback(() => {
+    logNavigationEvent('navigate_back', {
+      entity_type: 'work_order',
+      entity_id: workOrderId,
+    });
+    router.back();
+  }, [workOrderId, router]);
+
+  const handleClose = useCallback(() => {
+    logNavigationEvent('close_lens', {
+      entity_type: 'work_order',
+      entity_id: workOrderId,
+    });
+    router.push('/app');
+  }, [workOrderId, router]);
+
+  // ---------------------------------------------------------------------------
   // RENDER — Delegate entirely to WorkOrderLens component
   // ---------------------------------------------------------------------------
   return (
     <WorkOrderLens
       workOrder={workOrder}
-      onBack={() => router.back()}
-      onClose={() => router.push('/app')}
+      onBack={handleBack}
+      onClose={handleClose}
     />
   );
 }

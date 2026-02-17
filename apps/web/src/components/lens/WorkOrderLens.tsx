@@ -9,8 +9,12 @@
  * - VitalSignsRow: 5 indicators (status, priority, parts, created, equipment)
  * - NO UUID visible anywhere in the header
  * - All semantic tokens, zero raw hex values
+ * - Glass transition animation via LensContainer (300ms ease-out)
+ * - Body scroll locked when open
  *
  * This is the reference implementation — all other lenses inherit this structure.
+ *
+ * FE-01-05: Full-Screen Lens Layout + Glass Transitions
  */
 
 import * as React from 'react';
@@ -18,6 +22,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
+import { LensContainer } from './LensContainer';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
 import { formatRelativeTime } from '@/lib/utils';
 
@@ -150,6 +155,14 @@ export const WorkOrderLens = React.forwardRef<
   HTMLDivElement,
   WorkOrderLensProps
 >(({ workOrder, onBack, onClose, className }, ref) => {
+  // Glass transition: lens mounts as closed then opens on first render
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  useEffect(() => {
+    // Trigger glass enter animation on mount
+    setIsOpen(true);
+  }, []);
+
   // Derived display values — never expose raw UUID
   const displayTitle = workOrder.wo_number
     ? `${workOrder.wo_number} — ${workOrder.title}`
@@ -195,21 +208,35 @@ export const WorkOrderLens = React.forwardRef<
     },
   ];
 
+  // Handle close with exit animation: flip isOpen → false, then call onClose after 200ms
+  const handleClose = React.useCallback(() => {
+    setIsOpen(false);
+    if (onClose) {
+      setTimeout(onClose, 210); // Wait for exit animation (200ms + buffer)
+    }
+  }, [onClose]);
+
+  const handleBack = React.useCallback(() => {
+    if (onBack) {
+      onBack();
+    } else {
+      handleClose();
+    }
+  }, [onBack, handleClose]);
+
   return (
-    <div
+    <LensContainer
       ref={ref}
-      className={cn(
-        // Full-screen lens container
-        'min-h-screen bg-surface-base',
-        className
-      )}
+      isOpen={isOpen}
+      onClose={handleClose}
+      className={className}
     >
       {/* Fixed navigation header — 56px, at z-header */}
       <LensHeader
         entityType="Work Order"
         title={displayTitle}
-        onBack={onBack}
-        onClose={onClose}
+        onBack={handleBack}
+        onClose={handleClose}
       />
 
       {/* Main content — padded top to clear fixed header (56px = h-14) */}
@@ -269,7 +296,7 @@ export const WorkOrderLens = React.forwardRef<
           {/* Notes section, Parts section, History etc. will follow here */}
         </div>
       </main>
-    </div>
+    </LensContainer>
   );
 });
 
