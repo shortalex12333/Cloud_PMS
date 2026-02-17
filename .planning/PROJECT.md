@@ -4,89 +4,50 @@
 
 ---
 
-## What This Is
+## Scope: Frontend UX Engineering
 
-CelesteOS is a cloud-based Property Management System (PMS) for maritime yachts. It replaces traditional multi-page navigation with a single-URL, intent-first interface where crew can "do something" rather than "go somewhere." Database is truth, every action is auditable, immutable ledger for compliance.
+**Role**: Frontend UX Engineer only. No backend operations.
 
-## Core Value
-
-**Crew can complete maintenance tasks faster with fewer clicks than any existing PMS, with full audit trail.**
-
----
-
-## Current Milestone: v1.0 — Lens Completion
-
-**Goal:** Complete all 16 entity lenses with backend handlers, frontend rendering, and E2E test coverage.
-
-**Target features:**
-- All lens handlers implemented (including missing Email lens)
-- 9-step testing protocol passed per lens
-- Full E2E coverage with role-based testing (crew, HOD, captain)
-- Ledger triggers verified for audit trail
-- Remove "email integration is off" legacy code
+**Focus Areas**:
+- UI/UX design and implementation
+- Component development (React, TypeScript)
+- Styling (Tailwind CSS, CSS custom properties)
+- User interaction patterns
+- Accessibility
+- Visual consistency
+- Responsive design
 
 ---
 
-## Technical Stack
+## Technical Stack (Frontend Only)
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 14, React, TypeScript, Tailwind CSS |
-| Backend | Python (FastAPI), Supabase Edge Functions |
-| Database | PostgreSQL (Supabase), RLS policies |
-| OCR | Tesseract (Docker service on port 8001) |
-| Auth | Supabase Auth, JWT |
-| Testing | Playwright (E2E), pytest (backend) |
-| Deployment | Vercel (frontend), Docker (services) |
+| Framework | Next.js 14, React |
+| Language | TypeScript |
+| Styling | Tailwind CSS, CSS custom properties |
+| Testing | Playwright (E2E), visual regression |
+| Deployment | Vercel |
 
 ---
 
-## Architecture Principles
+## Architecture Principles (Frontend)
 
 1. **Single-URL Philosophy** — No fragmented navigation, everything embedded
 2. **Intent-First** — Users express intent, system routes to action
-3. **Yacht Isolation** — All queries filtered by yacht_id via RLS
-4. **Service Role Bypass** — Backend uses service_role, action registry controls permissions
-5. **Tokenized UI** — All styling via CSS custom properties
-6. **Atomic Commits** — One task = one commit
-7. **Ledger Everything** — Every action logged for audit trail
+3. **Tokenized UI** — All styling via CSS custom properties
+4. **Component Isolation** — Reusable, testable components
+5. **Accessibility First** — WCAG compliance
 
 ---
 
-## Requirements
+## Completed Work
 
-### Validated
-
-- ✓ Spotlight Search (ChatGPT parity) — Search Bar Phase complete
-- ✓ OCR Pipeline — Docker service working
-- ✓ Multi-tenant RLS — Yacht isolation verified
-- ✓ Document Lens — 98% test coverage (PRODUCTION)
-
-### Active
-
-See `.planning/REQUIREMENTS.md` for full list with REQ-IDs.
-
-### Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| Mobile app | Web-first, mobile later |
-| Show Related (full) | Future feature, architecture exists |
-| Real-time chat | Not core to PMS value |
-| Graph RAG search | V2 feature |
-
----
-
-## Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Shadow-only search bar | ChatGPT parity spec | ✓ Good |
-| All crew can create receiving | Draft mode workflow | ✓ Good |
-| HOD+ for accept | Financial accountability | ✓ Good |
-| Service role bypass | Backend needs full access for multi-tenant | ✓ Good |
-| Confidence in payload | Schema simplicity | ✓ Good |
-| 9-step test protocol | User requirement for quality | — Pending |
+- Search Bar UX (ChatGPT parity) — PRs #327, #328, #330
+  - Shadow only, no border
+  - Removed Mic/Search icons
+  - Removed category buttons
+  - Tokenized shadow via `--celeste-spotlight-shadow`
 
 ---
 
@@ -94,10 +55,8 @@ See `.planning/REQUIREMENTS.md` for full list with REQ-IDs.
 
 - `/docs/SOURCE_OF_TRUTH.md` — Canonical state
 - `/docs/UI_LOCKS.md` — UI invariants
-- `/docs/DB_CONTRACT.md` — Schema, RLS, roles
-- `/docs/TEST_ORDER.md` — Test sequence
-- `/Users/celeste7/Desktop/rules.md` — Operating rules
-- `/.planning/codebase/` — Architecture documentation
+- `/.claude/PROGRESS_LOG.md` — Live tracking
 
 ---
-*Last updated: 2026-02-17 after M1 milestone initialization*
+*Scope: Frontend UX Engineering Only*
+*Last updated: 2026-02-17*
