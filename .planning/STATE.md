@@ -14,7 +14,7 @@
 | Phase | FE-01-work-order-lens (IN PROGRESS) |
 | Plan | 02 of N (FE-01-02 COMPLETE) |
 | Status | FE-01-02 complete - all 4 section containers built: NotesSection, PartsSection, AttachmentsSection, HistorySection |
-| Last activity | 2026-02-17 — FE-01-02 complete, build passes (16 routes), 5 commits |
+| Last activity | 2026-02-17 — FE-01-01 executed (retroactive): LensHeader + WorkOrderLens + page refactor |
 
 ---
 
@@ -76,6 +76,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | HistorySection has defensive empty state | Guards edge cases even though spec says always has creation entry | 2026-02-17 |
 | Section count badge omitted when count==0 | Avoids "Parts Used (0)" display; empty state provides the signal | 2026-02-17 |
 | Document cards use role=button + tabIndex=0 | Valid HTML pattern for block-level interactive elements | 2026-02-17 |
+| LensTitleBlock co-located in LensHeader.tsx | Companion component, reduces import complexity | 2026-02-17 |
+| wo_number (WO-YYYY-NNN) as display title prefix | Never expose raw UUID to users | 2026-02-17 |
+| Equipment link uses VitalSign href prop | VitalSignsRow renders teal links natively — no extra markup | 2026-02-17 |
+| Status/priority color mappers local to each lens | Domain-specific logic stays with domain component | 2026-02-17 |
 
 ---
 
@@ -160,7 +164,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 ## Next Single Action
 
-**Phase 00-design-system COMPLETE - all 5 plans executed. Ready for next phase.**
+**FE-01-01 COMPLETE — LensHeader + WorkOrderLens reference implementation built. FE-01-02 (section containers) already complete. Continue with FE-01-03.**
 
 ### 2026-02-17 (Session 4) - Design System Phase 00
 - Plan 00-05: Verified "email integration is off" dead code removal (DS-05)
@@ -208,6 +212,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Build passes after clearing stale .next cache: 25 routes generated
 - Commit: 9b8dfb52 (feat: remove email integration feature flag dead code)
 - Phase 00-design-system COMPLETE - all 5 plans executed
+
+### 2026-02-17 (FE-01-01) - Work Order Lens Header + Vital Signs
+- Plan FE-01-01: Created LensHeader reference implementation and WorkOrderLens component
+- LensHeader: 56px fixed header, back/close icon buttons, entity type overline (11px/uppercase)
+- LensTitleBlock: 28px display title, 16px subtitle (2-line clamp), status/priority StatusPills
+- WorkOrderLens: VitalSignsRow wired with 5 indicators (status, priority, parts, created, equipment)
+- Equipment link: text-brand-interactive, clickable via href prop
+- Updated work-orders/[id]/page.tsx to use WorkOrderLens, removing old celeste-* CSS classes
+- No UUID visible: wo_number (WO-YYYY-NNN) displayed, raw id never rendered
+- Commits: 0ba11258 (LensHeader), 7e1a13a7 (VitalSignsRow), 33723d94 (page refactor)
+- Build: 16/16 routes, 0 TS errors
 
 ### 2026-02-17 (FE-01-02) - Work Order Section Containers
 - Plan FE-01-02: Built all 4 section containers for Work Order lens
