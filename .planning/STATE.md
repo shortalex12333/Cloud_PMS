@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 13 (Gap Remediation) |
-| Plan | 08 of 8 remaining |
-| Status | Executing gap remediation plans |
-| Last activity | 2026-02-17 — Completed 13-07 (certificate/warranty E2E + ledger triggers) |
+| Plan | 08 of 8 COMPLETE |
+| Status | Phase 13 complete - all gap remediation plans executed |
+| Last activity | 2026-02-17 — Completed 13-08 (handover signature + role tests) |
 
 ---
 
@@ -38,7 +38,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | 4 | Fault | FAULT-01..05 | ● 5/5 COMPLETE |
 | 5 | Work Order | WO-01..05 | ● 5/5 COMPLETE (13-01 added reassign/archive) |
 | 6 | Certificate | CERT-01..05 | ◐ 4/5 (CertificateCard.tsx + E2E done, CERT-04 complete) |
-| 7 | Handover | HAND-01..05 | ◐ 4/5 (HAND-02 done, role tests partial) |
+| 7 | Handover | HAND-01..05 | ● 5/5 COMPLETE (HAND-03 role tests added) |
 | 8 | Hours of Rest | HOR-01..05 | ● 5/5 COMPLETE |
 | 9 | Warranty | WARR-01..05 | ● 5/5 COMPLETE (E2E + ledger triggers added) |
 | 10 | Shopping List | SHOP-01..05 | ● 5/5 COMPLETE (state history trigger added) |
@@ -64,6 +64,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Email handlers follow warranty_handlers.py pattern | Consistency with existing codebase | 2026-02-17 |
 | API-driven E2E tests over UI tests | Reliability and speed | 2026-02-17 |
 | Warranty trigger fires on INSERT and UPDATE | Complete audit trail | 2026-02-17 |
+| Handover tests use existing fullLogin helper | Consistency with auth patterns | 2026-02-17 |
 
 ---
 
@@ -148,4 +149,4 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 
 ## Next Single Action
 
-**Continue Phase 13 Gap Remediation - execute plan 13-08 (final plan).**
+**Phase 13 Gap Remediation COMPLETE - all 8 plans executed. Ready for final verification pass.**
