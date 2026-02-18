@@ -19,7 +19,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { toast } from 'sonner';
-import { startExportJob, checkJobStatus } from '@/lib/handoverExportClient';
+// External service functions no longer used - export creates local record
+// import { startExportJob, checkJobStatus } from '@/lib/handoverExportClient';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -391,64 +392,105 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     fetchItems();
   }, [user?.id, fetchItems]);
 
-  // Poll for job completion and log to ledger when done
-  const pollForCompletion = useCallback(async (jobId: string, handoverId: string, maxAttempts = 60) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-
-    for (let i = 0; i < maxAttempts; i++) {
-      const status = await checkJobStatus(jobId);
-      if (status.status === 'complete') {
-        // Log to ledger — fire and forget
-        if (token && user?.yachtId) {
-          fetch(`${RENDER_API_URL}/v1/ledger/record`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              event_name: 'handover_export_complete',
-              payload: {
-                yacht_id: user.yachtId,
-                user_id: handoverId,
-                job_id: jobId,
-                result_url: status.result_url,
-              },
-            }),
-          }).catch(() => {});
-        }
-        return;
-      }
-      if (status.status === 'failed') {
-        toast.error('Export failed. Please try again.');
-        return;
-      }
-      await new Promise(r => setTimeout(r, 5000)); // 5 second intervals
-    }
-  }, [user?.yachtId, supabase]);
-
-  // Handle export
+  // Handle export - creates local export record with editable content
   const handleExport = useCallback(async () => {
     if (!user?.id || !user?.yachtId || items.length === 0) return;
 
     setExporting(true);
     try {
-      // Start pipeline export job on external service
-      const job = await startExportJob(user.id, user.yachtId);
+      // Build editable content JSON from items
+      const editableContent = {
+        title: `Handover Report - ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+        generated_at: new Date().toISOString(),
+        yacht_id: user.yachtId,
+        prepared_by: user.displayName || user.email || 'Unknown',
+        sections: items.map((item, idx) => ({
+          id: `section-${item.id.slice(0, 8)}`,
+          title: item.entity_type ? item.entity_type.charAt(0).toUpperCase() + item.entity_type.slice(1).replace('_', ' ') : 'Note',
+          content: item.summary || '',
+          items: [{
+            id: `item-${item.id.slice(0, 8)}`,
+            content: item.summary || '',
+            entity_type: item.entity_type,
+            entity_id: item.entity_id,
+            priority: item.is_critical ? 'critical' : item.requires_action ? 'action' : 'fyi',
+          }],
+          is_critical: item.is_critical,
+          order: idx,
+        })),
+        signature_section: {
+          outgoing: { role: 'outgoing', signer_name: null, signed_at: null, signature_image: null },
+          incoming: { role: 'incoming', signer_name: null, signed_at: null, signature_image: null },
+          hod: null,
+        },
+        metadata: {
+          source: 'handover_draft_panel',
+          parsed_at: new Date().toISOString(),
+          section_count: items.length,
+          has_critical: items.some(i => i.is_critical),
+        },
+      };
+
+      // Create handover_exports record
+      const { data: exportRecord, error: exportError } = await supabase
+        .from('handover_exports')
+        .insert({
+          yacht_id: user.yachtId,
+          created_by: user.id,
+          title: editableContent.title,
+          item_count: items.length,
+          edited_content: editableContent,
+          status: 'ready',
+          review_status: 'pending_review',
+          export_status: 'pending',
+        })
+        .select('id')
+        .single();
+
+      if (exportError) {
+        console.error('[HandoverDraftPanel] Export record error:', exportError);
+        throw new Error('Failed to create export record');
+      }
+
+      // Mark items as exported
+      const itemIds = items.map(i => i.id);
+      await supabase
+        .from('handover_items')
+        .update({ export_status: 'exported', status: 'exported' })
+        .in('id', itemIds);
+
+      // Log to ledger for user notification
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (token) {
+        fetch(`${RENDER_API_URL}/v1/ledger/record`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event_name: 'handover_export_ready',
+            payload: {
+              yacht_id: user.yachtId,
+              user_id: user.id,
+              export_id: exportRecord.id,
+              item_count: items.length,
+              has_critical: items.some(i => i.is_critical),
+            },
+          }),
+        }).catch(() => {});
+      }
 
       toast.success('Your handover will be visible in ledger when complete (~5 minutes)');
       fetchItems(); // Refresh to hide exported items
-
-      // Background polling — does not block UX
-      pollForCompletion(job.job_id, user.id).catch(() => {});
     } catch (err) {
       console.error('[HandoverDraftPanel] Export error:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to export handover');
     } finally {
       setExporting(false);
     }
-  }, [user?.id, user?.yachtId, items, fetchItems, pollForCompletion]);
+  }, [user?.id, user?.yachtId, user?.displayName, user?.email, items, fetchItems, supabase]);
 
   // Toggle day expansion
   const toggleDay = useCallback((date: string) => {
