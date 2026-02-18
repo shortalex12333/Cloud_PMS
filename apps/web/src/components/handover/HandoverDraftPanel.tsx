@@ -305,6 +305,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
         .eq('yacht_id', user.yachtId)
         .eq('added_by', user.id)
         .is('deleted_at', null)
+        .neq('export_status', 'exported')
         .order('created_at', { ascending: false });
 
       if (error) {
