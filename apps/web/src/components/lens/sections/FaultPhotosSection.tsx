@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { GhostButton } from '@/components/ui/GhostButton';
 import { MediaRenderer } from '@/components/media/MediaRenderer';
-import type { FaultPhoto } from '../FaultLens';
+import type { FaultPhoto } from '../types';
 
 // ============================================================================
 // TYPES

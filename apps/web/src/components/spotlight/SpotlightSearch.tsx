@@ -36,6 +36,7 @@ import { EmailInboxView } from '@/components/email/EmailInboxView';
 import SituationRouter from '@/components/situations/SituationRouter';
 import SuggestedActions from '@/components/SuggestedActions';
 import { LedgerPanel } from '@/components/ledger';
+import { HandoverDraftPanel } from '@/components/handover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ReceivingDocumentUpload } from '@/components/receiving/ReceivingDocumentUpload';
 import { toast } from 'sonner';
@@ -262,6 +263,7 @@ export default function SpotlightSearch({
   }, []);
   const [showSettings, setShowSettings] = useState(false);
   const [showLedger, setShowLedger] = useState(false);
+  const [showHandoverDraft, setShowHandoverDraft] = useState(false);
   const [showReceivingUpload, setShowReceivingUpload] = useState(false);
   // Local state fallback when not in SurfaceProvider
   const [localShowEmailList, setLocalShowEmailList] = useState(false);
@@ -1181,6 +1183,19 @@ export default function SpotlightSearch({
                 <span>Ledger</span>
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => setShowHandoverDraft(true)}
+                className={cn(
+                  'flex items-center gap-3 h-10 px-3 cursor-pointer',
+                  'text-sm font-medium',
+                  'text-[var(--celeste-spotlight-dropdown-text)]',
+                  'focus:bg-[var(--celeste-spotlight-dropdown-hover)]',
+                  'hover:bg-[var(--celeste-spotlight-dropdown-hover)]'
+                )}
+              >
+                <FileText className="w-4 h-4 text-[var(--celeste-spotlight-btn-text)]" strokeWidth={1.5} />
+                <span>Handover</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => setShowReceivingUpload(true)}
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
@@ -1225,6 +1240,12 @@ export default function SpotlightSearch({
       <LedgerPanel
         isOpen={showLedger}
         onClose={() => setShowLedger(false)}
+      />
+
+      {/* Handover Draft Panel */}
+      <HandoverDraftPanel
+        isOpen={showHandoverDraft}
+        onClose={() => setShowHandoverDraft(false)}
       />
 
       {/* Receiving Upload Modal - Global entry point for logging receivings */}
