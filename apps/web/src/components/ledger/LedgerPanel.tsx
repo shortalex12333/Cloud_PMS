@@ -19,6 +19,7 @@ import { X, BookOpen, Edit3, Eye, ChevronDown, ChevronRight } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useSurface } from '@/contexts/SurfaceContext';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -122,6 +123,7 @@ function groupEventsByDay(events: LedgerEvent[]): DayGroup[] {
 
 export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const { user } = useAuth();
+  const { showContext } = useSurface();
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -130,6 +132,47 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
   const [viewMode, setViewMode] = useState<'me' | 'department'>('me');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Handle ledger item click - open entity in ContextPanel
+  const handleItemClick = useCallback((event: LedgerEvent) => {
+    if (!event.entity_type || !event.entity_id) {
+      console.warn('[LedgerPanel] Cannot navigate: missing entity_type or entity_id', event);
+      return;
+    }
+
+    // Map entity_type from ledger (pms_work_orders) to lens type (work_order)
+    const entityTypeMap: Record<string, string> = {
+      'pms_work_orders': 'work_order',
+      'pms_work_order_notes': 'work_order',
+      'pms_work_order_checklist_items': 'work_order',
+      'pms_faults': 'fault',
+      'pms_equipment': 'equipment',
+      'pms_parts': 'part',
+      'pms_receiving': 'receiving',
+      'pms_documents': 'document',
+      'pms_certificates': 'certificate',
+      'pms_handovers': 'handover',
+      'pms_hours_of_rest': 'hours_of_rest',
+      'pms_warranties': 'warranty',
+      'pms_shopping_lists': 'shopping_list',
+    };
+
+    // Use mapped type or fall back to raw entity_type
+    const lensType = entityTypeMap[event.entity_type] || event.entity_type;
+
+    // For child entities (notes, checklist items), use parent ID if available
+    const entityId = event.metadata?.work_order_id || event.entity_id;
+
+    console.log('[LedgerPanel] Opening entity:', lensType, entityId);
+
+    showContext(lensType, entityId, {
+      title: event.change_summary || event.metadata?.display_name || 'View Details',
+      type: lensType,
+    });
+
+    // Close ledger panel after navigation
+    onClose();
+  }, [showContext, onClose]);
 
   const LIMIT = 50;
 
@@ -387,7 +430,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                     {group.events
                       .filter((e) => showReads || !READ_ACTIONS.includes(e.action))
                       .map((event) => (
-                        <LedgerEventRow key={event.id} event={event} />
+                        <LedgerEventRow key={event.id} event={event} onItemClick={handleItemClick} />
                       ))}
                   </div>
                 )}
@@ -415,9 +458,10 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
 
 interface LedgerEventRowProps {
   event: LedgerEvent;
+  onItemClick: (event: LedgerEvent) => void;
 }
 
-function LedgerEventRow({ event }: LedgerEventRowProps) {
+function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
   // Build display name from metadata or change_summary
   const displayName = event.change_summary
     || event.metadata?.display_name
@@ -443,6 +487,15 @@ function LedgerEventRow({ event }: LedgerEventRowProps) {
         'rounded-[var(--celeste-border-radius-sm)]',
         'hover:bg-celeste-panel transition-colors cursor-pointer'
       )}
+      onClick={() => onItemClick(event)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onItemClick(event);
+        }
+      }}
     >
       {/* Icon */}
       <div
