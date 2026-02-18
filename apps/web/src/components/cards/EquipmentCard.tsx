@@ -8,7 +8,6 @@
 
 import { Settings, AlertCircle, Wrench, Calendar } from 'lucide-react';
 import { ActionButton } from '@/components/actions/ActionButton';
-import { RelatedEmailsPanel } from '@/components/email/RelatedEmailsPanel';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
 import type { MicroAction } from '@/types/actions';
@@ -128,12 +127,6 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
             ))}
           </div>
 
-          {/* Related Emails - Evidence panel */}
-          <RelatedEmailsPanel
-            objectType="equipment"
-            objectId={equipment.id}
-            className="mt-4"
-          />
         </div>
       </div>
     </div>

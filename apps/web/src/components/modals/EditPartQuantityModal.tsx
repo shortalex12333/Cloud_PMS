@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * EditPartQuantityModal Component
  *
@@ -72,7 +71,7 @@ export function EditPartQuantityModal({
     setValue,
     watch,
   } = useForm<EditPartQuantityFormData>({
-    resolver: zodResolver(editPartQuantitySchema),
+    resolver: zodResolver(editPartQuantitySchema) as any,
     defaultValues: {
       part_id: context.part_id,
       old_quantity: context.current_quantity,
@@ -146,7 +145,7 @@ export function EditPartQuantityModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
           <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
             <h3 className="font-semibold text-celeste-accent flex items-center gap-2">

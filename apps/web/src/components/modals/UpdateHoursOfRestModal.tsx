@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * UpdateHoursOfRestModal Component - UPDATED FOR NEW SCHEMA
  *
@@ -120,7 +119,7 @@ export function UpdateHoursOfRestModal({
     watch,
     reset,
   } = useForm<UpdateHoursOfRestFormData>({
-    resolver: zodResolver(updateHoursOfRestSchema),
+    resolver: zodResolver(updateHoursOfRestSchema) as any,
     defaultValues: {
       record_date: currentData?.record_date || defaultDate || new Date().toISOString().split('T')[0],
       rest_periods: defaultRestPeriods,
@@ -218,7 +217,7 @@ export function UpdateHoursOfRestModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Compliance Warning */}
           <div className={cn(
             'p-3 rounded-lg border flex items-center gap-3',

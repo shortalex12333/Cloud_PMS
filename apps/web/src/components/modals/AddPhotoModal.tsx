@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * AddPhotoModal Component
  *
@@ -93,7 +92,7 @@ export function AddPhotoModal({
     formState: { errors },
     reset,
   } = useForm<AddPhotoFormData>({
-    resolver: zodResolver(addPhotoSchema),
+    resolver: zodResolver(addPhotoSchema) as any,
     defaultValues: {
       entity_type: context.entity_type,
       entity_id: context.entity_id,
@@ -175,7 +174,7 @@ export function AddPhotoModal({
 
     // In production, this would upload to storage and get URL
     const response = await executeAction(
-      actionName,
+      actionName as any,
       {
         entity_type: data.entity_type,
         entity_id: data.entity_id,
@@ -216,7 +215,7 @@ export function AddPhotoModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Entity Context */}
           <div className={cn('p-3 rounded-lg border', config.color)}>
             <div className="flex items-center gap-3">

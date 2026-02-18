@@ -24,6 +24,8 @@ import {
   ChevronRight,
   AlertCircle,
   StickyNote,
+  Archive,
+  UserPlus,
 } from 'lucide-react';
 import { ActionButton } from '@/components/actions/ActionButton';
 import { Button } from '@/components/ui/button';
@@ -327,25 +329,43 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
         </div>
 
         {/* Primary Actions */}
-        {actions.length > 0 && (
-          <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
-            {actions.slice(0, 4).map((action) => (
-              <ActionButton
-                key={action}
-                action={action}
-                context={actionContext}
-                variant="secondary"
-                size="sm"
-                showIcon={true}
-              />
-            ))}
-            {actions.length > 4 && (
-              <button className="h-8 px-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-muted)] hover:text-[var(--celeste-text-primary)] transition-colors">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
+          {actions.slice(0, 4).map((action) => (
+            <ActionButton
+              key={action}
+              action={action}
+              context={actionContext}
+              variant="secondary"
+              size="sm"
+              showIcon={true}
+            />
+          ))}
+          {actions.length > 4 && (
+            <button className="h-8 px-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-muted)] hover:text-[var(--celeste-text-primary)] transition-colors">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+          {/* Reassign action - available for non-archived work orders */}
+          {workOrder.status !== 'cancelled' && (
+            <ActionButton
+              action="reassign_work_order"
+              context={actionContext}
+              variant="ghost"
+              size="sm"
+              showIcon={true}
+            />
+          )}
+          {/* Archive action - only for completed or cancelled work orders */}
+          {(workOrder.status === 'completed' || workOrder.status === 'cancelled') && (
+            <ActionButton
+              action="archive_work_order"
+              context={actionContext}
+              variant="ghost"
+              size="sm"
+              showIcon={true}
+            />
+          )}
+        </div>
       </div>
 
       {/* ================================================================

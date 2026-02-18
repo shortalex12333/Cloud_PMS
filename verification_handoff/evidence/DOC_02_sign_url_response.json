@@ -1,9 +1,0 @@
-{
-  "status": 500,
-  "statusText": "",
-  "data": {
-    "error": "Failed to query document metadata",
-    "status_code": 500,
-    "path": "https://pipeline-core.int.celeste7.ai/v1/documents/0a75fa80-9435-41fb-b7ea-626cca9173a4/sign"
-  }
-}

@@ -28,7 +28,7 @@ export type MicroAction =
   | 'mark_fault_false_alarm'
   | 'reopen_fault'
 
-  // WORK ORDER / PMS (11 actions)
+  // WORK ORDER / PMS (13 actions)
   | 'create_work_order'
   | 'view_work_order_history'
   | 'mark_work_order_complete'
@@ -39,6 +39,8 @@ export type MicroAction =
   | 'link_parts_to_work_order'
   | 'view_work_order_checklist'
   | 'assign_work_order'
+  | 'reassign_work_order'
+  | 'archive_work_order'
 
   // EQUIPMENT (12 actions)
   | 'view_equipment_details'
@@ -552,6 +554,25 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
     role_restricted: ['chief_engineer', 'captain', 'manager'],
     icon: 'UserPlus',
     description: 'Assign work order to crew member or contractor',
+  },
+  reassign_work_order: {
+    action_name: 'reassign_work_order',
+    label: 'Reassign',
+    cluster: 'do_maintenance',
+    side_effect_type: 'mutation_light',
+    role_restricted: ['chief_engineer', 'captain', 'manager'],
+    icon: 'UserPlus',
+    description: 'Reassign work order to a different crew member',
+  },
+  archive_work_order: {
+    action_name: 'archive_work_order',
+    label: 'Archive',
+    cluster: 'do_maintenance',
+    side_effect_type: 'mutation_heavy',
+    requires_confirmation: true,
+    role_restricted: ['chief_engineer', 'captain', 'manager'],
+    icon: 'Archive',
+    description: 'Archive completed or cancelled work order',
   },
 
   // EQUIPMENT

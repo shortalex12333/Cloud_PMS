@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * ReportFaultModal Component
  *
@@ -74,7 +73,7 @@ export function ReportFaultModal({
     setValue,
     watch,
   } = useForm<ReportFaultFormData>({
-    resolver: zodResolver(reportFaultSchema),
+    resolver: zodResolver(reportFaultSchema) as any,
     defaultValues: {
       equipment_id: context.equipment_id || '',
       title: context.suggested_title || '',
@@ -142,7 +141,7 @@ export function ReportFaultModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
             <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">

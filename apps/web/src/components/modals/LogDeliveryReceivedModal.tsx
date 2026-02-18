@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * LogDeliveryReceivedModal Component
  *
@@ -95,7 +94,7 @@ export function LogDeliveryReceivedModal({
     watch,
     reset,
   } = useForm<LogDeliveryReceivedFormData>({
-    resolver: zodResolver(logDeliveryReceivedSchema),
+    resolver: zodResolver(logDeliveryReceivedSchema) as any,
     defaultValues: {
       purchase_order_id: context.purchase_order_id,
       delivery_date: new Date().toISOString().split('T')[0],
@@ -209,7 +208,7 @@ export function LogDeliveryReceivedModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Order Info */}
           <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
             <div className="flex items-center justify-between">

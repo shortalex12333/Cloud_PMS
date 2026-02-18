@@ -134,6 +134,45 @@ const config: Config = {
         },
 
         // =======================================================================
+        // SEMANTIC DESIGN TOKENS — mapped to CSS custom properties
+        // Source: CLAUDE.md / DS-02
+        // Usage: bg-surface-base, text-txt-primary, text-brand-interactive
+        // DO NOT use raw hex values. All values are var(--token-name).
+        // =======================================================================
+        brand: {
+          ambient: 'var(--brand-ambient)',
+          interactive: 'var(--brand-interactive)',
+          hover: 'var(--brand-hover)',
+          muted: 'var(--brand-muted)',
+        },
+        status: {
+          critical: 'var(--status-critical)',
+          'critical-bg': 'var(--status-critical-bg)',
+          warning: 'var(--status-warning)',
+          'warning-bg': 'var(--status-warning-bg)',
+          success: 'var(--status-success)',
+          'success-bg': 'var(--status-success-bg)',
+          neutral: 'var(--status-neutral)',
+          'neutral-bg': 'var(--status-neutral-bg)',
+        },
+        surface: {
+          base: 'var(--surface-base)',
+          primary: 'var(--surface-primary)',
+          elevated: 'var(--surface-elevated)',
+          hover: 'var(--surface-hover)',
+          active: 'var(--surface-active)',
+          border: 'var(--surface-border)',
+          'border-subtle': 'var(--surface-border-subtle)',
+        },
+        txt: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          tertiary: 'var(--text-tertiary)',
+          disabled: 'var(--text-disabled)',
+          inverse: 'var(--text-inverse)',
+        },
+
+        // =======================================================================
         // WORK ORDER - Dark Mode Tokenized Colors
         // Source: /Desktop/work_order_ux.md
         // =======================================================================
@@ -205,6 +244,18 @@ const config: Config = {
         'celeste-4': '1rem',      // 16px
         'celeste-6': '1.5rem',    // 24px
         'celeste-8': '2rem',      // 32px
+        // Semantic spacing tokens mapped to CSS custom properties (DS-02)
+        'ds-1': 'var(--space-1)',
+        'ds-2': 'var(--space-2)',
+        'ds-3': 'var(--space-3)',
+        'ds-4': 'var(--space-4)',
+        'ds-5': 'var(--space-5)',
+        'ds-6': 'var(--space-6)',
+        'ds-8': 'var(--space-8)',
+        'ds-10': 'var(--space-10)',
+        'ds-12': 'var(--space-12)',
+        'ds-16': 'var(--space-16)',
+        'ds-20': 'var(--space-20)',
         // Work Order specific spacing (from spec)
         'wo-px': 'var(--wo-padding-x)',      // 32px
         'wo-py': 'var(--wo-padding-y)',      // 24px
@@ -248,6 +299,14 @@ const config: Config = {
       // BORDER RADIUS
       // =========================================================================
       borderRadius: {
+        // Semantic radius tokens mapped to CSS custom properties (DS-02)
+        // Enables: rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-full
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        full: 'var(--radius-full)',
+        // Legacy celeste-prefixed radii (keep for existing components)
         'celeste-sm': '4px',
         'celeste-md': '8px',
         'celeste-lg': '12px',
@@ -264,6 +323,13 @@ const config: Config = {
       // SHADOWS
       // =========================================================================
       boxShadow: {
+        // Semantic shadow tokens mapped to CSS custom properties (DS-02)
+        // Enables: shadow-sm, shadow-md, shadow-lg
+        // Values swap automatically between light/dark via tokens.css
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+        // Legacy celeste-prefixed shadows (keep for existing components)
         'celeste-sm': '0 1px 2px rgba(0, 0, 0, 0.05)',
         'celeste-md': '0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.06)',
         'celeste-lg': '0 4px 8px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.08)',

@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * AddNoteModal Component
  *
@@ -68,7 +67,7 @@ interface AddNoteModalProps {
   onSuccess?: () => void;
 }
 
-const ENTITY_CONFIG: Record<EntityType, { icon: React.ElementType; color: string; label: string }> = {
+const ENTITY_CONFIG: Partial<Record<EntityType, { icon: React.ElementType; color: string; label: string }>> = {
   fault: { icon: AlertCircle, color: 'text-red-500 bg-red-50 border-red-200', label: 'Fault' },
   work_order: { icon: Wrench, color: 'text-celeste-accent bg-celeste-accent-line border-celeste-accent-line', label: 'Work Order' },
   equipment: { icon: Cog, color: 'text-violet-500 bg-violet-50 border-violet-200', label: 'Equipment' },
@@ -84,7 +83,7 @@ export function AddNoteModal({
   const { executeAction, isLoading } = useActionHandler();
   const [charCount, setCharCount] = useState(0);
 
-  const config = ENTITY_CONFIG[context.entity_type];
+  const config = ENTITY_CONFIG[context.entity_type] || { icon: ClipboardList, color: 'text-celeste-text-secondary bg-celeste-bg-secondary border-celeste-border', label: context.entity_type };
   const EntityIcon = config.icon;
 
   const {
@@ -95,9 +94,9 @@ export function AddNoteModal({
     watch,
     reset,
   } = useForm<AddNoteFormData>({
-    resolver: zodResolver(addNoteSchema),
+    resolver: zodResolver(addNoteSchema) as any,
     defaultValues: {
-      entity_type: context.entity_type,
+      entity_type: context.entity_type as 'fault' | 'work_order' | 'equipment' | 'checklist',
       entity_id: context.entity_id,
       note_text: '',
       importance: 'normal',
@@ -145,7 +144,7 @@ export function AddNoteModal({
     }
 
     const response = await executeAction(
-      actionName,
+      actionName as any,
       {
         ...actionContext,
         // Pass form data as parameters so it goes into payload
@@ -182,7 +181,7 @@ export function AddNoteModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Entity Context */}
           <div className={cn('p-3 rounded-lg border', config.color)}>
             <div className="flex items-center gap-3">

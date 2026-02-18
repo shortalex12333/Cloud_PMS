@@ -1,3 +1,6 @@
+@import './tokens.css';
+@import './lens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
