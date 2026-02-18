@@ -58,7 +58,7 @@ function OpenTokenResolver() {
         setErrorMessage(error.message);
 
         // If auth required, redirect to login with return URL
-        if (error.statusCode === 401) {
+        if (error.status === 401) {
           const returnUrl = encodeURIComponent(`/open?t=${token}`);
           router.replace(`/login?returnUrl=${returnUrl}`);
           return;

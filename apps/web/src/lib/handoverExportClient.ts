@@ -5,10 +5,42 @@
  * Single-surface architecture: /open?t=<token> -> resolve -> focus entity
  */
 
-import { supabase } from './supabaseClient';
+import { getValidJWT } from './authHelpers';
 
 // API base URL - handover export service on Render
 const HANDOVER_EXPORT_API_BASE = process.env.NEXT_PUBLIC_HANDOVER_EXPORT_API_BASE || 'https://handover-export.onrender.com';
+
+// Entity type constants for validation
+export const SUPPORTED_ENTITY_TYPES = [
+  'work_order',
+  'fault',
+  'equipment',
+  'part',
+  'warranty',
+  'document',
+  'email',
+  'certificate',
+  'handover',
+] as const;
+
+export const UNSUPPORTED_ENTITY_TYPES = [
+  'inventory',
+  'purchase_order',
+  'voyage',
+  'guest',
+  'crew',
+] as const;
+
+export type SupportedEntityType = typeof SUPPORTED_ENTITY_TYPES[number];
+export type UnsupportedEntityType = typeof UNSUPPORTED_ENTITY_TYPES[number];
+
+export function isSupportedEntityType(type: string): type is SupportedEntityType {
+  return SUPPORTED_ENTITY_TYPES.includes(type as SupportedEntityType);
+}
+
+export function isUnsupportedEntityType(type: string): type is UnsupportedEntityType {
+  return UNSUPPORTED_ENTITY_TYPES.includes(type as UnsupportedEntityType);
+}
 
 /**
  * Focus descriptor returned from token resolution
@@ -30,42 +62,64 @@ export interface ResolveResponse {
 }
 
 /**
+ * Error codes for resolve failures
+ */
+export type ResolveErrorCode =
+  | 'TOKEN_EXPIRED'
+  | 'TOKEN_INVALID'
+  | 'AUTH_REQUIRED'
+  | 'YACHT_MISMATCH'
+  | 'ENTITY_NOT_FOUND'
+  | 'UNSUPPORTED_TYPE'
+  | 'UNKNOWN_TYPE'
+  | 'UNKNOWN_ERROR';
+
+/**
  * Error class for resolve failures
  */
 export class ResolveError extends Error {
-  public code: string;
-
   constructor(
+    public code: ResolveErrorCode,
     message: string,
-    public statusCode: number,
-    public detail?: string
+    public status: number
   ) {
     super(message);
     this.name = 'ResolveError';
-    // Map status codes to error codes
-    this.code = this.mapStatusToCode(statusCode, detail);
-  }
-
-  private mapStatusToCode(statusCode: number, detail?: string): string {
-    if (detail?.includes('expired')) return 'TOKEN_EXPIRED';
-    if (detail?.includes('invalid')) return 'TOKEN_INVALID';
-    if (detail?.includes('yacht')) return 'YACHT_MISMATCH';
-    if (statusCode === 404) return 'ENTITY_NOT_FOUND';
-    return 'UNKNOWN';
   }
 }
 
 /**
- * Get the current user's JWT token
+ * Map HTTP status and detail to error code
  */
-async function getUserJwt(): Promise<string> {
-  const { data: { session }, error } = await supabase.auth.getSession();
+function mapToErrorCode(status: number, detail: string): ResolveErrorCode {
+  const detailLower = detail.toLowerCase();
 
-  if (error || !session) {
-    throw new ResolveError('Authentication required', 401, 'Please log in to access this link');
+  if (status === 401) {
+    if (detailLower.includes('expired')) {
+      return 'TOKEN_EXPIRED';
+    }
+    return 'AUTH_REQUIRED';
   }
 
-  return session.access_token;
+  if (status === 403) {
+    return 'YACHT_MISMATCH';
+  }
+
+  if (status === 404) {
+    return 'ENTITY_NOT_FOUND';
+  }
+
+  if (status === 400) {
+    if (detailLower.includes('not yet supported')) {
+      return 'UNSUPPORTED_TYPE';
+    }
+    if (detailLower.includes('unknown entity type')) {
+      return 'UNKNOWN_TYPE';
+    }
+    return 'TOKEN_INVALID';
+  }
+
+  return 'UNKNOWN_ERROR';
 }
 
 /**
@@ -76,40 +130,59 @@ async function getUserJwt(): Promise<string> {
  * @throws ResolveError on failure
  */
 export async function resolveOpenToken(token: string): Promise<ResolveResponse> {
-  const jwt = await getUserJwt();
+  // Validate token is not empty
+  if (!token || token.trim() === '') {
+    throw new ResolveError('TOKEN_INVALID', 'Token is required', 400);
+  }
 
-  const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/v1/open/resolve`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${jwt}`,
-    },
-    body: JSON.stringify({ t: token }),
-  });
+  let jwt: string;
+  try {
+    jwt = await getValidJWT();
+  } catch {
+    throw new ResolveError('AUTH_REQUIRED', 'Authentication required', 401);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/v1/open/resolve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ t: token }),
+    });
+  } catch {
+    throw new ResolveError('UNKNOWN_ERROR', 'Network error', 500);
+  }
 
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`;
 
     try {
       const errorData = await response.json();
-      detail = errorData.detail || detail;
+      if (typeof errorData.detail === 'string') {
+        detail = errorData.detail;
+      }
     } catch {
       // Ignore JSON parse errors
     }
 
+    const code = mapToErrorCode(response.status, detail);
+
     // Map status codes to user-friendly messages
-    const messages: Record<number, string> = {
-      401: 'This link has expired or requires authentication',
-      403: 'You do not have access to this item',
-      404: 'The linked item could not be found',
-      429: 'Too many requests. Please try again later',
+    const messages: Record<ResolveErrorCode, string> = {
+      'TOKEN_EXPIRED': 'This link has expired',
+      'TOKEN_INVALID': detail,
+      'AUTH_REQUIRED': 'Authentication required',
+      'YACHT_MISMATCH': 'You do not have access to this item',
+      'ENTITY_NOT_FOUND': 'The linked item could not be found',
+      'UNSUPPORTED_TYPE': detail,
+      'UNKNOWN_TYPE': detail,
+      'UNKNOWN_ERROR': 'Unable to open this link',
     };
 
-    throw new ResolveError(
-      messages[response.status] || 'Unable to open this link',
-      response.status,
-      detail
-    );
+    throw new ResolveError(code, messages[code], response.status);
   }
 
   return response.json();
