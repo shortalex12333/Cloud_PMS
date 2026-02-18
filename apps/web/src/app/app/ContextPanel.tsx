@@ -354,12 +354,41 @@ export default function ContextPanel() {
           id: entityId,
           vendor_name: data.vendor_name as string | undefined,
           vendor_reference: data.vendor_reference as string | undefined,
+          po_number: data.po_number as string | undefined,
           received_date: data.received_date as string | undefined,
           status: (data.status as 'draft' | 'in_review' | 'accepted' | 'rejected') || 'draft',
           total: data.total as number | undefined,
           currency: data.currency as string | undefined,
           notes: data.notes as string | undefined,
           received_by: data.received_by as string | undefined,
+          // Child table data from pms_receiving_items
+          items: (data.items as Array<{
+            id: string;
+            yacht_id?: string;
+            receiving_id?: string;
+            part_id?: string;
+            description?: string;
+            quantity_expected?: number | null;
+            quantity_received: number;
+            unit_price?: number | null;
+            currency?: string | null;
+            properties?: Record<string, unknown> | null;
+          }>) || [],
+          // Child table data from pms_receiving_documents (joined with doc_metadata)
+          documents: (data.documents as Array<{
+            id: string;
+            yacht_id?: string;
+            receiving_id?: string;
+            document_id: string;
+            doc_type?: 'invoice' | 'packing_slip' | 'photo' | 'other' | null;
+            comment?: string | null;
+            created_at?: string;
+            filename?: string;
+            file_size?: number;
+            mime_type?: string;
+            url?: string;
+            thumbnail_url?: string;
+          }>) || [],
         };
 
         // Get available actions based on status and role
@@ -368,11 +397,35 @@ export default function ContextPanel() {
           user?.role || 'crew'
         );
 
+        // HOD+ roles can add items and documents
+        const hodPlusRoles = ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
+        const canModifyReceiving = hodPlusRoles.includes(user?.role || 'crew') && receivingData.status === 'draft';
+
         return (
           <div data-testid="context-panel-receiving-card">
             <ReceivingCard
               receiving={receivingData}
               actions={receivingActions}
+              canAddItem={canModifyReceiving}
+              canAddDocument={canModifyReceiving}
+              onAddItem={() => {
+                // TODO: Open AddReceivingItemModal
+                console.log('[ContextPanel] Add item to receiving:', entityId);
+              }}
+              onAddDocument={() => {
+                // TODO: Open ReceivingDocumentUpload modal
+                console.log('[ContextPanel] Add document to receiving:', entityId);
+              }}
+              onPartClick={(partId) => {
+                // Navigate to Part lens
+                console.log('[ContextPanel] Navigate to part:', partId);
+                // Could use useSurface().showContext('part', partId) here
+              }}
+              onDocumentClick={(documentId) => {
+                // Navigate to Document lens or open preview
+                console.log('[ContextPanel] Navigate to document:', documentId);
+                // Could use useSurface().showContext('document', documentId) here
+              }}
             />
           </div>
         );

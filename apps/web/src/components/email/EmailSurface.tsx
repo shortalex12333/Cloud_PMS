@@ -44,6 +44,8 @@ import {
   type ThreadLink,
 } from '@/hooks/useEmailData';
 import DocumentViewerOverlay from '@/components/viewer/DocumentViewerOverlay';
+import { LinkEmailModal } from '@/components/email/LinkEmailModal';
+import { CreateWorkOrderModal } from '@/components/actions/modals/CreateWorkOrderModal';
 import { cn } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
 
@@ -157,6 +159,8 @@ export default function EmailSurface({
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(initialThreadId || null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showCreateWOModal, setShowCreateWOModal] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -505,8 +509,29 @@ export default function EmailSurface({
               contentLoading={contentLoading}
               linkedItems={threadLinksData?.links || []}
               attachments={selectedAttachments}
+              onLinkEmail={() => setShowLinkModal(true)}
+              onCreateWorkOrder={() => setShowCreateWOModal(true)}
             />
           )}
+
+          {/* Link Email Modal */}
+          {selectedThreadId && (
+            <LinkEmailModal
+              open={showLinkModal}
+              onOpenChange={setShowLinkModal}
+              threadId={selectedThreadId}
+              threadSubject={selectedThread?.latest_subject || undefined}
+            />
+          )}
+
+          {/* Create Work Order Modal */}
+          <CreateWorkOrderModal
+            open={showCreateWOModal}
+            onOpenChange={setShowCreateWOModal}
+            context={{
+              suggested_title: selectedThread?.latest_subject || undefined,
+            }}
+          />
         </div>
       </div>
     </div>
@@ -643,6 +668,8 @@ interface ContextPaneProps {
     contentType?: string;
     size?: number;
   }>;
+  onLinkEmail: () => void;
+  onCreateWorkOrder: () => void;
 }
 
 function ContextPane({
@@ -651,6 +678,8 @@ function ContextPane({
   contentLoading,
   linkedItems,
   attachments,
+  onLinkEmail,
+  onCreateWorkOrder,
 }: ContextPaneProps) {
   const [showBody, setShowBody] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -706,10 +735,16 @@ function ContextPane({
             <div className="py-4">
               <p className="text-[13px] text-celeste-text-secondary mb-4">No links yet.</p>
               <div className="flex gap-2">
-                <button className="px-4 py-2 rounded bg-celeste-accent text-white text-[12px] font-medium hover:bg-celeste-accent/90 transition-colors">
+                <button
+                  onClick={onLinkEmail}
+                  className="px-4 py-2 rounded bg-celeste-accent text-white text-[12px] font-medium hover:bg-celeste-accent/90 transition-colors"
+                >
                   Link...
                 </button>
-                <button className="px-4 py-2 rounded bg-white/10 text-celeste-text-title text-[12px] font-medium hover:bg-white/15 transition-colors">
+                <button
+                  onClick={onCreateWorkOrder}
+                  className="px-4 py-2 rounded bg-white/10 text-celeste-text-title text-[12px] font-medium hover:bg-white/15 transition-colors"
+                >
                   Create Work Order
                 </button>
               </div>

@@ -1,0 +1,113 @@
+/**
+ * lens.css — Glass Transition Animations for Entity Lenses
+ *
+ * Spec: FE-01-05 Full-Screen Lens Layout + Glass Transitions
+ *
+ * Enter: 300ms ease-out, opacity 0→1, scale 0.98→1, blur 0→20px
+ * Exit:  200ms ease-in,  opacity 1→0, scale 1→0.98
+ *
+ * Classes applied by LensContainer based on animation state machine:
+ *   .lens-entering → initial state (before first paint)
+ *   .lens-entered  → fully visible (transition complete)
+ *   .lens-exiting  → exit animation in progress
+ *   .lens-exited   → invisible (unmounted by React after this)
+ */
+
+/* ============================================================================
+   ENTER: Fade in from search result
+   Opacity 0→1, scale 0.98→1, backdrop-filter 0→blur(20px)
+   Duration: 300ms var(--ease-out) per spec
+   ============================================================================ */
+
+.lens-entering {
+  opacity: 0;
+  transform: scale(0.98);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+}
+
+.lens-entered {
+  opacity: 1;
+  transform: scale(1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition:
+    opacity 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    backdrop-filter 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* ============================================================================
+   EXIT: Fade back to search results
+   Opacity 1→0, scale 1→0.98
+   Duration: 200ms ease-in per spec
+   ============================================================================ */
+
+.lens-exiting {
+  opacity: 0;
+  transform: scale(0.98);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition:
+    opacity 200ms ease-in,
+    transform 200ms ease-in,
+    backdrop-filter 200ms ease-in;
+}
+
+.lens-exited {
+  opacity: 0;
+  transform: scale(0.98);
+  visibility: hidden;
+}
+
+/* ============================================================================
+   STICKY SECTION HEADERS — within lens scroll context
+   Per CLAUDE.md: When pinned:
+   - background shifts to --surface-elevated
+   - subtle bottom border appears
+   - action button remains visible
+   ============================================================================ */
+
+.lens-section-header {
+  position: sticky;
+  top: 56px; /* Clear the 56px fixed LensHeader */
+  z-index: var(--z-sticky, 10);
+  background-color: var(--surface-base);
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color 120ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    border-color 120ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* Pinned state: elevated surface + visible border */
+.lens-section-header.is-pinned {
+  background-color: var(--surface-elevated);
+  border-bottom-color: var(--surface-border);
+}
+
+/* ============================================================================
+   ACCESSIBILITY: Respect reduced motion preference
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .lens-entering,
+  .lens-entered,
+  .lens-exiting,
+  .lens-exited {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Immediately show/hide without animation */
+  .lens-entering,
+  .lens-entered {
+    opacity: 1;
+    transform: scale(1);
+    backdrop-filter: none;
+  }
+
+  .lens-exiting,
+  .lens-exited {
+    opacity: 0;
+    transform: none;
+  }
+}

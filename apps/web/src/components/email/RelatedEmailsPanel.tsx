@@ -7,14 +7,13 @@
  * - NOT an inbox - this is a "related evidence panel"
  * - Shows link confidence (why this thread is linked)
  * - Allows explicit user actions (accept/change/unlink)
- * - Fails gracefully when feature is disabled
  */
 
 'use client';
 
 import { useState } from 'react';
 import { Mail, ChevronDown, ChevronRight, Link2, AlertCircle, Loader2, Settings, RefreshCw, AlertTriangle } from 'lucide-react';
-import { useRelatedThreads, useEmailFeatureEnabled, useWatcherStatus, type EmailThread, type LinkConfidence } from '@/hooks/useEmailData';
+import { useRelatedThreads, useWatcherStatus, type EmailThread, type LinkConfidence } from '@/hooks/useEmailData';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { EmailThreadViewer } from './EmailThreadViewer';
 import { EmailLinkActions } from './EmailLinkActions';
@@ -35,30 +34,8 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   const [selectedThreadForLinking, setSelectedThreadForLinking] = useState<{id: string; subject: string} | null>(null);
 
   const { showEmail } = useSurface();
-  const { enabled: featureEnabled } = useEmailFeatureEnabled();
   const { data: watcherStatus } = useWatcherStatus();
   const { data, isLoading, error, refetch } = useRelatedThreads(objectType, objectId);
-
-  // Feature disabled state - fail closed with CTA
-  if (!featureEnabled) {
-    return (
-      <div className={cn('celeste-card p-3', className)}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <Mail className="h-4 w-4" />
-            <span className="text-celeste-sm">Email integration is off</span>
-          </div>
-          <button
-            onClick={openSettingsModal}
-            className="inline-flex items-center gap-1 text-celeste-xs text-celeste-accent hover:text-celeste-accent transition-colors"
-          >
-            <Settings className="h-3 w-3" />
-            Connect Outlook in Settings
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Not connected state - no watcher configured
   if (watcherStatus && !watcherStatus.is_connected) {

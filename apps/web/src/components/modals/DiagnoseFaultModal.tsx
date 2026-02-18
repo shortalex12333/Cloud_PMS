@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * DiagnoseFaultModal Component
  *
@@ -97,7 +96,7 @@ export function DiagnoseFaultModal({
     setValue,
     watch,
   } = useForm<DiagnoseFaultFormData>({
-    resolver: zodResolver(diagnoseFaultSchema),
+    resolver: zodResolver(diagnoseFaultSchema) as any,
     defaultValues: {
       fault_id: context.fault_id,
       additional_context: '',
@@ -268,7 +267,7 @@ Repair (if pump): 4-6 hours`;
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Fault Context */}
           <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
             <div className="flex items-start gap-3">

@@ -1,4 +1,3 @@
-// @ts-nocheck - Phase 4: Zod v4/hookform resolver compatibility
 /**
  * CreatePurchaseRequestModal Component
  *
@@ -84,7 +83,7 @@ export function CreatePurchaseRequestModal({
     watch,
     control,
   } = useForm<CreatePurchaseRequestFormData>({
-    resolver: zodResolver(createPurchaseRequestSchema),
+    resolver: zodResolver(createPurchaseRequestSchema) as any,
     defaultValues: {
       justification: '',
       urgency: 'normal',
@@ -177,7 +176,7 @@ export function CreatePurchaseRequestModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Request Details */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-celeste-black">Request Details</h3>
