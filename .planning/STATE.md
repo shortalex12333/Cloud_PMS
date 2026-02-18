@@ -140,6 +140,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | handleLedgerClick adds ?mode=edit or ?mode=review param for handover_export only | Multi-mode lens pattern — action field drives which UX mode opens | 2026-02-18 |
 | LedgerEventCard resolves icon from event_type first then action | Allows events with different event_type/action combinations to match | 2026-02-18 |
 | Ledger event fires non-fatally after _create_export_record | Export success never blocked by notification failure | 2026-02-18 |
+| psycopg2 cursor (not async Supabase client) for embedding queue handler | Matches existing sync worker architecture; same SQL semantics without new dependency | 2026-02-18 |
+| ENTITY_HANDLERS typed as Dict[str, Callable[[str, Any], dict]] | Extensible registry — future entity types added with one dict entry | 2026-02-18 |
+| process_queue_batch() catches ProgrammingError for missing table | Graceful degradation during staged rollout; delta embedding loop always continues | 2026-02-18 |
+| Embedding upsert uses ON CONFLICT(entity_type, entity_id) | Matches search_index_queue UNIQUE constraint; idempotent re-indexing | 2026-02-18 |
 
 ---
 
@@ -501,6 +505,16 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - TypeScript: tsc --noEmit 0 errors (exit 0)
 - Commits: 8eac23b9 (ledgerNavigation.ts), 0ac4b7b7 (LedgerEventCard.tsx), a1a0a8cf (ledger event), 84d1129d (HOD fix)
 
+### 2026-02-18 (14-06) - Embedding Worker Integration
+- Plan 14-06: Integrated handover export indexing into embedding_worker_1536.py
+- handle_handover_export(): psycopg2 cursor-based handler extracting edited_content sections + dual signature metadata
+- ENTITY_HANDLERS dict: maps "handover_export" to handler; extensible for future entity types
+- process_queue_batch(): FOR UPDATE SKIP LOCKED queue consumer, marks items complete/failed, ProgrammingError catch for graceful missing-table degradation
+- Main loop: queue batch runs alongside delta embedding in every cycle
+- Migration 28_create_search_index_queue.sql: table + CHECK constraint + partial index on pending rows
+- Rule 1 deviation: adapted async Supabase client pattern to sync psycopg2 cursor (matches existing worker)
+- Commits: bf947c92 (handler + queue), 2e6477b0 (migration)
+
 ### Next Action
-**14-07 complete — All 7 of 8 plans in phase 14 executed. Continue with 14-08.**
+**14-06 complete — All 8 of 8 plans in phase 14 executed. Phase 14-handover-export-editable COMPLETE.**
 
