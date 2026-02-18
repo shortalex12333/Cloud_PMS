@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 14-handover-export-editable |
-| Plan | 03 of 08 complete |
-| Status | 14-03 complete - handover_html_parser.py with 5 dataclasses (HandoverSectionItem, HandoverSection, SignatureBlock, SignatureSection, HandoverExportDocument), parse_handover_html(), document_to_dict/json, beautifulsoup4>=4.12.0 added |
-| Last activity | 2026-02-18 — 14-03 executed: HTML to Editable Conversion (Python Parser) |
+| Plan | 05 of 08 complete |
+| Status | 14-05 complete - 4 FastAPI editable workflow endpoints (content/save-draft/submit/countersign) + 4 Next.js proxy routes; two-bucket storage write path; HOD ledger notifications; embedding indexing trigger |
+| Last activity | 2026-02-18 — 14-05 executed: Two-Bucket Storage + API Endpoints |
 
 ---
 
@@ -129,6 +129,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | review_status uses 3-value CHECK constraint (pending_review/pending_hod_signature/complete) | Enforces valid state transitions at DB level; default pending_review handles existing rows | 2026-02-18 |
 | Dual signatures stored as JSONB objects (not normalized columns) | Preserves full signature metadata (image_base64, signer info, timestamps) in a single field | 2026-02-18 |
 | user_submitted_at separate from user_signed_at | Distinguishes the act of signing from the act of submission in the workflow | 2026-02-18 |
+| Next.js handover-export routes use Bearer header passthrough (no createServerClient) | @/lib/supabase/server does not exist; existing codebase uses Authorization header pattern | 2026-02-18 |
+| Python countersign enforces HOD role (not Next.js wrapper) | Python is the authoritative authorization layer for this API | 2026-02-18 |
+| _trigger_indexing uses search_index_queue table insert with try/except | Fire-and-forget; missing table should never block countersign response | 2026-02-18 |
 
 ---
 
@@ -458,6 +461,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Commits: a0593168 (client functions), 87f82e6f (panel update + polling)
 - Note: executed out of order (after 14-02 and 14-03)
 
+### 2026-02-18 (14-05) - Two-Bucket Storage + API Endpoints
+- Plan 14-05: Added 4 FastAPI editable workflow endpoints + 4 Next.js proxy routes
+- GET /export/{id}/content — returns parsed sections from original HTML or cached edited_content
+- POST /export/{id}/save-draft — auto-saves sections to edited_content JSONB without signature
+- POST /export/{id}/submit — uploads signed HTML to signed bucket, notifies HOD via pms_audit_log
+- POST /export/{id}/countersign — re-uploads with both signatures, triggers search_index_queue
+- Next.js routes: Authorization Bearer header passthrough to Python (not createServerClient)
+- Rule 1 fix: removed invalid size="sm" from GhostButton in EditableSectionRenderer.tsx
+- TypeScript: tsc --noEmit 0 errors
+- Commits: 8ec9de8d (Python routes), d122b291 (Next.js routes + Rule 1 fix)
+
 ### Next Action
-**14-01 complete — Continue with 14-04.**
+**14-05 complete — Continue with 14-06.**
 
