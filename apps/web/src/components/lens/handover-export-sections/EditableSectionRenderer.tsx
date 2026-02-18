@@ -153,9 +153,9 @@ export function EditableSectionRenderer({
               {/* Section controls (edit mode only) */}
               {isEditable && (
                 <div className="flex gap-1 ml-2">
-                  <GhostButton size="sm" onClick={() => moveSection(section.id, 'up')}>↑</GhostButton>
-                  <GhostButton size="sm" onClick={() => moveSection(section.id, 'down')}>↓</GhostButton>
-                  <GhostButton size="sm" onClick={() => removeSection(section.id)}>Remove</GhostButton>
+                  <GhostButton onClick={() => moveSection(section.id, 'up')}>↑</GhostButton>
+                  <GhostButton onClick={() => moveSection(section.id, 'down')}>↓</GhostButton>
+                  <GhostButton onClick={() => removeSection(section.id)}>Remove</GhostButton>
                 </div>
               )}
             </div>
