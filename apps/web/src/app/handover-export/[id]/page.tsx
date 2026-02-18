@@ -7,8 +7,8 @@
  * HandoverExportLens in edit or review mode based on user role and
  * current review_status.
  *
- * Uses supabaseClient (browser singleton) — matches existing app patterns.
- * No server-side createServerClient used (not available in this project).
+ * Uses /api/handover-export/[id]/content route which proxies to Render backend
+ * to access Cloud_PMS database. Direct Supabase calls go to Cloud_HQ (auth only).
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -18,18 +18,14 @@ import { HandoverExportLens } from '@/components/lens/HandoverExportLens';
 
 interface ExportData {
   id: string;
-  handover_id: string | null;
-  yacht_id: string | null;
-  original_storage_url: string | null;
-  signed_storage_url: string | null;
-  edited_content: { sections?: Section[] } | null;
+  sections: Section[];
+  review_status: string | null;
+  created_at: string;
+  yacht_name: string | null;
   user_signature: SignatureData | null;
   user_signed_at: string | null;
   hod_signature: SignatureData | null;
   hod_signed_at: string | null;
-  review_status: string | null;
-  created_at: string;
-  yachts: { name: string } | null;
 }
 
 interface Section {
@@ -69,62 +65,60 @@ export default function HandoverExportPage() {
 
   useEffect(() => {
     async function fetchData() {
-      // Check authentication
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Check authentication and get session for API calls
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.replace('/login');
         return;
       }
 
-      // Fetch user profile
+      // Fetch user profile from Cloud_HQ (auth DB)
       const { data: profile } = await supabase
         .from('auth_users_profiles')
         .select('full_name, role')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single();
 
       setCurrentUser({
-        id: user.id,
-        name: profile?.full_name || user.email || 'Unknown',
+        id: session.user.id,
+        name: profile?.full_name || session.user.email || 'Unknown',
         role: profile?.role || 'crew'
       });
 
-      // Fetch handover export
-      const { data, error: fetchError } = await supabase
-        .from('handover_exports')
-        .select(`
-          id,
-          handover_id,
-          yacht_id,
-          original_storage_url,
-          signed_storage_url,
-          edited_content,
-          user_signature,
-          user_signed_at,
-          hod_signature,
-          hod_signed_at,
-          review_status,
-          created_at,
-          yachts (name)
-        `)
-        .eq('id', exportId)
-        .single();
+      // Fetch handover export via API route (proxies to Cloud_PMS via Render backend)
+      try {
+        const response = await fetch(`/api/handover-export/${exportId}/content`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
-      if (fetchError || !data) {
-        setError('Handover export not found');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          setError(errorData.detail || errorData.error || 'Handover export not found');
+          setLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+        setExportData({
+          id: data.id,
+          sections: data.sections || [],
+          review_status: data.review_status,
+          created_at: data.created_at,
+          yacht_name: data.yacht_name,
+          user_signature: data.user_signature,
+          user_signed_at: data.user_signed_at,
+          hod_signature: data.hod_signature,
+          hod_signed_at: data.hod_signed_at
+        });
         setLoading(false);
-        return;
+      } catch (err) {
+        console.error('Error fetching handover export:', err);
+        setError('Failed to load handover export');
+        setLoading(false);
       }
-
-      // Supabase returns joined relations as arrays; normalize yachts to single object
-      const normalized: ExportData = {
-        ...(data as any),
-        yachts: Array.isArray((data as any).yachts)
-          ? ((data as any).yachts[0] ?? null)
-          : (data as any).yachts
-      };
-      setExportData(normalized);
-      setLoading(false);
     }
 
     fetchData();
@@ -177,8 +171,8 @@ export default function HandoverExportPage() {
     mode = 'review';
   }
 
-  // Parse sections from edited_content or fall back to empty
-  const sections: Section[] = exportData.edited_content?.sections || [];
+  // Sections are already parsed by the API
+  const sections: Section[] = exportData.sections || [];
 
   return (
     <HandoverExportLens
@@ -187,7 +181,7 @@ export default function HandoverExportPage() {
       mode={mode}
       title="Handover Export"
       generatedAt={exportData.created_at}
-      yachtName={exportData.yachts?.name || 'Unknown Yacht'}
+      yachtName={exportData.yacht_name || 'Unknown Yacht'}
       preparedBy={currentUser.name}
       reviewStatus={(exportData.review_status as 'pending_review' | 'pending_hod_signature' | 'complete') || 'pending_review'}
       initialSections={sections}
