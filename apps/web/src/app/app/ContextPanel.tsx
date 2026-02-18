@@ -1,99 +1,28 @@
 'use client';
 
 /**
- * ContextPanel - Entity Detail View
+ * ContextPanel - Full-Screen Entity Lens Container
  *
- * Slides from right when context-open state is active.
- * Renders actual entity cards (FaultCard, WorkOrderCard, etc.) that
- * call /v1/decisions for server-driven action visibility.
+ * Per rules.md 1-URL philosophy:
+ * - All entity views render here at app.celeste7.ai
+ * - NO fragmented URLs (no /work-orders/[id], etc.)
+ * - Slides from right when context-open state is active
+ * - Renders full lens components (not cards) via LensRenderer
+ * - Integrated with NavigationContext for back/forward stack navigation
  *
- * Phase 12: Updated to render real card components for E2E testability.
- * Phase 13: Fetches fresh entity data from backend on open.
+ * Phase 14: Refactored to render lenses instead of cards, per 1-URL architecture.
+ * - LensRenderer maps entity types to their lens content components
+ * - No UUID displayed anywhere (lens header shows human-readable titles)
+ * - Cross-lens navigation via NavigationContext
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { useAuth } from '@/hooks/useAuth';
-import { X, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FaultCard } from '@/components/cards/FaultCard';
-import { WorkOrderCard } from '@/components/cards/WorkOrderCard';
-import { EquipmentCard } from '@/components/cards/EquipmentCard';
-import { PartCard } from '@/components/cards/PartCard';
-import { ReceivingCard } from '@/components/cards/ReceivingCard';
-import type { MicroAction } from '@/types/actions';
 import { supabase } from '@/lib/supabaseClient';
-
-/**
- * Get available actions for parts based on user role
- * Mirrors backend domain_microactions.py logic
- */
-function getPartActions(role: string): MicroAction[] {
-  const actions: MicroAction[] = [];
-
-  // READ actions - available to all roles
-  const allRoles = ['crew', 'deckhand', 'steward', 'chef', 'bosun', 'engineer', 'eto',
-                    'chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
-
-  if (allRoles.includes(role)) {
-    actions.push('view_part_location' as MicroAction); // Fixed: use action that exists in registry
-    actions.push('view_part_stock' as MicroAction); // Fixed: use action that exists in registry
-  }
-
-  // Usage History - elevated roles only
-  const elevatedRoles = ['engineer', 'eto', 'chief_engineer', 'chief_officer', 'captain', 'manager'];
-  if (elevatedRoles.includes(role)) {
-    actions.push('view_part_usage' as MicroAction);
-  }
-
-  // MUTATE actions - elevated roles only
-  if (elevatedRoles.includes(role)) {
-    actions.push('log_part_usage' as MicroAction);
-  }
-
-  return actions;
-}
-
-/**
- * Get available actions for receiving based on status and user role
- * Mirrors backend receiving_handlers.py permissions (HOD+)
- */
-function getReceivingActions(status: string, role: string): MicroAction[] {
-  const actions: MicroAction[] = [];
-
-  // Only HOD+ roles can interact with receivings
-  const hodPlusRoles = ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
-
-  if (!hodPlusRoles.includes(role)) {
-    return actions; // Empty for non-HOD roles
-  }
-
-  // All HOD+ can view history
-  actions.push('view_receiving_history' as MicroAction);
-
-  // Draft status: full edit capabilities
-  if (status === 'draft') {
-    actions.push('add_receiving_item' as MicroAction);
-    actions.push('attach_receiving_image_with_comment' as MicroAction);
-    actions.push('extract_receiving_candidates' as MicroAction);
-    actions.push('update_receiving' as MicroAction);
-    actions.push('accept_receiving' as MicroAction);
-    actions.push('reject_receiving' as MicroAction);
-  }
-
-  // In review: can accept or reject
-  if (status === 'in_review') {
-    actions.push('accept_receiving' as MicroAction);
-    actions.push('reject_receiving' as MicroAction);
-  }
-
-  // Accepted: can link to invoice, view history
-  if (status === 'accepted') {
-    actions.push('link_receiving_to_invoice' as MicroAction);
-  }
-
-  return actions;
-}
+import { LensRenderer } from '@/components/lens/LensRenderer';
 
 export default function ContextPanel() {
   const { contextPanel, hideContext } = useSurface();
@@ -103,22 +32,6 @@ export default function ContextPanel() {
   const [entityData, setEntityData] = React.useState<Record<string, unknown> | undefined>(initialData);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  // Entity type display names
-  const entityTypeNames: Record<string, string> = {
-    work_order: 'Work Order',
-    equipment: 'Equipment',
-    fault: 'Fault',
-    part: 'Part',
-    inventory: 'Inventory',
-    purchase_order: 'Purchase Order',
-    supplier: 'Supplier',
-    document: 'Document',
-    email_thread: 'Email Thread',
-    receiving: 'Receiving',
-  };
-
-  const displayName = entityType ? entityTypeNames[entityType] || entityType : 'Details';
 
   // Fetch fresh entity data when panel opens
   useEffect(() => {
@@ -175,7 +88,7 @@ export default function ContextPanel() {
     };
 
     fetchEntityData();
-  }, [visible, entityType, entityId, user?.yachtId]);
+  }, [visible, entityType, entityId, user?.yachtId, initialData]);
 
   // Update local state when initialData changes from parent
   useEffect(() => {
@@ -200,263 +113,43 @@ export default function ContextPanel() {
     }
   }, [visible, hideContext]);
 
-  /**
-   * Render the appropriate entity card based on entityType
-   * These cards call /v1/decisions for server-driven action visibility
-   */
-  const renderEntityCard = () => {
-    if (!entityType || !entityId) return null;
+  // Refresh handler for lens actions
+  const handleRefresh = useCallback(async () => {
+    if (!entityType || !entityId) return;
 
-    const data = entityData as Record<string, unknown> || {};
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
 
-    switch (entityType) {
-      case 'fault':
-        // FaultCard expects specific props - map from entityData
-        const faultData = {
-          id: entityId,
-          title: (data.title as string) || 'Fault',
-          description: (data.description as string) || '',
-          severity: (data.severity as 'low' | 'medium' | 'high' | 'critical') || 'medium',
-          equipment_id: (data.equipment_id as string) || '',
-          equipment_name: (data.equipment_name as string) || 'Unknown Equipment',
-          reported_at: (data.reported_at as string) || (data.detected_at as string) || new Date().toISOString(),
-          reporter: (data.reporter as string) || (data.reported_by as string) || 'System',
-          ai_diagnosis: data.ai_diagnosis as { is_known: boolean } | undefined,
-          has_work_order: (data.has_work_order as boolean) || false,
-        };
-        return (
-          <div data-testid="context-panel-fault-card">
-            <FaultCard
-              fault={faultData}
-              userRole={user?.role}
-            />
-          </div>
-        );
+      const PIPELINE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
+      const response = await fetch(
+        `${PIPELINE_URL}/v1/entity/${entityType}/${entityId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      case 'work_order':
-        // Build enriched work order data with all related data
-        const workOrderData = {
-          id: entityId,
-          title: (data.title as string) || 'Work Order',
-          description: (data.description as string) || '',
-          status: (data.status as 'pending' | 'in_progress' | 'completed' | 'cancelled') || 'pending',
-          priority: (data.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
-          equipment_id: data.equipment_id as string | undefined,
-          equipment_name: data.equipment_name as string | undefined,
-          assigned_to: data.assigned_to as string | undefined,
-          assigned_to_name: data.assigned_to_name as string | undefined,
-          created_at: (data.created_at as string) || new Date().toISOString(),
-          completed_at: data.completed_at as string | undefined,
-          due_date: data.due_date as string | undefined,
-          // Enriched data from /v1/entity/work_order endpoint
-          notes: (data.notes as Array<{
-            id: string;
-            note_text: string;
-            note_type?: string;
-            created_by?: string;
-            created_at: string;
-          }>) || [],
-          parts: (data.parts as Array<{
-            id: string;
-            part_id: string;
-            quantity: number;
-            notes?: string;
-            created_at: string;
-            pms_parts?: {
-              id: string;
-              name: string;
-              part_number?: string;
-              location?: string;
-            };
-          }>) || [],
-          checklist: (data.checklist as Array<{
-            id: string;
-            title: string;
-            description?: string;
-            is_completed: boolean;
-            completed_by?: string;
-            completed_at?: string;
-            sequence?: number;
-          }>) || [],
-          audit_history: (data.audit_history as Array<{
-            id: string;
-            action: string;
-            old_values?: Record<string, unknown>;
-            new_values?: Record<string, unknown>;
-            user_id?: string;
-            created_at: string;
-          }>) || [],
-          notes_count: (data.notes_count as number) || 0,
-          parts_count: (data.parts_count as number) || 0,
-          checklist_count: (data.checklist_count as number) || 0,
-          checklist_completed: (data.checklist_completed as number) || 0,
-        };
-        return (
-          <div data-testid="context-panel-work-order-card">
-            <WorkOrderCard workOrder={workOrderData} />
-          </div>
-        );
-
-      case 'equipment':
-        const equipmentData = {
-          id: entityId,
-          name: (data.name as string) || 'Equipment',
-          equipment_type: (data.equipment_type as string) || (data.category as string) || 'General',
-          manufacturer: data.manufacturer as string | undefined,
-          model: data.model as string | undefined,
-          serial_number: data.serial_number as string | undefined,
-          location: (data.location as string) || 'Unknown',
-          status: (data.status as 'operational' | 'faulty' | 'maintenance' | 'offline') || 'operational',
-          installation_date: data.installation_date as string | undefined,
-          last_maintenance: data.last_maintenance as string | undefined,
-          next_maintenance: data.next_maintenance as string | undefined,
-          fault_count: data.fault_count as number | undefined,
-          work_order_count: data.work_order_count as number | undefined,
-        };
-        return (
-          <div data-testid="context-panel-equipment-card">
-            <EquipmentCard equipment={equipmentData} />
-          </div>
-        );
-
-      case 'part':
-      case 'inventory':
-        const partData = {
-          id: entityId,
-          part_name: (data.name as string) || (data.part_name as string) || 'Part',
-          part_number: (data.part_number as string) || '',
-          stock_quantity: (data.quantity_on_hand as number) || (data.stock_quantity as number) || 0,
-          min_stock_level: (data.minimum_quantity as number) || (data.min_stock_level as number) || 0,
-          location: (data.location as string) || 'Unknown',
-          unit_cost: data.unit_cost as number | undefined,
-          supplier: data.supplier as string | undefined,
-          category: data.category as string | undefined,
-          last_counted_at: data.last_counted_at as string | undefined,
-          last_counted_by: data.last_counted_by as string | undefined,
-          unit: data.unit as string | undefined,
-        };
-
-        // Get available actions based on user role
-        const partActions = getPartActions(user?.role || 'crew');
-
-        return (
-          <div data-testid={`context-panel-${entityType}-card`}>
-            <PartCard
-              part={partData}
-              entityType={entityType as 'part' | 'inventory'}
-              actions={partActions}
-            />
-          </div>
-        );
-
-      case 'receiving':
-        const receivingData = {
-          id: entityId,
-          vendor_name: data.vendor_name as string | undefined,
-          vendor_reference: data.vendor_reference as string | undefined,
-          po_number: data.po_number as string | undefined,
-          received_date: data.received_date as string | undefined,
-          status: (data.status as 'draft' | 'in_review' | 'accepted' | 'rejected') || 'draft',
-          total: data.total as number | undefined,
-          currency: data.currency as string | undefined,
-          notes: data.notes as string | undefined,
-          received_by: data.received_by as string | undefined,
-          // Child table data from pms_receiving_items
-          items: (data.items as Array<{
-            id: string;
-            yacht_id?: string;
-            receiving_id?: string;
-            part_id?: string;
-            description?: string;
-            quantity_expected?: number | null;
-            quantity_received: number;
-            unit_price?: number | null;
-            currency?: string | null;
-            properties?: Record<string, unknown> | null;
-          }>) || [],
-          // Child table data from pms_receiving_documents (joined with doc_metadata)
-          documents: (data.documents as Array<{
-            id: string;
-            yacht_id?: string;
-            receiving_id?: string;
-            document_id: string;
-            doc_type?: 'invoice' | 'packing_slip' | 'photo' | 'other' | null;
-            comment?: string | null;
-            created_at?: string;
-            filename?: string;
-            file_size?: number;
-            mime_type?: string;
-            url?: string;
-            thumbnail_url?: string;
-          }>) || [],
-        };
-
-        // Get available actions based on status and role
-        const receivingActions = getReceivingActions(
-          receivingData.status,
-          user?.role || 'crew'
-        );
-
-        // HOD+ roles can add items and documents
-        const hodPlusRoles = ['chief_engineer', 'chief_officer', 'chief_steward', 'purser', 'captain', 'manager'];
-        const canModifyReceiving = hodPlusRoles.includes(user?.role || 'crew') && receivingData.status === 'draft';
-
-        return (
-          <div data-testid="context-panel-receiving-card">
-            <ReceivingCard
-              receiving={receivingData}
-              actions={receivingActions}
-              canAddItem={canModifyReceiving}
-              canAddDocument={canModifyReceiving}
-              onAddItem={() => {
-                // TODO: Open AddReceivingItemModal
-                console.log('[ContextPanel] Add item to receiving:', entityId);
-              }}
-              onAddDocument={() => {
-                // TODO: Open ReceivingDocumentUpload modal
-                console.log('[ContextPanel] Add document to receiving:', entityId);
-              }}
-              onPartClick={(partId) => {
-                // Navigate to Part lens
-                console.log('[ContextPanel] Navigate to part:', partId);
-                // Could use useSurface().showContext('part', partId) here
-              }}
-              onDocumentClick={(documentId) => {
-                // Navigate to Document lens or open preview
-                console.log('[ContextPanel] Navigate to document:', documentId);
-                // Could use useSurface().showContext('document', documentId) here
-              }}
-            />
-          </div>
-        );
-
-      default:
-        // Generic display for unsupported entity types
-        return (
-          <div className="bg-celeste-bg-tertiary/50 rounded-lg p-4 border border-celeste-text-secondary/50">
-            <h3 className="text-lg font-semibold text-white mb-2">
-              {(data.title as string) || (data.name as string) || displayName}
-            </h3>
-            <p className="text-sm text-celeste-text-muted">
-              {(data.subtitle as string) || (data.description as string) || 'Details unavailable'}
-            </p>
-            <p className="text-xs text-celeste-text-disabled mt-2">
-              Entity type: {entityType} | ID: {entityId}
-            </p>
-          </div>
-        );
+      if (response.ok) {
+        const freshData = await response.json();
+        setEntityData(freshData);
+      }
+    } catch (err) {
+      console.error('[ContextPanel] Refresh failed:', err);
     }
-  };
+  }, [entityType, entityId]);
 
-  // Always full-screen mode - no sidebar step
+  // Full-screen lens container - slides from right
   return (
     <div
       className={cn(
-        'absolute inset-y-0 right-0 bg-celeste-black/95 border-l border-celeste-text-secondary/50',
+        'absolute inset-y-0 right-0 bg-surface-base',
         'flex flex-col',
         'transform transition-all duration-300 ease-out z-[10001]',
-        'backdrop-blur-sm shadow-2xl',
-        'w-[calc(100vw-80px)]', // Always full-screen
+        'shadow-2xl',
+        'w-[calc(100vw-80px)]', // Full-screen minus left nav
         visible ? 'translate-x-0' : 'translate-x-full'
       )}
       data-testid="context-panel"
@@ -464,77 +157,54 @@ export default function ContextPanel() {
       data-entity-id={entityId}
       data-expanded="true"
     >
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-celeste-text-secondary/50 relative z-50 bg-celeste-black/95">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={hideContext}
-            className="relative z-50 p-2 hover:bg-celeste-bg-tertiary rounded-lg transition-colors pointer-events-auto cursor-pointer"
-            aria-label="Close context panel"
-            data-testid="close-context-panel"
-            type="button"
-          >
-            <X className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
-          </button>
-          <div>
-            <span className="text-xs text-celeste-text-disabled uppercase tracking-wider">
-              {displayName}
-            </span>
-            {entityId && (
-              <p className="text-sm text-celeste-text-muted font-mono">
-                {entityId.substring(0, 8)}...
-              </p>
-            )}
-          </div>
-        </div>
-        {/* No sidebar mode - only close button on right side */}
-        <button
-          onClick={hideContext}
-          className="relative z-50 p-2 hover:bg-celeste-bg-tertiary rounded-lg transition-colors pointer-events-auto cursor-pointer"
-          aria-label="Close panel"
-          type="button"
-          data-testid="close-context-panel-right"
-        >
-          <X className="w-5 h-5 text-celeste-text-muted pointer-events-none" />
-        </button>
-      </div>
+      {/* No separate header - LensRenderer includes LensHeader */}
+      {/* This prevents duplicate headers and UUID display */}
 
-      {/* Content - Render actual entity cards (always full-screen) */}
+      {/* Content - Lens components handle their own layout */}
       <div
-        className="flex-1 overflow-y-auto p-4"
+        className="flex-1 overflow-hidden"
         data-testid="context-panel-content"
       >
         {loading ? (
-          <div className="text-center py-12" data-testid="context-panel-loading">
-            <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
-            <p className="text-celeste-text-muted text-sm">
-              Loading {displayName.toLowerCase()}...
-            </p>
+          <div className="flex items-center justify-center h-full" data-testid="context-panel-loading">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
+              <p className="text-celeste-text-muted text-sm">
+                Loading...
+              </p>
+            </div>
           </div>
         ) : error ? (
-          <div className="text-center py-12" data-testid="context-panel-error">
-            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-            <p className="text-celeste-text-muted text-sm mb-3">
-              {error}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
-            >
-              Reload
-            </button>
+          <div className="flex items-center justify-center h-full" data-testid="context-panel-error">
+            <div className="text-center">
+              <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+              <p className="text-celeste-text-muted text-sm mb-3">
+                {error}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+              >
+                Reload
+              </button>
+            </div>
           </div>
-        ) : visible && entityType && entityId ? (
-          <div className="space-y-4">
-            {/* Render the appropriate card component */}
-            {renderEntityCard()}
-          </div>
+        ) : visible && entityType && entityId && entityData ? (
+          <LensRenderer
+            entityType={entityType}
+            entityId={entityId}
+            entityData={entityData}
+            loading={loading}
+            onRefresh={handleRefresh}
+          />
         ) : (
-          <div className="text-center py-12" data-testid="context-panel-empty">
-            <AlertCircle className="w-8 h-8 text-celeste-text-secondary mx-auto mb-3" />
-            <p className="text-celeste-text-muted text-sm">
-              Select an item to view details
-            </p>
+          <div className="flex items-center justify-center h-full" data-testid="context-panel-empty">
+            <div className="text-center">
+              <AlertCircle className="w-8 h-8 text-celeste-text-secondary mx-auto mb-3" />
+              <p className="text-celeste-text-muted text-sm">
+                Select an item to view details
+              </p>
+            </div>
           </div>
         )}
       </div>

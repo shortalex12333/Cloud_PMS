@@ -26,6 +26,7 @@
 
 import { Suspense } from 'react';
 import { SurfaceProvider } from '@/contexts/SurfaceContext';
+import { NavigationProvider } from '@/contexts/NavigationContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './ContextPanel';
 import DeepLinkHandler from './DeepLinkHandler';
@@ -71,7 +72,9 @@ export default function AppSurface() {
   return (
     <AuthProvider>
       <SurfaceProvider>
-        <SurfaceContent />
+        <NavigationProvider>
+          <SurfaceContent />
+        </NavigationProvider>
       </SurfaceProvider>
     </AuthProvider>
   );
