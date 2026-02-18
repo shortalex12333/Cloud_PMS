@@ -96,12 +96,42 @@
 - ✅ Work Order lens (shows Notes, Parts, Checklist, Activity)
 - ✅ Email panel (emails load, filters work, view works)
 
-### Pending Deployment
-All fixes require deployment to take effect:
-- Backend: `apps/api/pipeline_service.py`
-- Frontend: `apps/web/src/components/`
+### Deployed (2026-02-18)
+
+**PR #333** - Equipment/Parts 500 fixes + Email modal handlers
+- Merged to main ✓
+- Backend deployed via Render auto-deploy
+
+**PR #334** - Email lens endpoints + LensContent components
+- GET /v1/email/threads
+- GET /v1/email/thread/{id}
+- GET /v1/email/thread/{id}/links
+- POST /v1/email/thread/{id}/link
+- GET /v1/email/search
+- 11 LensContent components for ContextPanel rendering
+- Merged to main ✓
+- Frontend deployed to Vercel ✓
 
 ---
 
-*Last Updated: 2026-02-17*
-*Frontend Engineering Complete + Live Testing Bugs Fixed*
+## Frontend Gaps Fixed (2026-02-18)
+
+### LensHeader Navigation Enhancement
+- Added Forward button (→) next to Back button
+- Added "Show Related" button before Close button
+- All 11 LensContent components can now pass navigation handlers
+
+### Work Order Lens Action Buttons
+- Added "Start Work" button (for draft/planned status)
+- Added "Edit" button with EditWorkOrderModal
+- Added "Log Hours" button with AddHoursModal
+- Status-aware button visibility
+
+### New Action Modals
+- `AddHoursModal` — Log hours worked on work order
+- `EditWorkOrderModal` — Update WO title, description, priority, type, due date
+
+---
+
+*Last Updated: 2026-02-18*
+*Frontend navigation and Work Order action gaps addressed*
