@@ -40,8 +40,11 @@ import {
   MarkCompleteModal,
   ReassignModal,
   ArchiveModal,
+  AddHoursModal,
+  EditWorkOrderModal,
   type PartOption,
   type CrewMember,
+  type WorkOrderEditData,
 } from './actions';
 
 // Action hook + permissions
@@ -137,6 +140,8 @@ export function WorkOrderLensContent({
   const [markCompleteOpen, setMarkCompleteOpen] = React.useState(false);
   const [reassignOpen, setReassignOpen] = React.useState(false);
   const [archiveOpen, setArchiveOpen] = React.useState(false);
+  const [addHoursOpen, setAddHoursOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
 
   // Actions and permissions
   const actions = useWorkOrderActions(id);
@@ -206,6 +211,9 @@ export function WorkOrderLensContent({
   // Whether the WO can still be closed/completed
   const isCloseable = !['completed', 'closed', 'cancelled'].includes(status);
 
+  // Whether the WO can be started (transition from draft/planned to in_progress)
+  const canStart = ['draft', 'planned', 'open'].includes(status);
+
   // Action handlers
   const handleAddNote = React.useCallback(async (noteText: string) => {
     const result = await actions.addNote(noteText);
@@ -233,6 +241,24 @@ export function WorkOrderLensContent({
 
   const handleArchive = React.useCallback(async (reason: string) => {
     const result = await actions.archiveWorkOrder(reason, {});
+    if (result.success) onRefresh?.();
+    return result;
+  }, [actions, onRefresh]);
+
+  const handleStartWork = React.useCallback(async () => {
+    const result = await actions.startWorkOrder();
+    if (result.success) onRefresh?.();
+    return result;
+  }, [actions, onRefresh]);
+
+  const handleAddHours = React.useCallback(async (hours: number, notes?: string) => {
+    const result = await actions.addHours(hours, notes);
+    if (result.success) onRefresh?.();
+    return result;
+  }, [actions, onRefresh]);
+
+  const handleUpdateWorkOrder = React.useCallback(async (changes: WorkOrderEditData) => {
+    const result = await actions.updateWorkOrder(changes as Record<string, unknown>);
     if (result.success) onRefresh?.();
     return result;
   }, [actions, onRefresh]);
@@ -273,9 +299,20 @@ export function WorkOrderLensContent({
         </div>
 
         {/* Action buttons */}
-        {(perms.canClose || perms.canAssign || perms.canArchive) && (
+        {(perms.canStart || perms.canClose || perms.canUpdate || perms.canAddHours || perms.canAssign || perms.canArchive) && (
           <div className="mt-4 flex items-center gap-2 flex-wrap">
-            {perms.canClose && isCloseable && (
+            {/* Start Work Order - primary action when WO is draft/planned */}
+            {perms.canStart && canStart && (
+              <PrimaryButton
+                onClick={handleStartWork}
+                disabled={actions.isLoading}
+                className="text-[13px] min-h-[36px] px-4 py-2"
+              >
+                {actions.isLoading ? 'Starting...' : 'Start Work'}
+              </PrimaryButton>
+            )}
+            {/* Mark Complete - primary action when WO is in progress */}
+            {perms.canClose && isCloseable && !canStart && (
               <PrimaryButton
                 onClick={() => setMarkCompleteOpen(true)}
                 disabled={actions.isLoading}
@@ -283,6 +320,26 @@ export function WorkOrderLensContent({
               >
                 Mark Complete
               </PrimaryButton>
+            )}
+            {/* Edit work order */}
+            {perms.canUpdate && isCloseable && (
+              <GhostButton
+                onClick={() => setEditOpen(true)}
+                disabled={actions.isLoading}
+                className="text-[13px] min-h-[36px] px-4 py-2"
+              >
+                Edit
+              </GhostButton>
+            )}
+            {/* Add Hours */}
+            {perms.canAddHours && status === 'in_progress' && (
+              <GhostButton
+                onClick={() => setAddHoursOpen(true)}
+                disabled={actions.isLoading}
+                className="text-[13px] min-h-[36px] px-4 py-2"
+              >
+                Log Hours
+              </GhostButton>
             )}
             {perms.canAssign && (
               <GhostButton
@@ -383,6 +440,28 @@ export function WorkOrderLensContent({
         onSubmit={handleArchive}
         isLoading={actions.isLoading}
         workOrderTitle={displayTitle}
+      />
+
+      <AddHoursModal
+        open={addHoursOpen}
+        onClose={() => setAddHoursOpen(false)}
+        onSubmit={handleAddHours}
+        isLoading={actions.isLoading}
+        workOrderTitle={displayTitle}
+      />
+
+      <EditWorkOrderModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSubmit={handleUpdateWorkOrder}
+        isLoading={actions.isLoading}
+        currentData={{
+          title: title,
+          description: description,
+          priority: priority,
+          due_date: data.due_date as string | undefined,
+          type: data.type as string | undefined,
+        }}
       />
     </div>
   );
