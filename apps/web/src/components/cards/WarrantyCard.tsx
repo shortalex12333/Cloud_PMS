@@ -115,44 +115,44 @@ function getStatusStyles(status: string) {
   switch (status) {
     case 'approved':
       return {
-        bg: 'bg-[var(--celeste-green)]/10',
-        text: 'text-[var(--celeste-green)]',
-        icon: <CheckCircle2 className="h-5 w-5 text-[var(--celeste-green)]" />,
+        bg: 'bg-status-success-bg',
+        text: 'text-status-success',
+        icon: <CheckCircle2 className="h-5 w-5 text-status-success" />,
         label: 'Approved',
       };
     case 'submitted':
       return {
-        bg: 'bg-[var(--celeste-accent)]/10',
-        text: 'text-[var(--celeste-accent)]',
-        icon: <Send className="h-5 w-5 text-[var(--celeste-accent)]" />,
+        bg: 'bg-brand-muted',
+        text: 'text-brand-interactive',
+        icon: <Send className="h-5 w-5 text-brand-interactive" />,
         label: 'Submitted',
       };
     case 'under_review':
       return {
-        bg: 'bg-[var(--celeste-yellow)]/10',
-        text: 'text-[var(--celeste-yellow)]',
-        icon: <Clock className="h-5 w-5 text-[var(--celeste-yellow)]" />,
+        bg: 'bg-status-warning-bg',
+        text: 'text-status-warning',
+        icon: <Clock className="h-5 w-5 text-status-warning" />,
         label: 'Under Review',
       };
     case 'rejected':
       return {
-        bg: 'bg-[var(--celeste-warning)]/10',
-        text: 'text-[var(--celeste-warning)]',
-        icon: <XCircle className="h-5 w-5 text-[var(--celeste-warning)]" />,
+        bg: 'bg-status-critical-bg',
+        text: 'text-status-critical',
+        icon: <XCircle className="h-5 w-5 text-status-critical" />,
         label: 'Rejected',
       };
     case 'closed':
       return {
-        bg: 'bg-[var(--celeste-text-muted)]/10',
-        text: 'text-[var(--celeste-text-muted)]',
-        icon: <FileText className="h-5 w-5 text-[var(--celeste-text-muted)]" />,
+        bg: 'bg-txt-tertiary/10',
+        text: 'text-txt-tertiary',
+        icon: <FileText className="h-5 w-5 text-txt-tertiary" />,
         label: 'Closed',
       };
     default: // draft
       return {
-        bg: 'bg-[var(--celeste-text-muted)]/10',
-        text: 'text-[var(--celeste-text-secondary)]',
-        icon: <FileWarning className="h-5 w-5 text-[var(--celeste-text-secondary)]" />,
+        bg: 'bg-txt-tertiary/10',
+        text: 'text-txt-secondary',
+        icon: <FileWarning className="h-5 w-5 text-txt-secondary" />,
         label: 'Draft',
       };
   }
@@ -162,22 +162,22 @@ function getClaimTypeStyles(claimType: string) {
   switch (claimType) {
     case 'replacement':
       return {
-        bg: 'bg-[var(--celeste-orange)]/10',
-        text: 'text-[var(--celeste-orange)]',
+        bg: 'bg-status-warning-bg',
+        text: 'text-status-warning',
         icon: <RefreshCw className="h-4 w-4" />,
         label: 'Replacement',
       };
     case 'refund':
       return {
-        bg: 'bg-[var(--celeste-green)]/10',
-        text: 'text-[var(--celeste-green)]',
+        bg: 'bg-status-success-bg',
+        text: 'text-status-success',
         icon: <DollarSign className="h-4 w-4" />,
         label: 'Refund',
       };
     default: // repair
       return {
-        bg: 'bg-[var(--celeste-accent)]/10',
-        text: 'text-[var(--celeste-accent)]',
+        bg: 'bg-brand-muted',
+        text: 'text-brand-interactive',
         icon: <Wrench className="h-4 w-4" />,
         label: 'Repair',
       };
@@ -229,22 +229,22 @@ export function WarrantyCard({
   );
 
   return (
-    <div className="flex flex-col gap-[var(--celeste-spacing-6)]">
+    <div className="flex flex-col gap-ds-6">
       {/* ================================================================
           HEADER SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         {/* Status & Claim Type Row */}
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-4)]">
+        <div className="flex items-center gap-ds-2 mb-ds-4">
           <span className={cn(
-            'inline-flex items-center gap-[var(--celeste-spacing-1)] px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-[var(--celeste-border-radius-sm)] text-sm font-medium',
+            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
             status.bg, status.text
           )}>
             {status.icon}
             {status.label}
           </span>
           <span className={cn(
-            'inline-flex items-center gap-[var(--celeste-spacing-1)] px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-[var(--celeste-border-radius-sm)] text-sm font-medium',
+            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
             claimType.bg, claimType.text
           )}>
             {claimType.icon}
@@ -253,28 +253,28 @@ export function WarrantyCard({
         </div>
 
         {/* Claim Number */}
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-2)]">
-          <Hash className="h-4 w-4 text-[var(--celeste-text-muted)]" />
-          <span className="text-[var(--celeste-text-muted)] text-sm font-mono">
+        <div className="flex items-center gap-ds-2 mb-ds-2">
+          <Hash className="h-4 w-4 text-txt-tertiary" />
+          <span className="text-txt-tertiary text-celeste-sm font-mono">
             {warrantyClaim.claim_number}
           </span>
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-semibold text-[var(--celeste-text-title)] mb-[var(--celeste-spacing-2)]">
+        <h1 className="text-2xl font-semibold text-txt-primary mb-ds-2">
           {warrantyClaim.title}
         </h1>
 
         {/* Description */}
         {warrantyClaim.description && (
-          <p className="text-[var(--celeste-text-primary)] mb-[var(--celeste-spacing-4)]">
+          <p className="text-txt-primary mb-ds-4">
             {warrantyClaim.description}
           </p>
         )}
 
         {/* Primary Actions */}
         {actions.length > 0 && (
-          <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
+          <div className="flex flex-wrap items-center gap-ds-2 mt-ds-4 pt-ds-4 border-t border-surface-border">
             {actions.slice(0, 4).map((action) => (
               <ActionButton
                 key={action}
@@ -286,7 +286,7 @@ export function WarrantyCard({
               />
             ))}
             {actions.length > 4 && (
-              <button className="h-8 px-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-muted)] hover:text-[var(--celeste-text-primary)] transition-colors">
+              <button className="h-8 px-ds-2 text-celeste-sm text-txt-tertiary hover:text-txt-primary transition-colors">
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
@@ -298,34 +298,34 @@ export function WarrantyCard({
           EQUIPMENT & FAULT SECTION
           ================================================================ */}
       {(warrantyClaim.equipment_name || warrantyClaim.fault_code) && (
-        <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-          <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-            <Package className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-            <h3 className="text-[var(--celeste-text-primary)] font-semibold">
+        <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+          <div className="flex items-center gap-ds-2 mb-ds-3">
+            <Package className="h-5 w-5 text-txt-secondary" />
+            <h3 className="text-txt-primary font-semibold">
               Linked References
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--celeste-spacing-4)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-4">
             {warrantyClaim.equipment_name && (
-              <div className="p-[var(--celeste-spacing-4)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]">
-                <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
+                <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                   Equipment
                 </p>
-                <p className="text-[var(--celeste-text-primary)] font-medium">
+                <p className="text-txt-primary font-medium">
                   {warrantyClaim.equipment_name}
                 </p>
               </div>
             )}
 
             {warrantyClaim.fault_code && (
-              <div className="p-[var(--celeste-spacing-4)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]">
-                <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
+                <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                   Fault Reference
                 </p>
-                <div className="flex items-center gap-[var(--celeste-spacing-2)]">
-                  <AlertCircle className="h-4 w-4 text-[var(--celeste-orange)]" />
-                  <span className="text-[var(--celeste-text-primary)] font-mono">
+                <div className="flex items-center gap-ds-2">
+                  <AlertCircle className="h-4 w-4 text-status-warning" />
+                  <span className="text-txt-primary font-mono">
                     {warrantyClaim.fault_code}
                   </span>
                 </div>
@@ -338,21 +338,21 @@ export function WarrantyCard({
       {/* ================================================================
           VENDOR / MANUFACTURER SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-          <Building2 className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-          <h3 className="text-[var(--celeste-text-primary)] font-semibold">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center gap-ds-2 mb-ds-3">
+          <Building2 className="h-5 w-5 text-txt-secondary" />
+          <h3 className="text-txt-primary font-semibold">
             Vendor / Manufacturer
           </h3>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-[var(--celeste-spacing-4)]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4">
           {warrantyClaim.vendor_name && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Vendor
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {warrantyClaim.vendor_name}
               </span>
             </div>
@@ -360,10 +360,10 @@ export function WarrantyCard({
 
           {warrantyClaim.manufacturer && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Manufacturer
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {warrantyClaim.manufacturer}
               </span>
             </div>
@@ -371,10 +371,10 @@ export function WarrantyCard({
 
           {warrantyClaim.part_number && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Part Number
               </p>
-              <span className="text-[var(--celeste-text-primary)] font-mono">
+              <span className="text-txt-primary font-mono">
                 {warrantyClaim.part_number}
               </span>
             </div>
@@ -382,10 +382,10 @@ export function WarrantyCard({
 
           {warrantyClaim.serial_number && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Serial Number
               </p>
-              <span className="text-[var(--celeste-text-primary)] font-mono">
+              <span className="text-txt-primary font-mono">
                 {warrantyClaim.serial_number}
               </span>
             </div>
@@ -396,30 +396,30 @@ export function WarrantyCard({
       {/* ================================================================
           FINANCIAL SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-          <DollarSign className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-          <h3 className="text-[var(--celeste-text-primary)] font-semibold">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center gap-ds-2 mb-ds-3">
+          <DollarSign className="h-5 w-5 text-txt-secondary" />
+          <h3 className="text-txt-primary font-semibold">
             Financial Summary
           </h3>
         </div>
 
-        <div className="grid grid-cols-2 gap-[var(--celeste-spacing-4)]">
-          <div className="p-[var(--celeste-spacing-4)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]">
-            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+        <div className="grid grid-cols-2 gap-ds-4">
+          <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
+            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
               Claimed Amount
             </p>
-            <p className="text-xl font-semibold text-[var(--celeste-text-title)]">
+            <p className="text-xl font-semibold text-txt-primary">
               {formatCurrency(warrantyClaim.claimed_amount, warrantyClaim.currency)}
             </p>
           </div>
 
           {warrantyClaim.status === 'approved' && (
-            <div className="p-[var(--celeste-spacing-4)] bg-[var(--celeste-green)]/5 rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-green)]/20">
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+            <div className="p-ds-4 bg-status-success/5 rounded-sm border border-status-success/20">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Approved Amount
               </p>
-              <p className="text-xl font-semibold text-[var(--celeste-green)]">
+              <p className="text-xl font-semibold text-status-success">
                 {formatCurrency(warrantyClaim.approved_amount, warrantyClaim.currency)}
               </p>
             </div>
@@ -440,21 +440,21 @@ export function WarrantyCard({
       {/* ================================================================
           DATES SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-          <Calendar className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-          <h3 className="text-[var(--celeste-text-primary)] font-semibold">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center gap-ds-2 mb-ds-3">
+          <Calendar className="h-5 w-5 text-txt-secondary" />
+          <h3 className="text-txt-primary font-semibold">
             Dates
           </h3>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-[var(--celeste-spacing-4)]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4">
           {warrantyClaim.purchase_date && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Purchase Date
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {formatDate(warrantyClaim.purchase_date)}
               </span>
             </div>
@@ -462,13 +462,13 @@ export function WarrantyCard({
 
           {warrantyClaim.warranty_expiry && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Warranty Expiry
               </p>
               <span className={cn(
                 new Date(warrantyClaim.warranty_expiry) < new Date()
-                  ? 'text-[var(--celeste-warning)]'
-                  : 'text-[var(--celeste-text-primary)]'
+                  ? 'text-status-critical'
+                  : 'text-txt-primary'
               )}>
                 {formatDate(warrantyClaim.warranty_expiry)}
               </span>
@@ -477,10 +477,10 @@ export function WarrantyCard({
 
           {warrantyClaim.drafted_at && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Drafted
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {formatDate(warrantyClaim.drafted_at)}
               </span>
             </div>
@@ -488,10 +488,10 @@ export function WarrantyCard({
 
           {warrantyClaim.submitted_at && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Submitted
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {formatDate(warrantyClaim.submitted_at)}
               </span>
             </div>
@@ -499,10 +499,10 @@ export function WarrantyCard({
 
           {warrantyClaim.approved_at && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Approved
               </p>
-              <span className="text-[var(--celeste-green)]">
+              <span className="text-status-success">
                 {formatDate(warrantyClaim.approved_at)}
               </span>
             </div>
@@ -513,21 +513,21 @@ export function WarrantyCard({
       {/* ================================================================
           WORKFLOW SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-          <User className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-          <h3 className="text-[var(--celeste-text-primary)] font-semibold">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center gap-ds-2 mb-ds-3">
+          <User className="h-5 w-5 text-txt-secondary" />
+          <h3 className="text-txt-primary font-semibold">
             Workflow
           </h3>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-[var(--celeste-spacing-4)]">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-ds-4">
           {warrantyClaim.drafted_by && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Drafted By
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {warrantyClaim.drafted_by}
               </span>
             </div>
@@ -535,10 +535,10 @@ export function WarrantyCard({
 
           {warrantyClaim.submitted_by && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Submitted By
               </p>
-              <span className="text-[var(--celeste-text-primary)]">
+              <span className="text-txt-primary">
                 {warrantyClaim.submitted_by}
               </span>
             </div>
@@ -546,10 +546,10 @@ export function WarrantyCard({
 
           {warrantyClaim.approved_by && (
             <div>
-              <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
                 Approved By
               </p>
-              <span className="text-[var(--celeste-green)]">
+              <span className="text-status-success">
                 {warrantyClaim.approved_by}
               </span>
             </div>
@@ -561,14 +561,14 @@ export function WarrantyCard({
           REJECTION REASON (if rejected)
           ================================================================ */}
       {warrantyClaim.status === 'rejected' && warrantyClaim.rejection_reason && (
-        <div className="bg-[var(--celeste-warning)]/5 rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-warning)]/20">
-          <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-            <XCircle className="h-5 w-5 text-[var(--celeste-warning)]" />
-            <h3 className="text-[var(--celeste-warning)] font-semibold">
+        <div className="bg-status-critical/5 rounded-md p-ds-6 border border-status-critical/20">
+          <div className="flex items-center gap-ds-2 mb-ds-3">
+            <XCircle className="h-5 w-5 text-status-critical" />
+            <h3 className="text-status-critical font-semibold">
               Rejection Reason
             </h3>
           </div>
-          <p className="text-[var(--celeste-text-primary)]">
+          <p className="text-txt-primary">
             {warrantyClaim.rejection_reason}
           </p>
         </div>
@@ -577,22 +577,22 @@ export function WarrantyCard({
       {/* ================================================================
           AUDIT HISTORY SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-          <History className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-          <h3 className="text-[var(--celeste-text-primary)] font-semibold">Activity</h3>
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center gap-ds-2 mb-ds-3">
+          <History className="h-5 w-5 text-txt-secondary" />
+          <h3 className="text-txt-primary font-semibold">Activity</h3>
           {auditHistory.length > 0 && (
-            <span className="text-[var(--celeste-text-muted)] text-sm">({auditHistory.length})</span>
+            <span className="text-txt-tertiary text-celeste-sm">({auditHistory.length})</span>
           )}
         </div>
 
         {auditHistory.length === 0 ? (
-          <div className="text-center py-[var(--celeste-spacing-6)]">
-            <History className="h-8 w-8 text-[var(--celeste-text-muted)] mx-auto mb-[var(--celeste-spacing-2)]" />
-            <p className="text-[var(--celeste-text-muted)]">No activity yet</p>
+          <div className="text-center py-ds-6">
+            <History className="h-8 w-8 text-txt-tertiary mx-auto mb-ds-2" />
+            <p className="text-txt-tertiary">No activity yet</p>
           </div>
         ) : (
-          <div className="space-y-[var(--celeste-spacing-3)]">
+          <div className="space-y-ds-3">
             {auditHistory.slice(0, 10).map((entry) => {
               // Convert action to human-readable label
               const actionLabels: Record<string, string> = {
@@ -620,18 +620,18 @@ export function WarrantyCard({
               return (
                 <div
                   key={entry.id}
-                  className="p-[var(--celeste-spacing-3)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]"
+                  className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
                 >
-                  <div className="flex items-start justify-between gap-[var(--celeste-spacing-2)]">
-                    <p className="text-[var(--celeste-text-primary)] font-medium text-sm">
+                  <div className="flex items-start justify-between gap-ds-2">
+                    <p className="text-txt-primary font-medium text-celeste-sm">
                       {label}
                     </p>
-                    <span className="text-xs text-[var(--celeste-text-muted)] whitespace-nowrap">
+                    <span className="text-celeste-xs text-txt-tertiary whitespace-nowrap">
                       {formatDate(entry.created_at)}
                     </span>
                   </div>
                   {summary && (
-                    <p className="text-sm text-[var(--celeste-text-secondary)] mt-1 line-clamp-2">
+                    <p className="text-celeste-sm text-txt-secondary mt-1 line-clamp-2">
                       {summary}
                     </p>
                   )}
@@ -639,7 +639,7 @@ export function WarrantyCard({
               );
             })}
             {auditHistory.length > 10 && (
-              <p className="text-xs text-[var(--celeste-text-muted)] text-center pt-2">
+              <p className="text-celeste-xs text-txt-tertiary text-center pt-2">
                 +{auditHistory.length - 10} more activities
               </p>
             )}

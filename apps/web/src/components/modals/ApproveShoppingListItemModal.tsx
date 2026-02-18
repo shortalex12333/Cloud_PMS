@@ -223,23 +223,23 @@ export function ApproveShoppingListItemModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Item Summary */}
-          <div className="p-4 bg-[var(--celeste-bg-secondary)] rounded-lg border border-[var(--celeste-border)]">
+          <div className="p-4 bg-surface-elevated rounded-lg border border-surface-border">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-[var(--celeste-accent)]/10 rounded-lg">
-                <ShoppingCart className="h-5 w-5 text-[var(--celeste-accent)]" />
+              <div className="p-2 bg-brand-muted rounded-lg">
+                <ShoppingCart className="h-5 w-5 text-brand-interactive" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[var(--celeste-text-primary)]">
+                <p className="font-semibold text-txt-primary">
                   {context.part_name}
                 </p>
-                <div className="flex items-center gap-2 mt-1 text-sm text-[var(--celeste-text-secondary)]">
+                <div className="flex items-center gap-2 mt-1 text-sm text-txt-secondary">
                   <Package className="h-4 w-4" />
                   <span>
                     Requested: {context.quantity_requested} {context.unit || 'units'}
                   </span>
                 </div>
                 {context.requester_name && (
-                  <p className="text-xs text-[var(--celeste-text-muted)] mt-1">
+                  <p className="text-xs text-txt-tertiary mt-1">
                     Requested by {context.requester_name}
                   </p>
                 )}
@@ -280,7 +280,7 @@ export function ApproveShoppingListItemModal({
                 )}
               />
               {context.unit && (
-                <span className="text-sm text-[var(--celeste-text-muted)] min-w-[60px]">
+                <span className="text-sm text-txt-tertiary min-w-[60px]">
                   {context.unit}
                 </span>
               )}

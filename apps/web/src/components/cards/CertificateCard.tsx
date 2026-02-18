@@ -86,14 +86,14 @@ interface EmptyStateCTAProps {
 
 function EmptyStateCTA({ icon, title, description }: EmptyStateCTAProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-[var(--celeste-spacing-6)] px-[var(--celeste-spacing-4)] text-center">
-      <div className="w-12 h-12 rounded-[var(--celeste-border-radius-md)] bg-[var(--celeste-bg-tertiary)] flex items-center justify-center mb-[var(--celeste-spacing-3)]">
+    <div className="flex flex-col items-center justify-center py-ds-6 px-ds-4 text-center">
+      <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-ds-3">
         {icon}
       </div>
-      <p className="text-[var(--celeste-text-primary)] font-medium mb-[var(--celeste-spacing-1)]">
+      <p className="text-txt-primary font-medium mb-ds-1">
         {title}
       </p>
-      <p className="text-[var(--celeste-text-muted)] text-sm">
+      <p className="text-txt-tertiary text-celeste-sm">
         {description}
       </p>
     </div>
@@ -110,37 +110,37 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
     switch (status) {
       case 'valid':
         return {
-          bg: 'bg-[var(--celeste-green)]/10',
-          text: 'text-[var(--celeste-green)]',
-          icon: <CheckCircle2 className="h-5 w-5 text-[var(--celeste-green)]" />,
+          bg: 'bg-status-success-bg',
+          text: 'text-status-success',
+          icon: <CheckCircle2 className="h-5 w-5 text-status-success" />,
           label: 'Valid',
         };
       case 'expiring_soon':
         return {
-          bg: 'bg-[var(--celeste-orange)]/10',
-          text: 'text-[var(--celeste-orange)]',
-          icon: <AlertTriangle className="h-5 w-5 text-[var(--celeste-orange)]" />,
+          bg: 'bg-status-warning-bg',
+          text: 'text-status-warning',
+          icon: <AlertTriangle className="h-5 w-5 text-status-warning" />,
           label: 'Expiring Soon',
         };
       case 'expired':
         return {
-          bg: 'bg-[var(--celeste-warning)]/10',
-          text: 'text-[var(--celeste-warning)]',
-          icon: <XCircle className="h-5 w-5 text-[var(--celeste-warning)]" />,
+          bg: 'bg-status-critical-bg',
+          text: 'text-status-critical',
+          icon: <XCircle className="h-5 w-5 text-status-critical" />,
           label: 'Expired',
         };
       case 'superseded':
         return {
-          bg: 'bg-[var(--celeste-text-muted)]/10',
-          text: 'text-[var(--celeste-text-muted)]',
-          icon: <Archive className="h-5 w-5 text-[var(--celeste-text-muted)]" />,
+          bg: 'bg-txt-tertiary/10',
+          text: 'text-txt-tertiary',
+          icon: <Archive className="h-5 w-5 text-txt-tertiary" />,
           label: 'Superseded',
         };
       default:
         return {
-          bg: 'bg-[var(--celeste-text-muted)]/10',
-          text: 'text-[var(--celeste-text-muted)]',
-          icon: <FileCheck className="h-5 w-5 text-[var(--celeste-text-muted)]" />,
+          bg: 'bg-txt-tertiary/10',
+          text: 'text-txt-tertiary',
+          icon: <FileCheck className="h-5 w-5 text-txt-tertiary" />,
           label: 'Unknown',
         };
     }
@@ -150,11 +150,11 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
   const getTypeStyles = (type: string) => {
     switch (type) {
       case 'vessel':
-        return { bg: 'bg-[var(--celeste-accent)]/10', text: 'text-[var(--celeste-accent)]', label: 'Vessel' };
+        return { bg: 'bg-brand-muted', text: 'text-brand-interactive', label: 'Vessel' };
       case 'crew':
-        return { bg: 'bg-[var(--celeste-text-secondary)]/10', text: 'text-[var(--celeste-text-secondary)]', label: 'Crew' };
+        return { bg: 'bg-txt-secondary/10', text: 'text-txt-secondary', label: 'Crew' };
       default:
-        return { bg: 'bg-[var(--celeste-text-muted)]/10', text: 'text-[var(--celeste-text-muted)]', label: type };
+        return { bg: 'bg-txt-tertiary/10', text: 'text-txt-tertiary', label: type };
     }
   };
 
@@ -164,26 +164,26 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
 
     if (daysUntilExpiry < 0) {
       return {
-        color: 'text-[var(--celeste-warning)]',
-        bg: 'bg-[var(--celeste-warning)]/10',
+        color: 'text-status-critical',
+        bg: 'bg-status-critical-bg',
         text: `Expired ${Math.abs(daysUntilExpiry)} days ago`,
       };
     } else if (daysUntilExpiry <= 30) {
       return {
-        color: 'text-[var(--celeste-warning)]',
-        bg: 'bg-[var(--celeste-warning)]/10',
+        color: 'text-status-critical',
+        bg: 'bg-status-critical-bg',
         text: `${daysUntilExpiry} days remaining`,
       };
     } else if (daysUntilExpiry <= 90) {
       return {
-        color: 'text-[var(--celeste-orange)]',
-        bg: 'bg-[var(--celeste-orange)]/10',
+        color: 'text-status-warning',
+        bg: 'bg-status-warning-bg',
         text: `${daysUntilExpiry} days remaining`,
       };
     } else {
       return {
-        color: 'text-[var(--celeste-green)]',
-        bg: 'bg-[var(--celeste-green)]/10',
+        color: 'text-status-success',
+        bg: 'bg-status-success-bg',
         text: `${daysUntilExpiry} days remaining`,
       };
     }
@@ -203,22 +203,22 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
   };
 
   return (
-    <div className="flex flex-col gap-[var(--celeste-spacing-6)]">
+    <div className="flex flex-col gap-ds-6">
       {/* ================================================================
           HEADER SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         {/* Status & Type Row */}
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-4)]">
+        <div className="flex items-center gap-ds-2 mb-ds-4">
           <span className={cn(
-            'inline-flex items-center gap-[var(--celeste-spacing-1)] px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-[var(--celeste-border-radius-sm)] text-sm font-medium',
+            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
             status.bg, status.text
           )}>
             {status.icon}
             {status.label}
           </span>
           <span className={cn(
-            'inline-flex items-center px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-1)] rounded-[var(--celeste-border-radius-sm)] text-sm font-medium',
+            'inline-flex items-center px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
             certType.bg, certType.text
           )}>
             {certType.label}
@@ -226,13 +226,13 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
         </div>
 
         {/* Certificate Name */}
-        <h1 className="text-2xl font-semibold text-[var(--celeste-text-title)] mb-[var(--celeste-spacing-2)]">
+        <h1 className="text-2xl font-semibold text-txt-primary mb-ds-2">
           {certificate.certificate_name}
         </h1>
 
         {/* Certificate Number */}
         {certificate.certificate_number && (
-          <p className="text-[var(--celeste-text-secondary)] mb-[var(--celeste-spacing-4)]">
+          <p className="text-txt-secondary mb-ds-4">
             Certificate No: {certificate.certificate_number}
           </p>
         )}
@@ -240,45 +240,45 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
         {/* Expiry Countdown Indicator */}
         {expiryCountdown && (
           <div className={cn(
-            'inline-flex items-center gap-[var(--celeste-spacing-2)] px-[var(--celeste-spacing-3)] py-[var(--celeste-spacing-2)] rounded-[var(--celeste-border-radius-sm)] mb-[var(--celeste-spacing-4)]',
+            'inline-flex items-center gap-ds-2 px-ds-3 py-ds-2 rounded-sm mb-ds-4',
             expiryCountdown.bg
           )}>
             <Clock className={cn('h-4 w-4', expiryCountdown.color)} />
-            <span className={cn('text-sm font-medium', expiryCountdown.color)}>
+            <span className={cn('text-celeste-sm font-medium', expiryCountdown.color)}>
               {expiryCountdown.text}
             </span>
           </div>
         )}
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4 pt-ds-4 border-t border-surface-border">
           {/* Certificate Type */}
           <div>
-            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Type</p>
-            <div className="flex items-center gap-[var(--celeste-spacing-1)]">
-              <FileCheck className="h-4 w-4 text-[var(--celeste-text-secondary)]" />
-              <span className="text-[var(--celeste-text-primary)] capitalize">{certificate.certificate_type}</span>
+            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Type</p>
+            <div className="flex items-center gap-ds-1">
+              <FileCheck className="h-4 w-4 text-txt-secondary" />
+              <span className="text-txt-primary capitalize">{certificate.certificate_type}</span>
             </div>
           </div>
 
           {/* Issue Date */}
           <div>
-            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Issue Date</p>
-            <div className="flex items-center gap-[var(--celeste-spacing-1)]">
-              <Calendar className="h-4 w-4 text-[var(--celeste-text-secondary)]" />
-              <span className="text-[var(--celeste-text-primary)]">{formatDate(certificate.issue_date)}</span>
+            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Issue Date</p>
+            <div className="flex items-center gap-ds-1">
+              <Calendar className="h-4 w-4 text-txt-secondary" />
+              <span className="text-txt-primary">{formatDate(certificate.issue_date)}</span>
             </div>
           </div>
 
           {/* Expiry Date */}
           <div>
-            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Expiry Date</p>
-            <div className="flex items-center gap-[var(--celeste-spacing-1)]">
-              <Calendar className="h-4 w-4 text-[var(--celeste-text-secondary)]" />
+            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Expiry Date</p>
+            <div className="flex items-center gap-ds-1">
+              <Calendar className="h-4 w-4 text-txt-secondary" />
               <span className={cn(
-                certificate.status === 'expired' ? 'text-[var(--celeste-warning)]' :
-                certificate.status === 'expiring_soon' ? 'text-[var(--celeste-orange)]' :
-                'text-[var(--celeste-text-primary)]'
+                certificate.status === 'expired' ? 'text-status-critical' :
+                certificate.status === 'expiring_soon' ? 'text-status-warning' :
+                'text-txt-primary'
               )}>
                 {formatDate(certificate.expiry_date)}
               </span>
@@ -287,28 +287,28 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
 
           {/* Issuing Authority */}
           <div>
-            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Issuing Authority</p>
-            <div className="flex items-center gap-[var(--celeste-spacing-1)]">
-              <Building2 className="h-4 w-4 text-[var(--celeste-text-secondary)]" />
-              <span className="text-[var(--celeste-text-primary)]">{certificate.issuing_authority}</span>
+            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Issuing Authority</p>
+            <div className="flex items-center gap-ds-1">
+              <Building2 className="h-4 w-4 text-txt-secondary" />
+              <span className="text-txt-primary">{certificate.issuing_authority}</span>
             </div>
           </div>
         </div>
 
         {/* Crew Member Name (for crew certificates) */}
         {certificate.certificate_type === 'crew' && certificate.crew_member_name && (
-          <div className="mt-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
-            <p className="text-[var(--celeste-text-muted)] text-xs uppercase tracking-wide mb-1">Crew Member</p>
-            <div className="flex items-center gap-[var(--celeste-spacing-2)]">
-              <User className="h-4 w-4 text-[var(--celeste-text-secondary)]" />
-              <span className="text-[var(--celeste-text-primary)] font-medium">{certificate.crew_member_name}</span>
+          <div className="mt-ds-4 pt-ds-4 border-t border-surface-border">
+            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Crew Member</p>
+            <div className="flex items-center gap-ds-2">
+              <User className="h-4 w-4 text-txt-secondary" />
+              <span className="text-txt-primary font-medium">{certificate.crew_member_name}</span>
             </div>
           </div>
         )}
 
         {/* Primary Actions */}
         {actions.length > 0 && (
-          <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)] mt-[var(--celeste-spacing-4)] pt-[var(--celeste-spacing-4)] border-t border-[var(--celeste-border-subtle)]">
+          <div className="flex flex-wrap items-center gap-ds-2 mt-ds-4 pt-ds-4 border-t border-surface-border">
             {actions.slice(0, 4).map((action) => (
               <ActionButton
                 key={action}
@@ -320,7 +320,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
               />
             ))}
             {actions.length > 4 && (
-              <button className="h-8 px-[var(--celeste-spacing-2)] text-sm text-[var(--celeste-text-muted)] hover:text-[var(--celeste-text-primary)] transition-colors">
+              <button className="h-8 px-ds-2 text-celeste-sm text-txt-tertiary hover:text-txt-primary transition-colors">
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
@@ -331,46 +331,46 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
       {/* ================================================================
           DOCUMENTS SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center justify-between mb-[var(--celeste-spacing-3)]">
-          <div className="flex items-center gap-[var(--celeste-spacing-2)]">
-            <FileText className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-            <h3 className="text-[var(--celeste-text-primary)] font-semibold">Linked Documents</h3>
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center justify-between mb-ds-3">
+          <div className="flex items-center gap-ds-2">
+            <FileText className="h-5 w-5 text-txt-secondary" />
+            <h3 className="text-txt-primary font-semibold">Linked Documents</h3>
             {documents.length > 0 && (
-              <span className="text-[var(--celeste-text-muted)] text-sm">({documents.length})</span>
+              <span className="text-txt-tertiary text-celeste-sm">({documents.length})</span>
             )}
           </div>
         </div>
 
         {documents.length === 0 ? (
           <EmptyStateCTA
-            icon={<FileText className="h-6 w-6 text-[var(--celeste-text-muted)]" />}
+            icon={<FileText className="h-6 w-6 text-txt-tertiary" />}
             title="No documents linked"
             description="Link scanned certificate documents for reference and audit trail."
           />
         ) : (
-          <div className="space-y-[var(--celeste-spacing-2)]">
+          <div className="space-y-ds-2">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="flex items-center justify-between p-[var(--celeste-spacing-3)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]"
+                className="flex items-center justify-between p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
               >
-                <div className="flex items-center gap-[var(--celeste-spacing-3)]">
-                  <div className="w-8 h-8 rounded-[var(--celeste-border-radius-sm)] bg-[var(--celeste-bg-tertiary)] flex items-center justify-center">
-                    <FileText className="h-4 w-4 text-[var(--celeste-text-muted)]" />
+                <div className="flex items-center gap-ds-3">
+                  <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-txt-tertiary" />
                   </div>
                   <div>
-                    <p className="text-[var(--celeste-text-primary)] font-medium text-sm">
+                    <p className="text-txt-primary font-medium text-celeste-sm">
                       {doc.name}
                     </p>
-                    <div className="flex items-center gap-[var(--celeste-spacing-2)] text-xs text-[var(--celeste-text-muted)]">
+                    <div className="flex items-center gap-ds-2 text-celeste-xs text-txt-tertiary">
                       {doc.file_type && <span>{doc.file_type.toUpperCase()}</span>}
                       {doc.file_type && doc.created_at && <span>-</span>}
                       {doc.created_at && <span>{formatDate(doc.created_at)}</span>}
                     </div>
                   </div>
                 </div>
-                <Link className="h-4 w-4 text-[var(--celeste-text-muted)]" />
+                <Link className="h-4 w-4 text-txt-tertiary" />
               </div>
             ))}
           </div>
@@ -380,22 +380,22 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
       {/* ================================================================
           AUDIT HISTORY SECTION
           ================================================================ */}
-      <div className="bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-6)] border border-[var(--celeste-border-subtle)]">
-        <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-3)]">
-          <History className="h-5 w-5 text-[var(--celeste-text-secondary)]" />
-          <h3 className="text-[var(--celeste-text-primary)] font-semibold">Activity</h3>
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="flex items-center gap-ds-2 mb-ds-3">
+          <History className="h-5 w-5 text-txt-secondary" />
+          <h3 className="text-txt-primary font-semibold">Activity</h3>
           {auditHistory.length > 0 && (
-            <span className="text-[var(--celeste-text-muted)] text-sm">({auditHistory.length})</span>
+            <span className="text-txt-tertiary text-celeste-sm">({auditHistory.length})</span>
           )}
         </div>
 
         {auditHistory.length === 0 ? (
-          <div className="text-center py-[var(--celeste-spacing-6)]">
-            <History className="h-8 w-8 text-[var(--celeste-text-muted)] mx-auto mb-[var(--celeste-spacing-2)]" />
-            <p className="text-[var(--celeste-text-muted)]">No activity yet</p>
+          <div className="text-center py-ds-6">
+            <History className="h-8 w-8 text-txt-tertiary mx-auto mb-ds-2" />
+            <p className="text-txt-tertiary">No activity yet</p>
           </div>
         ) : (
-          <div className="space-y-[var(--celeste-spacing-3)]">
+          <div className="space-y-ds-3">
             {auditHistory.slice(0, 10).map((entry) => {
               // Convert action to human-readable label
               const actionLabels: Record<string, string> = {
@@ -424,18 +424,18 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
               return (
                 <div
                   key={entry.id}
-                  className="p-[var(--celeste-spacing-3)] bg-[var(--celeste-panel)] rounded-[var(--celeste-border-radius-sm)] border border-[var(--celeste-border-subtle)]"
+                  className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
                 >
-                  <div className="flex items-start justify-between gap-[var(--celeste-spacing-2)]">
-                    <p className="text-[var(--celeste-text-primary)] font-medium text-sm">
+                  <div className="flex items-start justify-between gap-ds-2">
+                    <p className="text-txt-primary font-medium text-celeste-sm">
                       {label}
                     </p>
-                    <span className="text-xs text-[var(--celeste-text-muted)] whitespace-nowrap">
+                    <span className="text-celeste-xs text-txt-tertiary whitespace-nowrap">
                       {formatDate(entry.created_at)}
                     </span>
                   </div>
                   {summary && (
-                    <p className="text-sm text-[var(--celeste-text-secondary)] mt-1 line-clamp-2">
+                    <p className="text-celeste-sm text-txt-secondary mt-1 line-clamp-2">
                       {summary}
                     </p>
                   )}
@@ -443,7 +443,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
               );
             })}
             {auditHistory.length > 10 && (
-              <p className="text-xs text-[var(--celeste-text-muted)] text-center pt-2">
+              <p className="text-celeste-xs text-txt-tertiary text-center pt-2">
                 +{auditHistory.length - 10} more activities
               </p>
             )}

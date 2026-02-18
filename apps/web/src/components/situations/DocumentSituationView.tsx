@@ -417,9 +417,9 @@ export default function DocumentSituationView({
   const showAddToHandover = shouldShowAddToHandoverButton(classification);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#1c1c1e] flex flex-col">
+    <div className="fixed inset-0 z-[9999] bg-surface-base flex flex-col">
       {/* Header - Fixed at top */}
-      <div className="flex-shrink-0 h-14 bg-[#2c2c2e] border-b border-[#3d3d3f] px-4 flex items-center justify-between">
+      <div className="flex-shrink-0 h-14 bg-surface-elevated border-b border-surface-border px-4 flex items-center justify-between">
         {/* Left: Back to Search */}
         <button
           onClick={onClose}
@@ -431,7 +431,7 @@ export default function DocumentSituationView({
 
         {/* Center: Document Title */}
         <div className="flex-1 flex items-center justify-center gap-2 mx-4">
-          <FileText className="w-4 h-4 text-[#98989f]" />
+          <FileText className="w-4 h-4 text-txt-secondary" />
           <h1 className="text-sm font-medium text-celeste-text-title truncate max-w-md">
             {documentTitle}
           </h1>
@@ -445,7 +445,7 @@ export default function DocumentSituationView({
               setShowFindDialog(true);
               document.execCommand('find');
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[#98989f] hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
             title="Find in document (Cmd+F)"
           >
             <Search className="w-4 h-4" />
@@ -455,7 +455,7 @@ export default function DocumentSituationView({
           {/* Reload */}
           <button
             onClick={handleReload}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[#98989f] hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
             title="Reload document"
           >
             <RefreshCw className="w-4 h-4" />
@@ -465,7 +465,7 @@ export default function DocumentSituationView({
           {/* Download */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[#98989f] hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
             title="Download document"
           >
             <Download className="w-4 h-4" />
@@ -486,11 +486,11 @@ export default function DocumentSituationView({
       </div>
 
       {/* Document Content Area */}
-      <div className="flex-1 overflow-hidden bg-[#1c1c1e]">
+      <div className="flex-1 overflow-hidden bg-surface-base">
         {isLoading && (
           <div className="h-full flex flex-col items-center justify-center">
             <div className="w-8 h-8 border-2 border-celeste-blue border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-sm text-[#98989f]">Loading document...</p>
+            <p className="text-sm text-txt-secondary">Loading document...</p>
           </div>
         )}
 
@@ -498,7 +498,7 @@ export default function DocumentSituationView({
           <div className="h-full flex flex-col items-center justify-center px-4">
             <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-6 max-w-md">
               <h2 className="text-lg font-semibold text-red-500 mb-2">Failed to Load Document</h2>
-              <p className="text-sm text-[#98989f] mb-4">{error}</p>
+              <p className="text-sm text-txt-secondary mb-4">{error}</p>
               <div className="flex gap-3">
                 <button
                   onClick={handleReload}
@@ -528,7 +528,7 @@ export default function DocumentSituationView({
       </div>
 
       {/* Footer - Document Classification Info */}
-      <div className="flex-shrink-0 h-8 bg-[#2c2c2e] border-t border-[#3d3d3f] px-4 flex items-center justify-between text-xs text-[#98989f]">
+      <div className="flex-shrink-0 h-8 bg-surface-elevated border-t border-surface-border px-4 flex items-center justify-between text-xs text-txt-secondary">
         <span>
           {classification === 'operational' ? '📖 Operational Document' : '🔒 Compliance Document'}
         </span>
@@ -539,15 +539,15 @@ export default function DocumentSituationView({
       {showFindDialog && (
         <div
           className={cn(
-            'fixed top-20 right-4 bg-[#2c2c2e] border border-[#3d3d3f] rounded-lg p-3',
+            'fixed top-20 right-4 bg-surface-elevated border border-surface-border rounded-lg p-3',
             'shadow-celeste-lg animate-in fade-in slide-in-from-top-2 duration-200'
           )}
         >
           <p className="text-sm text-celeste-text-title">
-            <kbd className="px-2 py-1 bg-[#3d3d3f] rounded text-xs mr-1">Cmd</kbd>
-            <span className="text-[#98989f]">+</span>
-            <kbd className="px-2 py-1 bg-[#3d3d3f] rounded text-xs ml-1">F</kbd>
-            <span className="text-[#98989f] ml-2">to find in document</span>
+            <kbd className="px-2 py-1 bg-surface-active rounded text-xs mr-1">Cmd</kbd>
+            <span className="text-txt-secondary">+</span>
+            <kbd className="px-2 py-1 bg-surface-active rounded text-xs ml-1">F</kbd>
+            <span className="text-txt-secondary ml-2">to find in document</span>
           </p>
         </div>
       )}

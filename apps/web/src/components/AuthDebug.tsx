@@ -142,7 +142,7 @@ export function AuthDebug() {
 
   if (!debug) {
     return (
-      <div className="fixed bottom-4 right-4 bg-[#1c1c1e] border border-[#3d3d3f] rounded-lg p-3 text-celeste-xs text-celeste-text-title font-mono">
+      <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg p-3 text-celeste-xs text-txt-primary font-mono">
         Diagnosing...
       </div>
     );
@@ -152,28 +152,28 @@ export function AuthDebug() {
   const okClass = (v: boolean) => v ? 'text-green-400' : 'text-red-400';
 
   return (
-    <div className="fixed bottom-4 right-4 bg-[#1c1c1e] border border-[#3d3d3f] rounded-lg text-celeste-xs text-celeste-text-title font-mono max-w-[320px] shadow-xl z-50">
+    <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg text-celeste-xs text-txt-primary font-mono max-w-[320px] shadow-xl z-50">
       <div
-        className="flex items-center justify-between p-2 border-b border-[#3d3d3f] cursor-pointer"
+        className="flex items-center justify-between p-2 border-b border-surface-border cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <span className="text-celeste-accent font-semibold">Auth Debug</span>
-        <span className="text-[#636366]">{expanded ? '▼' : '▲'}</span>
+        <span className="text-txt-tertiary">{expanded ? '▼' : '▲'}</span>
       </div>
 
       {expanded && (
         <div className="p-3 space-y-3">
           {/* Environment */}
           <div>
-            <div className="text-[#98989f] mb-1">Environment</div>
+            <div className="text-txt-secondary mb-1">Environment</div>
             <div className={okClass(debug.envCheck.urlSet)}>{ok(debug.envCheck.urlSet)} SUPABASE_URL</div>
             <div className={okClass(debug.envCheck.keySet)}>{ok(debug.envCheck.keySet)} ANON_KEY</div>
-            <div className="text-[#636366] truncate">{debug.envCheck.urlValue}</div>
+            <div className="text-txt-tertiary truncate">{debug.envCheck.urlValue}</div>
           </div>
 
           {/* Storage */}
           <div>
-            <div className="text-[#98989f] mb-1">Browser Storage</div>
+            <div className="text-txt-secondary mb-1">Browser Storage</div>
             <div className={okClass(debug.storage.available)}>{ok(debug.storage.available)} localStorage</div>
             <div className={okClass(!!debug.storage.supabaseKey)}>{ok(!!debug.storage.supabaseKey)} Supabase key</div>
             <div className={okClass(debug.storage.hasStoredSession)}>{ok(debug.storage.hasStoredSession)} Stored session</div>
@@ -181,11 +181,11 @@ export function AuthDebug() {
 
           {/* Session */}
           <div>
-            <div className="text-[#98989f] mb-1">Session</div>
+            <div className="text-txt-secondary mb-1">Session</div>
             <div className={okClass(debug.session.exists)}>{ok(debug.session.exists)} Active session</div>
             {debug.session.exists && (
               <>
-                <div className="text-[#636366]">{debug.session.email}</div>
+                <div className="text-txt-tertiary">{debug.session.email}</div>
                 <div className={okClass(!debug.session.isExpired)}>
                   {ok(!debug.session.isExpired)} {debug.session.isExpired ? 'EXPIRED' : 'Valid'}
                 </div>
@@ -195,7 +195,7 @@ export function AuthDebug() {
 
           {/* RPC */}
           <div>
-            <div className="text-[#98989f] mb-1">RPC get_my_bootstrap</div>
+            <div className="text-txt-secondary mb-1">RPC get_my_bootstrap</div>
             {debug.rpc.error ? (
               <div className="text-red-400">{debug.rpc.error}</div>
             ) : debug.rpc.result ? (
@@ -205,12 +205,12 @@ export function AuthDebug() {
                 <div>{ok(true)} status: {debug.rpc.result?.status || 'null'}</div>
               </div>
             ) : (
-              <div className="text-[#636366]">No session to test</div>
+              <div className="text-txt-tertiary">No session to test</div>
             )}
           </div>
 
           {/* Timestamp */}
-          <div className="text-[#636366] text-celeste-xs pt-2 border-t border-[#3d3d3f]">
+          <div className="text-txt-tertiary text-celeste-xs pt-2 border-t border-surface-border">
             Last check: {debug.timestamp.split('T')[1].split('.')[0]}
           </div>
         </div>

@@ -49,12 +49,12 @@ export default function SuggestedActions({
     <>
       <div
         className={cn(
-          'flex flex-wrap gap-2 px-4 py-2 border-b border-[#3d3d3f]/30',
+          'flex flex-wrap gap-2 px-4 py-2 border-b border-surface-border/30',
           className
         )}
         data-testid="suggested-actions"
       >
-        <span className="text-celeste-xs text-[#98989f] self-center mr-1">
+        <span className="text-celeste-xs text-txt-secondary self-center mr-1">
           Actions:
         </span>
         {actions.map((action) => (

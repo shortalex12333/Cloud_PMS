@@ -84,10 +84,10 @@ export function withAuth<P extends object>(
     // Show loading state while auth OR bootstrap is in progress
     if (isInitializing) {
       return (
-        <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
+        <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-[#98989f]">
+            <p className="text-sm text-txt-secondary">
               {loading ? 'Loading...' : 'Connecting...'}
             </p>
           </div>
@@ -98,10 +98,10 @@ export function withAuth<P extends object>(
     // No user after initialization → show redirecting (redirect happens in useEffect)
     if (!user) {
       return (
-        <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
+        <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-[#98989f]">Redirecting...</p>
+            <p className="text-sm text-txt-secondary">Redirecting...</p>
           </div>
         </div>
       );
@@ -110,10 +110,10 @@ export function withAuth<P extends object>(
     // Pending/inactive users → show redirecting
     if (user.bootstrapStatus === 'pending' || user.bootstrapStatus === 'inactive') {
       return (
-        <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
+        <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-[#98989f]">Redirecting...</p>
+            <p className="text-sm text-txt-secondary">Redirecting...</p>
           </div>
         </div>
       );
@@ -123,11 +123,11 @@ export function withAuth<P extends object>(
     // (bootstrap will auto-retry, better UX than redirecting)
     if (user.bootstrapStatus === 'error' && !user.yachtId) {
       return (
-        <div className="min-h-screen bg-[#1c1c1e] flex items-center justify-center">
+        <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-[#98989f]">Reconnecting...</p>
-            <p className="text-xs text-[#636366]">Please wait...</p>
+            <p className="text-sm text-txt-secondary">Reconnecting...</p>
+            <p className="text-xs text-txt-tertiary">Please wait...</p>
           </div>
         </div>
       );

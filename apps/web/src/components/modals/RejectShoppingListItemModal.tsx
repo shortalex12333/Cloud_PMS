@@ -291,7 +291,7 @@ export function RejectShoppingListItemModal({
                       <SelectItem key={reason.value} value={reason.value}>
                         <div className="flex flex-col">
                           <span className="font-medium">{reason.label}</span>
-                          <span className="text-xs text-[var(--celeste-text-muted)]">
+                          <span className="text-xs text-txt-tertiary">
                             {reason.description}
                           </span>
                         </div>
@@ -307,7 +307,7 @@ export function RejectShoppingListItemModal({
               </p>
             )}
             {selectedReason && (
-              <p className="text-xs text-[var(--celeste-text-muted)]">
+              <p className="text-xs text-txt-tertiary">
                 {selectedReason.description}
               </p>
             )}

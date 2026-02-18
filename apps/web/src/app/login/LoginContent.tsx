@@ -101,10 +101,10 @@ export default function LoginContent() {
   // Show loading while auth is initializing (but not if just logged out)
   if (authLoading && !justLoggedOut) {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-[#98989f]">Loading...</p>
+          <p className="text-sm text-txt-secondary">Loading...</p>
         </div>
       </div>
     );
@@ -113,10 +113,10 @@ export default function LoginContent() {
   // If user exists but still bootstrapping, show loading (but not if just logged out)
   if (user && bootstrapping && !justLoggedOut) {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-[#98989f]">Loading your account...</p>
+          <p className="text-sm text-txt-secondary">Loading your account...</p>
         </div>
       </div>
     );
@@ -125,10 +125,10 @@ export default function LoginContent() {
   // If user is fully activated, show redirecting state (but not if just logged out)
   if (user && isFullyActivated(user) && !justLoggedOut) {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-[#98989f]">Redirecting...</p>
+          <p className="text-sm text-txt-secondary">Redirecting...</p>
         </div>
       </div>
     );
@@ -137,16 +137,16 @@ export default function LoginContent() {
   // If user exists but pending activation
   if (user && user.bootstrapStatus === 'pending') {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
         <div className="w-full max-w-[320px] text-center">
-          <div className="w-16 h-16 rounded-full bg-[#1c1c1e] border border-[#3d3d3f] flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 rounded-full bg-surface-base border border-surface-border flex items-center justify-center mx-auto mb-6">
             <span className="text-2xl">⏳</span>
           </div>
           <h1 className="text-xl font-semibold text-white mb-2">Awaiting Activation</h1>
-          <p className="text-sm text-[#98989f] mb-6">
+          <p className="text-sm text-txt-secondary mb-6">
             Your account is pending activation. Please contact your administrator to complete setup.
           </p>
-          <p className="text-xs text-[#636366]">
+          <p className="text-xs text-txt-tertiary">
             Signed in as {user.email}
           </p>
         </div>
@@ -157,17 +157,17 @@ export default function LoginContent() {
   // If yacht is inactive
   if (user && user.bootstrapStatus === 'inactive') {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
         <div className="w-full max-w-[320px] text-center">
-          <div className="w-16 h-16 rounded-full bg-[#1c1c1e] border border-[#3d3d3f] flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 rounded-full bg-surface-base border border-surface-border flex items-center justify-center mx-auto mb-6">
             <span className="text-2xl">🚢</span>
           </div>
           <h1 className="text-xl font-semibold text-white mb-2">Yacht Inactive</h1>
-          <p className="text-sm text-[#98989f] mb-6">
+          <p className="text-sm text-txt-secondary mb-6">
             The yacht associated with your account is currently inactive.
             {user.yachtName && <span className="block mt-1">{user.yachtName}</span>}
           </p>
-          <p className="text-xs text-[#636366]">
+          <p className="text-xs text-txt-tertiary">
             Contact support for assistance.
           </p>
         </div>
@@ -178,11 +178,11 @@ export default function LoginContent() {
   // If bootstrap error (will auto-retry)
   if (user && user.bootstrapStatus === 'error') {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-[#98989f]">Connecting to server...</p>
-          <p className="text-xs text-[#636366]">Retrying...</p>
+          <p className="text-sm text-txt-secondary">Connecting to server...</p>
+          <p className="text-xs text-txt-tertiary">Retrying...</p>
         </div>
       </div>
     );
@@ -192,11 +192,11 @@ export default function LoginContent() {
   const displayError = error || authError;
 
   return (
-    <div className="min-h-screen bg-[#000000] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-black flex items-center justify-center p-6">
       <div className="w-full max-w-[280px]">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-[#3d3d3f] to-[#1c1c1e] flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-surface-border to-surface-base flex items-center justify-center">
             <span className="text-white text-xl font-semibold">C</span>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function LoginContent() {
         <h1 className="text-2xl font-semibold text-white text-center mb-1 tracking-tight">
           Sign in
         </h1>
-        <p className="text-base text-[#98989f] text-center mb-8">
+        <p className="text-base text-txt-secondary text-center mb-8">
           CelesteOS
         </p>
 
@@ -227,7 +227,7 @@ export default function LoginContent() {
             required
             autoComplete="email"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] text-base text-white placeholder:text-[#636366] focus:outline-none focus:border-celeste-accent transition-colors disabled:opacity-50"
+            className="w-full h-[44px] px-4 rounded-lg bg-surface-base border border-surface-border text-base text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
           />
 
           {/* Password */}
@@ -239,7 +239,7 @@ export default function LoginContent() {
             required
             autoComplete="current-password"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] text-base text-white placeholder:text-[#636366] focus:outline-none focus:border-celeste-accent transition-colors disabled:opacity-50"
+            className="w-full h-[44px] px-4 rounded-lg bg-surface-base border border-surface-border text-base text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
           />
 
           {/* Submit */}
@@ -260,7 +260,7 @@ export default function LoginContent() {
         </form>
 
         {/* Footer */}
-        <p className="mt-8 text-xs text-[#636366] text-center">
+        <p className="mt-8 text-xs text-txt-tertiary text-center">
           Secure crew access only
         </p>
       </div>

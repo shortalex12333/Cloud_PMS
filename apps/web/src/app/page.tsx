@@ -55,7 +55,7 @@ function SurfaceContent() {
       <div className="relative flex h-screen overflow-hidden">
         {/* Center - Spotlight Search (email inline beneath search bar per UX doctrine) */}
         <div className="flex-1 flex items-start justify-center pt-[15vh]">
-          <div className="w-full px-4" style={{ maxWidth: 'var(--celeste-spotlight-width)' }}>
+          <div className="w-full max-w-[var(--celeste-spotlight-width)] px-4">
             <Suspense fallback={<div className="h-14 bg-celeste-bg-tertiary/50 rounded-full" />}>
               <SpotlightSearch />
             </Suspense>

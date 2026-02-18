@@ -61,8 +61,8 @@ export default function SpotlightResultRow({
         'cursor-pointer select-none',
         'transition-colors duration-celeste-fast',
         // Height and padding - tokenized
-        'min-h-[var(--celeste-spotlight-row-min-height)]',
-        'py-[var(--celeste-spotlight-row-padding-y)] px-[var(--celeste-spotlight-row-padding-x)]',
+        'min-h-[44px]',
+        'py-ds-2 px-ds-3',
         // Hover: very subtle
         'hover:bg-celeste-bg-tertiary/40',
         // Selected: subtle, not bold
@@ -74,7 +74,7 @@ export default function SpotlightResultRow({
       {/* Left accent bar - subtle, appears on selection (OS feel) */}
       {isSelected && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[var(--celeste-spotlight-accent-bar-width)] h-5 bg-celeste-accent rounded-r-sm"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-celeste-accent rounded-r-sm"
           aria-hidden="true"
         />
       )}
