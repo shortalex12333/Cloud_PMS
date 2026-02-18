@@ -1371,6 +1371,329 @@ async def get_receiving_entity(
 
 
 # ============================================================================
+# EMAIL LENS ENDPOINTS
+# ============================================================================
+
+@app.get("/v1/email/threads")
+@limiter.limit("60/minute")
+async def get_email_threads(
+    request: Request,
+    page: int = 1,
+    limit: int = 20,
+    query: str = "",
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get email threads for inbox view.
+
+    Returns paginated email threads with metadata.
+    Per doctrine: metadata only, no bodies stored.
+    """
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        offset = (page - 1) * limit
+
+        # Build query
+        threads_query = supabase.table('email_threads').select(
+            'id, provider_conversation_id, latest_subject, message_count, has_attachments, source, first_message_at, last_activity_at, created_at'
+        ).eq('yacht_id', yacht_id).order(
+            'last_activity_at', desc=True
+        ).range(offset, offset + limit - 1)
+
+        # Apply search filter if query provided
+        if query and len(query.strip()) > 0:
+            threads_query = threads_query.ilike('latest_subject', f'%{query}%')
+
+        result = threads_query.execute()
+        threads = result.data if result.data else []
+
+        # Check if there are more results
+        has_more = len(threads) == limit
+
+        return {
+            "threads": threads,
+            "page": page,
+            "limit": limit,
+            "has_more": has_more,
+            "query": query,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to fetch email threads: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/email/thread/{thread_id}")
+async def get_email_thread(
+    thread_id: str,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get single email thread with messages.
+
+    Returns thread metadata and message list.
+    Per doctrine: no bodies stored, content fetched on-demand from Graph.
+    """
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        # Get thread
+        thread_result = supabase.table('email_threads').select(
+            'id, provider_conversation_id, latest_subject, message_count, has_attachments, participant_hashes, source, first_message_at, last_activity_at, last_inbound_at, last_outbound_at, created_at'
+        ).eq('id', thread_id).eq('yacht_id', yacht_id).maybe_single().execute()
+
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Email thread not found")
+
+        thread = thread_result.data
+
+        # Get messages in thread
+        messages_result = supabase.table('email_messages').select(
+            'id, provider_message_id, internet_message_id, direction, from_display_name, subject, sent_at, received_at, has_attachments, attachments, folder'
+        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).order(
+            'sent_at', desc=False
+        ).execute()
+
+        messages = messages_result.data if messages_result.data else []
+
+        return {
+            "thread": thread,
+            "messages": messages,
+            "message_count": len(messages),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch email thread {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/email/thread/{thread_id}/links")
+async def get_thread_links(
+    thread_id: str,
+    min_confidence: float = 0.5,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Get linked entities for an email thread.
+
+    Returns work orders, equipment, parts linked to this thread.
+    """
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        # Get linked objects
+        links_result = supabase.table('email_links').select(
+            'id, object_type, object_id, confidence, suggested_reason, suggested_at, accepted_at, is_active'
+        ).eq('thread_id', thread_id).eq('yacht_id', yacht_id).eq(
+            'is_active', True
+        ).execute()
+
+        links = links_result.data if links_result.data else []
+
+        return {
+            "thread_id": thread_id,
+            "links": links,
+            "count": len(links),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to fetch thread links {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class LinkEmailRequest(BaseModel):
+    """Request body for linking email to entity."""
+    object_type: str = Field(..., description="Type: work_order, equipment, part, fault")
+    object_id: str = Field(..., description="ID of the entity to link")
+    confidence: str = Field("user_confirmed", description="Confidence level")
+
+
+@app.post("/v1/email/thread/{thread_id}/link")
+async def link_email_to_entity(
+    thread_id: str,
+    link_request: LinkEmailRequest,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Link email thread to an entity (work order, equipment, part, fault).
+
+    Per doctrine: linking is a conscious act, all changes ledgered.
+    """
+    try:
+        yacht_id = auth['yacht_id']
+        user_id = auth['user_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        from datetime import datetime, timezone
+        supabase = get_supabase_client(tenant_key)
+
+        # Validate thread exists
+        thread_result = supabase.table('email_threads').select(
+            'id, latest_subject'
+        ).eq('id', thread_id).eq('yacht_id', yacht_id).maybe_single().execute()
+
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Email thread not found")
+
+        thread = thread_result.data
+
+        # Check for existing active link
+        existing_result = supabase.table('email_links').select(
+            'id'
+        ).eq('thread_id', thread_id).eq('object_type', link_request.object_type).eq(
+            'object_id', link_request.object_id
+        ).eq('is_active', True).maybe_single().execute()
+
+        if existing_result.data:
+            raise HTTPException(status_code=409, detail="Link already exists")
+
+        # Create link
+        now = datetime.now(timezone.utc).isoformat()
+        link_data = {
+            "yacht_id": yacht_id,
+            "thread_id": thread_id,
+            "object_type": link_request.object_type,
+            "object_id": link_request.object_id,
+            "confidence": link_request.confidence,
+            "suggested_reason": "manual",
+            "suggested_at": now,
+            "accepted_at": now if link_request.confidence == "user_confirmed" else None,
+            "accepted_by": user_id if link_request.confidence == "user_confirmed" else None,
+            "is_active": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+        result = supabase.table('email_links').insert(link_data).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create link")
+
+        link = result.data[0]
+
+        # Log to audit
+        try:
+            supabase.table('pms_audit_log').insert({
+                "yacht_id": yacht_id,
+                "action": "link_email",
+                "entity_type": "email_link",
+                "entity_id": link["id"],
+                "user_id": user_id,
+                "old_values": None,
+                "new_values": {
+                    "thread_id": thread_id,
+                    "object_type": link_request.object_type,
+                    "object_id": link_request.object_id,
+                },
+                "signature": {},
+                "metadata": {"source": "lens", "lens": "email"},
+                "created_at": now,
+            }).execute()
+        except Exception as audit_err:
+            logger.warning(f"Failed to create audit log: {audit_err}")
+
+        return {
+            "status": "success",
+            "link_id": link["id"],
+            "thread_id": thread_id,
+            "object_type": link_request.object_type,
+            "object_id": link_request.object_id,
+            "message": f"Linked email to {link_request.object_type}",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to link email {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/email/search")
+@limiter.limit("60/minute")
+async def search_emails(
+    request: Request,
+    q: str = "",
+    limit: int = 50,
+    auth: dict = Depends(get_authenticated_user)
+):
+    """
+    Search emails by query string.
+
+    Searches across email threads and messages by subject.
+    Returns metadata only (no bodies per doctrine).
+    """
+    try:
+        yacht_id = auth['yacht_id']
+        tenant_key = auth['tenant_key_alias']
+
+        from integrations.supabase import get_supabase_client
+        supabase = get_supabase_client(tenant_key)
+
+        if limit > 100:
+            limit = 100
+        if limit < 1:
+            limit = 50
+
+        if not q or len(q.strip()) < 2:
+            return {
+                "results": [],
+                "query": q,
+                "count": 0,
+            }
+
+        # Search in email_messages for better results
+        messages_result = supabase.table('email_messages').select(
+            'id, thread_id, subject, from_display_name, sent_at, has_attachments, body_preview'
+        ).eq('yacht_id', yacht_id).ilike(
+            'subject', f'%{q}%'
+        ).order('sent_at', desc=True).limit(limit).execute()
+
+        messages = messages_result.data if messages_result.data else []
+
+        # Transform to search results
+        results = []
+        seen_threads = set()
+        for msg in messages:
+            if msg['thread_id'] not in seen_threads:
+                seen_threads.add(msg['thread_id'])
+                results.append({
+                    "thread_id": msg['thread_id'],
+                    "message_id": msg['id'],
+                    "subject": msg['subject'],
+                    "from_display_name": msg['from_display_name'],
+                    "sent_at": msg['sent_at'],
+                    "has_attachments": msg['has_attachments'],
+                    "preview_text": msg.get('body_preview', ''),
+                })
+
+        return {
+            "results": results,
+            "query": q,
+            "count": len(results),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to search emails: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # DIRECT TABLE QUERY ENDPOINT
 # ============================================================================
 
