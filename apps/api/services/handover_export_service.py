@@ -776,9 +776,10 @@ class HandoverExportService:
         - original_storage_url points to Bucket 1 (AI-generated HTML)
         """
         # Insert export record with both hashes
-        metadata = {}
+        # Store item_ids in edited_content since metadata column doesn't exist
+        edited_content = None
         if item_ids:
-            metadata["item_ids"] = item_ids
+            edited_content = {"item_ids": item_ids}
 
         self.db.table("handover_exports").insert({
             "id": export_id,
@@ -791,7 +792,7 @@ class HandoverExportService:
             "content_hash": content_hash,
             "export_status": "completed",
             "exported_at": datetime.now(timezone.utc).isoformat(),
-            "metadata": metadata if metadata else None,
+            "edited_content": edited_content,
             "original_storage_url": original_storage_url,
             "review_status": "pending_review"
         }).execute()
