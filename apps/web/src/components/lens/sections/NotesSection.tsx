@@ -34,7 +34,9 @@ export interface NotesSectionProps {
  * - Older: "Jan 23, 2026"
  */
 function formatTimestamp(isoString: string): string {
+  if (!isoString) return '—';
   const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '—';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSeconds = Math.floor(diffMs / 1000);
@@ -76,7 +78,9 @@ function NoteRow({ note }: NoteRowProps) {
 
   // Determine if content needs truncation (more than 3 lines approximated by char count)
   // We use a CSS-based approach with line-clamp for accuracy
-  const needsTruncation = note.content.length > 200 || note.content.split('\n').length > 3;
+  // Guard against undefined/null content
+  const content = note.content || '';
+  const needsTruncation = content.length > 200 || content.split('\n').length > 3;
 
   return (
     <div
@@ -111,7 +115,7 @@ function NoteRow({ note }: NoteRowProps) {
             !isExpanded && needsTruncation && 'line-clamp-3'
           )}
         >
-          {note.content}
+          {content}
         </p>
 
         {needsTruncation && (
