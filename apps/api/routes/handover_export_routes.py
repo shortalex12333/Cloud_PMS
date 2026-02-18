@@ -263,24 +263,24 @@ async def get_export_content(
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Fetch export record (only columns that exist in schema)
-    # Use maybe_single() to handle missing rows gracefully
+    # Use limit(1) instead of single/maybe_single to avoid PostgREST 204 errors
     result = supabase.table("handover_exports").select(
         "id, yacht_id, original_storage_url, edited_content, review_status, created_at, "
         "user_signature, user_signed_at, hod_signature, hod_signed_at"
-    ).eq("id", export_id).maybe_single().execute()
+    ).eq("id", export_id).limit(1).execute()
 
-    if not result.data:
+    if not result.data or len(result.data) == 0:
         logger.warning(f"[handover] Export {export_id} not found for tenant {auth['tenant_key_alias']}")
         raise HTTPException(status_code=404, detail="Export not found")
 
-    export_data = result.data
+    export_data = result.data[0]
 
     # Fetch yacht name separately (no FK relationship)
     yacht_name = None
     if export_data.get("yacht_id"):
-        yacht_result = supabase.table("yachts").select("name").eq("id", export_data["yacht_id"]).maybe_single().execute()
-        if yacht_result.data:
-            yacht_name = yacht_result.data.get("name")
+        yacht_result = supabase.table("yachts").select("name").eq("id", export_data["yacht_id"]).limit(1).execute()
+        if yacht_result.data and len(yacht_result.data) > 0:
+            yacht_name = yacht_result.data[0].get("name")
 
     # If edited content exists, return it
     if export_data.get("edited_content"):
