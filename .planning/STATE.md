@@ -447,6 +447,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Migration applied to live Supabase DB via psql direct connection (container not running)
 - Commit: 31c30ae7
 
+### 2026-02-18 (14-01) - External Service Integration + UX Change
+- Plan 14-01: Updated HandoverDraftPanel to call external handover-export.onrender.com service
+- Added pipeline export functions to handoverExportClient.ts (startExportJob, checkJobStatus, getReportHtml)
+- PipelineRunResponse + PipelineJobResponse interfaces added
+- HandoverDraftPanel: replaced local /v1/handover/export call with startExportJob(user.id, user.yachtId)
+- Toast changed from "Check your email" to "visible in ledger when complete (~5 minutes)"
+- Added pollForCompletion() with 5s intervals, fires ledger event (handover_export_complete) on success
+- Build: tsc --noEmit 0 errors
+- Commits: a0593168 (client functions), 87f82e6f (panel update + polling)
+- Note: executed out of order (after 14-02 and 14-03)
+
 ### Next Action
-**14-03 complete — Continue with 14-04.**
+**14-01 complete — Continue with 14-04.**
 
