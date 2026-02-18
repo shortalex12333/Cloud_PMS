@@ -262,9 +262,9 @@ async def get_export_content(
     from integrations.supabase import get_supabase_client
     supabase = get_supabase_client()
 
-    # Fetch export record
+    # Fetch export record (only columns that exist in schema)
     result = supabase.table("handover_exports").select(
-        "id, handover_id, yacht_id, original_storage_url, edited_content, review_status, created_at, "
+        "id, yacht_id, original_storage_url, edited_content, review_status, created_at, "
         "user_signature, user_signed_at, hod_signature, hod_signed_at"
     ).eq("id", export_id).single().execute()
 
