@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 14-handover-export-editable |
-| Plan | 05 of 08 complete |
-| Status | 14-05 complete - 4 FastAPI editable workflow endpoints (content/save-draft/submit/countersign) + 4 Next.js proxy routes; two-bucket storage write path; HOD ledger notifications; embedding indexing trigger |
-| Last activity | 2026-02-18 — 14-05 executed: Two-Bucket Storage + API Endpoints |
+| Plan | 07 of 08 complete |
+| Status | 14-07 complete - LedgerEventCard with handover_export routing, icon/color mappings, and audit log events at export-ready and HOD-countersign workflow points |
+| Last activity | 2026-02-18 — 14-07 executed: Ledger Integration + Navigation |
 
 ---
 
