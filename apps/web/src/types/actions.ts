@@ -231,6 +231,15 @@ export interface ActionResponse {
   };
 }
 
+/**
+ * Simple action result for hooks
+ */
+export interface ActionResult {
+  success: boolean;
+  error?: string;
+  data?: unknown;
+}
+
 // ============================================================================
 // SPECIFIC ACTION PAYLOADS
 // ============================================================================
