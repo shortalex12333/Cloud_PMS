@@ -44,7 +44,9 @@ const DEFAULT_PAGE_SIZE = 20;
  * - Older: "Jan 23, 2026"
  */
 function formatTimestamp(isoString: string): string {
+  if (!isoString) return '—';
   const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '—';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSeconds = Math.floor(diffMs / 1000);
@@ -75,6 +77,7 @@ function formatTimestamp(isoString: string): string {
  * Backend sends snake_case action names — displayed as Title Case.
  */
 function formatActionLabel(action: string): string {
+  if (!action) return 'Unknown Action';
   return action
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
