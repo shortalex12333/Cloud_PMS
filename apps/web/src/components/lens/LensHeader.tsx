@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { GhostButton } from '@/components/ui/GhostButton';
@@ -7,11 +9,12 @@ import { StatusPill } from '@/components/ui/StatusPill';
  * LensHeader - Fixed navigation header for all entity lenses.
  * Per UI_SPEC.md NAVIGATION HEADER spec:
  * - 56px height, fixed at top, surface-base background, border-bottom
- * - Left: Back button (← icon)
+ * - Left: Back button (← icon), Forward button (→ icon)
  * - Center: Entity type overline (uppercase, tertiary text)
- * - Right: Close button (× icon)
+ * - Right: Show Related button, Close button (× icon)
  *
- * Reference implementation — all other lenses inherit this pattern.
+ * Per rules.md: Users navigate between lenses via back/forward buttons.
+ * Show Related opens the related artifacts sidebar.
  */
 export interface LensHeaderProps {
   /** Entity type label e.g. "Work Order", "Fault", "Certificate" */
@@ -32,6 +35,12 @@ export interface LensHeaderProps {
   };
   /** Handler for back navigation */
   onBack?: () => void;
+  /** Handler for forward navigation */
+  onForward?: () => void;
+  /** Whether forward navigation is available */
+  canGoForward?: boolean;
+  /** Handler for showing related artifacts */
+  onShowRelated?: () => void;
   /** Handler for close / dismiss */
   onClose?: () => void;
   /** Additional CSS classes for the header bar */
@@ -50,6 +59,46 @@ const ArrowLeftIcon = () => (
   >
     <path
       d="M15 9H3M3 9L8 4M3 9L8 14"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Arrow-right SVG icon (18px) */
+const ArrowRightIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 18 18"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path
+      d="M3 9H15M15 9L10 4M15 9L10 14"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Link/Related SVG icon (18px) */
+const RelatedIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 18 18"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path
+      d="M7.5 10.5L10.5 7.5M6.75 12.75L4.5 15C3.67 15.83 2.33 15.83 1.5 15C0.67 14.17 0.67 12.83 1.5 12L3.75 9.75M14.25 8.25L16.5 6C17.33 5.17 17.33 3.83 16.5 3C15.67 2.17 14.33 2.17 13.5 3L11.25 5.25M9.75 5.25L5.25 9.75M12.75 8.25L8.25 12.75"
       stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
@@ -89,11 +138,35 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
       status,
       priority,
       onBack,
+      onForward,
+      canGoForward = false,
+      onShowRelated,
       onClose,
       className,
     },
     ref
   ) => {
+    const iconButtonClasses = cn(
+      // Icon-only button: 36x36, radius-sm
+      'w-9 h-9 flex items-center justify-center',
+      'rounded-sm',
+      // Colors: secondary text at rest
+      'text-txt-secondary bg-transparent',
+      // Hover: surface-hover bg, primary text
+      'hover:bg-surface-hover hover:text-txt-primary',
+      // Transition: 120ms
+      'transition-colors duration-[120ms] ease-out',
+      // Focus ring
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
+      // Touch target
+      'cursor-pointer'
+    );
+
+    const disabledButtonClasses = cn(
+      iconButtonClasses,
+      'opacity-40 cursor-not-allowed hover:bg-transparent hover:text-txt-secondary'
+    );
+
     return (
       <header
         ref={ref}
@@ -113,38 +186,30 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
           className
         )}
       >
-        {/* Left cluster: Back button */}
+        {/* Left cluster: Back + Forward buttons */}
         <div className="flex items-center gap-1">
           {onBack && (
             <button
               onClick={onBack}
               aria-label="Go back"
-              className={cn(
-                // Icon-only button: 36x36, radius-sm
-                'w-9 h-9 flex items-center justify-center',
-                'rounded-sm',
-                // Colors: secondary text at rest
-                'text-txt-secondary bg-transparent',
-                // Hover: surface-hover bg, primary text
-                'hover:bg-surface-hover hover:text-txt-primary',
-                // Transition: 120ms
-                'transition-colors duration-[120ms] ease-out',
-                // Focus ring
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
-                // Touch target
-                'cursor-pointer'
-              )}
+              className={iconButtonClasses}
             >
               <ArrowLeftIcon />
+            </button>
+          )}
+          {onForward !== undefined && (
+            <button
+              onClick={canGoForward ? onForward : undefined}
+              disabled={!canGoForward}
+              aria-label="Go forward"
+              className={canGoForward ? iconButtonClasses : disabledButtonClasses}
+            >
+              <ArrowRightIcon />
             </button>
           )}
         </div>
 
         {/* Center: Entity type overline */}
-        {/*
-          Overline spec: 11px / weight 500 / tracking 0.08em / uppercase / text-tertiary
-          Vertically centered in the 56px header.
-        */}
         <span
           className={cn(
             'text-[11px] font-medium tracking-[0.08em] uppercase',
@@ -155,26 +220,32 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
           {entityType}
         </span>
 
-        {/* Right cluster: Close button */}
+        {/* Right cluster: Show Related + Close buttons */}
         <div className="flex items-center gap-2">
+          {onShowRelated && (
+            <button
+              onClick={onShowRelated}
+              aria-label="Show related artifacts"
+              className={cn(
+                'h-9 px-3 flex items-center gap-1.5',
+                'rounded-sm',
+                'text-txt-secondary bg-transparent',
+                'hover:bg-surface-hover hover:text-txt-primary',
+                'transition-colors duration-[120ms] ease-out',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
+                'cursor-pointer',
+                'text-[13px] font-medium'
+              )}
+            >
+              <RelatedIcon />
+              <span className="hidden sm:inline">Related</span>
+            </button>
+          )}
           {onClose && (
             <button
               onClick={onClose}
               aria-label="Close"
-              className={cn(
-                // Icon-only button: 36x36, radius-sm
-                'w-9 h-9 flex items-center justify-center',
-                'rounded-sm',
-                // Colors
-                'text-txt-secondary bg-transparent',
-                // Hover
-                'hover:bg-surface-hover hover:text-txt-primary',
-                // Transition
-                'transition-colors duration-[120ms] ease-out',
-                // Focus ring
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
-                'cursor-pointer'
-              )}
+              className={iconButtonClasses}
             >
               <CloseIcon />
             </button>
