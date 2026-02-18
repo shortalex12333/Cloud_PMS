@@ -256,11 +256,11 @@ class CountersignRequest(BaseModel):
 @router.get("/export/{export_id}/content")
 async def get_export_content(
     export_id: str,
-    user=Depends(get_authenticated_user)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Get parsed editable content for a handover export."""
-    from integrations.supabase import get_supabase_client
-    supabase = get_supabase_client()
+    from pipeline_service import get_tenant_client
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Fetch export record (only columns that exist in schema)
     result = supabase.table("handover_exports").select(
@@ -345,11 +345,11 @@ async def get_export_content(
 async def save_draft(
     export_id: str,
     sections: List[Section],
-    user=Depends(get_authenticated_user)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """Auto-save user edits without signature."""
-    from integrations.supabase import get_supabase_client
-    supabase = get_supabase_client()
+    from pipeline_service import get_tenant_client
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Verify export exists and user has access
     result = supabase.table("handover_exports").select(
@@ -367,7 +367,7 @@ async def save_draft(
         "edited_content": {
             "sections": [s.dict() for s in sections],
             "last_saved_at": datetime.utcnow().isoformat(),
-            "saved_by": user.id if hasattr(user, "id") else str(user)
+            "saved_by": auth['user_id']
         }
     }).eq("id", export_id).execute()
 
@@ -378,11 +378,11 @@ async def save_draft(
 async def submit_export(
     export_id: str,
     request: SubmitRequest,
-    user=Depends(get_authenticated_user)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """User signs and submits handover for HOD approval."""
-    from integrations.supabase import get_supabase_client
-    supabase = get_supabase_client()
+    from pipeline_service import get_tenant_client
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Fetch export
     result = supabase.table("handover_exports").select(
@@ -411,7 +411,7 @@ async def submit_export(
     )
 
     # Update database record
-    user_id = user.id if hasattr(user, "id") else str(user)
+    user_id = auth['user_id']
     supabase.table("handover_exports").update({
         "edited_content": {
             "sections": [s.dict() for s in request.sections]
@@ -424,7 +424,7 @@ async def submit_export(
     }).eq("id", export_id).execute()
 
     # Create ledger notification for HOD
-    _notify_hod_for_countersign(supabase, export_id, yacht_id, user)
+    _notify_hod_for_countersign(supabase, export_id, yacht_id, auth)
 
     return {
         "success": True,
@@ -437,19 +437,14 @@ async def submit_export(
 async def countersign_export(
     export_id: str,
     request: CountersignRequest,
-    user=Depends(get_authenticated_user)
+    auth: dict = Depends(get_authenticated_user)
 ):
     """HOD countersigns the handover to complete."""
-    from integrations.supabase import get_supabase_client
-    supabase = get_supabase_client()
+    from pipeline_service import get_tenant_client
+    supabase = get_tenant_client(auth['tenant_key_alias'])
 
-    # Verify user is HOD
-    user_id = user.id if hasattr(user, "id") else str(user)
-    profile = supabase.table("auth_users_profiles").select(
-        "role"
-    ).eq("id", user_id).single().execute()
-
-    if not profile.data or profile.data["role"] not in ["hod", "captain", "manager"]:
+    # Verify user is HOD (role comes from auth context, already validated)
+    if auth['role'] not in ["hod", "captain", "manager"]:
         raise HTTPException(status_code=403, detail="Only HOD+ can countersign")
 
     # Fetch export
