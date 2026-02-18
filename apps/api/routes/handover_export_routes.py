@@ -304,15 +304,13 @@ async def get_export_content(
     if not original_url:
         logger.info(f"[handover] No original_storage_url for export {export_id}, generating from items")
 
-        # Fetch items linked to this export via metadata.item_ids or by yacht
-        export_full = supabase.table("handover_exports").select("metadata").eq("id", export_id).limit(1).execute()
+        # Fetch items for this yacht (since metadata column doesn't exist)
+        yacht_id = export_data.get("yacht_id")
         item_ids = []
-        if export_full.data and export_full.data[0].get("metadata"):
-            item_ids = export_full.data[0]["metadata"].get("item_ids", [])
 
         sections = []
-        if item_ids:
-            items_result = supabase.table("handover_items").select("*").in_("id", item_ids).execute()
+        if yacht_id:
+            items_result = supabase.table("handover_items").select("*").eq("yacht_id", yacht_id).is_("deleted_at", "null").order("created_at", desc=True).limit(50).execute()
             if items_result.data:
                 # Group items by category
                 by_category = {}
