@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 14-handover-export-editable |
-| Plan | 07 of 08 complete |
-| Status | 14-07 complete - ledgerNavigation.ts (ENTITY_ROUTES + handleLedgerClick with mode param), LedgerEventCard.tsx (FileText/Pen icons, brand/warning colors), create_export_ready_ledger_event() in handover_export_service.py, event_type field fixed in _notify_hod_for_countersign |
-| Last activity | 2026-02-18 — 14-07 executed: Ledger Integration + Navigation |
+| Plan | 08 of 08 complete |
+| Status | 14-08 complete - handover-export-editable.spec.ts with 21 E2E tests tagged [HEXPORT], covering export flow, user edit mode, user submit flow, HOD review mode, HOD countersign flow |
+| Last activity | 2026-02-18 — 14-08 executed: E2E Tests + Phase Verification |
 
 ---
 
