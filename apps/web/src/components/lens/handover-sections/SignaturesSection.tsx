@@ -19,7 +19,7 @@ import { PenTool, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/utils';
 import { SectionContainer, StatusPill } from '@/components/ui';
-import type { HandoverSignature, HandoverStatus } from '../HandoverLens';
+import type { HandoverSignature, HandoverStatus } from '../types';
 
 // ---------------------------------------------------------------------------
 // Props

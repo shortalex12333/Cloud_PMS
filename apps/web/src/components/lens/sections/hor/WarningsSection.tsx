@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { GhostButton } from '@/components/ui/GhostButton';
-import type { HorWarning } from '../../HoursOfRestLens';
+import type { HorWarning } from '../../types';
 
 // ============================================================================
 // TYPES

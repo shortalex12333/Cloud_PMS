@@ -114,7 +114,9 @@ class HandoverExportService:
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
         export_type: str = "html",
-        include_completed: bool = False
+        include_completed: bool = False,
+        item_ids: Optional[List[str]] = None,
+        filter_by_user: bool = False
     ) -> HandoverExportResult:
         """
         Generate a handover export.
@@ -127,6 +129,8 @@ class HandoverExportService:
             date_to: End date filter (optional)
             export_type: Format type (html, pdf, email)
             include_completed: Whether to include completed items
+            item_ids: Specific item IDs to export (for user draft exports)
+            filter_by_user: Filter items by user_id (added_by = user_id)
 
         Returns:
             HandoverExportResult with HTML and metadata
@@ -137,7 +141,9 @@ class HandoverExportService:
             handover_id=handover_id,
             date_from=date_from,
             date_to=date_to,
-            include_completed=include_completed
+            include_completed=include_completed,
+            item_ids=item_ids,
+            added_by_user_id=user_id if filter_by_user else None
         )
 
         if not items:
@@ -162,7 +168,8 @@ class HandoverExportService:
         # 7. Calculate document hash from generated HTML
         document_hash = hashlib.sha256(html.encode()).hexdigest()
 
-        # 8. Create export record with both hashes
+        # 8. Create export record with both hashes and item_ids for tracking
+        exported_item_ids = [item.id for item in items]
         await self._create_export_record(
             yacht_id=yacht_id,
             user_id=user_id,
@@ -171,7 +178,8 @@ class HandoverExportService:
             document_hash=document_hash,
             total_items=len(items),
             export_id=export_id,
-            content_hash=content_hash
+            content_hash=content_hash,
+            item_ids=exported_item_ids
         )
 
         return HandoverExportResult(
@@ -190,10 +198,57 @@ class HandoverExportService:
         handover_id: Optional[str],
         date_from: Optional[date],
         date_to: Optional[date],
-        include_completed: bool
+        include_completed: bool,
+        item_ids: Optional[List[str]] = None,
+        added_by_user_id: Optional[str] = None
     ) -> List[HandoverItem]:
-        """Fetch items from unified view."""
+        """Fetch items from unified view or handover_items table."""
 
+        # If item_ids are provided, fetch directly from handover_items table
+        if item_ids:
+            query = self.db.table("handover_items").select("*").eq("yacht_id", yacht_id).in_("id", item_ids)
+
+            # Filter by user if specified
+            if added_by_user_id:
+                query = query.eq("added_by", added_by_user_id)
+
+            query = query.is_("deleted_at", "null")
+            query = query.order("created_at", desc=True)
+
+            result = query.execute()
+
+            if not result.data:
+                return []
+
+            # Map handover_items columns to HandoverItem dataclass
+            return [
+                HandoverItem(
+                    id=row["id"],
+                    yacht_id=row["yacht_id"],
+                    handover_id=row.get("handover_id"),
+                    entity_type=row.get("entity_type") or "",
+                    entity_id=row.get("entity_id"),
+                    summary_text=row.get("summary") or "",
+                    section=row.get("section"),
+                    category=row.get("category"),
+                    priority=row.get("priority", 0),
+                    status=row.get("status", "pending"),
+                    is_critical=row.get("is_critical", False),
+                    requires_action=row.get("requires_action", False),
+                    action_summary=row.get("action_summary"),
+                    risk_tags=row.get("risk_tags") or [],
+                    entity_url=row.get("entity_url"),
+                    added_by=row.get("added_by") or "",
+                    added_at=row.get("created_at") or "",
+                    acknowledged_by=row.get("acknowledged_by"),
+                    acknowledged_at=row.get("acknowledged_at"),
+                    metadata=row.get("metadata", {}),
+                    source_table="handover_items"
+                )
+                for row in result.data
+            ]
+
+        # Otherwise, fetch from unified view
         query = self.db.table("v_handover_export_items").select("*").eq("yacht_id", yacht_id)
 
         if handover_id:
@@ -207,6 +262,10 @@ class HandoverExportService:
 
         if not include_completed:
             query = query.neq("status", "completed")
+
+        # Filter by user if specified
+        if added_by_user_id:
+            query = query.eq("added_by", added_by_user_id)
 
         query = query.order("priority", desc=True).order("added_at", desc=True)
 
@@ -669,7 +728,8 @@ class HandoverExportService:
         total_items: int,
         export_id: str,
         content_hash: Optional[str] = None,
-        department: Optional[str] = None
+        department: Optional[str] = None,
+        item_ids: Optional[List[str]] = None
     ) -> str:
         """
         Create record in handover_exports table.
@@ -679,8 +739,13 @@ class HandoverExportService:
         - Items are standalone in handover_items
         - content_hash links to finalized draft
         - document_hash is SHA256 of generated export artifact
+        - metadata.item_ids tracks which items were exported
         """
         # Insert export record with both hashes
+        metadata = {}
+        if item_ids:
+            metadata["item_ids"] = item_ids
+
         self.db.table("handover_exports").insert({
             "id": export_id,
             "draft_id": handover_id,  # Can be None now
@@ -691,7 +756,8 @@ class HandoverExportService:
             "document_hash": document_hash,
             "content_hash": content_hash,
             "export_status": "completed",
-            "exported_at": datetime.now(timezone.utc).isoformat()
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": metadata if metadata else None
         }).execute()
 
         return export_id
