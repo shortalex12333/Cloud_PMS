@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 14-handover-export-editable |
-| Plan | 07 of 08 complete |
-| Status | 14-07 complete - LedgerEventCard with handover_export routing, icon/color mappings, and audit log events at export-ready and HOD-countersign workflow points |
-| Last activity | 2026-02-18 — 14-07 executed: Ledger Integration + Navigation |
+| Plan | 07 of 08 complete (14-04 backfilled) |
+| Status | 14-04 complete - HandoverExportLens with canvas signatures, EditableSectionRenderer, SignatureSection, FinishButton, /handover-export/[id] route page |
+| Last activity | 2026-02-18 — 14-04 executed: HandoverExportLens Component (backfilled, was executed out of order) |
 
 ---
 
@@ -132,6 +132,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | Next.js handover-export routes use Bearer header passthrough (no createServerClient) | @/lib/supabase/server does not exist; existing codebase uses Authorization header pattern | 2026-02-18 |
 | Python countersign enforces HOD role (not Next.js wrapper) | Python is the authoritative authorization layer for this API | 2026-02-18 |
 | _trigger_indexing uses search_index_queue table insert with try/except | Fire-and-forget; missing table should never block countersign response | 2026-02-18 |
+| HandoverExportLens passes isOpen to LensContainer; mode prop drives edit vs review rendering | LensContainer requires isOpen; single component handles both workflow sides | 2026-02-18 |
+| EditableSectionRenderer inlines section header div (not SectionContainer) | SectionContainer.title is string-only; editable title needs JSX input element | 2026-02-18 |
+| VitalSign.value is string with color prop (not ReactNode StatusPill) | VitalSignsRow renders StatusPill natively when color prop provided | 2026-02-18 |
+| Route page /handover-export/[id] is client-only using supabase proxy | No server Supabase client in this project; matches existing page patterns | 2026-02-18 |
 
 ---
 
@@ -472,6 +476,18 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - TypeScript: tsc --noEmit 0 errors
 - Commits: 8ec9de8d (Python routes), d122b291 (Next.js routes + Rule 1 fix)
 
+### 2026-02-18 (14-04) - HandoverExportLens Component (backfilled)
+- Plan 14-04: Created HandoverExportLens with dual-mode canvas signatures and editable sections
+- SignatureCanvas: HTML5 canvas + mouse/touch with coordinate scaling for responsive containers
+- EditableSectionRenderer: inline editable section titles, add/remove/reorder, per-section items with priority badges
+- SignatureSection: dual layout (user Prepared By + HOD Approved By), mode-aware SignatureCanvas rendering
+- FinishButton: edit mode = 'Finish and Submit', review mode = 'Approve and Countersign', toast validation
+- HandoverExportLens: VitalSignsRow (5 vitals), LensContainer(isOpen), LensHeader, mode indicator banner
+- /handover-export/[id]/page.tsx: client-only route with supabase proxy auth + data fetch
+- 9 auto-fixes: LensContainer isOpen prop, LensHeader API adaptation, LensTitleBlock title prop, VitalSign string values, SectionContainer inline div, GhostButton no size prop, no createServerClient, no mid-file 'use client', Supabase join array normalization
+- TypeScript: tsc --noEmit 0 errors
+- Commits: 724ba592, 9e7dcee7, 9fab772f, 99772a90, 30af39aa, 7adfe6df, 2bf8d4d5
+
 ### Next Action
-**14-05 complete — Continue with 14-06.**
+**14-04 backfilled — All 7 of 8 plans in phase 14 executed. Continue with 14-08.**
 
