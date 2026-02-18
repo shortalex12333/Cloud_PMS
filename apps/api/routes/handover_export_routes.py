@@ -262,10 +262,10 @@ async def get_export_content(
     from integrations.supabase import get_supabase_client
     supabase = get_supabase_client()
 
-    # Fetch export record with yacht name for lens display
+    # Fetch export record
     result = supabase.table("handover_exports").select(
         "id, handover_id, yacht_id, original_storage_url, edited_content, review_status, created_at, "
-        "user_signature, user_signed_at, hod_signature, hod_signed_at, yachts(name)"
+        "user_signature, user_signed_at, hod_signature, hod_signed_at"
     ).eq("id", export_id).single().execute()
 
     if not result.data:
@@ -273,9 +273,12 @@ async def get_export_content(
 
     export_data = result.data
 
-    # Extract yacht name from joined relation
-    yachts = export_data.get("yachts")
-    yacht_name = yachts.get("name") if isinstance(yachts, dict) else (yachts[0].get("name") if yachts else None)
+    # Fetch yacht name separately (no FK relationship)
+    yacht_name = None
+    if export_data.get("yacht_id"):
+        yacht_result = supabase.table("yachts").select("name").eq("id", export_data["yacht_id"]).maybe_single().execute()
+        if yacht_result.data:
+            yacht_name = yacht_result.data.get("name")
 
     # If edited content exists, return it
     if export_data.get("edited_content"):
