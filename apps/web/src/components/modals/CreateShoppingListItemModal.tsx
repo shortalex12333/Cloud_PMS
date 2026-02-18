@@ -298,7 +298,7 @@ export function CreateShoppingListItemModal({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-[var(--celeste-accent)]" />
+            <ShoppingCart className="h-5 w-5 text-brand-interactive" />
             Add to Shopping List
           </DialogTitle>
           <DialogDescription>
@@ -309,11 +309,11 @@ export function CreateShoppingListItemModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Work Order Context (if provided) */}
           {context?.work_order_id && context?.work_order_title && (
-            <div className="p-3 rounded-lg border border-[var(--celeste-border)] bg-[var(--celeste-bg-secondary)]">
-              <p className="text-xs text-[var(--celeste-text-muted)] uppercase tracking-wide mb-1">
+            <div className="p-3 rounded-lg border border-surface-border bg-surface-elevated">
+              <p className="text-xs text-txt-tertiary uppercase tracking-wide mb-1">
                 Linked Work Order
               </p>
-              <p className="text-sm font-medium text-[var(--celeste-text-primary)]">
+              <p className="text-sm font-medium text-txt-primary">
                 {context.work_order_title}
               </p>
             </div>
@@ -335,7 +335,7 @@ export function CreateShoppingListItemModal({
               htmlFor="link_existing"
               className="text-sm font-normal cursor-pointer flex items-center gap-2"
             >
-              <Package className="h-4 w-4 text-[var(--celeste-text-muted)]" />
+              <Package className="h-4 w-4 text-txt-tertiary" />
               Link to existing part in catalog
             </Label>
           </div>
@@ -345,7 +345,7 @@ export function CreateShoppingListItemModal({
             <div className="space-y-2">
               <Label htmlFor="part_search">Search Parts</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--celeste-text-muted)]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="part_search"
                   placeholder="Search by name or part number..."
@@ -354,7 +354,7 @@ export function CreateShoppingListItemModal({
                   className="pl-9"
                 />
                 {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[var(--celeste-text-muted)]" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-txt-tertiary" />
                 )}
               </div>
 
@@ -366,10 +366,10 @@ export function CreateShoppingListItemModal({
                       key={part.id}
                       type="button"
                       onClick={() => handleSelectPart(part)}
-                      className="w-full p-2 text-left hover:bg-[var(--celeste-bg-secondary)] transition-colors"
+                      className="w-full p-2 text-left hover:bg-surface-elevated transition-colors"
                     >
                       <p className="font-medium text-sm">{part.part_name}</p>
-                      <p className="text-xs text-[var(--celeste-text-muted)]">
+                      <p className="text-xs text-txt-tertiary">
                         {part.part_number && `P/N: ${part.part_number}`}
                         {part.manufacturer && ` | ${part.manufacturer}`}
                       </p>
@@ -519,7 +519,7 @@ export function CreateShoppingListItemModal({
                       <SelectItem key={option.value} value={option.value}>
                         <div>
                           <span className="font-medium">{option.label}</span>
-                          <span className="text-[var(--celeste-text-muted)] ml-2 text-xs">
+                          <span className="text-txt-tertiary ml-2 text-xs">
                             {option.description}
                           </span>
                         </div>
@@ -559,7 +559,7 @@ export function CreateShoppingListItemModal({
           <div className="space-y-2">
             <Label htmlFor="estimated_unit_price">Estimated Unit Price (optional)</Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--celeste-text-muted)]">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-tertiary">
                 $
               </span>
               <Input

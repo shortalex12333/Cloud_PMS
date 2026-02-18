@@ -181,8 +181,8 @@ export default function ActionModal({
       <div
         className={cn(
           'relative z-10 w-full max-w-md mx-4',
-          'bg-[#2c2c2e] rounded-2xl shadow-celeste-lg',
-          'border border-[#3d3d3f]',
+          'bg-surface-elevated rounded-2xl shadow-celeste-lg',
+          'border border-surface-border',
           'animate-in fade-in-0 zoom-in-95 duration-200'
         )}
         role="dialog"
@@ -190,7 +190,7 @@ export default function ActionModal({
         aria-labelledby="action-modal-title"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#3d3d3f]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
           <div className="flex items-center gap-2">
             <h2
               id="action-modal-title"
@@ -207,7 +207,7 @@ export default function ActionModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#98989f] hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="p-1.5 rounded-lg text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -234,7 +234,7 @@ export default function ActionModal({
                 <div key={field} className="space-y-1.5">
                   <label
                     htmlFor={field}
-                    className="block text-celeste-sm font-medium text-[#98989f]"
+                    className="block text-celeste-sm font-medium text-txt-secondary"
                   >
                     {label}
                   </label>
@@ -247,7 +247,7 @@ export default function ActionModal({
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
-                        'bg-[#1c1c1e] border border-[#3d3d3f]',
+                        'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
@@ -262,8 +262,8 @@ export default function ActionModal({
                       rows={3}
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg resize-none',
-                        'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-celeste-base text-celeste-text-title placeholder:text-[#636366]',
+                        'bg-surface-base border border-surface-border',
+                        'text-celeste-base text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -278,7 +278,7 @@ export default function ActionModal({
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
-                        'bg-[#1c1c1e] border border-[#3d3d3f]',
+                        'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
@@ -300,7 +300,7 @@ export default function ActionModal({
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
-                        'bg-[#1c1c1e] border border-[#3d3d3f]',
+                        'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
@@ -323,8 +323,8 @@ export default function ActionModal({
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
                         'w-full px-3 py-2.5 rounded-lg',
-                        'bg-[#1c1c1e] border border-[#3d3d3f]',
-                        'text-celeste-base text-celeste-text-title placeholder:text-[#636366]',
+                        'bg-surface-base border border-surface-border',
+                        'text-celeste-base text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
                         'transition-colors'
                       )}
@@ -341,22 +341,22 @@ export default function ActionModal({
 
             {/* Storage Confirmation Section */}
             {action.storage_options && (
-              <div className="p-3 rounded-lg bg-[#1c1c1e] border border-[#3d3d3f] space-y-3">
-                <div className="flex items-center gap-2 text-celeste-sm font-medium text-[#98989f]">
+              <div className="p-3 rounded-lg bg-surface-base border border-surface-border space-y-3">
+                <div className="flex items-center gap-2 text-celeste-sm font-medium text-txt-secondary">
                   <FolderOpen className="w-4 h-4" />
                   Storage Location
                 </div>
 
                 <div className="space-y-2 text-celeste-sm">
                   <div className="flex justify-between">
-                    <span className="text-[#636366]">Bucket:</span>
+                    <span className="text-txt-tertiary">Bucket:</span>
                     <span className="text-celeste-text-title font-mono">
                       {action.storage_options.bucket}
                     </span>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[#636366]">Path:</span>
+                    <span className="text-txt-tertiary">Path:</span>
                     <div className="font-mono text-celeste-xs text-celeste-accent bg-celeste-accent/10 px-2 py-1.5 rounded break-all">
                       {storagePathPreview}
                     </div>
@@ -366,7 +366,7 @@ export default function ActionModal({
                   <div className="pt-2">
                     <label
                       htmlFor="filename"
-                      className="block text-celeste-xs text-[#636366] mb-1"
+                      className="block text-celeste-xs text-txt-tertiary mb-1"
                     >
                       Filename (optional):
                     </label>
@@ -378,8 +378,8 @@ export default function ActionModal({
                       placeholder="document.pdf"
                       className={cn(
                         'w-full px-2 py-1.5 rounded',
-                        'bg-[#2c2c2e] border border-[#3d3d3f]',
-                        'text-celeste-sm text-celeste-text-title placeholder:text-[#636366]',
+                        'bg-surface-elevated border border-surface-border',
+                        'text-celeste-sm text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-1 focus:ring-celeste-accent-muted'
                       )}
                     />
@@ -407,14 +407,14 @@ export default function ActionModal({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 px-5 py-4 border-t border-[#3d3d3f]">
+          <div className="flex justify-end gap-3 px-5 py-4 border-t border-surface-border">
             <button
               type="button"
               onClick={onClose}
               className={cn(
                 'px-4 py-2 rounded-lg',
-                'text-celeste-sm font-medium text-[#98989f]',
-                'hover:text-celeste-text-title hover:bg-celeste-surface',
+                'text-celeste-sm font-medium text-txt-secondary',
+                'hover:text-txt-primary hover:bg-surface-hover',
                 'transition-colors'
               )}
               disabled={isSubmitting}

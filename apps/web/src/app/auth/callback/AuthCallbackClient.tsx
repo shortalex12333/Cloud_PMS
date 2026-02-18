@@ -145,7 +145,7 @@ export default function AuthCallbackClient() {
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1c1c1e]">
+      <div className="min-h-screen flex items-center justify-center bg-surface-base">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-celeste-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white text-lg">{sessionSet ? 'Validating session...' : 'Completing sign in...'}</p>
@@ -157,7 +157,7 @@ export default function AuthCallbackClient() {
   // Success state
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1c1c1e]">
+      <div className="min-h-screen flex items-center justify-center bg-surface-base">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +173,7 @@ export default function AuthCallbackClient() {
 
   // Error state
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1c1c1e]">
+    <div className="min-h-screen flex items-center justify-center bg-surface-base">
       <div className="text-center max-w-md px-4">
         <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-4">
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -761,8 +761,7 @@ export default function SpotlightSearch({
       {/* Backdrop - material-based dim */}
       {isModal && (
         <div
-          className="absolute inset-0 backdrop-blur-md transition-colors duration-150"
-          style={{ backgroundColor: `rgba(var(--celeste-backdrop-color), var(--celeste-backdrop-opacity))` }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-colors duration-150"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -783,14 +782,14 @@ export default function SpotlightSearch({
           className={cn(
             // ChatGPT-style pill shape with tokenized dimensions
             'w-full font-body',
-            'bg-[var(--celeste-spotlight-bg)]',
-            'rounded-[var(--celeste-spotlight-radius)]',
-            // Shadow only - NO border (ChatGPT spec) - FULLY TOKENIZED
-            'shadow-[var(--celeste-spotlight-shadow)]',
-            'backdrop-blur-[var(--celeste-material-blur)]',
+            'bg-surface-elevated',
+            'rounded-lg',
+            // Shadow only - NO border (ChatGPT spec)
+            'shadow-lg',
+            'backdrop-blur-xl',
             'animate-spotlight-in',
             // Email scope: accent ring only (no border)
-            emailScopeActive && 'bg-celeste-accent/20 ring-2 ring-celeste-accent/40'
+            emailScopeActive && 'bg-brand-interactive/20 ring-2 ring-brand-interactive/40'
           )}
           data-email-scope={emailScopeActive}
         >
@@ -798,9 +797,9 @@ export default function SpotlightSearch({
           <div
             className={cn(
               'flex items-center',
-              'h-[var(--celeste-spotlight-height)]',
-              'px-[var(--celeste-spotlight-padding-x)]',
-              'gap-[var(--celeste-spotlight-btn-gap)]'
+              'h-14',
+              'px-ds-4',
+              'gap-ds-2'
             )}
           >
             {/* Leading "+" Button - 36x36 circle, no border */}
@@ -808,25 +807,25 @@ export default function SpotlightSearch({
               onClick={() => setShowReceivingUpload(true)}
               className={cn(
                 'flex-shrink-0',
-                'w-[var(--celeste-spotlight-btn-size)] h-[var(--celeste-spotlight-btn-size)]',
-                'rounded-[var(--celeste-spotlight-btn-radius)]',
+                'w-10 h-10',
+                'rounded-md',
                 'flex items-center justify-center',
-                'bg-[var(--celeste-spotlight-btn-bg)]',
-                'text-[var(--celeste-spotlight-btn-text)]',
+                'bg-surface-hover',
+                'text-txt-secondary',
                 'transition-[background-color,opacity] duration-[120ms] ease-out',
-                'hover:bg-[var(--celeste-spotlight-btn-hover-bg)]',
+                'hover:bg-surface-active',
                 'active:opacity-90',
-                'focus:outline-none focus:ring-2 focus:ring-[var(--celeste-accent)]/50'
+                'focus:outline-none focus:ring-2 focus:ring-brand-interactive/50'
               )}
               aria-label="Log Receiving"
               data-testid="spotlight-add-button"
             >
-              <Plus className="w-[var(--celeste-spotlight-btn-icon-size)] h-[var(--celeste-spotlight-btn-icon-size)]" strokeWidth={1.5} />
+              <Plus className="w-5 h-5" strokeWidth={1.5} />
             </button>
 
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-celeste-accent text-[var(--celeste-spotlight-text)] rounded text-celeste-xs font-semibold whitespace-nowrap">
+              <div className="px-2 py-0.5 bg-brand-interactive text-txt-primary rounded text-celeste-xs font-semibold whitespace-nowrap">
                 Email
               </div>
             )}
@@ -852,10 +851,10 @@ export default function SpotlightSearch({
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
                   'text-celeste-xl',
-                  'text-[var(--celeste-spotlight-text)]',
+                  'text-txt-primary',
                   'font-normal tracking-[-0.01em]',
-                  'caret-[var(--celeste-spotlight-text)]',
-                  'placeholder:text-[var(--celeste-spotlight-placeholder)]',
+                  'caret-txt-primary',
+                  'placeholder:text-txt-tertiary',
                   'relative z-10'
                 )}
                 autoComplete="off"
@@ -868,7 +867,7 @@ export default function SpotlightSearch({
                 <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
                   <span
                     className={cn(
-                      'text-celeste-xl text-[var(--celeste-spotlight-placeholder)] font-normal tracking-[-0.01em]',
+                      'text-celeste-xl text-txt-tertiary font-normal tracking-[-0.01em]',
                       'transition-all duration-celeste-deliberate ease-out',
                       isAnimating ? 'opacity-0 -translate-y-3' : 'opacity-100 translate-y-0'
                     )}
@@ -880,15 +879,15 @@ export default function SpotlightSearch({
             </div>
 
             {/* Trailing Icons */}
-            <div className="flex items-center gap-[var(--celeste-spotlight-btn-gap)]">
+            <div className="flex items-center gap-ds-2">
               {/* Clear Button */}
               {query && (
                 <button
                   onClick={handleClear}
-                  className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--celeste-spotlight-icon)] hover:bg-[var(--celeste-spotlight-icon-hover)] transition-colors"
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-txt-tertiary hover:bg-txt-secondary transition-colors"
                   aria-label="Clear"
                 >
-                  <X className="w-3 h-3 text-[var(--celeste-spotlight-bg)]" strokeWidth={3} />
+                  <X className="w-3 h-3 text-surface-elevated" strokeWidth={3} />
                 </button>
               )}
             </div>
@@ -925,7 +924,7 @@ export default function SpotlightSearch({
               When SurfaceContext is available, EmailOverlay handles the email UI. */}
           {showEmailList && !hasQuery && !surfaceContext && (
             <div
-              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-celeste-bg-primary rounded-b-2xl"
+              className="max-h-celeste-search-results overflow-y-auto overflow-x-hidden spotlight-scrollbar bg-surface-primary rounded-b-2xl"
               data-testid="email-list-inline"
             >
               <EmailInboxView className="p-4" />
@@ -1111,7 +1110,7 @@ export default function SpotlightSearch({
 
         {/* Utility Icon Row - Email ≡, Menu ≡, Settings ⚙
             Centered below search bar, tokenized spacing */}
-        <div className="flex justify-center items-center gap-[var(--celeste-spotlight-utility-gap)] mt-[var(--celeste-spacing-4)]">
+        <div className="flex justify-center items-center gap-ds-3 mt-ds-4">
           {/* Email Button with hamburger icon */}
           <button
             onClick={() => {
@@ -1125,17 +1124,17 @@ export default function SpotlightSearch({
             }}
             className={cn(
               'flex items-center gap-2',
-              'p-[var(--celeste-spotlight-utility-btn-padding)]',
-              'rounded-[var(--celeste-spotlight-btn-radius)]',
+              'p-ds-2',
+              'rounded-md',
               'transition-all duration-[120ms] ease-out',
               emailScopeActive
-                ? 'bg-celeste-accent text-[var(--celeste-spotlight-bg)]'
-                : 'text-[var(--celeste-spotlight-icon)] hover:text-[var(--celeste-spotlight-icon-hover)] hover:bg-[var(--celeste-spotlight-btn-hover-bg)]'
+                ? 'bg-brand-interactive text-surface-elevated'
+                : 'text-txt-tertiary hover:text-txt-secondary hover:bg-surface-active'
             )}
             aria-label={emailScopeActive ? 'Exit Email' : 'Email'}
             data-testid="utility-email-button"
           >
-            <Mail className="w-[var(--celeste-spotlight-utility-icon-size)] h-[var(--celeste-spotlight-utility-icon-size)]" strokeWidth={1.5} />
+            <Mail className="w-5 h-5" strokeWidth={1.5} />
             <Menu className="w-3 h-3" strokeWidth={2} />
           </button>
 
@@ -1145,17 +1144,17 @@ export default function SpotlightSearch({
               <button
                 className={cn(
                   'flex items-center gap-2',
-                  'p-[var(--celeste-spotlight-utility-btn-padding)]',
-                  'rounded-[var(--celeste-spotlight-btn-radius)]',
-                  'text-[var(--celeste-spotlight-icon)]',
+                  'p-ds-2',
+                  'rounded-md',
+                  'text-txt-tertiary',
                   'transition-all duration-[120ms] ease-out',
-                  'hover:text-[var(--celeste-spotlight-icon-hover)]',
-                  'hover:bg-[var(--celeste-spotlight-btn-hover-bg)]'
+                  'hover:text-txt-secondary',
+                  'hover:bg-surface-active'
                 )}
                 aria-label="Menu"
                 data-testid="utility-menu-button"
               >
-                <BookOpen className="w-[var(--celeste-spotlight-utility-icon-size)] h-[var(--celeste-spotlight-utility-icon-size)]" strokeWidth={1.5} />
+                <BookOpen className="w-5 h-5" strokeWidth={1.5} />
                 <Menu className="w-3 h-3" strokeWidth={2} />
               </button>
             </DropdownMenuTrigger>
@@ -1164,8 +1163,8 @@ export default function SpotlightSearch({
               sideOffset={8}
               className={cn(
                 'min-w-[160px] rounded-xl p-2',
-                'bg-[var(--celeste-spotlight-dropdown-bg)]',
-                'border border-[var(--celeste-spotlight-dropdown-border)]',
+                'bg-surface-elevated',
+                'border border-surface-border',
                 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]'
               )}
             >
@@ -1174,12 +1173,12 @@ export default function SpotlightSearch({
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
                   'text-sm font-medium',
-                  'text-[var(--celeste-spotlight-dropdown-text)]',
-                  'focus:bg-[var(--celeste-spotlight-dropdown-hover)]',
-                  'hover:bg-[var(--celeste-spotlight-dropdown-hover)]'
+                  'text-txt-primary',
+                  'focus:bg-surface-hover',
+                  'hover:bg-surface-hover'
                 )}
               >
-                <BookOpen className="w-4 h-4 text-[var(--celeste-spotlight-btn-text)]" strokeWidth={1.5} />
+                <BookOpen className="w-4 h-4 text-txt-secondary" strokeWidth={1.5} />
                 <span>Ledger</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -1187,12 +1186,12 @@ export default function SpotlightSearch({
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
                   'text-sm font-medium',
-                  'text-[var(--celeste-spotlight-dropdown-text)]',
-                  'focus:bg-[var(--celeste-spotlight-dropdown-hover)]',
-                  'hover:bg-[var(--celeste-spotlight-dropdown-hover)]'
+                  'text-txt-primary',
+                  'focus:bg-surface-hover',
+                  'hover:bg-surface-hover'
                 )}
               >
-                <FileText className="w-4 h-4 text-[var(--celeste-spotlight-btn-text)]" strokeWidth={1.5} />
+                <FileText className="w-4 h-4 text-txt-secondary" strokeWidth={1.5} />
                 <span>Handover</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -1200,12 +1199,12 @@ export default function SpotlightSearch({
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
                   'text-sm font-medium',
-                  'text-[var(--celeste-spotlight-dropdown-text)]',
-                  'focus:bg-[var(--celeste-spotlight-dropdown-hover)]',
-                  'hover:bg-[var(--celeste-spotlight-dropdown-hover)]'
+                  'text-txt-primary',
+                  'focus:bg-surface-hover',
+                  'hover:bg-surface-hover'
                 )}
               >
-                <Paperclip className="w-4 h-4 text-[var(--celeste-spotlight-btn-text)]" strokeWidth={1.5} />
+                <Paperclip className="w-4 h-4 text-txt-secondary" strokeWidth={1.5} />
                 <span>Add Files</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1215,17 +1214,17 @@ export default function SpotlightSearch({
           <button
             onClick={() => setShowSettings(true)}
             className={cn(
-              'p-[var(--celeste-spotlight-utility-btn-padding)]',
-              'rounded-[var(--celeste-spotlight-btn-radius)]',
-              'text-[var(--celeste-spotlight-icon)]',
+              'p-ds-2',
+              'rounded-md',
+              'text-txt-tertiary',
               'transition-all duration-[120ms] ease-out',
-              'hover:text-[var(--celeste-spotlight-icon-hover)]',
-              'hover:bg-[var(--celeste-spotlight-btn-hover-bg)]'
+              'hover:text-txt-secondary',
+              'hover:bg-surface-active'
             )}
             aria-label="Settings"
             data-testid="utility-settings-button"
           >
-            <Settings className="w-[var(--celeste-spotlight-utility-icon-size)] h-[var(--celeste-spotlight-utility-icon-size)]" strokeWidth={1.5} />
+            <Settings className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
       </div>
@@ -1253,7 +1252,7 @@ export default function SpotlightSearch({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-celeste-bg-secondary border-celeste-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-celeste-text-title">
-              <Camera className="h-5 w-5 text-[var(--celeste-accent)]" />
+              <Camera className="h-5 w-5 text-brand-interactive" />
               Log Receiving
             </DialogTitle>
           </DialogHeader>

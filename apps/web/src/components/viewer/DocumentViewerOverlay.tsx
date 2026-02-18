@@ -178,9 +178,9 @@ export default function DocumentViewerOverlay({
       onClick={handleBackdropClick}
       data-testid="document-viewer-overlay"
     >
-      <div className="absolute inset-4 md:inset-8 lg:inset-12 rounded-lg bg-[#1c1c1e] overflow-hidden shadow-celeste-lg flex flex-col">
+      <div className="absolute inset-4 md:inset-8 lg:inset-12 rounded-lg bg-surface-base overflow-hidden shadow-celeste-lg flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-[#2c2c2e]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-surface-elevated">
           <div className="flex items-center gap-3 min-w-0">
             {getFileIcon(contentType)}
             <div className="min-w-0">
@@ -223,7 +223,7 @@ export default function DocumentViewerOverlay({
                 </button>
 
                 {showActionsMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-[#2c2c2e] border border-zinc-700 rounded-lg shadow-xl z-50 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-surface-elevated border border-surface-border rounded-lg shadow-xl z-50 py-1">
                     <button
                       onClick={() => handleMicroAction('add_to_handover')}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
