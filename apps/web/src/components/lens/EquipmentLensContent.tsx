@@ -66,10 +66,10 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
             <dl className="grid grid-cols-2 gap-4 text-sm">
-              {serial_number && <><dt className="text-celeste-text-muted">Serial Number</dt><dd className="text-celeste-text-primary">{serial_number}</dd></>}
-              {installation_date && <><dt className="text-celeste-text-muted">Installed</dt><dd className="text-celeste-text-primary">{formatRelativeTime(installation_date)}</dd></>}
-              {last_maintenance && <><dt className="text-celeste-text-muted">Last Maintenance</dt><dd className="text-celeste-text-primary">{formatRelativeTime(last_maintenance)}</dd></>}
-              {next_maintenance && <><dt className="text-celeste-text-muted">Next Maintenance</dt><dd className="text-celeste-text-primary">{formatRelativeTime(next_maintenance)}</dd></>}
+              {serial_number && <><dt className="text-txt-tertiary">Serial Number</dt><dd className="text-txt-primary">{serial_number}</dd></>}
+              {installation_date && <><dt className="text-txt-tertiary">Installed</dt><dd className="text-txt-primary">{formatRelativeTime(installation_date)}</dd></>}
+              {last_maintenance && <><dt className="text-txt-tertiary">Last Maintenance</dt><dd className="text-txt-primary">{formatRelativeTime(last_maintenance)}</dd></>}
+              {next_maintenance && <><dt className="text-txt-tertiary">Next Maintenance</dt><dd className="text-txt-primary">{formatRelativeTime(next_maintenance)}</dd></>}
             </dl>
           </SectionContainer>
         </div>

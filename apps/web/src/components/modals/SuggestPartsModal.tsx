@@ -120,7 +120,7 @@ export function SuggestPartsModal({
       case 'OUT_OF_STOCK':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <Package className="h-4 w-4 text-celeste-text-muted" />;
+        return <Package className="h-4 w-4 text-txt-tertiary" />;
     }
   };
 
@@ -133,7 +133,7 @@ export function SuggestPartsModal({
       case 'OUT_OF_STOCK':
         return 'bg-red-50 border-red-200';
       default:
-        return 'bg-celeste-bg-primary border-celeste-border';
+        return 'bg-surface-primary border-surface-border';
     }
   };
 
@@ -155,7 +155,7 @@ export function SuggestPartsModal({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-celeste-accent" />
+            <Package className="h-5 w-5 text-brand-interactive" />
             Suggested Parts
           </DialogTitle>
           <DialogDescription>
@@ -167,8 +167,8 @@ export function SuggestPartsModal({
 
         {isLoading && parts.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
-            <span className="ml-3 text-celeste-text-secondary">Loading suggestions...</span>
+            <Loader2 className="h-8 w-8 animate-spin text-brand-interactive" />
+            <span className="ml-3 text-txt-secondary">Loading suggestions...</span>
           </div>
         )}
 
@@ -186,8 +186,8 @@ export function SuggestPartsModal({
 
         {/* Fault Code Info */}
         {faultCode && (
-          <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
-            <p className="text-sm text-celeste-accent">
+          <div className="p-3 bg-brand-interactive/10 border border-brand-interactive/30 rounded-lg">
+            <p className="text-sm text-brand-interactive">
               <span className="font-medium">Fault Code:</span> {faultCode}
             </p>
           </div>
@@ -195,18 +195,18 @@ export function SuggestPartsModal({
 
         {/* Summary */}
         {summary && (
-          <div className="grid grid-cols-3 gap-3 p-3 bg-celeste-bg-primary rounded-lg">
+          <div className="grid grid-cols-3 gap-3 p-3 bg-surface-primary rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-celeste-black">{summary.total_suggested}</div>
-              <div className="text-xs text-celeste-text-disabled">Total Parts</div>
+              <div className="text-2xl font-bold text-txt-primary">{summary.total_suggested}</div>
+              <div className="text-xs text-txt-tertiary">Total Parts</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{summary.available}</div>
-              <div className="text-xs text-celeste-text-disabled">Available</div>
+              <div className="text-xs text-txt-tertiary">Available</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">{summary.unavailable}</div>
-              <div className="text-xs text-celeste-text-disabled">Need to Order</div>
+              <div className="text-xs text-txt-tertiary">Need to Order</div>
             </div>
           </div>
         )}
@@ -223,16 +223,16 @@ export function SuggestPartsModal({
                   <div className="flex items-start gap-2">
                     {getStockStatusIcon(part.stock_status)}
                     <div>
-                      <h4 className="font-medium text-celeste-black">
+                      <h4 className="font-medium text-txt-primary">
                         {part.name || part.canonical_name || 'Unknown Part'}
                       </h4>
                       {part.part_number && (
-                        <p className="text-sm text-celeste-text-secondary mt-0.5">
+                        <p className="text-sm text-txt-secondary mt-0.5">
                           P/N: {part.part_number}
                         </p>
                       )}
                       {part.description && (
-                        <p className="text-sm text-celeste-text-disabled mt-1 line-clamp-2">
+                        <p className="text-sm text-txt-tertiary mt-1 line-clamp-2">
                           {part.description}
                         </p>
                       )}
@@ -246,7 +246,7 @@ export function SuggestPartsModal({
                         ? 'bg-yellow-100 text-yellow-700'
                         : part.stock_status === 'OUT_OF_STOCK'
                         ? 'bg-red-100 text-red-700'
-                        : 'bg-celeste-bg-secondary text-celeste-text-secondary'
+                        : 'bg-surface-elevated text-txt-secondary'
                     }`}
                   >
                     {getStockStatusLabel(part.stock_status)}
@@ -259,8 +259,8 @@ export function SuggestPartsModal({
 
         {/* No parts */}
         {!isLoading && !error && parts.length === 0 && (
-          <div className="text-center py-8 text-celeste-text-disabled">
-            <Package className="h-12 w-12 mx-auto mb-3 text-celeste-border" />
+          <div className="text-center py-8 text-txt-tertiary">
+            <Package className="h-12 w-12 mx-auto mb-3 text-surface-border" />
             <p>No parts suggestions available</p>
             <p className="text-sm mt-1">This fault may not have associated parts in the system</p>
           </div>

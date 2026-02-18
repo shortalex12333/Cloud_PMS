@@ -58,7 +58,7 @@ export default function DocumentExpiryModule({
       collapsedContent={
         <div className="flex items-center gap-2">
           <span className={cn(
-            'px-2 py-0.5 rounded-full text-celeste-xs font-medium',
+            'px-2 py-0.5 rounded-full text-xs font-medium',
             hasCritical ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                          'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
           )}>
@@ -114,7 +114,7 @@ export default function DocumentExpiryModule({
           <div className={cn(
             'mt-3 px-3 py-2 rounded-lg',
             'bg-zinc-100 dark:bg-zinc-800',
-            'text-celeste-xs text-zinc-600 dark:text-zinc-400'
+            'text-xs text-zinc-600 dark:text-zinc-400'
           )}>
             {stats.valid} of {stats.total} documents valid
           </div>
@@ -127,9 +127,9 @@ export default function DocumentExpiryModule({
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-celeste-xs font-medium',
-              'text-celeste-accent hover:text-celeste-accent-hover',
-              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
+              'text-xs font-medium',
+              'text-brand-interactive hover:text-brand-hover',
+              'hover:bg-brand-interactive/10 dark:hover:bg-brand-interactive/10',
               'transition-colors'
             )}>
               View all →

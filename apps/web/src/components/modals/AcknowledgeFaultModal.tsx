@@ -93,7 +93,7 @@ export function AcknowledgeFaultModal({
       case 'medium':
         return 'text-yellow-500';
       default:
-        return 'text-celeste-accent';
+        return 'text-brand-interactive';
     }
   };
 

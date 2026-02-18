@@ -94,7 +94,7 @@ export default function EmailSituationView({
           <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-purple-50 dark:bg-purple-900/20">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-500 rounded-lg">
-                <Mail className="h-5 w-5 text-celeste-text-title" />
+                <Mail className="h-5 w-5 text-txt-primary" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">

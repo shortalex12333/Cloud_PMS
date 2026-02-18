@@ -178,7 +178,7 @@ export function CompleteWorkOrderModal({
       case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-300';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return 'text-txt-secondary bg-surface-primary border-surface-border';
     }
   };
 
@@ -197,12 +197,12 @@ export function CompleteWorkOrderModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Work Order Context */}
-          <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
+          <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
             <div className="flex items-start gap-3">
-              <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
+              <Wrench className="h-5 w-5 text-brand-interactive mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm text-celeste-accent">
+                <h3 className="font-semibold text-brand-interactive">{context.work_order_title}</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm text-brand-interactive">
                   <p>
                     <span className="font-medium">ID:</span> {context.work_order_id.slice(0, 8)}
                   </p>
@@ -277,8 +277,8 @@ export function CompleteWorkOrderModal({
             {/* Time Variance Warning */}
             {context.estimated_hours && actualHours > 0 && (
               <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-celeste-text-disabled" />
-                <span className="text-celeste-text-secondary">
+                <Clock className="h-4 w-4 text-txt-tertiary" />
+                <span className="text-txt-secondary">
                   Estimated: {context.estimated_hours}h | Actual: {actualHours}h
                 </span>
                 <span
@@ -325,8 +325,8 @@ export function CompleteWorkOrderModal({
           </div>
 
           {/* Quality & Documentation Checklist */}
-          <div className="space-y-3 p-4 border border-celeste-border rounded-lg bg-celeste-bg-primary">
-            <h3 className="font-semibold text-celeste-black flex items-center gap-2">
+          <div className="space-y-3 p-4 border border-surface-border rounded-lg bg-surface-primary">
+            <h3 className="font-semibold text-txt-primary flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Required Checks
             </h3>

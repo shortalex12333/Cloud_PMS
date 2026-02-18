@@ -129,7 +129,7 @@ export function TimeRangeFilter({
   return (
     <div className="flex items-end gap-2">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="text-xs text-txt-tertiary">
           <Calendar className="h-3 w-3 inline mr-1" />
           Date Range
         </Label>
@@ -173,7 +173,7 @@ export function TimeRangeFilter({
                 className="w-[140px] text-xs"
               />
             </div>
-            <span className="text-muted-foreground text-xs">to</span>
+            <span className="text-txt-tertiary text-xs">to</span>
             <div>
               <Input
                 type="date"

@@ -123,7 +123,7 @@ export function ReportFaultModal({
       case 'low':
         return 'text-green-700 bg-green-50 border-green-300';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return 'text-txt-secondary bg-surface-primary border-surface-border';
     }
   };
 
@@ -144,8 +144,8 @@ export function ReportFaultModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
-            <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">
-              <p className="text-sm font-medium text-celeste-accent">
+            <div className="p-3 bg-brand-interactive/5 border border-brand-interactive/20 rounded-md">
+              <p className="text-sm font-medium text-brand-interactive">
                 Equipment: {context.equipment_name}
               </p>
             </div>
@@ -182,7 +182,7 @@ export function ReportFaultModal({
             {errors.description && (
               <p className="text-sm text-red-600">{errors.description.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-txt-tertiary">
               Include details like when it started, frequency, conditions, etc.
             </p>
           </div>
@@ -251,7 +251,7 @@ export function ReportFaultModal({
           </div>
 
           {/* Create Work Order Option */}
-          <div className="flex items-center space-x-2 p-3 bg-celeste-bg-primary rounded-md">
+          <div className="flex items-center space-x-2 p-3 bg-surface-primary rounded-md">
             <Checkbox
               id="create_work_order"
               checked={createWorkOrder}

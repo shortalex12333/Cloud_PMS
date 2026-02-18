@@ -129,7 +129,7 @@ export function EditPartQuantityModal({
   const getChangeColor = () => {
     if (isIncrease) return 'text-green-700';
     if (isDecrease) return 'text-orange-700';
-    return 'text-celeste-text-secondary';
+    return 'text-txt-secondary';
   };
 
   return (
@@ -137,7 +137,7 @@ export function EditPartQuantityModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-celeste-accent" />
+            <FileText className="h-5 w-5 text-brand-interactive" />
             Adjust Stock Quantity
           </DialogTitle>
           <DialogDescription>
@@ -147,20 +147,20 @@ export function EditPartQuantityModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
-          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
-            <h3 className="font-semibold text-celeste-accent flex items-center gap-2">
+          <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg space-y-2">
+            <h3 className="font-semibold text-brand-interactive flex items-center gap-2">
               <Package className="h-4 w-4" />
               {context.part_name}
             </h3>
-            <p className="text-sm text-celeste-accent">P/N: {context.part_number}</p>
-            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
+            <p className="text-sm text-brand-interactive">P/N: {context.part_number}</p>
+            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-brand-interactive/20">
               <div>
-                <p className="text-xs text-celeste-accent">Min Stock Level</p>
-                <p className="text-lg font-bold text-celeste-accent">{context.min_stock_level}</p>
+                <p className="text-xs text-brand-interactive">Min Stock Level</p>
+                <p className="text-lg font-bold text-brand-interactive">{context.min_stock_level}</p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">Current Stock</p>
-                <p className="text-lg font-bold text-celeste-accent">{context.current_quantity}</p>
+                <p className="text-xs text-brand-interactive">Current Stock</p>
+                <p className="text-lg font-bold text-brand-interactive">{context.current_quantity}</p>
               </div>
             </div>
           </div>
@@ -196,7 +196,7 @@ export function EditPartQuantityModal({
                 type="number"
                 {...register('old_quantity')}
                 readOnly
-                className="bg-celeste-bg-secondary cursor-not-allowed"
+                className="bg-surface-elevated cursor-not-allowed"
               />
             </div>
 
@@ -225,7 +225,7 @@ export function EditPartQuantityModal({
                 ? 'bg-red-50 border-red-300'
                 : willBeLowStock
                 ? 'bg-orange-50 border-orange-300'
-                : 'bg-celeste-accent-subtle border-celeste-accent-line'
+                : 'bg-brand-interactive/10 border-brand-interactive/20'
             }`}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -289,7 +289,7 @@ export function EditPartQuantityModal({
             {errors.adjustment_reason && (
               <p className="text-sm text-red-600">{errors.adjustment_reason.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-txt-tertiary">
               This reason will be permanently recorded in the audit log with MEDIUM severity.
             </p>
           </div>

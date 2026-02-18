@@ -54,7 +54,7 @@ export function ConfirmationDialog({
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
             {destructive && (
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <AlertTriangle className="h-5 w-5 text-status-critical" />
             )}
             <AlertDialogTitle>{title}</AlertDialogTitle>
           </div>
@@ -67,7 +67,7 @@ export function ConfirmationDialog({
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isLoading}
-            className={destructive ? 'bg-destructive hover:bg-destructive/90' : ''}
+            className={destructive ? 'bg-status-critical hover:bg-status-critical/90' : ''}
           >
             {isLoading ? 'Processing...' : confirmLabel}
           </AlertDialogAction>

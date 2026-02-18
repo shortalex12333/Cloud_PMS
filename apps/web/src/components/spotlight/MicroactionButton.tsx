@@ -46,9 +46,9 @@ interface MicroactionButtonProps {
 // ============================================================================
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-6 min-w-6 px-1.5 text-celeste-xs gap-1',
-  md: 'h-7 min-w-7 px-2 text-celeste-sm gap-1.5',
-  lg: 'h-8 min-w-8 px-2.5 text-celeste-base gap-1.5',
+  sm: 'h-6 min-w-6 px-1.5 text-xs gap-1',
+  md: 'h-7 min-w-7 px-2 text-sm gap-1.5',
+  lg: 'h-8 min-w-8 px-2.5 text-base gap-1.5',
 };
 
 const iconSizes: Record<ButtonSize, number> = {
@@ -63,16 +63,16 @@ const iconSizes: Record<ButtonSize, number> = {
 
 const variantClasses = {
   default: cn(
-    'bg-celeste-bg-tertiary',
-    'hover:bg-celeste-border',
-    'active:bg-celeste-text-disabled',
-    'text-celeste-text-secondary',
-    'border border-celeste-border-subtle'
+    'bg-surface-hover',
+    'hover:bg-surface-active',
+    'active:bg-surface-border',
+    'text-txt-secondary',
+    'border border-surface-border'
   ),
   primary: cn(
-    'bg-celeste-blue hover:bg-celeste-blue-secondary active:bg-celeste-blue',
-    'text-celeste-white',
-    'border border-celeste-blue'
+    'bg-brand-interactive hover:bg-brand-hover active:bg-brand-interactive',
+    'text-white',
+    'border border-brand-interactive'
   ),
   danger: cn(
     'bg-restricted-red/10 hover:bg-restricted-red/20 active:bg-restricted-red/30',
@@ -129,7 +129,7 @@ export default function MicroactionButton({
         'hover:shadow-celeste-md',
         'active:shadow-none',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        'focus:outline-none focus:ring-2 focus:ring-celeste-blue/40',
+        'focus:outline-none focus:ring-2 focus:ring-brand-interactive/40',
         sizeClasses[size],
         variantClasses[effectiveVariant],
         className
@@ -210,8 +210,8 @@ export function MicroactionGroup({
               className={cn(
                 'absolute right-0 top-full z-50',
                 'mt-1 p-1 rounded-celeste-md',
-                'bg-celeste-bg-secondary',
-                'border border-celeste-border',
+                'bg-surface-elevated',
+                'border border-surface-border',
                 'shadow-celeste-lg',
                 'min-w-[140px]'
               )}
@@ -230,13 +230,13 @@ export function MicroactionGroup({
                     className={cn(
                       'w-full flex items-center gap-2',
                       'px-2 py-1.5 rounded-celeste-sm',
-                      'text-left text-celeste-base',
-                      'text-celeste-text-primary',
-                      'hover:bg-celeste-bg-tertiary',
+                      'text-left text-base',
+                      'text-txt-primary',
+                      'hover:bg-surface-hover',
                       'transition-colors duration-celeste-fast'
                     )}
                   >
-                    <Icon size={14} className="text-celeste-text-muted" />
+                    <Icon size={14} className="text-txt-tertiary" />
                     <span>{meta?.label || action}</span>
                   </button>
                 );

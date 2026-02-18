@@ -423,7 +423,7 @@ export default function DocumentSituationView({
         {/* Left: Back to Search */}
         <button
           onClick={onClose}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-celeste-text-title hover:bg-celeste-surface transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-primary hover:bg-surface-hover transition-colors"
         >
           <X className="w-4 h-4" />
           <span className="text-sm font-medium">Back to Search</span>
@@ -432,7 +432,7 @@ export default function DocumentSituationView({
         {/* Center: Document Title */}
         <div className="flex-1 flex items-center justify-center gap-2 mx-4">
           <FileText className="w-4 h-4 text-txt-secondary" />
-          <h1 className="text-sm font-medium text-celeste-text-title truncate max-w-md">
+          <h1 className="text-sm font-medium text-txt-primary truncate max-w-md">
             {documentTitle}
           </h1>
         </div>
@@ -445,7 +445,7 @@ export default function DocumentSituationView({
               setShowFindDialog(true);
               document.execCommand('find');
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
             title="Find in document (Cmd+F)"
           >
             <Search className="w-4 h-4" />
@@ -455,7 +455,7 @@ export default function DocumentSituationView({
           {/* Reload */}
           <button
             onClick={handleReload}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
             title="Reload document"
           >
             <RefreshCw className="w-4 h-4" />
@@ -465,7 +465,7 @@ export default function DocumentSituationView({
           {/* Download */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
             title="Download document"
           >
             <Download className="w-4 h-4" />
@@ -475,7 +475,7 @@ export default function DocumentSituationView({
           {showAddToHandover && (
             <button
               onClick={handleAddToHandover}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-celeste-blue text-celeste-text-title hover:bg-celeste-blue-secondary transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-celeste-blue text-txt-primary hover:bg-celeste-blue-secondary transition-colors"
               title="Add to handover"
             >
               <Plus className="w-4 h-4" />
@@ -502,13 +502,13 @@ export default function DocumentSituationView({
               <div className="flex gap-3">
                 <button
                   onClick={handleReload}
-                  className="flex-1 px-4 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-celeste-text-title text-sm transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-txt-primary text-sm transition-colors font-medium"
                 >
                   Resume
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-2 bg-celeste-surface hover:bg-celeste-surface-hover rounded-md text-celeste-text-title text-sm transition-colors"
+                  className="flex-1 px-4 py-2 bg-surface-elevated hover:bg-surface-hover-hover rounded-md text-txt-primary text-sm transition-colors"
                 >
                   Back to Search
                 </button>
@@ -543,7 +543,7 @@ export default function DocumentSituationView({
             'shadow-celeste-lg animate-in fade-in slide-in-from-top-2 duration-200'
           )}
         >
-          <p className="text-sm text-celeste-text-title">
+          <p className="text-sm text-txt-primary">
             <kbd className="px-2 py-1 bg-surface-active rounded text-xs mr-1">Cmd</kbd>
             <span className="text-txt-secondary">+</span>
             <kbd className="px-2 py-1 bg-surface-active rounded text-xs ml-1">F</kbd>

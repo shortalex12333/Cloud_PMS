@@ -15,34 +15,34 @@ import { cn } from '@/lib/utils';
  * - Smooth 150ms transitions
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-medium ring-offset-background transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-celeste-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-medium ring-offset-background transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         // Default: Transparent with border (per brand spec)
         default:
-          'bg-transparent border border-celeste-border text-celeste-text-secondary hover:text-celeste-text-primary hover:bg-celeste-accent-soft dark:border-celeste-border dark:text-celeste-text-secondary dark:hover:text-celeste-text-primary',
+          'bg-transparent border border-surface-border text-txt-secondary hover:text-txt-primary hover:bg-brand-interactive-soft dark:border-surface-border dark:text-txt-secondary dark:hover:text-txt-primary',
         // Accent: Maritime teal - primary CTA
         accent:
-          'bg-celeste-accent text-celeste-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-celeste-accent-hover hover:shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
+          'bg-brand-interactive text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-brand-interactive-hover hover:shadow-[0_2px_4px_rgba(0,0,0,0.12)]',
         // Destructive: Muted red - irreversible actions only
         destructive:
-          'bg-restricted-red text-celeste-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-restricted-red/90',
+          'bg-status-critical text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-status-critical/90',
         // Outline: Border emphasis
         outline:
-          'border border-celeste-border-light dark:border-celeste-border bg-celeste-white dark:bg-celeste-bg-primary hover:bg-celeste-bg-secondary-light dark:hover:bg-celeste-bg-secondary text-celeste-text-primary-light dark:text-celeste-text-primary',
+          'border border-surface-border dark:border-surface-border bg-surface-primary dark:bg-surface-primary hover:bg-surface-hover dark:hover:bg-surface-hover text-txt-primary dark:text-txt-primary',
         // Secondary: Subtle background
         secondary:
-          'bg-celeste-bg-secondary-light dark:bg-celeste-bg-secondary text-celeste-text-primary-light dark:text-celeste-text-primary hover:bg-celeste-bg-tertiary-light dark:hover:bg-celeste-bg-tertiary',
+          'bg-surface-hover dark:bg-surface-hover text-txt-primary dark:text-txt-primary hover:bg-surface-elevated dark:hover:bg-surface-elevated',
         // Ghost: No background until hover
         ghost:
-          'hover:bg-celeste-accent-soft text-celeste-text-secondary hover:text-celeste-text-primary dark:text-celeste-text-secondary dark:hover:text-celeste-text-primary',
+          'hover:bg-brand-interactive-soft text-txt-secondary hover:text-txt-primary dark:text-txt-secondary dark:hover:text-txt-primary',
         // Link: Text only with underline
         link:
-          'text-celeste-accent underline-offset-4 hover:underline',
+          'text-brand-interactive underline-offset-4 hover:underline',
         // Warning: For cautionary actions
         warning:
-          'bg-transparent border border-restricted-red text-restricted-red hover:bg-restricted-red/10',
+          'bg-transparent border border-status-critical text-status-critical hover:bg-status-critical/10',
       },
       size: {
         default: 'h-10 px-4 py-2 rounded-[8px]',

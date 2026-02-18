@@ -218,7 +218,7 @@ export function LinkPartsToWorkOrderModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-celeste-accent" />
+            <Package className="h-5 w-5 text-brand-interactive" />
             Link Parts to Work Order
           </DialogTitle>
           <DialogDescription>
@@ -228,12 +228,12 @@ export function LinkPartsToWorkOrderModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Work Order Information */}
-          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
+          <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
             <div className="flex items-start gap-3">
-              <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
+              <Wrench className="h-5 w-5 text-brand-interactive mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
-                <p className="text-sm text-celeste-accent mt-1">
+                <h3 className="font-semibold text-brand-interactive">{context.work_order_title}</h3>
+                <p className="text-sm text-brand-interactive mt-1">
                   Work Order ID: {context.work_order_id.slice(0, 8)}
                   {context.work_order_type && (
                     <span className="ml-2">
@@ -269,9 +269,9 @@ export function LinkPartsToWorkOrderModal({
 
             {/* Part Selector (shown when Add Part is clicked) */}
             {showPartSelector && (
-              <div className="p-4 border border-celeste-accent-line bg-celeste-accent-subtle rounded-lg space-y-3">
+              <div className="p-4 border border-brand-interactive/20 bg-brand-interactive/10 rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-celeste-accent">Search Parts</Label>
+                  <Label className="text-brand-primary">Search Parts</Label>
                   <Button
                     type="button"
                     variant="ghost"
@@ -283,7 +283,7 @@ export function LinkPartsToWorkOrderModal({
                 </div>
 
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -292,13 +292,13 @@ export function LinkPartsToWorkOrderModal({
                   />
                 </div>
 
-                <div className="border border-celeste-border rounded-lg max-h-60 overflow-y-auto bg-white">
+                <div className="border border-surface-border rounded-lg max-h-60 overflow-y-auto bg-white">
                   {filteredParts.length === 0 ? (
-                    <div className="p-4 text-center text-celeste-text-disabled">
+                    <div className="p-4 text-center text-txt-tertiary">
                       <p className="text-sm">No parts found</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-celeste-border">
+                    <div className="divide-y divide-surface-border">
                       {filteredParts.map((part) => {
                         const isSelected = selectedPartIds.includes(part.id);
                         const isLowStock = part.stock_quantity < part.min_stock_level;
@@ -307,17 +307,17 @@ export function LinkPartsToWorkOrderModal({
                         return (
                           <div
                             key={part.id}
-                            className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
+                            className={`p-3 cursor-pointer hover:bg-surface-primary transition-colors ${
                               isSelected ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                             onClick={() => !isSelected && addPart(part)}
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex items-start gap-3 flex-1">
-                                <Package className="h-5 w-5 text-celeste-text-secondary mt-1" />
+                                <Package className="h-5 w-5 text-txt-secondary mt-1" />
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="font-medium text-celeste-black">{part.part_name}</h4>
-                                  <p className="text-sm text-celeste-text-secondary">P/N: {part.part_number}</p>
+                                  <h4 className="font-medium text-txt-primary">{part.part_name}</h4>
+                                  <p className="text-sm text-txt-secondary">P/N: {part.part_number}</p>
                                   <div className="flex items-center gap-3 mt-1">
                                     <p
                                       className={`text-sm font-medium ${
@@ -330,7 +330,7 @@ export function LinkPartsToWorkOrderModal({
                                     >
                                       Stock: {part.stock_quantity}
                                     </p>
-                                    <p className="text-xs text-celeste-text-disabled">{part.location}</p>
+                                    <p className="text-xs text-txt-tertiary">{part.location}</p>
                                   </div>
                                 </div>
                               </div>
@@ -349,10 +349,10 @@ export function LinkPartsToWorkOrderModal({
 
             {/* Selected Parts with Quantities */}
             {fields.length === 0 ? (
-              <div className="p-8 text-center text-celeste-text-disabled border border-dashed border-celeste-border rounded-lg">
-                <Package className="h-12 w-12 mx-auto mb-2 text-celeste-border" />
+              <div className="p-8 text-center text-txt-tertiary border border-dashed border-surface-border rounded-lg">
+                <Package className="h-12 w-12 mx-auto mb-2 text-surface-border" />
                 <p className="text-sm">No parts selected yet</p>
-                <p className="text-xs text-celeste-text-muted mt-1">Click "Add Part" to select parts</p>
+                <p className="text-xs text-txt-tertiary mt-1">Click "Add Part" to select parts</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -368,15 +368,15 @@ export function LinkPartsToWorkOrderModal({
                   return (
                     <div
                       key={field.id}
-                      className="p-3 border border-celeste-border rounded-lg bg-celeste-bg-primary space-y-3"
+                      className="p-3 border border-surface-border rounded-lg bg-surface-primary space-y-3"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
-                          <Package className="h-5 w-5 text-celeste-text-secondary mt-1" />
+                          <Package className="h-5 w-5 text-txt-secondary mt-1" />
                           <div className="flex-1">
-                            <h4 className="font-medium text-celeste-black">{part.part_name}</h4>
-                            <p className="text-sm text-celeste-text-secondary">P/N: {part.part_number}</p>
-                            <p className="text-xs text-celeste-text-disabled mt-1">{part.location}</p>
+                            <h4 className="font-medium text-txt-primary">{part.part_name}</h4>
+                            <p className="text-sm text-txt-secondary">P/N: {part.part_number}</p>
+                            <p className="text-xs text-txt-tertiary mt-1">{part.location}</p>
                           </div>
                         </div>
                         <Button
@@ -427,7 +427,7 @@ export function LinkPartsToWorkOrderModal({
                                   ? 'text-red-700'
                                   : willBeLowStock
                                   ? 'text-orange-700'
-                                  : 'text-celeste-text-secondary'
+                                  : 'text-txt-secondary'
                               }`}
                             >
                               {Math.max(0, part.stock_quantity - quantityRequired)}

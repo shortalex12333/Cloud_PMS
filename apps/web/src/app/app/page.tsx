@@ -36,7 +36,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 // Inner component that uses the SurfaceContext
 function SurfaceContent() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-celeste-black via-celeste-bg-tertiary to-celeste-black">
+    <main className="min-h-screen bg-gradient-to-br from-surface-base via-surface-elevated to-surface-base">
       {/* Deep Link Handler - processes URL query params for E2E testing */}
       <Suspense fallback={null}>
         <DeepLinkHandler />
@@ -47,14 +47,14 @@ function SurfaceContent() {
         {/* Center - Spotlight Search (email inline beneath search bar per UX doctrine) */}
         <div className="flex-1 flex items-start justify-center pt-[15vh]">
           <div className="w-full max-w-2xl px-4">
-            <Suspense fallback={<div className="h-14 bg-celeste-bg-tertiary/50 rounded-2xl" />}>
+            <Suspense fallback={<div className="h-14 bg-surface-elevated/50 rounded-2xl" />}>
               <SpotlightSearch />
             </Suspense>
           </div>
         </div>
 
         {/* Context Panel - slides from right */}
-        <Suspense fallback={<div className="w-96 bg-celeste-bg-tertiary/50" />}>
+        <Suspense fallback={<div className="w-96 bg-surface-elevated/50" />}>
           <ContextPanel />
         </Suspense>
 

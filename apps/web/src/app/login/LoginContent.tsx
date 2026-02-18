@@ -103,7 +103,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-interactive animate-spin" />
           <p className="text-sm text-txt-secondary">Loading...</p>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-interactive animate-spin" />
           <p className="text-sm text-txt-secondary">Loading your account...</p>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-interactive animate-spin" />
           <p className="text-sm text-txt-secondary">Redirecting...</p>
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function LoginContent() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-interactive animate-spin" />
           <p className="text-sm text-txt-secondary">Connecting to server...</p>
           <p className="text-xs text-txt-tertiary">Retrying...</p>
         </div>
@@ -246,7 +246,7 @@ export default function LoginContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[44px] rounded-lg bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-base font-medium text-white transition-colors flex items-center justify-center gap-2"
+            className="w-full h-[44px] rounded-lg bg-brand-interactive hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-base font-medium text-white transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

@@ -36,26 +36,26 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
 
   const getStockStatus = () => {
     if (isOutOfStock) {
-      return { label: 'Out of Stock', color: 'text-red-700 bg-red-50 border-red-200' };
+      return { label: 'Out of Stock', color: 'text-status-critical bg-status-critical/10 border-status-critical/30' };
     }
     if (isLowStock) {
-      return { label: 'Low Stock', color: 'text-orange-700 bg-orange-50 border-orange-200' };
+      return { label: 'Low Stock', color: 'text-status-warning bg-status-warning/10 border-status-warning/30' };
     }
-    return { label: 'In Stock', color: 'text-green-700 bg-green-50 border-green-200' };
+    return { label: 'In Stock', color: 'text-status-success bg-status-success/10 border-status-success/30' };
   };
 
   const stockStatus = getStockStatus();
 
   return (
     <div
-      className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+      className="bg-surface-primary border border-surface-border rounded-lg p-4 hover:bg-surface-hover transition-colors"
       data-testid={entityType === 'inventory' ? 'inventory-card' : 'part-card'}
       data-entity-type={entityType}
       data-entity-id={part.id}
     >
       <div className="flex items-start gap-3">
         {/* Part Icon */}
-        <div className={cn('mt-1', isOutOfStock ? 'text-red-600' : 'text-primary')}>
+        <div className={cn('mt-1', isOutOfStock ? 'text-status-critical' : 'text-brand-interactive')}>
           {isOutOfStock ? (
             <AlertTriangle className="h-5 w-5" />
           ) : (
@@ -67,7 +67,7 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
         <div className="flex-1 min-w-0">
           {/* Name & Stock Status */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h3 className="font-medium text-foreground">{part.part_name}</h3>
+            <h3 className="font-medium text-txt-primary">{part.part_name}</h3>
             <span
               className={cn(
                 'text-xs px-2 py-0.5 rounded-full border font-medium uppercase',
@@ -79,13 +79,13 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
           </div>
 
           {/* Part Number */}
-          <p className="text-sm text-muted-foreground mb-1">
+          <p className="text-sm text-txt-tertiary mb-1">
             <span className="font-medium">P/N:</span> {part.part_number}
           </p>
 
           {/* Category */}
           {part.category && (
-            <p className="text-sm text-muted-foreground mb-2">
+            <p className="text-sm text-txt-tertiary mb-2">
               <span className="font-medium">Category:</span> {part.category}
             </p>
           )}
@@ -95,14 +95,14 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
             <div className="text-sm">
               <span className="font-medium">Stock:</span>{' '}
               <span className={cn(
-                isLowStock && 'text-orange-600 font-bold',
-                isOutOfStock && 'text-red-600 font-bold'
+                isLowStock && 'text-status-warning font-bold',
+                isOutOfStock && 'text-status-critical font-bold'
               )}>
                 {part.stock_quantity}
               </span>
-              {part.unit && <span className="text-muted-foreground ml-1">{part.unit}</span>}
+              {part.unit && <span className="text-txt-tertiary ml-1">{part.unit}</span>}
               {' '}
-              <span className="text-muted-foreground">
+              <span className="text-txt-tertiary">
                 (min: {part.min_stock_level})
               </span>
             </div>
@@ -110,7 +110,7 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
 
           {/* Last Counted (Inventory-specific info) */}
           {part.last_counted_at && (
-            <div className="text-xs text-muted-foreground mb-2">
+            <div className="text-xs text-txt-tertiary mb-2">
               <span className="font-medium">Last counted:</span>{' '}
               {new Date(part.last_counted_at).toLocaleDateString()}{' '}
               {part.last_counted_by && <span>by {part.last_counted_by}</span>}
@@ -118,13 +118,13 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
           )}
 
           {/* Location */}
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+          <div className="flex items-center gap-1.5 text-sm text-txt-tertiary mb-2">
             <MapPin className="h-4 w-4" />
             <span>{part.location}</span>
           </div>
 
           {/* Cost & Supplier */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+          <div className="flex items-center gap-4 text-xs text-txt-tertiary mb-3">
             {part.unit_cost && (
               <span className="font-medium">${part.unit_cost.toFixed(2)}/unit</span>
             )}

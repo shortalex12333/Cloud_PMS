@@ -83,7 +83,7 @@ export function QuantityFilter({
   return (
     <div className="flex items-end gap-2">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="text-xs text-txt-tertiary">
           <Hash className="h-3 w-3 inline mr-1" />
           {label}
         </Label>
@@ -124,7 +124,7 @@ export function QuantityFilter({
                 className="w-[80px]"
                 placeholder="Min"
               />
-              <span className="text-xs text-muted-foreground">and</span>
+              <span className="text-xs text-txt-tertiary">and</span>
               <Input
                 type="number"
                 min={min}

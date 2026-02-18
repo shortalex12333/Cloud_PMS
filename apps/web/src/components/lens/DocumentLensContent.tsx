@@ -117,7 +117,7 @@ export function DocumentLensContent({
         <div className="mt-6">
           <SectionContainer title="Preview" stickyTop={56}>
             {!url ? (
-              <p className="text-sm text-celeste-text-muted">No preview available.</p>
+              <p className="text-sm text-txt-tertiary">No preview available.</p>
             ) : isMedia ? (
               // Render media inline
               mime_type.startsWith('image/') ? (
@@ -143,7 +143,7 @@ export function DocumentLensContent({
             ) : (
               // Link to open in new tab
               <div className="p-4 bg-surface-secondary rounded-lg">
-                <p className="text-sm text-celeste-text-muted mb-3">
+                <p className="text-sm text-txt-tertiary mb-3">
                   This file type cannot be previewed inline.
                 </p>
                 {thumbnail_url && (
@@ -157,7 +157,7 @@ export function DocumentLensContent({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+                  className="text-brand-interactive hover:text-brand-hover text-sm"
                 >
                   Open in new tab →
                 </a>
@@ -169,7 +169,7 @@ export function DocumentLensContent({
         {description && (
           <div className="mt-6">
             <SectionContainer title="Description" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary">{description}</p>
+              <p className="text-sm text-txt-primary">{description}</p>
             </SectionContainer>
           </div>
         )}
@@ -177,20 +177,20 @@ export function DocumentLensContent({
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
             <dl className="grid grid-cols-2 gap-4 text-sm">
-              <dt className="text-celeste-text-muted">Filename</dt>
-              <dd className="text-celeste-text-primary break-all">{filename}</dd>
-              <dt className="text-celeste-text-muted">MIME Type</dt>
-              <dd className="text-celeste-text-primary">{mime_type}</dd>
+              <dt className="text-txt-tertiary">Filename</dt>
+              <dd className="text-txt-primary break-all">{filename}</dd>
+              <dt className="text-txt-tertiary">MIME Type</dt>
+              <dd className="text-txt-primary">{mime_type}</dd>
               {created_by && (
                 <>
-                  <dt className="text-celeste-text-muted">Uploaded By</dt>
-                  <dd className="text-celeste-text-primary">{created_by}</dd>
+                  <dt className="text-txt-tertiary">Uploaded By</dt>
+                  <dd className="text-txt-primary">{created_by}</dd>
                 </>
               )}
               {created_at && (
                 <>
-                  <dt className="text-celeste-text-muted">Upload Date</dt>
-                  <dd className="text-celeste-text-primary">{new Date(created_at).toLocaleString()}</dd>
+                  <dt className="text-txt-tertiary">Upload Date</dt>
+                  <dd className="text-txt-primary">{new Date(created_at).toLocaleString()}</dd>
                 </>
               )}
             </dl>

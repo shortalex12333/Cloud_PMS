@@ -52,25 +52,25 @@ export default function ResultCard({
     <div
       className={cn(
         'px-4 py-3 font-body',
-        'border-b border-celeste-border-subtle',
+        'border-b border-surface-border',
         'transition-colors duration-celeste-fast',
-        isSelected && 'bg-celeste-blue/10',
+        isSelected && 'bg-brand-interactive/10',
         className
       )}
     >
       {/* Header — what this thing is */}
-      <div className="text-celeste-md font-medium text-celeste-text-primary">
+      <div className="text-base font-medium text-txt-primary">
         {header}
       </div>
 
       {/* Body — the minimum useful truth */}
-      <div className="mt-1 text-celeste-base text-celeste-text-secondary leading-relaxed">
+      <div className="mt-1 text-base text-txt-secondary leading-relaxed">
         {body}
       </div>
 
       {/* Meta — optional secondary info */}
       {meta && (
-        <div className="mt-1 text-celeste-xs text-celeste-text-disabled">
+        <div className="mt-1 text-xs text-txt-tertiary">
           {meta}
         </div>
       )}
@@ -82,7 +82,7 @@ export default function ResultCard({
           {primaryAction && (
             <button
               onClick={primaryAction.onAction}
-              className="text-celeste-base text-celeste-text-muted hover:text-celeste-text-primary transition-colors"
+              className="text-base text-txt-tertiary hover:text-txt-primary transition-colors"
             >
               {primaryAction.label}
             </button>
@@ -93,7 +93,7 @@ export default function ResultCard({
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="p-1 text-celeste-text-disabled hover:text-celeste-text-muted transition-colors"
+                className="p-1 text-txt-tertiary hover:text-txt-secondary transition-colors"
                 aria-label="More actions"
               >
                 <ChevronDown className="w-4 h-4" />

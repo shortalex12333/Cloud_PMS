@@ -168,8 +168,8 @@ export default function ContextPanel() {
         {loading ? (
           <div className="flex items-center justify-center h-full" data-testid="context-panel-loading">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
-              <p className="text-celeste-text-muted text-sm">
+              <Loader2 className="w-8 h-8 text-brand-interactive animate-spin mx-auto mb-3" />
+              <p className="text-txt-tertiary text-sm">
                 Loading...
               </p>
             </div>
@@ -178,12 +178,12 @@ export default function ContextPanel() {
           <div className="flex items-center justify-center h-full" data-testid="context-panel-error">
             <div className="text-center">
               <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-              <p className="text-celeste-text-muted text-sm mb-3">
+              <p className="text-txt-tertiary text-sm mb-3">
                 {error}
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+                className="text-brand-interactive hover:text-brand-interactive-hover text-sm"
               >
                 Reload
               </button>
@@ -200,8 +200,8 @@ export default function ContextPanel() {
         ) : (
           <div className="flex items-center justify-center h-full" data-testid="context-panel-empty">
             <div className="text-center">
-              <AlertCircle className="w-8 h-8 text-celeste-text-secondary mx-auto mb-3" />
-              <p className="text-celeste-text-muted text-sm">
+              <AlertCircle className="w-8 h-8 text-txt-secondary mx-auto mb-3" />
+              <p className="text-txt-tertiary text-sm">
                 Select an item to view details
               </p>
             </div>

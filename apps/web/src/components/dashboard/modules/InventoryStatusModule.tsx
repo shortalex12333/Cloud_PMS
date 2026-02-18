@@ -62,7 +62,7 @@ export default function InventoryStatusModule({
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={stockHealth} status={overallStatus} />
-          <span className="text-celeste-xs text-zinc-500">{stockHealth}% stocked</span>
+          <span className="text-xs text-zinc-500">{stockHealth}% stocked</span>
         </div>
       }
       className={className}
@@ -81,7 +81,7 @@ export default function InventoryStatusModule({
           </div>
 
           {/* Critical items */}
-          <p className="text-celeste-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">
             Requires Attention
           </p>
           <div className="space-y-1">
@@ -118,7 +118,7 @@ export default function InventoryStatusModule({
             <div className={cn(
               'mt-3 px-3 py-2 rounded-lg',
               'bg-zinc-100 dark:bg-zinc-800',
-              'text-celeste-xs text-celeste-text-muted dark:text-celeste-text-muted'
+              'text-xs text-txt-tertiary dark:text-txt-tertiary'
             )}>
               {stats.pendingOrders} orders pending delivery
             </div>
@@ -133,9 +133,9 @@ export default function InventoryStatusModule({
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-celeste-xs font-medium',
-              'text-celeste-accent hover:text-celeste-accent-hover',
-              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
+              'text-xs font-medium',
+              'text-brand-interactive hover:text-brand-hover',
+              'hover:bg-brand-interactive/10 dark:hover:bg-brand-interactive/10',
               'transition-colors'
             )}>
               View inventory →

@@ -147,7 +147,7 @@ export default function AuthCallbackClient() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-base">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-celeste-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-12 h-12 border-4 border-brand-interactive border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white text-lg">{sessionSet ? 'Validating session...' : 'Completing sign in...'}</p>
         </div>
       </div>
@@ -165,7 +165,7 @@ export default function AuthCallbackClient() {
             </svg>
           </div>
           <p className="text-white text-lg">Sign in successful!</p>
-          <p className="text-celeste-text-muted text-sm mt-2">Redirecting...</p>
+          <p className="text-txt-tertiary text-sm mt-2">Redirecting...</p>
         </div>
       </div>
     );
@@ -181,10 +181,10 @@ export default function AuthCallbackClient() {
           </svg>
         </div>
         <p className="text-white text-lg mb-2">Authentication failed</p>
-        <p className="text-celeste-text-muted text-sm mb-4">{error}</p>
+        <p className="text-txt-tertiary text-sm mb-4">{error}</p>
         <a
           href="https://auth.celeste7.ai"
-          className="inline-block px-6 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-white transition-colors"
+          className="inline-block px-6 py-2 bg-brand-interactive hover:bg-brand-hover rounded-md text-white transition-colors"
         >
           Return to Login
         </a>

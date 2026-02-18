@@ -81,11 +81,11 @@ export function FilterBar({ activeFilters, onClearAll, children, className }: Fi
   const hasActiveFilters = displayFilters.length > 0;
 
   return (
-    <div className={cn('border rounded-lg p-4 mb-4 bg-card', className)}>
+    <div className={cn('border border-surface-border rounded-lg p-4 mb-4 bg-surface-primary', className)}>
       {/* Active Filter Badges */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-sm text-muted-foreground">Active filters:</span>
+          <span className="text-sm text-txt-tertiary">Active filters:</span>
           {displayFilters.map(([key, value]) => {
             const displayValue = formatFilterValue(key, value);
             if (!displayValue) return null;

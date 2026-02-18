@@ -61,9 +61,9 @@ export default function PredictiveRiskModule({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <Zap className="h-3 w-3 text-purple-500" />
-            <span className="text-celeste-xs text-zinc-500">AI-Powered Analysis</span>
+            <span className="text-xs text-zinc-500">AI-Powered Analysis</span>
           </div>
-          <span className="text-celeste-xs text-amber-500">
+          <span className="text-xs text-amber-500">
             {highRiskCount} high probability
           </span>
         </div>
@@ -80,18 +80,18 @@ export default function PredictiveRiskModule({
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-700/60">
             <div className="flex items-center gap-6">
               <div>
-                <p className="text-celeste-xs text-zinc-500 dark:text-zinc-400">Active Alerts</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">Active Alerts</p>
                 <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{activeAlerts}</p>
               </div>
               <div>
-                <p className="text-celeste-xs text-zinc-500 dark:text-zinc-400">High Priority</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">High Priority</p>
                 <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">{highRiskCount}</p>
               </div>
             </div>
             <div className={cn(
               'px-3 py-1.5 rounded-lg',
               'bg-purple-100 dark:bg-purple-900/30',
-              'text-celeste-xs font-medium text-purple-600 dark:text-purple-400'
+              'text-xs font-medium text-purple-600 dark:text-purple-400'
             )}>
               AI-Powered
             </div>
@@ -123,31 +123,31 @@ export default function PredictiveRiskModule({
                       'h-4 w-4',
                       risk.impact === 'critical' || risk.impact === 'high' ? 'text-red-500' :
                       risk.impact === 'medium' ? 'text-amber-500' :
-                      'text-celeste-text-muted'
+                      'text-txt-tertiary'
                     )} />
                   </div>
                   <span className={cn(
                     'text-xl font-bold tabular-nums',
                     risk.probability >= 80 ? 'text-red-500' :
                     risk.probability >= 60 ? 'text-amber-500' :
-                    'text-celeste-text-muted'
+                    'text-txt-tertiary'
                   )}>
                     {risk.probability}%
                   </span>
                 </div>
 
                 {/* Content */}
-                <h4 className="text-celeste-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+                <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
                   {risk.equipment}
                 </h4>
-                <p className="text-celeste-xs text-zinc-600 dark:text-zinc-400 mb-2">
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">
                   {risk.riskType}
                 </p>
 
                 {/* Timeframe */}
                 <div className="flex items-center gap-1.5 mb-3">
                   <Clock className="h-3 w-3 text-zinc-400" />
-                  <span className="text-celeste-xs text-zinc-500">
+                  <span className="text-xs text-zinc-500">
                     Expected: {risk.timeframe}
                   </span>
                 </div>
@@ -161,8 +161,8 @@ export default function PredictiveRiskModule({
 
                 {/* Action */}
                 <div className="mt-3 pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
-                  <p className="text-celeste-xs text-zinc-500 mb-1.5">Suggested:</p>
-                  <p className="text-celeste-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  <p className="text-xs text-zinc-500 mb-1.5">Suggested:</p>
+                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                     {risk.recommendation}
                   </p>
                 </div>
@@ -184,9 +184,9 @@ export default function PredictiveRiskModule({
             />
             <button className={cn(
               'ml-auto px-3 py-1.5 rounded-lg',
-              'text-celeste-xs font-medium',
-              'text-celeste-accent hover:text-celeste-accent-hover',
-              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
+              'text-xs font-medium',
+              'text-brand-interactive hover:text-brand-hover',
+              'hover:bg-brand-interactive/10 dark:hover:bg-brand-interactive/10',
               'transition-colors',
               'flex items-center gap-1'
             )}>

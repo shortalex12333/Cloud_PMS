@@ -119,7 +119,7 @@ export function LogPartUsageModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-celeste-accent" />
+            <Package className="h-5 w-5 text-brand-interactive" />
             Log Part Usage
           </DialogTitle>
           <DialogDescription>
@@ -130,31 +130,31 @@ export function LogPartUsageModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
-          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg space-y-2">
-            <h3 className="font-semibold text-celeste-accent flex items-center gap-2">
+          <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg space-y-2">
+            <h3 className="font-semibold text-brand-interactive flex items-center gap-2">
               <Package className="h-4 w-4" />
               {context.part_name}
             </h3>
-            <p className="text-sm text-celeste-accent">
+            <p className="text-sm text-brand-interactive">
               P/N: {context.part_number}
             </p>
 
             {/* Current Stock */}
-            <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
+            <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-brand-interactive/20">
               <div>
-                <p className="text-xs text-celeste-accent">Available</p>
-                <p className="text-lg font-bold text-celeste-accent">
+                <p className="text-xs text-brand-interactive">Available</p>
+                <p className="text-lg font-bold text-brand-interactive">
                   {context.current_stock}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">Min Level</p>
-                <p className="text-lg font-bold text-celeste-accent">
+                <p className="text-xs text-brand-interactive">Min Level</p>
+                <p className="text-lg font-bold text-brand-interactive">
                   {context.min_stock_level}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">After Usage</p>
+                <p className="text-xs text-brand-interactive">After Usage</p>
                 <p className={`text-lg font-bold ${
                   willBeOutOfStock
                     ? 'text-red-700'
@@ -170,8 +170,8 @@ export function LogPartUsageModal({
 
           {/* Work Order (if pre-selected) */}
           {context.work_order_title && (
-            <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-md">
-              <p className="text-sm font-medium text-celeste-black">
+            <div className="p-3 bg-surface-primary border border-surface-border rounded-md">
+              <p className="text-sm font-medium text-txt-primary">
                 Work Order: {context.work_order_title}
               </p>
             </div>

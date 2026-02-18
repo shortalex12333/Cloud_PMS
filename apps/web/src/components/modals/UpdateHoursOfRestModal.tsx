@@ -209,7 +209,7 @@ export function UpdateHoursOfRestModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-celeste-accent" />
+            <Clock className="h-5 w-5 text-brand-interactive" />
             Log Hours of Rest
           </DialogTitle>
           <DialogDescription>
@@ -249,7 +249,7 @@ export function UpdateHoursOfRestModal({
           {/* Record Date */}
           <div className="space-y-2">
             <Label htmlFor="record_date" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-celeste-text-disabled" />
+              <Calendar className="h-4 w-4 text-txt-tertiary" />
               Date *
             </Label>
             <Input
@@ -302,10 +302,10 @@ export function UpdateHoursOfRestModal({
 
             <div className="space-y-2">
               {restPeriods.map((period, index) => (
-                <div key={index} className="flex items-center gap-2 p-3 bg-celeste-bg-primary rounded-lg">
+                <div key={index} className="flex items-center gap-2 p-3 bg-surface-primary rounded-lg">
                   <div className="flex-1 grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="text-xs text-celeste-text-secondary">Start</Label>
+                      <Label className="text-xs text-txt-secondary">Start</Label>
                       <Input
                         type="time"
                         value={period.start}
@@ -314,7 +314,7 @@ export function UpdateHoursOfRestModal({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-celeste-text-secondary">End</Label>
+                      <Label className="text-xs text-txt-secondary">End</Label>
                       <Input
                         type="time"
                         value={period.end}
@@ -323,7 +323,7 @@ export function UpdateHoursOfRestModal({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-celeste-text-secondary">Hours</Label>
+                      <Label className="text-xs text-txt-secondary">Hours</Label>
                       <Input
                         type="number"
                         step="0.1"
@@ -352,11 +352,11 @@ export function UpdateHoursOfRestModal({
           </div>
 
           {/* Total Rest Hours (auto-calculated) */}
-          <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
+          <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-celeste-accent">Total Rest Hours</p>
-                <p className="text-xs text-celeste-accent">Auto-calculated from rest periods</p>
+                <p className="text-sm font-medium text-brand-interactive">Total Rest Hours</p>
+                <p className="text-xs text-brand-interactive">Auto-calculated from rest periods</p>
               </div>
               <p className={cn(
                 'text-3xl font-bold',
@@ -380,7 +380,7 @@ export function UpdateHoursOfRestModal({
             <Button
               type="submit"
               disabled={isLoading || restPeriods.length === 0}
-              className={!isCompliant ? 'bg-amber-600 hover:bg-amber-700' : 'bg-celeste-accent hover:bg-celeste-accent-hover'}
+              className={!isCompliant ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-interactive hover:bg-brand-interactive-hover'}
             >
               {isLoading ? (
                 <>

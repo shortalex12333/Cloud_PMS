@@ -129,7 +129,7 @@ export function ShowManualSectionModal({
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Book className="h-5 w-5 text-celeste-accent" />
+            <Book className="h-5 w-5 text-brand-interactive" />
             Equipment Manual
           </DialogTitle>
           <DialogDescription>
@@ -141,8 +141,8 @@ export function ShowManualSectionModal({
 
         {isLoading && !section && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
-            <span className="ml-3 text-celeste-text-secondary">Loading manual...</span>
+            <Loader2 className="h-8 w-8 animate-spin text-brand-interactive" />
+            <span className="ml-3 text-txt-secondary">Loading manual...</span>
           </div>
         )}
 
@@ -161,13 +161,13 @@ export function ShowManualSectionModal({
         {document && section && (
           <div className="space-y-4">
             {/* Document Info */}
-            <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
+            <div className="p-3 bg-brand-interactive/10 border border-brand-interactive/30 rounded-lg">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-celeste-accent mt-0.5" />
+                  <FileText className="h-5 w-5 text-brand-interactive mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-celeste-accent">{document.title}</h4>
-                    <p className="text-sm text-celeste-accent mt-0.5">
+                    <h4 className="font-medium text-brand-interactive">{document.title}</h4>
+                    <p className="text-sm text-brand-interactive mt-0.5">
                       {document.manufacturer} {document.model}
                     </p>
                   </div>
@@ -177,7 +177,7 @@ export function ShowManualSectionModal({
                     variant="outline"
                     size="sm"
                     onClick={handleOpenPdf}
-                    className="text-celeste-accent border-celeste-accent-line hover:bg-celeste-accent-subtle"
+                    className="text-brand-interactive border-brand-interactive/30 hover:bg-brand-interactive/10"
                   >
                     <ExternalLink className="h-4 w-4 mr-1" />
                     Open PDF
@@ -189,12 +189,12 @@ export function ShowManualSectionModal({
             {/* Section Content */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-celeste-black">{section.title}</h3>
-                <span className="text-sm text-celeste-text-disabled">Page {section.page_number}</span>
+                <h3 className="font-semibold text-txt-primary">{section.title}</h3>
+                <span className="text-sm text-txt-tertiary">Page {section.page_number}</span>
               </div>
-              <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+              <div className="p-4 bg-surface-primary border border-surface-border rounded-lg">
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-celeste-text-secondary">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-txt-secondary">
                     {section.text_preview}
                   </pre>
                 </div>
@@ -204,17 +204,17 @@ export function ShowManualSectionModal({
             {/* Related Sections */}
             {relatedSections.length > 0 && (
               <div className="space-y-2">
-                <h3 className="font-semibold text-celeste-black text-sm">Related Sections</h3>
+                <h3 className="font-semibold text-txt-primary text-sm">Related Sections</h3>
                 <div className="space-y-1">
                   {relatedSections.map((related) => (
                     <button
                       key={related.id}
                       onClick={() => handleSectionClick(related.id)}
                       disabled={isLoading}
-                      className="w-full p-2 text-left bg-white border border-celeste-border rounded hover:bg-celeste-bg-primary transition-colors flex items-center justify-between disabled:opacity-50"
+                      className="w-full p-2 text-left bg-white border border-surface-border rounded hover:bg-surface-primary transition-colors flex items-center justify-between disabled:opacity-50"
                     >
-                      <span className="text-sm text-celeste-text-secondary">{related.title}</span>
-                      <div className="flex items-center gap-2 text-celeste-text-muted">
+                      <span className="text-sm text-txt-secondary">{related.title}</span>
+                      <div className="flex items-center gap-2 text-txt-tertiary">
                         <span className="text-xs">Page {related.page_number}</span>
                         <ChevronRight className="h-4 w-4" />
                       </div>

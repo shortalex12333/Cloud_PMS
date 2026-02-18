@@ -215,7 +215,7 @@ export function AddToHandoverQuickModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-celeste-accent" />
+            <FileText className="h-5 w-5 text-brand-interactive" />
             Add to Handover
           </DialogTitle>
           <DialogDescription>
@@ -225,8 +225,8 @@ export function AddToHandoverQuickModal({
 
         {prefillLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
-            <span className="ml-3 text-sm text-celeste-text-secondary">Loading context...</span>
+            <Loader2 className="h-8 w-8 animate-spin text-brand-interactive" />
+            <span className="ml-3 text-sm text-txt-secondary">Loading context...</span>
           </div>
         ) : prefillError ? (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -238,9 +238,9 @@ export function AddToHandoverQuickModal({
         ) : (
           <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
             {/* Entity Type Indicator */}
-            <div className="flex items-center gap-2 px-3 py-2 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
-              <EntityIcon className="h-4 w-4 text-celeste-accent" />
-              <span className="text-sm font-medium text-celeste-accent capitalize">
+            <div className="flex items-center gap-2 px-3 py-2 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
+              <EntityIcon className="h-4 w-4 text-brand-interactive" />
+              <span className="text-sm font-medium text-brand-interactive capitalize">
                 {entityType.replace('_', ' ')}
               </span>
             </div>
@@ -300,8 +300,8 @@ export function AddToHandoverQuickModal({
                             'h-2 w-2 rounded-full',
                             value === 'urgent' && 'bg-red-500',
                             value === 'high' && 'bg-orange-500',
-                            value === 'normal' && 'bg-celeste-accent',
-                            value === 'low' && 'bg-celeste-text-muted'
+                            value === 'normal' && 'bg-brand-interactive',
+                            value === 'low' && 'bg-txt-tertiary'
                           )}
                         />
                         {label}
@@ -319,7 +319,7 @@ export function AddToHandoverQuickModal({
             <div className="space-y-2">
               <Label htmlFor="summary_text">
                 Details / Your Note
-                <span className="text-xs text-celeste-text-disabled ml-2">
+                <span className="text-xs text-txt-tertiary ml-2">
                   (Add your observation or instructions below)
                 </span>
               </Label>
@@ -336,7 +336,7 @@ export function AddToHandoverQuickModal({
                     <p className="text-sm text-red-600">{errors.summary_text.message}</p>
                   )}
                 </div>
-                <span className="text-xs text-celeste-text-disabled">
+                <span className="text-xs text-txt-tertiary">
                   {watch('summary_text')?.length || 0} / 2000 characters
                 </span>
               </div>

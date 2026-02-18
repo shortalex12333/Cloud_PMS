@@ -155,9 +155,9 @@ export function LinkEmailModal({
                   key={type.value}
                   onClick={() => toggleType(type.value)}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2 py-1 text-celeste-xs rounded-md transition-colors',
+                    'inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors',
                     isSelected
-                      ? 'bg-celeste-accent-subtle text-celeste-accent'
+                      ? 'bg-brand-interactive/10 text-brand-interactive'
                       : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   )}
                 >
@@ -176,7 +176,7 @@ export function LinkEmailModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, number, serial..."
-              className="w-full pl-9 pr-3 py-2 text-celeste-sm border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-200 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-brand-interactive/30"
               autoFocus
             />
             {isSearching && (
@@ -187,7 +187,7 @@ export function LinkEmailModal({
           {/* Search Results */}
           <div className="border border-zinc-200 dark:border-zinc-700 rounded-md max-h-[240px] overflow-y-auto">
             {debouncedQuery.length < 2 ? (
-              <div className="p-4 text-center text-celeste-sm text-zinc-500">
+              <div className="p-4 text-center text-sm text-zinc-500">
                 Type at least 2 characters to search
               </div>
             ) : isSearching ? (
@@ -195,7 +195,7 @@ export function LinkEmailModal({
                 <Loader2 className="h-5 w-5 animate-spin mx-auto text-zinc-400" />
               </div>
             ) : !searchResults?.results?.length ? (
-              <div className="p-4 text-center text-celeste-sm text-zinc-500">
+              <div className="p-4 text-center text-sm text-zinc-500">
                 No results found for &quot;{debouncedQuery}&quot;
               </div>
             ) : (
@@ -211,28 +211,28 @@ export function LinkEmailModal({
                       className={cn(
                         'w-full flex items-center gap-3 p-3 text-left transition-colors',
                         isSelected
-                          ? 'bg-celeste-accent-subtle'
+                          ? 'bg-brand-interactive/10'
                           : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
                       )}
                     >
                       <TypeIcon className={cn(
                         'h-4 w-4 flex-shrink-0',
-                        isSelected ? 'text-celeste-accent' : 'text-zinc-400'
+                        isSelected ? 'text-brand-interactive' : 'text-zinc-400'
                       )} />
                       <div className="flex-1 min-w-0">
                         <p className={cn(
-                          'text-celeste-sm truncate',
-                          isSelected ? 'text-celeste-accent font-medium' : 'text-zinc-800 dark:text-zinc-200'
+                          'text-sm truncate',
+                          isSelected ? 'text-brand-interactive font-medium' : 'text-zinc-800 dark:text-zinc-200'
                         )}>
                           {result.label}
                         </p>
-                        <p className="text-celeste-xs text-zinc-500 capitalize">
+                        <p className="text-xs text-zinc-500 capitalize">
                           {result.type.replace('_', ' ')}
                           {result.status && ` • ${result.status}`}
                         </p>
                       </div>
                       {isSelected && (
-                        <CheckCircle className="h-4 w-4 text-celeste-accent flex-shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-brand-interactive flex-shrink-0" />
                       )}
                     </button>
                   );
@@ -243,16 +243,16 @@ export function LinkEmailModal({
 
           {/* Selected Object Display */}
           {selectedObject && (
-            <div className="flex items-center gap-2 p-2 bg-celeste-accent-subtle rounded-md">
-              <CheckCircle className="h-4 w-4 text-celeste-accent" />
-              <span className="text-celeste-sm text-celeste-accent flex-1 truncate">
+            <div className="flex items-center gap-2 p-2 bg-brand-interactive/10 rounded-md">
+              <CheckCircle className="h-4 w-4 text-brand-interactive" />
+              <span className="text-sm text-brand-interactive flex-1 truncate">
                 {selectedObject.label}
               </span>
               <button
                 onClick={() => setSelectedObject(null)}
-                className="p-1 hover:bg-celeste-accent-subtle rounded"
+                className="p-1 hover:bg-brand-interactive/10 rounded"
               >
-                <X className="h-3 w-3 text-celeste-accent" />
+                <X className="h-3 w-3 text-brand-interactive" />
               </button>
             </div>
           )}
@@ -261,7 +261,7 @@ export function LinkEmailModal({
           {error && (
             <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
               <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-celeste-sm text-red-600 dark:text-red-400">{error}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
         </div>

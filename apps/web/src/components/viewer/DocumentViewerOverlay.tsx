@@ -49,9 +49,9 @@ function getFileIcon(contentType: string) {
     return <FileText className="h-12 w-12 text-restricted-red-400" />;
   }
   if (SAFE_IMAGE_TYPES.some((t) => contentType.startsWith(t))) {
-    return <ImageIcon className="h-12 w-12 text-celeste-accent-400" />;
+    return <ImageIcon className="h-12 w-12 text-brand-interactive" />;
   }
-  return <File className="h-12 w-12 text-celeste-text-muted" />;
+  return <File className="h-12 w-12 text-txt-tertiary" />;
 }
 
 function canPreview(contentType: string): 'pdf' | 'image' | false {
@@ -193,7 +193,7 @@ export default function DocumentViewerOverlay({
             {outlookUrl && (
               <button
                 onClick={handleOpenInOutlook}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-interactive hover:bg-brand-hover text-txt-primary rounded-md transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span className="hidden sm:inline">Open in Outlook</span>
@@ -215,7 +215,7 @@ export default function DocumentViewerOverlay({
               <div className="relative" ref={actionsMenuRef}>
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-interactive hover:bg-brand-hover text-txt-primary rounded-md transition-colors"
                   aria-label="Document actions"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -235,7 +235,7 @@ export default function DocumentViewerOverlay({
                       onClick={() => handleMicroAction('attach_to_work_order')}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
                     >
-                      <Link2 className="h-4 w-4 text-celeste-accent-400" />
+                      <Link2 className="h-4 w-4 text-brand-interactive" />
                       Attach to Work Order
                     </button>
                     <button
@@ -276,7 +276,7 @@ export default function DocumentViewerOverlay({
                 </p>
                 <button
                   onClick={handleDownload}
-                  className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md"
+                  className="px-4 py-2 bg-brand-interactive hover:bg-brand-hover text-txt-primary rounded-md"
                 >
                   Download PDF
                 </button>
@@ -308,7 +308,7 @@ export default function DocumentViewerOverlay({
                 {outlookUrl && (
                   <button
                     onClick={handleOpenInOutlook}
-                    className="flex items-center gap-2 px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-brand-interactive hover:bg-brand-hover text-txt-primary rounded-md transition-colors"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Open in Outlook

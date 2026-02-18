@@ -62,8 +62,8 @@ interface AddPhotoModalProps {
 
 const ENTITY_CONFIG: Record<EntityType, { icon: React.ElementType; color: string; label: string }> = {
   fault: { icon: AlertCircle, color: 'text-red-500 bg-red-50 border-red-200', label: 'Fault' },
-  work_order: { icon: Wrench, color: 'text-celeste-accent bg-celeste-accent-line border-celeste-accent-line', label: 'Work Order' },
-  equipment: { icon: Cog, color: 'text-celeste-accent-500 bg-celeste-accent-50 border-celeste-accent-200', label: 'Equipment' },
+  work_order: { icon: Wrench, color: 'text-brand-interactive bg-brand-interactive/10 border-brand-interactive/20', label: 'Work Order' },
+  equipment: { icon: Cog, color: 'text-brand-interactive bg-brand-interactive/10 border-brand-interactive/20', label: 'Equipment' },
   checklist: { icon: ClipboardList, color: 'text-restricted-green-500 bg-restricted-green-50 border-restricted-green-200', label: 'Checklist' },
 };
 
@@ -207,7 +207,7 @@ export function AddPhotoModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-celeste-accent" />
+            <Camera className="h-5 w-5 text-brand-interactive" />
             Add Photo
           </DialogTitle>
           <DialogDescription>
@@ -221,9 +221,9 @@ export function AddPhotoModal({
             <div className="flex items-center gap-3">
               <EntityIcon className="h-5 w-5" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-celeste-black truncate">{context.entity_title}</p>
+                <p className="font-medium text-txt-primary truncate">{context.entity_title}</p>
                 {context.entity_subtitle && (
-                  <p className="text-sm text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
+                  <p className="text-sm text-txt-secondary truncate">{context.entity_subtitle}</p>
                 )}
               </div>
             </div>
@@ -241,24 +241,24 @@ export function AddPhotoModal({
                 'flex flex-col items-center justify-center gap-3',
                 'cursor-pointer transition-colors',
                 isDragging
-                  ? 'border-celeste-accent bg-celeste-accent-line'
-                  : 'border-celeste-border hover:border-celeste-text-muted bg-celeste-bg-primary hover:bg-celeste-bg-secondary'
+                  ? 'border-brand-interactive bg-brand-interactive/10'
+                  : 'border-surface-border hover:border-txt-tertiary bg-surface-primary hover:bg-surface-elevated'
               )}
             >
               <div className={cn(
                 'w-12 h-12 rounded-full flex items-center justify-center',
-                isDragging ? 'bg-celeste-accent-subtle' : 'bg-celeste-border'
+                isDragging ? 'bg-brand-interactive/10' : 'bg-surface-border'
               )}>
                 <Upload className={cn(
                   'h-6 w-6',
-                  isDragging ? 'text-celeste-accent' : 'text-celeste-text-disabled'
+                  isDragging ? 'text-brand-interactive' : 'text-txt-tertiary'
                 )} />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-celeste-text-secondary">
+                <p className="text-sm font-medium text-txt-secondary">
                   {isDragging ? 'Drop photo here' : 'Click or drag photo to upload'}
                 </p>
-                <p className="text-xs text-celeste-text-disabled mt-1">
+                <p className="text-xs text-txt-tertiary mt-1">
                   JPEG, PNG, WebP up to 10MB
                 </p>
               </div>

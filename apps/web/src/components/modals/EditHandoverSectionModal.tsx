@@ -71,7 +71,7 @@ interface EditHandoverSectionModalProps {
 
 const ITEM_TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
   fault: { icon: AlertCircle, color: 'text-red-500' },
-  work_order: { icon: Wrench, color: 'text-celeste-accent' },
+  work_order: { icon: Wrench, color: 'text-brand-interactive' },
   equipment: { icon: Package, color: 'text-violet-500' },
   part: { icon: Package, color: 'text-emerald-500' },
   document: { icon: FileText, color: 'text-indigo-500' },
@@ -186,7 +186,7 @@ export function EditHandoverSectionModal({
       case 'normal':
         return 'bg-amber-100 text-amber-700 border-amber-200';
       default:
-        return 'bg-celeste-bg-secondary text-celeste-text-secondary border-celeste-border';
+        return 'bg-surface-elevated text-txt-secondary border-surface-border';
     }
   };
 
@@ -228,10 +228,10 @@ export function EditHandoverSectionModal({
 
             <div className="border rounded-lg divide-y">
               {fields.length === 0 ? (
-                <div className="p-4 text-center text-celeste-text-disabled">
-                  <Users className="h-8 w-8 mx-auto mb-2 text-celeste-border" />
+                <div className="p-4 text-center text-txt-tertiary">
+                  <Users className="h-8 w-8 mx-auto mb-2 text-surface-border" />
                   <p className="text-sm">No items in this section</p>
-                  <p className="text-xs text-celeste-text-muted">Add items below</p>
+                  <p className="text-xs text-txt-tertiary">Add items below</p>
                 </div>
               ) : (
                 fields.map((field, index) => {
@@ -241,19 +241,19 @@ export function EditHandoverSectionModal({
                   return (
                     <div
                       key={field.id}
-                      className="p-3 flex items-start gap-3 hover:bg-celeste-bg-primary transition-colors"
+                      className="p-3 flex items-start gap-3 hover:bg-surface-primary transition-colors"
                     >
-                      <div className="mt-1 cursor-grab text-celeste-border hover:text-celeste-text-disabled">
+                      <div className="mt-1 cursor-grab text-surface-border hover:text-txt-tertiary">
                         <GripVertical className="h-4 w-4" />
                       </div>
 
                       <Icon className={cn('h-5 w-5 mt-0.5', config.color)} />
 
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-celeste-black text-sm">
+                        <p className="font-medium text-txt-primary text-sm">
                           {field.title}
                         </p>
-                        <p className="text-sm text-celeste-text-secondary mt-0.5">
+                        <p className="text-sm text-txt-secondary mt-0.5">
                           {field.summary}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -269,14 +269,14 @@ export function EditHandoverSectionModal({
                             <option value="normal">Normal</option>
                             <option value="high">High</option>
                           </select>
-                          <span className="text-xs text-celeste-text-muted">{field.type}</span>
+                          <span className="text-xs text-txt-tertiary">{field.type}</span>
                         </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(index)}
-                        className="p-1 text-celeste-text-muted hover:text-red-500 transition-colors"
+                        className="p-1 text-txt-tertiary hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

@@ -239,7 +239,7 @@ Repair (if pump): 4-6 hours`;
       case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-300';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return 'text-txt-secondary bg-surface-primary border-surface-border';
     }
   };
 
@@ -305,7 +305,7 @@ Repair (if pump): 4-6 hours`;
                 placeholder="Add any additional observations, recent changes, or environmental factors..."
                 rows={3}
               />
-              <p className="text-xs text-celeste-text-disabled">
+              <p className="text-xs text-txt-tertiary">
                 More context helps the AI provide better diagnosis
               </p>
             </div>
@@ -316,7 +316,7 @@ Repair (if pump): 4-6 hours`;
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-purple-600" />
-                <h3 className="font-semibold text-celeste-black">AI Diagnosis</h3>
+                <h3 className="font-semibold text-txt-primary">AI Diagnosis</h3>
                 {isStreaming && <Loader2 className="h-4 w-4 animate-spin text-purple-600" />}
               </div>
 
@@ -325,7 +325,7 @@ Repair (if pump): 4-6 hours`;
                 className="p-4 bg-purple-50 border border-purple-200 rounded-lg max-h-96 overflow-y-auto"
               >
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-celeste-bg-tertiary">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-surface-hover">
                     {streamedDiagnosis}
                     {isStreaming && <span className="animate-pulse">▊</span>}
                   </pre>
@@ -338,8 +338,8 @@ Repair (if pump): 4-6 hours`;
           {similarFaults.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-celeste-accent" />
-                <h3 className="font-semibold text-celeste-black">
+                <AlertCircle className="h-5 w-5 text-brand-interactive" />
+                <h3 className="font-semibold text-txt-primary">
                   Similar Past Faults ({similarFaults.length})
                 </h3>
               </div>
@@ -348,21 +348,21 @@ Repair (if pump): 4-6 hours`;
                 {similarFaults.map((fault) => (
                   <div
                     key={fault.id}
-                    className="p-3 border border-celeste-accent-line bg-celeste-accent-line rounded-lg"
+                    className="p-3 border border-brand-interactive/30 bg-brand-interactive/10 rounded-lg"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-celeste-accent">{fault.title}</h4>
-                        <p className="text-sm text-celeste-accent mt-1">
+                        <h4 className="font-medium text-brand-interactive">{fault.title}</h4>
+                        <p className="text-sm text-brand-interactive mt-1">
                           <span className="font-medium">Resolution:</span> {fault.resolution}
                         </p>
-                        <p className="text-xs text-celeste-accent mt-1">
+                        <p className="text-xs text-brand-interactive mt-1">
                           Resolved {fault.resolved_days_ago} days ago
                         </p>
                       </div>
                       <div className="ml-3 text-right">
-                        <div className="text-xs text-celeste-accent">Match</div>
-                        <div className="text-lg font-bold text-celeste-accent">
+                        <div className="text-xs text-brand-interactive">Match</div>
+                        <div className="text-lg font-bold text-brand-interactive">
                           {(fault.similarity_score * 100).toFixed(0)}%
                         </div>
                       </div>
@@ -378,7 +378,7 @@ Repair (if pump): 4-6 hours`;
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-celeste-black">
+                <h3 className="font-semibold text-txt-primary">
                   Suggested Parts ({suggestedParts.length})
                 </h3>
               </div>
@@ -414,17 +414,17 @@ Repair (if pump): 4-6 hours`;
           {manualReferences.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-celeste-text-secondary" />
-                <h3 className="font-semibold text-celeste-black">
+                <FileText className="h-5 w-5 text-txt-secondary" />
+                <h3 className="font-semibold text-txt-primary">
                   Manual References ({manualReferences.length})
                 </h3>
               </div>
 
-              <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
+              <div className="p-3 bg-surface-primary border border-surface-border rounded-lg">
                 <ul className="space-y-1">
                   {manualReferences.map((ref, index) => (
-                    <li key={index} className="text-sm text-celeste-text-secondary flex items-start gap-2">
-                      <Info className="h-4 w-4 text-celeste-text-disabled mt-0.5" />
+                    <li key={index} className="text-sm text-txt-secondary flex items-start gap-2">
+                      <Info className="h-4 w-4 text-txt-tertiary mt-0.5" />
                       {ref}
                     </li>
                   ))}
@@ -448,12 +448,12 @@ Repair (if pump): 4-6 hours`;
                   htmlFor="create_work_order_from_diagnosis"
                   className="text-sm font-normal cursor-pointer flex items-center gap-2"
                 >
-                  <Wrench className="h-4 w-4 text-celeste-accent" />
+                  <Wrench className="h-4 w-4 text-brand-interactive" />
                   Create work order with this diagnosis
                 </Label>
               </div>
               {createWorkOrder && (
-                <p className="text-xs text-celeste-accent ml-6">
+                <p className="text-xs text-brand-interactive ml-6">
                   A work order will be created with the AI diagnosis and suggested parts pre-filled
                 </p>
               )}

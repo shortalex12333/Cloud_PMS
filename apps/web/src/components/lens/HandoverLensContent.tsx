@@ -95,7 +95,7 @@ export function HandoverLensContent({
                 {priority_items.map((item, index) => (
                   <li key={index} className="flex items-start gap-2 text-sm">
                     <span className="text-status-warning">•</span>
-                    <span className="text-celeste-text-primary">{item}</span>
+                    <span className="text-txt-primary">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -105,7 +105,7 @@ export function HandoverLensContent({
 
         <div className="mt-6">
           <SectionContainer title="Notes" stickyTop={56}>
-            <p className="text-sm text-celeste-text-primary whitespace-pre-wrap">
+            <p className="text-sm text-txt-primary whitespace-pre-wrap">
               {content || 'No notes provided.'}
             </p>
           </SectionContainer>
@@ -114,7 +114,7 @@ export function HandoverLensContent({
         {acknowledged_at && (
           <div className="mt-6">
             <SectionContainer title="Acknowledgement" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="text-sm text-txt-tertiary">
                 Acknowledged {formatRelativeTime(acknowledged_at)}
                 {to_crew && ` by ${to_crew}`}
               </p>

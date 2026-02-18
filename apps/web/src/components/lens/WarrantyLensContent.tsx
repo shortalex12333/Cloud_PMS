@@ -105,7 +105,7 @@ export function WarrantyLensContent({
         {coverage && (
           <div className="mt-6">
             <SectionContainer title="Coverage" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary whitespace-pre-wrap">{coverage}</p>
+              <p className="text-sm text-txt-primary whitespace-pre-wrap">{coverage}</p>
             </SectionContainer>
           </div>
         )}
@@ -113,7 +113,7 @@ export function WarrantyLensContent({
         {terms && (
           <div className="mt-6">
             <SectionContainer title="Terms & Conditions" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary whitespace-pre-wrap">{terms}</p>
+              <p className="text-sm text-txt-primary whitespace-pre-wrap">{terms}</p>
             </SectionContainer>
           </div>
         )}
@@ -123,20 +123,20 @@ export function WarrantyLensContent({
             <dl className="grid grid-cols-2 gap-4 text-sm">
               {supplier && (
                 <>
-                  <dt className="text-celeste-text-muted">Supplier</dt>
-                  <dd className="text-celeste-text-primary">{supplier}</dd>
+                  <dt className="text-txt-tertiary">Supplier</dt>
+                  <dd className="text-txt-primary">{supplier}</dd>
                 </>
               )}
               {start_date && (
                 <>
-                  <dt className="text-celeste-text-muted">Start Date</dt>
-                  <dd className="text-celeste-text-primary">{new Date(start_date).toLocaleDateString()}</dd>
+                  <dt className="text-txt-tertiary">Start Date</dt>
+                  <dd className="text-txt-primary">{new Date(start_date).toLocaleDateString()}</dd>
                 </>
               )}
               {expiry_date && (
                 <>
-                  <dt className="text-celeste-text-muted">Expiry Date</dt>
-                  <dd className="text-celeste-text-primary">{new Date(expiry_date).toLocaleDateString()}</dd>
+                  <dt className="text-txt-tertiary">Expiry Date</dt>
+                  <dd className="text-txt-primary">{new Date(expiry_date).toLocaleDateString()}</dd>
                 </>
               )}
             </dl>

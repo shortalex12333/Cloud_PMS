@@ -85,7 +85,7 @@ export default function ActionDropdown({
       className={cn(
         'absolute right-0 top-full mt-1',
         'min-w-[160px] font-body',
-        'bg-celeste-bg-secondary border border-celeste-border',
+        'bg-surface-elevated border border-surface-border',
         'rounded-celeste-md shadow-celeste-lg',
         'py-1',
         'z-50',
@@ -102,8 +102,8 @@ export default function ActionDropdown({
           }}
           className={cn(
             'w-full px-3 py-1.5 text-left',
-            'text-celeste-base text-celeste-text-primary',
-            'hover:bg-celeste-bg-tertiary',
+            'text-base text-txt-primary',
+            'hover:bg-surface-hover',
             'transition-colors'
           )}
         >
@@ -113,7 +113,7 @@ export default function ActionDropdown({
 
       {/* Semantic divider between READ and MUTATE */}
       {hasBothTypes && (
-        <div className="my-1 border-t border-celeste-border" />
+        <div className="my-1 border-t border-surface-border" />
       )}
 
       {/* MUTATE actions - visually separated, lower priority */}
@@ -126,8 +126,8 @@ export default function ActionDropdown({
           }}
           className={cn(
             'w-full px-3 py-1.5 text-left',
-            'text-celeste-base text-celeste-text-muted', // Lower visual priority
-            'hover:bg-celeste-bg-tertiary hover:text-celeste-text-primary',
+            'text-base text-txt-tertiary', // Lower visual priority
+            'hover:bg-surface-hover hover:text-txt-primary',
             'transition-colors'
           )}
         >

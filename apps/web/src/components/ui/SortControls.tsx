@@ -62,7 +62,7 @@ export function SortControls({
   return (
     <div className={cn('flex items-end gap-2', className)}>
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="text-xs text-txt-tertiary">
           <ArrowUpDown className="h-3 w-3 inline mr-1" />
           Sort by
         </Label>

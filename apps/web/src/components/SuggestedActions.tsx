@@ -54,7 +54,7 @@ export default function SuggestedActions({
         )}
         data-testid="suggested-actions"
       >
-        <span className="text-celeste-xs text-txt-secondary self-center mr-1">
+        <span className="text-xs text-txt-secondary self-center mr-1">
           Actions:
         </span>
         {actions.map((action) => (
@@ -63,10 +63,10 @@ export default function SuggestedActions({
             onClick={() => handleActionClick(action)}
             className={cn(
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-              'text-celeste-sm font-medium',
-              'bg-celeste-accent/20 text-celeste-accent',
-              'hover:bg-celeste-accent/30 transition-colors',
-              'border border-celeste-accent/30',
+              'text-sm font-medium',
+              'bg-brand-interactive/20 text-brand-interactive',
+              'hover:bg-brand-interactive/30 transition-colors',
+              'border border-brand-interactive/30',
               action.variant === 'SIGNED' && 'border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
             )}
             data-testid={`action-btn-${action.action_id}`}

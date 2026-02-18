@@ -27,7 +27,7 @@ export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelPr
   if (relatedLoading) {
     return (
       <div className="related-panel-loading p-8 text-center">
-        <p className="text-celeste-text-disabled">Loading related artifacts...</p>
+        <p className="text-txt-tertiary">Loading related artifacts...</p>
       </div>
     );
   }
@@ -43,7 +43,7 @@ export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelPr
   if (!relatedGroups || relatedGroups.length === 0) {
     return (
       <div className="related-panel-empty p-8 text-center">
-        <p className="text-celeste-text-disabled mb-4">No related artifacts found.</p>
+        <p className="text-txt-tertiary mb-4">No related artifacts found.</p>
         <button className="btn-secondary" onClick={() => setShowAddModal(true)}>
           + Add Related
         </button>
@@ -69,18 +69,18 @@ export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelPr
 
       {relatedGroups.map((group) => (
         <section key={group.domain} className="domain-group mb-6">
-          <h3 className="text-lg font-medium mb-3 capitalize text-celeste-text-secondary">
+          <h3 className="text-lg font-medium mb-3 capitalize text-txt-secondary">
             {group.domain.replace('_', ' ')}
           </h3>
           <ul className="space-y-2">
             {group.items.map((item) => (
               <li
                 key={item.artefact_id}
-                className="related-item p-3 border rounded hover:bg-celeste-bg-primary cursor-pointer transition-colors"
+                className="related-item p-3 border rounded hover:bg-surface-hover cursor-pointer transition-colors"
                 onClick={() => pushViewer(item.artefact_type, item.artefact_id)}
               >
                 <div className="font-medium">{item.title}</div>
-                {item.subtitle && <div className="text-sm text-celeste-text-secondary">{item.subtitle}</div>}
+                {item.subtitle && <div className="text-sm text-txt-secondary">{item.subtitle}</div>}
               </li>
             ))}
           </ul>

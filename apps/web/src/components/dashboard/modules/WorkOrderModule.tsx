@@ -50,7 +50,7 @@ export default function WorkOrderModule({
   return (
     <ModuleContainer
       title="Work Orders"
-      icon={<Wrench className="h-4.5 w-4.5 text-celeste-text-muted" />}
+      icon={<Wrench className="h-4.5 w-4.5 text-txt-tertiary" />}
       isExpanded={isExpanded}
       onToggle={onToggle}
       status={overallStatus}
@@ -59,7 +59,7 @@ export default function WorkOrderModule({
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={completionRate} status="healthy" />
-          <span className="text-celeste-xs text-zinc-500">{completionRate}% done</span>
+          <span className="text-xs text-zinc-500">{completionRate}% done</span>
         </div>
       }
       className={className}
@@ -116,9 +116,9 @@ export default function WorkOrderModule({
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-celeste-xs font-medium',
-              'text-celeste-accent hover:text-celeste-accent-hover',
-              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
+              'text-xs font-medium',
+              'text-brand-interactive hover:text-brand-hover',
+              'hover:bg-brand-interactive/10 dark:hover:bg-brand-interactive/10',
               'transition-colors'
             )}>
               View all →

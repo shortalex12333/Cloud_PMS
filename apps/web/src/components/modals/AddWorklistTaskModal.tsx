@@ -101,7 +101,7 @@ const CATEGORIES = [
   { value: 'hull', label: 'Hull & Structure', color: 'bg-slate-100 text-slate-700' },
   { value: 'mechanical', label: 'Mechanical', color: 'bg-orange-100 text-orange-700' },
   { value: 'electrical', label: 'Electrical', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'plumbing', label: 'Plumbing', color: 'bg-celeste-accent-subtle text-celeste-accent' },
+  { value: 'plumbing', label: 'Plumbing', color: 'bg-brand-interactive/10 text-brand-interactive' },
   { value: 'hvac', label: 'HVAC', color: 'bg-cyan-100 text-cyan-700' },
   { value: 'interior', label: 'Interior', color: 'bg-pink-100 text-pink-700' },
   { value: 'exterior', label: 'Exterior', color: 'bg-green-100 text-green-700' },
@@ -112,7 +112,7 @@ const CATEGORIES = [
 
 const PRIORITIES = [
   { value: 'low', label: 'Low', color: 'text-zinc-500' },
-  { value: 'medium', label: 'Medium', color: 'text-celeste-accent' },
+  { value: 'medium', label: 'Medium', color: 'text-brand-interactive' },
   { value: 'high', label: 'High', color: 'text-amber-500' },
   { value: 'critical', label: 'Critical', color: 'text-red-500' },
 ];
@@ -226,7 +226,7 @@ export function AddWorklistTaskModal({
           <div className="space-y-2">
             <Label htmlFor="title">Task Title *</Label>
             <div className="relative">
-              <Hammer className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+              <Hammer className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
               <Input
                 id="title"
                 {...register('title')}
@@ -265,7 +265,7 @@ export function AddWorklistTaskModal({
                       'border',
                       category === cat.value
                         ? cn(cat.color, 'border-current ring-1 ring-current')
-                        : 'bg-white border-celeste-border text-celeste-text-secondary hover:bg-celeste-bg-primary'
+                        : 'bg-white border-surface-border text-txt-secondary hover:bg-surface-primary'
                     )}
                   >
                     {cat.label}
@@ -287,7 +287,7 @@ export function AddWorklistTaskModal({
                       'border',
                       priority === p.value
                         ? cn('bg-zinc-50 border-zinc-300', p.color)
-                        : 'bg-white border-celeste-border text-celeste-text-secondary hover:bg-celeste-bg-primary'
+                        : 'bg-white border-surface-border text-txt-secondary hover:bg-surface-primary'
                     )}
                   >
                     {p.label}
@@ -302,7 +302,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="estimated_hours">Estimated Hours</Label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="estimated_hours"
                   type="number"
@@ -317,7 +317,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="estimated_cost">Estimated Cost ($)</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="estimated_cost"
                   type="number"
@@ -336,7 +336,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="start_date">Start Date</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="start_date"
                   type="date"
@@ -348,7 +348,7 @@ export function AddWorklistTaskModal({
             <div className="space-y-2">
               <Label htmlFor="due_date">Due Date</Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="due_date"
                   type="date"
@@ -363,7 +363,7 @@ export function AddWorklistTaskModal({
           {contractors.length > 0 && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-celeste-text-disabled" />
+                <Users className="h-4 w-4 text-txt-tertiary" />
                 Assign Contractor
               </Label>
               <select
@@ -388,7 +388,7 @@ export function AddWorklistTaskModal({
           {existingTasks.length > 0 && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-celeste-text-disabled" />
+                <Link2 className="h-4 w-4 text-txt-tertiary" />
                 Dependencies (must complete first)
               </Label>
               <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
@@ -399,7 +399,7 @@ export function AddWorklistTaskModal({
                       key={task.id}
                       className={cn(
                         'flex items-center gap-2 p-2 rounded cursor-pointer',
-                        'hover:bg-celeste-bg-primary transition-colors',
+                        'hover:bg-surface-primary transition-colors',
                         selectedDependencies.includes(task.id) && 'bg-indigo-50'
                       )}
                     >
@@ -407,11 +407,11 @@ export function AddWorklistTaskModal({
                         checked={selectedDependencies.includes(task.id)}
                         onCheckedChange={() => toggleDependency(task.id)}
                       />
-                      <span className="text-sm text-celeste-text-secondary">{task.title}</span>
+                      <span className="text-sm text-txt-secondary">{task.title}</span>
                       <span className={cn(
                         'text-xs px-1.5 py-0.5 rounded ml-auto',
-                        task.status === 'pending' && 'bg-celeste-bg-secondary text-celeste-text-secondary',
-                        task.status === 'in_progress' && 'bg-celeste-accent-subtle text-celeste-accent'
+                        task.status === 'pending' && 'bg-surface-elevated text-txt-secondary',
+                        task.status === 'in_progress' && 'bg-brand-interactive/10 text-brand-interactive'
                       )}>
                         {task.status.replace('_', ' ')}
                       </span>

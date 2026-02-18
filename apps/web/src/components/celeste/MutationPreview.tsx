@@ -41,7 +41,7 @@ export default function MutationPreview({
     <div
       className={cn(
         'p-4 font-body',
-        'bg-celeste-bg-primary',
+        'bg-surface-primary',
         'rounded-celeste-md',
         className
       )}
@@ -49,13 +49,13 @@ export default function MutationPreview({
       <div className="space-y-3">
         {diffs.map((diff, i) => (
           <div key={i}>
-            <div className="text-celeste-xs text-celeste-text-muted mb-1">
+            <div className="text-xs text-txt-tertiary mb-1">
               {diff.field}
             </div>
-            <div className="text-celeste-md font-mono">
-              <span className="text-celeste-text-secondary">{String(diff.before)}</span>
-              <span className="text-celeste-text-disabled mx-2">→</span>
-              <span className="text-celeste-text-primary">{String(diff.after)}</span>
+            <div className="text-base font-mono">
+              <span className="text-txt-secondary">{String(diff.before)}</span>
+              <span className="text-txt-tertiary mx-2">→</span>
+              <span className="text-txt-primary">{String(diff.after)}</span>
             </div>
           </div>
         ))}

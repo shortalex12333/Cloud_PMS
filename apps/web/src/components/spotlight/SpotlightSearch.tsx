@@ -825,7 +825,7 @@ export default function SpotlightSearch({
 
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-brand-interactive text-txt-primary rounded text-celeste-xs font-semibold whitespace-nowrap">
+              <div className="px-2 py-0.5 bg-brand-interactive text-txt-primary rounded text-xs font-semibold whitespace-nowrap">
                 Email
               </div>
             )}
@@ -850,7 +850,7 @@ export default function SpotlightSearch({
                 className={cn(
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
-                  'text-celeste-xl',
+                  'text-xl',
                   'text-txt-primary',
                   'font-normal tracking-[-0.01em]',
                   'caret-txt-primary',
@@ -867,7 +867,7 @@ export default function SpotlightSearch({
                 <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
                   <span
                     className={cn(
-                      'text-celeste-xl text-txt-tertiary font-normal tracking-[-0.01em]',
+                      'text-xl text-txt-tertiary font-normal tracking-[-0.01em]',
                       'transition-all duration-celeste-deliberate ease-out',
                       isAnimating ? 'opacity-0 -translate-y-3' : 'opacity-100 translate-y-0'
                     )}
@@ -960,7 +960,7 @@ export default function SpotlightSearch({
                   {groupedResults.topMatch && (
                     <div className="sr-section">
                       <div className="sr-section-header-wrapper px-4">
-                        <span className="sr-top-label text-celeste-accent">
+                        <span className="sr-top-label text-brand-interactive">
                           Top Result
                         </span>
                       </div>
@@ -1059,7 +1059,7 @@ export default function SpotlightSearch({
                         {(hasMoreInDomain || (group.totalCount > 4 && !isExpanded)) && (
                           <button
                             onClick={() => toggleDomainExpansion(group.domain)}
-                            className="w-full px-4 py-2 text-left text-celeste-sm text-celeste-accent hover:bg-celeste-bg-tertiary transition-colors flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left text-sm text-brand-interactive hover:bg-surface-hover transition-colors flex items-center gap-2"
                           >
                             <ChevronDown
                               className={cn(
@@ -1088,16 +1088,16 @@ export default function SpotlightSearch({
 
               {showNoResults && (
                 <div className="py-10 text-center" data-testid="no-results">
-                  <p className="text-celeste-lg text-celeste-text-secondary">No Results</p>
+                  <p className="text-lg text-txt-secondary">No Results</p>
                 </div>
               )}
 
               {error && (
                 <div className="py-10 text-center" data-testid="search-error">
-                  <p className="text-celeste-lg text-celeste-text-secondary">{error}</p>
+                  <p className="text-lg text-txt-secondary">{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 text-celeste-md text-celeste-accent hover:text-celeste-accent-hover"
+                    className="mt-2 text-base text-brand-interactive hover:text-brand-hover"
                   >
                     Try again
                   </button>
@@ -1249,14 +1249,14 @@ export default function SpotlightSearch({
 
       {/* Receiving Upload Modal - Global entry point for logging receivings */}
       <Dialog open={showReceivingUpload} onOpenChange={setShowReceivingUpload}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-celeste-bg-secondary border-celeste-border">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-elevated border-surface-border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-celeste-text-title">
+            <DialogTitle className="flex items-center gap-2 text-txt-primary">
               <Camera className="h-5 w-5 text-brand-interactive" />
               Log Receiving
             </DialogTitle>
           </DialogHeader>
-          <p className="text-celeste-sm text-celeste-text-secondary mb-4">
+          <p className="text-sm text-txt-secondary mb-4">
             Capture or upload an invoice, packing slip, or photo of received goods.
             We'll extract the details automatically.
           </p>

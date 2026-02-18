@@ -125,7 +125,7 @@ export function FaultHistoryModal({
       case 'medium':
         return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-celeste-text-muted" />;
+        return <AlertCircle className="h-4 w-4 text-txt-tertiary" />;
     }
   };
 
@@ -138,7 +138,7 @@ export function FaultHistoryModal({
       case 'medium':
         return 'bg-yellow-50 border-yellow-200';
       default:
-        return 'bg-celeste-bg-primary border-celeste-border';
+        return 'bg-surface-primary border-surface-border';
     }
   };
 
@@ -160,7 +160,7 @@ export function FaultHistoryModal({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-celeste-accent" />
+            <History className="h-5 w-5 text-brand-interactive" />
             Fault History
           </DialogTitle>
           <DialogDescription>
@@ -172,8 +172,8 @@ export function FaultHistoryModal({
 
         {isLoading && faults.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
-            <span className="ml-3 text-celeste-text-secondary">Loading history...</span>
+            <Loader2 className="h-8 w-8 animate-spin text-brand-interactive" />
+            <span className="ml-3 text-txt-secondary">Loading history...</span>
           </div>
         )}
 
@@ -191,22 +191,22 @@ export function FaultHistoryModal({
 
         {/* Summary */}
         {summary && (
-          <div className="grid grid-cols-4 gap-3 p-3 bg-celeste-bg-primary rounded-lg">
+          <div className="grid grid-cols-4 gap-3 p-3 bg-surface-primary rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-celeste-black">{summary.total}</div>
-              <div className="text-xs text-celeste-text-disabled">Total</div>
+              <div className="text-2xl font-bold text-txt-primary">{summary.total}</div>
+              <div className="text-xs text-txt-tertiary">Total</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">{summary.by_severity.critical}</div>
-              <div className="text-xs text-celeste-text-disabled">Critical</div>
+              <div className="text-xs text-txt-tertiary">Critical</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">{summary.by_severity.high}</div>
-              <div className="text-xs text-celeste-text-disabled">High</div>
+              <div className="text-xs text-txt-tertiary">High</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{summary.total - summary.active}</div>
-              <div className="text-xs text-celeste-text-disabled">Resolved</div>
+              <div className="text-xs text-txt-tertiary">Resolved</div>
             </div>
           </div>
         )}
@@ -223,15 +223,15 @@ export function FaultHistoryModal({
                   <div className="flex items-start gap-2">
                     {getSeverityIcon(fault.severity)}
                     <div>
-                      <h4 className="font-medium text-celeste-black">
+                      <h4 className="font-medium text-txt-primary">
                         {fault.title || fault.fault_code || 'Fault'}
                       </h4>
                       {fault.description && (
-                        <p className="text-sm text-celeste-text-secondary mt-0.5 line-clamp-2">
+                        <p className="text-sm text-txt-secondary mt-0.5 line-clamp-2">
                           {fault.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 mt-1 text-xs text-celeste-text-disabled">
+                      <div className="flex items-center gap-3 mt-1 text-xs text-txt-tertiary">
                         <span>Detected: {formatDate(fault.detected_at)}</span>
                         {fault.resolved_at && (
                           <span className="flex items-center gap-1">
@@ -253,7 +253,7 @@ export function FaultHistoryModal({
                       </span>
                     )}
                     {fault.days_open !== undefined && fault.days_open > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-celeste-text-disabled">
+                      <span className="flex items-center gap-1 text-xs text-txt-tertiary">
                         <Clock className="h-3 w-3" />
                         {fault.days_open}d
                       </span>
@@ -267,8 +267,8 @@ export function FaultHistoryModal({
 
         {/* No faults */}
         {!isLoading && !error && faults.length === 0 && (
-          <div className="text-center py-8 text-celeste-text-disabled">
-            <History className="h-12 w-12 mx-auto mb-3 text-celeste-border" />
+          <div className="text-center py-8 text-txt-tertiary">
+            <History className="h-12 w-12 mx-auto mb-3 text-surface-border" />
             <p>No fault history found</p>
           </div>
         )}

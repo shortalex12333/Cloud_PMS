@@ -69,7 +69,7 @@ interface AddNoteModalProps {
 
 const ENTITY_CONFIG: Partial<Record<EntityType, { icon: React.ElementType; color: string; label: string }>> = {
   fault: { icon: AlertCircle, color: 'text-red-500 bg-red-50 border-red-200', label: 'Fault' },
-  work_order: { icon: Wrench, color: 'text-celeste-accent bg-celeste-accent-line border-celeste-accent-line', label: 'Work Order' },
+  work_order: { icon: Wrench, color: 'text-brand-interactive bg-brand-interactive/10 border-brand-interactive/20', label: 'Work Order' },
   equipment: { icon: Cog, color: 'text-violet-500 bg-violet-50 border-violet-200', label: 'Equipment' },
   checklist: { icon: ClipboardList, color: 'text-emerald-500 bg-emerald-50 border-emerald-200', label: 'Checklist' },
 };
@@ -83,7 +83,7 @@ export function AddNoteModal({
   const { executeAction, isLoading } = useActionHandler();
   const [charCount, setCharCount] = useState(0);
 
-  const config = ENTITY_CONFIG[context.entity_type] || { icon: ClipboardList, color: 'text-celeste-text-secondary bg-celeste-bg-secondary border-celeste-border', label: context.entity_type };
+  const config = ENTITY_CONFIG[context.entity_type] || { icon: ClipboardList, color: 'text-txt-secondary bg-surface-elevated border-surface-border', label: context.entity_type };
   const EntityIcon = config.icon;
 
   const {
@@ -187,9 +187,9 @@ export function AddNoteModal({
             <div className="flex items-center gap-3">
               <EntityIcon className="h-5 w-5" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-celeste-black truncate">{context.entity_title}</p>
+                <p className="font-medium text-txt-primary truncate">{context.entity_title}</p>
                 {context.entity_subtitle && (
-                  <p className="text-sm text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
+                  <p className="text-sm text-txt-secondary truncate">{context.entity_subtitle}</p>
                 )}
               </div>
             </div>
@@ -201,7 +201,7 @@ export function AddNoteModal({
               <Label htmlFor="note_text">Note Content *</Label>
               <span className={cn(
                 'text-xs',
-                charCount > 1800 ? 'text-amber-600' : 'text-celeste-text-muted'
+                charCount > 1800 ? 'text-amber-600' : 'text-txt-tertiary'
               )}>
                 {charCount}/2000
               </span>
@@ -233,7 +233,7 @@ export function AddNoteModal({
               <SelectContent>
                 <SelectItem value="normal">
                   <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-celeste-text-muted" />
+                    <span className="w-2 h-2 rounded-full bg-txt-tertiary" />
                     Normal
                   </span>
                 </SelectItem>

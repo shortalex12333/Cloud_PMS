@@ -149,9 +149,9 @@ export function EditWorkOrderDetailsModal({
       case 'important':
         return 'text-orange-700 bg-orange-50 border-orange-300';
       case 'routine':
-        return 'text-celeste-accent bg-celeste-accent-subtle border-celeste-accent-line';
+        return 'text-brand-interactive bg-brand-interactive/10 border-brand-interactive/20';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return 'text-txt-secondary bg-surface-primary border-surface-border';
     }
   };
 
@@ -160,7 +160,7 @@ export function EditWorkOrderDetailsModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Edit className="h-5 w-5 text-celeste-accent" />
+            <Edit className="h-5 w-5 text-brand-interactive" />
             Edit Work Order Details
           </DialogTitle>
           <DialogDescription>
@@ -240,7 +240,7 @@ export function EditWorkOrderDetailsModal({
               <SelectContent>
                 <SelectItem value="routine">
                   <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-celeste-accent" />
+                    <span className="h-2 w-2 rounded-full bg-brand-interactive" />
                     Routine - Standard maintenance
                   </span>
                 </SelectItem>
@@ -313,12 +313,12 @@ export function EditWorkOrderDetailsModal({
 
           {/* Change Summary */}
           {hasChanges && !cannotEdit && (
-            <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
+            <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
               <div className="flex items-start gap-3">
-                <FileText className="h-5 w-5 text-celeste-accent mt-0.5" />
+                <FileText className="h-5 w-5 text-brand-interactive mt-0.5" />
                 <div>
-                  <p className="font-semibold text-celeste-accent">Changes Detected</p>
-                  <p className="text-sm text-celeste-accent mt-1">
+                  <p className="font-semibold text-brand-interactive">Changes Detected</p>
+                  <p className="text-sm text-brand-interactive mt-1">
                     {Object.values(changes).filter(Boolean).length} field(s) will be updated.
                     An audit log will be created with MEDIUM severity.
                   </p>
@@ -327,12 +327,12 @@ export function EditWorkOrderDetailsModal({
                     variant="link"
                     size="sm"
                     onClick={() => setShowChanges(!showChanges)}
-                    className="p-0 h-auto text-celeste-accent"
+                    className="p-0 h-auto text-brand-interactive"
                   >
                     {showChanges ? 'Hide' : 'Show'} changes
                   </Button>
                   {showChanges && (
-                    <ul className="mt-2 text-sm text-celeste-accent space-y-1">
+                    <ul className="mt-2 text-sm text-brand-interactive space-y-1">
                       {changes.title && <li>• Title changed</li>}
                       {changes.description && <li>• Description changed</li>}
                       {changes.priority && <li>• Priority changed</li>}

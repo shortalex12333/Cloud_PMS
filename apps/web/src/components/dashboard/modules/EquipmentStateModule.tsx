@@ -102,7 +102,7 @@ export default function EquipmentStateModule({
       collapsedContent={
         <div className="flex items-center gap-3">
           <ProgressBar value={operationalPercent} status={overallStatus} />
-          <span className="text-celeste-xs text-zinc-500">{stats.operational}/{stats.total}</span>
+          <span className="text-xs text-zinc-500">{stats.operational}/{stats.total}</span>
         </div>
       }
       className={className}
@@ -117,19 +117,19 @@ export default function EquipmentStateModule({
           <div className="flex items-center gap-4 mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-700/60">
             <div className="flex items-center gap-1.5">
               <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="text-celeste-xs text-zinc-600 dark:text-zinc-300">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300">
                 <strong>{stats.operational}</strong> operational
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Pause className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-celeste-xs text-zinc-600 dark:text-zinc-300">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300">
                 <strong>{stats.maintenance}</strong> maintenance
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <XCircle className="h-3.5 w-3.5 text-red-500" />
-              <span className="text-celeste-xs text-zinc-600 dark:text-zinc-300">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300">
                 <strong>{stats.offline}</strong> offline
               </span>
             </div>
@@ -173,9 +173,9 @@ export default function EquipmentStateModule({
           <div className="flex items-center gap-2 mt-4">
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-celeste-xs font-medium',
-              'text-celeste-accent hover:text-celeste-accent-hover',
-              'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
+              'text-xs font-medium',
+              'text-brand-interactive hover:text-brand-hover',
+              'hover:bg-brand-interactive/10 dark:hover:bg-brand-interactive/10',
               'transition-colors'
             )}>
               View all equipment →

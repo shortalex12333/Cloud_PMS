@@ -155,12 +155,12 @@ export function ApproveWarrantyModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
           {/* Claim Summary */}
-          <div className="p-4 bg-celeste-bg-secondary rounded-lg">
+          <div className="p-4 bg-surface-elevated rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <FileWarning className="h-5 w-5 text-celeste-accent" />
+              <FileWarning className="h-5 w-5 text-brand-interactive" />
               <span className="font-semibold">{context.claim_number}</span>
             </div>
-            <p className="text-sm text-celeste-text-secondary">
+            <p className="text-sm text-txt-secondary">
               {context.claim_title}
             </p>
           </div>
@@ -171,7 +171,7 @@ export function ApproveWarrantyModal({
               Approved Amount ({context.currency})
             </Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
               <Input
                 id="approved_amount"
                 type="number"

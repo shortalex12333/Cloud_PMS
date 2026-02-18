@@ -307,7 +307,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-celeste-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-surface-base/40 backdrop-blur-sm" />
 
       {/* Panel */}
       <div
@@ -320,21 +320,21 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-celeste-divider">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
           <div className="flex items-center gap-3">
-            <BookOpen className="w-5 h-5 text-celeste-accent" strokeWidth={1.5} />
-            <h2 className="text-celeste-text-title font-medium">Ledger</h2>
+            <BookOpen className="w-5 h-5 text-brand-interactive" strokeWidth={1.5} />
+            <h2 className="text-txt-primary font-medium">Ledger</h2>
           </div>
 
           {/* Me / Department Pill Toggle - Centered */}
-          <div className="flex items-center bg-celeste-panel rounded-full p-1" data-testid="view-mode-toggle">
+          <div className="flex items-center bg-surface-elevated rounded-full p-1" data-testid="view-mode-toggle">
             <button
               onClick={() => setViewMode('me')}
               className={cn(
                 'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
                 viewMode === 'me'
-                  ? 'bg-celeste-accent text-celeste-white'
-                  : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+                  ? 'bg-brand-interactive text-txt-inverse'
+                  : 'text-txt-tertiary hover:text-txt-secondary'
               )}
               data-testid="view-mode-me"
             >
@@ -345,8 +345,8 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
               className={cn(
                 'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
                 viewMode === 'department'
-                  ? 'bg-celeste-accent text-celeste-white'
-                  : 'text-celeste-text-muted hover:text-celeste-text-secondary'
+                  ? 'bg-brand-interactive text-txt-inverse'
+                  : 'text-txt-tertiary hover:text-txt-secondary'
               )}
               data-testid="view-mode-department"
             >
@@ -361,8 +361,8 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
               className={cn(
                 'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors',
                 showReads
-                  ? 'bg-celeste-accent text-celeste-white'
-                  : 'text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-panel'
+                  ? 'bg-brand-interactive text-txt-inverse'
+                  : 'text-txt-tertiary hover:text-txt-secondary hover:bg-surface-elevated'
               )}
             >
               <Eye className="w-4 h-4" strokeWidth={1.5} />
@@ -371,7 +371,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-full text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-panel transition-colors"
+              className="p-2 rounded-full text-txt-tertiary hover:text-txt-secondary hover:bg-surface-elevated transition-colors"
               aria-label="Close ledger"
             >
               <X className="w-5 h-5" strokeWidth={1.5} />
@@ -385,7 +385,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
           className="flex-1 overflow-y-auto px-4 py-3"
         >
           {dayGroups.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-celeste-text-muted">
+            <div className="flex flex-col items-center justify-center py-12 text-txt-tertiary">
               <BookOpen className="w-12 h-12 mb-3 opacity-50" strokeWidth={1} />
               <p>No events recorded yet</p>
             </div>
@@ -398,26 +398,26 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                   className={cn(
                     'w-full flex items-center justify-between px-3 py-2',
                     'rounded-md',
-                    'bg-celeste-panel text-celeste-text-primary',
-                    'hover:bg-celeste-bg-tertiary transition-colors',
+                    'bg-surface-elevated text-txt-primary',
+                    'hover:bg-surface-hover transition-colors',
                     'sticky top-0 z-10'
                   )}
                 >
                   <div className="flex items-center gap-2">
                     {expandedDays.has(group.date) ? (
-                      <ChevronDown className="w-4 h-4 text-celeste-text-muted" />
+                      <ChevronDown className="w-4 h-4 text-txt-tertiary" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-celeste-text-muted" />
+                      <ChevronRight className="w-4 h-4 text-txt-tertiary" />
                     )}
                     <span className="font-medium">{group.displayDate}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <span className="flex items-center gap-1 text-celeste-green">
+                    <span className="flex items-center gap-1 text-status-success">
                       <Edit3 className="w-3.5 h-3.5" />
                       {group.mutationCount}
                     </span>
                     {showReads && group.readCount > 0 && (
-                      <span className="flex items-center gap-1 text-celeste-orange">
+                      <span className="flex items-center gap-1 text-status-warning">
                         <Eye className="w-3.5 h-3.5" />
                         {group.readCount}
                       </span>
@@ -443,7 +443,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
           {hasMore && (
             <div ref={loadMoreRef} className="h-8 flex items-center justify-center">
               {loading && (
-                <div className="w-5 h-5 border-2 border-celeste-accent border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-brand-interactive border-t-transparent rounded-full animate-spin" />
               )}
             </div>
           )}
@@ -486,7 +486,7 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
       className={cn(
         'flex items-start gap-3 px-3 py-2',
         'rounded-sm',
-        'hover:bg-celeste-panel transition-colors cursor-pointer'
+        'hover:bg-surface-elevated transition-colors cursor-pointer'
       )}
       onClick={() => onItemClick(event)}
       role="button"
@@ -503,8 +503,8 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
         className={cn(
           'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
           isMutation
-            ? 'bg-celeste-green/10 text-celeste-green'
-            : 'bg-celeste-orange/10 text-celeste-orange'
+            ? 'bg-status-success/10 text-status-success'
+            : 'bg-status-warning/10 text-status-warning'
         )}
       >
         {isMutation ? (
@@ -517,13 +517,13 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         {/* Object — Verb format */}
-        <p className="text-celeste-text-primary truncate">
+        <p className="text-txt-primary truncate">
           <span className="font-medium">{displayName}</span>
-          <span className="text-celeste-text-muted"> — </span>
+          <span className="text-txt-tertiary"> — </span>
           <span>{actionVerb}</span>
         </p>
         {/* Attribution */}
-        <p className="text-sm text-celeste-text-muted truncate">
+        <p className="text-sm text-txt-tertiary truncate">
           {userName} · {time}
         </p>
       </div>

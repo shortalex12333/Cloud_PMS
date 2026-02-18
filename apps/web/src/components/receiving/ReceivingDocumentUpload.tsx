@@ -308,20 +308,20 @@ export function ReceivingDocumentUpload({
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+    <div className="bg-surface-primary border border-surface-border rounded-lg p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         {isNewReceiving ? (
-          <Plus className="h-6 w-6 text-primary" />
+          <Plus className="h-6 w-6 text-brand-interactive" />
         ) : (
-          <FileText className="h-6 w-6 text-primary" />
+          <FileText className="h-6 w-6 text-brand-interactive" />
         )}
         <div>
-          <h3 className="text-lg font-semibold text-foreground">
+          <h3 className="text-lg font-semibold text-txt-primary">
             {isNewReceiving ? 'Log New Receiving' : 'Add Document'}
           </h3>
           {isNewReceiving && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-txt-tertiary">
               Take a photo of your invoice, packing slip, or delivered items
             </p>
           )}
@@ -330,12 +330,12 @@ export function ReceivingDocumentUpload({
 
       {/* Document Type Selector */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Document Type</label>
+        <label className="text-sm font-medium text-txt-primary">Document Type</label>
         <select
           value={docType}
           onChange={(e) => setDocType(e.target.value as any)}
           disabled={status !== 'idle'}
-          className="w-full px-3 py-2 bg-background border border-input rounded-md text-foreground"
+          className="w-full px-3 py-2 bg-surface-base border border-surface-border rounded-md text-txt-primary"
         >
           <option value="invoice">Invoice</option>
           <option value="packing_slip">Packing Slip</option>
@@ -346,14 +346,14 @@ export function ReceivingDocumentUpload({
 
       {/* Comment (Optional) */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Comment (Optional)</label>
+        <label className="text-sm font-medium text-txt-primary">Comment (Optional)</label>
         <input
           type="text"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           disabled={status !== 'idle'}
           placeholder="Add notes about this document..."
-          className="w-full px-3 py-2 bg-background border border-input rounded-md text-foreground"
+          className="w-full px-3 py-2 bg-surface-base border border-surface-border rounded-md text-txt-primary"
         />
       </div>
 
@@ -363,7 +363,7 @@ export function ReceivingDocumentUpload({
           <button
             onClick={startCamera}
             disabled={status !== 'idle'}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-brand-interactive text-primary-foreground rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
           >
             <Camera className="h-5 w-5" />
             Take Photo
@@ -399,7 +399,7 @@ export function ReceivingDocumentUpload({
           <div className="flex gap-3">
             <button
               onClick={capturePhoto}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-brand-interactive text-primary-foreground rounded-md hover:bg-brand-interactive/90 transition-colors"
             >
               <Camera className="h-5 w-5" />
               Capture
@@ -418,18 +418,18 @@ export function ReceivingDocumentUpload({
       {selectedFile && !extractedData && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{selectedFile.name}</span>
+            <span className="text-sm text-txt-tertiary">{selectedFile.name}</span>
             <button
               onClick={reset}
               disabled={status === 'uploading' || status === 'retrying'}
-              className="text-sm text-destructive hover:underline"
+              className="text-sm text-status-critical hover:underline"
             >
               Remove
             </button>
           </div>
 
           {previewUrl && (
-            <img src={previewUrl} alt="Preview" className="w-full rounded-md border border-border" />
+            <img src={previewUrl} alt="Preview" className="w-full rounded-md border border-surface-border" />
           )}
 
           {/* Upload Button */}
@@ -440,7 +440,7 @@ export function ReceivingDocumentUpload({
               'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors',
               status === 'uploading' || status === 'retrying'
                 ? 'bg-secondary text-secondary-foreground'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-brand-interactive text-primary-foreground hover:bg-brand-interactive/90'
             )}
           >
             {(status === 'uploading' || status === 'retrying') && <Loader2 className="h-5 w-5 animate-spin" />}
@@ -453,7 +453,7 @@ export function ReceivingDocumentUpload({
 
       {/* Status Messages */}
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive">
+        <div className="flex items-center gap-2 p-3 bg-status-critical/10 border border-status-critical/20 rounded-md text-status-critical">
           <XCircle className="h-5 w-5" />
           <span className="text-sm">{error}</span>
         </div>
@@ -475,16 +475,16 @@ export function ReceivingDocumentUpload({
 
       {/* Extracted Data Display */}
       {extractedData && (
-        <div className="space-y-4 border-t border-border pt-4">
+        <div className="space-y-4 border-t border-surface-border pt-4">
           <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
             <CheckCircle className="h-5 w-5" />
             <h4 className="font-semibold">Extraction Complete</h4>
           </div>
 
           {/* Display extracted data in table format */}
-          <div className="bg-background border border-border rounded-md overflow-hidden">
+          <div className="bg-surface-base border border-surface-border rounded-md overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted">
+              <thead className="bg-surface-hover">
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">Field</th>
                   <th className="px-4 py-2 text-left font-medium">Value</th>
@@ -492,11 +492,11 @@ export function ReceivingDocumentUpload({
               </thead>
               <tbody>
                 {Object.entries(extractedData).map(([key, value]) => (
-                  <tr key={key} className="border-t border-border">
-                    <td className="px-4 py-2 font-medium text-muted-foreground">
+                  <tr key={key} className="border-t border-surface-border">
+                    <td className="px-4 py-2 font-medium text-txt-tertiary">
                       {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                     </td>
-                    <td className="px-4 py-2 text-foreground">
+                    <td className="px-4 py-2 text-txt-primary">
                       {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
                     </td>
                   </tr>
@@ -530,7 +530,7 @@ export function ReceivingDocumentUpload({
                   'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-colors',
                   isSaving
                     ? 'bg-secondary text-secondary-foreground'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-brand-interactive text-primary-foreground hover:bg-brand-interactive/90'
                 )}
               >
                 {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}

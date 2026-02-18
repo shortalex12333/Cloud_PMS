@@ -56,12 +56,12 @@ export default function SignaturePrompt({
         <MutationPreview diffs={diffs} className="mb-4" />
 
         {/* Signature area - dominant */}
-        <div className="bg-celeste-bg-secondary rounded-celeste-md p-6">
+        <div className="bg-surface-elevated rounded-celeste-md p-6">
           <div className="text-center">
-            <div className="text-celeste-lg text-celeste-text-primary mb-1">
+            <div className="text-lg text-txt-primary mb-1">
               Sign as {userName}
             </div>
-            <div className="text-celeste-sm text-celeste-text-disabled">
+            <div className="text-sm text-txt-tertiary">
               This action will be recorded
             </div>
           </div>
@@ -73,8 +73,8 @@ export default function SignaturePrompt({
               disabled={isCommitting}
               className={cn(
                 'flex-1 py-2.5',
-                'text-celeste-md text-celeste-text-muted',
-                'bg-celeste-bg-tertiary hover:bg-celeste-border',
+                'text-base text-txt-tertiary',
+                'bg-surface-hover hover:bg-surface-border',
                 'rounded-celeste-md',
                 'transition-colors',
                 isCommitting && 'opacity-50 cursor-not-allowed'
@@ -89,8 +89,8 @@ export default function SignaturePrompt({
               disabled={isCommitting}
               className={cn(
                 'flex-1 py-2.5',
-                'text-celeste-md text-celeste-white font-medium',
-                'bg-celeste-blue hover:bg-celeste-blue-secondary',
+                'text-base text-white font-medium',
+                'bg-brand-interactive hover:bg-brand-interactive-hover',
                 'rounded-celeste-md',
                 'transition-colors',
                 isCommitting && 'opacity-50 cursor-not-allowed'

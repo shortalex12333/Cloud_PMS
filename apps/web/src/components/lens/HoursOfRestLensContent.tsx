@@ -93,15 +93,15 @@ export function HoursOfRestLensContent({
         <div className="mt-6">
           <SectionContainer title={`Rest Periods (${rest_periods.length})`} stickyTop={56}>
             {rest_periods.length === 0 ? (
-              <p className="text-sm text-celeste-text-muted">No rest periods recorded.</p>
+              <p className="text-sm text-txt-tertiary">No rest periods recorded.</p>
             ) : (
               <ul className="space-y-3">
                 {rest_periods.map((period, index) => (
                   <li key={period.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
-                    <span className="text-sm text-celeste-text-primary">
+                    <span className="text-sm text-txt-primary">
                       {new Date(period.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(period.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <span className="text-sm text-celeste-text-muted">
+                    <span className="text-sm text-txt-tertiary">
                       {period.duration_hours.toFixed(1)} hours
                     </span>
                   </li>
@@ -114,7 +114,7 @@ export function HoursOfRestLensContent({
         {verified_at && (
           <div className="mt-6">
             <SectionContainer title="Verification" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="text-sm text-txt-tertiary">
                 Verified {formatRelativeTime(verified_at)}
                 {verified_by && ` by ${verified_by}`}
               </p>

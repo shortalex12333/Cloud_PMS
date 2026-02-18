@@ -117,8 +117,8 @@ export const confirmationVariantStyles = {
     iconClass: 'text-yellow-600',
   },
   destructive: {
-    confirmButtonClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-    iconClass: 'text-destructive',
+    confirmButtonClass: 'bg-status-critical text-txt-inverse hover:bg-status-critical/90',
+    iconClass: 'text-status-critical',
   },
 };
 

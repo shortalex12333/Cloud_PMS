@@ -44,11 +44,11 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-zinc-400">
             <Mail className="h-4 w-4" />
-            <span className="text-celeste-sm">Outlook not connected</span>
+            <span className="text-sm">Outlook not connected</span>
           </div>
           <button
             onClick={openSettingsModal}
-            className="inline-flex items-center gap-1 text-celeste-xs text-celeste-accent hover:text-celeste-accent transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-brand-interactive hover:text-brand-interactive transition-colors"
           >
             <Settings className="h-3 w-3" />
             Connect Outlook in Settings
@@ -70,11 +70,11 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
       >
         <div className="flex items-center gap-2">
           <Mail className="h-4 w-4 text-zinc-500" />
-          <span className="text-celeste-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Related Emails
           </span>
           {hasThreads && (
-            <span className="text-celeste-xs text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+            <span className="text-xs text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
               {threads.length}
             </span>
           )}
@@ -95,7 +95,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-celeste-sm text-amber-700 dark:text-amber-400">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
                     Email sync degraded
                     {watcherStatus.last_sync_error && (
                       <span className="text-amber-600 dark:text-amber-500">
@@ -105,7 +105,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
                   </p>
                   <button
                     onClick={openSettingsModal}
-                    className="inline-flex items-center gap-1 mt-1 text-celeste-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                    className="inline-flex items-center gap-1 mt-1 text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
                   >
                     <RefreshCw className="h-3 w-3" />
                     Reconnect in Settings
@@ -126,12 +126,12 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
           {error && (
             <div className="p-4 text-center">
               <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-2" />
-              <p className="text-celeste-sm text-zinc-500">
+              <p className="text-sm text-zinc-500">
                 {error instanceof Error ? error.message : 'Failed to load related emails'}
               </p>
               <button
                 onClick={() => refetch()}
-                className="mt-2 text-celeste-sm text-celeste-accent hover:text-celeste-accent"
+                className="mt-2 text-sm text-brand-interactive hover:text-brand-interactive"
               >
                 Retry
               </button>
@@ -142,12 +142,12 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
           {!isLoading && !error && !hasThreads && (
             <div className="p-4 text-center">
               <Mail className="h-8 w-8 text-zinc-300 mx-auto mb-2" />
-              <p className="text-celeste-sm text-zinc-500 mb-3">
+              <p className="text-sm text-zinc-500 mb-3">
                 No related email threads yet.
               </p>
               <button
                 onClick={() => showEmail({ folder: 'inbox' })}
-                className="inline-flex items-center gap-1.5 text-celeste-sm text-celeste-accent hover:text-celeste-accent"
+                className="inline-flex items-center gap-1.5 text-sm text-brand-interactive hover:text-brand-interactive"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 Link emails from Inbox
@@ -175,7 +175,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
               <div className="p-2">
                 <button
                   onClick={() => showEmail({ folder: 'inbox' })}
-                  className="w-full flex items-center justify-center gap-1.5 p-2 text-celeste-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 p-2 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors"
                 >
                   <Link2 className="h-3.5 w-3.5" />
                   Link more from Inbox
@@ -233,8 +233,8 @@ function ThreadItem({ thread, isSelected, onClick, objectType, objectId }: Threa
         {/* Subject */}
         <div className="flex items-start justify-between gap-2 mb-1">
           <h4 className={cn(
-            'text-celeste-sm font-medium truncate',
-            isSelected ? 'text-celeste-accent' : 'text-zinc-800 dark:text-zinc-200'
+            'text-sm font-medium truncate',
+            isSelected ? 'text-brand-interactive' : 'text-zinc-800 dark:text-zinc-200'
           )}>
             {thread.latest_subject || '(No subject)'}
           </h4>
@@ -242,7 +242,7 @@ function ThreadItem({ thread, isSelected, onClick, objectType, objectId }: Threa
         </div>
 
         {/* Meta Row */}
-        <div className="flex items-center gap-3 text-celeste-xs text-zinc-500">
+        <div className="flex items-center gap-3 text-xs text-zinc-500">
           <span>{thread.message_count} message{thread.message_count !== 1 ? 's' : ''}</span>
           {thread.has_attachments && (
             <span className="text-zinc-400">Has attachments</span>
@@ -290,8 +290,8 @@ function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
       label: 'Auto-linked',
     },
     user_confirmed: {
-      bg: 'bg-celeste-accent-subtle',
-      text: 'text-celeste-accent',
+      bg: 'bg-brand-interactive/10',
+      text: 'text-brand-interactive',
       label: 'Confirmed',
     },
     suggested: {
@@ -305,7 +305,7 @@ function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
 
   return (
     <span className={cn(
-      'text-celeste-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0',
+      'text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0',
       style.bg,
       style.text
     )}>

@@ -158,7 +158,7 @@ export function CreatePurchaseRequestModal({
       case 'urgent':
         return 'text-orange-700 bg-orange-50 border-orange-300';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return 'text-txt-secondary bg-surface-primary border-surface-border';
     }
   };
 
@@ -167,7 +167,7 @@ export function CreatePurchaseRequestModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-celeste-accent" />
+            <ShoppingCart className="h-5 w-5 text-brand-interactive" />
             Create Purchase Request
           </DialogTitle>
           <DialogDescription>
@@ -179,7 +179,7 @@ export function CreatePurchaseRequestModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Request Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Request Details</h3>
+            <h3 className="text-sm font-semibold text-txt-primary">Request Details</h3>
 
             {/* Justification */}
             <div className="space-y-2">
@@ -248,7 +248,7 @@ export function CreatePurchaseRequestModal({
           {/* Line Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-celeste-black">
+              <h3 className="text-sm font-semibold text-txt-primary">
                 Line Items ({fields.length})
               </h3>
               <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
@@ -267,10 +267,10 @@ export function CreatePurchaseRequestModal({
               {fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className="p-4 border border-celeste-border rounded-lg space-y-3 bg-celeste-bg-primary"
+                  className="p-4 border border-surface-border rounded-lg space-y-3 bg-surface-primary"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-celeste-text-secondary">Item #{index + 1}</span>
+                    <span className="text-sm font-medium text-txt-secondary">Item #{index + 1}</span>
                     {fields.length > 1 && (
                       <Button
                         type="button"
@@ -346,7 +346,7 @@ export function CreatePurchaseRequestModal({
                   {/* Line Total */}
                   {lineItems[index] && (
                     <div className="flex justify-end">
-                      <span className="text-sm text-celeste-text-secondary">
+                      <span className="text-sm text-txt-secondary">
                         Line Total:{' '}
                         <span className="font-semibold">
                           $
@@ -376,15 +376,15 @@ export function CreatePurchaseRequestModal({
           </div>
 
           {/* Cost Summary */}
-          <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
+          <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-celeste-accent" />
-                <span className="font-semibold text-celeste-accent">Estimated Total Cost</span>
+                <DollarSign className="h-5 w-5 text-brand-interactive" />
+                <span className="font-semibold text-brand-interactive">Estimated Total Cost</span>
               </div>
-              <span className="text-2xl font-bold text-celeste-accent">${totalCost.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-brand-interactive">${totalCost.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-celeste-accent mt-2">
+            <p className="text-xs text-brand-interactive mt-2">
               {lineItems.length} item(s) • {lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} total units
             </p>
             {totalCost > 5000 && (

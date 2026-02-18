@@ -64,17 +64,17 @@ export default function SpotlightResultRow({
         'min-h-[44px]',
         'py-ds-2 px-ds-3',
         // Hover: very subtle
-        'hover:bg-celeste-bg-tertiary/40',
+        'hover:bg-surface-hover/40',
         // Selected: subtle, not bold
-        isSelected && 'bg-celeste-bg-tertiary/60',
+        isSelected && 'bg-surface-hover/60',
         // Top match gets minimal distinction
-        isTopMatch && !isSelected && 'bg-celeste-bg-tertiary/20'
+        isTopMatch && !isSelected && 'bg-surface-hover/20'
       )}
     >
       {/* Left accent bar - subtle, appears on selection (OS feel) */}
       {isSelected && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-celeste-accent rounded-r-sm"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-interactive rounded-r-sm"
           aria-hidden="true"
         />
       )}
@@ -84,11 +84,11 @@ export default function SpotlightResultRow({
         <p
           className={cn(
             // Title: slightly larger, medium weight for clarity
-            'text-celeste-base font-medium leading-snug',
+            'text-base font-medium leading-snug',
             'truncate',
             isSelected
-              ? 'text-celeste-text-title'
-              : 'text-celeste-text-primary'
+              ? 'text-txt-primary'
+              : 'text-txt-primary'
           )}
         >
           {result.title}
@@ -97,9 +97,9 @@ export default function SpotlightResultRow({
           <p
             className={cn(
               // Subtitle: smaller, muted - clear hierarchy
-              'text-celeste-sm font-normal leading-snug',
+              'text-sm font-normal leading-snug',
               'truncate',
-              'text-celeste-text-muted'
+              'text-txt-tertiary'
             )}
           >
             {result.subtitle}

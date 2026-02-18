@@ -97,26 +97,26 @@ export function PartsLensContent({
             <dl className="grid grid-cols-2 gap-4 text-sm">
               {part_number && (
                 <>
-                  <dt className="text-celeste-text-muted">Part Number</dt>
-                  <dd className="text-celeste-text-primary">{part_number}</dd>
+                  <dt className="text-txt-tertiary">Part Number</dt>
+                  <dd className="text-txt-primary">{part_number}</dd>
                 </>
               )}
               {category && (
                 <>
-                  <dt className="text-celeste-text-muted">Category</dt>
-                  <dd className="text-celeste-text-primary">{category}</dd>
+                  <dt className="text-txt-tertiary">Category</dt>
+                  <dd className="text-txt-primary">{category}</dd>
                 </>
               )}
               {supplier && (
                 <>
-                  <dt className="text-celeste-text-muted">Supplier</dt>
-                  <dd className="text-celeste-text-primary">{supplier}</dd>
+                  <dt className="text-txt-tertiary">Supplier</dt>
+                  <dd className="text-txt-primary">{supplier}</dd>
                 </>
               )}
               {unit_cost !== undefined && (
                 <>
-                  <dt className="text-celeste-text-muted">Unit Cost</dt>
-                  <dd className="text-celeste-text-primary">${unit_cost.toFixed(2)}</dd>
+                  <dt className="text-txt-tertiary">Unit Cost</dt>
+                  <dd className="text-txt-primary">${unit_cost.toFixed(2)}</dd>
                 </>
               )}
             </dl>

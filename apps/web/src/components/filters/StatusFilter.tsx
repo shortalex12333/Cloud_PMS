@@ -64,26 +64,26 @@ export function StatusFilter({
   const getColorClasses = (color?: string) => {
     switch (color) {
       case 'green':
-        return 'border-restricted-green-200 bg-restricted-green-50 text-restricted-green-700 hover:bg-restricted-green-100';
+        return 'border-status-success/30 bg-status-success/10 text-status-success hover:bg-status-success/20';
       case 'yellow':
-        return 'border-restricted-yellow-200 bg-restricted-yellow-50 text-restricted-yellow-700 hover:bg-restricted-yellow-100';
+        return 'border-status-warning/30 bg-status-warning/10 text-status-warning hover:bg-status-warning/20';
       case 'orange':
-        return 'border-restricted-yellow-200 bg-restricted-yellow-50 text-restricted-yellow-700 hover:bg-restricted-yellow-100';
+        return 'border-status-warning/30 bg-status-warning/10 text-status-warning hover:bg-status-warning/20';
       case 'red':
-        return 'border-restricted-red-200 bg-restricted-red-50 text-restricted-red-700 hover:bg-restricted-red-100';
+        return 'border-status-critical/30 bg-status-critical/10 text-status-critical hover:bg-status-critical/20';
       case 'blue':
-        return 'border-celeste-accent-200 bg-celeste-accent-50 text-celeste-accent-700 hover:bg-celeste-accent-100';
+        return 'border-brand-interactive/30 bg-brand-interactive/10 text-brand-interactive hover:bg-brand-interactive/20';
       case 'gray':
-        return 'border-celeste-border bg-celeste-bg-primary text-celeste-text-secondary hover:bg-celeste-bg-secondary';
+        return 'border-surface-border bg-surface-primary text-txt-secondary hover:bg-surface-hover';
       default:
-        return 'border-muted bg-muted text-foreground hover:bg-accent';
+        return 'border-surface-border bg-surface-hover text-txt-primary hover:bg-surface-elevated';
     }
   };
 
   return (
     <div className="flex items-end gap-2">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="text-xs text-txt-tertiary">
           <Filter className="h-3 w-3 inline mr-1" />
           Status
         </Label>
@@ -99,7 +99,7 @@ export function StatusFilter({
                   'px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
                   isSelected
                     ? getColorClasses(option.color)
-                    : 'border-border bg-background text-muted-foreground hover:bg-accent'
+                    : 'border-surface-border bg-surface-primary text-txt-tertiary hover:bg-surface-hover'
                 )}
               >
                 {option.label}

@@ -182,7 +182,7 @@ export function LinkEquipmentToFaultModal({
       case 'medium':
         return 'text-yellow-700 bg-yellow-50 border-yellow-300';
       default:
-        return 'text-celeste-text-secondary bg-celeste-bg-primary border-celeste-border';
+        return 'text-txt-secondary bg-surface-primary border-surface-border';
     }
   };
 
@@ -191,7 +191,7 @@ export function LinkEquipmentToFaultModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-celeste-accent" />
+            <Settings className="h-5 w-5 text-brand-interactive" />
             Link Equipment to Fault
           </DialogTitle>
           <DialogDescription>
@@ -226,7 +226,7 @@ export function LinkEquipmentToFaultModal({
           <div className="space-y-2">
             <Label htmlFor="search">Search Equipment</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
               <Input
                 id="search"
                 value={searchQuery}
@@ -246,48 +246,48 @@ export function LinkEquipmentToFaultModal({
               <p className="text-sm text-red-600">{errors.equipment_id.message}</p>
             )}
 
-            <div className="border border-celeste-border rounded-lg max-h-80 overflow-y-auto">
+            <div className="border border-surface-border rounded-lg max-h-80 overflow-y-auto">
               {filteredEquipment.length === 0 ? (
-                <div className="p-8 text-center text-celeste-text-disabled">
-                  <Search className="h-12 w-12 mx-auto mb-2 text-celeste-border" />
+                <div className="p-8 text-center text-txt-tertiary">
+                  <Search className="h-12 w-12 mx-auto mb-2 text-surface-border" />
                   <p>No equipment found</p>
                 </div>
               ) : (
-                <div className="divide-y divide-celeste-border">
+                <div className="divide-y divide-surface-border">
                   {filteredEquipment.map((equipment) => {
                     const isSelected = selectedEquipmentId === equipment.id;
                     return (
                       <div
                         key={equipment.id}
-                        className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
-                          isSelected ? 'bg-celeste-accent-subtle' : ''
+                        className={`p-3 cursor-pointer hover:bg-surface-primary transition-colors ${
+                          isSelected ? 'bg-brand-interactive/10' : ''
                         }`}
                         onClick={() => handleSelectEquipment(equipment.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            <Settings className="h-5 w-5 text-celeste-text-secondary mt-1" />
+                            <Settings className="h-5 w-5 text-txt-secondary mt-1" />
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-celeste-black">{equipment.name}</h4>
+                              <h4 className="font-medium text-txt-primary">{equipment.name}</h4>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
                                 {equipment.model && (
-                                  <p className="text-sm text-celeste-text-secondary">
+                                  <p className="text-sm text-txt-secondary">
                                     <span className="font-medium">Model:</span> {equipment.model}
                                   </p>
                                 )}
                                 {equipment.serial_number && (
-                                  <p className="text-sm text-celeste-text-secondary">
+                                  <p className="text-sm text-txt-secondary">
                                     <span className="font-medium">S/N:</span>{' '}
                                     {equipment.serial_number}
                                   </p>
                                 )}
                                 {equipment.manufacturer && (
-                                  <p className="text-sm text-celeste-text-secondary">
+                                  <p className="text-sm text-txt-secondary">
                                     <span className="font-medium">Mfr:</span>{' '}
                                     {equipment.manufacturer}
                                   </p>
                                 )}
-                                <p className="text-sm text-celeste-text-secondary">
+                                <p className="text-sm text-txt-secondary">
                                   <span className="font-medium">Location:</span> {equipment.location}
                                 </p>
                               </div>
@@ -295,9 +295,9 @@ export function LinkEquipmentToFaultModal({
                           </div>
                           <div className="ml-3">
                             {isSelected ? (
-                              <CheckCircle2 className="h-5 w-5 text-celeste-accent" />
+                              <CheckCircle2 className="h-5 w-5 text-brand-interactive" />
                             ) : (
-                              <div className="h-5 w-5 border-2 border-celeste-border rounded-full" />
+                              <div className="h-5 w-5 border-2 border-surface-border rounded-full" />
                             )}
                           </div>
                         </div>
@@ -311,13 +311,13 @@ export function LinkEquipmentToFaultModal({
 
           {/* Selected Equipment Preview */}
           {selectedEquipment && (
-            <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
-              <p className="text-sm font-semibold text-celeste-accent mb-2">Selected Equipment</p>
+            <div className="p-4 bg-brand-interactive/10 border border-brand-interactive/20 rounded-lg">
+              <p className="text-sm font-semibold text-brand-interactive mb-2">Selected Equipment</p>
               <div className="flex items-start gap-3">
-                <Settings className="h-5 w-5 text-celeste-accent mt-0.5" />
+                <Settings className="h-5 w-5 text-brand-interactive mt-0.5" />
                 <div>
-                  <h4 className="font-medium text-celeste-accent">{selectedEquipment.name}</h4>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-sm text-celeste-accent">
+                  <h4 className="font-medium text-brand-interactive">{selectedEquipment.name}</h4>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-sm text-brand-interactive">
                     {selectedEquipment.model && (
                       <p>
                         <span className="font-medium">Model:</span> {selectedEquipment.model}
@@ -350,12 +350,12 @@ export function LinkEquipmentToFaultModal({
                 htmlFor="create_work_order"
                 className="text-sm font-normal cursor-pointer flex items-center gap-2"
               >
-                <Wrench className="h-4 w-4 text-celeste-accent" />
+                <Wrench className="h-4 w-4 text-brand-interactive" />
                 Create work order for this fault
               </Label>
             </div>
             {createWorkOrder && (
-              <p className="text-xs text-celeste-accent ml-6">
+              <p className="text-xs text-brand-interactive ml-6">
                 A work order will be automatically created and assigned to this equipment
               </p>
             )}

@@ -141,7 +141,7 @@ export function CreateWorkOrderModal({
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">
-              Title <span className="text-destructive">*</span>
+              Title <span className="text-status-critical">*</span>
             </Label>
             <Input
               id="title"
@@ -150,14 +150,14 @@ export function CreateWorkOrderModal({
               disabled={isLoading}
             />
             {errors.title && (
-              <p className="text-sm text-destructive">{errors.title.message}</p>
+              <p className="text-sm text-status-critical">{errors.title.message}</p>
             )}
           </div>
 
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">
-              Description <span className="text-destructive">*</span>
+              Description <span className="text-status-critical">*</span>
             </Label>
             <Textarea
               id="description"
@@ -167,7 +167,7 @@ export function CreateWorkOrderModal({
               disabled={isLoading}
             />
             {errors.description && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-status-critical">
                 {errors.description.message}
               </p>
             )}
@@ -176,7 +176,7 @@ export function CreateWorkOrderModal({
           {/* Priority */}
           <div className="space-y-2">
             <Label htmlFor="priority">
-              Priority <span className="text-destructive">*</span>
+              Priority <span className="text-status-critical">*</span>
             </Label>
             <Select
               value={priority}
@@ -196,7 +196,7 @@ export function CreateWorkOrderModal({
               </SelectContent>
             </Select>
             {errors.priority && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-status-critical">
                 {errors.priority.message}
               </p>
             )}
@@ -209,7 +209,7 @@ export function CreateWorkOrderModal({
               <Input
                 value={context.equipment_name}
                 disabled
-                className="bg-muted"
+                className="bg-surface-elevated"
               />
             </div>
           )}

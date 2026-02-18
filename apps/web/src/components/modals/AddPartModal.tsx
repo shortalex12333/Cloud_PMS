@@ -116,7 +116,7 @@ export function AddPartModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-celeste-accent" />
+            <Package className="h-5 w-5 text-brand-interactive" />
             Add Part to Inventory
           </DialogTitle>
           <DialogDescription>
@@ -128,7 +128,7 @@ export function AddPartModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Part Information</h3>
+            <h3 className="text-sm font-semibold text-txt-primary">Part Information</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Part Name */}
@@ -186,7 +186,7 @@ export function AddPartModal({
 
           {/* Stock Levels */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Stock Levels</h3>
+            <h3 className="text-sm font-semibold text-txt-primary">Stock Levels</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Initial Stock Quantity */}
@@ -221,7 +221,7 @@ export function AddPartModal({
                 {errors.min_stock_level && (
                   <p className="text-sm text-red-600">{errors.min_stock_level.message}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-txt-tertiary">
                   Alert threshold for reordering
                 </p>
               </div>
@@ -239,7 +239,7 @@ export function AddPartModal({
 
           {/* Location */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Location</h3>
+            <h3 className="text-sm font-semibold text-txt-primary">Location</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* General Location */}
@@ -292,7 +292,7 @@ export function AddPartModal({
 
           {/* Supplier & Cost */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Supplier & Cost</h3>
+            <h3 className="text-sm font-semibold text-txt-primary">Supplier & Cost</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Unit Cost */}

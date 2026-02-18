@@ -21,15 +21,15 @@ export function FilterBadge({ label, value, onRemove, className }: FilterBadgePr
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/20 bg-primary/10 text-sm',
+        'inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-brand-interactive/20 bg-brand-interactive/10 text-sm',
         className
       )}
     >
-      <span className="font-medium text-primary">{label}:</span>
-      <span className="text-foreground">{value}</span>
+      <span className="font-medium text-brand-interactive">{label}:</span>
+      <span className="text-txt-primary">{value}</span>
       <button
         onClick={onRemove}
-        className="ml-1 hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+        className="ml-1 hover:bg-brand-interactive/20 rounded-full p-0.5 transition-colors"
         aria-label={`Remove ${label} filter`}
       >
         <X className="h-3 w-3" />

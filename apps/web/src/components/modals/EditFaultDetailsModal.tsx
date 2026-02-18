@@ -255,11 +255,11 @@ export function EditFaultDetailsModal({
             </Select>
             {changes.severity && (
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">Previous:</span>
+                <span className="text-txt-secondary">Previous:</span>
                 <span className={`font-medium ${getSeverityTextColor(context.current_severity)}`}>
                   {context.current_severity.toUpperCase()}
                 </span>
-                <span className="text-muted-foreground">→</span>
+                <span className="text-txt-secondary">→</span>
                 <span className={`font-medium ${getSeverityTextColor(severity)}`}>
                   {severity?.toUpperCase()}
                 </span>
@@ -287,11 +287,11 @@ export function EditFaultDetailsModal({
             </Select>
             {changes.status && (
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">Previous:</span>
+                <span className="text-txt-secondary">Previous:</span>
                 <span className={`font-medium ${getStatusTextColor(context.current_status)}`}>
                   {context.current_status.toUpperCase().replace('_', ' ')}
                 </span>
-                <span className="text-muted-foreground">→</span>
+                <span className="text-txt-secondary">→</span>
                 <span className={`font-medium ${getStatusTextColor(status)}`}>
                   {status?.toUpperCase().replace('_', ' ')}
                 </span>
@@ -328,7 +328,7 @@ export function EditFaultDetailsModal({
                   ? 'bg-red-50 border-red-300'
                   : isSeverityIncreasing
                   ? 'bg-orange-50 border-orange-300'
-                  : 'bg-celeste-accent-line border-celeste-accent-line'
+                  : 'bg-brand-interactive/10 border-brand-interactive/20'
               }`}
             >
               <p
@@ -337,7 +337,7 @@ export function EditFaultDetailsModal({
                     ? 'text-red-900'
                     : isSeverityIncreasing
                     ? 'text-orange-900'
-                    : 'text-celeste-accent'
+                    : 'text-brand-interactive'
                 }`}
               >
                 {Object.values(changes).filter(Boolean).length} field(s) will be updated.
@@ -391,7 +391,7 @@ function getSeverityLevel(severity?: string): number {
 function getSeverityColor(severity?: string): string {
   switch (severity) {
     case 'low':
-      return 'border-celeste-border bg-celeste-bg-primary';
+      return 'border-surface-border bg-surface-primary';
     case 'medium':
       return 'border-yellow-300 bg-yellow-50';
     case 'high':
@@ -406,7 +406,7 @@ function getSeverityColor(severity?: string): string {
 function getSeverityTextColor(severity?: string): string {
   switch (severity) {
     case 'low':
-      return 'text-celeste-text-secondary';
+      return 'text-txt-secondary';
     case 'medium':
       return 'text-yellow-700';
     case 'high':
@@ -421,13 +421,13 @@ function getSeverityTextColor(severity?: string): string {
 function getStatusColor(status?: string): string {
   switch (status) {
     case 'open':
-      return 'border-celeste-accent-line bg-celeste-accent-line';
+      return 'border-brand-interactive/20 bg-brand-interactive/10';
     case 'in_progress':
       return 'border-yellow-300 bg-yellow-50';
     case 'resolved':
       return 'border-green-300 bg-green-50';
     case 'closed':
-      return 'border-celeste-border bg-celeste-bg-primary';
+      return 'border-surface-border bg-surface-primary';
     default:
       return '';
   }
@@ -436,13 +436,13 @@ function getStatusColor(status?: string): string {
 function getStatusTextColor(status?: string): string {
   switch (status) {
     case 'open':
-      return 'text-celeste-accent';
+      return 'text-brand-interactive';
     case 'in_progress':
       return 'text-yellow-700';
     case 'resolved':
       return 'text-green-700';
     case 'closed':
-      return 'text-celeste-text-secondary';
+      return 'text-txt-secondary';
     default:
       return '';
   }

@@ -119,13 +119,13 @@ export default function ModuleContainer({
         {/* Title & Status */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-celeste-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
               {title}
             </h3>
             {badge !== undefined && (
               <span className={cn(
                 'px-1.5 py-0.5 rounded-md',
-                'text-celeste-xs font-semibold',
+                'text-xs font-semibold',
                 styles.bg,
                 styles.text
               )}>
@@ -134,7 +134,7 @@ export default function ModuleContainer({
             )}
           </div>
           {statusLabel && (
-            <p className={cn('text-celeste-xs mt-0.5', styles.text)}>
+            <p className={cn('text-xs mt-0.5', styles.text)}>
               {statusLabel}
             </p>
           )}
@@ -240,11 +240,11 @@ export function ModuleItem({
       )}
 
       <div className="flex-1 min-w-0">
-        <p className="text-celeste-sm font-medium text-zinc-700 dark:text-zinc-200 truncate">
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200 truncate">
           {title}
         </p>
         {subtitle && (
-          <p className="text-celeste-xs text-zinc-500 dark:text-zinc-400 truncate">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
             {subtitle}
           </p>
         )}
@@ -252,7 +252,7 @@ export function ModuleItem({
 
       {value !== undefined && (
         <span className={cn(
-          'text-celeste-sm font-semibold tabular-nums',
+          'text-sm font-semibold tabular-nums',
           styles.text
         )}>
           {value}
@@ -308,7 +308,7 @@ export function ProgressBar({
       </div>
       {showLabel && (
         <span className={cn(
-          'text-celeste-xs font-medium tabular-nums',
+          'text-xs font-medium tabular-nums',
           styles.text
         )}>
           {Math.round(percentage)}%
@@ -347,7 +347,7 @@ export function StatCard({
       'bg-zinc-100/50 dark:bg-zinc-800/50',
       className
     )}>
-      <p className="text-celeste-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
         {label}
       </p>
       <div className="flex items-end gap-1.5 mt-0.5">
@@ -359,7 +359,7 @@ export function StatCard({
         </span>
         {trendValue && (
           <span className={cn(
-            'text-celeste-xs font-medium mb-0.5',
+            'text-xs font-medium mb-0.5',
             trend === 'up' && 'text-restricted-green-500',
             trend === 'down' && 'text-red-500',
             trend === 'neutral' && 'text-zinc-400'

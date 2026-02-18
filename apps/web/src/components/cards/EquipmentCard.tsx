@@ -35,21 +35,21 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'operational':
-        return 'text-restricted-green bg-restricted-green/10 border-restricted-green/30';
+        return 'text-status-success bg-status-success/10 border-status-success/30';
       case 'maintenance':
-        return 'text-celeste-accent bg-celeste-accent/10 border-celeste-accent/30';
+        return 'text-brand-interactive bg-brand-interactive/10 border-brand-interactive/30';
       case 'faulty':
-        return 'text-restricted-red bg-restricted-red/10 border-restricted-red/30';
+        return 'text-status-critical bg-status-critical/10 border-status-critical/30';
       default:
-        return 'text-celeste-text-muted bg-celeste-bg-secondary border-celeste-border';
+        return 'text-txt-tertiary bg-surface-hover border-surface-border';
     }
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+    <div className="bg-surface-primary border border-surface-border rounded-lg p-4 hover:bg-surface-hover transition-colors">
       <div className="flex items-start gap-3">
         {/* Equipment Icon */}
-        <div className="mt-1 text-primary">
+        <div className="mt-1 text-brand-interactive">
           <Settings className="h-5 w-5" />
         </div>
 
@@ -57,7 +57,7 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
         <div className="flex-1 min-w-0">
           {/* Name & Status */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <h3 className="font-medium text-foreground">{equipment.name}</h3>
+            <h3 className="font-medium text-txt-primary">{equipment.name}</h3>
             <span
               className={cn(
                 'text-xs px-2 py-0.5 rounded-full border font-medium uppercase',
@@ -69,34 +69,34 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
           </div>
 
           {/* Type & Model */}
-          <p className="text-sm text-muted-foreground mb-1">
+          <p className="text-sm text-txt-tertiary mb-1">
             <span className="font-medium">{equipment.equipment_type}</span>
             {equipment.manufacturer && ` · ${equipment.manufacturer}`}
             {equipment.model && ` ${equipment.model}`}
           </p>
 
           {/* Location */}
-          <p className="text-sm text-muted-foreground mb-2">
+          <p className="text-sm text-txt-tertiary mb-2">
             <span className="font-medium">Location:</span> {equipment.location}
           </p>
 
           {/* Serial Number */}
           {equipment.serial_number && (
-            <p className="text-xs text-muted-foreground mb-2">
+            <p className="text-xs text-txt-tertiary mb-2">
               S/N: {equipment.serial_number}
             </p>
           )}
 
           {/* Maintenance Info */}
           {equipment.last_maintenance && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+            <div className="flex items-center gap-1.5 text-sm text-txt-tertiary mb-2">
               <Calendar className="h-4 w-4" />
               <span>Last maintained: {formatDate(equipment.last_maintenance)}</span>
             </div>
           )}
 
           {/* Stats */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+          <div className="flex items-center gap-4 text-xs text-txt-tertiary mb-3">
             {equipment.fault_count !== undefined && (
               <div className="flex items-center gap-1">
                 <AlertCircle className="h-3.5 w-3.5" />

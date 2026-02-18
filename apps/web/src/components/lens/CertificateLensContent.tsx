@@ -105,28 +105,28 @@ export function CertificateLensContent({
             <dl className="grid grid-cols-2 gap-4 text-sm">
               {certificate_number && (
                 <>
-                  <dt className="text-celeste-text-muted">Certificate Number</dt>
-                  <dd className="text-celeste-text-primary">{certificate_number}</dd>
+                  <dt className="text-txt-tertiary">Certificate Number</dt>
+                  <dd className="text-txt-primary">{certificate_number}</dd>
                 </>
               )}
-              <dt className="text-celeste-text-muted">Type</dt>
-              <dd className="text-celeste-text-primary">{certificate_type}</dd>
+              <dt className="text-txt-tertiary">Type</dt>
+              <dd className="text-txt-primary">{certificate_type}</dd>
               {issuing_authority && (
                 <>
-                  <dt className="text-celeste-text-muted">Issuing Authority</dt>
-                  <dd className="text-celeste-text-primary">{issuing_authority}</dd>
+                  <dt className="text-txt-tertiary">Issuing Authority</dt>
+                  <dd className="text-txt-primary">{issuing_authority}</dd>
                 </>
               )}
               {issue_date && (
                 <>
-                  <dt className="text-celeste-text-muted">Issue Date</dt>
-                  <dd className="text-celeste-text-primary">{new Date(issue_date).toLocaleDateString()}</dd>
+                  <dt className="text-txt-tertiary">Issue Date</dt>
+                  <dd className="text-txt-primary">{new Date(issue_date).toLocaleDateString()}</dd>
                 </>
               )}
               {expiry_date && (
                 <>
-                  <dt className="text-celeste-text-muted">Expiry Date</dt>
-                  <dd className="text-celeste-text-primary">{new Date(expiry_date).toLocaleDateString()}</dd>
+                  <dt className="text-txt-tertiary">Expiry Date</dt>
+                  <dd className="text-txt-primary">{new Date(expiry_date).toLocaleDateString()}</dd>
                 </>
               )}
             </dl>
@@ -136,7 +136,7 @@ export function CertificateLensContent({
         {notes && (
           <div className="mt-6">
             <SectionContainer title="Notes" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary">{notes}</p>
+              <p className="text-sm text-txt-primary">{notes}</p>
             </SectionContainer>
           </div>
         )}

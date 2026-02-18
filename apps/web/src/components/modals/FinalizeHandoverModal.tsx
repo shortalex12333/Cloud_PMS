@@ -124,11 +124,11 @@ export function FinalizeHandoverModal({
 
         <div className="space-y-4">
           {/* Handover Summary */}
-          <div className="p-4 bg-celeste-bg-secondary rounded-lg">
-            <h3 className="font-semibold text-celeste-text-primary">
+          <div className="p-4 bg-surface-elevated rounded-lg">
+            <h3 className="font-semibold text-txt-primary">
               {context.handover_title}
             </h3>
-            <div className="mt-2 text-sm text-celeste-text-secondary">
+            <div className="mt-2 text-sm text-txt-secondary">
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" />
                 <span>{context.items_count} items to hand over</span>

@@ -37,17 +37,17 @@ interface SpotlightPreviewPaneProps {
 // Celeste brand colors for card types (dignified, not loud)
 const CARD_TYPE_CONFIG: Record<CardType, { icon: keyof typeof LucideIcons; color: string; bgColor: string }> = {
   fault: { icon: 'AlertTriangle', color: 'text-restricted-red', bgColor: 'bg-restricted-red/10' },
-  work_order: { icon: 'Wrench', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
-  equipment: { icon: 'Cog', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  work_order: { icon: 'Wrench', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
+  equipment: { icon: 'Cog', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
   part: { icon: 'Package', color: 'text-restricted-green', bgColor: 'bg-restricted-green/10' },
   handover: { icon: 'Users', color: 'text-restricted-orange', bgColor: 'bg-restricted-orange/10' },
-  document: { icon: 'FileText', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  document: { icon: 'FileText', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
   hor_table: { icon: 'Clock', color: 'text-restricted-red', bgColor: 'bg-restricted-red/10' },
   purchase: { icon: 'DollarSign', color: 'text-restricted-orange', bgColor: 'bg-restricted-orange/10' },
-  checklist: { icon: 'ClipboardList', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
-  worklist: { icon: 'ClipboardList', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
-  fleet_summary: { icon: 'Ship', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
-  smart_summary: { icon: 'Sparkles', color: 'text-celeste-accent', bgColor: 'bg-celeste-accent-subtle' },
+  checklist: { icon: 'ClipboardList', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
+  worklist: { icon: 'ClipboardList', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
+  fleet_summary: { icon: 'Ship', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
+  smart_summary: { icon: 'Sparkles', color: 'text-brand-interactive', bgColor: 'bg-brand-interactive/10' },
 };
 
 // ============================================================================
@@ -74,9 +74,9 @@ export default function SpotlightPreviewPane({
     <div
       className={cn(
         'w-celeste-panel-medium flex-shrink-0',
-        'bg-celeste-surface-light/98 dark:bg-celeste-surface/98',
+        'bg-surface-primary/98 dark:bg-surface-elevated/98',
         'backdrop-blur-celeste-md',
-        'border border-celeste-border-subtle-light dark:border-celeste-border-subtle',
+        'border border-surface-border',
         'rounded-celeste-xl',
         'shadow-celeste-lg',
         'overflow-hidden',
@@ -86,23 +86,23 @@ export default function SpotlightPreviewPane({
       {/* Header */}
       <div className={cn(
         'px-4 py-3',
-        'border-b border-celeste-divider-light dark:border-celeste-divider',
+        'border-b border-surface-border',
         config.bgColor
       )}>
         <div className="flex items-center gap-3">
           <div className={cn(
             'flex items-center justify-center',
             'w-10 h-10 rounded-celeste-lg',
-            'bg-celeste-surface-light/80 dark:bg-celeste-bg-tertiary/80',
+            'bg-surface-primary/80 dark:bg-surface-hover/80',
             'shadow-sm'
           )}>
             <IconComponent className={cn('h-5 w-5', config.color)} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-celeste-lg font-semibold text-celeste-text-title-light dark:text-celeste-text-title truncate">
+            <h3 className="text-lg font-semibold text-txt-primary truncate">
               {result.title}
             </h3>
-            <p className="text-celeste-sm text-celeste-text-secondary truncate">
+            <p className="text-sm text-txt-secondary truncate">
               {result.subtitle}
             </p>
           </div>
@@ -110,9 +110,9 @@ export default function SpotlightPreviewPane({
             onClick={onClose}
             className={cn(
               'p-1.5 rounded-md',
-              'text-celeste-text-muted hover:text-celeste-text-primary-light',
-              'dark:text-celeste-text-muted dark:hover:text-celeste-text-primary',
-              'hover:bg-celeste-bg-secondary-light/50 dark:hover:bg-celeste-bg-tertiary/50',
+              'text-txt-tertiary hover:text-txt-primary',
+              'dark:text-txt-tertiary dark:hover:text-txt-primary',
+              'hover:bg-surface-elevated/50 dark:hover:bg-surface-hover/50',
               'transition-colors'
             )}
           >
@@ -129,7 +129,7 @@ export default function SpotlightPreviewPane({
             Match Confidence
           </label>
           <div className="mt-1.5 flex items-center gap-2">
-            <div className="flex-1 h-2 bg-celeste-bg-secondary-light dark:bg-celeste-bg-tertiary rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-surface-elevated dark:bg-surface-hover rounded-full overflow-hidden">
               <div
                 className={cn(
                   'h-full rounded-full transition-all duration-500',
@@ -174,7 +174,7 @@ export default function SpotlightPreviewPane({
           <div className="mt-2 space-y-3">
             {Object.entries(actionsByCluster).map(([cluster, actions]) => (
               <div key={cluster}>
-                <span className="text-celeste-xs text-celeste-text-muted capitalize">
+                <span className="text-xs text-txt-tertiary capitalize">
                   {cluster.replace(/_/g, ' ')}
                 </span>
                 <div className="mt-1 flex flex-wrap gap-1.5">
@@ -196,18 +196,18 @@ export default function SpotlightPreviewPane({
       {/* Footer */}
       <div className={cn(
         'px-4 py-3',
-        'border-t border-celeste-divider-light dark:border-celeste-divider',
-        'bg-celeste-panel-light/80 dark:bg-celeste-panel/80',
+        'border-t border-surface-border',
+        'bg-surface-elevated/80 dark:bg-surface-elevated/80',
         'flex items-center justify-between'
       )}>
-        <span className="text-celeste-xs text-celeste-text-muted">
-          Press <kbd className="px-1 py-0.5 rounded bg-celeste-bg-secondary-light dark:bg-celeste-bg-tertiary text-celeste-xs font-medium">Tab</kbd> to cycle actions
+        <span className="text-xs text-txt-tertiary">
+          Press <kbd className="px-1 py-0.5 rounded bg-surface-elevated dark:bg-surface-hover text-xs font-medium">Tab</kbd> to cycle actions
         </span>
         <button
           className={cn(
             'px-3 py-1.5 rounded-md',
-            'bg-celeste-accent hover:bg-celeste-accent-hover',
-            'text-celeste-sm font-medium text-white',
+            'bg-brand-interactive hover:bg-brand-hover',
+            'text-sm font-medium text-white',
             'transition-colors'
           )}
         >

@@ -77,7 +77,7 @@ export function EmailLinkActions({
             onClick={handleAccept}
             disabled={acceptMutation.isPending}
             className={cn(
-              'inline-flex items-center gap-1 px-2 py-1 text-celeste-xs rounded transition-colors',
+              'inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors',
               'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20',
               acceptMutation.isPending && 'opacity-50 cursor-not-allowed'
             )}
@@ -94,7 +94,7 @@ export function EmailLinkActions({
         {/* Change Link Button */}
         <button
           onClick={() => setShowChangeModal(true)}
-          className="inline-flex items-center gap-1 px-2 py-1 text-celeste-xs rounded transition-colors text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
         >
           <RefreshCw className="h-3 w-3" />
           Change
@@ -103,7 +103,7 @@ export function EmailLinkActions({
         {/* Unlink Button */}
         <button
           onClick={() => setShowUnlinkConfirm(true)}
-          className="inline-flex items-center gap-1 px-2 py-1 text-celeste-xs rounded transition-colors text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
         >
           <Unlink className="h-3 w-3" />
           Unlink
@@ -111,7 +111,7 @@ export function EmailLinkActions({
 
         {/* Error indicator */}
         {(acceptMutation.isError || removeMutation.isError) && (
-          <span className="text-red-500 text-celeste-xs">
+          <span className="text-red-500 text-xs">
             <AlertCircle className="h-3 w-3 inline mr-0.5" />
             Failed
           </span>
@@ -175,7 +175,7 @@ function UnlinkConfirmDialog({
         {error && (
           <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
             <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-celeste-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-red-600 dark:text-red-400">
               {error.message || 'Failed to unlink thread'}
             </p>
           </div>

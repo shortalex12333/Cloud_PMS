@@ -91,7 +91,7 @@ export function LensRenderer({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-celeste-text-muted">
+        <div className="animate-pulse text-txt-tertiary">
           Loading {entityType}...
         </div>
       </div>
@@ -137,9 +137,9 @@ export function LensRenderer({
       return <DocumentLensContent {...commonProps} />;
     default:
       return (
-        <div className="p-6 text-celeste-text-muted">
+        <div className="p-6 text-txt-tertiary">
           <p>Unknown entity type: {entityType}</p>
-          <p className="text-xs mt-2 text-celeste-text-disabled">
+          <p className="text-xs mt-2 text-txt-tertiary">
             Supported types: work_order, fault, equipment, part, inventory, receiving,
             certificate, handover, handover_export, hours_of_rest, warranty, shopping_list, document
           </p>

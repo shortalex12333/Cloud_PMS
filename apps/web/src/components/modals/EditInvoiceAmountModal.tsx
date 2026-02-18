@@ -111,7 +111,7 @@ export function EditInvoiceAmountModal({
   const getChangeColor = () => {
     if (difference > 0) return 'text-red-700';
     if (difference < 0) return 'text-green-700';
-    return 'text-celeste-text-secondary';
+    return 'text-txt-secondary';
   };
 
   const getChangeSymbol = () => {
@@ -149,14 +149,14 @@ export function EditInvoiceAmountModal({
           </div>
 
           {/* Invoice Details */}
-          <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg space-y-2">
+          <div className="p-4 bg-surface-primary border border-surface-border rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-celeste-black">
+                <p className="text-sm font-medium text-txt-primary">
                   Invoice: {context.invoice_number}
                 </p>
                 {context.supplier && (
-                  <p className="text-sm text-celeste-text-secondary">
+                  <p className="text-sm text-txt-secondary">
                     Supplier: {context.supplier}
                   </p>
                 )}
@@ -170,14 +170,14 @@ export function EditInvoiceAmountModal({
             <div className="space-y-2">
               <Label htmlFor="old_amount">Current Amount</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-disabled" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="old_amount"
                   type="number"
                   step="0.01"
                   {...register('old_amount')}
                   readOnly
-                  className="pl-8 bg-celeste-bg-secondary cursor-not-allowed"
+                  className="pl-8 bg-surface-elevated cursor-not-allowed"
                 />
               </div>
             </div>
@@ -188,7 +188,7 @@ export function EditInvoiceAmountModal({
                 New Amount <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-disabled" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
                 <Input
                   id="new_amount"
                   type="number"
@@ -208,17 +208,17 @@ export function EditInvoiceAmountModal({
               <div className={`p-4 border rounded-lg ${
                 willTriggerNotification
                   ? 'bg-red-50 border-red-300'
-                  : 'bg-celeste-accent-subtle border-celeste-accent-line'
+                  : 'bg-brand-interactive/10 border-brand-interactive/20'
               }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-celeste-text-secondary">Change:</span>
+                    <span className="text-sm font-medium text-txt-secondary">Change:</span>
                     <span className={`text-lg font-bold ${getChangeColor()}`}>
                       {getChangeSymbol()}${absoluteDifference.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-celeste-text-secondary">Percentage:</span>
+                    <span className="text-sm font-medium text-txt-secondary">Percentage:</span>
                     <span className={`text-lg font-bold ${getChangeColor()}`}>
                       {getChangeSymbol()}{Math.abs(percentageChange).toFixed(2)}%
                     </span>
@@ -232,7 +232,7 @@ export function EditInvoiceAmountModal({
           <div className="space-y-2">
             <Label htmlFor="reason" className="flex items-center gap-2">
               Reason for Change <span className="text-red-500">*</span>
-              <span className="text-xs text-celeste-text-disabled">(Min 15 characters)</span>
+              <span className="text-xs text-txt-tertiary">(Min 15 characters)</span>
             </Label>
             <Textarea
               id="reason"
@@ -244,7 +244,7 @@ export function EditInvoiceAmountModal({
             {errors.reason && (
               <p className="text-sm text-red-600">{errors.reason.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-txt-tertiary">
               This reason will be permanently recorded in the audit log and may be reviewed
               during audits.
             </p>

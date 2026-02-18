@@ -91,7 +91,7 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
     return (
       <div className="p-6 text-center">
         <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
-        <p className="text-celeste-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {error instanceof Error ? error.message : 'Failed to load thread'}
         </p>
       </div>
@@ -105,10 +105,10 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800">
         <div>
-          <h3 className="text-celeste-sm font-medium text-zinc-800 dark:text-zinc-200">
+          <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
             {thread.latest_subject || '(No subject)'}
           </h3>
-          <p className="text-celeste-xs text-zinc-500">
+          <p className="text-xs text-zinc-500">
             {thread.message_count} message{thread.message_count !== 1 ? 's' : ''}
             {thread.has_attachments && ' • Has attachments'}
           </p>
@@ -178,10 +178,10 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
         {/* Direction Icon */}
         <div className={cn(
           'p-1 rounded',
-          isInbound ? 'bg-celeste-accent-subtle' : 'bg-green-100 dark:bg-green-900/30'
+          isInbound ? 'bg-brand-interactive/10' : 'bg-green-100 dark:bg-green-900/30'
         )}>
           {isInbound ? (
-            <ArrowDownLeft className="h-3 w-3 text-celeste-accent" />
+            <ArrowDownLeft className="h-3 w-3 text-brand-interactive" />
           ) : (
             <ArrowUpRight className="h-3 w-3 text-green-600 dark:text-green-400" />
           )}
@@ -190,14 +190,14 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-celeste-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
               {message.from_display_name || 'Unknown'}
             </span>
             <div className="flex items-center gap-2 flex-shrink-0">
               {message.has_attachments && (
                 <Paperclip className="h-3 w-3 text-zinc-400" />
               )}
-              <span className="text-celeste-xs text-zinc-400">
+              <span className="text-xs text-zinc-400">
                 {timestamp ? formatEmailTimestamp(timestamp) : ''}
               </span>
               {isExpanded ? (
@@ -207,7 +207,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
               )}
             </div>
           </div>
-          <p className="text-celeste-xs text-zinc-500 truncate">
+          <p className="text-xs text-zinc-500 truncate">
             {message.subject || '(No subject)'}
           </p>
         </div>
@@ -219,7 +219,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
           {/* Attachments List (metadata only) */}
           {message.has_attachments && message.attachments && message.attachments.length > 0 && (
             <div className="mb-3">
-              <p className="text-celeste-xs text-zinc-500 uppercase tracking-wider mb-1">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
                 Attachments
               </p>
               <div className="flex flex-wrap gap-1">
@@ -232,7 +232,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
                       att.name,
                       att.contentType || 'application/octet-stream'
                     )}
-                    className="inline-flex items-center gap-1 text-celeste-xs text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
                   >
                     <FileText className="h-3 w-3" />
                     {att.name}
@@ -246,7 +246,7 @@ function MessageItem({ message, isExpanded, onToggle, onAttachmentClick }: Messa
           {!showOriginal ? (
             <button
               onClick={() => setShowOriginal(true)}
-              className="inline-flex items-center gap-1.5 text-celeste-sm text-celeste-accent hover:text-celeste-accent transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-brand-interactive hover:text-brand-interactive transition-colors"
             >
               <Eye className="h-3.5 w-3.5" />
               View original
@@ -282,7 +282,7 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
     return (
       <div className="py-4 flex items-center gap-2 text-zinc-500">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-celeste-sm">Fetching original from Outlook...</span>
+        <span className="text-sm">Fetching original from Outlook...</span>
       </div>
     );
   }
@@ -294,15 +294,15 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
         <div className="flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-celeste-sm font-medium text-red-700 dark:text-red-400">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">
               Can&apos;t retrieve original right now
             </p>
-            <p className="text-celeste-xs text-red-600 dark:text-red-500 mt-0.5">
+            <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">
               Reason: {error instanceof Error ? error.message : 'Unknown error'}
             </p>
             <button
               onClick={onClose}
-              className="text-celeste-xs text-red-500 hover:text-red-600 mt-2"
+              className="text-xs text-red-500 hover:text-red-600 mt-2"
             >
               Dismiss
             </button>
@@ -318,19 +318,19 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
     <div className="mt-2">
       {/* Original Content Header */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-celeste-xs text-zinc-500 uppercase tracking-wider">
+        <span className="text-xs text-zinc-500 uppercase tracking-wider">
           Original Content
         </span>
         <button
           onClick={onClose}
-          className="text-celeste-xs text-zinc-500 hover:text-zinc-700"
+          className="text-xs text-zinc-500 hover:text-zinc-700"
         >
           Hide
         </button>
       </div>
 
       {/* Sender/Recipient Info */}
-      <div className="text-celeste-xs text-zinc-500 mb-2 space-y-0.5">
+      <div className="text-xs text-zinc-500 mb-2 space-y-0.5">
         {content.from_address?.emailAddress && (
           <p>
             <span className="text-zinc-400">From:</span>{' '}
@@ -364,7 +364,7 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
           />
         ) : (
           // Plain text
-          <pre className="text-celeste-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap font-sans">
+          <pre className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap font-sans">
             {content.body?.content || content.body_preview || '(No content)'}
           </pre>
         )}
@@ -373,7 +373,7 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
       {/* Attachments from original */}
       {content.attachments && content.attachments.length > 0 && (
         <div className="mt-2">
-          <p className="text-celeste-xs text-zinc-500 mb-1">
+          <p className="text-xs text-zinc-500 mb-1">
             Attachments ({content.attachments.length})
           </p>
           <div className="flex flex-wrap gap-1">
@@ -386,11 +386,11 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
                   att.name,
                   att.contentType || 'application/octet-stream'
                 )}
-                className="inline-flex items-center gap-1 text-celeste-xs text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
               >
                 <Paperclip className="h-3 w-3" />
                 {att.name}
-                <span className="text-zinc-400 text-celeste-xs">
+                <span className="text-zinc-400 text-xs">
                   ({Math.round(att.size / 1024)}KB)
                 </span>
               </button>

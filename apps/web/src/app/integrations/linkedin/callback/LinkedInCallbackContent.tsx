@@ -78,12 +78,12 @@ export default function LinkedInCallbackContent() {
   return (
     <div className="spotlight-container">
       <div className="w-full max-w-md text-center">
-        <div className="bg-card border border-border rounded-lg p-8">
+        <div className="bg-surface-elevated border border-surface-border rounded-lg p-8">
           {status === 'processing' && (
             <>
-              <div className="h-12 w-12 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="h-12 w-12 mx-auto mb-4 border-4 border-brand-interactive border-t-transparent rounded-full animate-spin" />
               <h2 className="text-lg font-semibold mb-2">Connecting to LinkedIn</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-txt-secondary">
                 Exchanging authorization code for access tokens...
               </p>
             </>
@@ -95,7 +95,7 @@ export default function LinkedInCallbackContent() {
                 ✓
               </div>
               <h2 className="text-lg font-semibold mb-2">Successfully Connected!</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-txt-secondary">
                 Redirecting you back to settings...
               </p>
             </>
@@ -103,14 +103,14 @@ export default function LinkedInCallbackContent() {
 
           {status === 'error' && (
             <>
-              <div className="h-12 w-12 mx-auto mb-4 bg-destructive/10 text-destructive rounded-full flex items-center justify-center text-2xl">
+              <div className="h-12 w-12 mx-auto mb-4 bg-status-critical/10 text-status-critical rounded-full flex items-center justify-center text-2xl">
                 ✕
               </div>
               <h2 className="text-lg font-semibold mb-2">Connection Failed</h2>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-txt-secondary mb-4">
                 {errorMessage || 'Unable to connect to LinkedIn'}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-txt-secondary">
                 Redirecting back to settings...
               </p>
             </>

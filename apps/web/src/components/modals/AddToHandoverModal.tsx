@@ -205,16 +205,16 @@ export function AddToHandoverModal({
     switch (status) {
       case 'open':
       case 'pending':
-        return 'bg-celeste-accent-subtle text-celeste-accent';
+        return 'bg-brand-interactive/10 text-brand-interactive';
       case 'in_progress':
         return 'bg-yellow-100 text-yellow-700';
       case 'resolved':
       case 'completed':
         return 'bg-green-100 text-green-700';
       case 'closed':
-        return 'bg-celeste-bg-secondary text-celeste-text-secondary';
+        return 'bg-surface-elevated text-txt-secondary';
       default:
-        return 'bg-celeste-bg-secondary text-celeste-text-secondary';
+        return 'bg-surface-elevated text-txt-secondary';
     }
   };
 
@@ -228,7 +228,7 @@ export function AddToHandoverModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-celeste-accent" />
+            <FileText className="h-5 w-5 text-brand-interactive" />
             Add Items to Handover
           </DialogTitle>
           <DialogDescription>
@@ -283,7 +283,7 @@ export function AddToHandoverModal({
           <div className="space-y-2">
             <Label htmlFor="search">Search Items</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-celeste-text-muted" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-tertiary" />
               <Input
                 id="search"
                 value={searchQuery}
@@ -299,7 +299,7 @@ export function AddToHandoverModal({
             <Label>
               Available Items ({filteredEntities.length})
               {selectedEntities.length > 0 && (
-                <span className="ml-2 text-celeste-accent font-semibold">
+                <span className="ml-2 text-brand-interactive font-semibold">
                   {selectedEntities.length} selected
                 </span>
               )}
@@ -309,21 +309,21 @@ export function AddToHandoverModal({
               <p className="text-sm text-red-600">{errors.selected_entities.message}</p>
             )}
 
-            <div className="border border-celeste-border rounded-lg max-h-80 overflow-y-auto">
+            <div className="border border-surface-border rounded-lg max-h-80 overflow-y-auto">
               {filteredEntities.length === 0 ? (
-                <div className="p-8 text-center text-celeste-text-disabled">
-                  <Search className="h-12 w-12 mx-auto mb-2 text-celeste-border" />
+                <div className="p-8 text-center text-txt-tertiary">
+                  <Search className="h-12 w-12 mx-auto mb-2 text-surface-border" />
                   <p>No {entityType}s found</p>
                 </div>
               ) : (
-                <div className="divide-y divide-celeste-border">
+                <div className="divide-y divide-surface-border">
                   {filteredEntities.map((entity) => {
                     const isSelected = selectedEntities.includes(entity.id);
                     return (
                       <div
                         key={entity.id}
-                        className={`p-3 cursor-pointer hover:bg-celeste-bg-primary transition-colors ${
-                          isSelected ? 'bg-celeste-accent-line' : ''
+                        className={`p-3 cursor-pointer hover:bg-surface-primary transition-colors ${
+                          isSelected ? 'bg-brand-interactive/15' : ''
                         }`}
                         onClick={() => toggleEntity(entity.id)}
                       >
@@ -331,11 +331,11 @@ export function AddToHandoverModal({
                           <div className="flex items-start gap-3 flex-1">
                             <div className="mt-1">{getEntityIcon(entityType)}</div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-celeste-black truncate">
+                              <h4 className="font-medium text-txt-primary truncate">
                                 {entity.name}
                               </h4>
                               {entity.description && (
-                                <p className="text-sm text-celeste-text-secondary mt-0.5">
+                                <p className="text-sm text-txt-secondary mt-0.5">
                                   {entity.description}
                                 </p>
                               )}
@@ -350,16 +350,16 @@ export function AddToHandoverModal({
                                   </span>
                                 )}
                                 {entity.metadata && (
-                                  <span className="text-xs text-celeste-text-disabled">{entity.metadata}</span>
+                                  <span className="text-xs text-txt-tertiary">{entity.metadata}</span>
                                 )}
                               </div>
                             </div>
                           </div>
                           <div className="ml-3">
                             {isSelected ? (
-                              <CheckCircle2 className="h-5 w-5 text-celeste-accent" />
+                              <CheckCircle2 className="h-5 w-5 text-brand-interactive" />
                             ) : (
-                              <div className="h-5 w-5 border-2 border-celeste-border rounded" />
+                              <div className="h-5 w-5 border-2 border-surface-border rounded" />
                             )}
                           </div>
                         </div>
@@ -384,8 +384,8 @@ export function AddToHandoverModal({
 
           {/* Selected Items Preview */}
           {selectedEntities.length > 0 && (
-            <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
-              <p className="text-sm font-semibold text-celeste-accent mb-2">
+            <div className="p-4 bg-brand-interactive/15 border border-brand-interactive-line rounded-lg">
+              <p className="text-sm font-semibold text-brand-interactive mb-2">
                 Selected Items ({selectedEntities.length})
               </p>
               <div className="flex flex-wrap gap-2">
@@ -395,14 +395,14 @@ export function AddToHandoverModal({
                   return (
                     <div
                       key={id}
-                      className="flex items-center gap-1 px-2 py-1 bg-white border border-celeste-accent rounded text-sm"
+                      className="flex items-center gap-1 px-2 py-1 bg-white border border-brand-interactive rounded text-sm"
                     >
                       {getEntityIcon(entityType)}
-                      <span className="text-celeste-black">{entity.name}</span>
+                      <span className="text-txt-primary">{entity.name}</span>
                       <button
                         type="button"
                         onClick={() => toggleEntity(id)}
-                        className="ml-1 text-celeste-text-disabled hover:text-red-600"
+                        className="ml-1 text-txt-tertiary hover:text-red-600"
                       >
                         <X className="h-3 w-3" />
                       </button>

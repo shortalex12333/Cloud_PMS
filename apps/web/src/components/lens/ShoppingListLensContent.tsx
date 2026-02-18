@@ -102,19 +102,19 @@ export function ShoppingListLensContent({
         <div className="mt-6">
           <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
             {items.length === 0 ? (
-              <p className="text-sm text-celeste-text-muted">No items added yet.</p>
+              <p className="text-sm text-txt-tertiary">No items added yet.</p>
             ) : (
               <ul className="space-y-3">
                 {items.map((item, index) => {
                   const urgencyColor = item.urgency === 'critical' ? 'text-status-critical' :
-                                       item.urgency === 'high' ? 'text-status-warning' : 'text-celeste-text-muted';
+                                       item.urgency === 'high' ? 'text-status-warning' : 'text-txt-tertiary';
                   const itemStatusColor = item.status === 'approved' ? 'text-status-success' :
-                                          item.status === 'rejected' ? 'text-status-critical' : 'text-celeste-text-muted';
+                                          item.status === 'rejected' ? 'text-status-critical' : 'text-txt-tertiary';
                   return (
                     <li key={item.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
                       <div>
-                        <span className="text-sm text-celeste-text-primary">{item.part_name}</span>
-                        <span className="ml-2 text-sm text-celeste-text-muted">
+                        <span className="text-sm text-txt-primary">{item.part_name}</span>
+                        <span className="ml-2 text-sm text-txt-tertiary">
                           × {item.quantity_requested}{item.unit ? ` ${item.unit}` : ''}
                         </span>
                       </div>
@@ -153,7 +153,7 @@ export function ShoppingListLensContent({
         {approved_at && (
           <div className="mt-6">
             <SectionContainer title="Approval" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="text-sm text-txt-tertiary">
                 Approved {formatRelativeTime(approved_at)}
                 {approver_name && ` by ${approver_name}`}
               </p>
