@@ -2,7 +2,7 @@
 
 > **This file tracks decisions, blockers, and position across sessions.**
 >
-> Last Updated: 2026-02-17
+> Last Updated: 2026-02-18
 
 ---
 
@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | FE-03-batch2-lenses |
-| Plan | 05 of 06 complete |
-| Status | FE-03-05 complete - ShoppingListLens with per-item approval workflow, VitalSignsRow (status/items/requester/approver/created), ItemsSection, ApprovalHistorySection, useShoppingListActions hook, /shopping-list/[id] route |
-| Last activity | 2026-02-17 — FE-03-05 executed: Shopping List Lens Rebuild |
+| Phase | 14-handover-export-editable |
+| Plan | 03 of 08 complete |
+| Status | 14-03 complete - handover_html_parser.py with 5 dataclasses (HandoverSectionItem, HandoverSection, SignatureBlock, SignatureSection, HandoverExportDocument), parse_handover_html(), document_to_dict/json, beautifulsoup4>=4.12.0 added |
+| Last activity | 2026-02-18 — 14-03 executed: HTML to Editable Conversion (Python Parser) |
 
 ---
 
@@ -123,6 +123,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | TimelineBar uses CSS percentage-positioned divs on 1440-minute axis | No charting library needed; 24h bar fully renderable with CSS | 2026-02-17 |
 | Overnight rest periods: endMins += 1440 if endMins <= startMins | STCW 22:00–06:00 pattern spans midnight; must wrap correctly | 2026-02-17 |
 | entity_type 'hor_table' in ActionContext (not 'hours_of_rest') | CardType union in types.ts uses hor_table as canonical HOR card type | 2026-02-17 |
+| BeautifulSoup4 html.parser (no lxml) for handover HTML parsing | Avoids binary dependency; stdlib fallback sufficient for external-service HTML | 2026-02-18 |
+| Fallback h2/h3 header traversal in handover parser | Resilient to HTML structure variation from handover-export.onrender.com | 2026-02-18 |
+| Default outgoing+incoming SignatureBlock placeholders always created | Frontend always receives consistent signature_section shape | 2026-02-18 |
 
 ---
 
@@ -421,6 +424,15 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Build: tsc --noEmit 0 errors, /shopping-list/[id] = ƒ dynamic route
 - Commits: 0d35e219 (lens + sections), 4a4be30b (hook), 7944a5e0 (page+build)
 
+### 2026-02-18 (14-03) - Handover HTML Parser
+- Plan 14-03: Created handover_html_parser.py — HTML to editable JSON structure
+- 5 dataclasses: HandoverSectionItem, HandoverSection, SignatureBlock, SignatureSection, HandoverExportDocument
+- parse_handover_html() extracts title, date, yacht name, prepared_by, reviewed_by, sections, signatures from BeautifulSoup
+- Two-pass section parsing: CSS class selectors first, h2/h3 fallback
+- document_to_dict() + document_to_json() for frontend serialization
+- beautifulsoup4>=4.12.0 added to requirements.txt
+- Commits: 1d55ba95 (parser), 466cce10 (dependency)
+
 ### Next Action
-**FE-03-05 complete — Continue with FE-03-06.**
+**14-03 complete — Continue with 14-04.**
 
