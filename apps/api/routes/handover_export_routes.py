@@ -262,9 +262,10 @@ async def get_export_content(
     from integrations.supabase import get_supabase_client
     supabase = get_supabase_client()
 
-    # Fetch export record
+    # Fetch export record with yacht name for lens display
     result = supabase.table("handover_exports").select(
-        "id, handover_id, yacht_id, original_storage_url, edited_content, review_status, created_at"
+        "id, handover_id, yacht_id, original_storage_url, edited_content, review_status, created_at, "
+        "user_signature, user_signed_at, hod_signature, hod_signed_at, yachts(name)"
     ).eq("id", export_id).single().execute()
 
     if not result.data:
@@ -272,12 +273,22 @@ async def get_export_content(
 
     export_data = result.data
 
+    # Extract yacht name from joined relation
+    yachts = export_data.get("yachts")
+    yacht_name = yachts.get("name") if isinstance(yachts, dict) else (yachts[0].get("name") if yachts else None)
+
     # If edited content exists, return it
     if export_data.get("edited_content"):
         return {
             "id": export_id,
             "sections": export_data["edited_content"].get("sections", []),
             "review_status": export_data["review_status"],
+            "created_at": export_data.get("created_at"),
+            "yacht_name": yacht_name,
+            "user_signature": export_data.get("user_signature"),
+            "user_signed_at": export_data.get("user_signed_at"),
+            "hod_signature": export_data.get("hod_signature"),
+            "hod_signed_at": export_data.get("hod_signed_at"),
             "from_cache": True
         }
 
@@ -317,6 +328,12 @@ async def get_export_content(
             for s in document.sections
         ],
         "review_status": export_data["review_status"],
+        "created_at": export_data.get("created_at"),
+        "yacht_name": yacht_name,
+        "user_signature": export_data.get("user_signature"),
+        "user_signed_at": export_data.get("user_signed_at"),
+        "hod_signature": export_data.get("hod_signature"),
+        "hod_signed_at": export_data.get("hod_signed_at"),
         "from_cache": False
     }
 
