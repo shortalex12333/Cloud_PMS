@@ -263,12 +263,14 @@ async def get_export_content(
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Fetch export record (only columns that exist in schema)
+    # Use maybe_single() to handle missing rows gracefully
     result = supabase.table("handover_exports").select(
         "id, yacht_id, original_storage_url, edited_content, review_status, created_at, "
         "user_signature, user_signed_at, hod_signature, hod_signed_at"
-    ).eq("id", export_id).single().execute()
+    ).eq("id", export_id).maybe_single().execute()
 
     if not result.data:
+        logger.warning(f"[handover] Export {export_id} not found for tenant {auth['tenant_key_alias']}")
         raise HTTPException(status_code=404, detail="Export not found")
 
     export_data = result.data
@@ -354,7 +356,7 @@ async def save_draft(
     # Verify export exists and user has access
     result = supabase.table("handover_exports").select(
         "id, yacht_id, review_status"
-    ).eq("id", export_id).single().execute()
+    ).eq("id", export_id).maybe_single().execute()
 
     if not result.data:
         raise HTTPException(status_code=404, detail="Export not found")
@@ -387,7 +389,7 @@ async def submit_export(
     # Fetch export
     result = supabase.table("handover_exports").select(
         "id, yacht_id, review_status, original_storage_url"
-    ).eq("id", export_id).single().execute()
+    ).eq("id", export_id).maybe_single().execute()
 
     if not result.data:
         raise HTTPException(status_code=404, detail="Export not found")
@@ -450,7 +452,7 @@ async def countersign_export(
     # Fetch export
     result = supabase.table("handover_exports").select(
         "id, yacht_id, review_status, signed_storage_url, edited_content, user_signature"
-    ).eq("id", export_id).single().execute()
+    ).eq("id", export_id).maybe_single().execute()
 
     if not result.data:
         raise HTTPException(status_code=404, detail="Export not found")
