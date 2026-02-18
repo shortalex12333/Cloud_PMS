@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { toast } from 'sonner';
+import { startExportJob, checkJobStatus } from '@/lib/handoverExportClient';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
 
@@ -390,71 +391,64 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     fetchItems();
   }, [user?.id, fetchItems]);
 
+  // Poll for job completion and log to ledger when done
+  const pollForCompletion = useCallback(async (jobId: string, handoverId: string, maxAttempts = 60) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const status = await checkJobStatus(jobId);
+      if (status.status === 'complete') {
+        // Log to ledger — fire and forget
+        if (token && user?.yachtId) {
+          fetch(`${RENDER_API_URL}/v1/ledger/record`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              event_name: 'handover_export_complete',
+              payload: {
+                yacht_id: user.yachtId,
+                user_id: handoverId,
+                job_id: jobId,
+                result_url: status.result_url,
+              },
+            }),
+          }).catch(() => {});
+        }
+        return;
+      }
+      if (status.status === 'failed') {
+        toast.error('Export failed. Please try again.');
+        return;
+      }
+      await new Promise(r => setTimeout(r, 5000)); // 5 second intervals
+    }
+  }, [user?.yachtId, supabase]);
+
   // Handle export
   const handleExport = useCallback(async () => {
     if (!user?.id || !user?.yachtId || items.length === 0) return;
 
     setExporting(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
+      // Start pipeline export job on external service
+      const job = await startExportJob(user.id, user.yachtId);
 
-      // Call export API - yacht_id and user_id are query params, rest in body
-      const exportUrl = new URL(`${RENDER_API_URL}/v1/handover/export`);
-      exportUrl.searchParams.set('yacht_id', user.yachtId);
-      exportUrl.searchParams.set('user_id', user.id);
-
-      const response = await fetch(exportUrl.toString(), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          export_type: 'html',
-          item_ids: items.map(i => i.id),
-          filter_by_user: true,  // Ensure only user's items are exported
-        }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || 'Export failed');
-      }
-
-      const result = await response.json();
-
-      // Log to ledger
-      await fetch(`${RENDER_API_URL}/v1/ledger/record`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          event_name: 'handover_exported',
-          payload: {
-            yacht_id: user.yachtId,
-            user_id: user.id,
-            item_count: items.length,
-            export_id: result.export_id,
-          },
-        }),
-      }).catch(() => {}); // Fire and forget
-
-      toast.success('Handover exported! Check your email.');
+      toast.success('Your handover will be visible in ledger when complete (~5 minutes)');
       fetchItems(); // Refresh to hide exported items
+
+      // Background polling — does not block UX
+      pollForCompletion(job.job_id, user.id).catch(() => {});
     } catch (err) {
       console.error('[HandoverDraftPanel] Export error:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to export handover');
     } finally {
       setExporting(false);
     }
-  }, [user?.id, user?.yachtId, items, fetchItems]);
+  }, [user?.id, user?.yachtId, items, fetchItems, pollForCompletion]);
 
   // Toggle day expansion
   const toggleDay = useCallback((date: string) => {
