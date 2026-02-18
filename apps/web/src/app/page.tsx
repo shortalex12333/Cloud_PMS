@@ -28,6 +28,7 @@
 import { Suspense } from 'react';
 import nextDynamic from 'next/dynamic';
 import { SurfaceProvider, useSurface } from '@/contexts/SurfaceContext';
+import { NavigationProvider } from '@/contexts/NavigationContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './app/ContextPanel';
 import DeepLinkHandler from './app/DeepLinkHandler';
@@ -77,7 +78,9 @@ export default function RootSurface() {
   return (
     <AuthProvider>
       <SurfaceProvider>
-        <SurfaceContent />
+        <NavigationProvider>
+          <SurfaceContent />
+        </NavigationProvider>
       </SurfaceProvider>
     </AuthProvider>
   );
