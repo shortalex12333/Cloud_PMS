@@ -152,6 +152,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
       'pms_documents': 'document',
       'pms_certificates': 'certificate',
       'pms_handovers': 'handover',
+      'handover_export': 'handover_export',
       'pms_hours_of_rest': 'hours_of_rest',
       'pms_warranties': 'warranty',
       'pms_shopping_lists': 'shopping_list',
