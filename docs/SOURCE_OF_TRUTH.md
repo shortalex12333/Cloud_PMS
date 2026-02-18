@@ -7,59 +7,6 @@
 
 ---
 
-## Operating Plan (NON-NEGOTIABLE)
-
-### Doc Structure
-
-**Static Docs (invariants):**
-| File | Purpose |
-|------|---------|
-| `/docs/SOURCE_OF_TRUTH.md` | Authoritative state + invariants (THIS FILE) |
-| `/docs/UI_LOCKS.md` | UI parity + styling locks |
-| `/docs/DB_CONTRACT.md` | Tables, RLS, RPC rules, constraints |
-| `/docs/TEST_ORDER.md` | Mandatory test order + commands |
-| `/docs/HANDOFF_TEMPLATE.md` | Checkpoint format |
-
-**GSD Planning (live state):**
-| File | Purpose |
-|------|---------|
-| `/.planning/PROJECT.md` | Vision, stack, constraints |
-| `/.planning/REQUIREMENTS.md` | v1/v2/out-of-scope scoping |
-| `/.planning/ROADMAP.md` | Phases + status |
-| `/.planning/STATE.md` | Decisions, blockers, position |
-| `/.planning/{phase}-CONTEXT.md` | Preferences before planning |
-| `/.planning/{phase}-{N}-PLAN.md` | Atomic task with XML |
-| `/.claude/PROGRESS_LOG.md` | Live lens tracking |
-
-### GSD Workflow Commands
-
-| Command | When |
-|---------|------|
-| `/gsd-discuss-phase N` | Before planning — capture preferences |
-| `/gsd-plan-phase N` | Research + plan + verify |
-| `/gsd-execute-phase N` | Implement with atomic commits |
-| `/gsd-verify-work N` | User acceptance testing |
-| `/gsd-quick` | Ad-hoc tasks without full planning |
-| `/gsd-progress` | Check current position |
-| `/gsd-pause-work` | Create handoff mid-phase |
-| `/gsd-resume-work` | Restore from last session |
-
-### Rules
-1. **SOURCE OF TRUTH RULE**: If chat conflicts with this file, the file wins
-2. **PHASE GATING**: Work ONLY on currently declared phase; out-of-scope items go to Backlog
-3. **CONTEXT LIMIT SAFETY**: ~65% warn, ~70% stop new work, 75%+ HARD STOP with checkpoint
-4. **ZERO-BS COMPLETION**: No "done" without evidence (tests/screenshots/diffs)
-5. **PLUGIN USAGE**: Use typescript-lsp, playwright, supabase, etc. to verify, don't assume
-
-### Phase Sequence (GSD)
-1. Discuss (capture preferences → CONTEXT.md)
-2. Plan (research + XML plans → PLAN.md)
-3. Execute (atomic commits per task)
-4. Verify (UAT → fixes if needed)
-5. Update docs + STATE.md
-
----
-
 ## Locked Invariants
 
 ### UI Locks — Search Bar (ChatGPT Parity)
@@ -105,7 +52,7 @@
 
 | Action | Allowed Roles | Signature Required |
 |--------|---------------|-------------------|
-| `create_receiving` | ALL crew | No |
+| `create_receiving` | ALL crew (crew, deckhand, steward, chef, bosun, engineer, eto, chief_engineer, chief_officer, chief_steward, purser, captain, manager) | No |
 | `add_receiving_item` | Receiver (owner) or HOD+ | No |
 | `update_receiving_fields` | Receiver (owner) or HOD+ | No |
 | `accept_receiving` | chief_engineer, chief_officer, purser, captain, manager | Yes |
@@ -145,6 +92,11 @@
 
 **Note**: No separate `confidence` or `status` columns - confidence goes inside `payload.extraction_confidence`
 
+### RLS Verification
+- Must verify after each mutation
+- yacht_id isolation is mandatory
+- service_role bypasses RLS (backend uses this)
+
 ---
 
 ## Test Users (Staging)
@@ -158,39 +110,20 @@
 
 **Test Yacht ID**: `85fe1119-b04c-41ac-80f1-829d23322598`
 
-**Note**: Only `x@alex-short.com` and `captain.tenant@alex-short.com` exist in Supabase auth.
+**Note**: Only `x@alex-short.com` and `captain.tenant@alex-short.com` exist in Supabase auth. Others may not be provisioned.
+
+---
+
+## Test Order (MANDATORY)
+
+1. **DB constraints, RLS, FK** - Verify policies match expectations
+2. **Backend logic** - Handler state validation, role checks
+3. **Frontend UX parity** - Playwright E2E tests
+4. **OCR end-to-end** - Fake invoice upload → extraction → database
 
 ---
 
 ## Current State (2026-02-17)
-
-### Frontend Phases (FE-0 through FE-6)
-
-| Phase | Name | Status | Evidence |
-|-------|------|--------|----------|
-| FE-0 | Design System | ✓ COMPLETE | 5/5 verified, tokens.css + 6 components |
-| FE-1 | Work Order Lens | ○ NEXT | Reference lens for all others |
-| FE-2 | Batch 1 (Fault, Equipment, Parts, Certificate) | ○ | - |
-| FE-3 | Batch 2 (Receiving, Handover, HOR, Warranty, Shopping List) | ○ | - |
-| FE-4 | Batch 3 + Navigation | ○ | - |
-| FE-5 | Email Lens | ○ | Blocked on backend |
-| FE-6 | Integration, Polish, QA | ○ | - |
-
-### Milestone M1: Lens Completion (Backend Reference)
-
-| Phase | Lens | Status | Blockers |
-|-------|------|--------|----------|
-| 1 | Receiving | 80% | PR #332, crew user, staging deploy |
-| 2 | Parts/Inventory | 0% | - |
-| 3 | Equipment | 0% | - |
-| 4 | Faults | 0% | - |
-| 5 | Work Orders | 0% | - |
-| 6 | Certificates | 0% | - |
-| 7 | Handover | 0% | - |
-| 8 | Hours of Rest | 0% | - |
-| 9 | Warranty | 0% | - |
-| 10 | Shopping List | 0% | - |
-| 11 | Email | 0% | Handler not created |
 
 ### Verified Working — Search Bar Phase
 - [x] Shadow only, no border (ChatGPT parity)
@@ -198,13 +131,70 @@
 - [x] Category buttons removed from DOM
 - [x] Shadow tokenized via `--celeste-spotlight-shadow`
 - [x] Build passes
+- [x] Screenshot: `~/Desktop/spotlight-tokenized-final.png`
 - [x] PRs merged: #327, #328, #330
 
+### Verified Working — OCR/Receiving
+- [x] OCR pipeline synchronous processing
+- [x] Docker service healthy on port 8001
+- [x] Multi-role authentication (Captain, Chief Engineer)
+- [x] Image upload to Supabase storage
+- [x] Tesseract OCR extraction
+- [x] pms_image_uploads populated
+- [x] pms_receiving_extractions populated
+- [x] RLS yacht isolation
+- [x] "+" button opens receiving modal
+- [x] Playwright receiving-plus-button-journey: 9/9 passed
+
+### NOT Verified (Search Bar)
+- [ ] Light mode rendering (only dark mode screenshotted)
+- [ ] Mobile responsiveness
+
 ### Known Issues
-- [x] `accept_receiving` handler missing status validation → **FIXED**
-- [x] Tests expect wrong role permissions → **FIXED**
-- [ ] Crew test user not in Supabase auth
-- [ ] Handler fix not deployed to staging
+- [x] `accept_receiving` handler missing status validation → **FIXED** (added `ALREADY_REJECTED` check, line 1275)
+- [x] Tests expect wrong role permissions → **FIXED** (test expectations now match registry)
+- [ ] Crew test user not in Supabase auth (`crew.test@alex-short.com` → login fails → 403)
+- [ ] Handler fix not deployed to staging (reject→accept test still fails against remote API)
+
+### Test Results Summary
+| Suite | Passed | Failed | Notes |
+|-------|--------|--------|-------|
+| receiving-plus-button-journey | 9/9 | 0 | Fixed |
+| receiving-COMPREHENSIVE | 8/10 | 2 | Remaining: crew user missing, handler not deployed |
+| receiving-simple-test | 1/1 | 0 | |
+| receiving-lens-ui-smoke | 1/1 | 0 | |
+
+### Remaining Failures Analysis
+| Test | Status | Root Cause | Fix Required |
+|------|--------|------------|--------------|
+| Crew create (403) | BLOCKED | `crew.test@alex-short.com` not in Supabase auth | Provision test user |
+| Reject→Accept (200) | BLOCKED | Handler fix local only, not deployed to staging | Deploy `receiving_handlers.py` |
+
+---
+
+## Files Touched (This Session)
+
+### Search Bar Phase (PRs #327, #328, #330)
+- `apps/web/src/components/spotlight/SpotlightSearch.tsx` - Removed icons, buttons, border
+- `apps/web/src/styles/globals.css` - Added `--celeste-spotlight-shadow` token
+- `apps/web/src/types/actions.ts` - Added 16 missing MicroAction types
+- `apps/web/src/types/workflow-archetypes.ts` - Added archetype mappings
+- `apps/web/src/components/modals/AddNoteModal.tsx` - Extended EntityType
+
+### Image-processing Repo
+- `src/handlers/receiving_handler.py` - Added synchronous OCR
+- `src/routes/upload_routes.py` - Added receiving_id param
+- `src/models/common.py` - Added extracted_data, confidence fields
+- `tests/multi_role_test.py` - Multi-role test suite
+- `.env.docker` - Docker environment
+
+### Cloud_PMS Repo
+- `apps/web/tests/playwright/receiving-plus-button-journey.spec.ts` - Fixed selectors
+- `apps/web/tests/playwright/receiving-COMPREHENSIVE.spec.ts` - Fixed test expectations (HOD can accept, Crew can create)
+- `apps/api/handlers/receiving_handlers.py` - Added `ALREADY_REJECTED` status check (line 1275)
+- `docs/OCR_ACTION_MAP.md` - Updated with evidence
+- `docs/SOURCE_OF_TRUTH.md` - This file
+- `docker-compose.ocr.yml` - Unified Docker compose
 
 ---
 
@@ -227,12 +217,12 @@
 
 ## Phase Boundaries
 
-### Phase: Search Bar UX (M0)
+### Phase: Search Bar UX
 - **Status**: COMPLETE
 - **Verification**: Build + Screenshot
 - **PRs**: #327, #328, #330
+- **Safe to compact**: YES
 
-### Phase: Lens Completion (M1)
-- **Status**: IN_PROGRESS
-- **Current**: Phase 1 (Receiving) at 80%
-- **Next**: Await GSD command to proceed
+### Phase: Next TBD
+- **Status**: NOT STARTED
+- **Do not proceed without explicit task assignment**
