@@ -168,7 +168,20 @@ class HandoverExportService:
         # 7. Calculate document hash from generated HTML
         document_hash = hashlib.sha256(html.encode()).hexdigest()
 
-        # 8. Create export record with both hashes and item_ids for tracking
+        # 8. Upload HTML to storage (Bucket 1: original)
+        original_storage_path = f"{yacht_id}/original/{export_id}.html"
+        try:
+            self.db.storage.from_("handover-exports").upload(
+                original_storage_path,
+                html.encode("utf-8"),
+                {"content-type": "text/html"}
+            )
+            original_storage_url = f"handover-exports/{original_storage_path}"
+        except Exception as e:
+            logger.warning(f"Failed to upload HTML to storage: {e}")
+            original_storage_url = None
+
+        # 9. Create export record with both hashes and item_ids for tracking
         exported_item_ids = [item.id for item in items]
         await self._create_export_record(
             yacht_id=yacht_id,
@@ -179,10 +192,11 @@ class HandoverExportService:
             total_items=len(items),
             export_id=export_id,
             content_hash=content_hash,
-            item_ids=exported_item_ids
+            item_ids=exported_item_ids,
+            original_storage_url=original_storage_url
         )
 
-        # 9. Create ledger event so user sees clickable notification
+        # 10. Create ledger event so user sees clickable notification
         try:
             create_export_ready_ledger_event(
                 supabase=self.db,
@@ -747,7 +761,8 @@ class HandoverExportService:
         export_id: str,
         content_hash: Optional[str] = None,
         department: Optional[str] = None,
-        item_ids: Optional[List[str]] = None
+        item_ids: Optional[List[str]] = None,
+        original_storage_url: Optional[str] = None
     ) -> str:
         """
         Create record in handover_exports table.
@@ -758,6 +773,7 @@ class HandoverExportService:
         - content_hash links to finalized draft
         - document_hash is SHA256 of generated export artifact
         - metadata.item_ids tracks which items were exported
+        - original_storage_url points to Bucket 1 (AI-generated HTML)
         """
         # Insert export record with both hashes
         metadata = {}
@@ -775,7 +791,9 @@ class HandoverExportService:
             "content_hash": content_hash,
             "export_status": "completed",
             "exported_at": datetime.now(timezone.utc).isoformat(),
-            "metadata": metadata if metadata else None
+            "metadata": metadata if metadata else None,
+            "original_storage_url": original_storage_url,
+            "review_status": "pending_review"
         }).execute()
 
         return export_id
