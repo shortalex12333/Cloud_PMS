@@ -573,6 +573,7 @@ def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, user):
             "entity_type": "handover_export",
             "entity_id": export_id,
             "action": "requires_countersignature",
+            "event_type": "handover_pending_countersign",
             "change_summary": f"Handover from {user_email} requires your countersignature",
             "user_id": hod["id"],
             "metadata": {
