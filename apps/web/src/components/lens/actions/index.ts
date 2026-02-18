@@ -1,7 +1,7 @@
 /**
  * Work Order Lens — Action Modals
  *
- * All five action modals for Work Order lens interactions.
+ * All action modals for Work Order lens interactions.
  * Each modal uses design system tokens and handles loading + Toast states.
  */
 
@@ -19,3 +19,9 @@ export type { ReassignModalProps, CrewMember } from './ReassignModal';
 
 export { ArchiveModal } from './ArchiveModal';
 export type { ArchiveModalProps } from './ArchiveModal';
+
+export { AddHoursModal } from './AddHoursModal';
+export type { AddHoursModalProps } from './AddHoursModal';
+
+export { EditWorkOrderModal } from './EditWorkOrderModal';
+export type { EditWorkOrderModalProps, WorkOrderEditData } from './EditWorkOrderModal';
