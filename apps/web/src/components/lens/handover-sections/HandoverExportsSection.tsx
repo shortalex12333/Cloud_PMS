@@ -25,7 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { SectionContainer, StatusPill, GhostButton } from '@/components/ui';
-import type { HandoverExport } from '../HandoverLens';
+import type { HandoverExport } from '../types';
 
 // ---------------------------------------------------------------------------
 // HandoverExportRow

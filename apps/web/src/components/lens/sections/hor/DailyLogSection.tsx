@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
-import type { DailyLogEntry, RestPeriod } from '../../HoursOfRestLens';
+import type { DailyLogEntry, RestPeriod } from '../../types';
 
 // ============================================================================
 // TYPES

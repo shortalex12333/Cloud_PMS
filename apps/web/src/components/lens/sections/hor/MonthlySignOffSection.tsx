@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import type { MonthlySignOff } from '../../HoursOfRestLens';
+import type { MonthlySignOff } from '../../types';
 
 // ============================================================================
 // TYPES
