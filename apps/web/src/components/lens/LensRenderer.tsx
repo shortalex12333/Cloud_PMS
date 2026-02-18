@@ -24,6 +24,7 @@ import { PartsLensContent } from './PartsLensContent';
 import { ReceivingLensContent } from './ReceivingLensContent';
 import { CertificateLensContent } from './CertificateLensContent';
 import { HandoverLensContent } from './HandoverLensContent';
+import { HandoverExportLensContent } from './HandoverExportLensContent';
 import { HoursOfRestLensContent } from './HoursOfRestLensContent';
 import { WarrantyLensContent } from './WarrantyLensContent';
 import { ShoppingListLensContent } from './ShoppingListLensContent';
@@ -124,6 +125,8 @@ export function LensRenderer({
       return <CertificateLensContent {...commonProps} />;
     case 'handover':
       return <HandoverLensContent {...commonProps} />;
+    case 'handover_export':
+      return <HandoverExportLensContent {...commonProps} />;
     case 'hours_of_rest':
       return <HoursOfRestLensContent {...commonProps} />;
     case 'warranty':
@@ -138,7 +141,7 @@ export function LensRenderer({
           <p>Unknown entity type: {entityType}</p>
           <p className="text-xs mt-2 text-celeste-text-disabled">
             Supported types: work_order, fault, equipment, part, inventory, receiving,
-            certificate, handover, hours_of_rest, warranty, shopping_list, document
+            certificate, handover, handover_export, hours_of_rest, warranty, shopping_list, document
           </p>
         </div>
       );
