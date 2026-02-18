@@ -21,6 +21,7 @@ export const SUPPORTED_ENTITY_TYPES = [
   'email',
   'certificate',
   'handover',
+  'handover_export',
 ] as const;
 
 export const UNSUPPORTED_ENTITY_TYPES = [
