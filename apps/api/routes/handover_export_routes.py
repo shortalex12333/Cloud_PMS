@@ -12,7 +12,7 @@ Routes:
 
 import logging
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -31,6 +31,8 @@ class ExportRequest(BaseModel):
     date_to: Optional[date] = Field(None, description="End date filter")
     export_type: str = Field("html", description="Export format: html, pdf, email")
     include_completed: bool = Field(False, description="Include completed items")
+    item_ids: Optional[List[str]] = Field(None, description="Specific item IDs to export (for user draft exports)")
+    filter_by_user: bool = Field(False, description="Filter items by user_id (added_by = user_id)")
 
 
 class ExportResponse(BaseModel):
@@ -73,7 +75,9 @@ async def generate_export(
             date_from=request.date_from,
             date_to=request.date_to,
             export_type=request.export_type,
-            include_completed=request.include_completed
+            include_completed=request.include_completed,
+            item_ids=request.item_ids,
+            filter_by_user=request.filter_by_user
         )
 
         return ExportResponse(
@@ -116,7 +120,9 @@ async def generate_export_html(
             date_from=request.date_from,
             date_to=request.date_to,
             export_type="html",
-            include_completed=request.include_completed
+            include_completed=request.include_completed,
+            item_ids=request.item_ids,
+            filter_by_user=request.filter_by_user
         )
 
         return Response(

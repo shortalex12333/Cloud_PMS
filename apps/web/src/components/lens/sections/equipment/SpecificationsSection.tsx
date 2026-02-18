@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { SectionContainer } from '@/components/ui/SectionContainer';
-import type { EquipmentLensData } from '@/components/lens/EquipmentLens';
+import type { EquipmentLensData } from '@/components/lens/types';
 
 // ============================================================================
 // TYPES

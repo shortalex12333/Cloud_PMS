@@ -3,8 +3,8 @@
 /**
  * useDocumentNavigation — Navigation helper for document entities.
  *
- * Provides a simple function to navigate to the Document Lens.
- * Referenced in DocumentCard.tsx for opening document details.
+ * Per 1-URL philosophy: Opens document in ContextPanel via SurfaceContext.showContext(),
+ * NOT via URL navigation.
  *
  * Usage:
  * ```tsx
@@ -18,11 +18,11 @@
  */
 
 import { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSurface } from '@/contexts/SurfaceContext';
 
 export interface DocumentNavigationResult {
   /**
-   * Navigate to the Document Lens for a specific document.
+   * Open the Document Lens in ContextPanel for a specific document.
    * @param documentId - The UUID of the document to view
    */
   openDocumentLens: (documentId: string) => void;
@@ -30,15 +30,16 @@ export interface DocumentNavigationResult {
 
 /**
  * Hook providing document navigation utilities.
+ * Uses SurfaceContext.showContext() to render document lens in ContextPanel.
  */
 export function useDocumentNavigation(): DocumentNavigationResult {
-  const router = useRouter();
+  const { showContext } = useSurface();
 
   const openDocumentLens = useCallback(
     (documentId: string) => {
-      router.push(`/documents/${documentId}`);
+      showContext('document', documentId);
     },
-    [router]
+    [showContext]
   );
 
   return {
@@ -48,15 +49,16 @@ export function useDocumentNavigation(): DocumentNavigationResult {
 
 /**
  * Standalone function to navigate to Document Lens.
- * For use outside of React components (e.g., in event handlers).
  *
- * Note: Requires window.location as it doesn't have access to Next.js router.
- * Prefer useDocumentNavigation() hook inside components.
+ * @deprecated Use useDocumentNavigation() hook inside components.
+ * This function cannot use SurfaceContext and will not work with 1-URL architecture.
  */
 export function openDocumentLens(documentId: string): void {
-  if (typeof window !== 'undefined') {
-    window.location.href = `/documents/${documentId}`;
-  }
+  console.warn(
+    '[openDocumentLens] Standalone function is deprecated. Use useDocumentNavigation() hook instead.'
+  );
+  // Per 1-URL philosophy, we cannot navigate to /documents/[id] anymore.
+  // This function should not be used. Log warning and no-op.
 }
 
 export default useDocumentNavigation;

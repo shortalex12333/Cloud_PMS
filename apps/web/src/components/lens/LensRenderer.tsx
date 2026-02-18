@@ -14,7 +14,7 @@
 
 import React from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
-import { useNavigationContext } from '@/contexts/NavigationContext';
+import { useNavigationContextSafe } from '@/contexts/NavigationContext';
 
 // Lens content components
 import { WorkOrderLensContent } from './WorkOrderLensContent';
@@ -58,11 +58,12 @@ export function LensRenderer({
   onRefresh,
 }: LensRendererProps) {
   const { hideContext, showContext } = useSurface();
-  const navigation = useNavigationContext();
+  // Use safe version that doesn't throw if NavigationProvider is missing
+  const navigation = useNavigationContextSafe();
 
   // Back handler: go back in stack or close
   const handleBack = React.useCallback(() => {
-    if (navigation.canGoBack) {
+    if (navigation?.canGoBack) {
       navigation.back();
     } else {
       hideContext();
@@ -71,15 +72,15 @@ export function LensRenderer({
 
   // Close handler: always return to search
   const handleClose = React.useCallback(() => {
-    navigation.endContext();
+    navigation?.endContext();
     hideContext();
   }, [navigation, hideContext]);
 
   // Navigate to another entity (cross-lens navigation)
   const handleNavigate = React.useCallback(
     (targetType: string, targetId: string) => {
-      // Update navigation context stack
-      navigation.pushViewer(targetType, targetId);
+      // Update navigation context stack if available
+      navigation?.pushViewer(targetType, targetId);
       // Also update surface context to render new entity
       showContext(targetType, targetId);
     },
