@@ -12,9 +12,9 @@
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
 | Phase | 14-handover-export-editable |
-| Plan | 07 of 08 complete (14-04 backfilled) |
-| Status | 14-04 complete - HandoverExportLens with canvas signatures, EditableSectionRenderer, SignatureSection, FinishButton, /handover-export/[id] route page |
-| Last activity | 2026-02-18 — 14-04 executed: HandoverExportLens Component (backfilled, was executed out of order) |
+| Plan | 07 of 08 complete |
+| Status | 14-07 complete - ledgerNavigation.ts (ENTITY_ROUTES + handleLedgerClick with mode param), LedgerEventCard.tsx (FileText/Pen icons, brand/warning colors), create_export_ready_ledger_event() in handover_export_service.py, event_type field fixed in _notify_hod_for_countersign |
+| Last activity | 2026-02-18 — 14-07 executed: Ledger Integration + Navigation |
 
 ---
 
@@ -136,6 +136,10 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | EditableSectionRenderer inlines section header div (not SectionContainer) | SectionContainer.title is string-only; editable title needs JSX input element | 2026-02-18 |
 | VitalSign.value is string with color prop (not ReactNode StatusPill) | VitalSignsRow renders StatusPill natively when color prop provided | 2026-02-18 |
 | Route page /handover-export/[id] is client-only using supabase proxy | No server Supabase client in this project; matches existing page patterns | 2026-02-18 |
+| ENTITY_ROUTES is single source of truth for ledger navigation | LedgerEventCard.isClickable checks this map to gate chevron/cursor | 2026-02-18 |
+| handleLedgerClick adds ?mode=edit or ?mode=review param for handover_export only | Multi-mode lens pattern — action field drives which UX mode opens | 2026-02-18 |
+| LedgerEventCard resolves icon from event_type first then action | Allows events with different event_type/action combinations to match | 2026-02-18 |
+| Ledger event fires non-fatally after _create_export_record | Export success never blocked by notification failure | 2026-02-18 |
 
 ---
 
@@ -488,6 +492,15 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - TypeScript: tsc --noEmit 0 errors
 - Commits: 724ba592, 9e7dcee7, 9fab772f, 99772a90, 30af39aa, 7adfe6df, 2bf8d4d5
 
+### 2026-02-18 (14-07) - Ledger Integration + Navigation
+- Plan 14-07: Wired ledger notifications so clicking opens HandoverExportLens
+- Created ledgerNavigation.ts: ENTITY_ROUTES (10 types), getEntityRoute(), handleLedgerClick() with mode param
+- Created LedgerEventCard.tsx: FileText icon (export_ready), Pen icon (countersign), clickable chevron
+- Added create_export_ready_ledger_event() to handover_export_service.py, wired into generate_export()
+- Verified _notify_hod_for_countersign() + added missing event_type="handover_pending_countersign" field (Rule 1 fix)
+- TypeScript: tsc --noEmit 0 errors (exit 0)
+- Commits: 8eac23b9 (ledgerNavigation.ts), 0ac4b7b7 (LedgerEventCard.tsx), a1a0a8cf (ledger event), 84d1129d (HOD fix)
+
 ### Next Action
-**14-04 backfilled — All 7 of 8 plans in phase 14 executed. Continue with 14-08.**
+**14-07 complete — All 7 of 8 plans in phase 14 executed. Continue with 14-08.**
 
