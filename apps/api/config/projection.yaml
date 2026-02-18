@@ -452,6 +452,46 @@ suppliers:
     phone: phone
     preferred: preferred
 
+handover_exports:
+  source_table: handover_exports
+  object_type: handover_export
+  # Only index complete exports (review_status = 'complete')
+  # Projection worker should filter via WHERE clause
+  search_text:
+    # Section titles and content from edited_content JSONB
+    - field: edited_content
+      cast: text
+      transform: "jsonb_path_query_array(%, '$.sections[*].title')::text || ' ' || jsonb_path_query_array(%, '$.sections[*].content')::text"
+    # Item content for searchable notes
+    - field: edited_content
+      cast: text
+      transform: "jsonb_path_query_array(%, '$.sections[*].items[*].content')::text"
+    # Signer names for people search
+    - field: user_signature
+      cast: text
+      transform: "% ->> 'signer_name'"
+    - field: hod_signature
+      cast: text
+      transform: "% ->> 'signer_name'"
+    # Literal token for matching "handover" queries
+    - literal: "handover export signed report shift change"
+  filters:
+    review_status: review_status
+    handover_id: handover_id
+    hod_signed_at:
+      source: hod_signed_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+    user_signed_at:
+      source: user_signed_at
+      transform: "to_char(%, 'YYYY-MM-DD')"
+  payload:
+    title: "Handover Export"
+    review_status: review_status
+    user_signer: "user_signature->>'signer_name'"
+    hod_signer: "hod_signature->>'signer_name'"
+    signed_at: user_signed_at
+    approved_at: hod_signed_at
+
 # =============================================================================
 # Promoted Facets (indexes created in search_index.filters JSONB)
 # =============================================================================
@@ -511,4 +551,7 @@ promoted_facets:
     index_type: btree
   - key: thread_id
     domains: [email]
+    index_type: btree
+  - key: review_status
+    domains: [handover_exports]
     index_type: btree

@@ -1,0 +1,385 @@
+"""
+Handover HTML Parser - Converts HTML reports to editable JSON structure.
+"""
+from dataclasses import dataclass, asdict
+from typing import List, Optional
+from bs4 import BeautifulSoup
+import json
+import re
+from datetime import datetime
+
+
+@dataclass
+class HandoverSectionItem:
+    """Individual item within a section."""
+    id: str
+    content: str
+    entity_type: Optional[str] = None  # equipment, fault, work_order, etc.
+    entity_id: Optional[str] = None
+    priority: Optional[str] = None  # critical, action, fyi
+
+
+@dataclass
+class HandoverSection:
+    """A section of the handover document."""
+    id: str
+    title: str
+    content: str  # Editable text content
+    items: List[HandoverSectionItem]
+    is_critical: bool = False
+    order: int = 0
+
+
+@dataclass
+class SignatureBlock:
+    """Signature placeholder in the document."""
+    role: str  # 'outgoing', 'incoming', 'hod'
+    signer_name: Optional[str] = None
+    signed_at: Optional[str] = None
+    signature_image: Optional[str] = None  # base64
+
+
+@dataclass
+class SignatureSection:
+    """Container for all signatures."""
+    outgoing: Optional[SignatureBlock] = None
+    incoming: Optional[SignatureBlock] = None
+    hod: Optional[SignatureBlock] = None
+
+
+@dataclass
+class HandoverExportDocument:
+    """Full parsed handover document structure."""
+    id: str
+    title: str
+    generated_at: str
+    yacht_name: str
+    prepared_by: str
+    reviewed_by: Optional[str]
+    sections: List[HandoverSection]
+    signature_section: SignatureSection
+    metadata: dict
+
+
+def generate_section_id() -> str:
+    """Generate unique section ID."""
+    import uuid
+    return f"section-{uuid.uuid4().hex[:8]}"
+
+
+def generate_item_id() -> str:
+    """Generate unique item ID."""
+    import uuid
+    return f"item-{uuid.uuid4().hex[:8]}"
+
+
+def parse_handover_html(html_content: str, export_id: str) -> HandoverExportDocument:
+    """
+    Parse HTML from external service into editable JSON structure.
+
+    Args:
+        html_content: Raw HTML string from handover-export.onrender.com
+        export_id: ID of the handover export record
+
+    Returns:
+        HandoverExportDocument with parsed sections
+    """
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Extract header info
+    title = _extract_title(soup)
+    generated_at = _extract_date(soup)
+    yacht_name = _extract_yacht_name(soup)
+    prepared_by = _extract_prepared_by(soup)
+    reviewed_by = _extract_reviewed_by(soup)
+
+    # Parse content sections
+    sections = _parse_sections(soup)
+
+    # Parse signature placeholders
+    signature_section = _parse_signatures(soup)
+
+    # Build metadata
+    metadata = {
+        'source': 'handover-export.onrender.com',
+        'parsed_at': datetime.utcnow().isoformat(),
+        'section_count': len(sections),
+        'has_critical': any(s.is_critical for s in sections)
+    }
+
+    return HandoverExportDocument(
+        id=export_id,
+        title=title,
+        generated_at=generated_at,
+        yacht_name=yacht_name,
+        prepared_by=prepared_by,
+        reviewed_by=reviewed_by,
+        sections=sections,
+        signature_section=signature_section,
+        metadata=metadata
+    )
+
+
+def _extract_title(soup: BeautifulSoup) -> str:
+    """Extract document title from header."""
+    h1 = soup.find('h1')
+    if h1:
+        return h1.get_text(strip=True)
+    title_div = soup.find(class_='report-title')
+    if title_div:
+        return title_div.get_text(strip=True)
+    return 'Handover Report'
+
+
+def _extract_date(soup: BeautifulSoup) -> str:
+    """Extract generation date from header."""
+    date_elem = soup.find(class_='report-date') or soup.find('time')
+    if date_elem:
+        return date_elem.get_text(strip=True)
+    return datetime.utcnow().isoformat()
+
+
+def _extract_yacht_name(soup: BeautifulSoup) -> str:
+    """Extract yacht name from document."""
+    yacht_elem = soup.find(class_='yacht-name')
+    if yacht_elem:
+        return yacht_elem.get_text(strip=True)
+    # Try to find in header
+    header = soup.find('header')
+    if header:
+        text = header.get_text()
+        match = re.search(r'(?:Vessel|Yacht):\s*(.+?)(?:\n|$)', text)
+        if match:
+            return match.group(1).strip()
+    return 'Unknown Vessel'
+
+
+def _extract_prepared_by(soup: BeautifulSoup) -> str:
+    """Extract preparer name."""
+    elem = soup.find(class_='prepared-by')
+    if elem:
+        return elem.get_text(strip=True)
+    return 'Unknown'
+
+
+def _extract_reviewed_by(soup: BeautifulSoup) -> Optional[str]:
+    """Extract reviewer name if present."""
+    elem = soup.find(class_='reviewed-by')
+    if elem:
+        return elem.get_text(strip=True)
+    return None
+
+
+def _parse_sections(soup: BeautifulSoup) -> List[HandoverSection]:
+    """Parse content sections from HTML."""
+    sections = []
+    order = 0
+
+    # Common section class patterns
+    section_selectors = [
+        'section.handover-section',
+        'div.content-section',
+        'section[data-section-type]',
+        'div.critical-items',
+        'div.action-items',
+        'div.fyi-items'
+    ]
+
+    for selector in section_selectors:
+        for elem in soup.select(selector):
+            section = _parse_single_section(elem, order)
+            if section:
+                sections.append(section)
+                order += 1
+
+    # Fallback: parse h2/h3 headers as section markers
+    if not sections:
+        for header in soup.find_all(['h2', 'h3']):
+            section = _parse_section_from_header(header, order)
+            if section:
+                sections.append(section)
+                order += 1
+
+    return sections
+
+
+def _parse_single_section(elem, order: int) -> Optional[HandoverSection]:
+    """Parse a single section element."""
+    title_elem = elem.find(['h2', 'h3', 'h4', '.section-title'])
+    title = title_elem.get_text(strip=True) if title_elem else f'Section {order + 1}'
+
+    # Check if critical section
+    is_critical = (
+        'critical' in elem.get('class', []) or
+        'critical' in title.lower() or
+        elem.get('data-section-type') == 'critical'
+    )
+
+    # Extract content text
+    content_elem = elem.find(class_='section-content') or elem
+    content = content_elem.get_text(strip=True)
+
+    # Parse individual items
+    items = []
+    for item_elem in elem.select('li, .item, .handover-item'):
+        item = _parse_item(item_elem)
+        if item:
+            items.append(item)
+
+    return HandoverSection(
+        id=generate_section_id(),
+        title=title,
+        content=content,
+        items=items,
+        is_critical=is_critical,
+        order=order
+    )
+
+
+def _parse_section_from_header(header, order: int) -> Optional[HandoverSection]:
+    """Parse section starting from a header element."""
+    title = header.get_text(strip=True)
+    if not title:
+        return None
+
+    is_critical = 'critical' in title.lower()
+
+    # Get content until next header
+    content_parts = []
+    items = []
+    sibling = header.find_next_sibling()
+
+    while sibling and sibling.name not in ['h2', 'h3']:
+        if sibling.name == 'ul':
+            for li in sibling.find_all('li'):
+                item = _parse_item(li)
+                if item:
+                    items.append(item)
+        else:
+            text = sibling.get_text(strip=True)
+            if text:
+                content_parts.append(text)
+        sibling = sibling.find_next_sibling()
+
+    return HandoverSection(
+        id=generate_section_id(),
+        title=title,
+        content=' '.join(content_parts),
+        items=items,
+        is_critical=is_critical,
+        order=order
+    )
+
+
+def _parse_item(elem) -> Optional[HandoverSectionItem]:
+    """Parse individual item within a section."""
+    text = elem.get_text(strip=True)
+    if not text:
+        return None
+
+    # Try to extract entity links
+    entity_type = None
+    entity_id = None
+    link = elem.find('a')
+    if link:
+        href = link.get('href', '')
+        # Parse entity from URL like /equipment/123 or /faults/456
+        match = re.search(r'/(\w+)/([a-f0-9-]+)', href)
+        if match:
+            entity_type = match.group(1).rstrip('s')  # equipment, fault, etc.
+            entity_id = match.group(2)
+
+    # Determine priority from classes or content
+    priority = None
+    classes = elem.get('class', [])
+    if 'critical' in classes or 'critical' in text.lower()[:20]:
+        priority = 'critical'
+    elif 'action' in classes:
+        priority = 'action'
+    elif 'fyi' in classes:
+        priority = 'fyi'
+
+    return HandoverSectionItem(
+        id=generate_item_id(),
+        content=text,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        priority=priority
+    )
+
+
+def _parse_signatures(soup: BeautifulSoup) -> SignatureSection:
+    """Parse signature placeholders from HTML."""
+    outgoing = None
+    incoming = None
+    hod = None
+
+    # Look for signature sections
+    sig_container = soup.find(class_='signatures') or soup.find(class_='signature-section')
+    if sig_container:
+        for sig_elem in sig_container.find_all(class_='signature-block'):
+            role = sig_elem.get('data-role', '').lower()
+            if not role:
+                # Try to infer from text
+                text = sig_elem.get_text().lower()
+                if 'outgoing' in text or 'departing' in text:
+                    role = 'outgoing'
+                elif 'incoming' in text or 'arriving' in text:
+                    role = 'incoming'
+                elif 'hod' in text or 'head' in text or 'captain' in text:
+                    role = 'hod'
+
+            sig_block = SignatureBlock(role=role or 'unknown')
+
+            if role == 'outgoing':
+                outgoing = sig_block
+            elif role == 'incoming':
+                incoming = sig_block
+            elif role == 'hod':
+                hod = sig_block
+
+    # Create default placeholders if not found
+    if not outgoing:
+        outgoing = SignatureBlock(role='outgoing')
+    if not incoming:
+        incoming = SignatureBlock(role='incoming')
+
+    return SignatureSection(
+        outgoing=outgoing,
+        incoming=incoming,
+        hod=hod
+    )
+
+
+def document_to_dict(doc: HandoverExportDocument) -> dict:
+    """Convert document to JSON-serializable dict."""
+    return {
+        'id': doc.id,
+        'title': doc.title,
+        'generated_at': doc.generated_at,
+        'yacht_name': doc.yacht_name,
+        'prepared_by': doc.prepared_by,
+        'reviewed_by': doc.reviewed_by,
+        'sections': [
+            {
+                'id': s.id,
+                'title': s.title,
+                'content': s.content,
+                'items': [asdict(i) for i in s.items],
+                'is_critical': s.is_critical,
+                'order': s.order
+            }
+            for s in doc.sections
+        ],
+        'signature_section': {
+            'outgoing': asdict(doc.signature_section.outgoing) if doc.signature_section.outgoing else None,
+            'incoming': asdict(doc.signature_section.incoming) if doc.signature_section.incoming else None,
+            'hod': asdict(doc.signature_section.hod) if doc.signature_section.hod else None,
+        },
+        'metadata': doc.metadata
+    }
+
+
+def document_to_json(doc: HandoverExportDocument) -> str:
+    """Convert document to JSON string."""
+    return json.dumps(document_to_dict(doc), indent=2)

@@ -1,8 +1,8 @@
 # ROADMAP — CelesteOS v1.0 Lens Completion
 
 **Milestone:** v1.0 — Lens Completion
-**Phases:** 14
-**Requirements:** 77
+**Phases:** 15
+**Requirements:** 84
 
 ---
 
@@ -24,6 +24,7 @@
 | 11 | Email | Complete email lens end-to-end | EMAIL-01, EMAIL-02, EMAIL-03, EMAIL-04, EMAIL-05, EMAIL-06 | ○ |
 | 12 | Cross-Lens Cleanup | Resolve cross-lens UX issues across all lenses | CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04 | ○ |
 | 13 | Gap Remediation | Complete    | 2026-02-17 | ○ |
+| 14 | Handover Export Editable | Two-bucket storage + dual signatures | HEXPORT-01..07 | ● COMPLETE |
 
 ---
 
@@ -276,5 +277,38 @@ Plans:
 
 ---
 
+## Phase 14: Handover Export Editable with Signature
+
+**Goal:** Enable users to view, edit, and sign their AI-generated handover exports before final submission, with two-bucket storage for legal compliance and searchable indexing.
+
+**Depends on:** Phase 7 (Handover)
+
+**Requirements:** HEXPORT-01, HEXPORT-02, HEXPORT-03, HEXPORT-04, HEXPORT-05, HEXPORT-06, HEXPORT-07
+
+**Plans:** 8/8 plans complete
+
+Plans:
+- [x] 14-01-PLAN.md — External service integration + UX change
+- [x] 14-02-PLAN.md — Database schema updates
+- [x] 14-03-PLAN.md — HTML→Editable conversion (Python parser)
+- [x] 14-04-PLAN.md — HandoverExportLens component
+- [x] 14-05-PLAN.md — Two-bucket storage + API endpoints
+- [x] 14-06-PLAN.md — Embedding worker integration
+- [x] 14-07-PLAN.md — Ledger integration + navigation
+- [x] 14-08-PLAN.md — E2E tests + phase verification
+
+**Success Criteria:**
+1. Export button shows "visible in ledger ~5min" (not email).
+2. External service called and HTML stored in Bucket 1 (original).
+3. HandoverExportLens allows full editing with add/remove sections.
+4. User can sign via canvas and submit.
+5. HOD notified and can countersign in read-only review mode.
+6. Signed content stored in Bucket 2 and indexed for search.
+7. All 21 E2E tests pass.
+
+**Status:** ● Complete (2026-02-18)
+
+---
+
 *Created: 2026-02-17*
-*Updated: 2026-02-17 — Phase 13 planned*
+*Updated: 2026-02-18 — Phase 14 planned*

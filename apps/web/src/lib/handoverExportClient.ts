@@ -201,3 +201,50 @@ export async function checkServiceHealth(): Promise<boolean> {
     return false;
   }
 }
+
+// ============================================================================
+// PIPELINE EXPORT FUNCTIONS
+// ============================================================================
+
+export interface PipelineRunResponse {
+  job_id: string;
+  status: 'queued' | 'processing' | 'complete' | 'failed';
+}
+
+export interface PipelineJobResponse {
+  job_id: string;
+  status: 'queued' | 'processing' | 'complete' | 'failed';
+  result_url?: string;
+  error?: string;
+}
+
+/**
+ * Start an export pipeline job for a handover
+ */
+export async function startExportJob(handoverId: string, yachtId: string): Promise<PipelineRunResponse> {
+  const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ handover_id: handoverId, yacht_id: yachtId }),
+  });
+  if (!response.ok) throw new Error('Failed to start export job');
+  return response.json();
+}
+
+/**
+ * Check the status of a pipeline export job
+ */
+export async function checkJobStatus(jobId: string): Promise<PipelineJobResponse> {
+  const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/job/${jobId}`);
+  if (!response.ok) throw new Error('Failed to check job status');
+  return response.json();
+}
+
+/**
+ * Retrieve the HTML report for a completed pipeline job
+ */
+export async function getReportHtml(jobId: string): Promise<string> {
+  const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/report/${jobId}`);
+  if (!response.ok) throw new Error('Failed to get report');
+  return response.text();
+}
