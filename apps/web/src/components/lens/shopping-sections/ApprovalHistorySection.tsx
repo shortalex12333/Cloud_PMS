@@ -19,7 +19,7 @@ import * as React from 'react';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { CheckCircle2, XCircle, PlusCircle, ShoppingCart, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ShoppingListAuditEntry } from '../ShoppingListLens';
+import type { ShoppingListAuditEntry } from '../types';
 
 // ============================================================================
 // TYPES

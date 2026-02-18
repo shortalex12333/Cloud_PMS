@@ -93,6 +93,14 @@ export function useNavigationContext() {
   return context;
 }
 
+/**
+ * Safe version of useNavigationContext that returns null instead of throwing.
+ * Use this when NavigationProvider might not be available (e.g., in standalone renders).
+ */
+export function useNavigationContextSafe(): NavigationContextValue | null {
+  return useContext(NavigationContext);
+}
+
 // ============================================================================
 // PROVIDER
 // ============================================================================

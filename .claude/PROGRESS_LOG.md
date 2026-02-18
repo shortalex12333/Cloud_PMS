@@ -1,137 +1,131 @@
 # CelesteOS Progress Log
 
-**Scope**: Frontend UX Engineering — Complete Lens Architecture
-**Status**: PRODUCTION READY
+**Scope**: Frontend UX Engineering — 1-URL Single Surface Architecture
+**Status**: REMEDIATION COMPLETE
 
 ---
 
-## Current Phase: COMPLETE — ALL PHASES DELIVERED
+## Architecture: 1-URL Philosophy
 
-### Frontend Lens Architecture Summary
+Per `rules.md`:
+> "We operate on a 1-url philosophy. Any fragmented frontend URLS are strictly forbidden."
 
-| Phase | Description | Status | Commits |
-|-------|-------------|--------|---------|
-| **FE-Phase 0** | Design System | ✓ COMPLETE | 20+ |
-| **FE-Phase 1** | Work Order Lens (Reference) | ✓ COMPLETE | 28 |
-| **FE-Phase 2** | Batch 1 (Fault, Equipment, Parts, Certificate) | ✓ COMPLETE | 26 |
-| **FE-Phase 3** | Batch 2 (Receiving, Handover, HOR, Warranty, Shopping) | ✓ COMPLETE | 27 |
-| **FE-Phase 4** | Document Lens + Navigation | ✓ COMPLETE | 3 |
-| **FE-Phase 5** | Email Surface | ✓ ALREADY COMPLETE | — |
-| **FE-Phase 6** | Integration, Polish, QA | ✓ COMPLETE | — |
+**Single URL**: `app.celeste7.ai` (renders at `/`)
+**All entities**: Render inside ContextPanel via LensRenderer
+**NO separate routes**: No `/work-orders/[id]`, `/faults/[id]`, etc.
 
 ---
 
-## All Lens Components — PRODUCTION READY
+## FE-REMEDIATION (2026-02-17)
 
-| Lens | Route | Actions Hook | Permissions | E2E Tests |
-|------|-------|--------------|-------------|-----------|
-| WorkOrderLens | `/work-orders/[id]` | useWorkOrderActions | ✓ | 15 tests |
-| FaultLens | `/faults/[id]` | useFaultActions | ✓ | 12 tests |
-| EquipmentLens | `/equipment/[id]` | useEquipmentActions | ✓ | 11 tests |
-| PartsLens | `/parts/[id]` | usePartActions | ✓ | 10 tests |
-| CertificateLens | `/certificates/[id]` | useCertificateActions | ✓ | 12 tests |
-| ReceivingLens | `/receiving/[id]` | useReceivingActions | ✓ | 17 tests |
-| HandoverLens | `/handover/[id]` | useHandoverActions | ✓ | 20 tests |
-| HoursOfRestLens | `/hours-of-rest/[id]` | useHoursOfRestActions | ✓ | 18 tests |
-| WarrantyLens | `/warranty/[id]` | useWarrantyActions | ✓ | 15 tests |
-| ShoppingListLens | `/shopping-list/[id]` | useShoppingListActions | ✓ | 20 tests |
-| DocumentLens | `/documents/[id]` | (inline) | ✓ | — |
+### Critical Fix: Deleted Fragmented Routes
 
-**Total: 11 lenses, 11 routes, 10 action hooks, 11 permission hooks, 150+ E2E tests**
+**BEFORE** (violation of rules.md):
+- 11 page routes at `/work-orders/[id]`, `/faults/[id]`, `/equipment/[id]`, etc.
+- Old `Lens.tsx` files with hardcoded URL navigation
+- `useDocumentNavigation` using `router.push` to deleted routes
+
+**AFTER** (compliant):
+- All 11 fragmented routes **DELETED**
+- 11 `LensContent.tsx` components render inside ContextPanel
+- LensRenderer maps entity types to LensContent components
+- `useDocumentNavigation` uses `showContext()` from SurfaceContext
+- Shared `types.ts` for lens data types
+
+### Files Deleted
+
+```
+apps/web/src/app/certificates/[id]/page.tsx
+apps/web/src/app/documents/[id]/page.tsx
+apps/web/src/app/equipment/[id]/page.tsx
+apps/web/src/app/faults/[id]/page.tsx
+apps/web/src/app/handover/[id]/page.tsx
+apps/web/src/app/hours-of-rest/[id]/page.tsx
+apps/web/src/app/parts/[id]/page.tsx
+apps/web/src/app/receiving/[id]/page.tsx
+apps/web/src/app/shopping-list/[id]/page.tsx
+apps/web/src/app/warranty/[id]/page.tsx
+apps/web/src/app/work-orders/[id]/page.tsx
+
+apps/web/src/components/lens/CertificateLens.tsx
+apps/web/src/components/lens/DocumentLens.tsx
+apps/web/src/components/lens/EquipmentLens.tsx
+apps/web/src/components/lens/FaultLens.tsx
+apps/web/src/components/lens/HandoverLens.tsx
+apps/web/src/components/lens/HoursOfRestLens.tsx
+apps/web/src/components/lens/PartsLens.tsx
+apps/web/src/components/lens/ReceivingLens.tsx
+apps/web/src/components/lens/ShoppingListLens.tsx
+apps/web/src/components/lens/WarrantyLens.tsx
+apps/web/src/components/lens/WorkOrderLens.tsx
+```
+
+### Files Created/Updated
+
+```
+apps/web/src/components/lens/types.ts           # Shared lens data types
+apps/web/src/hooks/useDocumentNavigation.ts     # Uses showContext() now
+apps/web/src/app/email/inbox/page.tsx           # Fixed hardcoded colors
+```
 
 ---
 
-## Design System Components
+## Current Architecture
 
-- `tokens.css` — Dark/light theme CSS custom properties
-- `StatusPill` — Status indicators with semantic colors
-- `SectionContainer` — Collapsible sections with sticky headers
-- `GhostButton`, `PrimaryButton` — Action buttons
-- `EntityLink` — Cross-lens navigation with ledger logging
-- `VitalSignsRow` — 5-indicator vital signs bar
-- `LensHeader` — 56px fixed header with back/close
-- `LensContainer` — Full-screen overlay with glass transitions
+### Routing
+
+| URL | Purpose |
+|-----|---------|
+| `/` | Root surface - redirects to `/app` or handles auth |
+| `/app` | Single surface with SpotlightSearch + ContextPanel |
+| `/login` | Authentication |
+| `/open?t=<token>` | Handover link resolution (redirects to `/app`) |
+| `/email/inbox` | Legacy redirect to `/app?openEmail=true` |
+
+### LensContent Components (ContextPanel Rendering)
+
+| Component | Entity Type | Located At |
+|-----------|-------------|------------|
+| WorkOrderLensContent | `work_order` | `components/lens/` |
+| FaultLensContent | `fault` | `components/lens/` |
+| EquipmentLensContent | `equipment` | `components/lens/` |
+| PartsLensContent | `part`, `inventory` | `components/lens/` |
+| CertificateLensContent | `certificate` | `components/lens/` |
+| ReceivingLensContent | `receiving` | `components/lens/` |
+| HandoverLensContent | `handover` | `components/lens/` |
+| HoursOfRestLensContent | `hours_of_rest` | `components/lens/` |
+| WarrantyLensContent | `warranty` | `components/lens/` |
+| ShoppingListLensContent | `shopping_list` | `components/lens/` |
+| DocumentLensContent | `document` | `components/lens/` |
+
+### Navigation Flow
+
+```
+User clicks entity -> showContext(type, id) ->
+  SurfaceContext updates -> ContextPanel renders ->
+  LensRenderer maps to LensContent -> Entity displayed
+```
 
 ---
 
 ## Build Status
 
 ```
-✓ Compiled successfully
-✓ 0 TypeScript errors
-✓ 0 @ts-nocheck directives
-✓ All 11 routes: ƒ (Dynamic)
+TypeScript: 0 errors
+Routes: /app, /login, /open (single surface architecture)
+Fragmented routes: DELETED
 ```
 
 ---
 
-## Audit Results (2026-02-17)
+## Known Issues (Non-Blocking)
 
-- **Lens Components**: 11/11 ✓
-- **Page Routes**: 11/11 ✓
-- **Action Hooks**: 10/10 ✓
-- **Permissions Hooks**: 11/11 ✓
-- **Type Safety Issues**: 0
-- **Runtime Errors**: 0
-- **Minor TODOs**: 2 (non-blocking)
-
-**Status: APPROVED FOR PRODUCTION**
+1. **282 hardcoded hex colors** in 19 files - should use design tokens
+2. **35 inline style={{}}** blocks - should use Tailwind classes
+3. **6 !important** declarations in CSS
+4. **7 z-index** inconsistencies (mix of hardcoded + CSS variables)
 
 ---
 
-## Live Playwright Testing (2026-02-17)
-
-### Bugs Found & Fixed
-
-| Issue | Root Cause | Fix | File |
-|-------|------------|-----|------|
-| Equipment lens 500 error | Wrong column name `.eq('equipment_id')` | Changed to `.eq('id')` + field mapping fixes | `pipeline_service.py:1238` |
-| Parts lens 500 error | Wrong column name `.eq('part_id')` | Changed to `.eq('id')` + field mapping fixes | `pipeline_service.py:1286` |
-| "Email integration is off" showing | RelatedEmailsPanel in cards | Removed from EquipmentCard, FaultCard | `EquipmentCard.tsx`, `FaultCard.tsx` |
-| Email Link/Create WO no modal | No onClick handlers | Added modal state + handlers | `EmailSurface.tsx` |
-
-### Verified Working (Live Testing)
-- ✅ Login (x@alex-short.com)
-- ✅ Search ("generator" returns results)
-- ✅ Work Order lens (shows Notes, Parts, Checklist, Activity)
-- ✅ Email panel (emails load, filters work, view works)
-
-### Deployed (2026-02-18)
-
-**PR #333** - Equipment/Parts 500 fixes + Email modal handlers
-- Merged to main ✓
-- Backend deployed via Render auto-deploy
-
-**PR #334** - Email lens endpoints + LensContent components
-- GET /v1/email/threads
-- GET /v1/email/thread/{id}
-- GET /v1/email/thread/{id}/links
-- POST /v1/email/thread/{id}/link
-- GET /v1/email/search
-- 11 LensContent components for ContextPanel rendering
-- Merged to main ✓
-- Frontend deployed to Vercel ✓
-
----
-
-## Frontend Gaps Fixed (2026-02-18)
-
-### LensHeader Navigation Enhancement
-- Added Forward button (→) next to Back button
-- Added "Show Related" button before Close button
-- All 11 LensContent components can now pass navigation handlers
-
-### Work Order Lens Action Buttons
-- Added "Start Work" button (for draft/planned status)
-- Added "Edit" button with EditWorkOrderModal
-- Added "Log Hours" button with AddHoursModal
-- Status-aware button visibility
-
-### New Action Modals
-- `AddHoursModal` — Log hours worked on work order
-- `EditWorkOrderModal` — Update WO title, description, priority, type, due date
-
----
-
-*Last Updated: 2026-02-18*
-*Frontend navigation and Work Order action gaps addressed*
+*Last Updated: 2026-02-17*
+*FE-REMEDIATION: 1-URL architecture enforced*

@@ -29,7 +29,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer, StatusPill, EntityLink, GhostButton } from '@/components/ui';
-import type { HandoverItem } from '../HandoverLens';
+import type { HandoverItem } from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
