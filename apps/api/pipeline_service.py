@@ -386,6 +386,18 @@ except Exception as e:
     logger.error("Hours of Rest endpoints will not be available")
 
 # ============================================================================
+# HANDOVER EXPORT ROUTES (Phase 14 - Editable Workflow)
+# ============================================================================
+
+try:
+    from routes.handover_export_routes import router as handover_export_router
+    app.include_router(handover_export_router)
+    logger.info("✅ Handover Export routes registered at /v1/handover/*")
+except Exception as e:
+    logger.error(f"❌ Failed to register Handover Export routes: {e}")
+    logger.error("Handover Export endpoints will not be available")
+
+# ============================================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
