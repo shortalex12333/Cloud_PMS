@@ -299,8 +299,63 @@ async def get_export_content(
 
     # Otherwise, fetch and parse original HTML
     original_url = export_data.get("original_storage_url")
+
+    # Fallback: if no original_storage_url, generate sections from handover_items
     if not original_url:
-        raise HTTPException(status_code=404, detail="Original HTML not available")
+        logger.info(f"[handover] No original_storage_url for export {export_id}, generating from items")
+
+        # Fetch items linked to this export via metadata.item_ids or by yacht
+        export_full = supabase.table("handover_exports").select("metadata").eq("id", export_id).limit(1).execute()
+        item_ids = []
+        if export_full.data and export_full.data[0].get("metadata"):
+            item_ids = export_full.data[0]["metadata"].get("item_ids", [])
+
+        sections = []
+        if item_ids:
+            items_result = supabase.table("handover_items").select("*").in_("id", item_ids).execute()
+            if items_result.data:
+                # Group items by category
+                by_category = {}
+                for item in items_result.data:
+                    cat = item.get("category") or "General"
+                    if cat not in by_category:
+                        by_category[cat] = []
+                    by_category[cat].append(item)
+
+                order = 0
+                for cat, cat_items in by_category.items():
+                    order += 1
+                    sections.append({
+                        "id": f"section-{order}",
+                        "title": cat,
+                        "content": "",
+                        "items": [
+                            {
+                                "id": i["id"],
+                                "content": i.get("summary") or "",
+                                "entity_type": i.get("entity_type"),
+                                "entity_id": i.get("entity_id"),
+                                "priority": "critical" if i.get("priority", 0) >= 3 else "normal"
+                            }
+                            for i in cat_items
+                        ],
+                        "is_critical": any(i.get("priority", 0) >= 3 for i in cat_items),
+                        "order": order
+                    })
+
+        return {
+            "id": export_id,
+            "sections": sections,
+            "review_status": export_data["review_status"],
+            "created_at": export_data.get("created_at"),
+            "yacht_name": yacht_name,
+            "user_signature": export_data.get("user_signature"),
+            "user_signed_at": export_data.get("user_signed_at"),
+            "hod_signature": export_data.get("hod_signature"),
+            "hod_signed_at": export_data.get("hod_signed_at"),
+            "from_cache": False,
+            "generated_from_items": True
+        }
 
     # Download HTML from Supabase Storage
     storage_path = original_url.replace("handover-exports/", "")
@@ -485,8 +540,8 @@ async def countersign_export(
         "review_status": "complete"
     }).eq("id", export_id).execute()
 
-    # Trigger embedding worker for indexing
-    _trigger_indexing(supabase, export_id, yacht_id)
+    # Trigger search indexing
+    _trigger_indexing(supabase, export_id, yacht_id, export_data["edited_content"]["sections"])
 
     return {
         "success": True,
@@ -573,10 +628,10 @@ def _generate_final_html(sections: list, user_sig: dict, hod_sig: dict) -> str:
     return "\n".join(html_parts)
 
 
-def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, user):
+def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, auth: dict):
     """Create ledger notification for HOD users."""
-    user_id = user.id if hasattr(user, "id") else str(user)
-    user_email = user.email if hasattr(user, "email") else user_id
+    user_id = auth.get("user_id") or auth.get("id") or str(auth)
+    user_email = auth.get("email") or user_id
 
     # Get HOD users for this yacht
     hod_users = supabase.table("auth_users_profiles").select(
@@ -600,18 +655,35 @@ def _notify_hod_for_countersign(supabase, export_id: str, yacht_id: str, user):
         }).execute()
 
 
-def _trigger_indexing(supabase, export_id: str, yacht_id: str):
-    """Trigger embedding worker to index the signed handover."""
+def _trigger_indexing(supabase, export_id: str, yacht_id: str, sections: list):
+    """Index the signed handover in search_index for full-text search."""
     try:
-        supabase.table("search_index_queue").insert({
-            "entity_type": "handover_export",
-            "entity_id": export_id,
+        # Extract searchable text from all sections
+        text_parts = []
+        for section in sections:
+            text_parts.append(section.get("title", ""))
+            text_parts.append(section.get("content", ""))
+            for item in section.get("items", []):
+                text_parts.append(item.get("content", ""))
+
+        search_text = " ".join(filter(None, text_parts))
+
+        # Insert into search_index
+        supabase.table("search_index").insert({
+            "object_type": "handover_export",
+            "object_id": export_id,
             "yacht_id": yacht_id,
-            "priority": 1,
-            "status": "pending"
+            "search_text": search_text[:10000],  # Limit to 10k chars
+            "payload": {
+                "section_count": len(sections),
+                "item_count": sum(len(s.get("items", [])) for s in sections)
+            },
+            "updated_at": datetime.utcnow().isoformat()
         }).execute()
+
+        logger.info(f"Indexed handover_export {export_id} for search")
     except Exception as e:
-        logger.warning(f"Failed to queue indexing for export {export_id}: {e}")
+        logger.warning(f"Failed to index handover_export {export_id}: {e}")
 
 
 __all__ = ["router"]
