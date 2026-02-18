@@ -126,6 +126,9 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | BeautifulSoup4 html.parser (no lxml) for handover HTML parsing | Avoids binary dependency; stdlib fallback sufficient for external-service HTML | 2026-02-18 |
 | Fallback h2/h3 header traversal in handover parser | Resilient to HTML structure variation from handover-export.onrender.com | 2026-02-18 |
 | Default outgoing+incoming SignatureBlock placeholders always created | Frontend always receives consistent signature_section shape | 2026-02-18 |
+| review_status uses 3-value CHECK constraint (pending_review/pending_hod_signature/complete) | Enforces valid state transitions at DB level; default pending_review handles existing rows | 2026-02-18 |
+| Dual signatures stored as JSONB objects (not normalized columns) | Preserves full signature metadata (image_base64, signer info, timestamps) in a single field | 2026-02-18 |
+| user_submitted_at separate from user_signed_at | Distinguishes the act of signing from the act of submission in the workflow | 2026-02-18 |
 
 ---
 
@@ -432,6 +435,17 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - document_to_dict() + document_to_json() for frontend serialization
 - beautifulsoup4>=4.12.0 added to requirements.txt
 - Commits: 1d55ba95 (parser), 466cce10 (dependency)
+
+### 2026-02-18 (14-02) - Database Schema Updates
+- Plan 14-02: Added 9 columns to handover_exports for two-bucket storage + dual signatures + workflow status
+- original_storage_url (AI-generated HTML), signed_storage_url (user-edited + signed HTML)
+- edited_content JSONB for section-level edit tracking
+- user_signature JSONB + user_signed_at + user_submitted_at for outgoing crew signature
+- hod_signature JSONB + hod_signed_at for HOD countersignature
+- review_status TEXT with CHECK constraint (pending_review / pending_hod_signature / complete)
+- Partial index idx_handover_exports_pending_hod on (yacht_id, review_status) WHERE pending_hod_signature
+- Migration applied to live Supabase DB via psql direct connection (container not running)
+- Commit: 31c30ae7
 
 ### Next Action
 **14-03 complete — Continue with 14-04.**
