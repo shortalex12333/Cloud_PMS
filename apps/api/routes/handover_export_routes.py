@@ -278,7 +278,7 @@ async def get_export_content(
     # Fetch yacht name separately (no FK relationship)
     yacht_name = None
     if export_data.get("yacht_id"):
-        yacht_result = supabase.table("yachts").select("name").eq("id", export_data["yacht_id"]).limit(1).execute()
+        yacht_result = supabase.table("yacht_registry").select("name").eq("id", export_data["yacht_id"]).limit(1).execute()
         if yacht_result.data and len(yacht_result.data) > 0:
             yacht_name = yacht_result.data[0].get("name")
 
