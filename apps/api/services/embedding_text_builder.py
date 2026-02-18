@@ -431,6 +431,77 @@ def build_note_embedding_text(note: Dict[str, Any]) -> str:
     return text[:200]
 
 
+def build_handover_export_embedding_text(export: Dict[str, Any]) -> str:
+    """
+    Build embedding text for signed handover export.
+
+    Template: Handover Report | {section titles} | {section content} | {item content with priority} | Signed by: {user} | Approved by: {hod}
+
+    Only indexes complete exports (review_status == 'complete').
+
+    Args:
+        export: Handover export dict with:
+            - edited_content: {sections: [{title, content, items: [{content, priority}]}]}
+            - user_signature: {signer_name, signed_at}
+            - hod_signature: {signer_name, signed_at}
+            - review_status: 'complete'
+
+    Returns:
+        Embedding text (max 3000 chars)
+    """
+    parts = []
+
+    # Header for searchability
+    parts.append("handover report shift change")
+
+    # Extract sections from edited_content
+    edited_content = export.get('edited_content') or {}
+    sections = edited_content.get('sections', [])
+
+    for section in sections:
+        # Section title
+        title = section.get('title', '').strip()
+        if title:
+            parts.append(normalize_text(title))
+
+        # Section content
+        content = section.get('content', '').strip()
+        if content:
+            parts.append(normalize_text(content))
+
+        # Section items with priority
+        items = section.get('items', [])
+        for item in items:
+            item_content = item.get('content', '').strip()
+            priority = item.get('priority', 'fyi')
+            if item_content:
+                # Include priority level for semantic matching
+                if priority in ('critical', 'action'):
+                    parts.append(f"{priority}: {normalize_text(item_content)}")
+                else:
+                    parts.append(normalize_text(item_content))
+
+    # Add signature information for searchability
+    user_sig = export.get('user_signature') or {}
+    if user_sig.get('signer_name'):
+        signer_name = user_sig['signer_name']
+        signed_at = user_sig.get('signed_at', '')
+        parts.append(f"signed by: {normalize_text(signer_name)} on {signed_at[:10] if signed_at else ''}")
+
+    hod_sig = export.get('hod_signature') or {}
+    if hod_sig.get('signer_name'):
+        approver_name = hod_sig['signer_name']
+        approved_at = hod_sig.get('signed_at', '')
+        parts.append(f"approved by: {normalize_text(approver_name)} on {approved_at[:10] if approved_at else ''}")
+
+    text = ' | '.join(parts)
+    text = apply_synonyms(text)
+    text = deduplicate_tokens(text)
+    text = scrub_secrets(text)
+
+    return text[:3000]
+
+
 # =============================================================================
 # Batch Validation
 # =============================================================================
@@ -469,6 +540,7 @@ def validate_embedding_text(text: str, entity_type: str) -> Dict[str, Any]:
         'part': 1000,
         'attachment': 500,
         'note': 200,
+        'handover_export': 3000,
     }
 
     max_len = max_lengths.get(entity_type, 2000)
@@ -520,6 +592,7 @@ def build_embedding_text(entity_type: str, entity: Dict[str, Any]) -> str:
         'part': build_part_embedding_text,
         'attachment': build_attachment_embedding_text,
         'note': build_note_embedding_text,
+        'handover_export': build_handover_export_embedding_text,
     }
 
     builder = builders.get(entity_type)

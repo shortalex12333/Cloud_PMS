@@ -182,6 +182,19 @@ class HandoverExportService:
             item_ids=exported_item_ids
         )
 
+        # 9. Create ledger event so user sees clickable notification
+        try:
+            create_export_ready_ledger_event(
+                supabase=self.db,
+                export_id=export_id,
+                yacht_id=yacht_id,
+                user_id=user_id,
+                item_count=len(items)
+            )
+        except Exception as e:
+            # Non-fatal: export succeeded, ledger event failure should not block
+            logger.warning(f"Failed to create ledger event for export {export_id}: {e}")
+
         return HandoverExportResult(
             export_id=export_id,
             draft_id=handover_id,
@@ -782,4 +795,33 @@ class HandoverExportService:
         )
 
 
-__all__ = ["HandoverExportService", "HandoverExportResult"]
+def create_export_ready_ledger_event(
+    supabase,
+    export_id: str,
+    yacht_id: str,
+    user_id: str,
+    item_count: int
+) -> None:
+    """
+    Create ledger event when handover export HTML is ready for review.
+
+    Inserts into pms_audit_log so the user sees a clickable notification
+    in the LedgerPanel. LedgerEventCard routes this to HandoverExportLens
+    with ?mode=edit.
+    """
+    supabase.table("pms_audit_log").insert({
+        "yacht_id": yacht_id,
+        "entity_type": "handover_export",
+        "entity_id": export_id,
+        "action": "export_ready_for_review",
+        "event_type": "handover_export_ready",
+        "change_summary": "Your handover export is ready for review",
+        "user_id": user_id,
+        "metadata": {
+            "item_count": item_count,
+            "status": "pending_review"
+        }
+    }).execute()
+
+
+__all__ = ["HandoverExportService", "HandoverExportResult", "create_export_ready_ledger_event"]

@@ -2,7 +2,7 @@
 
 > **This file tracks decisions, blockers, and position across sessions.**
 >
-> Last Updated: 2026-02-17
+> Last Updated: 2026-02-18
 
 ---
 
@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.0 — Lens Completion |
-| Phase | FE-03-batch2-lenses |
-| Plan | 05 of 06 complete |
-| Status | FE-03-05 complete - ShoppingListLens with per-item approval workflow, VitalSignsRow (status/items/requester/approver/created), ItemsSection, ApprovalHistorySection, useShoppingListActions hook, /shopping-list/[id] route |
-| Last activity | 2026-02-17 — FE-03-05 executed: Shopping List Lens Rebuild |
+| Phase | 14-handover-export-editable |
+| Plan | 08 of 08 complete |
+| Status | 14-08 complete - handover-export-editable.spec.ts with 21 E2E tests tagged [HEXPORT], covering export flow, user edit mode, user submit flow, HOD review mode, HOD countersign flow |
+| Last activity | 2026-02-18 — 14-08 executed: E2E Tests + Phase Verification |
 
 ---
 
@@ -123,6 +123,27 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 | TimelineBar uses CSS percentage-positioned divs on 1440-minute axis | No charting library needed; 24h bar fully renderable with CSS | 2026-02-17 |
 | Overnight rest periods: endMins += 1440 if endMins <= startMins | STCW 22:00–06:00 pattern spans midnight; must wrap correctly | 2026-02-17 |
 | entity_type 'hor_table' in ActionContext (not 'hours_of_rest') | CardType union in types.ts uses hor_table as canonical HOR card type | 2026-02-17 |
+| BeautifulSoup4 html.parser (no lxml) for handover HTML parsing | Avoids binary dependency; stdlib fallback sufficient for external-service HTML | 2026-02-18 |
+| Fallback h2/h3 header traversal in handover parser | Resilient to HTML structure variation from handover-export.onrender.com | 2026-02-18 |
+| Default outgoing+incoming SignatureBlock placeholders always created | Frontend always receives consistent signature_section shape | 2026-02-18 |
+| review_status uses 3-value CHECK constraint (pending_review/pending_hod_signature/complete) | Enforces valid state transitions at DB level; default pending_review handles existing rows | 2026-02-18 |
+| Dual signatures stored as JSONB objects (not normalized columns) | Preserves full signature metadata (image_base64, signer info, timestamps) in a single field | 2026-02-18 |
+| user_submitted_at separate from user_signed_at | Distinguishes the act of signing from the act of submission in the workflow | 2026-02-18 |
+| Next.js handover-export routes use Bearer header passthrough (no createServerClient) | @/lib/supabase/server does not exist; existing codebase uses Authorization header pattern | 2026-02-18 |
+| Python countersign enforces HOD role (not Next.js wrapper) | Python is the authoritative authorization layer for this API | 2026-02-18 |
+| _trigger_indexing uses search_index_queue table insert with try/except | Fire-and-forget; missing table should never block countersign response | 2026-02-18 |
+| HandoverExportLens passes isOpen to LensContainer; mode prop drives edit vs review rendering | LensContainer requires isOpen; single component handles both workflow sides | 2026-02-18 |
+| EditableSectionRenderer inlines section header div (not SectionContainer) | SectionContainer.title is string-only; editable title needs JSX input element | 2026-02-18 |
+| VitalSign.value is string with color prop (not ReactNode StatusPill) | VitalSignsRow renders StatusPill natively when color prop provided | 2026-02-18 |
+| Route page /handover-export/[id] is client-only using supabase proxy | No server Supabase client in this project; matches existing page patterns | 2026-02-18 |
+| ENTITY_ROUTES is single source of truth for ledger navigation | LedgerEventCard.isClickable checks this map to gate chevron/cursor | 2026-02-18 |
+| handleLedgerClick adds ?mode=edit or ?mode=review param for handover_export only | Multi-mode lens pattern — action field drives which UX mode opens | 2026-02-18 |
+| LedgerEventCard resolves icon from event_type first then action | Allows events with different event_type/action combinations to match | 2026-02-18 |
+| Ledger event fires non-fatally after _create_export_record | Export success never blocked by notification failure | 2026-02-18 |
+| psycopg2 cursor (not async Supabase client) for embedding queue handler | Matches existing sync worker architecture; same SQL semantics without new dependency | 2026-02-18 |
+| ENTITY_HANDLERS typed as Dict[str, Callable[[str, Any], dict]] | Extensible registry — future entity types added with one dict entry | 2026-02-18 |
+| process_queue_batch() catches ProgrammingError for missing table | Graceful degradation during staged rollout; delta embedding loop always continues | 2026-02-18 |
+| Embedding upsert uses ON CONFLICT(entity_type, entity_id) | Matches search_index_queue UNIQUE constraint; idempotent re-indexing | 2026-02-18 |
 
 ---
 
@@ -421,6 +442,91 @@ See: `.planning/PROJECT.md` (updated 2026-02-17)
 - Build: tsc --noEmit 0 errors, /shopping-list/[id] = ƒ dynamic route
 - Commits: 0d35e219 (lens + sections), 4a4be30b (hook), 7944a5e0 (page+build)
 
+### 2026-02-18 (14-03) - Handover HTML Parser
+- Plan 14-03: Created handover_html_parser.py — HTML to editable JSON structure
+- 5 dataclasses: HandoverSectionItem, HandoverSection, SignatureBlock, SignatureSection, HandoverExportDocument
+- parse_handover_html() extracts title, date, yacht name, prepared_by, reviewed_by, sections, signatures from BeautifulSoup
+- Two-pass section parsing: CSS class selectors first, h2/h3 fallback
+- document_to_dict() + document_to_json() for frontend serialization
+- beautifulsoup4>=4.12.0 added to requirements.txt
+- Commits: 1d55ba95 (parser), 466cce10 (dependency)
+
+### 2026-02-18 (14-02) - Database Schema Updates
+- Plan 14-02: Added 9 columns to handover_exports for two-bucket storage + dual signatures + workflow status
+- original_storage_url (AI-generated HTML), signed_storage_url (user-edited + signed HTML)
+- edited_content JSONB for section-level edit tracking
+- user_signature JSONB + user_signed_at + user_submitted_at for outgoing crew signature
+- hod_signature JSONB + hod_signed_at for HOD countersignature
+- review_status TEXT with CHECK constraint (pending_review / pending_hod_signature / complete)
+- Partial index idx_handover_exports_pending_hod on (yacht_id, review_status) WHERE pending_hod_signature
+- Migration applied to live Supabase DB via psql direct connection (container not running)
+- Commit: 31c30ae7
+
+### 2026-02-18 (14-01) - External Service Integration + UX Change
+- Plan 14-01: Updated HandoverDraftPanel to call external handover-export.onrender.com service
+- Added pipeline export functions to handoverExportClient.ts (startExportJob, checkJobStatus, getReportHtml)
+- PipelineRunResponse + PipelineJobResponse interfaces added
+- HandoverDraftPanel: replaced local /v1/handover/export call with startExportJob(user.id, user.yachtId)
+- Toast changed from "Check your email" to "visible in ledger when complete (~5 minutes)"
+- Added pollForCompletion() with 5s intervals, fires ledger event (handover_export_complete) on success
+- Build: tsc --noEmit 0 errors
+- Commits: a0593168 (client functions), 87f82e6f (panel update + polling)
+- Note: executed out of order (after 14-02 and 14-03)
+
+### 2026-02-18 (14-05) - Two-Bucket Storage + API Endpoints
+- Plan 14-05: Added 4 FastAPI editable workflow endpoints + 4 Next.js proxy routes
+- GET /export/{id}/content — returns parsed sections from original HTML or cached edited_content
+- POST /export/{id}/save-draft — auto-saves sections to edited_content JSONB without signature
+- POST /export/{id}/submit — uploads signed HTML to signed bucket, notifies HOD via pms_audit_log
+- POST /export/{id}/countersign — re-uploads with both signatures, triggers search_index_queue
+- Next.js routes: Authorization Bearer header passthrough to Python (not createServerClient)
+- Rule 1 fix: removed invalid size="sm" from GhostButton in EditableSectionRenderer.tsx
+- TypeScript: tsc --noEmit 0 errors
+- Commits: 8ec9de8d (Python routes), d122b291 (Next.js routes + Rule 1 fix)
+
+### 2026-02-18 (14-04) - HandoverExportLens Component (backfilled)
+- Plan 14-04: Created HandoverExportLens with dual-mode canvas signatures and editable sections
+- SignatureCanvas: HTML5 canvas + mouse/touch with coordinate scaling for responsive containers
+- EditableSectionRenderer: inline editable section titles, add/remove/reorder, per-section items with priority badges
+- SignatureSection: dual layout (user Prepared By + HOD Approved By), mode-aware SignatureCanvas rendering
+- FinishButton: edit mode = 'Finish and Submit', review mode = 'Approve and Countersign', toast validation
+- HandoverExportLens: VitalSignsRow (5 vitals), LensContainer(isOpen), LensHeader, mode indicator banner
+- /handover-export/[id]/page.tsx: client-only route with supabase proxy auth + data fetch
+- 9 auto-fixes: LensContainer isOpen prop, LensHeader API adaptation, LensTitleBlock title prop, VitalSign string values, SectionContainer inline div, GhostButton no size prop, no createServerClient, no mid-file 'use client', Supabase join array normalization
+- TypeScript: tsc --noEmit 0 errors
+- Commits: 724ba592, 9e7dcee7, 9fab772f, 99772a90, 30af39aa, 7adfe6df, 2bf8d4d5
+
+### 2026-02-18 (14-07) - Ledger Integration + Navigation
+- Plan 14-07: Wired ledger notifications so clicking opens HandoverExportLens
+- Created ledgerNavigation.ts: ENTITY_ROUTES (10 types), getEntityRoute(), handleLedgerClick() with mode param
+- Created LedgerEventCard.tsx: FileText icon (export_ready), Pen icon (countersign), clickable chevron
+- Added create_export_ready_ledger_event() to handover_export_service.py, wired into generate_export()
+- Verified _notify_hod_for_countersign() + added missing event_type="handover_pending_countersign" field (Rule 1 fix)
+- TypeScript: tsc --noEmit 0 errors (exit 0)
+- Commits: 8eac23b9 (ledgerNavigation.ts), 0ac4b7b7 (LedgerEventCard.tsx), a1a0a8cf (ledger event), 84d1129d (HOD fix)
+
+### 2026-02-18 (14-06) - Embedding Worker Integration
+- Plan 14-06: Integrated handover export indexing into embedding_worker_1536.py
+- handle_handover_export(): psycopg2 cursor-based handler extracting edited_content sections + dual signature metadata
+- ENTITY_HANDLERS dict: maps "handover_export" to handler; extensible for future entity types
+- process_queue_batch(): FOR UPDATE SKIP LOCKED queue consumer, marks items complete/failed, ProgrammingError catch for graceful missing-table degradation
+- Main loop: queue batch runs alongside delta embedding in every cycle
+- Migration 28_create_search_index_queue.sql: table + CHECK constraint + partial index on pending rows
+- Rule 1 deviation: adapted async Supabase client pattern to sync psycopg2 cursor (matches existing worker)
+- Commits: bf947c92 (handler + queue), 2e6477b0 (migration)
+
 ### Next Action
-**FE-03-05 complete — Continue with FE-03-06.**
+**Phase 14-handover-export-editable COMPLETE (2026-02-18).**
+
+All 8/8 plans executed:
+- 14-01: External service integration + UX change
+- 14-02: Database schema (9 new columns)
+- 14-03: HTML parser (BeautifulSoup4)
+- 14-04: HandoverExportLens (SignatureCanvas, EditableSectionRenderer)
+- 14-05: Two-bucket storage + 4 API endpoints
+- 14-06: Embedding worker integration
+- 14-07: Ledger integration + navigation
+- 14-08: E2E tests (21 tests)
+
+**No further phases planned in ROADMAP.md. Milestone v1.0 Lens Completion work is done.**
 

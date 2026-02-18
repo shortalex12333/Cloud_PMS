@@ -43,7 +43,9 @@ import logging
 import math
 import hashlib
 import signal
-from typing import List, Dict, Any
+import json
+from datetime import datetime, timezone
+from typing import List, Dict, Any, Optional, Callable
 
 import psycopg2
 import psycopg2.extras
@@ -265,6 +267,226 @@ def get_embedding_stats(cur) -> Dict[str, Any]:
 
 
 # ============================================================================
+# Queue-Based Entity Handlers
+# ============================================================================
+
+def handle_handover_export(entity_id: str, cur) -> dict:
+    """
+    Process a handover export for search indexing.
+
+    Extracts text from edited_content sections and creates searchable content.
+    Only indexes exports with review_status = 'complete'.
+    """
+    cur.execute("""
+        SELECT id, handover_id, yacht_id, signed_storage_url,
+               edited_content, user_signature, hod_signature, review_status
+        FROM handover_exports
+        WHERE id = %s
+    """, (entity_id,))
+    row = cur.fetchone()
+
+    if not row:
+        raise ValueError(f"Handover export {entity_id} not found")
+
+    export_data = dict(row)
+
+    # Only index complete exports
+    if export_data["review_status"] != "complete":
+        return {"skipped": True, "reason": "Not complete"}
+
+    # Extract searchable text
+    text_parts = []
+
+    # Add section content from edited_content JSONB
+    edited_content = export_data.get("edited_content") or {}
+    if isinstance(edited_content, str):
+        try:
+            edited_content = json.loads(edited_content)
+        except (json.JSONDecodeError, TypeError):
+            edited_content = {}
+
+    sections = edited_content.get("sections", [])
+    for section in sections:
+        text_parts.append(f"## {section.get('title', '')}")
+        text_parts.append(section.get("content", ""))
+
+        for item in section.get("items", []):
+            priority = item.get("priority", "")
+            content = item.get("content", "")
+            text_parts.append(f"[{priority}] {content}")
+
+    # Add signature info
+    user_signature = export_data.get("user_signature") or {}
+    if isinstance(user_signature, str):
+        try:
+            user_signature = json.loads(user_signature)
+        except (json.JSONDecodeError, TypeError):
+            user_signature = {}
+
+    hod_signature = export_data.get("hod_signature") or {}
+    if isinstance(hod_signature, str):
+        try:
+            hod_signature = json.loads(hod_signature)
+        except (json.JSONDecodeError, TypeError):
+            hod_signature = {}
+
+    if user_signature:
+        text_parts.append(
+            f"Signed by: {user_signature.get('signer_name')} on {user_signature.get('signed_at')}"
+        )
+
+    if hod_signature:
+        text_parts.append(
+            f"Approved by: {hod_signature.get('signer_name')} on {hod_signature.get('signed_at')}"
+        )
+
+    full_text = "\n".join(filter(None, text_parts))
+
+    # Generate embedding via OpenAI
+    embedding = embed_texts_batch([full_text])[0]
+    vec_str = f"[{','.join(str(x) for x in embedding)}]"
+    content_hash = compute_content_hash(full_text)
+    now_utc = datetime.now(timezone.utc).isoformat()
+
+    metadata = {
+        "handover_id": str(export_data["handover_id"]) if export_data.get("handover_id") else None,
+        "section_count": len(sections),
+        "signed_at": user_signature.get("signed_at") if user_signature else None,
+        "approved_at": hod_signature.get("signed_at") if hod_signature else None,
+    }
+
+    # Upsert into search_index (ON CONFLICT on entity_type + entity_id)
+    cur.execute(f"""
+        INSERT INTO search_index (
+            entity_type, entity_id, yacht_id, content,
+            embedding_1536, embedding_model, embedding_version, embedding_hash, content_hash,
+            metadata, indexed_at, updated_at
+        ) VALUES (
+            'handover_export', %s, %s, %s,
+            %s::vector({EMBED_DIMS}), %s, %s, %s, %s,
+            %s::jsonb, %s, NOW()
+        )
+        ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+            content = EXCLUDED.content,
+            embedding_1536 = EXCLUDED.embedding_1536,
+            embedding_model = EXCLUDED.embedding_model,
+            embedding_version = EXCLUDED.embedding_version,
+            embedding_hash = EXCLUDED.embedding_hash,
+            content_hash = EXCLUDED.content_hash,
+            metadata = EXCLUDED.metadata,
+            indexed_at = EXCLUDED.indexed_at,
+            updated_at = NOW()
+    """, (
+        entity_id,
+        str(export_data["yacht_id"]) if export_data.get("yacht_id") else None,
+        full_text[:10000],
+        vec_str,
+        EMBED_MODEL,
+        EMBED_VERSION,
+        content_hash,
+        content_hash,
+        json.dumps(metadata),
+        now_utc,
+    ))
+
+    return {
+        "indexed": True,
+        "text_length": len(full_text),
+        "section_count": len(sections),
+    }
+
+
+# Registry of queue-based entity type handlers.
+# Maps entity_type string to handler function(entity_id, cur) -> dict.
+ENTITY_HANDLERS: Dict[str, Callable[[str, Any], dict]] = {
+    "handover_export": handle_handover_export,
+}
+
+
+# ============================================================================
+# Queue-Based Processing (search_index_queue)
+# ============================================================================
+
+def process_queue_batch(conn) -> int:
+    """
+    Process one batch of items from search_index_queue.
+
+    Fetches up to BATCH_SIZE pending items, processes each via ENTITY_HANDLERS,
+    and marks items as complete or failed. Returns count of items processed.
+    """
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        # Fetch pending items ordered by priority DESC (higher priority first)
+        cur.execute("""
+            SELECT id, entity_type, entity_id, yacht_id
+            FROM search_index_queue
+            WHERE status = 'pending'
+            ORDER BY priority DESC, created_at ASC
+            LIMIT %s
+            FOR UPDATE SKIP LOCKED
+        """, (BATCH_SIZE,))
+        items = [dict(r) for r in cur.fetchall()]
+
+        if not items:
+            conn.commit()
+            return 0
+
+        logger.info(f"Queue: processing {len(items)} pending item(s)...")
+        processed = 0
+
+        for item in items:
+            item_id = item["id"]
+            entity_type = item["entity_type"]
+            entity_id = str(item["entity_id"])
+
+            # Mark as processing
+            cur.execute("""
+                UPDATE search_index_queue
+                SET status = 'processing',
+                    started_at = NOW()
+                WHERE id = %s
+            """, (item_id,))
+
+            handler = ENTITY_HANDLERS.get(entity_type)
+            if not handler:
+                cur.execute("""
+                    UPDATE search_index_queue
+                    SET status = 'failed',
+                        error = %s
+                    WHERE id = %s
+                """, (f"Unknown entity type: {entity_type}", item_id))
+                logger.warning(f"Queue: unknown entity type '{entity_type}' for item {item_id}")
+                processed += 1
+                continue
+
+            try:
+                result = handler(entity_id, cur)
+                result_json = json.dumps(result)
+                cur.execute("""
+                    UPDATE search_index_queue
+                    SET status = 'complete',
+                        completed_at = NOW(),
+                        result = %s::jsonb
+                    WHERE id = %s
+                """, (result_json, item_id))
+                logger.info(f"Queue: {entity_type}/{entity_id} indexed — {result}")
+                processed += 1
+
+            except Exception as e:
+                error_msg = str(e)[:2000]
+                cur.execute("""
+                    UPDATE search_index_queue
+                    SET status = 'failed',
+                        error = %s
+                    WHERE id = %s
+                """, (error_msg, item_id))
+                logger.error(f"Queue: failed to index {entity_type}/{entity_id}: {e}")
+                processed += 1
+
+        conn.commit()
+        return processed
+
+
+# ============================================================================
 # Main Processing
 # ============================================================================
 
@@ -355,10 +577,22 @@ def main():
 
         while not _shutdown:
             try:
+                # Process direct search_index embeddings (delta policy)
                 processed = process_batch(conn)
 
-                if processed > 0:
-                    total_processed += processed
+                # Process queue-based entity indexing (handover_export, etc.)
+                queue_processed = 0
+                try:
+                    queue_processed = process_queue_batch(conn)
+                except psycopg2.ProgrammingError as qe:
+                    # search_index_queue table may not exist yet; log and skip
+                    conn.rollback()
+                    logger.debug(f"Queue processing skipped (table may not exist): {qe}")
+
+                total_in_cycle = processed + queue_processed
+
+                if total_in_cycle > 0:
+                    total_processed += total_in_cycle
                     empty_batches = 0
 
                     if total_processed % 500 == 0:
@@ -367,12 +601,12 @@ def main():
                         logger.info(f"Progress: {total_processed} rows, {rate:.1f} rows/sec")
                 else:
                     empty_batches += 1
-                    # Exponential backoff when queue is empty
+                    # Exponential backoff when both queues are empty
                     sleep_time = min(BATCH_SLEEP_SEC * (2 ** empty_batches), 30)
                     time.sleep(sleep_time)
 
                 # Brief sleep between batches to avoid rate limits
-                if processed > 0:
+                if total_in_cycle > 0:
                     time.sleep(BATCH_SLEEP_SEC)
 
             except psycopg2.Error as e:
