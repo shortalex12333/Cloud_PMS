@@ -695,12 +695,7 @@ class HandoverExportService:
 
     <div class="footer">
         <div style="margin-bottom: 12px;">Generated {generated_at} &bull; CelesteOS Handover Export</div>
-        {f'''<div class="verification-hashes">
-            <div style="font-size: 11px; color: #6c757d; margin-top: 8px;">
-                <div><strong>Content Hash:</strong> <code>sha256:{content_hash[:16]}...</code></div>
-                <div style="margin-top: 4px;"><strong>Verify:</strong> <a href="/handover/{export_id}/verify" style="color: #0d6efd;">View Verification Details</a></div>
-            </div>
-        </div>''' if content_hash and export_id else ''}
+        {self._format_verification_block(content_hash, export_id) if content_hash and export_id else ''}
     </div>
 </body>
 </html>'''
@@ -730,6 +725,16 @@ class HandoverExportService:
         status_class = status.lower() if status else "pending"
         status_label = status.replace("_", " ").title() if status else "Pending"
         return f'<span class="status-badge {status_class}">{status_label}</span>'
+
+    def _format_verification_block(self, content_hash: str, export_id: str) -> str:
+        """Format the verification block HTML."""
+        hash_preview = content_hash[:16] if content_hash else ""
+        return f'''<div class="verification-hashes">
+            <div style="font-size: 11px; color: #6c757d; margin-top: 8px;">
+                <div><strong>Content Hash:</strong> <code>sha256:{hash_preview}...</code></div>
+                <div style="margin-top: 4px;"><strong>Verify:</strong> <a href="/handover/{export_id}/verify" style="color: #0d6efd;">View Verification Details</a></div>
+            </div>
+        </div>'''
 
     async def _create_export_record(
         self,
