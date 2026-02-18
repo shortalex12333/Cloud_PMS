@@ -288,13 +288,13 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
       // Get exported item IDs to exclude
       const { data: exports } = await supabase
         .from('handover_exports')
-        .select('metadata')
+        .select('edited_content')
         .eq('yacht_id', user.yachtId)
         .not('export_status', 'eq', 'failed');
 
       const exportedItemIds = new Set<string>();
       exports?.forEach(exp => {
-        const itemIds = (exp.metadata as any)?.item_ids || [];
+        const itemIds = (exp.edited_content as any)?.item_ids || [];
         itemIds.forEach((id: string) => exportedItemIds.add(id));
       });
 

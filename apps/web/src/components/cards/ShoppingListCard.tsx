@@ -217,26 +217,26 @@ export function ShoppingListCard({
   return (
     <div
       className={cn(
-        'bg-[var(--celeste-surface)] rounded-[var(--celeste-border-radius-md)] p-[var(--celeste-spacing-4)] border',
+        'bg-surface-primary rounded-md p-ds-4 border',
         isRejected
           ? 'border-red-200 bg-red-50/30'
-          : 'border-[var(--celeste-border-subtle)]',
+          : 'border-surface-border',
         'hover:shadow-sm transition-shadow'
       )}
       data-testid="shopping-list-card"
       data-entity-type="shopping_list_item"
       data-entity-id={item.id}
     >
-      <div className="flex items-start gap-[var(--celeste-spacing-3)]">
+      <div className="flex items-start gap-ds-3">
         {/* Icon */}
         <div
           className={cn(
-            'mt-0.5 p-2 rounded-[var(--celeste-border-radius-sm)]',
+            'mt-0.5 p-2 rounded-sm',
             isRejected
               ? 'bg-red-100 text-red-600'
               : isApproved
               ? 'bg-green-100 text-green-600'
-              : 'bg-[var(--celeste-accent)]/10 text-[var(--celeste-accent)]'
+              : 'bg-brand-muted text-brand-interactive'
           )}
         >
           {isRejected ? (
@@ -251,8 +251,8 @@ export function ShoppingListCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header Row: Part Name + Status */}
-          <div className="flex items-center gap-[var(--celeste-spacing-2)] mb-[var(--celeste-spacing-2)] flex-wrap">
-            <h3 className="font-semibold text-[var(--celeste-text-primary)] truncate">
+          <div className="flex items-center gap-ds-2 mb-ds-2 flex-wrap">
+            <h3 className="font-semibold text-txt-primary truncate">
               {item.part_name}
             </h3>
             <StatusPill
@@ -274,10 +274,10 @@ export function ShoppingListCard({
           </div>
 
           {/* Part Details */}
-          <div className="space-y-[var(--celeste-spacing-1)] mb-[var(--celeste-spacing-3)]">
+          <div className="space-y-ds-1 mb-ds-3">
             {/* Part Number & Manufacturer */}
             {(item.part_number || item.manufacturer) && (
-              <p className="text-sm text-[var(--celeste-text-secondary)]">
+              <p className="text-sm text-txt-secondary">
                 {item.part_number && (
                   <span className="font-medium">P/N: {item.part_number}</span>
                 )}
@@ -287,26 +287,26 @@ export function ShoppingListCard({
             )}
 
             {/* Quantity */}
-            <div className="flex items-center gap-[var(--celeste-spacing-4)] text-sm">
-              <span className="text-[var(--celeste-text-primary)]">
+            <div className="flex items-center gap-ds-4 text-sm">
+              <span className="text-txt-primary">
                 <span className="font-medium">Requested:</span>{' '}
-                <span className="text-[var(--celeste-accent)] font-semibold">
+                <span className="text-brand-interactive font-semibold">
                   {item.quantity_requested}
                 </span>
                 {item.unit && (
-                  <span className="text-[var(--celeste-text-muted)] ml-1">
+                  <span className="text-txt-tertiary ml-1">
                     {item.unit}
                   </span>
                 )}
               </span>
               {item.quantity_approved !== undefined && item.quantity_approved !== null && (
-                <span className="text-[var(--celeste-text-primary)]">
+                <span className="text-txt-primary">
                   <span className="font-medium">Approved:</span>{' '}
                   <span className="text-green-600 font-semibold">
                     {item.quantity_approved}
                   </span>
                   {item.unit && (
-                    <span className="text-[var(--celeste-text-muted)] ml-1">
+                    <span className="text-txt-tertiary ml-1">
                       {item.unit}
                     </span>
                   )}
@@ -315,7 +315,7 @@ export function ShoppingListCard({
             </div>
 
             {/* Source Type */}
-            <div className="flex items-center gap-[var(--celeste-spacing-2)] text-xs text-[var(--celeste-text-muted)]">
+            <div className="flex items-center gap-ds-2 text-xs text-txt-tertiary">
               <FileText className="h-3.5 w-3.5" />
               <span>Source: {sourceLabel}</span>
               {item.source_work_order_id && (
@@ -333,7 +333,7 @@ export function ShoppingListCard({
 
             {/* Candidate Part Badge */}
             {item.is_candidate_part && !item.candidate_promoted_to_part_id && (
-              <div className="flex items-center gap-[var(--celeste-spacing-1)] text-xs text-amber-600">
+              <div className="flex items-center gap-ds-1 text-xs text-amber-600">
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Candidate part (not in catalog)</span>
               </div>
@@ -341,8 +341,8 @@ export function ShoppingListCard({
 
             {/* Linked Part */}
             {item.part_id && !item.is_candidate_part && (
-              <div className="flex items-center gap-[var(--celeste-spacing-2)] text-xs">
-                <Package className="h-3.5 w-3.5 text-[var(--celeste-text-muted)]" />
+              <div className="flex items-center gap-ds-2 text-xs">
+                <Package className="h-3.5 w-3.5 text-txt-tertiary" />
                 <EntityLink
                   entityType="part"
                   entityId={item.part_id}
@@ -354,7 +354,7 @@ export function ShoppingListCard({
 
             {/* Source Notes */}
             {item.source_notes && (
-              <p className="text-sm text-[var(--celeste-text-secondary)] italic mt-1">
+              <p className="text-sm text-txt-secondary italic mt-1">
                 "{item.source_notes}"
               </p>
             )}
@@ -362,8 +362,8 @@ export function ShoppingListCard({
 
           {/* Approval Info */}
           {isApproved && item.approved_at && (
-            <div className="p-[var(--celeste-spacing-3)] bg-green-50 rounded-[var(--celeste-border-radius-sm)] border border-green-200 mb-[var(--celeste-spacing-3)]">
-              <div className="flex items-center gap-[var(--celeste-spacing-2)] text-sm text-green-700">
+            <div className="p-ds-3 bg-green-50 rounded-sm border border-green-200 mb-ds-3">
+              <div className="flex items-center gap-ds-2 text-sm text-green-700">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="font-medium">Approved</span>
                 {item.approved_by_name && (
@@ -386,8 +386,8 @@ export function ShoppingListCard({
 
           {/* Rejection Info */}
           {isRejected && item.rejected_at && (
-            <div className="p-[var(--celeste-spacing-3)] bg-red-50 rounded-[var(--celeste-border-radius-sm)] border border-red-200 mb-[var(--celeste-spacing-3)]">
-              <div className="flex items-center gap-[var(--celeste-spacing-2)] text-sm text-red-700">
+            <div className="p-ds-3 bg-red-50 rounded-sm border border-red-200 mb-ds-3">
+              <div className="flex items-center gap-ds-2 text-sm text-red-700">
                 <XCircle className="h-4 w-4" />
                 <span className="font-medium">Rejected</span>
                 {item.rejected_by_name && (
@@ -414,7 +414,7 @@ export function ShoppingListCard({
           )}
 
           {/* Metadata Row */}
-          <div className="flex items-center gap-[var(--celeste-spacing-4)] text-xs text-[var(--celeste-text-muted)] mb-[var(--celeste-spacing-3)]">
+          <div className="flex items-center gap-ds-4 text-xs text-txt-tertiary mb-ds-3">
             {item.created_by_name && (
               <div className="flex items-center gap-1">
                 <User className="h-3.5 w-3.5" />
@@ -428,7 +428,7 @@ export function ShoppingListCard({
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap items-center gap-[var(--celeste-spacing-2)]">
+          <div className="flex flex-wrap items-center gap-ds-2">
             {/* HoD Actions: Approve/Reject (only for pending items) */}
             {isHoD && isPending && (
               <>
@@ -436,7 +436,7 @@ export function ShoppingListCard({
                   <button
                     onClick={onApprove}
                     className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
                       'text-sm font-medium',
                       'bg-green-600 text-white hover:bg-green-700',
                       'transition-colors'
@@ -450,7 +450,7 @@ export function ShoppingListCard({
                   <button
                     onClick={onReject}
                     className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
                       'text-sm font-medium',
                       'bg-red-600 text-white hover:bg-red-700',
                       'transition-colors'
@@ -468,7 +468,7 @@ export function ShoppingListCard({
               <button
                 onClick={onPromote}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
                   'text-sm font-medium',
                   'bg-amber-500 text-white hover:bg-amber-600',
                   'transition-colors'
@@ -484,10 +484,10 @@ export function ShoppingListCard({
               <button
                 onClick={onViewHistory}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--celeste-border-radius-sm)]',
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
                   'text-sm font-medium',
-                  'text-[var(--celeste-text-secondary)] hover:text-[var(--celeste-text-primary)]',
-                  'bg-[var(--celeste-bg-tertiary)] hover:bg-[var(--celeste-border)]',
+                  'text-txt-secondary hover:text-txt-primary',
+                  'bg-surface-hover hover:bg-surface-hover',
                   'transition-colors'
                 )}
               >

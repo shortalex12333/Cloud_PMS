@@ -70,20 +70,20 @@ function getDocumentTypeBadgeStyles(type: WarrantyDocumentType): {
   switch (type) {
     case 'certificate':
       return {
-        bg: 'bg-[var(--celeste-green)]/10',
-        text: 'text-[var(--celeste-green)]',
+        bg: 'bg-status-success/10',
+        text: 'text-status-success',
         label: 'Certificate',
       };
     case 'claim':
       return {
-        bg: 'bg-[var(--celeste-accent)]/10',
-        text: 'text-[var(--celeste-accent)]',
+        bg: 'bg-brand-interactive/10',
+        text: 'text-brand-interactive',
         label: 'Claim',
       };
     case 'correspondence':
       return {
-        bg: 'bg-[var(--celeste-yellow)]/10',
-        text: 'text-[var(--celeste-yellow)]',
+        bg: 'bg-status-warning/10',
+        text: 'text-status-warning',
         label: 'Correspondence',
       };
     default:

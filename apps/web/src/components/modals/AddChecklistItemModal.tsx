@@ -104,7 +104,7 @@ export function AddChecklistItemModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-[var(--celeste-accent)]" />
+            <ClipboardList className="h-5 w-5 text-brand-interactive" />
             Add Checklist Item
           </DialogTitle>
           <DialogDescription>
@@ -114,14 +114,14 @@ export function AddChecklistItemModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Work Order Context */}
-          <div className="p-3 rounded-lg border bg-[var(--celeste-accent)]/10 border-[var(--celeste-accent)]/20">
+          <div className="p-3 rounded-lg border bg-brand-muted border-brand-interactive/20">
             <div className="flex items-center gap-3">
-              <Wrench className="h-5 w-5 text-[var(--celeste-accent)]" />
+              <Wrench className="h-5 w-5 text-brand-interactive" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-[var(--celeste-text-primary)] truncate">
+                <p className="font-medium text-txt-primary truncate">
                   {context.work_order_title}
                 </p>
-                <p className="text-sm text-[var(--celeste-text-muted)] truncate">
+                <p className="text-sm text-txt-tertiary truncate">
                   ID: {context.work_order_id.slice(0, 8)}...
                 </p>
               </div>
