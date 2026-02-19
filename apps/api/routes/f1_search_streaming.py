@@ -51,7 +51,6 @@ from middleware.auth import get_authenticated_user
 
 # F1 Search types and services
 from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
-from services.signal_router import build_route_plan, RoutePlan
 
 # Cortex rewrites
 from cortex.rewrites import generate_rewrites, Rewrite, RewriteResult

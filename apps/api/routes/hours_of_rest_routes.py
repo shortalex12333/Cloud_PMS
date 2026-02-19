@@ -38,7 +38,7 @@ from typing import Dict, Any, Optional
 import logging
 import os
 from datetime import datetime, timezone
-from supabase import create_client, Client
+from supabase import Client
 
 # Import handlers
 import sys
@@ -47,34 +47,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation
-from pipeline_service import get_tenant_client
+
+# Centralized Supabase client factory
+from integrations.supabase import get_supabase_client, get_tenant_client
 
 logger = logging.getLogger(__name__)
 
 # ============================================================================
 # SUPABASE CLIENT
 # ============================================================================
-
-def get_supabase_client() -> Optional[Client]:
-    """Get TENANT Supabase client for yacht operations data.
-
-    Uses DEFAULT_YACHT_CODE env var to construct tenant-specific credentials.
-    Falls back to generic SUPABASE_URL/SUPABASE_SERVICE_KEY if tenant vars missing.
-    """
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        logger.warning(f"Missing TENANT Supabase credentials for {default_yacht}")
-        return None
-
-    try:
-        return create_client(url, key)
-    except Exception as e:
-        logger.error(f"Failed to create Supabase client: {e}")
-        return None
+# NOTE: get_supabase_client and get_tenant_client are imported from integrations.supabase
 
 
 # ============================================================================

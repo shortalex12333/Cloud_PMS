@@ -466,105 +466,18 @@ class HealthResponse(BaseModel):
 
 _pipeline = None
 _extractor = None
-_supabase_client = None
-_supabase_client_errors = 0
 
-def get_supabase_client(force_new: bool = False):
-    """
-    Lazy-load TENANT Supabase client with connection recovery.
-
-    If the client is stale (>3 consecutive errors), recreate it.
-    This handles connection pool exhaustion and timeout issues.
-
-    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
-    """
-    global _supabase_client, _supabase_client_errors
-
-    # Force recreation if too many errors (connection might be stale)
-    if _supabase_client_errors >= 3:
-        logger.warning(f"[Supabase] Resetting client after {_supabase_client_errors} consecutive errors")
-        _supabase_client = None
-        _supabase_client_errors = 0
-        force_new = True
-
-    if _supabase_client is None or force_new:
-        try:
-            from supabase import create_client
-            # Use tenant-specific env vars (e.g., yTEST_YACHT_001_SUPABASE_URL)
-            default_yacht = os.environ.get("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-            url = os.environ.get(f"{default_yacht}_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
-            key = os.environ.get(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
-            if not url or not key:
-                logger.warning(f"TENANT Supabase credentials not set for {default_yacht}")
-                return None
-            _supabase_client = create_client(url, key)
-            _supabase_client_errors = 0  # Reset error count on successful creation
-            logger.info(f"[Supabase] TENANT client created for {default_yacht}")
-        except Exception as e:
-            logger.error(f"Failed to create Supabase client: {e}")
-            return None
-    return _supabase_client
-
-def mark_supabase_error():
-    """Track consecutive Supabase errors for connection recovery."""
-    global _supabase_client_errors
-    _supabase_client_errors += 1
-    logger.warning(f"[Supabase] Error count: {_supabase_client_errors}")
-
-def reset_supabase_error_count():
-    """Reset error count after successful operation."""
-    global _supabase_client_errors
-    if _supabase_client_errors > 0:
-        _supabase_client_errors = 0
-
-# ============================================================================
-# TENANT CLIENT FACTORY (Per-Yacht DB Routing)
-# ============================================================================
-
-_tenant_clients: Dict[str, Any] = {}
-
-def get_tenant_client(tenant_key_alias: str):
-    """
-    Get or create Supabase client for a specific tenant.
-
-    Loads credentials from environment variables:
-        {tenant_key_alias}_SUPABASE_URL
-        {tenant_key_alias}_SUPABASE_SERVICE_KEY
-
-    Args:
-        tenant_key_alias: e.g., 'yTEST_YACHT_001'
-
-    Returns:
-        Supabase client for the tenant's database
-
-    Raises:
-        ValueError: If tenant credentials not found in environment
-    """
-    global _tenant_clients
-
-    if tenant_key_alias in _tenant_clients:
-        return _tenant_clients[tenant_key_alias]
-
-    url_key = f'{tenant_key_alias}_SUPABASE_URL'
-    key_key = f'{tenant_key_alias}_SUPABASE_SERVICE_KEY'
-
-    tenant_url = os.environ.get(url_key)
-    tenant_key = os.environ.get(key_key)
-
-    if not tenant_url or not tenant_key:
-        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
-        logger.error(f"[TenantClient] Expected env vars: {url_key}, {key_key}")
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    try:
-        from supabase import create_client
-        client = create_client(tenant_url, tenant_key)
-        _tenant_clients[tenant_key_alias] = client
-        logger.info(f"[TenantClient] Created client for {tenant_key_alias}")
-        return client
-    except Exception as e:
-        logger.error(f"[TenantClient] Failed to create client for {tenant_key_alias}: {e}")
-        raise
+# Import centralized Supabase client factory from integrations/supabase.py
+# This consolidates all Supabase client creation in one place with:
+# - Error recovery (auto-reconnect after 3 consecutive errors)
+# - 5-second HTTP timeout for defense in depth
+# - Tenant-specific client caching
+from integrations.supabase import (
+    get_supabase_client,
+    get_tenant_client,
+    mark_supabase_error,
+    reset_supabase_error_count,
+)
 
 def get_extractor():
     """Lazy-load extraction orchestrator."""
@@ -719,9 +632,9 @@ async def search(
         raise HTTPException(status_code=500, detail="Tenant configuration error")
 
     try:
-        from action_surfacing import surface_actions_for_query, get_fusion_params_for_query
+        from services.action_surfacing import surface_actions_for_query, get_fusion_params_for_query
         from rag.context_builder import generate_query_embedding
-        from domain_microactions import get_detection_context
+        from services.domain_microactions import get_detection_context
 
         # Get detection context (domain, intent, mode with confidence scores)
         detection_ctx = get_detection_context(request.query)
@@ -1193,8 +1106,8 @@ async def get_fault_entity(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).single().execute()
 
@@ -1350,8 +1263,8 @@ async def get_equipment_entity(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Fixed: Use correct column name 'id' not 'equipment_id'
         response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).single().execute()
@@ -1398,8 +1311,8 @@ async def get_part_entity(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Fixed: Use correct column name 'id' not 'part_id'
         response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).single().execute()
@@ -1450,8 +1363,8 @@ async def get_receiving_entity(
         tenant_key = auth['tenant_key_alias']
 
         # Get TENANT supabase client
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Fetch receiving from pms_receiving
         response = supabase.table('pms_receiving') \
@@ -1511,8 +1424,8 @@ async def get_email_threads(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         offset = (page - 1) * limit
 
@@ -1561,8 +1474,8 @@ async def get_email_thread(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Get thread
         thread_result = supabase.table('email_threads').select(
@@ -1611,8 +1524,8 @@ async def get_thread_links(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Get linked objects
         links_result = supabase.table('email_links').select(
@@ -1657,9 +1570,9 @@ async def link_email_to_entity(
         user_id = auth['user_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
         from datetime import datetime, timezone
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Validate thread exists
         thread_result = supabase.table('email_threads').select(
@@ -1760,8 +1673,8 @@ async def search_emails(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         if limit > 100:
             limit = 100

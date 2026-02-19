@@ -33,7 +33,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 
 # Vector fallback imports (Fix #5: Zero-entity semantic search - 2026-02-02)
-from gpt_extractor import GPTExtractor
+from extraction import GPTExtractor
 from integrations.supabase import vector_search
 
 logger = logging.getLogger(__name__)
@@ -1344,7 +1344,6 @@ class Pipeline:
             from execute.result_ranker import (
                 rank_results,
                 create_scoring_context,
-                group_results_by_domain
             )
 
             # Create scoring context from query and entities

@@ -78,7 +78,7 @@ from rag import (
     generate_error_answer,
     compute_query_hash,
 )
-from domain_microactions import detect_domain_from_query
+from services.domain_microactions import detect_domain_from_query
 
 logger = logging.getLogger(__name__)
 

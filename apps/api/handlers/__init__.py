@@ -30,23 +30,6 @@ except ImportError as e:
     CertificateHandlers = None
     get_certificate_handlers = None
 
-# Email Handlers (Email Lens)
-from .email_handlers import EmailHandlers, get_email_handlers
-
-# Situation State Machines
-from .situation_handlers import (
-    SituationManager,
-    FaultSituation,
-    WorkOrderSituation,
-    EquipmentSituation,
-    PartSituation,
-    DocumentSituation,
-    HandoverSituation,
-    PurchaseSituation,
-    ReceivingSituation,
-    ComplianceSituation,
-    get_situation_handlers
-)
 
 __all__ = [
     # P0 Action Handlers
@@ -72,21 +55,4 @@ __all__ = [
     # Certificate Handlers
     'CertificateHandlers',
     'get_certificate_handlers',
-
-    # Email Handlers
-    'EmailHandlers',
-    'get_email_handlers',
-
-    # Situation State Machines
-    'SituationManager',
-    'FaultSituation',
-    'WorkOrderSituation',
-    'EquipmentSituation',
-    'PartSituation',
-    'DocumentSituation',
-    'HandoverSituation',
-    'PurchaseSituation',
-    'ReceivingSituation',
-    'ComplianceSituation',
-    'get_situation_handlers',
 ]

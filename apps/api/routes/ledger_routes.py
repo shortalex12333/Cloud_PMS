@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def _get_tenant_client(tenant_key_alias: str):
-    """Get tenant-specific Supabase client. Lazy import to avoid circular deps."""
-    from pipeline_service import get_tenant_client
+    """Get tenant-specific Supabase client."""
+    from integrations.supabase import get_tenant_client
     return get_tenant_client(tenant_key_alias)
 
 router = APIRouter(prefix="/v1/ledger", tags=["ledger"])

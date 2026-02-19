@@ -47,7 +47,7 @@ _cache_lock = Lock()
 
 # Local imports
 from middleware.auth import get_authenticated_user
-from integrations.supabase import get_supabase_client  # Deprecated for email routes
+from integrations.supabase import get_supabase_client, get_tenant_client
 from supabase import create_client
 from integrations.feature_flags import check_email_feature
 from integrations.graph_client import (
@@ -109,19 +109,9 @@ def outlook_auth_error(
 
 
 # ============================================================================
-# TENANT CLIENT (Avoids circular import from pipeline_service)
+# TENANT CLIENT
 # ============================================================================
-
-def get_tenant_client(tenant_key_alias: str):
-    """Get Supabase client for tenant DB using tenant-prefixed env vars."""
-    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
-    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
-
-    if not url or not key:
-        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    return create_client(url, key)
+# NOTE: get_tenant_client is imported from integrations.supabase at top of file
 
 
 # ============================================================================

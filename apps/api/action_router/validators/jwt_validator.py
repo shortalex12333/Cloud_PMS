@@ -4,17 +4,19 @@ JWT Validator
 Validates Supabase JWT tokens and extracts user context.
 
 Architecture (2026-01-30):
-- JWT is verified using MASTER Supabase JWT secret
+- JWT is verified using MASTER Supabase JWT secret via middleware/auth.py::decode_jwt()
 - user_id is extracted from JWT (sub claim)
 - yacht_id and role are looked up from MASTER DB (invariant #1)
 - Frontend sends ONLY Authorization: Bearer <token>, no yacht_id
+
+Consolidation (2026-02-19):
+- Uses middleware/auth.py::decode_jwt() as single source of truth for JWT decoding
+- Uses middleware/auth.py::lookup_tenant_for_user() for tenant context
+- Returns ValidationResult wrapper for action_router compatibility
 """
 
-import jwt
-import os
 import logging
-from typing import Dict, Any
-from datetime import datetime
+from fastapi import HTTPException
 from .validation_result import ValidationResult
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,9 @@ logger = logging.getLogger(__name__)
 def validate_jwt(token: str) -> ValidationResult:
     """
     Validate Supabase JWT token and extract user context.
+
+    Uses middleware/auth.py::decode_jwt() as the single source of truth
+    for JWT decoding and validation.
 
     Args:
         token: JWT token from Authorization header
@@ -40,56 +45,28 @@ def validate_jwt(token: str) -> ValidationResult:
     if token.startswith("Bearer "):
         token = token[7:]
 
+    # HARDENING: Reject empty/whitespace tokens
+    if not token or not token.strip():
+        return ValidationResult.failure(
+            error_code="missing_token",
+            message="JWT token required",
+        )
+
+    # HARDENING: Reject suspiciously short tokens (JWT typically 100+ chars)
+    if len(token) < 20:
+        return ValidationResult.failure(
+            error_code="invalid_token",
+            message="Invalid JWT token format",
+        )
+
     try:
-        # B001-AR FIX: Try MASTER secret first, then TENANT
-        # Frontend authenticates against MASTER Supabase, so JWTs are signed with MASTER secret
-        secrets_to_try = []
+        # Use middleware/auth.py::decode_jwt() as single source of truth
+        from middleware.auth import decode_jwt, lookup_tenant_for_user
 
-        # MASTER first (frontend authenticates against MASTER Supabase)
-        if os.getenv("MASTER_SUPABASE_JWT_SECRET"):
-            secrets_to_try.append(("MASTER", os.getenv("MASTER_SUPABASE_JWT_SECRET")))
+        # decode_jwt raises HTTPException on failure
+        payload = decode_jwt(token)
 
-        # TENANT second (for multi-tenant scenarios where tenant has own Supabase)
-        tenant_secret = os.getenv("TENANT_SUPABASE_JWT_SECRET") or os.getenv("TENNANT_SUPABASE_JWT_SECRET")
-        if tenant_secret and tenant_secret not in [s[1] for s in secrets_to_try]:
-            secrets_to_try.append(("TENANT", tenant_secret))
-
-        # Legacy fallback
-        if os.getenv("SUPABASE_JWT_SECRET") and os.getenv("SUPABASE_JWT_SECRET") not in [s[1] for s in secrets_to_try]:
-            secrets_to_try.append(("SUPABASE", os.getenv("SUPABASE_JWT_SECRET")))
-
-        if not secrets_to_try:
-            return ValidationResult.failure(
-                error_code="server_config_error",
-                message="JWT secret not configured (MASTER_SUPABASE_JWT_SECRET)",
-            )
-
-        # Try each secret until one works
-        last_error = None
-        payload = None
-        for secret_name, secret in secrets_to_try:
-            try:
-                # Decode and verify JWT
-                # Note: Supabase tokens have audience="authenticated", skip audience verification
-                # as we validate yacht_id separately for tenant isolation
-                payload = jwt.decode(
-                    token,
-                    secret,
-                    algorithms=["HS256"],
-                    options={"verify_exp": True, "verify_aud": False},
-                )
-                break  # Success - stop trying
-            except jwt.InvalidSignatureError as e:
-                last_error = e
-                continue  # Try next secret
-
-        if payload is None:
-            return ValidationResult.failure(
-                error_code="invalid_token",
-                message="Invalid token: Signature verification failed",
-            )
-
-        # Extract user context from JWT
+        # Extract user_id from JWT
         user_id = payload.get("sub")
         if not user_id:
             return ValidationResult.failure(
@@ -110,28 +87,15 @@ def validate_jwt(token: str) -> ValidationResult:
         role = "authenticated"
         tenant_key_alias = None
 
-        try:
-            from middleware.auth import lookup_tenant_for_user
-            tenant_info = lookup_tenant_for_user(user_id)
+        tenant_info = lookup_tenant_for_user(user_id)
 
-            if tenant_info:
-                yacht_id = tenant_info.get("yacht_id")
-                role = tenant_info.get("role", "crew")
-                tenant_key_alias = tenant_info.get("tenant_key_alias")
-                logger.debug(f"[JWT] Tenant lookup success: user={user_id[:8]}... yacht={yacht_id} role={role}")
-            else:
-                logger.warning(f"[JWT] No tenant found for user {user_id[:8]}...")
-
-        except ImportError as e:
-            # Fallback if middleware not available (shouldn't happen in production)
-            logger.error(f"[JWT] Could not import lookup_tenant_for_user: {e}")
-            # Fall back to JWT claims (less secure, but allows system to function)
-            app_metadata = payload.get("app_metadata", {})
-            user_metadata = payload.get("user_metadata", {})
-            yacht_id = app_metadata.get("yacht_id") or user_metadata.get("yacht_id")
-            role = payload.get("role") or app_metadata.get("role") or user_metadata.get("role") or "authenticated"
-        except Exception as e:
-            logger.error(f"[JWT] Tenant lookup failed: {e}")
+        if tenant_info:
+            yacht_id = tenant_info.get("yacht_id")
+            role = tenant_info.get("role", "crew")
+            tenant_key_alias = tenant_info.get("tenant_key_alias")
+            logger.debug(f"[JWT] Tenant lookup success: user={user_id[:8]}... yacht={yacht_id} role={role}")
+        else:
+            logger.warning(f"[JWT] No tenant found for user {user_id[:8]}...")
 
         # Return user context with server-resolved yacht_id and role
         return ValidationResult.success(
@@ -145,19 +109,23 @@ def validate_jwt(token: str) -> ValidationResult:
             }
         )
 
-    except jwt.ExpiredSignatureError:
+    except HTTPException as e:
+        # Map HTTPException from decode_jwt to ValidationResult
+        error_code = "token_expired" if e.status_code == 401 and "expired" in str(e.detail).lower() else "invalid_token"
         return ValidationResult.failure(
-            error_code="token_expired",
-            message="Token has expired. Please log in again.",
+            error_code=error_code,
+            message=str(e.detail),
         )
 
-    except jwt.InvalidTokenError as e:
+    except ImportError as e:
+        logger.error(f"[JWT] Could not import from middleware.auth: {e}")
         return ValidationResult.failure(
-            error_code="invalid_token",
-            message=f"Invalid token: {str(e)}",
+            error_code="server_config_error",
+            message="Authentication middleware not available",
         )
 
     except Exception as e:
+        logger.error(f"[JWT] Validation failed: {e}")
         return ValidationResult.failure(
             error_code="validation_error",
             message=f"Token validation failed: {str(e)}",
