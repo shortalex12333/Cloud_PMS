@@ -238,34 +238,29 @@ function formatStatusLabel(status?: HandoverItemStatus): string {
  * Get category styling
  */
 function getCategoryStyles(category?: HandoverCategory): {
-  bg: string;
-  text: string;
+  pillClass: string;
   label: string;
 } {
   switch (category) {
     case 'critical':
       return {
-        bg: 'bg-status-critical-bg',
-        text: 'text-status-critical',
+        pillClass: 'status-pill status-pill-critical',
         label: 'Critical',
       };
     case 'action_required':
       return {
-        bg: 'bg-status-warning-bg',
-        text: 'text-status-warning',
+        pillClass: 'status-pill status-pill-warning',
         label: 'Action Required',
       };
     case 'resolved':
       return {
-        bg: 'bg-status-success-bg',
-        text: 'text-status-success',
+        pillClass: 'status-pill status-pill-success',
         label: 'Resolved',
       };
     case 'fyi':
     default:
       return {
-        bg: 'bg-status-neutral-bg',
-        text: 'text-status-neutral',
+        pillClass: 'status-pill status-pill-neutral',
         label: 'FYI',
       };
   }
@@ -341,7 +336,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
   return (
     <div
       className={cn(
-        'p-4 rounded-sm border transition-colors duration-150',
+        'p-4 rounded-sm border transition-colors duration-fast',
         item.is_critical
           ? 'border-status-critical/30 bg-status-critical-bg'
           : 'border-surface-border-subtle bg-surface-primary',
@@ -367,17 +362,11 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
                 <span className="text-[11px] text-txt-tertiary">{item.section}</span>
               </>
             )}
-            <span
-              className={cn(
-                'text-[11px] px-2 py-0.5 rounded-full font-medium',
-                categoryStyles.bg,
-                categoryStyles.text
-              )}
-            >
+            <span className={categoryStyles.pillClass}>
               {categoryStyles.label}
             </span>
             {item.is_critical && (
-              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-status-critical-bg text-status-critical font-medium">
+              <span className="status-pill status-pill-critical">
                 <AlertTriangle className="h-3 w-3" />
                 Critical
               </span>
@@ -406,7 +395,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
               {item.risk_tags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="text-[11px] px-2 py-0.5 rounded-full bg-status-warning-bg text-status-warning"
+                  className="status-pill status-pill-warning"
                 >
                   {tag}
                 </span>
@@ -466,7 +455,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
           )}
           <button
             onClick={() => onNavigate?.(item.entity_type, item.entity_id)}
-            className="p-2 text-txt-tertiary hover:text-brand-interactive transition-colors"
+            className="btn-icon"
             aria-label="View details"
           >
             <ChevronRight className="h-4 w-4" />
@@ -613,7 +602,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
               Handover Export - {formatDate(export_.export_date)}
             </span>
             {export_.department && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-status-neutral-bg text-status-neutral">
+              <span className="status-pill status-pill-neutral">
                 {export_.department}
               </span>
             )}
@@ -707,7 +696,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
           )}
           <button
             onClick={() => onView?.(export_.id)}
-            className="p-2 text-txt-tertiary hover:text-brand-interactive transition-colors"
+            className="btn-icon"
             aria-label="View export"
           >
             <ExternalLink className="h-4 w-4" />

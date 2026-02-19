@@ -71,14 +71,7 @@ export default function SignaturePrompt({
             <button
               onClick={onCancel}
               disabled={isCommitting}
-              className={cn(
-                'flex-1 py-2.5',
-                'text-celeste-md text-celeste-text-muted',
-                'bg-celeste-bg-tertiary hover:bg-celeste-border',
-                'rounded-celeste-md',
-                'transition-colors',
-                isCommitting && 'opacity-50 cursor-not-allowed'
-              )}
+              className="btn-ghost flex-1"
             >
               Cancel
             </button>
@@ -87,14 +80,7 @@ export default function SignaturePrompt({
             <button
               onClick={onSign}
               disabled={isCommitting}
-              className={cn(
-                'flex-1 py-2.5',
-                'text-celeste-md text-celeste-white font-medium',
-                'bg-celeste-blue hover:bg-celeste-blue-secondary',
-                'rounded-celeste-md',
-                'transition-colors',
-                isCommitting && 'opacity-50 cursor-not-allowed'
-              )}
+              className="btn-primary flex-1"
             >
               {isCommitting ? 'Updating…' : 'Sign'}
             </button>

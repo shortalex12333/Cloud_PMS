@@ -81,7 +81,7 @@ export function FilterBar({ activeFilters, onClearAll, children, className }: Fi
   const hasActiveFilters = displayFilters.length > 0;
 
   return (
-    <div className={cn('border rounded-lg p-4 mb-4 bg-card', className)}>
+    <div className={cn('section-container p-4 mb-4', className)}>
       {/* Active Filter Badges */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 mb-3 flex-wrap">

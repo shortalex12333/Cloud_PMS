@@ -174,7 +174,7 @@ export default function DocumentViewerOverlay({
 
   const overlayContent = (
     <div
-      className="fixed inset-0 z-[1100] bg-black/70 flex items-center justify-center"
+      className="fixed inset-0 z-modal bg-black/70 flex items-center justify-center"
       onClick={handleBackdropClick}
       data-testid="document-viewer-overlay"
     >
@@ -193,7 +193,7 @@ export default function DocumentViewerOverlay({
             {outlookUrl && (
               <button
                 onClick={handleOpenInOutlook}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md transition-colors"
+                className="btn-primary"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span className="hidden sm:inline">Open in Outlook</span>
@@ -203,7 +203,7 @@ export default function DocumentViewerOverlay({
             {allowDownload && (
               <button
                 onClick={handleDownload}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md transition-colors"
+                className="btn-ghost"
               >
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">Download</span>
@@ -215,7 +215,7 @@ export default function DocumentViewerOverlay({
               <div className="relative" ref={actionsMenuRef}>
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md transition-colors"
+                  className="btn-ghost"
                   aria-label="Document actions"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -226,21 +226,21 @@ export default function DocumentViewerOverlay({
                   <div className="absolute right-0 top-full mt-1 w-56 bg-surface-elevated border border-surface-border rounded-lg shadow-xl z-50 py-1">
                     <button
                       onClick={() => handleMicroAction('add_to_handover')}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                      className="btn-ghost w-full justify-start"
                     >
                       <FileUp className="h-4 w-4 text-restricted-green-400" />
                       Add to Handover
                     </button>
                     <button
                       onClick={() => handleMicroAction('attach_to_work_order')}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                      className="btn-ghost w-full justify-start"
                     >
                       <Link2 className="h-4 w-4 text-celeste-accent-400" />
                       Attach to Work Order
                     </button>
                     <button
                       onClick={() => handleMicroAction('unlink_from_work_order')}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+                      className="btn-ghost w-full justify-start"
                     >
                       <Unlink className="h-4 w-4 text-restricted-yellow-400" />
                       Unlink from Work Order
@@ -252,7 +252,7 @@ export default function DocumentViewerOverlay({
 
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 rounded-md transition-colors"
+              className="btn-icon"
               aria-label="Close viewer"
             >
               <X className="h-5 w-5" />
@@ -276,7 +276,7 @@ export default function DocumentViewerOverlay({
                 </p>
                 <button
                   onClick={handleDownload}
-                  className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md"
+                  className="btn-primary"
                 >
                   Download PDF
                 </button>
@@ -308,7 +308,7 @@ export default function DocumentViewerOverlay({
                 {outlookUrl && (
                   <button
                     onClick={handleOpenInOutlook}
-                    className="flex items-center gap-2 px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-celeste-text-title rounded-md transition-colors"
+                    className="btn-primary"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Open in Outlook
@@ -317,7 +317,7 @@ export default function DocumentViewerOverlay({
                 {allowDownload && (
                   <button
                     onClick={handleDownload}
-                    className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md transition-colors"
+                    className="btn-ghost"
                   >
                     <Download className="h-4 w-4" />
                     Download

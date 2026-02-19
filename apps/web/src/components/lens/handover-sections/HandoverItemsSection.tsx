@@ -60,17 +60,17 @@ function getEntityTypeLabel(entityType: string): string {
   return labels[entityType] || entityType;
 }
 
-function mapCategoryStyles(category?: string): { bg: string; text: string; label: string } {
+function mapCategoryStyles(category?: string): { pillClass: string; label: string } {
   switch (category) {
     case 'critical':
-      return { bg: 'bg-status-critical-bg', text: 'text-status-critical', label: 'Critical' };
+      return { pillClass: 'status-pill status-pill-critical', label: 'Critical' };
     case 'action_required':
-      return { bg: 'bg-status-warning-bg', text: 'text-status-warning', label: 'Action Required' };
+      return { pillClass: 'status-pill status-pill-warning', label: 'Action Required' };
     case 'resolved':
-      return { bg: 'bg-status-success-bg', text: 'text-status-success', label: 'Resolved' };
+      return { pillClass: 'status-pill status-pill-success', label: 'Resolved' };
     case 'fyi':
     default:
-      return { bg: 'bg-status-neutral-bg', text: 'text-status-neutral', label: 'FYI' };
+      return { pillClass: 'status-pill status-pill-neutral', label: 'FYI' };
   }
 }
 
@@ -91,7 +91,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
   return (
     <div
       className={cn(
-        'p-4 rounded-sm border transition-colors duration-150',
+        'p-4 rounded-sm border transition-colors duration-fast',
         item.is_critical
           ? 'border-status-critical/30 bg-status-critical-bg'
           : 'border-surface-border-subtle bg-surface-primary',
@@ -117,17 +117,11 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
                 <span className="text-[11px] text-txt-tertiary">{item.section}</span>
               </>
             )}
-            <span
-              className={cn(
-                'text-[11px] px-2 py-0.5 rounded-full font-medium',
-                categoryStyles.bg,
-                categoryStyles.text
-              )}
-            >
+            <span className={categoryStyles.pillClass}>
               {categoryStyles.label}
             </span>
             {item.is_critical && (
-              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-status-critical-bg text-status-critical font-medium">
+              <span className="status-pill status-pill-critical">
                 <AlertTriangle className="h-3 w-3" />
                 Critical
               </span>
@@ -156,7 +150,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
               {item.risk_tags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="text-[11px] px-2 py-0.5 rounded-full bg-status-warning-bg text-status-warning"
+                  className="status-pill status-pill-warning"
                 >
                   {tag}
                 </span>

@@ -25,26 +25,7 @@ export const PrimaryButton = React.forwardRef<
       ref={ref}
       disabled={isDisabled}
       className={cn(
-        // Base layout
-        'inline-flex items-center justify-center gap-2',
-        // Size: min-height 40px, 12px 24px padding
-        'min-h-[40px] px-6 py-3',
-        // Typography: 14px font, weight 600
-        'text-[14px] font-semibold',
-        // Color: brand interactive bg, inverse text
-        'bg-brand-interactive text-txt-inverse',
-        // Hover: brand hover
-        'hover:bg-brand-hover',
-        // Transitions
-        'transition-colors duration-150',
-        // Border radius (using sm token = 8px)
-        'rounded-sm',
-        // Shadow for depth
-        'shadow-sm',
-        // Focus state
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive focus-visible:ring-offset-2',
-        // Disabled state
-        'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-interactive',
+        'btn-primary',
         className
       )}
       {...props}

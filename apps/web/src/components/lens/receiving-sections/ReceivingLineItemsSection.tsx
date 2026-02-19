@@ -146,7 +146,7 @@ function LineItemRow({ item }: LineItemRowProps) {
         // Subtle internal divider between rows
         'border-b border-surface-border-subtle last:border-b-0',
         // Hover state for interactive rows
-        'transition-colors duration-150 hover:bg-surface-hover',
+        'transition-colors duration-fast hover:bg-surface-hover',
         // Highlight discrepancy rows with subtle background
         discrepancyStatus === 'short' && 'bg-status-warning-bg/30'
       )}

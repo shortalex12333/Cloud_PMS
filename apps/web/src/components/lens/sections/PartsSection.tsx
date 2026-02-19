@@ -70,7 +70,7 @@ function PartRow({ part }: PartRowProps) {
         // Subtle internal divider between rows
         'border-b border-surface-border-subtle last:border-b-0',
         // Hover state for interactive rows
-        'transition-colors duration-150 hover:bg-surface-hover'
+        'transition-colors duration-fast hover:bg-surface-hover'
       )}
     >
       {/* Left: Part name as EntityLink + quantity */}
@@ -80,9 +80,9 @@ function PartRow({ part }: PartRowProps) {
           entityId={part.part_id}
           label={part.part_name}
           onClick={part.onPartClick}
-          className="text-[14px] font-medium truncate"
+          className="text-body-strong truncate"
         />
-        <span className="text-[13px] text-txt-secondary flex-shrink-0">
+        <span className="text-label text-txt-secondary flex-shrink-0">
           {qtyLabel}
         </span>
       </div>
@@ -126,7 +126,7 @@ export function PartsSection({ parts, onAddPart, canAddPart, stickyTop }: PartsS
       {parts.length === 0 ? (
         // Contextual empty state: specific + actionable per UI_SPEC.md language rules
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="text-body text-txt-secondary">
             No parts used yet. Add Part to track inventory consumption.
           </p>
           {canAddPart && (

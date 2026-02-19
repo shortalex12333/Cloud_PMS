@@ -226,17 +226,17 @@ export function CreateWorkOrderModal({
           </div>
 
           <DialogFooter>
-            <Button
+            <button
               type="button"
-              variant="outline"
+              className="btn-ghost"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
               Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
+            </button>
+            <button type="submit" className="btn-primary" disabled={isLoading}>
               {isLoading ? 'Creating...' : 'Create Work Order'}
-            </Button>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>

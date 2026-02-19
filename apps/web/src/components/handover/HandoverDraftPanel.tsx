@@ -192,7 +192,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[10003] flex items-center justify-center">
+    <div className="fixed inset-0 z-modal flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <h3 className="text-lg font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
@@ -247,7 +247,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-txt-secondary hover:text-txt-primary transition-colors"
+              className="px-4 py-2 text-sm font-medium text-txt-secondary hover:text-txt-primary transition-colors duration-fast"
             >
               Cancel
             </button>
@@ -516,14 +516,14 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[10001] bg-black/40"
+        className="fixed inset-0 z-sidebar bg-black/40"
         onClick={onClose}
       />
 
       {/* Panel */}
       <div
         className={cn(
-          'fixed right-0 top-0 bottom-0 z-[10002]',
+          'fixed right-0 top-0 bottom-0 z-modal',
           'w-full max-w-md',
           'bg-surface-base border-l border-surface-border',
           'flex flex-col',
@@ -545,7 +545,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-md text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
+            className="p-2 rounded-md text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors duration-fast"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -605,7 +605,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
                   {/* Day Header */}
                   <button
                     onClick={() => toggleDay(group.date)}
-                    className="w-full flex items-center gap-2 px-6 py-2 text-left hover:bg-surface-hover transition-colors"
+                    className="w-full flex items-center gap-2 px-6 py-2 text-left hover:bg-surface-hover transition-colors duration-fast"
                   >
                     {expandedDays.has(group.date) ? (
                       <ChevronDown className="w-4 h-4 text-txt-tertiary" />
@@ -679,7 +679,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
                                   e.stopPropagation();
                                   setEditingItem(item);
                                 }}
-                                className="p-1.5 rounded text-txt-tertiary hover:text-txt-primary hover:bg-surface-hover transition-colors"
+                                className="p-1.5 rounded text-txt-tertiary hover:text-txt-primary hover:bg-surface-hover transition-colors duration-fast"
                                 title="Edit"
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -689,7 +689,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
                                   e.stopPropagation();
                                   handleDelete(item);
                                 }}
-                                className="p-1.5 rounded text-txt-tertiary hover:text-status-critical hover:bg-status-critical/10 transition-colors"
+                                className="p-1.5 rounded text-txt-tertiary hover:text-status-critical hover:bg-status-critical/10 transition-colors duration-fast"
                                 title="Delete"
                               >
                                 <Trash2 className="w-4 h-4" />

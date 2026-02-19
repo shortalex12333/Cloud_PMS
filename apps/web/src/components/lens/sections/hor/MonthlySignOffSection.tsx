@@ -161,7 +161,7 @@ function SignOffConfirmPanel({ month, onConfirm, onCancel, isLoading }: SignOffC
           className={cn(
             'text-[13px] px-4 py-2 rounded-md min-h-[36px]',
             'text-txt-secondary hover:text-txt-primary',
-            'hover:bg-surface-raised transition-colors duration-150',
+            'hover:bg-surface-raised transition-colors duration-fast',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
@@ -264,7 +264,7 @@ export function MonthlySignOffSection({
               disabled={isLoading}
               className={cn(
                 'mt-3 text-[13px] font-medium text-brand-interactive',
-                'hover:text-brand-hover transition-colors duration-150',
+                'hover:text-brand-hover transition-colors duration-fast',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}

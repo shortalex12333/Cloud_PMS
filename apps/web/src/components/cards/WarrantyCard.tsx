@@ -115,44 +115,38 @@ function getStatusStyles(status: string) {
   switch (status) {
     case 'approved':
       return {
-        bg: 'bg-status-success-bg',
-        text: 'text-status-success',
-        icon: <CheckCircle2 className="h-5 w-5 text-status-success" />,
+        pillClass: 'status-pill status-pill-success',
+        icon: <CheckCircle2 className="h-5 w-5" />,
         label: 'Approved',
       };
     case 'submitted':
       return {
-        bg: 'bg-brand-muted',
-        text: 'text-brand-interactive',
-        icon: <Send className="h-5 w-5 text-brand-interactive" />,
+        pillClass: 'status-pill status-pill-warning',
+        icon: <Send className="h-5 w-5" />,
         label: 'Submitted',
       };
     case 'under_review':
       return {
-        bg: 'bg-status-warning-bg',
-        text: 'text-status-warning',
-        icon: <Clock className="h-5 w-5 text-status-warning" />,
+        pillClass: 'status-pill status-pill-warning',
+        icon: <Clock className="h-5 w-5" />,
         label: 'Under Review',
       };
     case 'rejected':
       return {
-        bg: 'bg-status-critical-bg',
-        text: 'text-status-critical',
-        icon: <XCircle className="h-5 w-5 text-status-critical" />,
+        pillClass: 'status-pill status-pill-critical',
+        icon: <XCircle className="h-5 w-5" />,
         label: 'Rejected',
       };
     case 'closed':
       return {
-        bg: 'bg-txt-tertiary/10',
-        text: 'text-txt-tertiary',
-        icon: <FileText className="h-5 w-5 text-txt-tertiary" />,
+        pillClass: 'status-pill status-pill-neutral',
+        icon: <FileText className="h-5 w-5" />,
         label: 'Closed',
       };
     default: // draft
       return {
-        bg: 'bg-txt-tertiary/10',
-        text: 'text-txt-secondary',
-        icon: <FileWarning className="h-5 w-5 text-txt-secondary" />,
+        pillClass: 'status-pill status-pill-neutral',
+        icon: <FileWarning className="h-5 w-5" />,
         label: 'Draft',
       };
   }
@@ -162,22 +156,19 @@ function getClaimTypeStyles(claimType: string) {
   switch (claimType) {
     case 'replacement':
       return {
-        bg: 'bg-status-warning-bg',
-        text: 'text-status-warning',
+        pillClass: 'status-pill status-pill-warning',
         icon: <RefreshCw className="h-4 w-4" />,
         label: 'Replacement',
       };
     case 'refund':
       return {
-        bg: 'bg-status-success-bg',
-        text: 'text-status-success',
+        pillClass: 'status-pill status-pill-success',
         icon: <DollarSign className="h-4 w-4" />,
         label: 'Refund',
       };
     default: // repair
       return {
-        bg: 'bg-brand-muted',
-        text: 'text-brand-interactive',
+        pillClass: 'status-pill status-pill-neutral',
         icon: <Wrench className="h-4 w-4" />,
         label: 'Repair',
       };
@@ -236,17 +227,11 @@ export function WarrantyCard({
       <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         {/* Status & Claim Type Row */}
         <div className="flex items-center gap-ds-2 mb-ds-4">
-          <span className={cn(
-            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
-            status.bg, status.text
-          )}>
+          <span className={status.pillClass}>
             {status.icon}
             {status.label}
           </span>
-          <span className={cn(
-            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
-            claimType.bg, claimType.text
-          )}>
+          <span className={claimType.pillClass}>
             {claimType.icon}
             {claimType.label}
           </span>

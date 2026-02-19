@@ -120,23 +120,23 @@ function HoursLogEntryRow({ entry, isLatest }: HoursLogEntryRowProps) {
       {/* Hours reading - primary value */}
       <div className="shrink-0 w-24 text-right">
         <span
-          className={`text-[16px] font-semibold tabular-nums ${
+          className={`text-heading tabular-nums ${
             isLatest ? 'text-brand-interactive' : 'text-txt-primary'
           }`}
         >
           {formatHours(entry.hours_reading)}
         </span>
-        <span className="text-[12px] text-txt-tertiary ml-1">hrs</span>
+        <span className="text-caption text-txt-tertiary ml-1">hrs</span>
       </div>
 
       {/* Delta indicator */}
       <div className="shrink-0 w-16 text-center">
         {entry.hours_since_last !== undefined && entry.hours_since_last > 0 ? (
-          <span className="text-[12px] text-txt-secondary">
+          <span className="text-caption text-txt-secondary">
             +{formatHours(entry.hours_since_last)}
           </span>
         ) : (
-          <span className="text-[12px] text-txt-tertiary">-</span>
+          <span className="text-caption text-txt-tertiary">-</span>
         )}
       </div>
 
@@ -144,24 +144,24 @@ function HoursLogEntryRow({ entry, isLatest }: HoursLogEntryRowProps) {
       <div className="flex-1 min-w-0">
         {/* Date + Type */}
         <div className="flex items-center gap-2">
-          <span className="text-[13px] text-txt-primary">
+          <span className="text-label text-txt-primary">
             {formatTimestamp(entry.recorded_at)}
           </span>
-          <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-secondary text-txt-tertiary font-medium">
+          <span className="text-overline px-1.5 py-0.5 rounded bg-surface-secondary text-txt-tertiary">
             {formatReadingType(entry.reading_type)}
           </span>
         </div>
 
         {/* Recorded by */}
         {entry.recorded_by && (
-          <p className="text-[12px] text-txt-tertiary mt-0.5">
+          <p className="text-caption text-txt-tertiary mt-0.5">
             by {entry.recorded_by}
           </p>
         )}
 
         {/* Notes */}
         {entry.notes && (
-          <p className="text-[12px] text-txt-secondary mt-1 line-clamp-2">
+          <p className="text-caption text-txt-secondary mt-1 line-clamp-2">
             {entry.notes}
           </p>
         )}
@@ -221,7 +221,7 @@ export function HoursLogSection({
     >
       {sorted.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="text-body text-txt-secondary">
             No hours readings recorded yet.
           </p>
           {canAddReading && onAddReading && (
@@ -233,7 +233,7 @@ export function HoursLogSection({
       ) : (
         <>
           {/* Header row */}
-          <div className="flex items-center gap-4 px-5 py-2 border-b border-surface-border text-[11px] text-txt-tertiary uppercase tracking-[0.06em] font-medium">
+          <div className="flex items-center gap-4 px-5 py-2 border-b border-surface-border text-overline text-txt-tertiary">
             <div className="shrink-0 w-24 text-right">Reading</div>
             <div className="shrink-0 w-16 text-center">Delta</div>
             <div className="flex-1">Details</div>

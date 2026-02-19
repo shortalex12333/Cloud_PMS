@@ -155,7 +155,7 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
       // Hover: surface-hover bg, primary text
       'hover:bg-surface-hover hover:text-txt-primary',
       // Transition: 120ms
-      'transition-colors duration-[120ms] ease-out',
+      'transition-colors duration-fast ease-out',
       // Focus ring
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
       // Touch target
@@ -178,7 +178,7 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
           // Background and border
           'bg-surface-base border-b border-surface-border',
           // Z-index: header layer
-          'z-[var(--z-header)]',
+          'z-header',
           // Layout: flex, space-between, vertically centered
           'flex items-center justify-between',
           // Horizontal padding: 24px per spec
@@ -212,7 +212,7 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
         {/* Center: Entity type overline */}
         <span
           className={cn(
-            'text-[11px] font-medium tracking-[0.08em] uppercase',
+            'text-overline',
             'text-txt-tertiary',
             'select-none'
           )}
@@ -231,10 +231,10 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
                 'rounded-sm',
                 'text-txt-secondary bg-transparent',
                 'hover:bg-surface-hover hover:text-txt-primary',
-                'transition-colors duration-[120ms] ease-out',
+                'transition-colors duration-fast ease-out',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
                 'cursor-pointer',
-                'text-[13px] font-medium'
+                'text-action'
               )}
             >
               <RelatedIcon />
@@ -302,7 +302,7 @@ export const LensTitleBlock = React.forwardRef<
       {/* Title: 28px Display, semibold */}
       <h1
         className={cn(
-          'text-[28px] font-semibold leading-[1.15] tracking-[-0.02em]',
+          'text-display',
           'text-txt-primary',
           // Prevent UUID-like text from wrapping awkwardly
           'break-words'
@@ -315,7 +315,7 @@ export const LensTitleBlock = React.forwardRef<
       {subtitle && (
         <p
           className={cn(
-            'text-[16px] font-normal leading-[1.5]',
+            'text-body',
             'text-txt-secondary',
             // Max 2 lines with ellipsis
             'overflow-hidden',

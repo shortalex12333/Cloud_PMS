@@ -112,19 +112,19 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {/* Action: body-strong weight, primary color */}
-          <span className="text-[14px] font-medium text-txt-primary leading-[1.6]">
+          <span className="text-body-strong text-txt-primary">
             {formatActionLabel(entry.action)}
           </span>
 
           {/* Actor: secondary color */}
-          <span className="text-[13px] text-txt-secondary ml-2 leading-[1.6]">
+          <span className="text-label text-txt-secondary ml-2">
             by {entry.actor}
           </span>
         </div>
 
         {/* Timestamp: caption style, tertiary, right-aligned */}
         <span
-          className="text-[12px] text-txt-tertiary leading-[1.4] flex-shrink-0"
+          className="text-caption text-txt-tertiary flex-shrink-0"
           title={new Date(entry.timestamp).toLocaleString()}
         >
           {formatTimestamp(entry.timestamp)}
@@ -137,8 +137,8 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={cn(
-              'mt-1 text-[12px] font-medium text-txt-tertiary',
-              'hover:text-txt-secondary transition-colors duration-150',
+              'mt-1 text-caption font-medium text-txt-tertiary',
+              'hover:text-txt-secondary transition-colors duration-fast',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm'
             )}
             aria-expanded={isExpanded}
@@ -150,7 +150,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
             <div className="mt-2 pl-0">
               {/* Human-readable description */}
               {entry.description && (
-                <p className="text-[13px] text-txt-secondary leading-[1.6] mb-1">
+                <p className="text-label text-txt-secondary mb-1">
                   {entry.description}
                 </p>
               )}
@@ -160,10 +160,10 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
                 <dl className="space-y-0.5">
                   {Object.entries(entry.details).map(([key, value]) => (
                     <div key={key} className="flex gap-2">
-                      <dt className="text-[12px] text-txt-tertiary capitalize">
+                      <dt className="text-caption text-txt-tertiary capitalize">
                         {key.replace(/_/g, ' ')}:
                       </dt>
-                      <dd className="text-[12px] text-txt-secondary">
+                      <dd className="text-caption text-txt-secondary">
                         {typeof value === 'object'
                           ? JSON.stringify(value)
                           : String(value)}
@@ -218,7 +218,7 @@ export function HistorySection({
         // Defensive empty state — should not normally render per spec
         // (work orders always have creation entry), but handle gracefully
         <div className="py-6 text-center">
-          <p className="text-[14px] text-txt-secondary">
+          <p className="text-body text-txt-secondary">
             No history entries found.
           </p>
         </div>

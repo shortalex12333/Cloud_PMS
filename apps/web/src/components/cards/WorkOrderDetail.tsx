@@ -342,21 +342,21 @@ export function WorkOrderDetail({
       <div className="wo-action-bar">
         <button
           type="button"
-          className="wo-btn-primary"
+          className="btn-primary"
           onClick={() => onStatusChange?.(selectedStatus)}
         >
           Update Status
         </button>
         <button
           type="button"
-          className="wo-btn-secondary"
+          className="btn-ghost"
           onClick={onAddEvidence}
         >
           Add Evidence
         </button>
         <button
           type="button"
-          className="wo-btn-danger"
+          className="btn-danger"
           onClick={onClose}
         >
           Close Work Order
