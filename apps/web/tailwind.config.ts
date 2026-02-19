@@ -450,12 +450,14 @@ const config: Config = {
       // =========================================================================
       borderRadius: {
         // Semantic radius tokens mapped to CSS custom properties (DS-02)
-        // Enables: rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-full
+        // Enables: rounded-xs, rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-full, rounded-pill
+        xs: '4px',
         sm: 'var(--radius-sm)',
         md: 'var(--radius-md)',
         lg: 'var(--radius-lg)',
         xl: 'var(--radius-xl)',
         full: 'var(--radius-full)',
+        pill: 'var(--radius-pill)',
         // Legacy celeste-prefixed radii (keep for existing components)
         'celeste-sm': '4px',
         'celeste-md': '8px',
@@ -474,11 +476,12 @@ const config: Config = {
       // =========================================================================
       boxShadow: {
         // Semantic shadow tokens mapped to CSS custom properties (DS-02)
-        // Enables: shadow-sm, shadow-md, shadow-lg
+        // Enables: shadow-sm, shadow-md, shadow-lg, shadow-modal
         // Values swap automatically between light/dark via tokens.css
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
+        modal: 'var(--modal-shadow)',
         // Legacy celeste-prefixed shadows (keep for existing components)
         'celeste-sm': '0 1px 2px rgba(0, 0, 0, 0.05)',
         'celeste-md': '0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.06)',
