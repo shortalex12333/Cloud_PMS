@@ -68,8 +68,7 @@ from services.rate_limit import (
     STREAM_PHASE1_TTL,
     STREAM_PHASE2_TTL,
 )
-from integrations.supabase import get_supabase_client
-from pipeline_service import get_tenant_client
+from integrations.supabase import get_supabase_client, get_tenant_client
 from execute.table_capabilities import TABLE_CAPABILITIES
 
 logger = logging.getLogger(__name__)

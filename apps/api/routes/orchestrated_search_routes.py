@@ -19,6 +19,9 @@ import time
 # Auth middleware
 from middleware.auth import get_authenticated_user
 
+# Centralized Supabase client factory
+from integrations.supabase import get_tenant_client
+
 # Orchestration layer
 from orchestration import (
     SearchOrchestrator,
@@ -106,7 +109,7 @@ def get_orchestrator() -> SearchOrchestrator:
     if _orchestrator is None:
         # Try to load with existing components
         try:
-            from intent_parser import IntentParser
+            from services.intent_parser import IntentParser
             intent_parser = IntentParser()
         except Exception as e:
             logger.warning(f"Could not load IntentParser: {e}")
@@ -128,18 +131,7 @@ def get_orchestrator() -> SearchOrchestrator:
     return _orchestrator
 
 
-def get_tenant_client(tenant_key_alias: str):
-    """Get tenant-specific Supabase client."""
-    import os
-    from supabase import create_client
-
-    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
-    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
-
-    if not url or not key:
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    return create_client(url, key)
+# NOTE: get_tenant_client is imported from integrations.supabase
 
 
 # =============================================================================

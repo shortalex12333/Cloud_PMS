@@ -36,7 +36,7 @@ from .retrieval_plan import (
 )
 from .term_classifier import TermClassifier, TermClassification, TermType
 from .email_retrieval import EmailRetrieval
-from .ranking_recipes import get_recipe_for_surface, SCORE_THRESHOLDS
+from .ranking_recipes import get_recipe_for_surface
 
 logger = logging.getLogger(__name__)
 

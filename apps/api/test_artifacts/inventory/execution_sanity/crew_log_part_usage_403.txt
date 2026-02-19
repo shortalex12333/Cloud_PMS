@@ -1,2 +1,0 @@
-{"status":"error","error_code":"FORBIDDEN","message":"Role 'crew' is not authorized to perform this action","required_roles":["engineer","eto","chief_engineer","chief_officer","captain","manager"]}
-HTTP_STATUS:403

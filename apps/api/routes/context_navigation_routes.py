@@ -10,11 +10,13 @@ from typing import Optional
 from uuid import UUID
 import logging
 import os
-from supabase import create_client, Client
+from supabase import Client
 
 # SECURITY FIX P0-002: Import auth dependency
 from middleware.auth import get_authenticated_user
-from pipeline_service import get_tenant_client
+
+# Centralized Supabase client factory
+from integrations.supabase import get_supabase_client, get_tenant_client
 
 from context_nav.schemas import (
     NavigationContextCreate,
@@ -40,21 +42,7 @@ router = APIRouter()
 # ============================================================================
 # SUPABASE CLIENT
 # ============================================================================
-
-def get_supabase_client() -> Client:
-    """Get TENANT Supabase client for yacht context navigation.
-
-    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
-    """
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        raise HTTPException(status_code=500, detail=f"TENANT Supabase config missing for {default_yacht}")
-
-    return create_client(url, key)
+# NOTE: get_supabase_client and get_tenant_client are imported from integrations.supabase
 
 
 # ============================================================================

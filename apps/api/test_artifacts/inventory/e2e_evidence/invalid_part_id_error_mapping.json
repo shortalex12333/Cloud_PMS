@@ -1,1 +1,0 @@
-{"status":"error","error_code":"INTERNAL_ERROR","message":"Failed to check stock level: {'code': '22P02', 'details': None, 'hint': None, 'message': 'invalid input syntax for type uuid: \"invalid-uuid-format\"'}"}

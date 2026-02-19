@@ -42,32 +42,123 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     )
 
 # ============================================================================
-# SUPABASE CLIENT
+# SUPABASE CLIENT (Default Tenant)
 # ============================================================================
 
 _supabase_client: Optional[Client] = None
+_supabase_client_errors: int = 0
 
 
-def get_supabase_client() -> Client:
+def get_supabase_client(force_new: bool = False) -> Optional[Client]:
     """
-    Get or create Supabase client (singleton).
-    Uses SERVICE_KEY for backend operations.
+    Get or create default tenant Supabase client (singleton) with connection recovery.
+
+    Uses SERVICE_KEY for backend operations. If the client is stale (>3 consecutive
+    errors), it recreates the connection to handle pool exhaustion and timeout issues.
 
     HARDENED: 5-second timeout ensures blocking I/O doesn't hang forever.
     Combined with asyncio.wait_for in pipeline_service.py for defense in depth.
+
+    Returns:
+        Supabase Client or None if credentials are missing
     """
-    global _supabase_client
+    global _supabase_client, _supabase_client_errors
 
-    if _supabase_client is None:
-        # Import here to avoid circular dependency
-        from supabase.lib.client_options import ClientOptions
+    # Force recreation if too many errors (connection might be stale)
+    if _supabase_client_errors >= 3:
+        logger.warning(f"[Supabase] Resetting client after {_supabase_client_errors} consecutive errors")
+        _supabase_client = None
+        _supabase_client_errors = 0
+        force_new = True
 
-        # 5-second HTTP timeout prevents hung connections
-        # This is defense-in-depth alongside asyncio.wait_for(timeout=3s)
-        options = ClientOptions(postgrest_client_timeout=5)
-        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY, options=options)
+    if _supabase_client is None or force_new:
+        if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+            logger.warning("[Supabase] Missing credentials - client unavailable")
+            return None
+
+        try:
+            # Import here to avoid circular dependency
+            from supabase.lib.client_options import ClientOptions
+
+            # 5-second HTTP timeout prevents hung connections
+            # This is defense-in-depth alongside asyncio.wait_for(timeout=3s)
+            options = ClientOptions(postgrest_client_timeout=5)
+            _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY, options=options)
+            _supabase_client_errors = 0  # Reset error count on successful creation
+            logger.info("[Supabase] Default client created successfully")
+        except Exception as e:
+            logger.error(f"[Supabase] Failed to create client: {e}")
+            return None
 
     return _supabase_client
+
+
+def mark_supabase_error() -> None:
+    """Track consecutive Supabase errors for connection recovery."""
+    global _supabase_client_errors
+    _supabase_client_errors += 1
+    logger.warning(f"[Supabase] Error count: {_supabase_client_errors}")
+
+
+def reset_supabase_error_count() -> None:
+    """Reset error count after successful operation."""
+    global _supabase_client_errors
+    if _supabase_client_errors > 0:
+        _supabase_client_errors = 0
+
+
+# ============================================================================
+# TENANT CLIENT FACTORY (Per-Yacht DB Routing)
+# ============================================================================
+
+_tenant_clients: Dict[str, Client] = {}
+
+
+def get_tenant_client(tenant_key_alias: str) -> Client:
+    """
+    Get or create Supabase client for a specific tenant.
+
+    Loads credentials from environment variables:
+        {tenant_key_alias}_SUPABASE_URL
+        {tenant_key_alias}_SUPABASE_SERVICE_KEY
+
+    Args:
+        tenant_key_alias: e.g., 'yTEST_YACHT_001'
+
+    Returns:
+        Supabase client for the tenant's database
+
+    Raises:
+        ValueError: If tenant credentials not found in environment
+    """
+    global _tenant_clients
+
+    if tenant_key_alias in _tenant_clients:
+        return _tenant_clients[tenant_key_alias]
+
+    url_key = f'{tenant_key_alias}_SUPABASE_URL'
+    key_key = f'{tenant_key_alias}_SUPABASE_SERVICE_KEY'
+
+    tenant_url = os.getenv(url_key)
+    tenant_service_key = os.getenv(key_key)
+
+    if not tenant_url or not tenant_service_key:
+        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
+        logger.error(f"[TenantClient] Expected env vars: {url_key}, {key_key}")
+        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
+
+    try:
+        from supabase.lib.client_options import ClientOptions
+
+        # 5-second HTTP timeout for tenant clients as well
+        options = ClientOptions(postgrest_client_timeout=5)
+        client = create_client(tenant_url, tenant_service_key, options=options)
+        _tenant_clients[tenant_key_alias] = client
+        logger.info(f"[TenantClient] Created client for {tenant_key_alias}")
+        return client
+    except Exception as e:
+        logger.error(f"[TenantClient] Failed to create client for {tenant_key_alias}: {e}")
+        raise
 
 
 # ============================================================================
@@ -522,6 +613,9 @@ async def log_event(
 
 __all__ = [
     'get_supabase_client',
+    'get_tenant_client',
+    'mark_supabase_error',
+    'reset_supabase_error_count',
     'vector_search',
     'get_equipment',
     'get_equipment_by_id',

@@ -271,7 +271,7 @@ async def get_export_content(
     auth: dict = Depends(get_authenticated_user)
 ):
     """Get parsed editable content for a handover export."""
-    from pipeline_service import get_tenant_client
+    from integrations.supabase import get_tenant_client
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Fetch export record (only columns that exist in schema)
@@ -415,7 +415,7 @@ async def save_draft(
     auth: dict = Depends(get_authenticated_user)
 ):
     """Auto-save user edits without signature."""
-    from pipeline_service import get_tenant_client
+    from integrations.supabase import get_tenant_client
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Verify export exists and user has access
@@ -448,7 +448,7 @@ async def submit_export(
     auth: dict = Depends(get_authenticated_user)
 ):
     """User signs and submits handover for HOD approval."""
-    from pipeline_service import get_tenant_client
+    from integrations.supabase import get_tenant_client
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Fetch export
@@ -507,7 +507,7 @@ async def countersign_export(
     auth: dict = Depends(get_authenticated_user)
 ):
     """HOD countersigns the handover to complete."""
-    from pipeline_service import get_tenant_client
+    from integrations.supabase import get_tenant_client
     supabase = get_tenant_client(auth['tenant_key_alias'])
 
     # Verify user is HOD (role comes from auth context, already validated)

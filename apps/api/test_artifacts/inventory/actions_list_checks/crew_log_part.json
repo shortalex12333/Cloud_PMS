@@ -1,8 +1,0 @@
-{
-  "user": "CREW",
-  "query": "log part",
-  "domain": "parts",
-  "total_actions": 2,
-  "has_log_part_usage": false,
-  "mutate_actions": []
-}

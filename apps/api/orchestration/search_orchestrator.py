@@ -258,8 +258,8 @@ def create_orchestrator(
 
     Usage in pipeline_service.py:
         from orchestration import create_orchestrator
-        from intent_parser import IntentParser
-        from module_b_entity_extractor import get_extractor
+        from services.intent_parser import IntentParser
+        from extraction import get_extractor
 
         orchestrator = create_orchestrator(
             intent_parser=IntentParser(),
