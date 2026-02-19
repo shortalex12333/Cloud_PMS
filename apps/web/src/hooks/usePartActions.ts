@@ -77,6 +77,7 @@ export function usePartActions(partId: string) {
 
       try {
         // Use unified action router endpoint - /v1/actions/execute
+        // IMPORTANT: part_id must be in payload (backend validation checks payload, not context)
         const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
@@ -89,7 +90,10 @@ export function usePartActions(partId: string) {
               yacht_id: user?.yachtId,
               part_id: partId,
             },
-            payload,
+            payload: {
+              part_id: partId,
+              ...payload,
+            },
           }),
         });
 

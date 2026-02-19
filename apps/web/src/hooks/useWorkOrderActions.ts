@@ -71,6 +71,7 @@ export function useWorkOrderActions(workOrderId: string) {
 
       try {
         // Use unified action router endpoint - /v1/actions/execute
+        // IMPORTANT: work_order_id must be in payload (backend validation checks payload, not context)
         const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
@@ -83,7 +84,10 @@ export function useWorkOrderActions(workOrderId: string) {
               yacht_id: user?.yachtId,
               work_order_id: workOrderId,
             },
-            payload,
+            payload: {
+              work_order_id: workOrderId,
+              ...payload,
+            },
           }),
         });
 
