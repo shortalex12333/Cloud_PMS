@@ -200,4 +200,3 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-export default Toast;

@@ -308,4 +308,3 @@ export function HandoverExportLensContent({
   );
 }
 
-export default HandoverExportLensContent;

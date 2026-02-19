@@ -49,7 +49,7 @@ export async function ensureFreshToken(): Promise<string> {
  *
  * @returns Current JWT access token or null if not authenticated
  */
-export async function getCurrentToken(): Promise<string | null> {
+async function getCurrentToken(): Promise<string | null> {
   const { data: { session }, error } = await supabase.auth.getSession();
 
   if (error || !session) {
@@ -65,7 +65,7 @@ export async function getCurrentToken(): Promise<string | null> {
  * @param thresholdSeconds - Seconds before expiry to consider token stale (default: 300 = 5 minutes)
  * @returns true if token is expired or expiring soon
  */
-export async function isTokenExpiring(thresholdSeconds: number = 300): Promise<boolean> {
+async function isTokenExpiring(thresholdSeconds: number = 300): Promise<boolean> {
   const { data: { session }, error } = await supabase.auth.getSession();
 
   if (error || !session) {

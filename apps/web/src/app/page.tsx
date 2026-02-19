@@ -31,7 +31,7 @@ import { SurfaceProvider, useSurface } from '@/contexts/SurfaceContext';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './app/ContextPanel';
-import DeepLinkHandler from './app/DeepLinkHandler';
+import { DeepLinkHandler } from './app/DeepLinkHandler';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 // Dynamic import with SSR disabled for portal-based overlay

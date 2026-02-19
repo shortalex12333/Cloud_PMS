@@ -199,4 +199,3 @@ export function AddHoursModal({
   );
 }
 
-export default AddHoursModal;

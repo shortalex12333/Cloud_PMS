@@ -79,4 +79,3 @@ export const EntityLink = React.forwardRef<HTMLSpanElement, EntityLinkProps>(
 
 EntityLink.displayName = 'EntityLink';
 
-export default EntityLink;

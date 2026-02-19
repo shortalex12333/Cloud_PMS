@@ -126,4 +126,3 @@ export function HandoverLensContent({
   );
 }
 
-export default HandoverLensContent;

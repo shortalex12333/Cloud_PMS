@@ -202,4 +202,3 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
   );
 }
 
-export default AddNoteModal;

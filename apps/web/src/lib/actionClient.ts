@@ -56,7 +56,7 @@ export interface ActionSuggestionsResponse {
 /**
  * Action execution error
  */
-export class ActionExecutionError extends Error {
+class ActionExecutionError extends Error {
   constructor(
     public action: string,
     public error_code: string,
@@ -174,7 +174,7 @@ export async function executeAction(
  * Action handlers by action ID
  * Maps action IDs to their parameter requirements
  */
-export const ACTION_CONFIGS = {
+const ACTION_CONFIGS = {
   // Notes
   add_note: {
     required_context: ['yacht_id', 'equipment_id'],
@@ -338,7 +338,7 @@ export async function getActionSuggestions(
  * };
  * ```
  */
-export function useAction() {
+function useAction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ActionExecutionError | null>(null);
   const [result, setResult] = useState<ActionResult | null>(null);

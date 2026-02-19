@@ -247,4 +247,3 @@ function ThreadRow({ thread, onLinkClick, onOpenClick }: ThreadRowProps) {
   );
 }
 
-export default EmailInboxView;

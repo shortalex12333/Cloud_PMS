@@ -81,7 +81,7 @@ const handler: ProxyHandler<any> = {
 export const supabase: SupabaseClient = new Proxy({}, handler) as SupabaseClient;
 
 // Helper function to get current user (placeholder)
-export async function getCurrentUser() {
+async function getCurrentUser() {
   const {
     data: { user },
     error,
@@ -96,7 +96,7 @@ export async function getCurrentUser() {
 }
 
 // Helper function to sign out
-export async function signOut() {
+async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) {
     console.error('Error signing out:', error);
@@ -104,7 +104,7 @@ export async function signOut() {
 }
 
 // Yacht signature validation (placeholder)
-export function getYachtSignature(): string | null {
+function getYachtSignature(): string | null {
   // TODO: Implement yacht signature retrieval from session/cookie
   return null;
 }

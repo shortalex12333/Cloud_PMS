@@ -21,16 +21,16 @@ export const READ_APP = {
 };
 
 // WRITE APP - Mail.Send, User.Read, offline_access (NO Mail.ReadWrite!)
-export const WRITE_APP = {
+const WRITE_APP = {
   appId: process.env.AZURE_WRITE_APP_ID || 'f0b8944b-8127-4f0f-8ed5-5487462df50c',
   clientSecret: process.env.AZURE_WRITE_CLIENT_SECRET || '',
   scopes: ['Mail.Send', 'User.Read', 'offline_access'],
   redirectPath: '/api/integrations/outlook/write/callback',
 };
 
-export const AZURE_TENANT = 'common';
-export const TOKEN_URL = `https://login.microsoftonline.com/${AZURE_TENANT}/oauth2/v2.0/token`;
-export const GRAPH_ME_URL = 'https://graph.microsoft.com/v1.0/me';
+const AZURE_TENANT = 'common';
+const TOKEN_URL = `https://login.microsoftonline.com/${AZURE_TENANT}/oauth2/v2.0/token`;
+const GRAPH_ME_URL = 'https://graph.microsoft.com/v1.0/me';
 
 // ============================================================================
 // FORBIDDEN SCOPES (doctrine enforcement)
@@ -117,7 +117,7 @@ export function generateOAuthState(userId: string, purpose: TokenPurpose): strin
 /**
  * Parse OAuth state to extract user_id and purpose
  */
-export function parseOAuthState(state: string): { userId: string; purpose: TokenPurpose } | null {
+function parseOAuthState(state: string): { userId: string; purpose: TokenPurpose } | null {
   const parts = state.split(':');
   if (parts.length < 2) return null;
 
@@ -134,14 +134,14 @@ export function parseOAuthState(state: string): { userId: string; purpose: Token
 /**
  * SHA256 hash of email address for privacy
  */
-export function hashEmail(email: string): string {
+function hashEmail(email: string): string {
   return createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
 }
 
 /**
  * Check scopes against forbidden list (doctrine enforcement)
  */
-export function checkScopes(scopes: string[]): ScopeCheckResult {
+function checkScopes(scopes: string[]): ScopeCheckResult {
   const forbidden = scopes.filter(s =>
     FORBIDDEN_SCOPES.some(f => s.toLowerCase() === f.toLowerCase())
   );
@@ -160,7 +160,7 @@ export function checkScopes(scopes: string[]): ScopeCheckResult {
 /**
  * Get Supabase client with service role
  */
-export function getServiceClient(): SupabaseClient {
+function getServiceClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   return createClient(url, key);
@@ -169,7 +169,7 @@ export function getServiceClient(): SupabaseClient {
 /**
  * Get base URL for redirects
  */
-export function getBaseUrl(): string {
+function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || 'https://app.celeste7.ai';
 }
 
@@ -196,7 +196,7 @@ export function buildAuthUrl(purpose: TokenPurpose, state: string): string {
 /**
  * Exchange authorization code for tokens
  */
-export async function exchangeCodeForTokens(
+async function exchangeCodeForTokens(
   code: string,
   purpose: TokenPurpose
 ): Promise<{
@@ -246,7 +246,7 @@ export async function exchangeCodeForTokens(
 /**
  * Fetch user profile from Microsoft Graph
  */
-export async function fetchGraphProfile(accessToken: string): Promise<{
+async function fetchGraphProfile(accessToken: string): Promise<{
   email: string;
   displayName: string;
 } | null> {
@@ -270,7 +270,7 @@ export async function fetchGraphProfile(accessToken: string): Promise<{
 /**
  * Get user's yacht_id from auth_users_profiles
  */
-export async function getUserYachtId(
+async function getUserYachtId(
   supabase: SupabaseClient,
   userId: string
 ): Promise<string | null> {
@@ -287,7 +287,7 @@ export async function getUserYachtId(
 /**
  * Upsert token record
  */
-export async function upsertToken(
+async function upsertToken(
   supabase: SupabaseClient,
   token: TokenRecord
 ): Promise<{ success: boolean; error?: string }> {
@@ -306,7 +306,7 @@ export async function upsertToken(
 /**
  * Get token by purpose
  */
-export async function getToken(
+async function getToken(
   supabase: SupabaseClient,
   userId: string,
   yachtId: string,
@@ -329,7 +329,7 @@ export async function getToken(
 /**
  * Determine watcher sync_status based on token states
  */
-export function determineWatcherStatus(
+function determineWatcherStatus(
   readToken: TokenRecord | null,
   writeToken: TokenRecord | null,
   hasForbiddenScopes: boolean
@@ -350,7 +350,7 @@ export function determineWatcherStatus(
 /**
  * Upsert email_watchers record
  */
-export async function upsertWatcher(
+async function upsertWatcher(
   supabase: SupabaseClient,
   userId: string,
   yachtId: string,
@@ -379,7 +379,7 @@ export async function upsertWatcher(
 /**
  * Get watcher status
  */
-export async function getWatcher(
+async function getWatcher(
   supabase: SupabaseClient,
   userId: string,
   yachtId: string
@@ -399,7 +399,7 @@ export async function getWatcher(
 /**
  * Revoke all tokens for user (soft delete)
  */
-export async function revokeAllTokens(
+async function revokeAllTokens(
   supabase: SupabaseClient,
   userId: string,
   yachtId: string,
@@ -426,7 +426,7 @@ export async function revokeAllTokens(
 /**
  * Mark watcher as disconnected
  */
-export async function disconnectWatcher(
+async function disconnectWatcher(
   supabase: SupabaseClient,
   userId: string,
   yachtId: string

@@ -149,4 +149,3 @@ export const VitalSignsRow = React.forwardRef<HTMLDivElement, VitalSignsRowProps
 
 VitalSignsRow.displayName = 'VitalSignsRow';
 
-export default VitalSignsRow;

@@ -127,4 +127,3 @@ export function PartsLensContent({
   );
 }
 
-export default PartsLensContent;

@@ -29,7 +29,7 @@ import { SurfaceProvider } from '@/contexts/SurfaceContext';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import SpotlightSearch from '@/components/spotlight/SpotlightSearch';
 import ContextPanel from './ContextPanel';
-import DeepLinkHandler from './DeepLinkHandler';
+import { DeepLinkHandler } from './DeepLinkHandler';
 import EmailOverlay from './EmailOverlay';
 import { AuthProvider } from '@/contexts/AuthContext';
 

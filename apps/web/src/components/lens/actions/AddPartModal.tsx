@@ -298,4 +298,3 @@ export function AddPartModal({
   );
 }
 
-export default AddPartModal;

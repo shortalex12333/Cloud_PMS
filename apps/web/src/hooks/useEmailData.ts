@@ -136,7 +136,7 @@ async function getAuthHeaders(): Promise<HeadersInit> {
  * Outlook auth error - thrown when Outlook OAuth needs reconnection.
  * This is distinct from Celeste JWT expiry.
  */
-export class OutlookAuthError extends Error {
+class OutlookAuthError extends Error {
   constructor(
     public code: string,
     message: string
@@ -331,7 +331,7 @@ async function removeLink(linkId: string): Promise<{ success: boolean }> {
 /**
  * Fetch threads related to an object
  */
-export function useRelatedThreads(objectType: string, objectId: string) {
+function useRelatedThreads(objectType: string, objectId: string) {
   return useQuery({
     queryKey: ['email', 'related', objectType, objectId],
     queryFn: () => fetchRelatedThreads(objectType, objectId),
@@ -422,7 +422,7 @@ export function useMessageContent(providerMessageId: string | null) {
 /**
  * Accept a suggested link
  */
-export function useAcceptLink() {
+function useAcceptLink() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -455,7 +455,7 @@ export function useChangeLink() {
 /**
  * Remove (unlink) a link
  */
-export function useRemoveLink() {
+function useRemoveLink() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -592,7 +592,7 @@ export function usePrefetchThread() {
  * Prefetch message content and attachments in parallel
  * Call this when selecting a message for optimized loading
  */
-export async function prefetchMessageData(
+async function prefetchMessageData(
   queryClient: ReturnType<typeof useQueryClient>,
   providerMessageId: string,
   messageId: string
@@ -750,7 +750,7 @@ export type BackfillStatus = {
 /**
  * Trigger and monitor email backfill/import
  */
-export function useEmailBackfill() {
+function useEmailBackfill() {
   const queryClient = useQueryClient();
 
   // Check backfill status
@@ -1074,7 +1074,7 @@ export type DownloadError = {
  * - NOT_FOUND (404): Attachment not found
  * - UNKNOWN: Other errors
  */
-export async function downloadAttachment(
+async function downloadAttachment(
   providerMessageId: string,
   attachmentId: string
 ): Promise<Blob> {
@@ -1187,7 +1187,7 @@ export async function fetchAttachmentBlob(
 /**
  * Download attachment and trigger browser save dialog
  */
-export async function downloadAndSaveAttachment(
+async function downloadAndSaveAttachment(
   providerMessageId: string,
   attachmentId: string,
   filename: string
@@ -1241,7 +1241,7 @@ export type SaveAttachmentResult = {
  * - Role-checked server-side
  * - Idempotent (won't duplicate if already saved)
  */
-export async function saveAttachmentForPreview(
+async function saveAttachmentForPreview(
   messageId: string,
   attachmentId: string,
   fileName: string,
@@ -1335,7 +1335,7 @@ export type DocumentLink = {
 /**
  * Link a document to an object (work order, equipment, handover, etc.)
  */
-export async function linkDocument(
+async function linkDocument(
   documentId: string,
   objectType: string,
   objectId: string,
@@ -1389,7 +1389,7 @@ export async function linkDocument(
 /**
  * Unlink a document from an object
  */
-export async function unlinkDocument(
+async function unlinkDocument(
   documentId: string,
   objectType: string,
   objectId: string
@@ -1439,7 +1439,7 @@ export async function unlinkDocument(
 /**
  * Get all links for a document
  */
-export async function getDocumentLinks(documentId: string): Promise<{
+async function getDocumentLinks(documentId: string): Promise<{
   success: boolean;
   links?: DocumentLink[];
   error?: string;

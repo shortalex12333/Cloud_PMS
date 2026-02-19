@@ -165,4 +165,3 @@ export function ShoppingListLensContent({
   );
 }
 
-export default ShoppingListLensContent;

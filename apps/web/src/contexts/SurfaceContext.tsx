@@ -189,8 +189,3 @@ export function useSurfaceSafe(): SurfaceContextValue | null {
   return useContext(SurfaceContext);
 }
 
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-export default SurfaceContext;

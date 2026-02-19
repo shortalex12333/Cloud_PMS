@@ -147,4 +147,3 @@ export function WarrantyLensContent({
   );
 }
 
-export default WarrantyLensContent;
