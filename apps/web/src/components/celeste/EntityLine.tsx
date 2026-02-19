@@ -47,7 +47,7 @@ export default function EntityLine({
     <div
       className={cn(
         'px-4 py-2',
-        'text-celeste-sm text-celeste-text-muted',
+        'typo-meta text-celeste-text-muted',
         'font-body',
         className
       )}

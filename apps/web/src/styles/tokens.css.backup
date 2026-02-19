@@ -21,7 +21,7 @@
   --surface-elevated: #1E1E1E;       /* Modals, dropdowns, sticky headers when pinned */
   --surface-hover: #252525;          /* Hover states */
   --surface-active: #323232;         /* Active/selected states (matches ChatGPT highlight) */
-  --surface-border: #404040;         /* Borders, dividers (spec: #404040 dark) */
+  --surface-border: #333333;         /* Borders, dividers (close to ChatGPT's #404040 but softer) */
   --surface-border-subtle: #222222;  /* Very subtle internal dividers */
 
   /* Text */
@@ -96,8 +96,8 @@
   --status-neutral: #71717A;
   --status-neutral-bg: rgba(113,113,122,0.10);
 
-  /* Typography - Per Spec Font Stack */
-  --font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', monospace;
 
   /* Spacing (4px base) */
@@ -208,10 +208,9 @@
   --search-max-width: 720px;
   --search-height: 48px;
 
-  /* Modal - SPEC: exact shadow value */
+  /* Modal */
   --modal-max-width: 480px;
   --modal-padding: 32px;
-  --modal-shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
 
   /* Navigation header */
   --header-height: 56px;
@@ -227,12 +226,12 @@
 
   /* Buttons */
   --button-height-ghost: 36px;
-  --button-height-primary: 36px;
+  --button-height-primary: 40px;
   --button-padding-ghost-x: 12px;
   --button-padding-ghost-y: 8px;
   --button-padding-primary-x: 24px;
   --button-padding-primary-y: 12px;
-  --button-icon-only-size: 32px;
+  --button-icon-only-size: 36px;
 
   /* Status pill */
   --pill-height: 24px;
@@ -241,7 +240,7 @@
   --pill-dot-size: 6px;
 
   /* Inputs */
-  --input-height: 36px;
+  --input-height: 40px;
   --input-padding-x: 12px;
   --input-padding-y: 10px;
 
@@ -399,36 +398,26 @@
    BUTTON COMPONENT CLASSES — UI_SPEC.md exact specification
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Ghost Button - uses secondary style per spec (no tertiary buttons) */
+/* Ghost Button (default action button) */
 .btn-ghost {
   background: transparent;
-  color: var(--text-primary);
+  color: var(--brand-interactive);
   font-size: var(--font-size-action);
-  font-weight: 500;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  height: 36px;
-  min-height: 36px;
+  font-weight: var(--font-weight-action);
+  padding: var(--button-padding-ghost-y) var(--button-padding-ghost-x);
+  border-radius: var(--radius-md);
+  border: none;
+  min-height: var(--button-height-ghost);
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
   transition: background var(--duration-fast) var(--ease-out);
 }
 
 .btn-ghost:hover {
-  background: #eeeeee;
-}
-
-[data-theme="dark"] .btn-ghost:hover,
-.dark .btn-ghost:hover {
-  background: #323232;
+  background: var(--brand-muted);
 }
 
 .btn-ghost:active {
-  opacity: 0.9;
+  background: rgba(43,143,179,0.18);
 }
 
 .btn-ghost:disabled {
@@ -437,109 +426,57 @@
   background: transparent;
 }
 
-/* Primary Button - SPEC: bg-[#111111] dark:bg-[#f2f2f2], 36px height, 10px radius, 500 weight */
+/* Primary Button (confirmations, sign & submit) */
 .btn-primary {
-  background: #111111;
-  color: #ffffff;
+  background: var(--brand-interactive);
+  color: var(--text-inverse);
   font-size: var(--font-size-body);
-  font-weight: 500;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid #111111;
-  height: 36px;
-  min-height: 36px;
+  font-weight: var(--font-weight-section);
+  padding: var(--button-padding-primary-y) var(--button-padding-primary-x);
+  border-radius: var(--radius-md);
+  border: none;
+  min-height: var(--button-height-primary);
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-primary:active {
-  opacity: 0.85;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Primary Button - Dark Mode */
-[data-theme="dark"] .btn-primary,
-.dark .btn-primary {
-  background: #f2f2f2;
-  color: #1e1e1e;
-  border-color: #f2f2f2;
-}
-
-/* Secondary Button - SPEC: transparent bg, border-default, hover bg-highlight */
-.btn-secondary {
-  background: transparent;
-  color: var(--text-primary);
-  font-size: var(--font-size-body);
-  font-weight: 500;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid #e7e7e7;
-  height: 36px;
-  min-height: 36px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
   transition: background var(--duration-fast) var(--ease-out);
 }
 
-.btn-secondary:hover {
-  background: #eeeeee;
+.btn-primary:hover {
+  background: var(--brand-hover);
 }
 
-/* Secondary Button - Dark Mode */
-[data-theme="dark"] .btn-secondary,
-.dark .btn-secondary {
-  border-color: #404040;
+.btn-primary:active {
+  background: #1E8AAB;
 }
 
-[data-theme="dark"] .btn-secondary:hover,
-.dark .btn-secondary:hover {
-  background: #323232;
+.btn-primary:disabled {
+  background: var(--surface-hover);
+  color: var(--text-disabled);
+  cursor: not-allowed;
 }
 
-/* Danger Button - SPEC: bg #dc2626, text #ffffff, border #dc2626 */
+/* Danger Button (destructive actions — delete, reject) */
 .btn-danger {
-  background: #dc2626;
-  color: #ffffff;
+  background: transparent;
+  color: var(--status-critical);
   font-size: var(--font-size-action);
-  font-weight: 500;
-  padding: 0 12px;
-  border: 1px solid #dc2626;
-  border-radius: 10px;
-  height: 36px;
-  min-height: 36px;
+  font-weight: var(--font-weight-action);
+  padding: var(--button-padding-ghost-y) var(--button-padding-ghost-x);
+  border: 1px solid var(--status-critical);
+  border-radius: var(--radius-md);
+  min-height: var(--button-height-ghost);
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
   transition: background var(--duration-fast) var(--ease-out);
 }
 
 .btn-danger:hover {
-  background: #b91c1c;
-  border-color: #b91c1c;
+  background: var(--status-critical-bg);
 }
 
-/* Danger confirmation state */
+/* Danger confirmation state (after first click) */
 .btn-danger-confirm {
-  background: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
+  background: var(--status-critical);
+  color: var(--text-inverse);
+  border-color: var(--status-critical);
 }
 
 /* Icon-Only Button (close, back, forward, settings) */
@@ -632,15 +569,14 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .input-field {
-  height: 36px;                    /* SPEC: 36px (h-9), shared with buttons */
-  min-height: 36px;
-  padding: 0 12px;
+  height: var(--input-height);
+  padding: var(--input-padding-y) var(--input-padding-x);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-body);
   color: var(--text-primary);
   background: var(--surface-base);
   border: 1px solid var(--surface-border);
-  border-radius: 10px;              /* SPEC: 10px radius */
+  border-radius: var(--radius-md);
   width: 100%;
   transition: border-color var(--duration-fast) var(--ease-out),
               box-shadow var(--duration-fast) var(--ease-out);

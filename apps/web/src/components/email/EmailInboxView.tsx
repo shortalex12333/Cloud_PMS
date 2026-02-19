@@ -63,7 +63,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
           <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
             Email Inbox
           </h2>
-          <span className="text-celeste-sm text-zinc-500">
+          <span className="typo-meta text-zinc-500">
             {total} {showLinked ? 'total' : 'unlinked'} thread{total !== 1 ? 's' : ''}
           </span>
         </div>
@@ -76,7 +76,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
               setPage(1);
             }}
             className={cn(
-              'px-3 py-1.5 text-celeste-sm rounded-md transition-colors',
+              'px-3 py-1.5 typo-meta rounded-md transition-colors',
               showLinked
                 ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300'
                 : 'bg-celeste-accent-subtle text-celeste-accent'
@@ -110,12 +110,12 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
             <div>
-              <p className="text-celeste-sm text-red-700 dark:text-red-400">
+              <p className="typo-meta text-red-700 dark:text-red-400">
                 {error instanceof Error ? error.message : 'Failed to load emails'}
               </p>
               <button
                 onClick={() => refetch()}
-                className="mt-2 text-celeste-sm text-red-600 hover:text-red-700 underline"
+                className="mt-2 typo-meta text-red-600 hover:text-red-700 underline"
               >
                 Try again
               </button>
@@ -128,10 +128,10 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
       {!isLoading && !error && threads.length === 0 && (
         <div className="text-center py-12">
           <Mail className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
-          <h3 className="text-celeste-base font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          <h3 className="typo-body font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             {showLinked ? 'No email threads' : 'All emails are linked!'}
           </h3>
-          <p className="text-celeste-sm text-zinc-500 max-w-sm mx-auto">
+          <p className="typo-meta text-zinc-500 max-w-sm mx-auto">
             {showLinked
               ? 'Email threads will appear here after sync.'
               : 'All your email threads have been linked to objects. Great work!'}
@@ -156,7 +156,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
       {/* Pagination */}
       {!isLoading && total > 0 && (
         <div className="flex items-center justify-between pt-2">
-          <p className="text-celeste-sm text-zinc-500">
+          <p className="typo-meta text-zinc-500">
             Page {page} of {Math.ceil(total / (data?.page_size || 20))}
           </p>
           <div className="flex items-center gap-2">
@@ -217,10 +217,10 @@ function ThreadRow({ thread, onLinkClick, onOpenClick }: ThreadRowProps) {
 
       {/* Thread Info */}
       <div className="flex-1 min-w-0">
-        <h4 className="text-celeste-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+        <h4 className="typo-meta font-medium text-zinc-800 dark:text-zinc-200 truncate">
           {thread.latest_subject || '(No subject)'}
         </h4>
-        <div className="flex items-center gap-3 mt-1 text-celeste-xs text-zinc-500">
+        <div className="flex items-center gap-3 mt-1 typo-meta text-zinc-500">
           <span>{thread.message_count} message{thread.message_count !== 1 ? 's' : ''}</span>
           {thread.has_attachments && <span>Has attachments</span>}
           {thread.last_activity_at && (

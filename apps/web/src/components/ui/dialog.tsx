@@ -38,15 +38,15 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed left-[50%] top-[50%] z-modal grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4',
-        'border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-[var(--modal-padding)] rounded-[var(--radius-lg)] shadow-[var(--shadow-md)]',
+        'border border-[var(--surface-border)] bg-[var(--surface-elevated)] p-[var(--modal-padding)] rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]',
         'duration-normal data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="btn-icon absolute right-4 top-4">
-        <X className="h-4 w-4" />
+      <DialogPrimitive.Close className="btn-icon absolute right-4 top-4 h-8 w-8">
+        <X className="h-[18px] w-[18px]" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>

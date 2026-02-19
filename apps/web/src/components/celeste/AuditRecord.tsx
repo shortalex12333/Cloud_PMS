@@ -41,7 +41,7 @@ export default function AuditRecord({
   return (
     <div
       className={cn(
-        'text-celeste-xs text-celeste-text-disabled',
+        'typo-meta text-celeste-text-disabled',
         'font-body',
         className
       )}

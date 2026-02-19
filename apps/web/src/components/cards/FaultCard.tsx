@@ -193,7 +193,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
       action={canAddNote ? { label: '+ Add Note', onClick: onAddNote } : undefined}
     >
       {notes.length === 0 ? (
-        <p className="text-celeste-sm text-zinc-500 dark:text-zinc-400 py-2">
+        <p className="typo-meta text-zinc-500 dark:text-zinc-400 py-2">
           No notes yet. Add the first note to document progress.
         </p>
       ) : (
@@ -202,7 +202,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
           {hasMoreNotes && !isExpanded && (
             <button
               onClick={() => setIsExpanded(true)}
-              className="text-celeste-xs text-brand-interactive hover:text-brand-hover transition-colors mb-2"
+              className="typo-meta text-brand-interactive hover:text-brand-hover transition-colors mb-2"
             >
               Show {notes.length - 3} earlier notes...
             </button>
@@ -222,7 +222,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
                 {/* Note header: author, type badge, timestamp */}
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-celeste-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span className="typo-meta font-medium text-zinc-900 dark:text-zinc-100">
                       {note.author_name || 'Unknown'}
                     </span>
                     <span className={cn('text-overline', styles.labelClass)}>
@@ -235,7 +235,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
                 </div>
 
                 {/* Note content */}
-                <p className="text-celeste-sm text-zinc-700 dark:text-zinc-300 leading-relaxed line-clamp-3">
+                <p className="typo-meta text-zinc-700 dark:text-zinc-300 leading-relaxed line-clamp-3">
                   {note.text}
                 </p>
               </div>
@@ -246,7 +246,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
           {hasMoreNotes && isExpanded && (
             <button
               onClick={() => setIsExpanded(false)}
-              className="text-celeste-xs text-brand-interactive hover:text-brand-hover transition-colors mt-1"
+              className="typo-meta text-brand-interactive hover:text-brand-hover transition-colors mt-1"
             >
               Show less
             </button>
@@ -376,7 +376,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
           <div className="flex-1 min-w-0">
             {/* Title Row */}
             <div className="flex items-center justify-between gap-2 mb-1">
-              <h3 className="text-celeste-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+              <h3 className="typo-body font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                 {fault.title}
               </h3>
               <span className={cn(severity.pillClass, 'flex-shrink-0')}>
@@ -385,17 +385,17 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
             </div>
 
             {/* Equipment - Subtle secondary text */}
-            <p className="text-celeste-sm text-zinc-500 dark:text-zinc-400 mb-2">
+            <p className="typo-meta text-zinc-500 dark:text-zinc-400 mb-2">
               {fault.equipment_name}
             </p>
 
             {/* Description - Truncated */}
-            <p className="text-celeste-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
+            <p className="typo-meta text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">
               {fault.description}
             </p>
 
             {/* Metadata Row */}
-            <p className="text-celeste-xs text-zinc-400 dark:text-zinc-500 mb-4">
+            <p className="typo-meta text-zinc-400 dark:text-zinc-500 mb-4">
               {fault.reporter} · {new Date(fault.reported_at).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -409,7 +409,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {/* FAIL-CLOSED: Show error state if decisions endpoint failed */}
               {failClosed && (
                 <div
-                  className="flex items-center gap-2 px-3 py-2 text-celeste-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                  className="flex items-center gap-2 px-3 py-2 typo-meta text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg"
                   data-testid="decisions-error-state"
                 >
                   <AlertCircle className="h-4 w-4" />
@@ -420,7 +420,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {/* Loading state while fetching decisions */}
               {decisionsLoading && !failClosed && (
                 <div
-                  className="flex items-center gap-2 px-3 py-2 text-celeste-xs text-zinc-500"
+                  className="flex items-center gap-2 px-3 py-2 typo-meta text-zinc-500"
                   data-testid="decisions-loading-state"
                 >
                   <span className="animate-pulse">Loading actions...</span>
