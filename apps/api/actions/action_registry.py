@@ -31,9 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class ActionVariant(str, Enum):
-    """Action classification - READ or MUTATE only"""
+    """Action classification - READ, MUTATE, or SIGNED"""
     READ = "READ"
     MUTATE = "MUTATE"
+    SIGNED = "SIGNED"  # Requires HOD/Captain signature
 
 
 class AuditLevel(str, Enum):
@@ -93,6 +94,9 @@ class Action:
     # Entity types this action applies to
     entity_types: List[str] = field(default_factory=list)
 
+    # Role restrictions (for SIGNED actions)
+    allowed_roles: List[str] = field(default_factory=list)
+
     # Optional description
     description: str = ""
 
@@ -110,12 +114,22 @@ class Action:
             if self.audit.level == AuditLevel.NONE:
                 self.audit.level = AuditLevel.FULL
 
-        # Primary actions must be READ
-        if self.ui.primary and self.variant == ActionVariant.MUTATE:
-            raise ValueError(f"Primary action '{self.action_id}' must be READ, not MUTATE")
+        # SIGNED actions must have mutation config and allowed_roles
+        if self.variant == ActionVariant.SIGNED:
+            if self.mutation is None:
+                self.mutation = ActionMutation(requires_signature=True)
+            self.mutation.requires_signature = True  # Always require signature
+            if self.audit.level == AuditLevel.NONE:
+                self.audit.level = AuditLevel.FULL
+            if not self.allowed_roles:
+                raise ValueError(f"SIGNED action '{self.action_id}' must have allowed_roles")
 
-        # MUTATE actions should be dropdown_only
-        if self.variant == ActionVariant.MUTATE and not self.ui.dropdown_only:
+        # Primary actions must be READ
+        if self.ui.primary and self.variant in (ActionVariant.MUTATE, ActionVariant.SIGNED):
+            raise ValueError(f"Primary action '{self.action_id}' must be READ, not {self.variant.value}")
+
+        # MUTATE and SIGNED actions should be dropdown_only
+        if self.variant in (ActionVariant.MUTATE, ActionVariant.SIGNED) and not self.ui.dropdown_only:
             self.ui.dropdown_only = True
 
 
@@ -196,6 +210,11 @@ class ActionRegistry:
         action = self.get_action(action_id)
         return action is not None and action.variant == ActionVariant.READ
 
+    def is_signed(self, action_id: str) -> bool:
+        """Check if action is a SIGNED action (requires HOD/Captain signature)"""
+        action = self.get_action(action_id)
+        return action is not None and action.variant == ActionVariant.SIGNED
+
     def validate(self) -> List[str]:
         """Validate registry and return any errors"""
         errors = []
@@ -227,6 +246,7 @@ class ActionRegistry:
                     "dropdown_only": a.ui.dropdown_only,
                     "entity_types": a.entity_types,
                     "requires_signature": a.mutation.requires_signature if a.mutation else False,
+                    "allowed_roles": a.allowed_roles,
                 }
                 for aid, a in self._actions.items()
             },
