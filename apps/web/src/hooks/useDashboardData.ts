@@ -7,8 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getYachtId, getYachtSignature } from '@/lib/authHelpers';
-import { ensureFreshToken } from '@/lib/tokenRefresh';
+import { getYachtId } from '@/lib/authHelpers';
 
 // ============================================================================
 // TYPES
@@ -168,301 +167,736 @@ interface DashboardState {
 // API HELPERS
 // ============================================================================
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-
-async function fetchDashboardEndpoint<T>(endpoint: string): Promise<T> {
-  const jwt = await ensureFreshToken();
-  const yachtId = await getYachtId();
-  const yachtSignature = await getYachtSignature(yachtId);
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (jwt) {
-    headers['Authorization'] = `Bearer ${jwt}`;
+/**
+ * Get the current yacht_id from user session metadata
+ */
+async function getCurrentYachtId(): Promise<string | null> {
+  try {
+    const yachtId = await getYachtId();
+    return yachtId;
+  } catch {
+    return null;
   }
-  if (yachtSignature) {
-    headers['X-Yacht-Signature'] = yachtSignature;
+}
+
+/**
+ * Calculate relative time string (e.g., "2h ago", "3 days")
+ */
+function formatRelativeTime(date: string | null): string {
+  if (!date) return 'Unknown';
+
+  try {
+    const now = new Date();
+    const then = new Date(date);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return then.toLocaleDateString();
+  } catch {
+    return 'Unknown';
+  }
+}
+
+/**
+ * Calculate days until a date (positive = future, negative = past/overdue)
+ */
+function daysUntil(date: string | null): number {
+  if (!date) return 0;
+
+  try {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+    const diffMs = target.getTime() - now.getTime();
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Format due date for work orders
+ */
+function formatDueDate(dueDate: string | null, status: string): string {
+  if (!dueDate) return 'No due date';
+
+  const days = daysUntil(dueDate);
+
+  if (status === 'completed' || status === 'closed' || status === 'cancelled') {
+    return 'Completed';
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    method: 'GET',
-    headers,
+  if (days < 0) return `Overdue ${Math.abs(days)}d`;
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `${days} days`;
+}
+
+// ============================================================================
+// REAL DATA FETCHERS
+// ============================================================================
+
+/**
+ * Fetch work orders from Supabase
+ */
+async function fetchWorkOrders(yachtId: string): Promise<{ items: WorkOrderSummary[]; stats: WorkOrderStats }> {
+  // Get work orders with equipment join
+  const { data: workOrders, error } = await supabase
+    .from('pms_work_orders')
+    .select(`
+      id,
+      wo_number,
+      title,
+      status,
+      priority,
+      due_date,
+      equipment_id,
+      pms_equipment!equipment_id (name)
+    `)
+    .eq('yacht_id', yachtId)
+    .not('status', 'in', '("closed","cancelled")')
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(10);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching work orders:', error);
+    throw error;
+  }
+
+  // Get stats with separate count queries
+  const [totalResult, completedResult, inProgressResult, overdueResult] = await Promise.all([
+    supabase
+      .from('pms_work_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId),
+    supabase
+      .from('pms_work_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .in('status', ['completed', 'closed']),
+    supabase
+      .from('pms_work_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('status', 'in_progress'),
+    supabase
+      .from('pms_work_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .not('status', 'in', '("completed","closed","cancelled")')
+      .lt('due_date', new Date().toISOString().split('T')[0]),
+  ]);
+
+  // Map to summary format
+  const items: WorkOrderSummary[] = (workOrders || []).map((wo: any) => {
+    const isOverdue = wo.due_date && daysUntil(wo.due_date) < 0 && !['completed', 'closed', 'cancelled'].includes(wo.status);
+    const mappedStatus = isOverdue ? 'overdue' : (wo.status === 'open' ? 'scheduled' : wo.status);
+
+    // Map priority to our schema
+    let mappedPriority: 'routine' | 'important' | 'critical' = 'routine';
+    if (wo.priority === 'critical' || wo.priority === 'high') {
+      mappedPriority = 'critical';
+    } else if (wo.priority === 'medium') {
+      mappedPriority = 'important';
+    }
+
+    return {
+      id: wo.wo_number || wo.id,
+      title: wo.title || 'Untitled Work Order',
+      equipment: wo.pms_equipment?.name || 'Unknown Equipment',
+      dueDate: formatDueDate(wo.due_date, wo.status),
+      priority: mappedPriority,
+      status: mappedStatus as WorkOrderSummary['status'],
+    };
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${endpoint}: ${response.status}`);
+  return {
+    items,
+    stats: {
+      total: totalResult.count || 0,
+      completed: completedResult.count || 0,
+      inProgress: inProgressResult.count || 0,
+      overdue: overdueResult.count || 0,
+    },
+  };
+}
+
+/**
+ * Fetch faults from Supabase
+ */
+async function fetchFaults(yachtId: string): Promise<{ items: FaultSummary[]; stats: FaultStats }> {
+  // Get active faults with equipment join
+  const { data: faults, error } = await supabase
+    .from('pms_faults')
+    .select(`
+      id,
+      fault_code,
+      title,
+      description,
+      severity,
+      detected_at,
+      resolved_at,
+      created_at,
+      equipment_id,
+      pms_equipment!equipment_id (name)
+    `)
+    .eq('yacht_id', yachtId)
+    .is('resolved_at', null)
+    .order('detected_at', { ascending: false, nullsFirst: false })
+    .limit(10);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching faults:', error);
+    throw error;
   }
 
-  return response.json();
+  // Get stats
+  const [totalResult, openResult, investigatingResult, resolvedResult, criticalResult] = await Promise.all([
+    supabase
+      .from('pms_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId),
+    supabase
+      .from('pms_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .is('resolved_at', null),
+    // For investigating, we check if there's a related work order in_progress
+    supabase
+      .from('pms_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .is('resolved_at', null)
+      .not('equipment_id', 'is', null),
+    supabase
+      .from('pms_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .not('resolved_at', 'is', null),
+    supabase
+      .from('pms_faults')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('severity', 'critical')
+      .is('resolved_at', null),
+  ]);
+
+  // Map to summary format
+  const items: FaultSummary[] = (faults || []).map((fault: any) => ({
+    id: fault.id,
+    code: fault.fault_code || `F-${fault.id.slice(0, 4)}`,
+    title: fault.title || fault.description?.slice(0, 50) || 'Fault Reported',
+    equipment: fault.pms_equipment?.name || 'Unknown Equipment',
+    severity: fault.severity || 'medium',
+    status: fault.resolved_at ? 'resolved' : 'open',
+    timestamp: formatRelativeTime(fault.detected_at || fault.created_at),
+  }));
+
+  return {
+    items,
+    stats: {
+      total: totalResult.count || 0,
+      open: openResult.count || 0,
+      investigating: Math.min(investigatingResult.count || 0, openResult.count || 0),
+      resolved: resolvedResult.count || 0,
+      critical: criticalResult.count || 0,
+    },
+  };
+}
+
+/**
+ * Fetch equipment status from Supabase
+ */
+async function fetchEquipment(yachtId: string): Promise<{ items: EquipmentStatus[]; stats: EquipmentStats }> {
+  // Get equipment with status
+  const { data: equipment, error } = await supabase
+    .from('pms_equipment')
+    .select(`
+      id,
+      name,
+      system,
+      category,
+      status,
+      running_hours,
+      last_service_date,
+      updated_at
+    `)
+    .eq('yacht_id', yachtId)
+    .order('updated_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching equipment:', error);
+    throw error;
+  }
+
+  // Get stats
+  const [totalResult, operationalResult, degradedResult, offlineResult, maintenanceResult] = await Promise.all([
+    supabase
+      .from('pms_equipment')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId),
+    supabase
+      .from('pms_equipment')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('status', 'operational'),
+    supabase
+      .from('pms_equipment')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('status', 'degraded'),
+    supabase
+      .from('pms_equipment')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('status', 'offline'),
+    supabase
+      .from('pms_equipment')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('status', 'maintenance'),
+  ]);
+
+  // Map to status format
+  const items: EquipmentStatus[] = (equipment || []).map((eq: any) => ({
+    id: eq.id,
+    name: eq.name || 'Unknown Equipment',
+    system: eq.system || eq.category || 'General',
+    status: eq.status || 'operational',
+    lastChecked: formatRelativeTime(eq.updated_at || eq.last_service_date),
+    runningHours: eq.running_hours,
+  }));
+
+  return {
+    items,
+    stats: {
+      total: totalResult.count || 0,
+      operational: operationalResult.count || 0,
+      degraded: degradedResult.count || 0,
+      offline: offlineResult.count || 0,
+      maintenance: maintenanceResult.count || 0,
+    },
+  };
+}
+
+/**
+ * Fetch inventory/parts from Supabase
+ */
+async function fetchInventory(yachtId: string): Promise<{ items: InventoryItem[]; stats: InventoryStats }> {
+  // Get parts that are low stock or out of stock first
+  const { data: parts, error } = await supabase
+    .from('pms_parts')
+    .select(`
+      id,
+      part_number,
+      name,
+      quantity,
+      quantity_on_hand,
+      minimum_quantity,
+      min_quantity,
+      location,
+      storage_location,
+      bin_number
+    `)
+    .eq('yacht_id', yachtId)
+    .order('quantity', { ascending: true })
+    .limit(20);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching inventory:', error);
+    throw error;
+  }
+
+  // Get stats
+  const [totalResult, pendingOrdersResult] = await Promise.all([
+    supabase
+      .from('pms_parts')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId),
+    supabase
+      .from('pms_purchase_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('yacht_id', yachtId)
+      .eq('status', 'pending'),
+  ]);
+
+  // Calculate low stock and out of stock counts
+  let lowStockCount = 0;
+  let outOfStockCount = 0;
+
+  // Map to inventory format
+  const items: InventoryItem[] = (parts || []).map((part: any) => {
+    const qty = part.quantity ?? part.quantity_on_hand ?? 0;
+    const minQty = part.minimum_quantity ?? part.min_quantity ?? 0;
+    const location = part.location || part.storage_location || part.bin_number || 'Unknown';
+
+    let status: InventoryItem['status'] = 'healthy';
+    if (qty <= 0) {
+      status = 'out_of_stock';
+      outOfStockCount++;
+    } else if (qty <= minQty) {
+      status = 'low';
+      lowStockCount++;
+    } else if (qty < minQty * 1.5) {
+      status = 'low';
+      lowStockCount++;
+    }
+
+    return {
+      id: part.id,
+      partNumber: part.part_number || part.id.slice(0, 8),
+      name: part.name || 'Unknown Part',
+      quantity: qty,
+      minStock: minQty,
+      location,
+      status,
+    };
+  });
+
+  // Filter to show only items that need attention
+  const criticalItems = items.filter(i => i.status !== 'healthy').slice(0, 10);
+
+  return {
+    items: criticalItems.length > 0 ? criticalItems : items.slice(0, 5),
+    stats: {
+      totalParts: totalResult.count || 0,
+      lowStock: lowStockCount,
+      outOfStock: outOfStockCount,
+      pendingOrders: pendingOrdersResult.count || 0,
+    },
+  };
+}
+
+/**
+ * Fetch crew notes from Supabase
+ */
+async function fetchCrewNotes(yachtId: string): Promise<CrewNote[]> {
+  // Get recent notes
+  const { data: notes, error } = await supabase
+    .from('pms_notes')
+    .select(`
+      id,
+      content,
+      created_at,
+      created_by,
+      entity_type,
+      category
+    `)
+    .eq('yacht_id', yachtId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching crew notes:', error);
+    throw error;
+  }
+
+  // Map to crew note format
+  return (notes || []).map((note: any) => {
+    // Determine note type based on content or category
+    let noteType: CrewNote['type'] = 'observation';
+    const content = (note.content || '').toLowerCase();
+    if (content.includes('concern') || content.includes('issue') || content.includes('problem')) {
+      noteType = 'concern';
+    } else if (content.includes('recommend') || content.includes('suggest')) {
+      noteType = 'recommendation';
+    }
+
+    return {
+      id: note.id,
+      author: note.created_by || 'Crew Member',
+      content: note.content || '',
+      timestamp: formatRelativeTime(note.created_at),
+      type: noteType,
+      status: 'new' as const,
+    };
+  });
+}
+
+/**
+ * Fetch predictive risks (placeholder - requires predictive_state table)
+ */
+async function fetchPredictiveRisks(yachtId: string): Promise<PredictiveRisk[]> {
+  // Try to get predictive state data
+  try {
+    const { data: risks, error } = await supabase
+      .from('predictive_state')
+      .select(`
+        id,
+        equipment_id,
+        risk_score,
+        risk_factors,
+        predicted_failure_date,
+        recommendation,
+        pms_equipment!equipment_id (name)
+      `)
+      .eq('yacht_id', yachtId)
+      .gt('risk_score', 30)
+      .order('risk_score', { ascending: false })
+      .limit(5);
+
+    if (error) {
+      // Table may not exist, return empty array
+      console.log('[useDashboardData] Predictive state not available');
+      return [];
+    }
+
+    return (risks || []).map((risk: any) => {
+      let impact: PredictiveRisk['impact'] = 'low';
+      if (risk.risk_score >= 80) impact = 'critical';
+      else if (risk.risk_score >= 60) impact = 'high';
+      else if (risk.risk_score >= 40) impact = 'medium';
+
+      return {
+        id: risk.id,
+        equipment: risk.pms_equipment?.name || 'Equipment',
+        riskType: risk.risk_factors?.[0] || 'Potential Issue',
+        probability: risk.risk_score || 0,
+        impact,
+        recommendation: risk.recommendation || 'Monitor equipment condition',
+        timeframe: risk.predicted_failure_date
+          ? `${daysUntil(risk.predicted_failure_date)} days`
+          : 'Unknown',
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch expiring documents from Supabase
+ */
+async function fetchDocuments(yachtId: string): Promise<{ items: ExpiringDocument[]; stats: DocumentStats }> {
+  // Get documents with expiry dates
+  const { data: docs, error } = await supabase
+    .from('documents')
+    .select(`
+      id,
+      title,
+      name,
+      document_type,
+      category,
+      expiry_date,
+      created_at
+    `)
+    .eq('yacht_id', yachtId)
+    .not('expiry_date', 'is', null)
+    .order('expiry_date', { ascending: true })
+    .limit(20);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching documents:', error);
+    throw error;
+  }
+
+  // Get total count
+  const { count: totalCount } = await supabase
+    .from('documents')
+    .select('id', { count: 'exact', head: true })
+    .eq('yacht_id', yachtId);
+
+  const now = new Date();
+  let valid = 0;
+  let expiringSoon = 0;
+  let expired = 0;
+
+  // Map to document format
+  const items: ExpiringDocument[] = (docs || []).map((doc: any) => {
+    const days = daysUntil(doc.expiry_date);
+
+    let docStatus: ExpiringDocument['status'] = 'valid';
+    if (days < 0) {
+      docStatus = 'expired';
+      expired++;
+    } else if (days <= 7) {
+      docStatus = 'critical';
+      expiringSoon++;
+    } else if (days <= 30) {
+      docStatus = 'expiring';
+      expiringSoon++;
+    } else {
+      valid++;
+    }
+
+    // Map document type
+    let docType: ExpiringDocument['type'] = 'certificate';
+    const category = (doc.category || doc.document_type || '').toLowerCase();
+    if (category.includes('survey')) docType = 'survey';
+    else if (category.includes('license')) docType = 'license';
+    else if (category.includes('permit')) docType = 'permit';
+
+    return {
+      id: doc.id,
+      name: doc.title || doc.name || 'Untitled Document',
+      type: docType,
+      expiryDate: doc.expiry_date,
+      daysUntil: days,
+      status: docStatus,
+    };
+  });
+
+  // Show documents that need attention first
+  const priorityItems = items
+    .filter(d => d.status !== 'valid')
+    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .slice(0, 5);
+
+  return {
+    items: priorityItems.length > 0 ? priorityItems : items.slice(0, 5),
+    stats: {
+      total: totalCount || 0,
+      valid,
+      expiringSoon,
+      expired,
+    },
+  };
+}
+
+/**
+ * Fetch handover status from Supabase
+ */
+async function fetchHandover(yachtId: string): Promise<HandoverStatus> {
+  // Get recent handover items grouped by category
+  const { data: items, error } = await supabase
+    .from('handover_items')
+    .select(`
+      id,
+      section,
+      category,
+      is_critical,
+      requires_action,
+      created_at,
+      updated_at
+    `)
+    .eq('yacht_id', yachtId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('[useDashboardData] Error fetching handover:', error);
+    throw error;
+  }
+
+  // Get latest export status
+  const { data: latestExport } = await supabase
+    .from('handover_exports')
+    .select('id, export_status, created_at')
+    .eq('yacht_id', yachtId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  // Group items by section
+  const sectionGroups: Record<string, { items: number; critical: number }> = {};
+  (items || []).forEach((item: any) => {
+    const section = item.section || item.category || 'General';
+    if (!sectionGroups[section]) {
+      sectionGroups[section] = { items: 0, critical: 0 };
+    }
+    sectionGroups[section].items++;
+    if (item.is_critical) {
+      sectionGroups[section].critical++;
+    }
+  });
+
+  // Build sections array
+  const sections: HandoverSection[] = Object.entries(sectionGroups).map(([name, data]) => ({
+    name,
+    items: data.items,
+    complete: data.critical === 0, // Section complete if no critical items
+  }));
+
+  // Determine overall status
+  let status: HandoverStatus['status'] = 'draft';
+  if (latestExport?.export_status === 'completed') {
+    status = 'submitted';
+  } else if (sections.some(s => s.items > 0)) {
+    status = 'ready';
+  }
+
+  // Calculate next handover (8am tomorrow)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(8, 0, 0, 0);
+
+  return {
+    status,
+    lastUpdated: formatRelativeTime(items?.[0]?.updated_at || items?.[0]?.created_at),
+    sections: sections.length > 0 ? sections : [
+      { name: 'No items', items: 0, complete: true },
+    ],
+    nextHandover: `Tomorrow ${tomorrow.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+    assignedTo: 'Chief Engineer',
+  };
+}
+
+/**
+ * Fetch all dashboard data in parallel
+ */
+async function fetchAllDashboardData(yachtId: string): Promise<DashboardData> {
+  const [
+    workOrders,
+    faults,
+    equipment,
+    inventory,
+    crewNotes,
+    predictiveRisks,
+    documents,
+    handover,
+  ] = await Promise.all([
+    fetchWorkOrders(yachtId),
+    fetchFaults(yachtId),
+    fetchEquipment(yachtId),
+    fetchInventory(yachtId),
+    fetchCrewNotes(yachtId),
+    fetchPredictiveRisks(yachtId),
+    fetchDocuments(yachtId),
+    fetchHandover(yachtId),
+  ]);
+
+  return {
+    workOrders,
+    faults,
+    equipment,
+    inventory,
+    crewNotes,
+    predictiveRisks,
+    documents,
+    handover,
+  };
 }
 
 // ============================================================================
-// MOCK DATA GENERATORS (Used when API is unavailable)
+// FALLBACK DATA (Used when API is unavailable or yacht_id is missing)
 // ============================================================================
 
-function generateMockWorkOrders(): { items: WorkOrderSummary[]; stats: WorkOrderStats } {
+function getEmptyDashboardData(): DashboardData {
   return {
-    items: [
-      {
-        id: 'WO-2024-0847',
-        title: 'Generator Coolant Flush',
-        equipment: 'Main Generator #1',
-        dueDate: '3 days',
-        priority: 'routine',
-        status: 'scheduled',
-      },
-      {
-        id: 'WO-2024-0852',
-        title: 'Stabiliser Hydraulic Check',
-        equipment: 'Port Stabiliser',
-        dueDate: 'Today',
-        priority: 'important',
-        status: 'in_progress',
-      },
-      {
-        id: 'WO-2024-0849',
-        title: 'AC Filter Replacement',
-        equipment: 'HVAC System',
-        dueDate: 'Overdue 2d',
-        priority: 'critical',
-        status: 'overdue',
-      },
-    ],
-    stats: {
-      total: 24,
-      completed: 18,
-      inProgress: 4,
-      overdue: 2,
+    workOrders: { items: [], stats: { total: 0, completed: 0, inProgress: 0, overdue: 0 } },
+    faults: { items: [], stats: { total: 0, open: 0, investigating: 0, resolved: 0, critical: 0 } },
+    equipment: { items: [], stats: { total: 0, operational: 0, degraded: 0, offline: 0, maintenance: 0 } },
+    inventory: { items: [], stats: { totalParts: 0, lowStock: 0, outOfStock: 0, pendingOrders: 0 } },
+    crewNotes: [],
+    predictiveRisks: [],
+    documents: { items: [], stats: { total: 0, valid: 0, expiringSoon: 0, expired: 0 } },
+    handover: {
+      status: 'draft',
+      lastUpdated: 'Never',
+      sections: [],
+      nextHandover: 'Not scheduled',
+      assignedTo: 'Unassigned',
     },
-  };
-}
-
-function generateMockFaults(): { items: FaultSummary[]; stats: FaultStats } {
-  return {
-    items: [
-      {
-        id: 'F-2847',
-        code: 'E-2847',
-        title: 'Generator Overheating Alert',
-        equipment: 'Main Generator #1',
-        severity: 'critical',
-        status: 'investigating',
-        timestamp: '2h ago',
-      },
-      {
-        id: 'F-2843',
-        code: 'H-1234',
-        title: 'Low Hydraulic Pressure',
-        equipment: 'Port Stabiliser',
-        severity: 'high',
-        status: 'open',
-        timestamp: '5h ago',
-      },
-    ],
-    stats: {
-      total: 12,
-      open: 5,
-      investigating: 2,
-      resolved: 5,
-      critical: 1,
-    },
-  };
-}
-
-function generateMockEquipment(): { items: EquipmentStatus[]; stats: EquipmentStats } {
-  return {
-    items: [
-      {
-        id: 'EQ-001',
-        name: 'Main Generator #1',
-        system: 'Power',
-        status: 'degraded',
-        lastChecked: '2h ago',
-        runningHours: 12450,
-      },
-      {
-        id: 'EQ-002',
-        name: 'Port Stabiliser',
-        system: 'Stabilisation',
-        status: 'operational',
-        lastChecked: '1h ago',
-        runningHours: 8230,
-      },
-      {
-        id: 'EQ-003',
-        name: 'HVAC Unit #1',
-        system: 'Climate',
-        status: 'maintenance',
-        lastChecked: '30m ago',
-      },
-    ],
-    stats: {
-      total: 156,
-      operational: 142,
-      degraded: 8,
-      offline: 2,
-      maintenance: 4,
-    },
-  };
-}
-
-function generateMockInventory(): { items: InventoryItem[]; stats: InventoryStats } {
-  return {
-    items: [
-      {
-        id: 'P-3512-B',
-        partNumber: '3512-B',
-        name: 'Coolant Temperature Sensor',
-        quantity: 2,
-        minStock: 3,
-        location: 'A4-12',
-        status: 'low',
-      },
-      {
-        id: 'P-7892-A',
-        partNumber: '7892-A',
-        name: 'Hydraulic Filter Element',
-        quantity: 0,
-        minStock: 2,
-        location: 'B2-08',
-        status: 'out_of_stock',
-      },
-      {
-        id: 'P-1234-C',
-        partNumber: '1234-C',
-        name: 'Air Filter - HVAC',
-        quantity: 6,
-        minStock: 4,
-        location: 'C1-15',
-        status: 'healthy',
-      },
-    ],
-    stats: {
-      totalParts: 1247,
-      lowStock: 23,
-      outOfStock: 4,
-      pendingOrders: 8,
-    },
-  };
-}
-
-function generateMockCrewNotes(): CrewNote[] {
-  return [
-    {
-      id: 'N-001',
-      author: '2nd Engineer',
-      content: 'Unusual vibration from generator #1 during startup. Recommend inspection.',
-      timestamp: '3h ago',
-      type: 'concern',
-      status: 'new',
-    },
-    {
-      id: 'N-002',
-      author: 'Chief Engineer',
-      content: 'Scheduled maintenance for stabilisers moved to next port stay.',
-      timestamp: '5h ago',
-      type: 'observation',
-      status: 'reviewed',
-    },
-    {
-      id: 'N-003',
-      author: 'ETO',
-      content: 'Network switch replaced in engine control room. All systems nominal.',
-      timestamp: '1d ago',
-      type: 'observation',
-      status: 'actioned',
-    },
-  ];
-}
-
-function generateMockPredictiveRisks(): PredictiveRisk[] {
-  return [
-    {
-      id: 'PR-001',
-      equipment: 'Main Generator #1',
-      riskType: 'Coolant System Failure',
-      probability: 78,
-      impact: 'high',
-      recommendation: 'Schedule coolant system inspection within 72 hours',
-      timeframe: '7-14 days',
-    },
-    {
-      id: 'PR-002',
-      equipment: 'Bow Thruster',
-      riskType: 'Seal Wear',
-      probability: 45,
-      impact: 'medium',
-      recommendation: 'Monitor for leaks; plan seal replacement at next drydock',
-      timeframe: '30-60 days',
-    },
-  ];
-}
-
-function generateMockDocuments(): { items: ExpiringDocument[]; stats: DocumentStats } {
-  return {
-    items: [
-      {
-        id: 'DOC-001',
-        name: 'Safety Equipment Certificate',
-        type: 'certificate',
-        expiryDate: '2025-02-15',
-        daysUntil: 18,
-        status: 'expiring',
-      },
-      {
-        id: 'DOC-002',
-        name: 'Class Survey - Hull',
-        type: 'survey',
-        expiryDate: '2025-03-01',
-        daysUntil: 32,
-        status: 'valid',
-      },
-      {
-        id: 'DOC-003',
-        name: 'Radio License',
-        type: 'license',
-        expiryDate: '2025-01-30',
-        daysUntil: 2,
-        status: 'critical',
-      },
-    ],
-    stats: {
-      total: 45,
-      valid: 42,
-      expiringSoon: 3,
-      expired: 0,
-    },
-  };
-}
-
-function generateMockHandover(): HandoverStatus {
-  return {
-    status: 'draft',
-    lastUpdated: '2h ago',
-    sections: [
-      { name: 'Critical Items', items: 3, complete: true },
-      { name: 'Work Orders', items: 5, complete: true },
-      { name: 'Equipment Status', items: 2, complete: false },
-      { name: 'Pending Deliveries', items: 4, complete: true },
-      { name: 'Crew Notes', items: 6, complete: false },
-    ],
-    nextHandover: 'Tomorrow 08:00',
-    assignedTo: 'Chief Engineer → 2nd Engineer',
-  };
-}
-
-function generateMockDashboardData(): DashboardData {
-  return {
-    workOrders: generateMockWorkOrders(),
-    faults: generateMockFaults(),
-    equipment: generateMockEquipment(),
-    inventory: generateMockInventory(),
-    crewNotes: generateMockCrewNotes(),
-    predictiveRisks: generateMockPredictiveRisks(),
-    documents: generateMockDocuments(),
-    handover: generateMockHandover(),
   };
 }
 
@@ -487,17 +921,24 @@ export function useDashboardData(refreshInterval: number = 60000) {
     }
 
     try {
-      // Try to fetch real data from API
-      // For now, use mock data until API endpoints are available
-      // TODO: Replace with actual API calls when backend is ready
-      //
-      // const data = await fetchDashboardEndpoint<DashboardData>('/dashboard/summary');
+      // Get yacht_id from user session
+      const yachtId = await getCurrentYachtId();
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!yachtId) {
+        console.warn('[useDashboardData] No yacht_id in session, returning empty data');
+        if (isMountedRef.current) {
+          setState({
+            data: getEmptyDashboardData(),
+            isLoading: false,
+            error: 'No yacht selected',
+            lastUpdated: new Date(),
+          });
+        }
+        return;
+      }
 
-      // Use mock data
-      const data = generateMockDashboardData();
+      // Fetch all dashboard data from Supabase in parallel
+      const data = await fetchAllDashboardData(yachtId);
 
       if (isMountedRef.current) {
         setState({
@@ -511,12 +952,11 @@ export function useDashboardData(refreshInterval: number = 60000) {
       console.error('[useDashboardData] Fetch error:', error);
 
       if (isMountedRef.current) {
-        // Fall back to mock data on error
-        const mockData = generateMockDashboardData();
+        // Return empty data on error with error message
         setState({
-          data: mockData,
+          data: getEmptyDashboardData(),
           isLoading: false,
-          error: 'Using cached data - live sync unavailable',
+          error: error instanceof Error ? error.message : 'Failed to load dashboard data',
           lastUpdated: new Date(),
         });
       }

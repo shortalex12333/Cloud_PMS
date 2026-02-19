@@ -24,6 +24,10 @@ import React, { useEffect } from 'react';
 import type { SituationContext, EntityType } from '@/types/situation';
 import DocumentViewer from './DocumentSituationView';
 import EmailSituationView from './EmailSituationView';
+import EquipmentSituationView from './EquipmentSituationView';
+import WorkOrderSituationView from './WorkOrderSituationView';
+import InventorySituationView from './InventorySituationView';
+import FaultSituationView from './FaultSituationView';
 import { NavigationProvider, useNavigationContext } from '@/contexts/NavigationContext';
 import { ViewerHeader } from '@/components/context-nav/ViewerHeader';
 import { RelatedPanel } from '@/components/context-nav/RelatedPanel';
@@ -146,25 +150,41 @@ function renderViewer(
       );
 
     case 'equipment':
-      // TODO: Implement EquipmentSituationView
-      console.log('[SituationRouter] Equipment viewer not yet implemented');
-      return null;
+      return (
+        <EquipmentSituationView
+          situation={situation}
+          onClose={onClose}
+          onAction={onAction}
+        />
+      );
 
     case 'work_order':
-      // TODO: Implement WorkOrderSituationView
-      console.log('[SituationRouter] Work Order viewer not yet implemented');
-      return null;
+      return (
+        <WorkOrderSituationView
+          situation={situation}
+          onClose={onClose}
+          onAction={onAction}
+        />
+      );
 
     case 'inventory':
     case 'part':
-      // TODO: Implement InventorySituationView
-      console.log('[SituationRouter] Inventory viewer not yet implemented');
-      return null;
+      return (
+        <InventorySituationView
+          situation={situation}
+          onClose={onClose}
+          onAction={onAction}
+        />
+      );
 
     case 'fault':
-      // TODO: Implement FaultSituationView
-      console.log('[SituationRouter] Fault viewer not yet implemented');
-      return null;
+      return (
+        <FaultSituationView
+          situation={situation}
+          onClose={onClose}
+          onAction={onAction}
+        />
+      );
 
     case 'email_thread':
       return (

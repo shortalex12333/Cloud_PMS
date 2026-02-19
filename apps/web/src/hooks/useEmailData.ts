@@ -26,6 +26,7 @@ export type EmailThread = {
   source: string;
   first_message_at: string | null;
   last_activity_at: string | null;
+  is_read?: boolean;
   // From link join
   link_id?: string;
   confidence?: LinkConfidence;
@@ -357,6 +358,44 @@ export function useThread(threadId: string | null) {
     gcTime: 300000, // Keep in cache for 5 minutes
     refetchOnWindowFocus: false,
     retry: 1,
+  });
+}
+
+/**
+ * Mark a thread as read
+ */
+async function markThreadRead(threadId: string): Promise<{ success: boolean }> {
+  debugLog('THREAD', `Marking thread as read: ${threadId}`);
+  const url = `${API_BASE}/email/thread/${threadId}/mark-read`;
+
+  const response = await authFetch(url, { method: 'POST' });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || 'Failed to mark thread as read');
+  }
+
+  return response.json();
+}
+
+/**
+ * Hook to mark a thread as read
+ * Updates local cache optimistically
+ */
+export function useMarkThreadRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: markThreadRead,
+    onSuccess: (_, threadId) => {
+      // Update the thread in cache to reflect read state
+      queryClient.setQueryData(['email', 'thread', threadId], (old: ThreadWithMessages | undefined) => {
+        if (!old) return old;
+        return { ...old, is_read: true };
+      });
+      // Invalidate inbox to refresh unread indicators
+      queryClient.invalidateQueries({ queryKey: ['email', 'inbox'] });
+    },
   });
 }
 
