@@ -224,6 +224,11 @@ def embed_texts_batch(texts: List[str]) -> List[List[float]]:
                 wait = min(30, (2 ** attempt) * 5)  # 5s, 10s, 20s for rate limits
                 logger.warning(f"OpenAI rate limited (attempt {attempt + 1}): {e}, backing off {wait}s...")
                 time.sleep(wait)
+                # CRITICAL FIX: Rate-limit on final attempt must record circuit failure
+                if attempt == max_retries - 1:
+                    record_circuit_failure(e)
+                    logger.error(f"OpenAI rate limit exhausted after {max_retries} attempts: {e}")
+                    raise
             elif attempt < max_retries - 1:
                 wait = (2 ** attempt) * 0.5
                 logger.warning(f"OpenAI API error (attempt {attempt + 1}): {e}, retrying in {wait}s...")
@@ -254,21 +259,27 @@ def fetch_batch_needing_embedding(cur, batch_size: int) -> List[Dict[str, Any]]:
     3. embedding_hash != content_hash (content changed), OR
     4. embedding_version IS NULL OR < 3 (old schema)
 
+    CRITICAL FIX: Excludes rows in DLQ to prevent poisoned message loops.
     Uses FOR UPDATE SKIP LOCKED for concurrent worker safety.
     """
     cur.execute("""
         SELECT id, object_type, object_id, search_text, content_hash
-        FROM search_index
-        WHERE search_text IS NOT NULL
-          AND search_text != ''
+        FROM search_index si
+        WHERE si.search_text IS NOT NULL
+          AND si.search_text != ''
           AND (
-              embedding_1536 IS NULL
-              OR embedding_hash IS NULL
-              OR embedding_hash != content_hash
-              OR embedding_version IS NULL
-              OR embedding_version < %s
+              si.embedding_1536 IS NULL
+              OR si.embedding_hash IS NULL
+              OR si.embedding_hash != si.content_hash
+              OR si.embedding_version IS NULL
+              OR si.embedding_version < %s
           )
-        ORDER BY updated_at DESC
+          AND NOT EXISTS (
+              SELECT 1 FROM search_embedding_dlq dlq
+              WHERE dlq.source_table = 'search_index'
+                AND dlq.source_id = si.id
+          )
+        ORDER BY si.updated_at DESC
         FOR UPDATE SKIP LOCKED
         LIMIT %s
     """, (EMBED_VERSION, batch_size))

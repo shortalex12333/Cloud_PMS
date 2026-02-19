@@ -910,6 +910,11 @@ async def webhook_search(
         #
         # If the pipeline exceeds 3 s we return a partial response so the
         # client always receives a valid envelope rather than a 504/500.
+        #
+        # NOTE: Pipeline uses sync Supabase client (blocking I/O) wrapped
+        # in async coroutine. asyncio.wait_for raises TimeoutError at
+        # coroutine level. Defense in depth: Supabase client has 5s HTTP
+        # timeout (see integrations/supabase.py) to prevent hung connections.
         # ----------------------------------------------------------------
 
         # Timing constants (seconds)
