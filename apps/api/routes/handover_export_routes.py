@@ -57,8 +57,7 @@ class ExportResponse(BaseModel):
 @router.post("/export")
 async def generate_export(
     request: ExportRequest,
-    yacht_id: str = Query(..., description="Yacht ID"),
-    user_id: str = Query(..., description="User ID generating export"),
+    auth: dict = Depends(get_authenticated_user),
     db_client=Depends(lambda: None)  # Will be injected by app
 ) -> ExportResponse:
     """
@@ -70,6 +69,10 @@ async def generate_export(
     Returns export metadata. Use /export/{export_id}/html to get the content.
     """
     try:
+        # SECURITY: yacht_id and user_id ONLY from auth context - never trust query params
+        yacht_id = auth['yacht_id']
+        user_id = auth['user_id']
+
         # Get db client from app state (injected via dependency)
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
@@ -106,8 +109,7 @@ async def generate_export(
 @router.post("/export/html")
 async def generate_export_html(
     request: ExportRequest,
-    yacht_id: str = Query(..., description="Yacht ID"),
-    user_id: str = Query(..., description="User ID generating export"),
+    auth: dict = Depends(get_authenticated_user),
 ) -> Response:
     """
     Generate and return HTML export directly.
@@ -116,6 +118,10 @@ async def generate_export_html(
     directly instead of just metadata.
     """
     try:
+        # SECURITY: yacht_id and user_id ONLY from auth context - never trust query params
+        yacht_id = auth['yacht_id']
+        user_id = auth['user_id']
+
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
 
@@ -150,7 +156,7 @@ async def generate_export_html(
 
 @router.get("/exports")
 async def list_exports(
-    yacht_id: str = Query(..., description="Yacht ID"),
+    auth: dict = Depends(get_authenticated_user),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
@@ -160,6 +166,9 @@ async def list_exports(
     Returns export records with metadata (not the actual HTML content).
     """
     try:
+        # SECURITY: yacht_id ONLY from auth context - never trust query params
+        yacht_id = auth['yacht_id']
+
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
 
@@ -184,12 +193,15 @@ async def list_exports(
 @router.get("/export/{export_id}")
 async def get_export(
     export_id: str,
-    yacht_id: str = Query(..., description="Yacht ID")
+    auth: dict = Depends(get_authenticated_user)
 ):
     """
     Get export record by ID.
     """
     try:
+        # SECURITY: yacht_id ONLY from auth context - never trust query params
+        yacht_id = auth['yacht_id']
+
         from integrations.supabase import get_supabase_client
         db = get_supabase_client()
 
