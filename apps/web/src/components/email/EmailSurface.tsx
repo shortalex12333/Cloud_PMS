@@ -38,6 +38,7 @@ import {
   useWatcherStatus,
   useOutlookConnection,
   usePrefetchThread,
+  useMarkThreadRead,
   type EmailThread,
   type EmailMessage,
   type MessageContent as MessageContentType,
@@ -168,6 +169,7 @@ export default function EmailSurface({
   const { data, isLoading, error, refetch } = useInboxThreads(page, true, debouncedQuery);
   const { data: watcherStatus } = useWatcherStatus();
   const { data: outlookStatus, initiateReconnect, isLoading: outlookLoading } = useOutlookConnection();
+  const { mutate: markAsRead } = useMarkThreadRead();
   const [reconnecting, setReconnecting] = useState(false);
 
   const threads = data?.threads || [];
@@ -267,7 +269,9 @@ export default function EmailSurface({
     setSelectedThreadId(threadId);
     setSelectedMessageId(null);
     setSelectedIndex(index);
-  }, []);
+    // Mark thread as read when selected
+    markAsRead(threadId);
+  }, [markAsRead]);
 
   const handleThreadHover = useCallback((threadId: string) => {
     if (threadId !== selectedThreadId) {
@@ -590,7 +594,8 @@ function EmailRow({ thread, isSelected, onClick, onHover }: EmailRowProps) {
   const subject = thread.latest_subject || '(No subject)';
   const snippet = (thread as any).body_preview || '';
   const isLinked = !!thread.confidence;
-  const isUnread = true; // TODO: track read state
+  // Use actual is_read state from thread data (defaults to unread if not set)
+  const isUnread = thread.is_read === false || thread.is_read === undefined;
 
   return (
     <button
