@@ -237,7 +237,7 @@ export function AddPhotoModal({
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'border-2 border-dashed rounded-[10px] p-8',
+                'border-2 border-dashed rounded-md p-8',
                 'flex flex-col items-center justify-center gap-3',
                 'cursor-pointer transition-colors',
                 isDragging

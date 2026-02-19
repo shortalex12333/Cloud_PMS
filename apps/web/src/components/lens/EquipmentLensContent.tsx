@@ -65,8 +65,8 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
         </div>
         <div className="mt-3"><VitalSignsRow signs={vitalSigns} /></div>
         <div className="mt-4 flex items-center gap-2">
-          <PrimaryButton onClick={() => setReportFaultOpen(true)} className="text-[13px] min-h-[36px] px-4 py-2">Report Fault</PrimaryButton>
-          <GhostButton onClick={() => setScheduleMaintenanceOpen(true)} className="text-[13px] min-h-[36px] px-4 py-2">Schedule Maintenance</GhostButton>
+          <PrimaryButton onClick={() => setReportFaultOpen(true)} className="text-[13px] min-h-9 px-4 py-2">Report Fault</PrimaryButton>
+          <GhostButton onClick={() => setScheduleMaintenanceOpen(true)} className="text-[13px] min-h-9 px-4 py-2">Schedule Maintenance</GhostButton>
         </div>
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
         <div className="mt-6">

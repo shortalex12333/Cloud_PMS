@@ -88,7 +88,7 @@ function DocumentCard({ doc }: DocumentCardProps) {
       }}
       className={cn(
         // Row layout per DocCard spec: 48px min height
-        'flex items-center gap-3 px-5 py-3 min-h-[48px]',
+        'flex items-center gap-3 px-5 py-3 min-h-12',
         // Divider between cards
         'border-b border-surface-border-subtle last:border-b-0',
         // Interactive styling

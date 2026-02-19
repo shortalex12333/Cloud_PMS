@@ -86,8 +86,8 @@ export function PartsLensContent({
         </div>
 
         <div className="mt-4 flex items-center gap-2">
-          <PrimaryButton onClick={() => console.log('[PartsLens] Log usage:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Log Usage</PrimaryButton>
-          <GhostButton onClick={() => console.log('[PartsLens] Count stock:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Count Stock</GhostButton>
+          <PrimaryButton onClick={() => console.log('[PartsLens] Log usage:', id)} className="text-[13px] min-h-9 px-4 py-2">Log Usage</PrimaryButton>
+          <GhostButton onClick={() => console.log('[PartsLens] Count stock:', id)} className="text-[13px] min-h-9 px-4 py-2">Count Stock</GhostButton>
         </div>
 
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />

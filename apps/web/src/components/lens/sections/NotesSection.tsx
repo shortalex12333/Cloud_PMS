@@ -88,7 +88,7 @@ function NoteRow({ note }: NoteRowProps) {
         // Row layout: 20px horizontal, 12px vertical per UI_SPEC.md
         'px-5 py-3',
         // Minimum touch target: 44px
-        'min-h-[44px]',
+        'min-h-11',
         // Subtle border between rows (not full width — indented per Apple pattern)
         'border-b border-surface-border-subtle last:border-b-0'
       )}

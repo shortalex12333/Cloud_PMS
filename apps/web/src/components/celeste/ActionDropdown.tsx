@@ -86,7 +86,7 @@ export default function ActionDropdown({
         'absolute right-0 top-full mt-1',
         'min-w-[160px] font-body',
         'bg-celeste-bg-secondary border border-celeste-border',
-        'rounded-celeste-md border border-[#e7e7e7] dark:border-[#404040]',
+        'rounded-celeste-md border border-surface-border',
         'py-1',
         'z-50',
         className

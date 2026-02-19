@@ -42,7 +42,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
   const hasIncomingSignature = !!export_.incoming_signed_at;
 
   return (
-    <div className="p-4 rounded-[10px] border border-surface-border-subtle bg-surface-primary hover:bg-surface-hover transition-colors">
+    <div className="p-4 rounded-md border border-surface-border-subtle bg-surface-primary hover:bg-surface-hover transition-colors">
       <div className="flex items-start justify-between gap-4">
         {/* Export info */}
         <div className="flex-1 min-w-0">
@@ -66,7 +66,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
             {/* Outgoing signature */}
             <div
               className={cn(
-                'p-3 rounded-[10px] border',
+                'p-3 rounded-md border',
                 hasOutgoingSignature
                   ? 'border-status-success/30 bg-status-success-bg'
                   : 'border-surface-border-subtle bg-surface-hover'
@@ -99,7 +99,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
             {/* Incoming signature */}
             <div
               className={cn(
-                'p-3 rounded-[10px] border',
+                'p-3 rounded-md border',
                 hasIncomingSignature
                   ? 'border-status-success/30 bg-status-success-bg'
                   : 'border-surface-border-subtle bg-surface-hover'
@@ -195,7 +195,7 @@ export function HandoverExportsSection({
     >
       {!hasExports ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-3">
             <PenTool className="h-6 w-6 text-txt-tertiary" />
           </div>
           <p className="text-txt-primary font-medium mb-1">No exports yet</p>

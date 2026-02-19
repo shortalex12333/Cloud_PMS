@@ -103,8 +103,8 @@ export default function PredictiveRiskModule({
               <div
                 key={risk.id}
                 className={cn(
-                  'p-3 rounded-[10px]',
-                  'bg-zinc-50 dark:bg-[#323232]',
+                  'p-3 rounded-md',
+                  'bg-zinc-50 dark:bg-surface-active',
                   'border border-zinc-200/60 dark:border-zinc-700/60',
                   'hover:bg-zinc-100 dark:hover:bg-zinc-800',
                   'cursor-pointer transition-colors'

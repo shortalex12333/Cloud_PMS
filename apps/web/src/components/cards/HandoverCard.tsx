@@ -309,7 +309,7 @@ function SummaryStats({ summary }: SummaryStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-5 gap-4 p-4 bg-surface-primary rounded-[10px] border border-surface-border">
+    <div className="grid grid-cols-5 gap-4 p-4 bg-surface-primary rounded-md border border-surface-border">
       {stats.map((stat) => (
         <div key={stat.label} className="text-center">
           <p className={cn('typo-title font-semibold', stat.color)}>{stat.value}</p>
@@ -336,7 +336,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
   return (
     <div
       className={cn(
-        'p-4 rounded-[10px] border transition-colors duration-fast',
+        'p-4 rounded-md border transition-colors duration-fast',
         item.is_critical
           ? 'border-status-critical/30 bg-status-critical-bg'
           : 'border-surface-border-subtle bg-surface-primary',
@@ -447,7 +447,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
           {!isAcknowledged && item.requires_action && (
             <GhostButton
               onClick={() => onAcknowledge?.(item.id)}
-              className="text-[12px] min-h-[32px] px-3"
+              className="text-[12px] min-h-8 px-3"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               Acknowledge
@@ -501,7 +501,7 @@ function HandoverItemsSection({
     >
       {!hasItems ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-3">
             <FileText className="h-6 w-6 text-txt-tertiary" />
           </div>
           <p className="text-txt-primary font-medium mb-1">No handover items</p>
@@ -592,7 +592,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
   const hasIncomingSignature = !!export_.incoming_signed_at;
 
   return (
-    <div className="p-4 rounded-[10px] border border-surface-border-subtle bg-surface-primary hover:bg-surface-hover transition-colors">
+    <div className="p-4 rounded-md border border-surface-border-subtle bg-surface-primary hover:bg-surface-hover transition-colors">
       <div className="flex items-start justify-between gap-4">
         {/* Export info */}
         <div className="flex-1 min-w-0">
@@ -616,7 +616,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
             {/* Outgoing signature */}
             <div
               className={cn(
-                'p-3 rounded-[10px] border',
+                'p-3 rounded-md border',
                 hasOutgoingSignature
                   ? 'border-status-success/30 bg-status-success-bg'
                   : 'border-surface-border-subtle bg-surface-hover'
@@ -649,7 +649,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
             {/* Incoming signature */}
             <div
               className={cn(
-                'p-3 rounded-[10px] border',
+                'p-3 rounded-md border',
                 hasIncomingSignature
                   ? 'border-status-success/30 bg-status-success-bg'
                   : 'border-surface-border-subtle bg-surface-hover'
@@ -736,7 +736,7 @@ function HandoverExportsSection({
     >
       {!hasExports ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-3">
             <PenTool className="h-6 w-6 text-txt-tertiary" />
           </div>
           <p className="text-txt-primary font-medium mb-1">No exports yet</p>
@@ -804,10 +804,10 @@ export function HandoverCard({
   return (
     <div className={cn('flex flex-col gap-6', className)}>
       {/* Header with summary stats */}
-      <div className="bg-surface-primary rounded-[10px] p-6 border border-surface-border-subtle">
+      <div className="bg-surface-primary rounded-md p-6 border border-surface-border-subtle">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[10px] bg-brand-muted flex items-center justify-center">
+            <div className="w-10 h-10 rounded-md bg-brand-muted flex items-center justify-center">
               <FileText className="h-5 w-5 text-brand-interactive" />
             </div>
             <div>

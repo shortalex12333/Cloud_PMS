@@ -89,7 +89,7 @@ export function RejectClaimModal({
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
           'bg-surface-elevated border border-surface-border',
-          'rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]',
+          'rounded-lg shadow-modal',
           'w-full max-w-md mx-4'
         )}
       >
@@ -134,7 +134,7 @@ export function RejectClaimModal({
                 placeholder="Explain why this claim is being rejected..."
                 className={cn(
                   'w-full',
-                  'bg-surface-primary border border-surface-border rounded-[10px]',
+                  'bg-surface-primary border border-surface-border rounded-md',
                   'px-3 py-2',
                   'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
                   'leading-[1.6] resize-y',
@@ -155,7 +155,7 @@ export function RejectClaimModal({
               disabled={isLoading || !reason.trim()}
               aria-busy={isLoading}
               className={cn(
-                'px-4 py-2 min-h-[36px] rounded-md text-[13px] font-semibold',
+                'px-4 py-2 min-h-9 rounded-md text-[13px] font-semibold',
                 'text-txt-inverse bg-status-critical',
                 'hover:opacity-90 transition-opacity duration-fast',
                 'focus:outline-none focus:ring-2 focus:ring-status-critical focus:ring-offset-2',

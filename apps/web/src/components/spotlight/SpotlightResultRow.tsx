@@ -61,7 +61,7 @@ export default function SpotlightResultRow({
         'cursor-pointer select-none',
         'transition-colors duration-celeste-fast',
         // Height and padding - tokenized
-        'min-h-[44px]',
+        'min-h-11',
         'py-ds-2 px-ds-3',
         // Hover: very subtle
         'hover:bg-celeste-bg-tertiary/40',

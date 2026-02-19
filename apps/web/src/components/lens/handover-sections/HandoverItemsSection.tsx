@@ -91,7 +91,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
   return (
     <div
       className={cn(
-        'p-4 rounded-[10px] border transition-colors duration-fast',
+        'p-4 rounded-md border transition-colors duration-fast',
         item.is_critical
           ? 'border-status-critical/30 bg-status-critical-bg'
           : 'border-surface-border-subtle bg-surface-primary',
@@ -214,7 +214,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
           {!isAcknowledged && item.requires_action && (
             <GhostButton
               onClick={() => onAcknowledge?.(item.id)}
-              className="text-[12px] min-h-[32px] px-3"
+              className="text-[12px] min-h-8 px-3"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               Acknowledge
@@ -274,7 +274,7 @@ export function HandoverItemsSection({
     >
       {!hasItems ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-3">
             <FileText className="h-6 w-6 text-txt-tertiary" />
           </div>
           <p className="text-txt-primary font-medium mb-1">No handover items</p>

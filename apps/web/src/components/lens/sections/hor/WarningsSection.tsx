@@ -147,7 +147,7 @@ function WarningRow({ warning, onAcknowledge, canAcknowledge, isLoading }: Warni
             onClick={handleAcknowledge}
             disabled={isLoading || acknowledging}
             className={cn(
-              'text-[12px] min-h-[32px] px-3 py-1.5 flex-shrink-0',
+              'text-[12px] min-h-8 px-3 py-1.5 flex-shrink-0',
               isViolation
                 ? 'text-status-critical border-status-critical/40 hover:bg-status-critical/10'
                 : 'text-status-warning border-status-warning/40 hover:bg-status-warning/10'

@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <div className="spotlight-container">
       <div className="w-full max-w-md text-center">
-        <div className="bg-card border border-border rounded-[16px] p-8">
+        <div className="bg-card border border-border rounded-lg p-8">
           <h1 className="text-6xl font-bold text-muted-foreground mb-4">404</h1>
           <h2 className="typo-title font-semibold mb-2">Page Not Found</h2>
           <p className="typo-body text-muted-foreground mb-6">
@@ -15,7 +15,7 @@ export default function NotFound() {
           </p>
           <Link
             href="/"
-            className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-[10px] hover:bg-primary/90 font-medium"
+            className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium"
           >
             Go Home
           </Link>

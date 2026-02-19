@@ -91,9 +91,9 @@ export function ShoppingListLensContent({
         </div>
 
         <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <PrimaryButton onClick={() => console.log('[ShoppingListLens] Add item:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Add Item</PrimaryButton>
+          <PrimaryButton onClick={() => console.log('[ShoppingListLens] Add item:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Item</PrimaryButton>
           {approvedItems > 0 && (
-            <GhostButton onClick={() => console.log('[ShoppingListLens] Mark ordered:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Mark {approvedItems} as Ordered</GhostButton>
+            <GhostButton onClick={() => console.log('[ShoppingListLens] Mark ordered:', id)} className="text-[13px] min-h-9 px-4 py-2">Mark {approvedItems} as Ordered</GhostButton>
           )}
         </div>
 

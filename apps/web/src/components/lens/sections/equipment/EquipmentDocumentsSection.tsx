@@ -167,7 +167,7 @@ function DocumentItem({ doc, onDocumentClick }: DocumentItemProps) {
 
   // Fallback: simple row display for documents without signed URL
   return (
-    <div className="flex items-start gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px]">
+    <div className="flex items-start gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11">
       {/* Document icon */}
       <div className="shrink-0 w-8 h-8 rounded flex items-center justify-center bg-surface-secondary">
         <svg

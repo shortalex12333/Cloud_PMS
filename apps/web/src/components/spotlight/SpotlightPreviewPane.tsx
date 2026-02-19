@@ -77,7 +77,7 @@ export default function SpotlightPreviewPane({
         'bg-celeste-surface-light dark:bg-celeste-surface',
         'border border-celeste-border-subtle-light dark:border-celeste-border-subtle',
         'rounded-celeste-xl',
-        'border border-[#e7e7e7] dark:border-[#404040]',
+        'border border-surface-border',
         'overflow-hidden',
         'animate-in slide-in-from-right-2 duration-normal'
       )}
@@ -93,7 +93,7 @@ export default function SpotlightPreviewPane({
             'flex items-center justify-center',
             'w-10 h-10 rounded-celeste-lg',
             'bg-celeste-surface-light/80 dark:bg-celeste-bg-tertiary/80',
-            'border border-[#e7e7e7] dark:border-[#404040]'
+            'border border-surface-border'
           )}>
             <IconComponent className={cn('h-5 w-5', config.color)} />
           </div>

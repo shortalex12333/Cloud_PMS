@@ -124,7 +124,7 @@ interface EmptyStateCTAProps {
 function EmptyStateCTA({ icon, title, description, actionLabel, action, context }: EmptyStateCTAProps) {
   return (
     <div className="flex flex-col items-center justify-center py-ds-6 px-ds-4 text-center">
-      <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-ds-3">
+      <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-ds-3">
         {icon}
       </div>
       <p className="text-txt-primary font-medium mb-ds-1">
@@ -258,7 +258,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
       {/* ================================================================
           HEADER SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         {/* Status & Priority Row */}
         <div className="flex items-center gap-ds-2 mb-ds-4">
           <span className={status.pillClass}>
@@ -361,7 +361,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
       {/* ================================================================
           NOTES SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         <div className="flex items-center justify-between mb-ds-3">
           <div className="flex items-center gap-ds-2">
             <MessageSquare className="h-5 w-5 text-txt-secondary" />
@@ -385,7 +385,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
 
         {notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-ds-6 px-ds-4 text-center">
-            <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-ds-3">
+            <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-ds-3">
               <MessageSquare className="h-6 w-6 text-txt-tertiary" />
             </div>
             <p className="text-txt-primary font-medium mb-ds-1">
@@ -409,7 +409,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             {notes.map((note) => (
               <div
                 key={note.id}
-                className="p-ds-4 bg-surface-elevated rounded-[10px] border border-surface-border"
+                className="p-ds-4 bg-surface-elevated rounded-md border border-surface-border"
               >
                 <p className="text-txt-primary whitespace-pre-wrap">
                   {note.note_text}
@@ -428,7 +428,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
       {/* ================================================================
           PARTS SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         <div className="flex items-center justify-between mb-ds-3">
           <div className="flex items-center gap-ds-2">
             <Package className="h-5 w-5 text-txt-secondary" />
@@ -452,7 +452,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
 
         {parts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-ds-6 px-ds-4 text-center">
-            <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-ds-3">
+            <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-ds-3">
               <Package className="h-6 w-6 text-txt-tertiary" />
             </div>
             <p className="text-txt-primary font-medium mb-ds-1">
@@ -476,7 +476,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             {parts.map((part) => (
               <div
                 key={part.id}
-                className="flex items-center justify-between p-ds-3 bg-surface-elevated rounded-[10px] border border-surface-border"
+                className="flex items-center justify-between p-ds-3 bg-surface-elevated rounded-md border border-surface-border"
               >
                 <div className="flex-1">
                   <p className="text-txt-primary font-medium">
@@ -508,7 +508,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
       {/* ================================================================
           CHECKLIST SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         <div className="flex items-center justify-between mb-ds-3">
           <div className="flex items-center gap-ds-2">
             <ClipboardList className="h-5 w-5 text-txt-secondary" />
@@ -532,7 +532,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
 
         {checklist.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-ds-6 px-ds-4 text-center">
-            <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-ds-3">
+            <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-ds-3">
               <ClipboardList className="h-6 w-6 text-txt-tertiary" />
             </div>
             <p className="text-txt-primary font-medium mb-ds-1">
@@ -577,7 +577,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
               <div
                 key={item.id}
                 className={cn(
-                  'flex items-start gap-ds-3 p-ds-3 rounded-[10px] border',
+                  'flex items-start gap-ds-3 p-ds-3 rounded-md border',
                   item.is_completed
                     ? 'bg-status-success/5 border-status-success/20'
                     : 'bg-surface-elevated border-surface-border'
@@ -621,7 +621,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
       {/* ================================================================
           AUDIT HISTORY SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <History className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">Activity</h3>
@@ -666,7 +666,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
               return (
                 <div
                   key={entry.id}
-                  className="p-ds-3 bg-surface-elevated rounded-[10px] border border-surface-border"
+                  className="p-ds-3 bg-surface-elevated rounded-md border border-surface-border"
                 >
                   <div className="flex items-start justify-between gap-ds-2">
                     <p className="text-txt-primary font-medium typo-meta">

@@ -178,7 +178,7 @@ export default function DocumentViewerOverlay({
       onClick={handleBackdropClick}
       data-testid="document-viewer-overlay"
     >
-      <div className="absolute inset-4 md:inset-8 lg:inset-12 rounded-[16px] bg-surface-base overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] flex flex-col">
+      <div className="absolute inset-4 md:inset-8 lg:inset-12 rounded-lg bg-surface-base overflow-hidden shadow-modal flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-surface-elevated">
           <div className="flex items-center gap-3 min-w-0">
@@ -223,7 +223,7 @@ export default function DocumentViewerOverlay({
                 </button>
 
                 {showActionsMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-surface-elevated border border-surface-border rounded-[10px] z-50 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-surface-elevated border border-surface-border rounded-md z-50 py-1">
                     <button
                       onClick={() => handleMicroAction('add_to_handover')}
                       className="btn-ghost w-full justify-start"

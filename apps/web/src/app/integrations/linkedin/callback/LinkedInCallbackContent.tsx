@@ -78,7 +78,7 @@ export default function LinkedInCallbackContent() {
   return (
     <div className="spotlight-container">
       <div className="w-full max-w-md text-center">
-        <div className="bg-card border border-border rounded-[16px] p-8">
+        <div className="bg-card border border-border rounded-lg p-8">
           {status === 'processing' && (
             <>
               <div className="h-12 w-12 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin" />

@@ -116,7 +116,7 @@ interface HoursLogEntryRowProps {
 
 function HoursLogEntryRow({ entry, isLatest }: HoursLogEntryRowProps) {
   return (
-    <div className="flex items-start gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px]">
+    <div className="flex items-start gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11">
       {/* Hours reading - primary value */}
       <div className="shrink-0 w-24 text-right">
         <span

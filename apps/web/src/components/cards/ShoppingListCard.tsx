@@ -217,7 +217,7 @@ export function ShoppingListCard({
   return (
     <div
       className={cn(
-        'bg-surface-primary rounded-[10px] p-ds-4 border',
+        'bg-surface-primary rounded-md p-ds-4 border',
         isRejected
           ? 'border-red-200 bg-red-50/30'
           : 'border-surface-border',

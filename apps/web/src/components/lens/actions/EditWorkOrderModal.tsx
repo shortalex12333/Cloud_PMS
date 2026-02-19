@@ -148,7 +148,7 @@ export function EditWorkOrderModal({
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
           'bg-surface-elevated border border-surface-border',
-          'rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]',
+          'rounded-lg shadow-modal',
           'w-full max-w-lg mx-4',
           'max-h-[90vh] overflow-y-auto'
         )}

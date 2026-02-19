@@ -107,7 +107,7 @@ export default function ControlCenter() {
             <button
               onClick={expandAll}
               className={cn(
-                'px-3 py-1.5 rounded-[10px]',
+                'px-3 py-1.5 rounded-md',
                 'typo-meta font-medium',
                 'bg-zinc-100 dark:bg-zinc-800',
                 'text-zinc-600 dark:text-zinc-300',
@@ -120,7 +120,7 @@ export default function ControlCenter() {
             <button
               onClick={collapseAll}
               className={cn(
-                'px-3 py-1.5 rounded-[10px]',
+                'px-3 py-1.5 rounded-md',
                 'typo-meta font-medium',
                 'bg-zinc-100 dark:bg-zinc-800',
                 'text-zinc-600 dark:text-zinc-300',
