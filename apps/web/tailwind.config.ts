@@ -224,26 +224,122 @@ const config: Config = {
       },
 
       fontSize: {
-        // CelesteOS type scale
-        'celeste-xs': ['0.6875rem', { lineHeight: '1.35' }],    // 11px - records
-        'celeste-sm': ['0.75rem', { lineHeight: '1.5' }],       // 12px - status
-        'celeste-base': ['0.8125rem', { lineHeight: '1.5' }],   // 13px - body
-        'celeste-md': ['0.875rem', { lineHeight: '1.35' }],     // 14px - headers
-        'celeste-lg': ['0.9375rem', { lineHeight: '1.5' }],     // 15px - emphasis
-        'celeste-xl': ['1.0625rem', { lineHeight: '1.5' }],     // 17px - search
-        'celeste-2xl': ['1.3125rem', { lineHeight: '1.2' }],    // 21px - titles
+        // ═══════════════════════════════════════════════════════
+        // UI_SPEC.md TYPOGRAPHY SCALE — exact specification
+        // Weight creates hierarchy, not size.
+        // ═══════════════════════════════════════════════════════
+
+        // Display — 28px / 700 / 1.15 / -0.02em (Lens title on mobile)
+        'display': ['var(--font-size-display)', {
+          lineHeight: 'var(--line-height-display)',
+          letterSpacing: 'var(--letter-spacing-display)',
+          fontWeight: 'var(--font-weight-display)',
+        }],
+
+        // Title — 24px / 600 / 1.2 / -0.01em (Entity name / lens title)
+        'title': ['var(--font-size-title)', {
+          lineHeight: 'var(--line-height-title)',
+          letterSpacing: 'var(--letter-spacing-title)',
+          fontWeight: 'var(--font-weight-title)',
+        }],
+
+        // Heading — 18px / 600 / 1.3 (Major section breaks)
+        'heading': ['var(--font-size-heading)', {
+          lineHeight: 'var(--line-height-heading)',
+          letterSpacing: 'var(--letter-spacing-heading)',
+          fontWeight: 'var(--font-weight-heading)',
+        }],
+
+        // Section — 14px / 600 / 1.4 (Sticky section headers)
+        'section': ['var(--font-size-section)', {
+          lineHeight: 'var(--line-height-section)',
+          letterSpacing: 'var(--letter-spacing-section)',
+          fontWeight: 'var(--font-weight-section)',
+        }],
+
+        // Body — 14px / 400 / 1.6 (Note content, descriptions)
+        'body': ['var(--font-size-body)', {
+          lineHeight: 'var(--line-height-body)',
+          letterSpacing: 'var(--letter-spacing-body)',
+          fontWeight: 'var(--font-weight-body)',
+        }],
+
+        // Label — 13px / 500 / 1.4 (Vital sign labels, form labels)
+        'label': ['var(--font-size-label)', {
+          lineHeight: 'var(--line-height-label)',
+          letterSpacing: 'var(--letter-spacing-label)',
+          fontWeight: 'var(--font-weight-label)',
+        }],
+
+        // Caption — 12px / 400 / 1.4 (Timestamps, file sizes)
+        'caption': ['var(--font-size-caption)', {
+          lineHeight: 'var(--line-height-caption)',
+          letterSpacing: 'var(--letter-spacing-caption)',
+          fontWeight: 'var(--font-weight-caption)',
+        }],
+
+        // Overline — 11px / 500 / 1.2 / 0.08em (Entity type label)
+        'overline': ['var(--font-size-overline)', {
+          lineHeight: 'var(--line-height-overline)',
+          letterSpacing: 'var(--letter-spacing-overline)',
+          fontWeight: 'var(--font-weight-overline)',
+        }],
+
+        // Action — 13px / 500 / 1 (Ghost button text, inline links)
+        'action': ['var(--font-size-action)', {
+          lineHeight: 'var(--line-height-action)',
+          letterSpacing: 'var(--letter-spacing-action)',
+          fontWeight: 'var(--font-weight-action)',
+        }],
+
+        // Legacy celeste-prefixed (keep for backward compatibility)
+        'celeste-xs': ['0.6875rem', { lineHeight: '1.35' }],    // 11px
+        'celeste-sm': ['0.75rem', { lineHeight: '1.5' }],       // 12px
+        'celeste-base': ['0.8125rem', { lineHeight: '1.5' }],   // 13px
+        'celeste-md': ['0.875rem', { lineHeight: '1.35' }],     // 14px
+        'celeste-lg': ['0.9375rem', { lineHeight: '1.5' }],     // 15px
+        'celeste-xl': ['1.0625rem', { lineHeight: '1.5' }],     // 17px
+        'celeste-2xl': ['1.3125rem', { lineHeight: '1.2' }],    // 21px
       },
 
       // =========================================================================
-      // SPACING
+      // SPACING (UI_SPEC.md 4px grid system)
       // =========================================================================
       spacing: {
+        // UI_SPEC.md gaps
+        'section': 'var(--gap-sections)',            // 24px - Between sections
+        'title-vitals': 'var(--gap-title-vitals)',   // 12px - Title to vital signs
+        'overline-title': 'var(--gap-overline-title)', // 4px - Overline to title
+        'section-content': 'var(--gap-section-content)', // 12px - Header to content
+        'vital-items': 'var(--gap-vital-items)',     // 16px - Between vital sign items
+
+        // UI_SPEC.md component padding
+        'lens-desktop': 'var(--lens-padding-desktop)', // 40px
+        'lens-tablet': 'var(--lens-padding-tablet)',   // 24px
+        'lens-mobile': 'var(--lens-padding-mobile)',   // 16px
+        'card-x': 'var(--card-padding-x)',             // 20px
+        'card-y': 'var(--card-padding-y)',             // 16px
+        'modal': 'var(--modal-padding)',               // 32px
+        'toast': 'var(--toast-padding)',               // 16px
+        'list-row-x': 'var(--list-row-padding-x)',     // 20px
+        'list-row-y': 'var(--list-row-padding-y)',     // 12px
+        'input-x': 'var(--input-padding-x)',           // 12px
+        'input-y': 'var(--input-padding-y)',           // 10px
+        'btn-ghost-x': 'var(--button-padding-ghost-x)', // 12px
+        'btn-ghost-y': 'var(--button-padding-ghost-y)', // 8px
+        'btn-primary-x': 'var(--button-padding-primary-x)', // 24px
+        'btn-primary-y': 'var(--button-padding-primary-y)', // 12px
+        'pill-x': 'var(--pill-padding-x)',             // 12px
+        'pill-y': 'var(--pill-padding-y)',             // 4px
+
+        // Legacy celeste-prefixed
         'celeste-1': '0.25rem',   // 4px
         'celeste-2': '0.5rem',    // 8px
         'celeste-3': '0.75rem',   // 12px
         'celeste-4': '1rem',      // 16px
         'celeste-6': '1.5rem',    // 24px
         'celeste-8': '2rem',      // 32px
+
         // Semantic spacing tokens mapped to CSS custom properties (DS-02)
         'ds-1': 'var(--space-1)',
         'ds-2': 'var(--space-2)',
@@ -256,39 +352,80 @@ const config: Config = {
         'ds-12': 'var(--space-12)',
         'ds-16': 'var(--space-16)',
         'ds-20': 'var(--space-20)',
+
         // Work Order specific spacing (from spec)
-        'wo-px': 'var(--wo-padding-x)',      // 32px
-        'wo-py': 'var(--wo-padding-y)',      // 24px
-        'wo-gap': 'var(--wo-section-gap)',   // 24px
-        'wo-row': 'var(--wo-row-gap)',       // 12px
-        'wo-col': 'var(--wo-column-gap)',    // 24px
+        'wo-px': 'var(--wo-padding-x)',
+        'wo-py': 'var(--wo-padding-y)',
+        'wo-gap': 'var(--wo-section-gap)',
+        'wo-row': 'var(--wo-row-gap)',
+        'wo-col': 'var(--wo-column-gap)',
       },
 
       // =========================================================================
-      // HEIGHT - Element sizes
+      // GAP - Grid/flex gaps (UI_SPEC.md exact)
+      // =========================================================================
+      gap: {
+        'sections': 'var(--gap-sections)',           // 24px
+        'title-vitals': 'var(--gap-title-vitals)',   // 12px
+        'overline-title': 'var(--gap-overline-title)', // 4px
+        'section-content': 'var(--gap-section-content)', // 12px
+        'vital-items': 'var(--gap-vital-items)',     // 16px
+      },
+
+      // =========================================================================
+      // HEIGHT - Element sizes (UI_SPEC.md proportions)
       // =========================================================================
       height: {
+        // UI_SPEC.md component dimensions
+        'touch': 'var(--touch-target-min)',           // 44px - Apple minimum
+        'touch-mobile': 'var(--touch-target-mobile)', // 48px - Mobile minimum
+        'btn-ghost': 'var(--button-height-ghost)',    // 36px
+        'btn-primary': 'var(--button-height-primary)', // 40px
+        'btn-icon': 'var(--button-icon-only-size)',   // 36px
+        'input': 'var(--input-height)',               // 40px
+        'pill': 'var(--pill-height)',                 // 24px
+        'section-header': 'var(--section-header-height)', // 44px
+        'list-row': 'var(--list-row-min-height)',     // 44px
+        'vital-signs': 'var(--vital-signs-height)',   // 40px
+        'file-preview': 'var(--file-preview-height)', // 48px
+        'search': 'var(--search-height)',             // 48px
+        'header': 'var(--header-height)',             // 56px
+        // Legacy celeste-prefixed
         'celeste-element-sm': '32px',
         'celeste-element-md': '40px',
         'celeste-element-lg': '48px',
-        'celeste-element-xl': 'var(--celeste-height-element-xl)',  // 92px - Spotlight search bar
+        'celeste-element-xl': 'var(--celeste-height-element-xl)',
         'celeste-search-results': '60vh',
         // Work Order heights (from spec)
-        'wo-control': 'var(--wo-control-height)',     // 36px
-        'wo-nav-item': 'var(--wo-nav-item-height)',   // 40px
+        'wo-control': 'var(--wo-control-height)',
+        'wo-nav-item': 'var(--wo-nav-item-height)',
       },
 
       // =========================================================================
-      // WIDTH - Layout sizes
+      // MIN-HEIGHT - Touch targets and minimums (UI_SPEC.md)
+      // =========================================================================
+      minHeight: {
+        'touch': 'var(--touch-target-min)',           // 44px
+        'touch-mobile': 'var(--touch-target-mobile)', // 48px
+        'list-row': 'var(--list-row-min-height)',     // 44px
+      },
+
+      // =========================================================================
+      // WIDTH - Layout sizes (UI_SPEC.md proportions)
       // =========================================================================
       width: {
-        'celeste-spotlight': 'var(--celeste-spotlight-width)',  // 720px
+        // UI_SPEC.md layout proportions
+        'sidebar': 'var(--sidebar-width)',            // 420px - Show Related sidebar
+        'btn-icon': 'var(--button-icon-only-size)',   // 36px
+        'pill-dot': 'var(--pill-dot-size)',           // 6px
+        // Legacy celeste-prefixed
+        'celeste-spotlight': 'var(--celeste-spotlight-width)',
         'celeste-panel-sm': '280px',
         'celeste-panel-medium': '320px',
         'celeste-panel-lg': '400px',
         // Work Order widths (from spec)
-        'wo-container': 'var(--wo-container-width)',  // 760px
-        'wo-content': 'var(--wo-max-line-width)',     // 680px
+        'wo-container': 'var(--wo-container-width)',
+        'wo-content': 'var(--wo-max-line-width)',
       },
 
       // =========================================================================
@@ -362,9 +499,14 @@ const config: Config = {
       },
 
       // =========================================================================
-      // TRANSITIONS
+      // TRANSITIONS (UI_SPEC.md exact specification)
       // =========================================================================
       transitionDuration: {
+        // UI_SPEC.md durations
+        'fast': 'var(--duration-fast)',     // 120ms - hover states
+        'normal': 'var(--duration-normal)', // 200ms - toast, modal
+        'slow': 'var(--duration-slow)',     // 300ms - lens transitions
+        // Legacy celeste-prefixed
         'celeste-fast': '100ms',
         'celeste-normal': '200ms',
         'celeste-slow': '300ms',
@@ -372,6 +514,9 @@ const config: Config = {
       },
 
       transitionTimingFunction: {
+        // UI_SPEC.md easing
+        'out': 'var(--ease-out)',           // cubic-bezier(0.16, 1, 0.3, 1)
+        // Legacy celeste-prefixed
         'celeste-out': 'cubic-bezier(0, 0, 0.2, 1)',
         'celeste-in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
@@ -380,16 +525,60 @@ const config: Config = {
       // LAYOUT
       // =========================================================================
       maxWidth: {
+        // UI_SPEC.md layout proportions
+        'lens': 'var(--lens-max-width)',              // 800px - Lens content
+        'body-text': 'var(--lens-body-max-line)',     // 680px - Readable text width
+        'search': 'var(--search-max-width)',          // 720px - Search bar
+        'modal': 'var(--modal-max-width)',            // 480px - Modal panel
+        'toast': 'var(--toast-max-width)',            // 400px - Toast notification
+        'sidebar': 'var(--sidebar-width)',            // 420px - Show Related sidebar
+        // Legacy celeste-prefixed
         'celeste-search': '680px',
         'celeste-modal': '400px',
         'celeste-modal-lg': '560px',
         'celeste-content': '1200px',
-        'celeste-spotlight': 'var(--celeste-spotlight-width)',  // 720px
+        'celeste-spotlight': 'var(--celeste-spotlight-width)',
       },
 
       backdropBlur: {
         'celeste-spotlight': '72px',
         'celeste-modal': '8px',
+        'glass': '20px',  // UI_SPEC.md glass effect
+      },
+
+      // =========================================================================
+      // Z-INDEX (UI_SPEC.md layering)
+      // =========================================================================
+      zIndex: {
+        'sticky': 'var(--z-sticky)',   // 10
+        'header': 'var(--z-header)',   // 20
+        'sidebar': 'var(--z-sidebar)', // 30
+        'modal': 'var(--z-modal)',     // 40
+        'search': 'var(--z-search)',   // 50
+        'toast': 'var(--z-toast)',     // 60
+      },
+
+      // =========================================================================
+      // PADDING (UI_SPEC.md responsive lens padding)
+      // =========================================================================
+      padding: {
+        'lens-desktop': 'var(--lens-padding-desktop)', // 40px
+        'lens-tablet': 'var(--lens-padding-tablet)',   // 24px
+        'lens-mobile': 'var(--lens-padding-mobile)',   // 16px
+        'modal': 'var(--modal-padding)',               // 32px
+        'card-x': 'var(--card-padding-x)',             // 20px
+        'card-y': 'var(--card-padding-y)',             // 16px
+        'toast': 'var(--toast-padding)',               // 16px
+        'list-row-x': 'var(--list-row-padding-x)',     // 20px
+        'list-row-y': 'var(--list-row-padding-y)',     // 12px
+        'input-x': 'var(--input-padding-x)',           // 12px
+        'input-y': 'var(--input-padding-y)',           // 10px
+        'btn-ghost-x': 'var(--button-padding-ghost-x)', // 12px
+        'btn-ghost-y': 'var(--button-padding-ghost-y)', // 8px
+        'btn-primary-x': 'var(--button-padding-primary-x)', // 24px
+        'btn-primary-y': 'var(--button-padding-primary-y)', // 12px
+        'pill-x': 'var(--pill-padding-x)',             // 12px
+        'pill-y': 'var(--pill-padding-y)',             // 4px
       },
     },
   },
