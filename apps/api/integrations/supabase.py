@@ -52,11 +52,20 @@ def get_supabase_client() -> Client:
     """
     Get or create Supabase client (singleton).
     Uses SERVICE_KEY for backend operations.
+
+    HARDENED: 5-second timeout ensures blocking I/O doesn't hang forever.
+    Combined with asyncio.wait_for in pipeline_service.py for defense in depth.
     """
     global _supabase_client
 
     if _supabase_client is None:
-        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        # Import here to avoid circular dependency
+        from supabase.lib.client_options import ClientOptions
+
+        # 5-second HTTP timeout prevents hung connections
+        # This is defense-in-depth alongside asyncio.wait_for(timeout=3s)
+        options = ClientOptions(postgrest_client_timeout=5)
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY, options=options)
 
     return _supabase_client
 
