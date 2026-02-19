@@ -206,6 +206,22 @@ def get_fusion_params_for_query(query: str) -> Dict[str, Any]:
     if p_filters:
         params['p_filters'] = p_filters
 
+    # F1 OPTIMIZATION: Reduce candidate counts for simple queries to meet 150ms L1 budget
+    # Simple query heuristic: 1-3 words, no special operators
+    word_count = len(query.strip().split())
+    is_simple_query = word_count <= 3 and not any(op in query for op in ['OR', 'AND', '"', '-'])
+
+    if is_simple_query:
+        # Fast path: text-only search, minimal candidates (target: <200ms)
+        params['p_m_text'] = 50    # Reduced from 200
+        params['p_m_vec'] = 0      # Skip vector search for simple queries
+        params['p_m_trgm'] = 30    # Reduced trigram candidates
+    else:
+        # Full fusion: semantic queries benefit from vector search
+        params['p_m_text'] = 100   # Reduced from 200
+        params['p_m_vec'] = 50     # Reduced from 200
+        params['p_m_trgm'] = 50    # Reduced from 100
+
     return params
 
 
