@@ -116,7 +116,7 @@ export function useWorkOrderActions(workOrderId: string) {
   /** add_wo_note — add a text note to the work order */
   const addNote = useCallback(
     (noteText: string) =>
-      execute('add_note_to_work_order', { note_text: noteText }),
+      execute('add_wo_note', { note_text: noteText }),
     [execute]
   );
 
