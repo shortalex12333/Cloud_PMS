@@ -2270,12 +2270,11 @@ async def execute_action(
 
             # Note: created_by is NOT NULL, use existing tenant user ID
             # Note: note_type must be 'general' or 'progress'
-            # Note: yacht_id is required for RLS triggers (PR #362 fix)
+            # Note: pms_work_order_notes does NOT have yacht_id column - ledger trigger fetches it from parent WO
             TENANT_USER_ID = "a35cad0b-02ff-4287-b6e4-17c96fa6a424"
             raw_note_type = payload.get("note_type", "general")
             note_type = raw_note_type if raw_note_type in ("general", "progress") else "general"
             note_data = {
-                "yacht_id": yacht_id,  # Required for RLS triggers
                 "work_order_id": work_order_id,
                 "note_text": note_text,
                 "note_type": note_type,
