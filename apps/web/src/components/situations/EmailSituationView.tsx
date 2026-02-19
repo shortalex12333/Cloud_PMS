@@ -44,7 +44,7 @@ export default function EmailSituationView({
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] p-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-modal p-8">
           <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto" />
           <p className="mt-4 text-zinc-600 dark:text-zinc-400 text-center">
             Loading email thread...
@@ -58,7 +58,7 @@ export default function EmailSituationView({
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] p-8 max-w-md">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-modal p-8 max-w-md">
           <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
           <p className="mt-4 text-zinc-800 dark:text-zinc-200 text-center font-medium">
             Failed to load email thread
@@ -89,7 +89,7 @@ export default function EmailSituationView({
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-3xl mx-4">
-        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-modal overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-purple-50 dark:bg-purple-900/20">
             <div className="flex items-center gap-3">
@@ -123,7 +123,7 @@ export default function EmailSituationView({
           <LinkedObjectsSection threadId={threadId} onAction={onAction} />
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#171717]">
+          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-surface-primary">
             <button
               onClick={onClose}
               className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"

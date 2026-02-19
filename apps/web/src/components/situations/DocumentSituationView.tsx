@@ -539,8 +539,8 @@ export default function DocumentSituationView({
       {showFindDialog && (
         <div
           className={cn(
-            'fixed top-20 right-4 bg-surface-elevated border border-surface-border rounded-[10px] p-3',
-            'border border-[#e7e7e7] dark:border-[#404040] animate-in fade-in slide-in-from-top-2 duration-normal'
+            'fixed top-20 right-4 bg-surface-elevated border border-surface-border rounded-md p-3',
+            'border border-surface-border animate-in fade-in slide-in-from-top-2 duration-normal'
           )}
         >
           <p className="typo-body text-celeste-text-title">
