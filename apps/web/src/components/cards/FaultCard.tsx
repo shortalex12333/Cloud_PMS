@@ -53,6 +53,8 @@ interface FaultCardProps {
     title: string;
     description: string;
     severity: 'low' | 'medium' | 'high' | 'critical';
+    /** Fault status: open, investigating, resolved, acknowledged, diagnosed, closed, etc. */
+    status: string;
     equipment_id: string;
     equipment_name: string;
     reported_at: string;
@@ -148,7 +150,7 @@ function getNoteTypeStyles(noteType: FaultNote['note_type']): {
     case 'general':
     default:
       return {
-        bgClass: 'bg-zinc-50 dark:bg-[#323232]',
+        bgClass: 'bg-zinc-50 dark:bg-surface-active',
         borderClass: 'border-l-zinc-300 dark:border-l-zinc-600',
         labelClass: 'text-zinc-500 dark:text-zinc-400',
         label: noteType === 'observation' ? 'Observation' : 'Note',
@@ -214,7 +216,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
               <div
                 key={note.id}
                 className={cn(
-                  'rounded-[10px] border-l-2 px-3 py-2',
+                  'rounded-md border-l-2 px-3 py-2',
                   styles.bgClass,
                   styles.borderClass
                 )}
@@ -290,7 +292,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
       {
         type: 'fault',
         id: fault.id,
-        status: 'reported', // TODO: map from actual fault status
+        status: fault.status,
         has_work_order: fault.has_work_order,
       },
       {
@@ -409,7 +411,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {/* FAIL-CLOSED: Show error state if decisions endpoint failed */}
               {failClosed && (
                 <div
-                  className="flex items-center gap-2 px-3 py-2 typo-meta text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-[10px]"
+                  className="flex items-center gap-2 px-3 py-2 typo-meta text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-md"
                   data-testid="decisions-error-state"
                 >
                   <AlertCircle className="h-4 w-4" />
@@ -693,7 +695,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
           current_title: fault.title,
           current_description: fault.description,
           current_severity: fault.severity,
-          current_status: 'open', // TODO: get from fault object
+          current_status: fault.status,
         }}
       />
 
