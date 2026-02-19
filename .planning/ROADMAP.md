@@ -310,5 +310,137 @@ Plans:
 
 ---
 
+# MILESTONE v1.1 — F1 Search Pipeline Hardening
+
+**Milestone:** v1.1 — F1 Search Pipeline Hardening
+**Phases:** 5 (A-E)
+**Requirements:** 17
+
+---
+
+## v1.1 Summary
+
+| # | Phase | Goal | Requirements | Status |
+|---|-------|------|--------------|--------|
+| A | Baseline | Record pre-deploy search metrics | BASE-01, BASE-02, BASE-03, BASE-04 | ○ Pending |
+| B | Deploy | Push clean codebase to production | DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04 | ○ Pending |
+| C | Validate | Run truth sets against new production | VAL-01, VAL-02 | ○ Pending |
+| D | Compare | Generate regression report | VAL-03, VAL-04, VAL-05 | ○ Pending |
+| E | Iterate | Fix regressions if any | ITER-01, ITER-02, ITER-03, ITER-04 | ○ Pending |
+
+---
+
+## Phase A: Baseline Metrics
+
+**Goal:** Capture search performance metrics from current production before any deployment.
+
+**Requirements:** BASE-01, BASE-02, BASE-03, BASE-04
+
+**Success Criteria:**
+1. Test harness script exists in `/test/` that loads truth set JSONL files
+2. Harness calls current production search endpoint with all 2,700 queries
+3. Baseline metrics (Recall@3, MRR, p95 latency) recorded to `/test/baseline/`
+4. Per-query results logged with expected IDs vs actual IDs
+5. Summary report generated showing per-entity-type breakdown
+
+**Output:**
+- `/test/search_harness.ts` — Test harness script
+- `/test/baseline/metrics.json` — Aggregate metrics
+- `/test/baseline/results.jsonl` — Per-query results
+
+**Status:** ○ Pending
+
+---
+
+## Phase B: Deploy Clean Codebase
+
+**Goal:** Push the clean local codebase (18+ commits including AbortError fix) to production.
+
+**Requirements:** DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04
+
+**Success Criteria:**
+1. Local branch merged to main (direct push or PR as preferred)
+2. CI/CD passes: build, lint, type check, tests
+3. Production deployment completes (Vercel frontend, Render API)
+4. Health check confirms services responding
+5. AbortError fix verified in production bundle (source map or behavior test)
+
+**Output:**
+- Merge commit or PR URL
+- CI/CD pipeline logs
+- Health check confirmation
+
+**Status:** ○ Pending
+
+---
+
+## Phase C: Post-Deploy Validation
+
+**Goal:** Run the same truth set queries against new production to capture post-deploy metrics.
+
+**Requirements:** VAL-01, VAL-02
+
+**Success Criteria:**
+1. Same test harness used (no changes between baseline and post-deploy)
+2. All 2,700 queries executed against production search endpoint
+3. Post-deploy metrics recorded to `/test/post-deploy/`
+4. Per-query results logged for comparison
+
+**Output:**
+- `/test/post-deploy/metrics.json` — Aggregate metrics
+- `/test/post-deploy/results.jsonl` — Per-query results
+
+**Status:** ○ Pending
+
+---
+
+## Phase D: Compare and Report
+
+**Goal:** Generate regression report comparing baseline vs post-deploy metrics.
+
+**Requirements:** VAL-03, VAL-04, VAL-05
+
+**Success Criteria:**
+1. Comparison script runs diff between baseline and post-deploy results
+2. Recall@3 calculated per entity type
+3. MRR calculated overall and per entity type
+4. p95 latency compared (no increase)
+5. Report identifies:
+   - Improved queries (new correct results)
+   - Regressed queries (lost correct results)
+   - Unchanged queries
+6. Overall Recall@3 ≥ 90% achieved
+
+**Output:**
+- `/test/comparison/report.md` — Human-readable comparison
+- `/test/comparison/diff.json` — Machine-readable diff
+- `/test/comparison/failures.jsonl` — Failed queries for investigation
+
+**Status:** ○ Pending
+
+---
+
+## Phase E: Iterate on Regressions
+
+**Goal:** If any regressions found, identify root cause, fix, and re-validate.
+
+**Requirements:** ITER-01, ITER-02, ITER-03, ITER-04
+
+**Success Criteria:**
+1. Failed queries categorized (embedding issue, SQL issue, timeout, etc.)
+2. Root cause identified for each category
+3. Fixes applied (if needed)
+4. Re-validation shows metrics meet acceptance criteria
+5. Final report confirms Recall@3 ≥ 90%, no latency regression
+
+**Output:**
+- `/test/iteration/analysis.md` — Root cause analysis
+- Fix commits (if needed)
+- `/test/final/metrics.json` — Final validated metrics
+
+**Status:** ○ Pending
+
+---
+
 *Created: 2026-02-17*
-*Updated: 2026-02-18 — Phase 14 planned*
+*Updated: 2026-02-19 — v1.1 Search Pipeline Hardening added*

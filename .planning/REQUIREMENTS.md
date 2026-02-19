@@ -209,8 +209,79 @@ Each lens follows the 9-step testing protocol from `/Users/celeste7/Desktop/rule
 - Blocked: 0
 - Pending: 0
 
-**All v1 requirements complete!**
+**All v1.0 requirements complete!**
 
 ---
-*Requirements defined: 2026-02-17*
-*Last updated: 2026-02-17 — ALL 60 REQUIREMENTS COMPLETE*
+
+# v1.1 Requirements — F1 Search Pipeline Hardening
+
+**Defined:** 2026-02-19
+**Core Value:** Validate search pipeline with deterministic truth sets to catch regressions before users do.
+
+---
+
+## v1.1 Requirements
+
+Requirements for search pipeline validation and deployment.
+
+### Baseline (BASE)
+
+- [ ] **BASE-01**: Test harness created in `/test/` that loads truth set JSONL files
+- [ ] **BASE-02**: Test harness calls production search endpoint with each query
+- [ ] **BASE-03**: Baseline metrics (Recall@3, MRR) recorded to `/test/baseline/`
+- [ ] **BASE-04**: Per-query results logged with expected vs actual IDs
+
+### Deployment (DEPLOY)
+
+- [ ] **DEPLOY-01**: Local branch merged to main (or PR created)
+- [ ] **DEPLOY-02**: CI/CD pipeline passes (build, lint, type check)
+- [ ] **DEPLOY-03**: Production deployment verified (health check)
+- [ ] **DEPLOY-04**: AbortError fix confirmed active in production bundle
+
+### Validation (VAL)
+
+- [ ] **VAL-01**: Post-deploy test run using same harness as baseline
+- [ ] **VAL-02**: Post-deploy metrics recorded to `/test/post-deploy/`
+- [ ] **VAL-03**: Regression report generated comparing baseline vs post-deploy
+- [ ] **VAL-04**: Recall@3 ≥ 90% on all 9 entity types
+- [ ] **VAL-05**: No increase in search response time (p95)
+
+### Iteration (ITER)
+
+- [ ] **ITER-01**: Failed queries identified and categorized
+- [ ] **ITER-02**: Root cause analysis for any regressions
+- [ ] **ITER-03**: Fixes applied and re-validated
+- [ ] **ITER-04**: Final metrics meet acceptance criteria
+
+---
+
+## v1.1 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BASE-01 | Phase A | Pending |
+| BASE-02 | Phase A | Pending |
+| BASE-03 | Phase A | Pending |
+| BASE-04 | Phase A | Pending |
+| DEPLOY-01 | Phase B | Pending |
+| DEPLOY-02 | Phase B | Pending |
+| DEPLOY-03 | Phase B | Pending |
+| DEPLOY-04 | Phase B | Pending |
+| VAL-01 | Phase C | Pending |
+| VAL-02 | Phase C | Pending |
+| VAL-03 | Phase D | Pending |
+| VAL-04 | Phase D | Pending |
+| VAL-05 | Phase D | Pending |
+| ITER-01 | Phase E | Pending |
+| ITER-02 | Phase E | Pending |
+| ITER-03 | Phase E | Pending |
+| ITER-04 | Phase E | Pending |
+
+**v1.1 Coverage:**
+- v1.1 requirements: 17 total
+- Mapped to phases: 17
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-02-17 (v1.0), 2026-02-19 (v1.1)*
+*Last updated: 2026-02-19 — v1.1 requirements added*
