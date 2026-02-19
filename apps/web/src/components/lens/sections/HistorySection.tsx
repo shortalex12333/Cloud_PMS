@@ -247,4 +247,3 @@ export function HistorySection({
   );
 }
 
-export default HistorySection;

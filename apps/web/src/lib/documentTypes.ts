@@ -200,21 +200,21 @@ export function shouldShowAddToHandoverButton(classification: DocumentClassifica
 /**
  * Get document classification display label
  */
-export function getClassificationLabel(classification: DocumentClassification): string {
+function getClassificationLabel(classification: DocumentClassification): string {
   return classification === 'operational' ? 'Operational Document' : 'Compliance Document';
 }
 
 /**
  * Get document classification icon
  */
-export function getClassificationIcon(classification: DocumentClassification): string {
+function getClassificationIcon(classification: DocumentClassification): string {
   return classification === 'operational' ? '📖' : '🔒';
 }
 
 /**
  * Batch classify multiple documents
  */
-export function classifyDocuments(
+function classifyDocuments(
   documents: Array<{ title: string; metadata?: Record<string, any> }>
 ): Array<{ title: string; classification: DocumentClassification }> {
   return documents.map(doc => ({

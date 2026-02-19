@@ -126,4 +126,3 @@ export function HoursOfRestLensContent({
   );
 }
 
-export default HoursOfRestLensContent;

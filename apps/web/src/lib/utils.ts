@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Format date helper
-export function formatDate(date: string | Date): string {
+function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -17,7 +17,7 @@ export function formatDate(date: string | Date): string {
 }
 
 // Format datetime helper
-export function formatDateTime(date: string | Date): string {
+function formatDateTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleString('en-US', {
     year: 'numeric',
@@ -29,7 +29,7 @@ export function formatDateTime(date: string | Date): string {
 }
 
 // Debounce helper for search input
-export function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: any[]) => any>(
   func: T,
   delay: number
 ): (...args: Parameters<T>) => void {
@@ -41,7 +41,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Truncate text helper
-export function truncate(text: string, maxLength: number): string {
+function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + '...';
 }

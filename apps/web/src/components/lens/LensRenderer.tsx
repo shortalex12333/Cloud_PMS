@@ -148,4 +148,3 @@ export function LensRenderer({
   }
 }
 
-export default LensRenderer;

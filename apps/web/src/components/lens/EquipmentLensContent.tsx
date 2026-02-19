@@ -102,4 +102,3 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
   );
 }
 
-export default EquipmentLensContent;

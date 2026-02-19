@@ -36,14 +36,14 @@ export function registerHandler(actionName: string, handler: HandlerFunction): v
 /**
  * Check if a handler is registered for an action
  */
-export function hasHandler(actionName: string): boolean {
+function hasHandler(actionName: string): boolean {
   return actionName in handlerRegistry;
 }
 
 /**
  * Get all registered handler names
  */
-export function getRegisteredHandlers(): string[] {
+function getRegisteredHandlers(): string[] {
   return Object.keys(handlerRegistry);
 }
 
@@ -85,7 +85,7 @@ function createConfirmationResult(
 /**
  * Get confirmation configuration for an action
  */
-export function getConfirmationConfig(action: MicroAction): ConfirmationConfig {
+function getConfirmationConfig(action: MicroAction): ConfirmationConfig {
   // Default configurations based on side effect type
   const configs: Record<string, ConfirmationConfig> = {
     create_work_order_from_fault: {
@@ -166,7 +166,7 @@ export function getConfirmationConfig(action: MicroAction): ConfirmationConfig {
  * @param confirmed - Whether the user has confirmed (for confirmation-required actions)
  * @returns ActionResult with success/failure and data
  */
-export async function executeAction(
+async function executeAction(
   actionName: string,
   context: ActionContext,
   params?: Record<string, unknown>,
@@ -217,7 +217,7 @@ export async function executeAction(
 /**
  * Execute multiple actions in sequence
  */
-export async function executeActions(
+async function executeActions(
   actions: Array<{
     actionName: string;
     params?: Record<string, unknown>;
@@ -272,7 +272,7 @@ async function logExecution(
 /**
  * Validate that an action can be executed in the given context
  */
-export function canExecuteAction(
+function canExecuteAction(
   actionName: string,
   context: ActionContext
 ): { allowed: boolean; reason?: string } {
@@ -301,7 +301,7 @@ export function canExecuteAction(
 /**
  * Get available actions for a given context
  */
-export function getAvailableActionsForContext(
+function getAvailableActionsForContext(
   context: ActionContext
 ): MicroAction[] {
   if (!context.source_card) {

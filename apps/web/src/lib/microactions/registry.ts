@@ -732,7 +732,7 @@ export const MICROACTION_REGISTRY: Record<string, MicroAction> = {
 /**
  * Get all actions for a specific card type
  */
-export function getActionsForCardType(cardType: CardType): MicroAction[] {
+function getActionsForCardType(cardType: CardType): MicroAction[] {
   return Object.values(MICROACTION_REGISTRY).filter((action) =>
     action.card_types.includes(cardType)
   );
@@ -741,7 +741,7 @@ export function getActionsForCardType(cardType: CardType): MicroAction[] {
 /**
  * Get all actions in a specific cluster
  */
-export function getActionsInCluster(cluster: MicroAction['cluster']): MicroAction[] {
+function getActionsInCluster(cluster: MicroAction['cluster']): MicroAction[] {
   return Object.values(MICROACTION_REGISTRY).filter(
     (action) => action.cluster === cluster
   );
@@ -757,7 +757,7 @@ export function getAction(actionName: string): MicroAction | undefined {
 /**
  * Get all read-only actions
  */
-export function getReadOnlyActions(): MicroAction[] {
+function getReadOnlyActions(): MicroAction[] {
   return Object.values(MICROACTION_REGISTRY).filter(
     (action) => action.side_effect === 'read_only'
   );
@@ -766,7 +766,7 @@ export function getReadOnlyActions(): MicroAction[] {
 /**
  * Get all mutation actions (light + heavy)
  */
-export function getMutationActions(): MicroAction[] {
+function getMutationActions(): MicroAction[] {
   return Object.values(MICROACTION_REGISTRY).filter(
     (action) => action.side_effect !== 'read_only'
   );
@@ -775,7 +775,7 @@ export function getMutationActions(): MicroAction[] {
 /**
  * Get all actions requiring confirmation
  */
-export function getConfirmationRequiredActions(): MicroAction[] {
+function getConfirmationRequiredActions(): MicroAction[] {
   return Object.values(MICROACTION_REGISTRY).filter(
     (action) => action.requires_confirmation
   );
@@ -784,7 +784,7 @@ export function getConfirmationRequiredActions(): MicroAction[] {
 /**
  * Count actions by side effect type
  */
-export function countBySideEffect(): Record<MicroAction['side_effect'], number> {
+function countBySideEffect(): Record<MicroAction['side_effect'], number> {
   const counts: Record<MicroAction['side_effect'], number> = {
     read_only: 0,
     mutation_light: 0,
@@ -801,7 +801,7 @@ export function countBySideEffect(): Record<MicroAction['side_effect'], number> 
 /**
  * Count actions by cluster
  */
-export function countByCluster(): Record<MicroAction['cluster'], number> {
+function countByCluster(): Record<MicroAction['cluster'], number> {
   const counts: Record<MicroAction['cluster'], number> = {
     fix_something: 0,
     do_maintenance: 0,
@@ -820,4 +820,4 @@ export function countByCluster(): Record<MicroAction['cluster'], number> {
 }
 
 // Export total count for verification
-export const TOTAL_ACTIONS = Object.keys(MICROACTION_REGISTRY).length;
+const TOTAL_ACTIONS = Object.keys(MICROACTION_REGISTRY).length;

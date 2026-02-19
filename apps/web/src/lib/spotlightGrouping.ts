@@ -17,7 +17,7 @@ import type { SearchResult } from '@/types/search';
  * Map backend object_type to human-readable domain name
  * Uses operational language, not schema language
  */
-export const DOMAIN_MAP: Record<string, string> = {
+const DOMAIN_MAP: Record<string, string> = {
   // Faults
   pms_faults: 'Detected Faults',
   fault: 'Detected Faults',
@@ -98,7 +98,7 @@ export const DOMAIN_ICONS: Record<string, string> = {
 // CONFIGURATION
 // ============================================================================
 
-export interface SpotlightConfig {
+interface SpotlightConfig {
   /** Minimum score for Top Match (default: 0.82) */
   highConfThreshold: number;
   /** Minimum gap between #1 and #2 for Top Match (default: 0.06) */
@@ -111,7 +111,7 @@ export interface SpotlightConfig {
   lonelyDomainThreshold: number;
 }
 
-export const DEFAULT_CONFIG: SpotlightConfig = {
+const DEFAULT_CONFIG: SpotlightConfig = {
   highConfThreshold: 0.82,
   gapThreshold: 0.06,
   maxDomains: 4,
@@ -157,21 +157,21 @@ export interface GroupedResults {
 /**
  * Get human-readable domain name from object_type
  */
-export function getDomainName(objectType: string): string {
+function getDomainName(objectType: string): string {
   return DOMAIN_MAP[objectType] || DOMAIN_MAP[objectType.toLowerCase()] || 'Other Results';
 }
 
 /**
  * Get icon name for domain
  */
-export function getDomainIcon(domain: string): string {
+function getDomainIcon(domain: string): string {
   return DOMAIN_ICONS[domain] || 'MoreHorizontal';
 }
 
 /**
  * Transform API result to SpotlightResult with domain
  */
-export function toSpotlightResult(result: SearchResult): SpotlightResult {
+function toSpotlightResult(result: SearchResult): SpotlightResult {
   const objectType = result.type || result.source_table || 'unknown';
   const domain = getDomainName(objectType);
 
@@ -375,7 +375,7 @@ export function groupResultsByDomain(
 /**
  * Expand a domain to show more results
  */
-export function expandDomain(
+function expandDomain(
   grouped: GroupedResults,
   domainName: string,
   allResults: SearchResult[],

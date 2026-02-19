@@ -145,4 +145,3 @@ export function CertificateLensContent({
   );
 }
 
-export default CertificateLensContent;

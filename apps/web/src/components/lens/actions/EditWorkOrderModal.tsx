@@ -292,4 +292,3 @@ export function EditWorkOrderModal({
   );
 }
 
-export default EditWorkOrderModal;

@@ -185,4 +185,3 @@ export function ReassignModal({
   );
 }
 
-export default ReassignModal;

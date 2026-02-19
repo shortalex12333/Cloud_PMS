@@ -158,9 +158,9 @@ export type MicroAction =
 // ACTION METADATA
 // ============================================================================
 
-export type SideEffectType = 'read_only' | 'mutation_light' | 'mutation_heavy';
+type SideEffectType = 'read_only' | 'mutation_light' | 'mutation_heavy';
 
-export type PurposeCluster =
+type PurposeCluster =
   | 'fix_something'
   | 'do_maintenance'
   | 'manage_equipment'
@@ -181,26 +181,6 @@ export interface ActionMetadata {
   description: string;
 }
 
-// ============================================================================
-// CARD TYPES (All 12 Card Types)
-// ============================================================================
-
-export type CardType =
-  | 'fault'
-  | 'work_order'
-  | 'equipment'
-  | 'part'
-  | 'handover'
-  | 'document'
-  | 'hor_table'
-  | 'purchase'
-  | 'checklist'
-  | 'worklist'
-  | 'fleet_summary'
-  | 'smart_summary';
-
-// Backward compatibility alias
-export type ResultCardType = CardType;
 
 // ============================================================================
 // ACTION PAYLOAD INTERFACES
@@ -240,115 +220,6 @@ export interface ActionResult {
   data?: unknown;
 }
 
-// ============================================================================
-// SPECIFIC ACTION PAYLOADS
-// ============================================================================
-
-export interface CreateWorkOrderPayload {
-  equipment_id?: string;
-  title: string;
-  description: string;
-  type: 'scheduled' | 'corrective' | 'unplanned';
-  priority: 'routine' | 'important' | 'critical';
-  due_date?: string;
-  assigned_to?: string;
-}
-
-export interface EditInvoiceAmountPayload {
-  purchase_id: string;
-  invoice_id: string;
-  old_amount: number;
-  new_amount: number;
-  reason: string; // Required for audit
-}
-
-export interface AddToHandoverPayload {
-  handover_id?: string; // If null, add to active draft
-  source_type: 'fault' | 'work_order' | 'equipment' | 'part' | 'document' | 'note';
-  source_id: string;
-  summary?: string; // Optional custom summary
-  importance?: 'low' | 'normal' | 'high';
-}
-
-export interface EditWorkOrderDetailsPayload {
-  work_order_id: string;
-  changes: {
-    title?: string;
-    description?: string;
-    priority?: 'routine' | 'important' | 'critical';
-    due_date?: string;
-    assigned_to?: string;
-  };
-}
-
-export interface MarkWorkOrderCompletePayload {
-  work_order_id: string;
-  completion_notes?: string;
-  parts_used?: Array<{
-    part_id: string;
-    quantity: number;
-  }>;
-}
-
-export interface OrderPartPayload {
-  part_id: string;
-  quantity: number;
-  supplier?: string;
-  delivery_date?: string;
-  notes?: string;
-}
-
-export interface AddNotePayload {
-  entity_type: 'fault' | 'work_order' | 'equipment' | 'checklist';
-  entity_id: string;
-  note_text: string;
-}
-
-export interface UploadPhotoPayload {
-  entity_type: 'fault' | 'work_order' | 'equipment' | 'checklist';
-  entity_id: string;
-  photo: File;
-  caption?: string;
-}
-
-export interface EditEquipmentDetailsPayload {
-  equipment_id: string;
-  changes: {
-    name?: string;
-    model?: string;
-    serial_number?: string;
-    location?: string;
-    install_date?: string;
-    manufacturer?: string;
-    notes?: string;
-  };
-}
-
-export interface EditPartDetailsPayload {
-  part_id: string;
-  changes: {
-    part_name?: string;
-    part_number?: string;
-    storage_location?: string;
-    min_stock_level?: number;
-    max_stock_level?: number;
-    reorder_quantity?: number;
-    preferred_supplier?: string;
-    notes?: string;
-  };
-}
-
-export interface DeleteItemPayload {
-  item_type: 'note' | 'photo' | 'work_order' | 'handover_item';
-  item_id: string;
-  reason?: string; // Optional delete reason
-}
-
-export interface ApproveWorkOrderPayload {
-  work_order_id: string;
-  approved: boolean; // true = approve, false = reject
-  approver_notes?: string;
-}
 
 // ============================================================================
 // ACTION REGISTRY (Metadata for all actions)
@@ -1343,15 +1214,6 @@ export const ACTION_REGISTRY: Record<MicroAction, ActionMetadata> = {
  */
 export function getActionMetadata(action: MicroAction): ActionMetadata {
   return ACTION_REGISTRY[action];
-}
-
-/**
- * Get all actions for a specific card type
- */
-export function getActionsForCard(cardType: CardType): MicroAction[] {
-  // This would be populated from ACTION_OFFERING_MAP.md
-  // For now, return placeholder
-  return [];
 }
 
 /**

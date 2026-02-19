@@ -117,4 +117,3 @@ export function DocumentCard({ file, onClick, className }: DocumentCardProps) {
   );
 }
 
-export default DocumentCard;

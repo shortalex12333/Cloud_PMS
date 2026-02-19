@@ -378,4 +378,3 @@ export function MediaRenderer({ file, maxHeight = 240, className }: MediaRendere
   );
 }
 
-export default MediaRenderer;

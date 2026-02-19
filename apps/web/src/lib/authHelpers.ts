@@ -103,7 +103,7 @@ export async function getValidJWT(): Promise<string> {
  * @returns JWT metadata
  * @throws AuthError if no session
  */
-export async function getJWTMetadata(): Promise<JWTMetadata> {
+async function getJWTMetadata(): Promise<JWTMetadata> {
   const {
     data: { session },
     error,
@@ -177,7 +177,7 @@ export async function getAuthHeaders(yachtId?: string | null): Promise<HeadersIn
  *
  * @returns true if user has valid session
  */
-export async function isAuthenticated(): Promise<boolean> {
+async function isAuthenticated(): Promise<boolean> {
   try {
     await getValidJWT();
     return true;

@@ -149,4 +149,3 @@ export function PartsSection({ parts, onAddPart, canAddPart, stickyTop }: PartsS
   );
 }
 
-export default PartsSection;

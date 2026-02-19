@@ -15,15 +15,6 @@ type HandlerFunction = (
 ) => Promise<ActionResult>;
 
 // Import all handler modules
-export { faultHandlers } from './faults';
-export { workOrderHandlers } from './workOrders';
-export { equipmentHandlers } from './equipment';
-export { inventoryHandlers } from './inventory';
-export { handoverHandlers } from './handover';
-export { complianceHandlers } from './compliance';
-export { procurementHandlers } from './procurement';
-
-// Import individual handlers for registration
 import { faultHandlers } from './faults';
 import { workOrderHandlers } from './workOrders';
 import { equipmentHandlers } from './equipment';
@@ -35,7 +26,7 @@ import { procurementHandlers } from './procurement';
 /**
  * All handlers grouped by domain
  */
-export const allHandlers = {
+const allHandlers = {
   ...faultHandlers,
   ...workOrderHandlers,
   ...equipmentHandlers,
@@ -91,7 +82,7 @@ export function registerAllHandlers(): void {
 /**
  * Get count of registered handlers by domain
  */
-export function getHandlerStats(): Record<string, number> {
+function getHandlerStats(): Record<string, number> {
   return {
     faults: Object.keys(faultHandlers).length,
     workOrders: Object.keys(workOrderHandlers).length,

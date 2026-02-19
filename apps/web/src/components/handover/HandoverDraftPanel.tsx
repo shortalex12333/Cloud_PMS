@@ -719,4 +719,3 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
   );
 }
 
-export default HandoverDraftPanel;

@@ -200,4 +200,3 @@ export function ArchiveModal({
   );
 }
 
-export default ArchiveModal;

@@ -162,4 +162,3 @@ export function useDocumentActions(documentId: string) {
   };
 }
 
-export default useDocumentActions;

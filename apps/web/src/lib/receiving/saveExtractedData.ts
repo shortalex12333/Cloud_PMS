@@ -7,24 +7,6 @@
 
 import { supabase } from '@/lib/supabaseClient';
 
-export interface ExtractedReceivingData {
-  document_id: string;
-  storage_path: string;
-  extracted_data?: {
-    vendor_name?: string;
-    vendor_reference?: string; // Invoice number, PO, etc.
-    total?: number;
-    currency?: string;
-    line_items?: Array<{
-      description: string;
-      quantity?: number;
-      unit_price?: number;
-    }>;
-    confidences?: Record<string, number>;
-    flags?: string[];
-  };
-}
-
 /**
  * Save extracted data to receiving record
  *

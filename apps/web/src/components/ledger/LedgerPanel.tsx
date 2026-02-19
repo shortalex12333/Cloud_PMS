@@ -565,4 +565,3 @@ function formatActionVerb(eventName: string): string {
   return verbMap[eventName] || eventName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default LedgerPanel;

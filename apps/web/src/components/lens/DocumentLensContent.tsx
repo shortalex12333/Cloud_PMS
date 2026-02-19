@@ -201,4 +201,3 @@ export function DocumentLensContent({
   );
 }
 
-export default DocumentLensContent;

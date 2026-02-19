@@ -467,4 +467,3 @@ export function WorkOrderLensContent({
   );
 }
 
-export default WorkOrderLensContent;

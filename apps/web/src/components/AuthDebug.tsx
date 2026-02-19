@@ -219,4 +219,3 @@ export function AuthDebug() {
   );
 }
 
-export default AuthDebug;

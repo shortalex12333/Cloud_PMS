@@ -402,4 +402,3 @@ function OriginalContentViewer({ providerMessageId, onClose, onAttachmentClick }
   );
 }
 
-export default EmailThreadViewer;

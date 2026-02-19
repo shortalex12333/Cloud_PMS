@@ -285,4 +285,3 @@ export function LinkEmailModal({
   );
 }
 
-export default LinkEmailModal;

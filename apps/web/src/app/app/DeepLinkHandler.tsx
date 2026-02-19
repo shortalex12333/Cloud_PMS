@@ -225,4 +225,3 @@ export function DeepLinkHandler({ onDeepLinkProcessed }: DeepLinkHandlerProps) {
   );
 }
 
-export default DeepLinkHandler;

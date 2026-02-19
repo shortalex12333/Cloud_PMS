@@ -185,4 +185,3 @@ export function NotesSection({ notes, onAddNote, canAddNote, stickyTop }: NotesS
   );
 }
 
-export default NotesSection;

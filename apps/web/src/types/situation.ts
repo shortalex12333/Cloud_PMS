@@ -52,16 +52,6 @@ export type SituationDomain =
   | 'email';       // Email threads as evidence
 
 /**
- * Action bracket types (per active situation state.md)
- */
-export type ActionBracket =
-  | 'READ'         // Read-only actions (no state changes, no signature)
-  | 'WRITE-NOTE'   // Add context, low risk (optional signature)
-  | 'WRITE-STATE'  // Change operational records (signature required)
-  | 'WRITE-COMMS'  // Send notifications (signature required + preview)
-  | 'WRITE-FINANCIAL'; // Procurement, invoices (signature + extra confirmation)
-
-/**
  * Situation phase (inferred from evidence flags)
  */
 export type SituationPhase =
@@ -138,49 +128,6 @@ export type DocumentClassification =
   | 'operational'   // Manuals, guides, SOPs (Add to Handover visible)
   | 'compliance';   // Certificates, licenses, approvals (Add to Handover in dropdown)
 
-/**
- * Document metadata
- */
-export interface DocumentMetadata {
-  id: string;
-  title: string;
-  classification: DocumentClassification;
-  storage_path: string;  // Supabase Storage path
-  mime_type: string;
-  size_bytes: number;
-  yacht_id: string;
-  uploaded_at: string;
-  source?: string;  // OEM, internal, regulatory, etc.
-}
-
-// ============================================================================
-// ACTION DEFINITIONS
-// ============================================================================
-
-/**
- * Allowed actions per situation type
- * Based on situation_policy rules
- */
-export interface SituationPolicy {
-  situation_type: string;  // e.g., "document_view", "equipment_maintenance"
-  allowed_brackets: ActionBracket[];
-  default_nudge?: string;
-  confidence_threshold: number;
-}
-
-/**
- * Action definition from registry
- */
-export interface ActionDefinition {
-  action_name: string;
-  bracket: ActionBracket;
-  label: string;
-  icon?: string;
-  requires_signature: boolean;
-  requires_preview: boolean;
-  dropdown_only: boolean;  // Hidden behind "..." menu
-}
-
 // ============================================================================
 // SITUATION TRANSITIONS
 // ============================================================================
@@ -194,15 +141,6 @@ export interface SituationTransition {
   reason: string;
   confidence_change: number;
   timestamp: number;
-}
-
-/**
- * Situation event log entry
- */
-export interface SituationEvent {
-  event_type: 'state_change' | 'evidence_updated' | 'action_taken' | 'nudge_shown' | 'nudge_dismissed';
-  timestamp: number;
-  data: Record<string, any>;
 }
 
 // ============================================================================

@@ -331,4 +331,3 @@ export const LensTitleBlock = React.forwardRef<
 
 LensTitleBlock.displayName = 'LensTitleBlock';
 
-export default LensHeader;
