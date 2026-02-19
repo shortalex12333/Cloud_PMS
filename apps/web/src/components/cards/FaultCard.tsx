@@ -148,7 +148,7 @@ function getNoteTypeStyles(noteType: FaultNote['note_type']): {
     case 'general':
     default:
       return {
-        bgClass: 'bg-zinc-50 dark:bg-zinc-800/50',
+        bgClass: 'bg-zinc-50 dark:bg-[#323232]',
         borderClass: 'border-l-zinc-300 dark:border-l-zinc-600',
         labelClass: 'text-zinc-500 dark:text-zinc-400',
         label: noteType === 'observation' ? 'Observation' : 'Note',
@@ -214,7 +214,7 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
               <div
                 key={note.id}
                 className={cn(
-                  'rounded-md border-l-2 px-3 py-2',
+                  'rounded-[10px] border-l-2 px-3 py-2',
                   styles.bgClass,
                   styles.borderClass
                 )}
@@ -364,7 +364,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
 
   return (
     <>
-      <div className="celeste-card p-4 hover:shadow-[var(--shadow-md)] transition-shadow duration-normal">
+      <div className="celeste-card p-4 transition-colors duration-normal">
         <div className="flex items-start gap-3">
           {/* Severity Indicator - Minimal dot + icon */}
           <div className="flex flex-col items-center gap-2 pt-0.5">
@@ -409,7 +409,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {/* FAIL-CLOSED: Show error state if decisions endpoint failed */}
               {failClosed && (
                 <div
-                  className="flex items-center gap-2 px-3 py-2 typo-meta text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                  className="flex items-center gap-2 px-3 py-2 typo-meta text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-[10px]"
                   data-testid="decisions-error-state"
                 >
                   <AlertCircle className="h-4 w-4" />
@@ -567,8 +567,8 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
 
               {/* More indicator */}
               {actions.filter(a => a !== 'create_work_order').length > 2 && (
-                <button className="btn-icon">
-                  <ChevronRight className="h-4 w-4" />
+                <button className="btn-icon h-8 w-8">
+                  <ChevronRight className="w-[18px] h-[18px]" />
                 </button>
               )}
             </div>

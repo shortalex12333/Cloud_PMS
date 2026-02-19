@@ -101,7 +101,7 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
   if (!thread) return null;
 
   return (
-    <div className="bg-zinc-50 dark:bg-zinc-900/50">
+    <div className="bg-zinc-50 dark:bg-[#171717]">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800">
         <div>
@@ -116,9 +116,9 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors"
+            className="btn-icon h-8 w-8"
           >
-            <X className="h-4 w-4 text-zinc-500" />
+            <X className="w-[18px] h-[18px]" />
           </button>
         )}
       </div>

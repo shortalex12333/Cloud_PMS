@@ -92,13 +92,13 @@ export default function WorkOrderDetailTestPage() {
           <div className="mb-wo-gap flex items-center justify-between">
             <div>
               <h1
-                className="font-semibold text-lg mb-2"
+                className="font-semibold typo-title mb-2"
                 style={{ color: 'var(--wo-text-primary)' }}
               >
                 WorkOrderDetail Component Test
               </h1>
               <p
-                className="text-sm"
+                className="typo-body"
                 style={{ color: 'var(--wo-text-meta)' }}
               >
                 Testing tokenized Work Order detail view - {isDarkMode ? 'Dark' : 'Light'} Mode

@@ -128,7 +128,7 @@ export function AddPartModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Part Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Part Information</h3>
+            <h3 className="typo-body font-semibold text-celeste-black">Part Information</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Part Name */}
@@ -143,7 +143,7 @@ export function AddPartModal({
                   className={errors.part_name ? 'border-red-500' : ''}
                 />
                 {errors.part_name && (
-                  <p className="text-sm text-red-600">{errors.part_name.message}</p>
+                  <p className="typo-body text-red-600">{errors.part_name.message}</p>
                 )}
               </div>
 
@@ -159,7 +159,7 @@ export function AddPartModal({
                   className={errors.part_number ? 'border-red-500' : ''}
                 />
                 {errors.part_number && (
-                  <p className="text-sm text-red-600">{errors.part_number.message}</p>
+                  <p className="typo-body text-red-600">{errors.part_number.message}</p>
                 )}
               </div>
             </div>
@@ -186,7 +186,7 @@ export function AddPartModal({
 
           {/* Stock Levels */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Stock Levels</h3>
+            <h3 className="typo-body font-semibold text-celeste-black">Stock Levels</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Initial Stock Quantity */}
@@ -202,7 +202,7 @@ export function AddPartModal({
                   className={errors.stock_quantity ? 'border-red-500' : ''}
                 />
                 {errors.stock_quantity && (
-                  <p className="text-sm text-red-600">{errors.stock_quantity.message}</p>
+                  <p className="typo-body text-red-600">{errors.stock_quantity.message}</p>
                 )}
               </div>
 
@@ -219,9 +219,9 @@ export function AddPartModal({
                   className={errors.min_stock_level ? 'border-red-500' : ''}
                 />
                 {errors.min_stock_level && (
-                  <p className="text-sm text-red-600">{errors.min_stock_level.message}</p>
+                  <p className="typo-body text-red-600">{errors.min_stock_level.message}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="typo-meta text-muted-foreground">
                   Alert threshold for reordering
                 </p>
               </div>
@@ -230,7 +230,7 @@ export function AddPartModal({
             {/* Low Stock Warning */}
             {isLowStock && stockQuantity >= 0 && minStockLevel > 0 && (
               <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
-                <p className="text-sm text-orange-800">
+                <p className="typo-body text-orange-800">
                   ⚠️ Initial stock is below minimum level. Consider ordering more.
                 </p>
               </div>
@@ -239,7 +239,7 @@ export function AddPartModal({
 
           {/* Location */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Location</h3>
+            <h3 className="typo-body font-semibold text-celeste-black">Location</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* General Location */}
@@ -254,7 +254,7 @@ export function AddPartModal({
                   className={errors.location ? 'border-red-500' : ''}
                 />
                 {errors.location && (
-                  <p className="text-sm text-red-600">{errors.location.message}</p>
+                  <p className="typo-body text-red-600">{errors.location.message}</p>
                 )}
               </div>
 
@@ -292,7 +292,7 @@ export function AddPartModal({
 
           {/* Supplier & Cost */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Supplier & Cost</h3>
+            <h3 className="typo-body font-semibold text-celeste-black">Supplier & Cost</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Unit Cost */}

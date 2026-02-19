@@ -255,7 +255,7 @@ export function HandoverExportLensContent({
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
-          <p className="text-celeste-text-muted text-sm">Loading export...</p>
+          <p className="text-celeste-text-muted typo-body">Loading export...</p>
         </div>
       </div>
     );
@@ -266,10 +266,10 @@ export function HandoverExportLensContent({
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-          <p className="text-celeste-text-muted text-sm mb-3">{error || 'Export not found'}</p>
+          <p className="text-celeste-text-muted typo-body mb-3">{error || 'Export not found'}</p>
           <button
             onClick={onClose}
-            className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+            className="text-celeste-blue hover:text-celeste-blue-hover typo-body"
           >
             Close
           </button>

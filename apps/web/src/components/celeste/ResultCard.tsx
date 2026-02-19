@@ -93,10 +93,10 @@ export default function ResultCard({
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="btn-icon"
+                className="btn-icon h-8 w-8"
                 aria-label="More actions"
               >
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-[18px] h-[18px]" />
               </button>
 
               <ActionDropdown

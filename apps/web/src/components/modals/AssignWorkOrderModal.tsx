@@ -170,17 +170,17 @@ export function AssignWorkOrderModal({
               <div className="flex-1">
                 <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
                 {context.equipment_name && (
-                  <p className="text-sm text-celeste-accent mt-0.5">Equipment: {context.equipment_name}</p>
+                  <p className="typo-body text-celeste-accent mt-0.5">Equipment: {context.equipment_name}</p>
                 )}
                 <div className="flex items-center gap-3 mt-2">
                   <span className={cn(
-                    'text-xs px-2 py-0.5 rounded border',
+                    'typo-meta px-2 py-0.5 rounded border',
                     getPriorityColor(context.current_priority)
                   )}>
                     {context.current_priority.toUpperCase()}
                   </span>
                   {context.due_date && (
-                    <span className="text-xs text-celeste-accent flex items-center gap-1">
+                    <span className="typo-meta text-celeste-accent flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       Due: {context.due_date}
                     </span>
@@ -193,7 +193,7 @@ export function AssignWorkOrderModal({
           {/* Role Restriction Notice */}
           <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
             <Shield className="h-4 w-4 text-amber-600" />
-            <p className="text-xs text-amber-700">
+            <p className="typo-meta text-amber-700">
               This action is restricted to Chief Engineer, Captain, or Manager roles
             </p>
           </div>
@@ -224,7 +224,7 @@ export function AssignWorkOrderModal({
                       <span className="text-celeste-text-muted">·</span>
                       <span className="text-celeste-text-disabled">{member.role}</span>
                       {!member.available && (
-                        <span className="text-xs text-celeste-text-muted">(Unavailable)</span>
+                        <span className="typo-meta text-celeste-text-muted">(Unavailable)</span>
                       )}
                     </div>
                   </SelectItem>
@@ -232,7 +232,7 @@ export function AssignWorkOrderModal({
               </SelectContent>
             </Select>
             {errors.assigned_to && (
-              <p className="text-sm text-red-600">{errors.assigned_to.message}</p>
+              <p className="typo-body text-red-600">{errors.assigned_to.message}</p>
             )}
           </div>
 
@@ -244,10 +244,10 @@ export function AssignWorkOrderModal({
               </div>
               <div>
                 <p className="font-medium text-celeste-black">{selectedCrewMember.name}</p>
-                <p className="text-sm text-celeste-text-disabled">{selectedCrewMember.role}</p>
+                <p className="typo-body text-celeste-text-disabled">{selectedCrewMember.role}</p>
               </div>
               {selectedCrewMember.available && (
-                <span className="ml-auto text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                <span className="ml-auto typo-meta text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
                   Available
                 </span>
               )}
@@ -314,7 +314,7 @@ export function AssignWorkOrderModal({
               rows={3}
             />
             {errors.assignment_notes && (
-              <p className="text-sm text-red-600">{errors.assignment_notes.message}</p>
+              <p className="typo-body text-red-600">{errors.assignment_notes.message}</p>
             )}
           </div>
 
@@ -328,7 +328,7 @@ export function AssignWorkOrderModal({
             />
             <Label
               htmlFor="notify_assignee"
-              className="text-sm font-normal cursor-pointer"
+              className="typo-body font-normal cursor-pointer"
             >
               Send notification to assignee
             </Label>

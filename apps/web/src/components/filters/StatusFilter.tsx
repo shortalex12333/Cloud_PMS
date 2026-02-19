@@ -83,7 +83,7 @@ export function StatusFilter({
   return (
     <div className="flex items-end gap-2">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="typo-meta text-muted-foreground">
           <Filter className="h-3 w-3 inline mr-1" />
           Status
         </Label>
@@ -96,7 +96,7 @@ export function StatusFilter({
                 key={option.value}
                 onClick={() => toggleStatus(option.value)}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
+                  'px-3 py-1.5 typo-meta font-medium rounded-md border transition-colors',
                   isSelected
                     ? getColorClasses(option.color)
                     : 'border-border bg-background text-muted-foreground hover:bg-accent'

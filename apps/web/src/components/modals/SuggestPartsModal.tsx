@@ -178,7 +178,7 @@ export function SuggestPartsModal({
               <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               <div>
                 <h4 className="font-medium text-red-800">Unable to load suggestions</h4>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <p className="typo-body text-red-700 mt-1">{error}</p>
               </div>
             </div>
           </div>
@@ -187,7 +187,7 @@ export function SuggestPartsModal({
         {/* Fault Code Info */}
         {faultCode && (
           <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
-            <p className="text-sm text-celeste-accent">
+            <p className="typo-body text-celeste-accent">
               <span className="font-medium">Fault Code:</span> {faultCode}
             </p>
           </div>
@@ -197,16 +197,16 @@ export function SuggestPartsModal({
         {summary && (
           <div className="grid grid-cols-3 gap-3 p-3 bg-celeste-bg-primary rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-celeste-black">{summary.total_suggested}</div>
-              <div className="text-xs text-celeste-text-disabled">Total Parts</div>
+              <div className="typo-title font-bold text-celeste-black">{summary.total_suggested}</div>
+              <div className="typo-meta text-celeste-text-disabled">Total Parts</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{summary.available}</div>
-              <div className="text-xs text-celeste-text-disabled">Available</div>
+              <div className="typo-title font-bold text-green-600">{summary.available}</div>
+              <div className="typo-meta text-celeste-text-disabled">Available</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{summary.unavailable}</div>
-              <div className="text-xs text-celeste-text-disabled">Need to Order</div>
+              <div className="typo-title font-bold text-red-600">{summary.unavailable}</div>
+              <div className="typo-meta text-celeste-text-disabled">Need to Order</div>
             </div>
           </div>
         )}
@@ -227,19 +227,19 @@ export function SuggestPartsModal({
                         {part.name || part.canonical_name || 'Unknown Part'}
                       </h4>
                       {part.part_number && (
-                        <p className="text-sm text-celeste-text-secondary mt-0.5">
+                        <p className="typo-body text-celeste-text-secondary mt-0.5">
                           P/N: {part.part_number}
                         </p>
                       )}
                       {part.description && (
-                        <p className="text-sm text-celeste-text-disabled mt-1 line-clamp-2">
+                        <p className="typo-body text-celeste-text-disabled mt-1 line-clamp-2">
                           {part.description}
                         </p>
                       )}
                     </div>
                   </div>
                   <span
-                    className={`px-2 py-0.5 text-xs font-medium rounded ${
+                    className={`px-2 py-0.5 typo-meta font-medium rounded ${
                       part.stock_status === 'IN_STOCK'
                         ? 'bg-green-100 text-green-700'
                         : part.stock_status === 'LOW_STOCK'
@@ -262,7 +262,7 @@ export function SuggestPartsModal({
           <div className="text-center py-8 text-celeste-text-disabled">
             <Package className="h-12 w-12 mx-auto mb-3 text-celeste-border" />
             <p>No parts suggestions available</p>
-            <p className="text-sm mt-1">This fault may not have associated parts in the system</p>
+            <p className="typo-body mt-1">This fault may not have associated parts in the system</p>
           </div>
         )}
 

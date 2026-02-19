@@ -189,7 +189,7 @@ export function AddNoteModal({
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-celeste-black truncate">{context.entity_title}</p>
                 {context.entity_subtitle && (
-                  <p className="text-sm text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
+                  <p className="typo-body text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
                 )}
               </div>
             </div>
@@ -200,7 +200,7 @@ export function AddNoteModal({
             <div className="flex items-center justify-between">
               <Label htmlFor="note_text">Note Content *</Label>
               <span className={cn(
-                'text-xs',
+                'typo-meta',
                 charCount > 1800 ? 'text-amber-600' : 'text-celeste-text-muted'
               )}>
                 {charCount}/2000
@@ -216,7 +216,7 @@ export function AddNoteModal({
               className={errors.note_text ? 'border-red-500' : ''}
             />
             {errors.note_text && (
-              <p className="text-sm text-red-600">{errors.note_text.message}</p>
+              <p className="typo-body text-red-600">{errors.note_text.message}</p>
             )}
           </div>
 
@@ -262,14 +262,14 @@ export function AddNoteModal({
             />
             <Label
               htmlFor="add_to_handover"
-              className="text-sm font-normal cursor-pointer flex items-center gap-2"
+              className="typo-body font-normal cursor-pointer flex items-center gap-2"
             >
               <Users className="h-4 w-4 text-amber-500" />
               Include in next handover
             </Label>
           </div>
           {addToHandover && (
-            <p className="text-xs text-amber-600 ml-6">
+            <p className="typo-meta text-amber-600 ml-6">
               This note will be added to the active handover draft
             </p>
           )}

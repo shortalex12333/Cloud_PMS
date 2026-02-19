@@ -310,10 +310,10 @@ export function CreateShoppingListItemModal({
           {/* Work Order Context (if provided) */}
           {context?.work_order_id && context?.work_order_title && (
             <div className="p-3 rounded-lg border border-surface-border bg-surface-elevated">
-              <p className="text-xs text-txt-tertiary uppercase tracking-wide mb-1">
+              <p className="typo-meta text-txt-tertiary uppercase tracking-wide mb-1">
                 Linked Work Order
               </p>
-              <p className="text-sm font-medium text-txt-primary">
+              <p className="typo-body font-medium text-txt-primary">
                 {context.work_order_title}
               </p>
             </div>
@@ -333,7 +333,7 @@ export function CreateShoppingListItemModal({
             />
             <Label
               htmlFor="link_existing"
-              className="text-sm font-normal cursor-pointer flex items-center gap-2"
+              className="typo-body font-normal cursor-pointer flex items-center gap-2"
             >
               <Package className="h-4 w-4 text-txt-tertiary" />
               Link to existing part in catalog
@@ -368,8 +368,8 @@ export function CreateShoppingListItemModal({
                       onClick={() => handleSelectPart(part)}
                       className="w-full p-2 text-left hover:bg-surface-elevated transition-colors"
                     >
-                      <p className="font-medium text-sm">{part.part_name}</p>
-                      <p className="text-xs text-txt-tertiary">
+                      <p className="font-medium typo-body">{part.part_name}</p>
+                      <p className="typo-meta text-txt-tertiary">
                         {part.part_number && `P/N: ${part.part_number}`}
                         {part.manufacturer && ` | ${part.manufacturer}`}
                       </p>
@@ -383,11 +383,11 @@ export function CreateShoppingListItemModal({
                 <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
                   <Package className="h-4 w-4 text-green-600" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-green-700">
+                    <p className="typo-body font-medium text-green-700">
                       {selectedPart.part_name}
                     </p>
                     {selectedPart.part_number && (
-                      <p className="text-xs text-green-600">
+                      <p className="typo-meta text-green-600">
                         P/N: {selectedPart.part_number}
                       </p>
                     )}
@@ -415,7 +415,7 @@ export function CreateShoppingListItemModal({
               className={errors.part_name ? 'border-red-500' : ''}
             />
             {errors.part_name && (
-              <p className="text-sm text-red-600">{errors.part_name.message}</p>
+              <p className="typo-body text-red-600">{errors.part_name.message}</p>
             )}
           </div>
 
@@ -454,7 +454,7 @@ export function CreateShoppingListItemModal({
                 className={errors.quantity_requested ? 'border-red-500' : ''}
               />
               {errors.quantity_requested && (
-                <p className="text-sm text-red-600">
+                <p className="typo-body text-red-600">
                   {errors.quantity_requested.message}
                 </p>
               )}
@@ -519,7 +519,7 @@ export function CreateShoppingListItemModal({
                       <SelectItem key={option.value} value={option.value}>
                         <div>
                           <span className="font-medium">{option.label}</span>
-                          <span className="text-txt-tertiary ml-2 text-xs">
+                          <span className="text-txt-tertiary ml-2 typo-meta">
                             {option.description}
                           </span>
                         </div>
@@ -541,7 +541,7 @@ export function CreateShoppingListItemModal({
               rows={3}
             />
             {errors.source_notes && (
-              <p className="text-sm text-red-600">{errors.source_notes.message}</p>
+              <p className="typo-body text-red-600">{errors.source_notes.message}</p>
             )}
           </div>
 

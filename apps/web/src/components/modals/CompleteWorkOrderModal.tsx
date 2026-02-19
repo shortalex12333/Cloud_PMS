@@ -202,7 +202,7 @@ export function CompleteWorkOrderModal({
               <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
               <div className="flex-1">
                 <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm text-celeste-accent">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 typo-body text-celeste-accent">
                   <p>
                     <span className="font-medium">ID:</span> {context.work_order_id.slice(0, 8)}
                   </p>
@@ -223,7 +223,7 @@ export function CompleteWorkOrderModal({
                   {context.priority && (
                     <div className="col-span-2">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded border ${getPriorityColor(
+                        className={`typo-meta px-2 py-0.5 rounded border ${getPriorityColor(
                           context.priority
                         )}`}
                       >
@@ -271,12 +271,12 @@ export function CompleteWorkOrderModal({
               className={errors.actual_hours ? 'border-red-500' : ''}
             />
             {errors.actual_hours && (
-              <p className="text-sm text-red-600">{errors.actual_hours.message}</p>
+              <p className="typo-body text-red-600">{errors.actual_hours.message}</p>
             )}
 
             {/* Time Variance Warning */}
             {context.estimated_hours && actualHours > 0 && (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 typo-body">
                 <Clock className="h-4 w-4 text-celeste-text-disabled" />
                 <span className="text-celeste-text-secondary">
                   Estimated: {context.estimated_hours}h | Actual: {actualHours}h
@@ -293,7 +293,7 @@ export function CompleteWorkOrderModal({
             )}
 
             {isSignificantVariance && (
-              <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded text-sm text-orange-800">
+              <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded typo-body text-orange-800">
                 <AlertTriangle className="h-4 w-4 text-orange-700 mt-0.5" />
                 <p>
                   Significant variance from estimate (&gt;20%). Please explain in completion notes.
@@ -315,10 +315,10 @@ export function CompleteWorkOrderModal({
               className={errors.completion_notes ? 'border-red-500' : ''}
             />
             {errors.completion_notes && (
-              <p className="text-sm text-red-600">{errors.completion_notes.message}</p>
+              <p className="typo-body text-red-600">{errors.completion_notes.message}</p>
             )}
             {isSignificantVariance && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 ⚠️ Make sure to explain why actual time differed significantly from estimate
               </p>
             )}
@@ -340,7 +340,7 @@ export function CompleteWorkOrderModal({
                 />
                 <Label
                   htmlFor="quality_check_passed"
-                  className="text-sm font-normal cursor-pointer"
+                  className="typo-body font-normal cursor-pointer"
                 >
                   Quality check passed - work meets standards
                   {outcome === 'completed' && (
@@ -357,7 +357,7 @@ export function CompleteWorkOrderModal({
                 />
                 <Label
                   htmlFor="parts_used_documented"
-                  className="text-sm font-normal cursor-pointer flex items-center gap-1"
+                  className="typo-body font-normal cursor-pointer flex items-center gap-1"
                 >
                   <Package className="h-3 w-3" />
                   All parts used have been logged
@@ -375,7 +375,7 @@ export function CompleteWorkOrderModal({
                 />
                 <Label
                   htmlFor="attachments_added"
-                  className="text-sm font-normal cursor-pointer flex items-center gap-1"
+                  className="typo-body font-normal cursor-pointer flex items-center gap-1"
                 >
                   <Camera className="h-3 w-3" />
                   Photos or documents attached (if applicable)
@@ -384,7 +384,7 @@ export function CompleteWorkOrderModal({
             </div>
 
             {outcome === 'completed' && !canComplete && (
-              <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+              <div className="p-2 bg-red-50 border border-red-200 rounded typo-meta text-red-800">
                 ⚠️ To mark as completed, quality check and parts documentation are required
               </div>
             )}
@@ -401,14 +401,14 @@ export function CompleteWorkOrderModal({
                   setShowFollowUp(!!checked);
                 }}
               />
-              <Label htmlFor="follow_up_required" className="text-sm font-normal cursor-pointer">
+              <Label htmlFor="follow_up_required" className="typo-body font-normal cursor-pointer">
                 Follow-up work or monitoring required
               </Label>
             </div>
 
             {showFollowUp && (
               <div className="ml-6 space-y-2">
-                <Label htmlFor="follow_up_notes" className="text-sm">
+                <Label htmlFor="follow_up_notes" className="typo-body">
                   Follow-up Details
                 </Label>
                 <Textarea
@@ -416,7 +416,7 @@ export function CompleteWorkOrderModal({
                   {...register('follow_up_notes')}
                   placeholder="Describe what follow-up is needed and when..."
                   rows={3}
-                  className="text-sm"
+                  className="typo-body"
                 />
               </div>
             )}
@@ -433,7 +433,7 @@ export function CompleteWorkOrderModal({
                       ? 'Partial Completion'
                       : 'Work Deferred'}
                   </p>
-                  <p className="text-sm text-yellow-800 mt-1">
+                  <p className="typo-body text-yellow-800 mt-1">
                     {outcome === 'partially_completed'
                       ? 'A new work order will be created for the remaining work. Make sure to document what was completed and what remains.'
                       : 'This work order will be closed and can be reopened later. Document the reason for deferral in completion notes.'}

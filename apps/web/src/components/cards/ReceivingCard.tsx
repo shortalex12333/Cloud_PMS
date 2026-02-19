@@ -139,7 +139,7 @@ export function ReceivingCard({
 
           {/* PO Number (if different from vendor_reference) */}
           {receiving.po_number && receiving.po_number !== receiving.vendor_reference && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            <div className="flex items-center gap-1.5 typo-body text-muted-foreground mb-1">
               <FileText className="h-4 w-4" />
               <span className="font-medium">PO:</span>
               <span>{receiving.po_number}</span>
@@ -148,7 +148,7 @@ export function ReceivingCard({
 
           {/* Reference Number (Invoice/AWB) */}
           {receiving.vendor_reference && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            <div className="flex items-center gap-1.5 typo-body text-muted-foreground mb-1">
               <FileText className="h-4 w-4" />
               <span className="font-medium">Ref:</span>
               <span>{receiving.vendor_reference}</span>
@@ -157,7 +157,7 @@ export function ReceivingCard({
 
           {/* Received Date */}
           {receiving.received_date && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+            <div className="flex items-center gap-1.5 typo-body text-muted-foreground mb-1">
               <Calendar className="h-4 w-4" />
               <span className="font-medium">Received:</span>
               <span>{formatDate(receiving.received_date)}</span>
@@ -166,14 +166,14 @@ export function ReceivingCard({
 
           {/* Total Amount */}
           {formatTotal(receiving.total, receiving.currency) && (
-            <div className="text-sm font-medium text-foreground mt-2">
+            <div className="typo-body font-medium text-foreground mt-2">
               Total: {formatTotal(receiving.total, receiving.currency)}
             </div>
           )}
 
           {/* Notes */}
           {receiving.notes && (
-            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+            <p className="typo-body text-muted-foreground mt-2 line-clamp-2">
               {receiving.notes}
             </p>
           )}

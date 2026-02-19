@@ -108,8 +108,8 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
           'z-modal',
           // Surface tokens
           'bg-surface-elevated border border-surface-border',
-          // Shape
-          'rounded-lg shadow-lg',
+          // Shape - modal gets shadow per spec
+          'rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]',
           // Width
           'w-full max-w-md mx-4'
         )}
@@ -145,7 +145,7 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
               placeholder="Enter your observation, finding, or note..."
               className={cn(
                 'w-full',
-                'bg-surface-primary border rounded-md',
+                'bg-surface-primary border rounded-[10px]',
                 'px-3 py-2',
                 'text-body text-txt-primary placeholder:text-txt-tertiary',
                 'leading-[1.6]',

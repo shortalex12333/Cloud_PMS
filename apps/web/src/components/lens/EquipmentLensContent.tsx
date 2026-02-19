@@ -71,7 +71,7 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-2 gap-4 typo-body">
               {serial_number && <><dt className="text-celeste-text-muted">Serial Number</dt><dd className="text-celeste-text-primary">{serial_number}</dd></>}
               {installation_date && <><dt className="text-celeste-text-muted">Installed</dt><dd className="text-celeste-text-primary">{formatRelativeTime(installation_date)}</dd></>}
               {last_maintenance && <><dt className="text-celeste-text-muted">Last Maintenance</dt><dd className="text-celeste-text-primary">{formatRelativeTime(last_maintenance)}</dd></>}

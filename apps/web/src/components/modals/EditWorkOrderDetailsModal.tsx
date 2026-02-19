@@ -175,7 +175,7 @@ export function EditWorkOrderDetailsModal({
               <AlertCircle className="h-5 w-5 text-red-700 mt-0.5" />
               <div>
                 <p className="font-semibold text-red-900">Cannot Edit Work Order</p>
-                <p className="text-sm text-red-800 mt-1">
+                <p className="typo-body text-red-800 mt-1">
                   This work order is {context.status}. {isCompleted ? 'Completed' : 'Cancelled'}{' '}
                   work orders cannot be modified.
                 </p>
@@ -197,10 +197,10 @@ export function EditWorkOrderDetailsModal({
               className={errors.title ? 'border-red-500' : ''}
             />
             {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
+              <p className="typo-body text-red-600">{errors.title.message}</p>
             )}
             {changes.title && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 Changed from: "{context.current_title}"
               </p>
             )}
@@ -219,10 +219,10 @@ export function EditWorkOrderDetailsModal({
               className={errors.description ? 'border-red-500' : ''}
             />
             {errors.description && (
-              <p className="text-sm text-red-600">{errors.description.message}</p>
+              <p className="typo-body text-red-600">{errors.description.message}</p>
             )}
             {changes.description && (
-              <p className="text-xs text-orange-600">Description has been modified</p>
+              <p className="typo-meta text-orange-600">Description has been modified</p>
             )}
           </div>
 
@@ -259,7 +259,7 @@ export function EditWorkOrderDetailsModal({
               </SelectContent>
             </Select>
             {changes.priority && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 Changed from: {context.current_priority}
               </p>
             )}
@@ -275,7 +275,7 @@ export function EditWorkOrderDetailsModal({
               disabled={cannotEdit}
             />
             {changes.due_date && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 Due date has been modified
               </p>
             )}
@@ -305,7 +305,7 @@ export function EditWorkOrderDetailsModal({
               </SelectContent>
             </Select>
             {changes.assigned_to && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 Assignment has been changed
               </p>
             )}
@@ -318,7 +318,7 @@ export function EditWorkOrderDetailsModal({
                 <FileText className="h-5 w-5 text-celeste-accent mt-0.5" />
                 <div>
                   <p className="font-semibold text-celeste-accent">Changes Detected</p>
-                  <p className="text-sm text-celeste-accent mt-1">
+                  <p className="typo-body text-celeste-accent mt-1">
                     {Object.values(changes).filter(Boolean).length} field(s) will be updated.
                     An audit log will be created with MEDIUM severity.
                   </p>
@@ -332,7 +332,7 @@ export function EditWorkOrderDetailsModal({
                     {showChanges ? 'Hide' : 'Show'} changes
                   </Button>
                   {showChanges && (
-                    <ul className="mt-2 text-sm text-celeste-accent space-y-1">
+                    <ul className="mt-2 typo-body text-celeste-accent space-y-1">
                       {changes.title && <li>• Title changed</li>}
                       {changes.description && <li>• Description changed</li>}
                       {changes.priority && <li>• Priority changed</li>}

@@ -169,7 +169,7 @@ function UsageRow({ entry }: UsageRowProps) {
             className={cn(
               'mt-1 text-[12px] font-medium text-txt-tertiary',
               'hover:text-txt-secondary transition-colors duration-fast',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-lg'
             )}
             aria-expanded={isExpanded}
           >

@@ -402,9 +402,9 @@ export default function EmailSurface({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 rounded text-celeste-text-secondary hover:text-celeste-text-title transition-colors"
+              className="btn-icon h-8 w-8"
             >
-              <X className="w-4 h-4" />
+              <X className="w-[18px] h-[18px]" />
             </button>
           )}
         </div>

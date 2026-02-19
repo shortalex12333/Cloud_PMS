@@ -265,7 +265,7 @@ export function MonthlySignOffSection({
               className={cn(
                 'mt-3 text-[13px] font-medium text-brand-interactive',
                 'hover:text-brand-hover transition-colors duration-fast',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-lg',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
             >

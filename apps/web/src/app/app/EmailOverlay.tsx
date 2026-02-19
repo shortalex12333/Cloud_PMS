@@ -71,7 +71,7 @@ export default function EmailOverlay() {
       {/* Email Surface Overlay */}
       <div
         data-testid="email-overlay"
-        className="fixed inset-y-0 left-0 z-[1001] w-[95vw] max-w-[1400px] bg-surface-base shadow-2xl transform transition-transform duration-300 ease-out translate-x-0"
+        className="fixed inset-y-0 left-0 z-[1001] w-[95vw] max-w-[1400px] bg-surface-base border-r border-[#e7e7e7] dark:border-[#404040] transform transition-transform duration-300 ease-out translate-x-0"
       >
         <EmailSurface
           className="h-full"

@@ -74,11 +74,10 @@ export default function SpotlightPreviewPane({
     <div
       className={cn(
         'w-celeste-panel-medium flex-shrink-0',
-        'bg-celeste-surface-light/98 dark:bg-celeste-surface/98',
-        'backdrop-blur-celeste-md',
+        'bg-celeste-surface-light dark:bg-celeste-surface',
         'border border-celeste-border-subtle-light dark:border-celeste-border-subtle',
         'rounded-celeste-xl',
-        'shadow-celeste-lg',
+        'border border-[#e7e7e7] dark:border-[#404040]',
         'overflow-hidden',
         'animate-in slide-in-from-right-2 duration-normal'
       )}
@@ -94,7 +93,7 @@ export default function SpotlightPreviewPane({
             'flex items-center justify-center',
             'w-10 h-10 rounded-celeste-lg',
             'bg-celeste-surface-light/80 dark:bg-celeste-bg-tertiary/80',
-            'shadow-sm'
+            'border border-[#e7e7e7] dark:border-[#404040]'
           )}>
             <IconComponent className={cn('h-5 w-5', config.color)} />
           </div>
@@ -108,15 +107,9 @@ export default function SpotlightPreviewPane({
           </div>
           <button
             onClick={onClose}
-            className={cn(
-              'p-1.5 rounded-md',
-              'text-celeste-text-muted hover:text-celeste-text-primary-light',
-              'dark:text-celeste-text-muted dark:hover:text-celeste-text-primary',
-              'hover:bg-celeste-bg-secondary-light/50 dark:hover:bg-celeste-bg-tertiary/50',
-              'transition-colors'
-            )}
+            className="btn-icon h-8 w-8"
           >
-            <LucideIcons.X className="h-4 w-4" />
+            <LucideIcons.X className="w-[18px] h-[18px]" />
           </button>
         </div>
       </div>

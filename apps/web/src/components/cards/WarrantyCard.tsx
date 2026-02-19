@@ -224,7 +224,7 @@ export function WarrantyCard({
       {/* ================================================================
           HEADER SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         {/* Status & Claim Type Row */}
         <div className="flex items-center gap-ds-2 mb-ds-4">
           <span className={status.pillClass}>
@@ -246,7 +246,7 @@ export function WarrantyCard({
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-semibold text-txt-primary mb-ds-2">
+        <h1 className="typo-title font-semibold text-txt-primary mb-ds-2">
           {warrantyClaim.title}
         </h1>
 
@@ -283,7 +283,7 @@ export function WarrantyCard({
           EQUIPMENT & FAULT SECTION
           ================================================================ */}
       {(warrantyClaim.equipment_name || warrantyClaim.fault_code) && (
-        <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+        <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
           <div className="flex items-center gap-ds-2 mb-ds-3">
             <Package className="h-5 w-5 text-txt-secondary" />
             <h3 className="text-txt-primary font-semibold">
@@ -293,7 +293,7 @@ export function WarrantyCard({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-4">
             {warrantyClaim.equipment_name && (
-              <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
+              <div className="p-ds-4 bg-surface-elevated rounded-[10px] border border-surface-border">
                 <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                   Equipment
                 </p>
@@ -304,7 +304,7 @@ export function WarrantyCard({
             )}
 
             {warrantyClaim.fault_code && (
-              <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
+              <div className="p-ds-4 bg-surface-elevated rounded-[10px] border border-surface-border">
                 <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                   Fault Reference
                 </p>
@@ -323,7 +323,7 @@ export function WarrantyCard({
       {/* ================================================================
           VENDOR / MANUFACTURER SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <Building2 className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">
@@ -381,7 +381,7 @@ export function WarrantyCard({
       {/* ================================================================
           FINANCIAL SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <DollarSign className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">
@@ -390,21 +390,21 @@ export function WarrantyCard({
         </div>
 
         <div className="grid grid-cols-2 gap-ds-4">
-          <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
+          <div className="p-ds-4 bg-surface-elevated rounded-[10px] border border-surface-border">
             <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
               Claimed Amount
             </p>
-            <p className="text-xl font-semibold text-txt-primary">
+            <p className="typo-title font-semibold text-txt-primary">
               {formatCurrency(warrantyClaim.claimed_amount, warrantyClaim.currency)}
             </p>
           </div>
 
           {warrantyClaim.status === 'approved' && (
-            <div className="p-ds-4 bg-status-success/5 rounded-sm border border-status-success/20">
+            <div className="p-ds-4 bg-status-success/5 rounded-[10px] border border-status-success/20">
               <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Approved Amount
               </p>
-              <p className="text-xl font-semibold text-status-success">
+              <p className="typo-title font-semibold text-status-success">
                 {formatCurrency(warrantyClaim.approved_amount, warrantyClaim.currency)}
               </p>
             </div>
@@ -425,7 +425,7 @@ export function WarrantyCard({
       {/* ================================================================
           DATES SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <Calendar className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">
@@ -498,7 +498,7 @@ export function WarrantyCard({
       {/* ================================================================
           WORKFLOW SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <User className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">
@@ -546,7 +546,7 @@ export function WarrantyCard({
           REJECTION REASON (if rejected)
           ================================================================ */}
       {warrantyClaim.status === 'rejected' && warrantyClaim.rejection_reason && (
-        <div className="bg-status-critical/5 rounded-md p-ds-6 border border-status-critical/20">
+        <div className="bg-status-critical/5 rounded-[10px] p-ds-6 border border-status-critical/20">
           <div className="flex items-center gap-ds-2 mb-ds-3">
             <XCircle className="h-5 w-5 text-status-critical" />
             <h3 className="text-status-critical font-semibold">
@@ -562,7 +562,7 @@ export function WarrantyCard({
       {/* ================================================================
           AUDIT HISTORY SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <History className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">Activity</h3>
@@ -605,7 +605,7 @@ export function WarrantyCard({
               return (
                 <div
                   key={entry.id}
-                  className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
+                  className="p-ds-3 bg-surface-elevated rounded-[10px] border border-surface-border"
                 >
                   <div className="flex items-start justify-between gap-ds-2">
                     <p className="text-txt-primary font-medium typo-meta">

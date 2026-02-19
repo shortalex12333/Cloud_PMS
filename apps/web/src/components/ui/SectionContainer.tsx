@@ -65,7 +65,7 @@ export const SectionContainer = React.forwardRef<
       ref={ref}
       className={cn(
         // Container: surface primary with rounded corners
-        'bg-surface-primary rounded-md overflow-hidden',
+        'bg-surface-primary rounded-[10px] overflow-hidden',
         className
       )}
     >

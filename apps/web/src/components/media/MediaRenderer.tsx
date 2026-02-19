@@ -165,7 +165,7 @@ function Lightbox({ file, resolvedUrl, onClose }: LightboxProps) {
         className={cn(
           'absolute top-4 right-4',
           'flex items-center justify-center',
-          'w-10 h-10 rounded-full',
+          'w-8 h-8 rounded-full',
           'bg-surface-primary text-txt-primary',
           'hover:bg-surface-hover transition-colors duration-fast',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive'
@@ -173,7 +173,7 @@ function Lightbox({ file, resolvedUrl, onClose }: LightboxProps) {
         aria-label="Close lightbox"
       >
         <svg
-          className="w-5 h-5"
+          className="w-[18px] h-[18px]"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

@@ -783,10 +783,9 @@ export default function SpotlightSearch({
             // ChatGPT-style pill shape with tokenized dimensions
             'w-full font-body',
             'bg-surface-elevated',
-            'rounded-lg',
-            // Shadow only - NO border (ChatGPT spec)
-            'shadow-lg',
-            'backdrop-blur-xl',
+            'rounded-[10px]',
+            // Border only - NO shadow (design spec)
+            'border border-[#e7e7e7] dark:border-[#404040]',
             'animate-spotlight-in',
             // Email scope: accent ring only (no border)
             emailScopeActive && 'bg-brand-interactive/20 ring-2 ring-brand-interactive/40'
@@ -802,14 +801,14 @@ export default function SpotlightSearch({
               'gap-ds-2'
             )}
           >
-            {/* Leading "+" Button - 36x36 circle, no border */}
+            {/* Leading "+" Button - 32x32 per icon button spec */}
             <button
               onClick={() => setShowReceivingUpload(true)}
-              className="btn-icon"
+              className="btn-icon h-8 w-8"
               aria-label="Log Receiving"
               data-testid="spotlight-add-button"
             >
-              <Plus className="w-5 h-5" strokeWidth={1.5} />
+              <Plus className="w-[18px] h-[18px]" strokeWidth={1.5} />
             </button>
 
             {/* Email Scope Badge */}
@@ -873,10 +872,10 @@ export default function SpotlightSearch({
               {query && (
                 <button
                   onClick={handleClear}
-                  className="btn-icon"
+                  className="btn-icon h-8 w-8"
                   aria-label="Clear"
                 >
-                  <X className="w-3 h-3 text-surface-elevated" strokeWidth={3} />
+                  <X className="w-[18px] h-[18px] text-surface-elevated" strokeWidth={2} />
                 </button>
               )}
             </div>
@@ -1151,17 +1150,17 @@ export default function SpotlightSearch({
               align="center"
               sideOffset={8}
               className={cn(
-                'min-w-[160px] rounded-xl p-2',
+                'min-w-[160px] rounded-[16px] p-2',
                 'bg-surface-elevated',
                 'border border-surface-border',
-                'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]'
+                'border border-[#e7e7e7] dark:border-[#404040]'
               )}
             >
               <DropdownMenuItem
                 onClick={() => setShowLedger(true)}
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
-                  'text-sm font-medium',
+                  'typo-body font-medium',
                   'text-txt-primary',
                   'focus:bg-surface-hover',
                   'hover:bg-surface-hover'
@@ -1174,7 +1173,7 @@ export default function SpotlightSearch({
                 onClick={() => setShowHandoverDraft(true)}
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
-                  'text-sm font-medium',
+                  'typo-body font-medium',
                   'text-txt-primary',
                   'focus:bg-surface-hover',
                   'hover:bg-surface-hover'
@@ -1187,7 +1186,7 @@ export default function SpotlightSearch({
                 onClick={() => setShowReceivingUpload(true)}
                 className={cn(
                   'flex items-center gap-3 h-10 px-3 cursor-pointer',
-                  'text-sm font-medium',
+                  'typo-body font-medium',
                   'text-txt-primary',
                   'focus:bg-surface-hover',
                   'hover:bg-surface-hover'

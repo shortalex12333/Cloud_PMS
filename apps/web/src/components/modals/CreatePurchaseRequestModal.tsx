@@ -179,7 +179,7 @@ export function CreatePurchaseRequestModal({
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Request Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-celeste-black">Request Details</h3>
+            <h3 className="typo-body font-semibold text-celeste-black">Request Details</h3>
 
             {/* Justification */}
             <div className="space-y-2">
@@ -194,7 +194,7 @@ export function CreatePurchaseRequestModal({
                 className={errors.justification ? 'border-red-500' : ''}
               />
               {errors.justification && (
-                <p className="text-sm text-red-600">{errors.justification.message}</p>
+                <p className="typo-body text-red-600">{errors.justification.message}</p>
               )}
             </div>
 
@@ -221,7 +221,7 @@ export function CreatePurchaseRequestModal({
                   </SelectContent>
                 </Select>
                 {errors.budget_code && (
-                  <p className="text-sm text-red-600">{errors.budget_code.message}</p>
+                  <p className="typo-body text-red-600">{errors.budget_code.message}</p>
                 )}
               </div>
 
@@ -248,7 +248,7 @@ export function CreatePurchaseRequestModal({
           {/* Line Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-celeste-black">
+              <h3 className="typo-body font-semibold text-celeste-black">
                 Line Items ({fields.length})
               </h3>
               <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
@@ -259,7 +259,7 @@ export function CreatePurchaseRequestModal({
 
             {errors.line_items && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{errors.line_items.message as string}</p>
+                <p className="typo-body text-red-600">{errors.line_items.message as string}</p>
               </div>
             )}
 
@@ -270,7 +270,7 @@ export function CreatePurchaseRequestModal({
                   className="p-4 border border-celeste-border rounded-lg space-y-3 bg-celeste-bg-primary"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-celeste-text-secondary">Item #{index + 1}</span>
+                    <span className="typo-body font-medium text-celeste-text-secondary">Item #{index + 1}</span>
                     {fields.length > 1 && (
                       <Button
                         type="button"
@@ -287,7 +287,7 @@ export function CreatePurchaseRequestModal({
                   <div className="grid grid-cols-12 gap-3">
                     {/* Item Type */}
                     <div className="col-span-3 space-y-1">
-                      <Label className="text-xs">Type</Label>
+                      <Label className="typo-meta">Type</Label>
                       <Select
                         value={watch(`line_items.${index}.item_type`)}
                         onValueChange={(value) =>
@@ -306,7 +306,7 @@ export function CreatePurchaseRequestModal({
 
                     {/* Item Name */}
                     <div className="col-span-5 space-y-1">
-                      <Label className="text-xs">Item Name *</Label>
+                      <Label className="typo-meta">Item Name *</Label>
                       <Input
                         {...register(`line_items.${index}.item_name`)}
                         placeholder="e.g., Oil Filter"
@@ -318,7 +318,7 @@ export function CreatePurchaseRequestModal({
 
                     {/* Quantity */}
                     <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Qty *</Label>
+                      <Label className="typo-meta">Qty *</Label>
                       <Input
                         type="number"
                         min="1"
@@ -331,7 +331,7 @@ export function CreatePurchaseRequestModal({
 
                     {/* Unit Cost */}
                     <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Unit Cost</Label>
+                      <Label className="typo-meta">Unit Cost</Label>
                       <Input
                         type="number"
                         min="0"
@@ -346,7 +346,7 @@ export function CreatePurchaseRequestModal({
                   {/* Line Total */}
                   {lineItems[index] && (
                     <div className="flex justify-end">
-                      <span className="text-sm text-celeste-text-secondary">
+                      <span className="typo-body text-celeste-text-secondary">
                         Line Total:{' '}
                         <span className="font-semibold">
                           $
@@ -361,7 +361,7 @@ export function CreatePurchaseRequestModal({
 
                   {/* Validation Errors for this item */}
                   {errors.line_items?.[index] && (
-                    <div className="text-xs text-red-600">
+                    <div className="typo-meta text-red-600">
                       {errors.line_items[index]?.item_name && (
                         <p>• {errors.line_items[index]?.item_name?.message}</p>
                       )}
@@ -382,15 +382,15 @@ export function CreatePurchaseRequestModal({
                 <DollarSign className="h-5 w-5 text-celeste-accent" />
                 <span className="font-semibold text-celeste-accent">Estimated Total Cost</span>
               </div>
-              <span className="text-2xl font-bold text-celeste-accent">${totalCost.toFixed(2)}</span>
+              <span className="typo-title font-bold text-celeste-accent">${totalCost.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-celeste-accent mt-2">
+            <p className="typo-meta text-celeste-accent mt-2">
               {lineItems.length} item(s) • {lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} total units
             </p>
             {totalCost > 5000 && (
               <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-orange-700 mt-0.5" />
-                <p className="text-xs text-orange-800">
+                <p className="typo-meta text-orange-800">
                   High-value request (&gt;$5,000) may require additional approval levels.
                 </p>
               </div>

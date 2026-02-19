@@ -150,7 +150,7 @@ export function CreateWorkOrderModal({
               disabled={isLoading}
             />
             {errors.title && (
-              <p className="text-sm text-destructive">{errors.title.message}</p>
+              <p className="typo-body text-destructive">{errors.title.message}</p>
             )}
           </div>
 
@@ -167,7 +167,7 @@ export function CreateWorkOrderModal({
               disabled={isLoading}
             />
             {errors.description && (
-              <p className="text-sm text-destructive">
+              <p className="typo-body text-destructive">
                 {errors.description.message}
               </p>
             )}
@@ -196,7 +196,7 @@ export function CreateWorkOrderModal({
               </SelectContent>
             </Select>
             {errors.priority && (
-              <p className="text-sm text-destructive">
+              <p className="typo-body text-destructive">
                 {errors.priority.message}
               </p>
             )}

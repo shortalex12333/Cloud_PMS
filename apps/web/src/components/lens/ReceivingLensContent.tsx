@@ -103,13 +103,13 @@ export function ReceivingLensContent({
         <div className="mt-6">
           <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
             {items.length === 0 ? (
-              <p className="text-sm text-celeste-text-muted">No items added yet.</p>
+              <p className="typo-body text-celeste-text-muted">No items added yet.</p>
             ) : (
               <ul className="space-y-3">
                 {items.map((item, index) => (
                   <li key={item.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
-                    <span className="text-sm text-celeste-text-primary">{item.description || `Item ${index + 1}`}</span>
-                    <span className="text-sm text-celeste-text-muted">
+                    <span className="typo-body text-celeste-text-primary">{item.description || `Item ${index + 1}`}</span>
+                    <span className="typo-body text-celeste-text-muted">
                       Qty: {item.quantity_received}
                       {item.unit_price !== null && item.unit_price !== undefined && ` @ ${currency} ${item.unit_price.toFixed(2)}`}
                     </span>
@@ -123,7 +123,7 @@ export function ReceivingLensContent({
         {notes && (
           <div className="mt-6">
             <SectionContainer title="Notes" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary">{notes}</p>
+              <p className="typo-body text-celeste-text-primary">{notes}</p>
             </SectionContainer>
           </div>
         )}

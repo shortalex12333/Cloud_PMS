@@ -101,7 +101,7 @@ export function ReassignModal({
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
           'bg-surface-elevated border border-surface-border',
-          'rounded-lg shadow-lg',
+          'rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]',
           'w-full max-w-md mx-4'
         )}
       >
@@ -140,7 +140,7 @@ export function ReassignModal({
                 onChange={(e) => setSelectedId(e.target.value)}
                 className={cn(
                   'w-full',
-                  'bg-surface-primary border border-surface-border rounded-md',
+                  'bg-surface-primary border border-surface-border rounded-[10px]',
                   'px-3 py-2',
                   'text-body text-txt-primary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',

@@ -125,9 +125,7 @@ export default function MicroactionButton({
         'rounded-celeste-sm',
         'font-medium',
         'transition-all duration-celeste-fast',
-        'shadow-celeste-sm',
-        'hover:shadow-celeste-md',
-        'active:shadow-none',
+        'active:opacity-90',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         'focus:outline-none focus:ring-2 focus:ring-celeste-blue/40',
         sizeClasses[size],
@@ -212,7 +210,7 @@ export function MicroactionGroup({
                 'mt-1 p-1 rounded-celeste-md',
                 'bg-celeste-bg-secondary',
                 'border border-celeste-border',
-                'shadow-celeste-lg',
+                'border border-[#e7e7e7] dark:border-[#404040]',
                 'min-w-[140px]'
               )}
             >

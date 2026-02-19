@@ -91,7 +91,7 @@ function HandoverItemRow({ item, onNavigate, onAcknowledge }: HandoverItemRowPro
   return (
     <div
       className={cn(
-        'p-4 rounded-sm border transition-colors duration-fast',
+        'p-4 rounded-[10px] border transition-colors duration-fast',
         item.is_critical
           ? 'border-status-critical/30 bg-status-critical-bg'
           : 'border-surface-border-subtle bg-surface-primary',
@@ -274,7 +274,7 @@ export function HandoverItemsSection({
     >
       {!hasItems ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-3">
             <FileText className="h-6 w-6 text-txt-tertiary" />
           </div>
           <p className="text-txt-primary font-medium mb-1">No handover items</p>

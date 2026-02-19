@@ -148,7 +148,7 @@ export default function ContextPanel() {
         'absolute inset-y-0 right-0 bg-surface-base',
         'flex flex-col',
         'transform transition-all duration-300 ease-out z-[10001]',
-        'shadow-2xl',
+        'border-l border-[#e7e7e7] dark:border-[#404040]',
         'w-[calc(100vw-80px)]', // Full-screen minus left nav
         visible ? 'translate-x-0' : 'translate-x-full'
       )}
@@ -169,7 +169,7 @@ export default function ContextPanel() {
           <div className="flex items-center justify-center h-full" data-testid="context-panel-loading">
             <div className="text-center">
               <Loader2 className="w-8 h-8 text-celeste-blue animate-spin mx-auto mb-3" />
-              <p className="text-celeste-text-muted text-sm">
+              <p className="text-celeste-text-muted typo-body">
                 Loading...
               </p>
             </div>
@@ -178,12 +178,12 @@ export default function ContextPanel() {
           <div className="flex items-center justify-center h-full" data-testid="context-panel-error">
             <div className="text-center">
               <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-              <p className="text-celeste-text-muted text-sm mb-3">
+              <p className="text-celeste-text-muted typo-body mb-3">
                 {error}
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+                className="text-celeste-blue hover:text-celeste-blue-hover typo-body"
               >
                 Reload
               </button>
@@ -201,7 +201,7 @@ export default function ContextPanel() {
           <div className="flex items-center justify-center h-full" data-testid="context-panel-empty">
             <div className="text-center">
               <AlertCircle className="w-8 h-8 text-celeste-text-secondary mx-auto mb-3" />
-              <p className="text-celeste-text-muted text-sm">
+              <p className="text-celeste-text-muted typo-body">
                 Select an item to view details
               </p>
             </div>

@@ -238,7 +238,7 @@ export function UpdateHoursOfRestModal({
                 {isCompliant ? 'MLC Compliant' : 'MLC Violation Warning'}
               </p>
               <p className={cn(
-                'text-sm',
+                'typo-body',
                 isCompliant ? 'text-emerald-700' : 'text-red-700'
               )}>
                 {totalRestHours} hours rest recorded. Minimum 10 hours required per 24-hour period.
@@ -259,7 +259,7 @@ export function UpdateHoursOfRestModal({
               className={errors.record_date ? 'border-red-500' : ''}
             />
             {errors.record_date && (
-              <p className="text-sm text-red-600">{errors.record_date.message}</p>
+              <p className="typo-body text-red-600">{errors.record_date.message}</p>
             )}
           </div>
 
@@ -297,7 +297,7 @@ export function UpdateHoursOfRestModal({
             </div>
 
             {errors.rest_periods && (
-              <p className="text-sm text-red-600">{errors.rest_periods.message as string}</p>
+              <p className="typo-body text-red-600">{errors.rest_periods.message as string}</p>
             )}
 
             <div className="space-y-2">
@@ -305,7 +305,7 @@ export function UpdateHoursOfRestModal({
                 <div key={index} className="flex items-center gap-2 p-3 bg-celeste-bg-primary rounded-lg">
                   <div className="flex-1 grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="text-xs text-celeste-text-secondary">Start</Label>
+                      <Label className="typo-meta text-celeste-text-secondary">Start</Label>
                       <Input
                         type="time"
                         value={period.start}
@@ -314,7 +314,7 @@ export function UpdateHoursOfRestModal({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-celeste-text-secondary">End</Label>
+                      <Label className="typo-meta text-celeste-text-secondary">End</Label>
                       <Input
                         type="time"
                         value={period.end}
@@ -323,7 +323,7 @@ export function UpdateHoursOfRestModal({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-celeste-text-secondary">Hours</Label>
+                      <Label className="typo-meta text-celeste-text-secondary">Hours</Label>
                       <Input
                         type="number"
                         step="0.1"
@@ -355,8 +355,8 @@ export function UpdateHoursOfRestModal({
           <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-celeste-accent">Total Rest Hours</p>
-                <p className="text-xs text-celeste-accent">Auto-calculated from rest periods</p>
+                <p className="typo-body font-medium text-celeste-accent">Total Rest Hours</p>
+                <p className="typo-meta text-celeste-accent">Auto-calculated from rest periods</p>
               </div>
               <p className={cn(
                 'text-3xl font-bold',

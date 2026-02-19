@@ -94,7 +94,7 @@ export function PartsLensContent({
 
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-2 gap-4 typo-body">
               {part_number && (
                 <>
                   <dt className="text-celeste-text-muted">Part Number</dt>

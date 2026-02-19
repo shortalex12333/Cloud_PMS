@@ -143,7 +143,7 @@ export function EditEquipmentDetailsModal({
                 <AlertTriangle className="h-5 w-5 text-red-700 mt-0.5" />
                 <div>
                   <p className="font-semibold text-red-900">Critical Field Change</p>
-                  <p className="text-sm text-red-800 mt-1">
+                  <p className="typo-body text-red-800 mt-1">
                     You are changing the serial number. This is a critical change that will create
                     a HIGH severity audit log and may require additional verification.
                   </p>
@@ -163,10 +163,10 @@ export function EditEquipmentDetailsModal({
               className={errors.name ? 'border-red-500' : ''}
             />
             {errors.name && (
-              <p className="text-sm text-red-600">{errors.name.message}</p>
+              <p className="typo-body text-red-600">{errors.name.message}</p>
             )}
             {changes.name && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 Changed from: "{context.current_name}"
               </p>
             )}
@@ -181,7 +181,7 @@ export function EditEquipmentDetailsModal({
               placeholder="e.g., M-2000X"
             />
             {changes.model && (
-              <p className="text-xs text-orange-600">Model has been modified</p>
+              <p className="typo-meta text-orange-600">Model has been modified</p>
             )}
           </div>
 
@@ -190,7 +190,7 @@ export function EditEquipmentDetailsModal({
             <Label htmlFor="serial_number" className="flex items-center gap-2">
               Serial Number
               {context.current_serial_number && (
-                <span className="text-xs text-orange-600">(Critical Field)</span>
+                <span className="typo-meta text-orange-600">(Critical Field)</span>
               )}
             </Label>
             <Input
@@ -200,7 +200,7 @@ export function EditEquipmentDetailsModal({
               className={criticalChange ? 'border-orange-500' : ''}
             />
             {criticalChange && (
-              <p className="text-xs text-red-600 font-medium">
+              <p className="typo-meta text-red-600 font-medium">
                 ⚠️ Changed from: "{context.current_serial_number || 'empty'}" → Requires HIGH severity audit
               </p>
             )}
@@ -215,7 +215,7 @@ export function EditEquipmentDetailsModal({
               placeholder="e.g., Engine Room, Main Deck"
             />
             {changes.location && (
-              <p className="text-xs text-orange-600">Location has been modified</p>
+              <p className="typo-meta text-orange-600">Location has been modified</p>
             )}
           </div>
 
@@ -228,7 +228,7 @@ export function EditEquipmentDetailsModal({
               placeholder="e.g., Caterpillar, Rolls-Royce"
             />
             {changes.manufacturer && (
-              <p className="text-xs text-orange-600">Manufacturer has been modified</p>
+              <p className="typo-meta text-orange-600">Manufacturer has been modified</p>
             )}
           </div>
 
@@ -239,7 +239,7 @@ export function EditEquipmentDetailsModal({
                 ? 'bg-red-50 border-red-300'
                 : 'bg-celeste-accent-subtle border-celeste-accent-line'
             }`}>
-              <p className={`text-sm font-medium ${
+              <p className={`typo-body font-medium ${
                 criticalChange ? 'text-red-900' : 'text-celeste-accent'
               }`}>
                 {Object.values(changes).filter(Boolean).length} field(s) will be updated.

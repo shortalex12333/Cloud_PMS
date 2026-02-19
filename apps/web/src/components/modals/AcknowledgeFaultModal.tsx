@@ -112,14 +112,14 @@ export function AcknowledgeFaultModal({
 
         <div className="space-y-4 py-4">
           {/* Fault Info */}
-          <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-3">
+          <div className="rounded-lg bg-zinc-50 dark:bg-[#323232] p-3">
             <div className="flex items-start gap-2">
               <AlertTriangle className={cn('h-5 w-5 mt-0.5', getSeverityColor(context.severity))} />
               <div>
                 <p className="font-medium text-zinc-900 dark:text-zinc-100">
                   {context.fault_title}
                 </p>
-                <p className="text-sm text-zinc-500 capitalize">
+                <p className="typo-body text-zinc-500 capitalize">
                   {context.severity} severity
                 </p>
               </div>
@@ -140,7 +140,7 @@ export function AcknowledgeFaultModal({
 
           {/* Error Display */}
           {error && (
-            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+            <div className="typo-body text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
               {error}
             </div>
           )}

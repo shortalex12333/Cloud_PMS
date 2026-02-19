@@ -135,27 +135,27 @@ export function LogPartUsageModal({
               <Package className="h-4 w-4" />
               {context.part_name}
             </h3>
-            <p className="text-sm text-celeste-accent">
+            <p className="typo-body text-celeste-accent">
               P/N: {context.part_number}
             </p>
 
             {/* Current Stock */}
             <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
               <div>
-                <p className="text-xs text-celeste-accent">Available</p>
-                <p className="text-lg font-bold text-celeste-accent">
+                <p className="typo-meta text-celeste-accent">Available</p>
+                <p className="typo-title font-bold text-celeste-accent">
                   {context.current_stock}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">Min Level</p>
-                <p className="text-lg font-bold text-celeste-accent">
+                <p className="typo-meta text-celeste-accent">Min Level</p>
+                <p className="typo-title font-bold text-celeste-accent">
                   {context.min_stock_level}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">After Usage</p>
-                <p className={`text-lg font-bold ${
+                <p className="typo-meta text-celeste-accent">After Usage</p>
+                <p className={`typo-title font-bold ${
                   willBeOutOfStock
                     ? 'text-red-700'
                     : willBeLowStock
@@ -171,7 +171,7 @@ export function LogPartUsageModal({
           {/* Work Order (if pre-selected) */}
           {context.work_order_title && (
             <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-md">
-              <p className="text-sm font-medium text-celeste-black">
+              <p className="typo-body font-medium text-celeste-black">
                 Work Order: {context.work_order_title}
               </p>
             </div>
@@ -201,7 +201,7 @@ export function LogPartUsageModal({
                   </SelectContent>
                 </Select>
                 {errors.work_order_id && (
-                  <p className="text-sm text-red-600">{errors.work_order_id.message}</p>
+                  <p className="typo-body text-red-600">{errors.work_order_id.message}</p>
                 )}
               </div>
             )}
@@ -220,10 +220,10 @@ export function LogPartUsageModal({
                 className={errors.quantity_used || exceedsStock ? 'border-red-500' : ''}
               />
               {errors.quantity_used && (
-                <p className="text-sm text-red-600">{errors.quantity_used.message}</p>
+                <p className="typo-body text-red-600">{errors.quantity_used.message}</p>
               )}
               {exceedsStock && (
-                <p className="text-sm text-red-600">
+                <p className="typo-body text-red-600">
                   ⚠️ Quantity exceeds available stock ({context.current_stock} available)
                 </p>
               )}
@@ -249,7 +249,7 @@ export function LogPartUsageModal({
                   <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
                   <div>
                     <p className="font-semibold text-red-900">Stock will be depleted</p>
-                    <p className="text-sm text-red-700">
+                    <p className="typo-body text-red-700">
                       This usage will result in zero stock. Consider ordering more immediately.
                     </p>
                   </div>
@@ -260,7 +260,7 @@ export function LogPartUsageModal({
                   <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
                   <div>
                     <p className="font-semibold text-orange-900">Stock will be low</p>
-                    <p className="text-sm text-orange-700">
+                    <p className="typo-body text-orange-700">
                       Remaining stock ({remainingStock}) will be below minimum level ({context.min_stock_level}).
                       Consider reordering soon.
                     </p>
@@ -272,7 +272,7 @@ export function LogPartUsageModal({
                   <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
                   <div>
                     <p className="font-semibold text-green-900">Stock levels OK</p>
-                    <p className="text-sm text-green-700">
+                    <p className="typo-body text-green-700">
                       Remaining stock ({remainingStock}) will be above minimum level.
                     </p>
                   </div>
@@ -285,7 +285,7 @@ export function LogPartUsageModal({
           {showStockWarning && (
             <div className="p-4 bg-red-100 border-2 border-red-500 rounded-lg">
               <p className="font-semibold text-red-900">Cannot proceed with this quantity</p>
-              <p className="text-sm text-red-700 mt-1">
+              <p className="typo-body text-red-700 mt-1">
                 The requested quantity ({quantityUsed}) exceeds available stock ({context.current_stock}).
                 Please adjust the quantity or check inventory.
               </p>

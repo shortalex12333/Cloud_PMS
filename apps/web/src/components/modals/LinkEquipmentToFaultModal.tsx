@@ -208,13 +208,13 @@ export function LinkEquipmentToFaultModal({
                 <h3 className="font-semibold text-orange-900">{context.fault_title}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span
-                    className={`text-xs px-2 py-0.5 rounded border ${getSeverityColor(
+                    className={`typo-meta px-2 py-0.5 rounded border ${getSeverityColor(
                       context.fault_severity
                     )}`}
                   >
                     {context.fault_severity.toUpperCase()} SEVERITY
                   </span>
-                  <span className="text-sm text-orange-700">
+                  <span className="typo-body text-orange-700">
                     Fault ID: {context.fault_id.slice(0, 8)}
                   </span>
                 </div>
@@ -243,7 +243,7 @@ export function LinkEquipmentToFaultModal({
               Select Equipment <span className="text-red-500">*</span>
             </Label>
             {errors.equipment_id && (
-              <p className="text-sm text-red-600">{errors.equipment_id.message}</p>
+              <p className="typo-body text-red-600">{errors.equipment_id.message}</p>
             )}
 
             <div className="border border-celeste-border rounded-lg max-h-80 overflow-y-auto">
@@ -271,23 +271,23 @@ export function LinkEquipmentToFaultModal({
                               <h4 className="font-medium text-celeste-black">{equipment.name}</h4>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
                                 {equipment.model && (
-                                  <p className="text-sm text-celeste-text-secondary">
+                                  <p className="typo-body text-celeste-text-secondary">
                                     <span className="font-medium">Model:</span> {equipment.model}
                                   </p>
                                 )}
                                 {equipment.serial_number && (
-                                  <p className="text-sm text-celeste-text-secondary">
+                                  <p className="typo-body text-celeste-text-secondary">
                                     <span className="font-medium">S/N:</span>{' '}
                                     {equipment.serial_number}
                                   </p>
                                 )}
                                 {equipment.manufacturer && (
-                                  <p className="text-sm text-celeste-text-secondary">
+                                  <p className="typo-body text-celeste-text-secondary">
                                     <span className="font-medium">Mfr:</span>{' '}
                                     {equipment.manufacturer}
                                   </p>
                                 )}
-                                <p className="text-sm text-celeste-text-secondary">
+                                <p className="typo-body text-celeste-text-secondary">
                                   <span className="font-medium">Location:</span> {equipment.location}
                                 </p>
                               </div>
@@ -312,12 +312,12 @@ export function LinkEquipmentToFaultModal({
           {/* Selected Equipment Preview */}
           {selectedEquipment && (
             <div className="p-4 bg-celeste-accent-subtle border border-celeste-accent-line rounded-lg">
-              <p className="text-sm font-semibold text-celeste-accent mb-2">Selected Equipment</p>
+              <p className="typo-body font-semibold text-celeste-accent mb-2">Selected Equipment</p>
               <div className="flex items-start gap-3">
                 <Settings className="h-5 w-5 text-celeste-accent mt-0.5" />
                 <div>
                   <h4 className="font-medium text-celeste-accent">{selectedEquipment.name}</h4>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-sm text-celeste-accent">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 typo-body text-celeste-accent">
                     {selectedEquipment.model && (
                       <p>
                         <span className="font-medium">Model:</span> {selectedEquipment.model}
@@ -348,14 +348,14 @@ export function LinkEquipmentToFaultModal({
               />
               <Label
                 htmlFor="create_work_order"
-                className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                className="typo-body font-normal cursor-pointer flex items-center gap-2"
               >
                 <Wrench className="h-4 w-4 text-celeste-accent" />
                 Create work order for this fault
               </Label>
             </div>
             {createWorkOrder && (
-              <p className="text-xs text-celeste-accent ml-6">
+              <p className="typo-meta text-celeste-accent ml-6">
                 A work order will be automatically created and assigned to this equipment
               </p>
             )}

@@ -74,20 +74,20 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
           </div>
 
           {/* Part Number */}
-          <p className="text-sm text-muted-foreground mb-1">
+          <p className="typo-body text-muted-foreground mb-1">
             <span className="font-medium">P/N:</span> {part.part_number}
           </p>
 
           {/* Category */}
           {part.category && (
-            <p className="text-sm text-muted-foreground mb-2">
+            <p className="typo-body text-muted-foreground mb-2">
               <span className="font-medium">Category:</span> {part.category}
             </p>
           )}
 
           {/* Stock Quantity */}
           <div className="flex items-center gap-4 mb-2">
-            <div className="text-sm">
+            <div className="typo-body">
               <span className="font-medium">Stock:</span>{' '}
               <span className={cn(
                 isLowStock && 'text-orange-600 font-bold',
@@ -105,7 +105,7 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
 
           {/* Last Counted (Inventory-specific info) */}
           {part.last_counted_at && (
-            <div className="text-xs text-muted-foreground mb-2">
+            <div className="typo-meta text-muted-foreground mb-2">
               <span className="font-medium">Last counted:</span>{' '}
               {new Date(part.last_counted_at).toLocaleDateString()}{' '}
               {part.last_counted_by && <span>by {part.last_counted_by}</span>}
@@ -113,13 +113,13 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
           )}
 
           {/* Location */}
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+          <div className="flex items-center gap-1.5 typo-body text-muted-foreground mb-2">
             <MapPin className="h-4 w-4" />
             <span>{part.location}</span>
           </div>
 
           {/* Cost & Supplier */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+          <div className="flex items-center gap-4 typo-meta text-muted-foreground mb-3">
             {part.unit_cost && (
               <span className="font-medium">${part.unit_cost.toFixed(2)}/unit</span>
             )}

@@ -129,7 +129,7 @@ export function TimeRangeFilter({
   return (
     <div className="flex items-end gap-2">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="typo-meta text-muted-foreground">
           <Calendar className="h-3 w-3 inline mr-1" />
           Date Range
         </Label>
@@ -143,7 +143,7 @@ export function TimeRangeFilter({
                 size="sm"
                 variant="outline"
                 onClick={() => handlePreset(preset)}
-                className="text-xs"
+                className="typo-meta"
               >
                 {preset.label}
               </Button>
@@ -152,7 +152,7 @@ export function TimeRangeFilter({
               size="sm"
               variant="outline"
               onClick={() => setCustomMode(true)}
-              className="text-xs"
+              className="typo-meta"
             >
               Custom
             </Button>
@@ -170,10 +170,10 @@ export function TimeRangeFilter({
                     end: prev?.end || new Date().toISOString(),
                   }))
                 }
-                className="w-[140px] text-xs"
+                className="w-[140px] typo-meta"
               />
             </div>
-            <span className="text-muted-foreground text-xs">to</span>
+            <span className="text-muted-foreground typo-meta">to</span>
             <div>
               <Input
                 type="date"
@@ -184,7 +184,7 @@ export function TimeRangeFilter({
                     end: new Date(e.target.value).toISOString(),
                   }))
                 }
-                className="w-[140px] text-xs"
+                className="w-[140px] typo-meta"
               />
             </div>
           </div>

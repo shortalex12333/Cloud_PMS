@@ -235,7 +235,7 @@ export function AddWorklistTaskModal({
               />
             </div>
             {errors.title && (
-              <p className="text-xs text-red-500">{errors.title.message}</p>
+              <p className="typo-meta text-red-500">{errors.title.message}</p>
             )}
           </div>
 
@@ -261,7 +261,7 @@ export function AddWorklistTaskModal({
                     type="button"
                     onClick={() => setValue('category', cat.value as any)}
                     className={cn(
-                      'px-2 py-1.5 rounded-lg text-xs font-medium transition-all',
+                      'px-2 py-1.5 rounded-lg typo-meta font-medium transition-all',
                       'border',
                       category === cat.value
                         ? cn(cat.color, 'border-current ring-1 ring-current')
@@ -283,7 +283,7 @@ export function AddWorklistTaskModal({
                     type="button"
                     onClick={() => setValue('priority', p.value as any)}
                     className={cn(
-                      'w-full px-3 py-2 rounded-lg text-sm font-medium text-left transition-all',
+                      'w-full px-3 py-2 rounded-lg typo-body font-medium text-left transition-all',
                       'border',
                       priority === p.value
                         ? cn('bg-zinc-50 border-zinc-300', p.color)
@@ -368,7 +368,7 @@ export function AddWorklistTaskModal({
               </Label>
               <select
                 {...register('assigned_contractor')}
-                className="w-full px-3 py-2 border rounded-lg text-sm"
+                className="w-full px-3 py-2 border rounded-lg typo-body"
               >
                 <option value="">-- Select Contractor --</option>
                 {contractors.map((c) => (
@@ -407,9 +407,9 @@ export function AddWorklistTaskModal({
                         checked={selectedDependencies.includes(task.id)}
                         onCheckedChange={() => toggleDependency(task.id)}
                       />
-                      <span className="text-sm text-celeste-text-secondary">{task.title}</span>
+                      <span className="typo-body text-celeste-text-secondary">{task.title}</span>
                       <span className={cn(
-                        'text-xs px-1.5 py-0.5 rounded ml-auto',
+                        'typo-meta px-1.5 py-0.5 rounded ml-auto',
                         task.status === 'pending' && 'bg-celeste-bg-secondary text-celeste-text-secondary',
                         task.status === 'in_progress' && 'bg-celeste-accent-subtle text-celeste-accent'
                       )}>
@@ -423,7 +423,7 @@ export function AddWorklistTaskModal({
 
           {/* Special Requirements */}
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
-            <p className="text-xs font-medium text-amber-800 flex items-center gap-1.5">
+            <p className="typo-meta font-medium text-amber-800 flex items-center gap-1.5">
               <AlertCircle className="h-3.5 w-3.5" />
               Special Requirements
             </p>
@@ -433,14 +433,14 @@ export function AddWorklistTaskModal({
                   checked={requiresParts}
                   onCheckedChange={(checked) => setValue('requires_parts', !!checked)}
                 />
-                <span className="text-sm text-amber-800">Requires Parts Order</span>
+                <span className="typo-body text-amber-800">Requires Parts Order</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={requiresHaulout}
                   onCheckedChange={(checked) => setValue('requires_haulout', !!checked)}
                 />
-                <span className="text-sm text-amber-800">Requires Haul-out</span>
+                <span className="typo-body text-amber-800">Requires Haul-out</span>
               </label>
             </div>
           </div>

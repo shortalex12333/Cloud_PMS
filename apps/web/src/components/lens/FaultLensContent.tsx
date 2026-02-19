@@ -108,7 +108,7 @@ export function FaultLensContent({
 
         <div className="mt-6">
           <SectionContainer title="Description" stickyTop={56}>
-            <p className="text-sm text-celeste-text-primary">
+            <p className="typo-body text-celeste-text-primary">
               {description || 'No description provided.'}
             </p>
           </SectionContainer>
@@ -117,7 +117,7 @@ export function FaultLensContent({
         {resolved_at && (
           <div className="mt-6">
             <SectionContainer title="Resolution" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="typo-body text-celeste-text-muted">
                 Resolved {formatRelativeTime(resolved_at)}
               </p>
             </SectionContainer>

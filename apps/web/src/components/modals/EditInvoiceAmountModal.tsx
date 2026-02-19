@@ -140,7 +140,7 @@ export function EditInvoiceAmountModal({
               <AlertTriangle className="h-5 w-5 text-yellow-700 mt-0.5" />
               <div className="flex-1">
                 <h3 className="font-semibold text-yellow-900">Audit-Sensitive Edit</h3>
-                <p className="text-sm text-yellow-800 mt-1">
+                <p className="typo-body text-yellow-800 mt-1">
                   This action creates a HIGH severity audit log and notifies management
                   if the change exceeds $500 or 10%.
                 </p>
@@ -152,11 +152,11 @@ export function EditInvoiceAmountModal({
           <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-celeste-black">
+                <p className="typo-body font-medium text-celeste-black">
                   Invoice: {context.invoice_number}
                 </p>
                 {context.supplier && (
-                  <p className="text-sm text-celeste-text-secondary">
+                  <p className="typo-body text-celeste-text-secondary">
                     Supplier: {context.supplier}
                   </p>
                 )}
@@ -199,7 +199,7 @@ export function EditInvoiceAmountModal({
                 />
               </div>
               {errors.new_amount && (
-                <p className="text-sm text-red-600">{errors.new_amount.message}</p>
+                <p className="typo-body text-red-600">{errors.new_amount.message}</p>
               )}
             </div>
 
@@ -212,14 +212,14 @@ export function EditInvoiceAmountModal({
               }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-celeste-text-secondary">Change:</span>
-                    <span className={`text-lg font-bold ${getChangeColor()}`}>
+                    <span className="typo-body font-medium text-celeste-text-secondary">Change:</span>
+                    <span className={`typo-title font-bold ${getChangeColor()}`}>
                       {getChangeSymbol()}${absoluteDifference.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-celeste-text-secondary">Percentage:</span>
-                    <span className={`text-lg font-bold ${getChangeColor()}`}>
+                    <span className="typo-body font-medium text-celeste-text-secondary">Percentage:</span>
+                    <span className={`typo-title font-bold ${getChangeColor()}`}>
                       {getChangeSymbol()}{Math.abs(percentageChange).toFixed(2)}%
                     </span>
                   </div>
@@ -232,7 +232,7 @@ export function EditInvoiceAmountModal({
           <div className="space-y-2">
             <Label htmlFor="reason" className="flex items-center gap-2">
               Reason for Change <span className="text-red-500">*</span>
-              <span className="text-xs text-celeste-text-disabled">(Min 15 characters)</span>
+              <span className="typo-meta text-celeste-text-disabled">(Min 15 characters)</span>
             </Label>
             <Textarea
               id="reason"
@@ -242,9 +242,9 @@ export function EditInvoiceAmountModal({
               className={errors.reason ? 'border-red-500' : ''}
             />
             {errors.reason && (
-              <p className="text-sm text-red-600">{errors.reason.message}</p>
+              <p className="typo-body text-red-600">{errors.reason.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="typo-meta text-muted-foreground">
               This reason will be permanently recorded in the audit log and may be reviewed
               during audits.
             </p>
@@ -259,7 +259,7 @@ export function EditInvoiceAmountModal({
                   <p className="font-semibold text-orange-900">
                     Management Notification Will Be Sent
                   </p>
-                  <p className="text-sm text-orange-800 mt-1">
+                  <p className="typo-body text-orange-800 mt-1">
                     This change exceeds the notification threshold (${500} or 10%). An email
                     will be sent to management for review.
                   </p>
