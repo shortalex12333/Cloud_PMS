@@ -58,10 +58,10 @@ export default function SignaturePrompt({
         {/* Signature area - dominant */}
         <div className="bg-celeste-bg-secondary rounded-celeste-md p-6">
           <div className="text-center">
-            <div className="text-celeste-lg text-celeste-text-primary mb-1">
+            <div className="typo-title text-celeste-text-primary mb-1">
               Sign as {userName}
             </div>
-            <div className="text-celeste-sm text-celeste-text-disabled">
+            <div className="typo-meta text-celeste-text-disabled">
               This action will be recorded
             </div>
           </div>

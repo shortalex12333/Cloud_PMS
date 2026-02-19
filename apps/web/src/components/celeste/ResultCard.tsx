@@ -59,18 +59,18 @@ export default function ResultCard({
       )}
     >
       {/* Header — what this thing is */}
-      <div className="text-celeste-md font-medium text-celeste-text-primary">
+      <div className="typo-label font-medium text-celeste-text-primary">
         {header}
       </div>
 
       {/* Body — the minimum useful truth */}
-      <div className="mt-1 text-celeste-base text-celeste-text-secondary leading-relaxed">
+      <div className="mt-1 typo-body text-celeste-text-secondary leading-relaxed">
         {body}
       </div>
 
       {/* Meta — optional secondary info */}
       {meta && (
-        <div className="mt-1 text-celeste-xs text-celeste-text-disabled">
+        <div className="mt-1 typo-meta text-celeste-text-disabled">
           {meta}
         </div>
       )}

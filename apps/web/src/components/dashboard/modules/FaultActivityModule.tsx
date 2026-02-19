@@ -65,14 +65,14 @@ export default function FaultActivityModule({
         <div className="flex items-center gap-2">
           <span className={cn(
             'px-2 py-0.5 rounded-full',
-            'text-celeste-xs font-medium',
+            'typo-meta font-medium',
             hasActiveCritical ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                                'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
           )}>
             {stats.open} active
           </span>
-          <span className="text-celeste-xs text-zinc-400">·</span>
-          <span className="text-celeste-xs text-zinc-500">{stats.resolved} resolved</span>
+          <span className="typo-meta text-zinc-400">·</span>
+          <span className="typo-meta text-zinc-500">{stats.resolved} resolved</span>
         </div>
       }
       className={className}
@@ -150,7 +150,7 @@ export default function FaultActivityModule({
             />
             <button className={cn(
               'px-3 py-1.5 rounded-lg',
-              'text-celeste-xs font-medium',
+              'typo-meta font-medium',
               'text-celeste-accent hover:text-celeste-accent-hover',
               'hover:bg-celeste-accent-subtle dark:hover:bg-celeste-accent-subtle',
               'transition-colors'

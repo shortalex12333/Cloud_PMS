@@ -84,7 +84,7 @@ export default function SpotlightResultRow({
         <p
           className={cn(
             // Title: slightly larger, medium weight for clarity
-            'text-celeste-base font-medium leading-snug',
+            'typo-body font-medium leading-snug',
             'truncate',
             isSelected
               ? 'text-celeste-text-title'
@@ -97,7 +97,7 @@ export default function SpotlightResultRow({
           <p
             className={cn(
               // Subtitle: smaller, muted - clear hierarchy
-              'text-celeste-sm font-normal leading-snug',
+              'typo-meta font-normal leading-snug',
               'truncate',
               'text-celeste-text-muted'
             )}
