@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
+import asyncio
 import time
 import logging
 import os
@@ -898,37 +899,127 @@ async def webhook_search(
         # Execute search with tenant's DB
         from pipeline_v1 import Pipeline
         pipeline = Pipeline(client, yacht_id)
-        response = await pipeline.search(query, limit=limit)
+
+        # ----------------------------------------------------------------
+        # F1 Architecture timeout enforcement
+        #
+        # L1 (Fast Path) budget : 150 ms
+        # L2 (Resolvers) budget : 200 ms
+        # Total search budget   : 300 ms  (hard wall for DB round-trip)
+        # Network / API ceiling : 3 000 ms (asyncio.wait_for limit)
+        #
+        # If the pipeline exceeds 3 s we return a partial response so the
+        # client always receives a valid envelope rather than a 504/500.
+        # ----------------------------------------------------------------
+
+        # Timing constants (seconds)
+        _L1_BUDGET_S  = 0.150   # 150 ms
+        _L2_BUDGET_S  = 0.200   # 200 ms
+        _TOTAL_BUDGET_S = 0.300 # 300 ms
+        _TIMEOUT_S    = 3.0     # 3 s hard ceiling
+
+        search_start = time.time()
+        timed_out = False
+
+        try:
+            response = await asyncio.wait_for(
+                pipeline.search(query, limit=limit),
+                timeout=_TIMEOUT_S
+            )
+        except asyncio.TimeoutError:
+            elapsed_s = time.time() - search_start
+            elapsed_ms = elapsed_s * 1000
+            timed_out = True
+            logger.error(
+                f"[webhook/search:{request_id}] TIMEOUT after {elapsed_ms:.1f} ms "
+                f"(ceiling={_TIMEOUT_S * 1000:.0f} ms) — returning partial response"
+            )
+
+        search_elapsed_s = time.time() - search_start
+        search_elapsed_ms = search_elapsed_s * 1000
+
+        # --- Timing-violation logging ---
+        if search_elapsed_s > _TOTAL_BUDGET_S:
+            logger.warning(
+                f"[webhook/search:{request_id}] TIMING_VIOLATION total={search_elapsed_ms:.1f} ms "
+                f"exceeds 300 ms budget (L1={_L1_BUDGET_S * 1000:.0f} ms, "
+                f"L2={_L2_BUDGET_S * 1000:.0f} ms)"
+            )
+        elif search_elapsed_s > _L2_BUDGET_S:
+            logger.warning(
+                f"[webhook/search:{request_id}] TIMING_VIOLATION L2 total={search_elapsed_ms:.1f} ms "
+                f"exceeds L2 budget ({_L2_BUDGET_S * 1000:.0f} ms)"
+            )
+        elif search_elapsed_s > _L1_BUDGET_S:
+            logger.warning(
+                f"[webhook/search:{request_id}] TIMING_VIOLATION L1 total={search_elapsed_ms:.1f} ms "
+                f"exceeds L1 budget ({_L1_BUDGET_S * 1000:.0f} ms)"
+            )
 
         # Frontend expects newline-delimited JSON for streaming parser
         import json
 
-        response_data = {
-            "success": response.success,
-            "query": query,
-            "results": response.results,
-            "total_count": response.total_count,
-            "available_actions": response.available_actions,
-            "entities": response.extraction.get("entities", []),
-            "plans": response.prepare.get("plans", []),
-            "timing_ms": {
-                "extraction": response.extraction_ms,
-                "prepare": response.prepare_ms,
-                "execute": response.execute_ms,
-                "total": response.total_ms,
-            },
-            "results_by_domain": response.results_by_domain,
-            "error": response.error,
-            "request_id": request_id,
-            "ok": response.success,
-            # DEBUG: Include prepare debug info
-            "prepare_debug": response.prepare.get("debug", {}),
-            # Deployment verification
-            "code_version": "2026-01-31T02:30:00Z",
-        }
+        if timed_out:
+            # Partial response: empty results, error flag set, success=False so
+            # the client knows the payload is degraded but structurally valid.
+            response_data = {
+                "success": False,
+                "query": query,
+                "results": [],
+                "total_count": 0,
+                "available_actions": [],
+                "entities": [],
+                "plans": [],
+                "timing_ms": {
+                    "extraction": None,
+                    "prepare": None,
+                    "execute": None,
+                    "total": round(search_elapsed_ms, 2),
+                },
+                "results_by_domain": {},
+                "error": f"Search timed out after {_TIMEOUT_S:.0f}s — no results available",
+                "request_id": request_id,
+                "ok": False,
+                "partial": True,
+                "prepare_debug": {},
+                "code_version": "2026-01-31T02:30:00Z",
+            }
+        else:
+            response_data = {
+                "success": response.success,
+                "query": query,
+                "results": response.results,
+                "total_count": response.total_count,
+                "available_actions": response.available_actions,
+                "entities": response.extraction.get("entities", []),
+                "plans": response.prepare.get("plans", []),
+                "timing_ms": {
+                    "extraction": response.extraction_ms,
+                    "prepare": response.prepare_ms,
+                    "execute": response.execute_ms,
+                    "total": response.total_ms,
+                },
+                "results_by_domain": response.results_by_domain,
+                "error": response.error,
+                "request_id": request_id,
+                "ok": response.success,
+                # DEBUG: Include prepare debug info
+                "prepare_debug": response.prepare.get("debug", {}),
+                # Deployment verification
+                "code_version": "2026-01-31T02:30:00Z",
+            }
 
         json_str = json.dumps(response_data) + "\n"
-        logger.info(f"[webhook/search:{request_id}] Success: {response.success}, results: {response.total_count}")
+
+        if timed_out:
+            logger.warning(
+                f"[webhook/search:{request_id}] Partial response returned after timeout"
+            )
+        else:
+            logger.info(
+                f"[webhook/search:{request_id}] Success: {response.success}, "
+                f"results: {response.total_count}, elapsed: {search_elapsed_ms:.1f} ms"
+            )
 
         # Reset error count on success (connection is healthy)
         reset_supabase_error_count()

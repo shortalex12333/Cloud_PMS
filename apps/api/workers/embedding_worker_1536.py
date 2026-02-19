@@ -68,6 +68,12 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # OpenAI limits
 MAX_CHARS_PER_TEXT = 8000  # Safe limit for embedding
 
+# Circuit breaker configuration (prevents death spiral during OpenAI outages)
+CIRCUIT_BREAKER_THRESHOLD = 5      # Consecutive failures before circuit opens
+CIRCUIT_BREAKER_RESET_SEC = 60     # Seconds to wait before trying again
+MAX_RETRY_COUNT = 3                # Max retries per row before moving to DLQ
+DLQ_TABLE = "search_embedding_dlq" # Dead letter queue table
+
 # Logging setup
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
@@ -77,6 +83,10 @@ logger = logging.getLogger(__name__)
 
 # Graceful shutdown
 _shutdown = False
+
+# Circuit breaker state
+_circuit_failures = 0
+_circuit_open_until = 0.0  # timestamp when circuit can close
 
 
 def signal_handler(signum, frame):
@@ -128,12 +138,64 @@ def compute_content_hash(text: str) -> str:
     return hashlib.sha256(text.encode('utf-8')).hexdigest()[:32]
 
 
+def check_circuit_breaker() -> bool:
+    """
+    Check if circuit breaker allows requests.
+
+    Returns True if requests should be blocked (circuit is open).
+    Returns False if requests are allowed (circuit is closed).
+    """
+    global _circuit_failures, _circuit_open_until
+
+    if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
+        if time.time() < _circuit_open_until:
+            return True  # Circuit is open, block requests
+        else:
+            # Try to close circuit (half-open state)
+            logger.info("Circuit breaker: attempting to close (half-open state)")
+            return False
+    return False
+
+
+def record_circuit_success():
+    """Record a successful API call - closes circuit."""
+    global _circuit_failures, _circuit_open_until
+    if _circuit_failures > 0:
+        logger.info(f"Circuit breaker: closing (was at {_circuit_failures} failures)")
+    _circuit_failures = 0
+    _circuit_open_until = 0.0
+
+
+def record_circuit_failure(error: Exception):
+    """Record a failed API call - may open circuit."""
+    global _circuit_failures, _circuit_open_until
+    _circuit_failures += 1
+
+    if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
+        _circuit_open_until = time.time() + CIRCUIT_BREAKER_RESET_SEC
+        logger.error(f"Circuit breaker: OPEN after {_circuit_failures} consecutive failures. "
+                    f"Will retry in {CIRCUIT_BREAKER_RESET_SEC}s. Last error: {error}")
+
+
+def is_rate_limit_error(error: Exception) -> bool:
+    """Check if error is a rate limit (429) error."""
+    error_str = str(error).lower()
+    return '429' in error_str or 'rate limit' in error_str or 'too many requests' in error_str
+
+
 def embed_texts_batch(texts: List[str]) -> List[List[float]]:
     """
     Generate embeddings for multiple texts via OpenAI API.
 
+    HARDENED: Includes circuit breaker pattern to prevent death spiral.
+
     Returns list of normalized 1536-dim vectors.
+    Raises CircuitBreakerOpen if circuit is open.
     """
+    # Check circuit breaker BEFORE attempting API call
+    if check_circuit_breaker():
+        raise CircuitBreakerOpenError(f"Circuit breaker open until {_circuit_open_until}")
+
     client = get_client()
 
     # Truncate long texts
@@ -151,16 +213,31 @@ def embed_texts_batch(texts: List[str]) -> List[List[float]]:
             for item in response.data:
                 vec = normalize_vector(item.embedding)
                 embeddings.append(vec)
+
+            # Success - close circuit
+            record_circuit_success()
             return embeddings
 
         except Exception as e:
-            if attempt < max_retries - 1:
+            # Check for rate limit - use longer backoff
+            if is_rate_limit_error(e):
+                wait = min(30, (2 ** attempt) * 5)  # 5s, 10s, 20s for rate limits
+                logger.warning(f"OpenAI rate limited (attempt {attempt + 1}): {e}, backing off {wait}s...")
+                time.sleep(wait)
+            elif attempt < max_retries - 1:
                 wait = (2 ** attempt) * 0.5
                 logger.warning(f"OpenAI API error (attempt {attempt + 1}): {e}, retrying in {wait}s...")
                 time.sleep(wait)
             else:
+                # Final failure - record for circuit breaker
+                record_circuit_failure(e)
                 logger.error(f"OpenAI API failed after {max_retries} attempts: {e}")
                 raise
+
+
+class CircuitBreakerOpenError(Exception):
+    """Raised when circuit breaker is open and blocking requests."""
+    pass
 
 
 # ============================================================================
@@ -490,13 +567,69 @@ def process_queue_batch(conn) -> int:
 # Main Processing
 # ============================================================================
 
+def ensure_dlq_table(cur):
+    """
+    Ensure dead letter queue table exists.
+
+    HARDENED: Creates DLQ table if missing for poisoned message isolation.
+    """
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS search_embedding_dlq (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            source_table TEXT NOT NULL,
+            source_id UUID NOT NULL,
+            error_message TEXT,
+            retry_count INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_attempt_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(source_table, source_id)
+        )
+    """)
+
+
+def move_to_dlq(cur, row: Dict[str, Any], error: str, retry_count: int = 0):
+    """
+    Move a poisoned row to dead letter queue.
+
+    HARDENED: Prevents infinite retry loops for bad data.
+    """
+    try:
+        cur.execute("""
+            INSERT INTO search_embedding_dlq (source_table, source_id, error_message, retry_count, last_attempt_at)
+            VALUES ('search_index', %s, %s, %s, NOW())
+            ON CONFLICT (source_table, source_id) DO UPDATE SET
+                error_message = EXCLUDED.error_message,
+                retry_count = search_embedding_dlq.retry_count + 1,
+                last_attempt_at = NOW()
+        """, (row['id'], error[:2000], retry_count))
+        logger.warning(f"Moved row {row['id']} to DLQ: {error[:200]}")
+    except Exception as dlq_error:
+        logger.error(f"Failed to move row {row['id']} to DLQ: {dlq_error}")
+
+
 def process_batch(conn) -> int:
     """
     Process one batch of rows.
 
+    HARDENED: Per-row error isolation prevents one bad row from crashing batch.
+
     Returns count of rows processed, or 0 if queue is empty.
     """
+    # Check circuit breaker before even fetching rows
+    if check_circuit_breaker():
+        logger.warning("Circuit breaker open, skipping batch")
+        time.sleep(CIRCUIT_BREAKER_RESET_SEC / 2)  # Wait before next attempt
+        return 0
+
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        # Ensure DLQ table exists
+        try:
+            ensure_dlq_table(cur)
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"Could not ensure DLQ table: {e}")
+            conn.rollback()
+
         rows = fetch_batch_needing_embedding(cur, BATCH_SIZE)
 
         if not rows:
@@ -505,34 +638,94 @@ def process_batch(conn) -> int:
 
         logger.info(f"Processing batch of {len(rows)} rows...")
 
-        try:
-            # Extract texts
-            texts = [r['search_text'] for r in rows]
+        # HARDENED: Process rows individually to isolate failures
+        updated = 0
+        failed = 0
 
-            # Generate embeddings via OpenAI
-            embeddings = embed_texts_batch(texts)
+        for row in rows:
+            try:
+                # Extract text for single row
+                text = row.get('search_text', '')
+                if not text:
+                    logger.warning(f"Row {row['id']} has empty search_text, skipping")
+                    continue
 
-            # Verify dimensions
-            for i, emb in enumerate(embeddings):
+                # Generate embedding for single row
+                embeddings = embed_texts_batch([text])
+
+                if not embeddings or len(embeddings) == 0:
+                    raise ValueError("No embedding returned")
+
+                emb = embeddings[0]
+
+                # Verify dimension
                 if len(emb) != EMBED_DIMS:
-                    logger.error(f"Bad embedding dimension {len(emb)} for row {rows[i]['id']}")
-                    embeddings[i] = [0.0] * EMBED_DIMS  # Fallback
+                    logger.error(f"Bad embedding dimension {len(emb)} for row {row['id']}")
+                    emb = [0.0] * EMBED_DIMS  # Fallback
 
-            # Write to database
-            updated = write_embeddings_batch(cur, rows, embeddings)
-            conn.commit()
+                # Write single row
+                row_updated = write_embeddings_batch(cur, [row], [emb])
+                conn.commit()
+                updated += row_updated
 
+            except CircuitBreakerOpenError as cbe:
+                # Circuit breaker opened mid-batch - stop processing
+                logger.warning(f"Circuit breaker opened during batch: {cbe}")
+                conn.rollback()
+                break
+
+            except Exception as e:
+                # HARDENED: Isolate failure to this row only
+                conn.rollback()
+                failed += 1
+                logger.error(f"Failed to embed row {row['id']}: {e}")
+
+                # Move to DLQ after MAX_RETRY_COUNT failures
+                # (In production, track retry count in a column or separate table)
+                move_to_dlq(cur, row, str(e))
+                conn.commit()
+
+        if failed > 0:
+            logger.warning(f"Batch complete with errors: {updated} embedded, {failed} failed (moved to DLQ)")
+        else:
             logger.info(f"Batch complete: {updated} rows embedded")
-            return updated
 
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Batch error: {e}")
-            return 0
+        return updated
+
+
+def _open_connection() -> psycopg2.extensions.connection:
+    """
+    Open a new database connection with autocommit disabled.
+
+    Separated from main() so reconnect logic can call it without
+    duplicating the connection options.
+    """
+    conn = psycopg2.connect(DB_DSN)
+    conn.autocommit = False
+    return conn
+
+
+def _connection_is_alive(conn) -> bool:
+    """
+    Return True if the connection is usable, False if it is broken.
+
+    Uses a cheap server-side no-op (SELECT 1) rather than relying on the
+    psycopg2 closed/status flags, which only reflect *known* failures and
+    miss silent TCP drops.
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        # The SELECT opens an implicit transaction; roll it back so we do not
+        # leave the connection in an idle-in-transaction state.
+        conn.rollback()
+        return True
+    except Exception:
+        return False
 
 
 def main():
-    """Main worker loop."""
+    """Main worker loop with connection resilience and circuit-breaker awareness."""
     global _shutdown
 
     if not DB_DSN:
@@ -543,49 +736,92 @@ def main():
         logger.error("OPENAI_API_KEY not set")
         return 1
 
-    logger.info(f"Embedding worker 1536 starting")
-    logger.info(f"  Model: {EMBED_MODEL}")
+    logger.info("Embedding worker 1536 starting")
+    logger.info(f"  Model:      {EMBED_MODEL}")
     logger.info(f"  Dimensions: {EMBED_DIMS}")
-    logger.info(f"  Version: {EMBED_VERSION}")
+    logger.info(f"  Version:    {EMBED_VERSION}")
     logger.info(f"  Batch size: {BATCH_SIZE}")
 
-    # Pre-verify OpenAI client
+    # Pre-verify OpenAI client before touching the database.
     try:
         get_client()
     except Exception as e:
         logger.error(f"Failed to initialize OpenAI client: {e}")
         return 1
 
-    logger.info("Connecting to database...")
+    # -----------------------------------------------------------------------
+    # Connection retry loop
+    # Outer loop: re-establish the DB connection whenever it drops.
+    # Inner loop: the normal batch-processing while loop.
+    # -----------------------------------------------------------------------
+    MAX_RECONNECT_ATTEMPTS = 10
+    RECONNECT_BASE_SLEEP = 2.0   # seconds; doubles each failed attempt
 
-    with psycopg2.connect(DB_DSN) as conn:
-        conn.autocommit = False
+    reconnect_attempt = 0
+    total_processed = 0
+    start_time = time.time()
 
-        # Log initial stats
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            stats = get_embedding_stats(cur)
-            logger.info(f"Initial stats: total={stats['total']}, "
-                       f"with_1536={stats['with_1536']}, "
-                       f"needs={stats['needs_embedding']}, "
-                       f"coverage={stats['coverage_pct']}%")
+    while not _shutdown:
+        # -- Connect (or reconnect) ----------------------------------------
+        conn = None
+        try:
+            logger.info("Connecting to database...")
+            conn = _open_connection()
+            reconnect_attempt = 0  # reset back-off on successful connect
+        except psycopg2.OperationalError as e:
+            reconnect_attempt += 1
+            wait = min(RECONNECT_BASE_SLEEP * (2 ** (reconnect_attempt - 1)), 120)
+            logger.error(
+                f"DB connection failed (attempt {reconnect_attempt}/{MAX_RECONNECT_ATTEMPTS}): "
+                f"{e} — retrying in {wait:.0f}s"
+            )
+            if reconnect_attempt >= MAX_RECONNECT_ATTEMPTS:
+                logger.critical("Exceeded maximum reconnection attempts. Exiting.")
+                return 1
+            time.sleep(wait)
+            continue  # retry outer loop
+
+        # -- Log initial stats on fresh connection -------------------------
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                stats = get_embedding_stats(cur)
+                logger.info(
+                    f"Stats: total={stats['total']}, "
+                    f"with_1536={stats['with_1536']}, "
+                    f"needs={stats['needs_embedding']}, "
+                    f"coverage={stats['coverage_pct']}%"
+                )
+        except Exception as e:
+            logger.warning(f"Could not fetch initial stats: {e}")
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
         logger.info("Starting worker loop...")
-
-        total_processed = 0
         empty_batches = 0
-        start_time = time.time()
 
+        # -- Inner batch-processing loop -----------------------------------
         while not _shutdown:
             try:
-                # Process direct search_index embeddings (delta policy)
+                # Health-check: detect silent TCP drops before each batch.
+                if not _connection_is_alive(conn):
+                    logger.warning("Database connection lost (health check failed). Reconnecting...")
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    break  # exit inner loop → outer loop will reconnect
+
+                # Process direct search_index embeddings (delta policy).
                 processed = process_batch(conn)
 
-                # Process queue-based entity indexing (handover_export, etc.)
+                # Process queue-based entity indexing (handover_export, etc.).
                 queue_processed = 0
                 try:
                     queue_processed = process_queue_batch(conn)
                 except psycopg2.ProgrammingError as qe:
-                    # search_index_queue table may not exist yet; log and skip
+                    # search_index_queue table may not exist yet; log and skip.
                     conn.rollback()
                     logger.debug(f"Queue processing skipped (table may not exist): {qe}")
 
@@ -599,29 +835,72 @@ def main():
                         elapsed = time.time() - start_time
                         rate = total_processed / elapsed if elapsed > 0 else 0
                         logger.info(f"Progress: {total_processed} rows, {rate:.1f} rows/sec")
+
+                    # Brief pause between active batches to avoid rate limits.
+                    time.sleep(BATCH_SLEEP_SEC)
                 else:
                     empty_batches += 1
-                    # Exponential backoff when both queues are empty
+                    # Exponential back-off when both queues are empty.
                     sleep_time = min(BATCH_SLEEP_SEC * (2 ** empty_batches), 30)
                     time.sleep(sleep_time)
 
-                # Brief sleep between batches to avoid rate limits
-                if total_in_cycle > 0:
-                    time.sleep(BATCH_SLEEP_SEC)
+            except CircuitBreakerOpenError as cbe:
+                # OpenAI is down. Wait for the reset window before trying again;
+                # no need to reconnect to the database.
+                wait = max(0.0, _circuit_open_until - time.time())
+                logger.warning(
+                    f"Circuit breaker open — pausing embedding for {wait:.0f}s: {cbe}"
+                )
+                # Sleep in small increments so SIGTERM is still handled promptly.
+                deadline = time.time() + wait
+                while not _shutdown and time.time() < deadline:
+                    time.sleep(min(5, deadline - time.time()))
+
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                # Connection-level error (dropped socket, server restart, etc.).
+                logger.error(f"Database connection error: {e} — will reconnect")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                time.sleep(ERROR_SLEEP_SEC)
+                break  # exit inner loop → outer loop will reconnect
 
             except psycopg2.Error as e:
+                # Other database errors (constraint violation, syntax, etc.) —
+                # recoverable; roll back and keep running.
                 logger.error(f"Database error: {e}")
-                conn.rollback()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 time.sleep(ERROR_SLEEP_SEC)
 
-        # Final stats
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            stats = get_embedding_stats(cur)
-            elapsed = time.time() - start_time
-            logger.info(f"Final stats: total={stats['total']}, "
-                       f"with_1536={stats['with_1536']}, "
-                       f"coverage={stats['coverage_pct']}%")
-            logger.info(f"Session: {total_processed} rows in {elapsed:.1f}s")
+        # -- Clean-up after inner loop exits (shutdown or reconnect) -------
+        if conn is not None:
+            try:
+                # Attempt final stats only on clean shutdown (not mid-reconnect).
+                if _shutdown:
+                    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                        stats = get_embedding_stats(cur)
+                        elapsed = time.time() - start_time
+                        logger.info(
+                            f"Final stats: total={stats['total']}, "
+                            f"with_1536={stats['with_1536']}, "
+                            f"coverage={stats['coverage_pct']}%"
+                        )
+                        logger.info(f"Session: {total_processed} rows in {elapsed:.1f}s")
+            except Exception as e:
+                logger.warning(f"Could not fetch final stats: {e}")
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     return 0
 
