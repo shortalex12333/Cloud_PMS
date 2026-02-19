@@ -123,7 +123,7 @@ export const LensContainer = React.forwardRef<
         // Surface: darkest app background
         'bg-surface-base',
         // Z-index: modal layer (40 per --z-modal token)
-        'z-[var(--z-modal)]',
+        'z-modal',
         // Independent scroll — lens content scrolls, body does not
         'overflow-y-auto overflow-x-hidden',
         // Overscroll bounce prevention (iOS Safari)

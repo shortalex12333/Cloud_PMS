@@ -36,19 +36,19 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
 
   const getStockStatus = () => {
     if (isOutOfStock) {
-      return { label: 'Out of Stock', color: 'text-red-700 bg-red-50 border-red-200' };
+      return { label: 'Out of Stock', pillClass: 'status-pill status-pill-critical' };
     }
     if (isLowStock) {
-      return { label: 'Low Stock', color: 'text-orange-700 bg-orange-50 border-orange-200' };
+      return { label: 'Low Stock', pillClass: 'status-pill status-pill-warning' };
     }
-    return { label: 'In Stock', color: 'text-green-700 bg-green-50 border-green-200' };
+    return { label: 'In Stock', pillClass: 'status-pill status-pill-success' };
   };
 
   const stockStatus = getStockStatus();
 
   return (
     <div
-      className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+      className="entity-card"
       data-testid={entityType === 'inventory' ? 'inventory-card' : 'part-card'}
       data-entity-type={entityType}
       data-entity-id={part.id}
@@ -68,12 +68,7 @@ export function PartCard({ part, actions = [] as MicroAction[], entityType = 'pa
           {/* Name & Stock Status */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <h3 className="font-medium text-foreground">{part.part_name}</h3>
-            <span
-              className={cn(
-                'text-xs px-2 py-0.5 rounded-full border font-medium uppercase',
-                stockStatus.color
-              )}
-            >
+            <span className={stockStatus.pillClass}>
               {stockStatus.label}
             </span>
           </div>

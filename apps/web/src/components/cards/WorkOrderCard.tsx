@@ -201,30 +201,26 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
     switch (status) {
       case 'completed':
         return {
-          bg: 'bg-status-success-bg',
-          text: 'text-status-success',
-          icon: <CheckCircle2 className="h-5 w-5 text-status-success" />,
+          pillClass: 'status-pill status-pill-success',
+          icon: <CheckCircle2 className="h-5 w-5" />,
           label: 'Completed',
         };
       case 'in_progress':
         return {
-          bg: 'bg-brand-muted',
-          text: 'text-brand-interactive',
-          icon: <Clock className="h-5 w-5 text-brand-interactive" />,
+          pillClass: 'status-pill status-pill-warning',
+          icon: <Clock className="h-5 w-5" />,
           label: 'In Progress',
         };
       case 'cancelled':
         return {
-          bg: 'bg-txt-tertiary/10',
-          text: 'text-txt-tertiary',
-          icon: <AlertCircle className="h-5 w-5 text-txt-tertiary" />,
+          pillClass: 'status-pill status-pill-neutral',
+          icon: <AlertCircle className="h-5 w-5" />,
           label: 'Cancelled',
         };
-      default:
+      default: // pending
         return {
-          bg: 'bg-status-warning-bg',
-          text: 'text-status-warning',
-          icon: <Wrench className="h-5 w-5 text-status-warning" />,
+          pillClass: 'status-pill status-pill-neutral',
+          icon: <Wrench className="h-5 w-5" />,
           label: 'Pending',
         };
     }
@@ -234,13 +230,13 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
   const getPriorityStyles = (priority: string) => {
     switch (priority) {
       case 'urgent':
-        return { bg: 'bg-status-critical-bg', text: 'text-status-critical', label: 'Urgent' };
+        return { pillClass: 'status-pill status-pill-critical', label: 'Urgent' };
       case 'high':
-        return { bg: 'bg-status-warning-bg', text: 'text-status-warning', label: 'High' };
+        return { pillClass: 'status-pill status-pill-warning', label: 'High' };
       case 'medium':
-        return { bg: 'bg-status-warning-bg', text: 'text-status-warning', label: 'Medium' };
+        return { pillClass: 'status-pill status-pill-warning', label: 'Medium' };
       default:
-        return { bg: 'bg-txt-tertiary/10', text: 'text-txt-tertiary', label: 'Low' };
+        return { pillClass: 'status-pill status-pill-neutral', label: 'Low' };
     }
   };
 
@@ -265,17 +261,11 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
       <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         {/* Status & Priority Row */}
         <div className="flex items-center gap-ds-2 mb-ds-4">
-          <span className={cn(
-            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
-            status.bg, status.text
-          )}>
+          <span className={status.pillClass}>
             {status.icon}
             {status.label}
           </span>
-          <span className={cn(
-            'inline-flex items-center px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
-            priority.bg, priority.text
-          )}>
+          <span className={priority.pillClass}>
             {priority.label}
           </span>
         </div>
@@ -341,7 +331,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             />
           ))}
           {actions.length > 4 && (
-            <button className="h-8 px-ds-2 text-celeste-sm text-txt-tertiary hover:text-txt-primary transition-colors">
+            <button className="btn-icon">
               <ChevronRight className="h-4 w-4" />
             </button>
           )}
@@ -574,7 +564,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
                 </div>
                 <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-status-success transition-all duration-200"
+                    className="h-full bg-status-success transition-all duration-normal"
                     style={{
                       width: `${(checklist.filter(c => c.is_completed).length / checklist.length) * 100}%`
                     }}

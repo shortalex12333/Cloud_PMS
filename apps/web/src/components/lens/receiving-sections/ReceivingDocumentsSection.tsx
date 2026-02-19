@@ -164,7 +164,7 @@ function DocumentCard({ doc }: DocumentCardProps) {
         // Divider between cards
         'border-b border-surface-border-subtle last:border-b-0',
         // Interactive styling
-        'cursor-pointer hover:bg-surface-hover transition-colors duration-150',
+        'cursor-pointer hover:bg-surface-hover transition-colors duration-fast',
         // Focus state for accessibility
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-interactive'
       )}

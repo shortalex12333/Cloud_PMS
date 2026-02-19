@@ -44,7 +44,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.c
  * useEquipmentActions
  *
  * Returns typed action helpers for all equipment operations.
- * Each helper calls POST /v1/equipment/{endpoint} with JWT auth.
+ * Each helper calls POST /v1/actions/execute with action name and JWT auth.
  *
  * @param equipmentId - UUID of the equipment in scope
  */
@@ -58,7 +58,7 @@ export function useEquipmentActions(equipmentId: string) {
   // -------------------------------------------------------------------------
 
   const execute = useCallback(
-    async (endpoint: string, payload: Record<string, unknown>): Promise<ActionResult> => {
+    async (actionName: string, payload: Record<string, unknown>): Promise<ActionResult> => {
       if (!session?.access_token) {
         return { success: false, error: 'Not authenticated' };
       }
@@ -67,16 +67,20 @@ export function useEquipmentActions(equipmentId: string) {
       setError(null);
 
       try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        // Use unified action router endpoint - /v1/actions/execute
+        const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            yacht_id: user?.yachtId,
-            equipment_id: equipmentId,
-            ...payload,
+            action: actionName,
+            context: {
+              yacht_id: user?.yachtId,
+              equipment_id: equipmentId,
+            },
+            payload,
           }),
         });
 
@@ -108,21 +112,21 @@ export function useEquipmentActions(equipmentId: string) {
 
   /** view_equipment — log a view event for this equipment */
   const viewEquipment = useCallback(
-    () => execute('/v1/equipment/view', {}),
+    () => execute('view_equipment', {}),
     [execute]
   );
 
   /** update_equipment — update editable fields (name, location, status, etc.) */
   const updateEquipment = useCallback(
     (changes: Record<string, unknown>) =>
-      execute('/v1/equipment/update', changes),
+      execute('update_equipment', changes),
     [execute]
   );
 
   /** link_document — attach a document (manual, certificate, etc.) */
   const linkDocument = useCallback(
     (documentUrl: string, title: string, documentType?: string) =>
-      execute('/v1/equipment/link-document', {
+      execute('link_document_to_equipment', {
         document_url: documentUrl,
         title,
         document_type: documentType,
@@ -136,7 +140,7 @@ export function useEquipmentActions(equipmentId: string) {
    */
   const createWorkOrder = useCallback(
     (equipId: string, overrides?: Record<string, unknown>) =>
-      execute('/v1/equipment/create-work-order', {
+      execute('create_work_order_from_equipment', {
         equipment_id: equipId,
         ...overrides,
       }),
@@ -149,7 +153,7 @@ export function useEquipmentActions(equipmentId: string) {
    */
   const reportFault = useCallback(
     (equipId: string, overrides?: Record<string, unknown>) =>
-      execute('/v1/equipment/report-fault', {
+      execute('report_fault', {
         equipment_id: equipId,
         ...overrides,
       }),
@@ -162,7 +166,7 @@ export function useEquipmentActions(equipmentId: string) {
    */
   const logHours = useCallback(
     (equipId: string, hoursReading: number, readingType?: string, notes?: string) =>
-      execute('/v1/equipment/log-hours', {
+      execute('log_equipment_hours', {
         equipment_id: equipId,
         hours_reading: hoursReading,
         reading_type: readingType ?? 'manual',

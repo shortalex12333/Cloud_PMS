@@ -308,7 +308,7 @@ export function ReceivingDocumentUpload({
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+    <div className="section-container p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         {isNewReceiving ? (

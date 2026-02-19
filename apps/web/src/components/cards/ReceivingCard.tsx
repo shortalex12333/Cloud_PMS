@@ -66,26 +66,26 @@ export function ReceivingCard({
         return {
           label: 'Accepted',
           icon: CheckCircle,
-          color: 'text-restricted-green bg-restricted-green/10 border-restricted-green/30',
+          pillClass: 'status-pill status-pill-success',
         };
       case 'rejected':
         return {
           label: 'Rejected',
           icon: XCircle,
-          color: 'text-restricted-red bg-restricted-red/10 border-restricted-red/30',
+          pillClass: 'status-pill status-pill-critical',
         };
       case 'in_review':
         return {
           label: 'In Review',
           icon: AlertCircle,
-          color: 'text-restricted-yellow bg-restricted-yellow/10 border-restricted-yellow/30',
+          pillClass: 'status-pill status-pill-warning',
         };
       case 'draft':
       default:
         return {
           label: 'Draft',
           icon: Clock,
-          color: 'text-celeste-text-muted bg-celeste-bg-secondary border-celeste-border',
+          pillClass: 'status-pill status-pill-neutral',
         };
     }
   };
@@ -113,7 +113,7 @@ export function ReceivingCard({
 
   return (
     <div
-      className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+      className="entity-card"
       data-testid="receiving-card"
       data-entity-type="receiving"
       data-entity-id={receiving.id}
@@ -131,12 +131,7 @@ export function ReceivingCard({
             <h3 className="font-medium text-foreground">
               {receiving.vendor_name || 'Receiving Record'}
             </h3>
-            <span
-              className={cn(
-                'text-xs px-2 py-0.5 rounded-full border font-medium uppercase inline-flex items-center gap-1',
-                statusInfo.color
-              )}
-            >
+            <span className={statusInfo.pillClass}>
               <StatusIcon className="h-3 w-3" />
               {statusInfo.label}
             </span>

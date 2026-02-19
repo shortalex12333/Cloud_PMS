@@ -160,7 +160,7 @@ export function ReportFaultModal({
               id="title"
               {...register('title')}
               placeholder="Brief summary of the issue"
-              className={errors.title ? 'border-red-500' : ''}
+              className={errors.title ? 'input-field-error' : ''}
             />
             {errors.title && (
               <p className="text-sm text-red-600">{errors.title.message}</p>
@@ -177,7 +177,7 @@ export function ReportFaultModal({
               {...register('description')}
               placeholder="Detailed description of the fault, symptoms, and any relevant observations..."
               rows={5}
-              className={errors.description ? 'border-red-500' : ''}
+              className={errors.description ? 'input-field-error' : ''}
             />
             {errors.description && (
               <p className="text-sm text-red-600">{errors.description.message}</p>

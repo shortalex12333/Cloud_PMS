@@ -92,7 +92,7 @@ function DocumentCard({ doc }: DocumentCardProps) {
         // Divider between cards
         'border-b border-surface-border-subtle last:border-b-0',
         // Interactive styling
-        doc.url && 'cursor-pointer hover:bg-surface-elevated transition-colors duration-[var(--duration-fast)]',
+        doc.url && 'cursor-pointer hover:bg-surface-elevated transition-colors duration-fast',
         !doc.url && 'cursor-default'
       )}
     >

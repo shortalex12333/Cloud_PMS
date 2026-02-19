@@ -80,7 +80,7 @@ export const SectionContainer = React.forwardRef<
           stickyTop === 0 && 'top-0',
           'h-11 px-4',
           // Transitions between states
-          'transition-colors duration-200',
+          'transition-colors duration-normal',
           // Normal state: transparent/surface-primary
           // Pinned state: elevated surface
           isPinned ? 'bg-surface-elevated' : 'bg-surface-primary',
@@ -92,9 +92,9 @@ export const SectionContainer = React.forwardRef<
           {icon && (
             <span className="text-txt-secondary flex-shrink-0">{icon}</span>
           )}
-          <h2 className="text-[14px] font-semibold text-txt-primary">{title}</h2>
+          <h2 className="text-section text-txt-primary">{title}</h2>
           {typeof count === 'number' && (
-            <span className="text-[12px] text-txt-tertiary font-medium">
+            <span className="text-caption text-txt-tertiary">
               ({count})
             </span>
           )}
@@ -103,13 +103,7 @@ export const SectionContainer = React.forwardRef<
         {action && (
           <button
             onClick={action.onClick}
-            className={cn(
-              // Ghost button style for action
-              'text-[13px] font-medium text-brand-interactive',
-              'hover:text-brand-hover transition-colors',
-              'px-2 py-1 -mr-2 rounded-sm',
-              'hover:bg-brand-muted'
-            )}
+            className="btn-ghost"
           >
             {action.label}
           </button>

@@ -32,21 +32,21 @@ interface EquipmentCardProps {
 }
 
 export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
-  const getStatusColor = (status: string) => {
+  const getStatusPillClass = (status: string) => {
     switch (status) {
       case 'operational':
-        return 'text-restricted-green bg-restricted-green/10 border-restricted-green/30';
+        return 'status-pill status-pill-success';
       case 'maintenance':
-        return 'text-celeste-accent bg-celeste-accent/10 border-celeste-accent/30';
+        return 'status-pill status-pill-warning';
       case 'faulty':
-        return 'text-restricted-red bg-restricted-red/10 border-restricted-red/30';
-      default:
-        return 'text-celeste-text-muted bg-celeste-bg-secondary border-celeste-border';
+        return 'status-pill status-pill-critical';
+      default: // offline
+        return 'status-pill status-pill-neutral';
     }
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4 hover:bg-accent/50 transition-colors">
+    <div className="entity-card">
       <div className="flex items-start gap-3">
         {/* Equipment Icon */}
         <div className="mt-1 text-primary">
@@ -58,12 +58,7 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
           {/* Name & Status */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <h3 className="font-medium text-foreground">{equipment.name}</h3>
-            <span
-              className={cn(
-                'text-xs px-2 py-0.5 rounded-full border font-medium uppercase',
-                getStatusColor(equipment.status)
-              )}
-            >
+            <span className={getStatusPillClass(equipment.status)}>
               {equipment.status}
             </span>
           </div>

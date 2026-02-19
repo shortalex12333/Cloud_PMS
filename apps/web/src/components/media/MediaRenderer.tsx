@@ -147,7 +147,7 @@ function Lightbox({ file, resolvedUrl, onClose }: LightboxProps) {
   return (
     <div
       className={cn(
-        'fixed inset-0 z-[9999]',
+        'fixed inset-0 z-modal',
         'bg-black/90',
         'flex items-center justify-center',
         'p-4'
@@ -167,7 +167,7 @@ function Lightbox({ file, resolvedUrl, onClose }: LightboxProps) {
           'flex items-center justify-center',
           'w-10 h-10 rounded-full',
           'bg-surface-primary text-txt-primary',
-          'hover:bg-surface-hover transition-colors duration-150',
+          'hover:bg-surface-hover transition-colors duration-fast',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive'
         )}
         aria-label="Close lightbox"
@@ -339,7 +339,7 @@ export function MediaRenderer({ file, maxHeight = 240, className }: MediaRendere
             className={cn(
               'absolute inset-0 rounded-md',
               'flex items-center justify-center',
-              'opacity-0 group-hover:opacity-100 transition-opacity duration-150',
+              'opacity-0 group-hover:opacity-100 transition-opacity duration-fast',
               'bg-black/20'
             )}
             aria-hidden="true"

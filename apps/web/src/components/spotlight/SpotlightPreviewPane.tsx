@@ -80,7 +80,7 @@ export default function SpotlightPreviewPane({
         'rounded-celeste-xl',
         'shadow-celeste-lg',
         'overflow-hidden',
-        'animate-in slide-in-from-right-2 duration-200'
+        'animate-in slide-in-from-right-2 duration-normal'
       )}
     >
       {/* Header */}

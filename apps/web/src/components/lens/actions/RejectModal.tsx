@@ -187,7 +187,7 @@ export function RejectModal({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+            className="fixed inset-0 z-sidebar bg-black/60"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -199,7 +199,7 @@ export function RejectModal({
             aria-labelledby="reject-modal-title"
             className={cn(
               'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-              'z-[var(--z-modal)]',
+              'z-modal',
               'bg-surface-elevated border border-surface-border',
               'rounded-lg shadow-lg',
               'w-full max-w-md mx-4'
@@ -209,12 +209,12 @@ export function RejectModal({
             <div className="px-6 pt-6 pb-4 border-b border-surface-border">
               <h2
                 id="reject-modal-title"
-                className="text-[16px] font-semibold text-txt-primary leading-[1.4]"
+                className="text-heading text-txt-primary"
               >
                 Reject Receiving Record
               </h2>
               {entityTitle && (
-                <p className="mt-1 text-[13px] text-txt-secondary leading-[1.4] truncate">
+                <p className="mt-1 text-label text-txt-secondary truncate">
                   {entityTitle}
                 </p>
               )}
@@ -227,7 +227,7 @@ export function RejectModal({
                 <div>
                   <label
                     htmlFor="rejection-reason"
-                    className="block text-[13px] font-medium text-txt-primary mb-2"
+                    className="block text-label text-txt-primary mb-2"
                   >
                     Reason for rejection
                     <span className="text-status-critical ml-1" aria-hidden="true">*</span>
@@ -242,10 +242,9 @@ export function RejectModal({
                       'w-full',
                       'bg-surface-primary border border-surface-border rounded-md',
                       'px-3 py-2 pr-8',
-                      'text-[14px] text-txt-primary',
-                      'leading-[1.6]',
+                      'text-body text-txt-primary',
                       'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                      'transition-colors duration-150',
+                      'transition-colors duration-fast',
                       'appearance-none',
                       // Placeholder color when empty
                       selectedReason === '' && 'text-txt-tertiary'
@@ -267,7 +266,7 @@ export function RejectModal({
                   <div>
                     <label
                       htmlFor="custom-rejection-reason"
-                      className="block text-[13px] font-medium text-txt-primary mb-2"
+                      className="block text-label text-txt-primary mb-2"
                     >
                       Please describe the reason
                       <span className="text-status-critical ml-1" aria-hidden="true">*</span>
@@ -284,10 +283,10 @@ export function RejectModal({
                         'w-full',
                         'bg-surface-primary border border-surface-border rounded-md',
                         'px-3 py-2',
-                        'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
-                        'leading-[1.6] resize-y',
+                        'text-body text-txt-primary placeholder:text-txt-tertiary',
+                        'resize-y',
                         'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                        'transition-colors duration-150'
+                        'transition-colors duration-fast'
                       )}
                     />
                   </div>
@@ -309,7 +308,7 @@ export function RejectModal({
                     <circle cx="12" cy="12" r="10" />
                     <path d="M12 16v-4M12 8h.01" />
                   </svg>
-                  <p className="text-[12px] text-txt-secondary leading-[1.5]">
+                  <p className="text-caption text-txt-secondary">
                     Rejection requires your digital signature. You will be asked to sign on the next screen.
                     This action is recorded in the audit log and cannot be undone.
                   </p>

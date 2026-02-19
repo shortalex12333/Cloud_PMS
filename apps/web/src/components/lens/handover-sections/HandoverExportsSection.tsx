@@ -52,7 +52,7 @@ function HandoverExportRow({ export_, onView }: HandoverExportRowProps) {
               Handover Export — {formatDate(export_.export_date)}
             </span>
             {export_.department && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-status-neutral-bg text-status-neutral">
+              <span className="status-pill status-pill-neutral">
                 {export_.department}
               </span>
             )}

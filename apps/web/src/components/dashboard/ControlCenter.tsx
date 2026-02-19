@@ -145,7 +145,7 @@ export default function ControlCenter() {
               <div
                 key={module.id}
                 className={cn(
-                  'transition-all duration-300 ease-out',
+                  'transition-all duration-slow ease-out',
                   module.span === 2 && 'md:col-span-2'
                 )}
               >

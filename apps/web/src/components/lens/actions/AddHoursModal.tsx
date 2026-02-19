@@ -81,7 +81,7 @@ export function AddHoursModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -93,7 +93,7 @@ export function AddHoursModal({
         aria-labelledby="add-hours-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           'bg-surface-elevated border border-surface-border',
           'rounded-lg shadow-lg',
           'w-full max-w-md mx-4'
@@ -103,12 +103,12 @@ export function AddHoursModal({
         <div className="px-6 pt-6 pb-4 border-b border-surface-border">
           <h2
             id="add-hours-title"
-            className="text-[16px] font-semibold text-txt-primary leading-[1.4]"
+            className="text-heading text-txt-primary"
           >
             Log Hours
           </h2>
           {workOrderTitle && (
-            <p className="mt-1 text-[13px] text-txt-secondary leading-[1.4] truncate">
+            <p className="mt-1 text-label text-txt-secondary truncate">
               {workOrderTitle}
             </p>
           )}
@@ -121,7 +121,7 @@ export function AddHoursModal({
             <div>
               <label
                 htmlFor="hours-input"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Hours worked
               </label>
@@ -138,10 +138,9 @@ export function AddHoursModal({
                   'w-full',
                   'bg-surface-primary border border-surface-border rounded-md',
                   'px-3 py-2',
-                  'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
-                  'leading-[1.6]',
+                  'text-body text-txt-primary placeholder:text-txt-tertiary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
             </div>
@@ -150,7 +149,7 @@ export function AddHoursModal({
             <div>
               <label
                 htmlFor="hours-notes"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Notes (optional)
               </label>
@@ -164,10 +163,10 @@ export function AddHoursModal({
                   'w-full',
                   'bg-surface-primary border border-surface-border rounded-md',
                   'px-3 py-2',
-                  'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
-                  'leading-[1.6] resize-y',
+                  'text-body text-txt-primary placeholder:text-txt-tertiary',
+                  'resize-y',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
             </div>

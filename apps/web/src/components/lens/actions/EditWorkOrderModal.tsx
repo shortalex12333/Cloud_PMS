@@ -125,17 +125,16 @@ export function EditWorkOrderModal({
     'w-full',
     'bg-surface-primary border border-surface-border rounded-md',
     'px-3 py-2',
-    'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
-    'leading-[1.6]',
+    'text-body text-txt-primary placeholder:text-txt-tertiary',
     'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-    'transition-colors duration-150'
+    'transition-colors duration-fast'
   );
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -147,7 +146,7 @@ export function EditWorkOrderModal({
         aria-labelledby="edit-wo-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           'bg-surface-elevated border border-surface-border',
           'rounded-lg shadow-lg',
           'w-full max-w-lg mx-4',
@@ -158,7 +157,7 @@ export function EditWorkOrderModal({
         <div className="px-6 pt-6 pb-4 border-b border-surface-border">
           <h2
             id="edit-wo-title"
-            className="text-[16px] font-semibold text-txt-primary leading-[1.4]"
+            className="text-heading text-txt-primary"
           >
             Edit Work Order
           </h2>
@@ -171,7 +170,7 @@ export function EditWorkOrderModal({
             <div>
               <label
                 htmlFor="wo-title"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Title
               </label>
@@ -190,7 +189,7 @@ export function EditWorkOrderModal({
             <div>
               <label
                 htmlFor="wo-description"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Description
               </label>
@@ -209,7 +208,7 @@ export function EditWorkOrderModal({
               <div>
                 <label
                   htmlFor="wo-priority"
-                  className="block text-[13px] font-medium text-txt-primary mb-2"
+                  className="block text-label text-txt-primary mb-2"
                 >
                   Priority
                 </label>
@@ -229,7 +228,7 @@ export function EditWorkOrderModal({
               <div>
                 <label
                   htmlFor="wo-type"
-                  className="block text-[13px] font-medium text-txt-primary mb-2"
+                  className="block text-label text-txt-primary mb-2"
                 >
                   Type
                 </label>
@@ -252,7 +251,7 @@ export function EditWorkOrderModal({
             <div>
               <label
                 htmlFor="wo-due-date"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Due Date
               </label>

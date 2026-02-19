@@ -95,11 +95,11 @@ function NoteRow({ note }: NoteRowProps) {
     >
       {/* Author + timestamp row */}
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-[13px] font-medium text-txt-primary leading-[1.4]">
+        <span className="text-label text-txt-primary">
           {note.author}
         </span>
         <span
-          className="text-[12px] text-txt-tertiary leading-[1.4]"
+          className="text-caption text-txt-tertiary"
           title={new Date(note.created_at).toLocaleString()}
         >
           {formatTimestamp(note.created_at)}
@@ -110,7 +110,7 @@ function NoteRow({ note }: NoteRowProps) {
       <div>
         <p
           className={cn(
-            'text-[14px] font-normal text-txt-primary leading-[1.6]',
+            'text-body text-txt-primary',
             // Max line length from UI_SPEC.md: 680px, achieved via parent max-width
             !isExpanded && needsTruncation && 'line-clamp-3'
           )}
@@ -122,8 +122,8 @@ function NoteRow({ note }: NoteRowProps) {
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className={cn(
-              'mt-1 text-[13px] font-medium text-brand-interactive',
-              'hover:text-brand-hover transition-colors duration-150',
+              'mt-1 text-action text-brand-interactive',
+              'hover:text-brand-hover transition-colors duration-fast',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm'
             )}
           >
@@ -162,7 +162,7 @@ export function NotesSection({ notes, onAddNote, canAddNote, stickyTop }: NotesS
       {notes.length === 0 ? (
         // Contextual empty state per UI_SPEC.md language rules
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="text-body text-txt-secondary">
             No notes yet. Add the first note to document progress.
           </p>
           {canAddNote && (

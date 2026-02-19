@@ -417,13 +417,13 @@ export default function DocumentSituationView({
   const showAddToHandover = shouldShowAddToHandoverButton(classification);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-surface-base flex flex-col">
+    <div className="fixed inset-0 z-modal bg-surface-base flex flex-col">
       {/* Header - Fixed at top */}
       <div className="flex-shrink-0 h-14 bg-surface-elevated border-b border-surface-border px-4 flex items-center justify-between">
         {/* Left: Back to Search */}
         <button
           onClick={onClose}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-celeste-text-title hover:bg-celeste-surface transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-celeste-text-title hover:bg-celeste-surface transition-colors duration-fast"
         >
           <X className="w-4 h-4" />
           <span className="text-sm font-medium">Back to Search</span>
@@ -445,7 +445,7 @@ export default function DocumentSituationView({
               setShowFindDialog(true);
               document.execCommand('find');
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors duration-fast"
             title="Find in document (Cmd+F)"
           >
             <Search className="w-4 h-4" />
@@ -455,7 +455,7 @@ export default function DocumentSituationView({
           {/* Reload */}
           <button
             onClick={handleReload}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors duration-fast"
             title="Reload document"
           >
             <RefreshCw className="w-4 h-4" />
@@ -465,7 +465,7 @@ export default function DocumentSituationView({
           {/* Download */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-txt-secondary hover:text-celeste-text-title hover:bg-celeste-surface transition-colors duration-fast"
             title="Download document"
           >
             <Download className="w-4 h-4" />
@@ -475,7 +475,7 @@ export default function DocumentSituationView({
           {showAddToHandover && (
             <button
               onClick={handleAddToHandover}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-celeste-blue text-celeste-text-title hover:bg-celeste-blue-secondary transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-celeste-blue text-celeste-text-title hover:bg-celeste-blue-secondary transition-colors duration-fast"
               title="Add to handover"
             >
               <Plus className="w-4 h-4" />
@@ -508,7 +508,7 @@ export default function DocumentSituationView({
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-2 bg-celeste-surface hover:bg-celeste-surface-hover rounded-md text-celeste-text-title text-sm transition-colors"
+                  className="flex-1 px-4 py-2 bg-celeste-surface hover:bg-celeste-surface-hover rounded-md text-celeste-text-title text-sm transition-colors duration-fast"
                 >
                   Back to Search
                 </button>
@@ -540,7 +540,7 @@ export default function DocumentSituationView({
         <div
           className={cn(
             'fixed top-20 right-4 bg-surface-elevated border border-surface-border rounded-lg p-3',
-            'shadow-celeste-lg animate-in fade-in slide-in-from-top-2 duration-200'
+            'shadow-celeste-lg animate-in fade-in slide-in-from-top-2 duration-normal'
           )}
         >
           <p className="text-sm text-celeste-text-title">

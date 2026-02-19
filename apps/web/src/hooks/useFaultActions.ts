@@ -44,7 +44,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.c
  * useFaultActions
  *
  * Returns typed action helpers for all fault operations.
- * Each helper calls POST /v1/faults/{endpoint} with JWT auth.
+ * Each helper calls POST /v1/actions/execute with action name and JWT auth.
  *
  * @param faultId - UUID of the fault in scope
  */
@@ -55,11 +55,11 @@ export function useFaultActions(faultId: string) {
 
   // -------------------------------------------------------------------------
   // Internal executor — wraps every action call
-  // Injects yacht_id + fault_id automatically (no repetition at call site)
+  // Injects yacht_id + fault_id automatically via context
   // -------------------------------------------------------------------------
 
   const execute = useCallback(
-    async (endpoint: string, payload: Record<string, unknown>): Promise<ActionResult> => {
+    async (actionName: string, payload: Record<string, unknown>): Promise<ActionResult> => {
       if (!session?.access_token) {
         return { success: false, error: 'Not authenticated' };
       }
@@ -68,16 +68,20 @@ export function useFaultActions(faultId: string) {
       setError(null);
 
       try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        // Use unified action router endpoint - /v1/actions/execute
+        const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            yacht_id: user?.yachtId,
-            fault_id: faultId,
-            ...payload,
+            action: actionName,
+            context: {
+              yacht_id: user?.yachtId,
+              fault_id: faultId,
+            },
+            payload,
           }),
         });
 
@@ -110,40 +114,40 @@ export function useFaultActions(faultId: string) {
 
   /** acknowledge_fault — HOD+ acknowledges the fault (sets acknowledged_at) */
   const acknowledgeFault = useCallback(
-    () => execute('/v1/faults/acknowledge', {}),
+    () => execute('acknowledge_fault', {}),
     [execute]
   );
 
   /** close_fault — HOD+ closes/resolves the fault */
   const closeFault = useCallback(
     (resolutionNotes?: string) =>
-      execute('/v1/faults/close', { resolution_notes: resolutionNotes }),
+      execute('close_fault', { resolution_notes: resolutionNotes }),
     [execute]
   );
 
   /** diagnose_fault — HOD+ records root cause analysis */
   const diagnoseFault = useCallback(
     (diagnosis: string, recommendedAction?: string) =>
-      execute('/v1/faults/diagnose', { diagnosis, recommended_action: recommendedAction }),
+      execute('diagnose_fault', { diagnosis, recommended_action: recommendedAction }),
     [execute]
   );
 
   /** reopen_fault — HOD+ reopens a previously closed fault */
   const reopenFault = useCallback(
-    (reason?: string) => execute('/v1/faults/reopen', { reason }),
+    (reason?: string) => execute('reopen_fault', { reason }),
     [execute]
   );
 
   /** add_fault_photo — any crew member or HOD adds a photo */
   const addPhoto = useCallback(
     (photoUrl: string, caption?: string) =>
-      execute('/v1/faults/add-photo', { photo_url: photoUrl, caption }),
+      execute('add_fault_photo', { photo_url: photoUrl, caption }),
     [execute]
   );
 
   /** add_fault_note — any crew member or HOD adds a text note */
   const addNote = useCallback(
-    (noteText: string) => execute('/v1/faults/add-note', { text: noteText }),
+    (noteText: string) => execute('add_fault_note', { text: noteText }),
     [execute]
   );
 

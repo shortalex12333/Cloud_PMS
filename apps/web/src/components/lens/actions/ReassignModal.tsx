@@ -87,7 +87,7 @@ export function ReassignModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -99,7 +99,7 @@ export function ReassignModal({
         aria-labelledby="reassign-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           'bg-surface-elevated border border-surface-border',
           'rounded-lg shadow-lg',
           'w-full max-w-md mx-4'
@@ -109,11 +109,11 @@ export function ReassignModal({
         <div className="px-6 pt-6 pb-4 border-b border-surface-border">
           <h2
             id="reassign-title"
-            className="text-[16px] font-semibold text-txt-primary leading-[1.4]"
+            className="text-heading text-txt-primary"
           >
             Reassign Work Order
           </h2>
-          <p className="mt-1 text-[13px] text-txt-secondary leading-[1.4]">
+          <p className="mt-1 text-label text-txt-secondary">
             Select a crew member to take ownership.
           </p>
         </div>
@@ -123,13 +123,13 @@ export function ReassignModal({
           <div className="px-6 py-4">
             <label
               htmlFor="reassign-select"
-              className="block text-[13px] font-medium text-txt-primary mb-2"
+              className="block text-label text-txt-primary mb-2"
             >
               Assign to
             </label>
 
             {availableCrew.length === 0 ? (
-              <p className="text-[14px] text-txt-secondary">
+              <p className="text-body text-txt-secondary">
                 No other crew members available.
               </p>
             ) : (
@@ -142,9 +142,9 @@ export function ReassignModal({
                   'w-full',
                   'bg-surface-primary border border-surface-border rounded-md',
                   'px-3 py-2',
-                  'text-[14px] text-txt-primary',
+                  'text-body text-txt-primary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               >
                 <option value="">Select crew member...</option>

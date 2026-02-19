@@ -225,11 +225,11 @@ function FaultNotesSection({ notes, onAddNote, canAddNote }: FaultNotesSectionPr
                     <span className="text-celeste-xs font-medium text-zinc-900 dark:text-zinc-100">
                       {note.author_name || 'Unknown'}
                     </span>
-                    <span className={cn('text-[10px] font-semibold uppercase tracking-wide', styles.labelClass)}>
+                    <span className={cn('text-overline', styles.labelClass)}>
                       {styles.label}
                     </span>
                   </div>
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                  <span className="text-overline text-zinc-400 dark:text-zinc-500">
                     {formatNoteTimestamp(note.created_at)}
                   </span>
                 </div>
@@ -330,31 +330,31 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
     }
   }, [decisionsLoading, showDiagnoseButton]);
 
-  // Get severity styling (Apple-style: subtle background, muted colors)
+  // Get severity styling using semantic status-pill classes
   const getSeverityStyles = (severity: string) => {
     switch (severity) {
       case 'critical':
         return {
-          dot: 'celeste-dot-critical',
-          badge: 'celeste-badge-critical',
+          dot: 'status-dot status-dot-critical',
+          pillClass: 'status-pill status-pill-critical',
           label: 'Critical',
         };
       case 'high':
         return {
-          dot: 'celeste-dot-high',
-          badge: 'celeste-badge-high',
+          dot: 'status-dot status-dot-warning',
+          pillClass: 'status-pill status-pill-warning',
           label: 'High',
         };
       case 'medium':
         return {
-          dot: 'celeste-dot-medium',
-          badge: 'celeste-badge-medium',
+          dot: 'status-dot status-dot-warning',
+          pillClass: 'status-pill status-pill-warning',
           label: 'Medium',
         };
       default:
         return {
-          dot: 'celeste-dot-low',
-          badge: 'celeste-badge-low',
+          dot: 'status-dot status-dot-neutral',
+          pillClass: 'status-pill status-pill-neutral',
           label: 'Low',
         };
     }
@@ -364,11 +364,11 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
 
   return (
     <>
-      <div className="celeste-card p-4 hover:shadow-[var(--shadow-md)] transition-shadow duration-200">
+      <div className="celeste-card p-4 hover:shadow-[var(--shadow-md)] transition-shadow duration-normal">
         <div className="flex items-start gap-3">
           {/* Severity Indicator - Minimal dot + icon */}
           <div className="flex flex-col items-center gap-2 pt-0.5">
-            <span className={cn('celeste-dot', severity.dot)} />
+            <span className={severity.dot} />
             <AlertTriangle className="h-4 w-4 text-zinc-400" />
           </div>
 
@@ -379,7 +379,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               <h3 className="text-celeste-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                 {fault.title}
               </h3>
-              <span className={cn('celeste-badge flex-shrink-0', severity.badge)}>
+              <span className={cn(severity.pillClass, 'flex-shrink-0')}>
                 {severity.label}
               </span>
             </div>
@@ -431,7 +431,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showDiagnoseButton && (
                 <button
                   onClick={() => setShowDiagnose(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="diagnose-fault-button"
                 >
                   <Stethoscope className="h-3.5 w-3.5" />
@@ -443,7 +443,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showManualButton && (
                 <button
                   onClick={() => setShowManual(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="view-manual-button"
                 >
                   <Book className="h-3.5 w-3.5" />
@@ -455,7 +455,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showHistoryButton && (
                 <button
                   onClick={() => setShowHistory(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="view-history-button"
                 >
                   <History className="h-3.5 w-3.5" />
@@ -467,7 +467,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showSuggestPartsButton && (
                 <button
                   onClick={() => setShowSuggestParts(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="suggest-parts-button"
                 >
                   <Package className="h-3.5 w-3.5" />
@@ -479,7 +479,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showAddNoteButton && (
                 <button
                   onClick={() => setShowAddNote(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="add-note-button"
                 >
                   <StickyNote className="h-3.5 w-3.5" />
@@ -491,7 +491,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showAddPhotoButton && (
                 <button
                   onClick={() => setShowAddPhoto(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="add-photo-button"
                 >
                   <Camera className="h-3.5 w-3.5" />
@@ -503,7 +503,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showAcknowledgeButton && (
                 <button
                   onClick={() => setShowAcknowledge(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="acknowledge-fault-button"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -515,7 +515,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showUpdateButton && (
                 <button
                   onClick={() => setShowUpdate(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="update-fault-button"
                 >
                   <Edit className="h-3.5 w-3.5" />
@@ -527,7 +527,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showHandoverButton && (
                 <button
                   onClick={() => setShowHandover(true)}
-                  className="celeste-button celeste-button-secondary h-8 px-3 text-celeste-sm"
+                  className="btn-ghost"
                   data-testid="add-to-handover-button"
                 >
                   <ClipboardList className="h-3.5 w-3.5" />
@@ -539,7 +539,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
               {showCreateWOButton && (
                 <button
                   onClick={() => setShowCreateWO(true)}
-                  className="celeste-button celeste-button-primary h-8 px-3 text-celeste-sm"
+                  className="btn-primary"
                   data-testid="create-work-order-button"
                 >
                   <Wrench className="h-3.5 w-3.5" />
@@ -567,7 +567,7 @@ export function FaultCard({ fault, actions = [], userRole, onAutoRun, onRefresh 
 
               {/* More indicator */}
               {actions.filter(a => a !== 'create_work_order').length > 2 && (
-                <button className="h-8 px-2 text-celeste-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                <button className="btn-icon">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               )}

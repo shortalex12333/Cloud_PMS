@@ -123,7 +123,7 @@ export function AddPartModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={handleCancel}
         aria-hidden="true"
       />
@@ -135,7 +135,7 @@ export function AddPartModal({
         aria-labelledby="add-part-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           'bg-surface-elevated border border-surface-border',
           'rounded-lg shadow-lg',
           'w-full max-w-md mx-4'
@@ -145,11 +145,11 @@ export function AddPartModal({
         <div className="px-6 pt-6 pb-4 border-b border-surface-border">
           <h2
             id="add-part-title"
-            className="text-[16px] font-semibold text-txt-primary leading-[1.4]"
+            className="text-heading text-txt-primary"
           >
             Add Part
           </h2>
-          <p className="mt-1 text-[13px] text-txt-secondary leading-[1.4]">
+          <p className="mt-1 text-label text-txt-secondary">
             Select a part from inventory and specify the quantity used.
           </p>
         </div>
@@ -161,7 +161,7 @@ export function AddPartModal({
             <div>
               <label
                 htmlFor="part-search"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Part
               </label>
@@ -180,9 +180,9 @@ export function AddPartModal({
                   'w-full',
                   'bg-surface-primary border border-surface-border rounded-md',
                   'px-3 py-2',
-                  'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
+                  'text-body text-txt-primary placeholder:text-txt-tertiary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
 
@@ -205,15 +205,15 @@ export function AddPartModal({
                       }}
                       className={cn(
                         'w-full text-left px-3 py-2',
-                        'hover:bg-surface-hover transition-colors duration-100',
+                        'hover:bg-surface-hover transition-colors duration-fast',
                         'border-b border-surface-border-subtle last:border-b-0'
                       )}
                     >
-                      <span className="block text-[14px] text-txt-primary">
+                      <span className="block text-body text-txt-primary">
                         {part.name}
                       </span>
                       {part.part_number && (
-                        <span className="block text-[12px] text-txt-tertiary">
+                        <span className="block text-caption text-txt-tertiary">
                           {part.part_number}
                           {part.stock !== undefined && ` — ${part.stock} in stock`}
                         </span>
@@ -225,14 +225,14 @@ export function AddPartModal({
 
               {/* No results */}
               {searchQuery && filteredParts.length === 0 && !selectedPartId && (
-                <p className="mt-2 text-[13px] text-txt-tertiary">
+                <p className="mt-2 text-label text-txt-tertiary">
                   No parts found. Check the Parts inventory.
                 </p>
               )}
 
               {/* Selected indicator */}
               {selectedPartId && selectedPart && (
-                <p className="mt-2 text-[13px] text-status-success">
+                <p className="mt-2 text-label text-status-success">
                   Selected: {selectedPart.name}
                   {selectedPart.part_number && ` (${selectedPart.part_number})`}
                 </p>
@@ -243,7 +243,7 @@ export function AddPartModal({
             <div>
               <label
                 htmlFor="part-quantity"
-                className="block text-[13px] font-medium text-txt-primary mb-2"
+                className="block text-label text-txt-primary mb-2"
               >
                 Quantity {selectedPart?.unit && `(${selectedPart.unit})`}
               </label>
@@ -258,9 +258,9 @@ export function AddPartModal({
                   'w-24',
                   'bg-surface-primary border border-surface-border rounded-md',
                   'px-3 py-2',
-                  'text-[14px] text-txt-primary',
+                  'text-body text-txt-primary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
             </div>

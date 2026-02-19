@@ -75,13 +75,7 @@ export function DocumentCard({ file, onClick, className }: DocumentCardProps) {
       onClick={onClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        // File Preview Card spec from UI_SPEC.md
-        'flex items-center gap-3',
-        'px-4 py-3 min-h-[48px]',
-        'bg-surface-primary rounded-md',
-        'cursor-pointer',
-        // Hover: surface-hover
-        'hover:bg-surface-hover transition-colors duration-150',
+        'file-preview-card',
         // Focus ring
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',
         'mb-2 last:mb-0',

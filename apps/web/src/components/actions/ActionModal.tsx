@@ -169,7 +169,7 @@ export default function ActionModal({
     || null;
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+    <div className="fixed inset-0 z-modal flex items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -183,7 +183,7 @@ export default function ActionModal({
           'relative z-10 w-full max-w-md mx-4',
           'bg-surface-elevated rounded-2xl shadow-celeste-lg',
           'border border-surface-border',
-          'animate-in fade-in-0 zoom-in-95 duration-200'
+          'animate-in fade-in-0 zoom-in-95 duration-normal'
         )}
         role="dialog"
         aria-modal="true"
@@ -207,7 +207,7 @@ export default function ActionModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors"
+            className="btn-icon"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -250,7 +250,7 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors'
+                        'transition-colors duration-fast'
                       )}
                       required
                     />
@@ -265,7 +265,7 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors'
+                        'transition-colors duration-fast'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
                       required
@@ -281,7 +281,7 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors'
+                        'transition-colors duration-fast'
                       )}
                       required
                     >
@@ -303,7 +303,7 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors'
+                        'transition-colors duration-fast'
                       )}
                       required
                       data-testid="source_type-select"
@@ -326,7 +326,7 @@ export default function ActionModal({
                         'bg-surface-base border border-surface-border',
                         'text-celeste-base text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
-                        'transition-colors'
+                        'transition-colors duration-fast'
                       )}
                       placeholder={`Enter ${label.toLowerCase()}...`}
                       min={field.includes('quantity') ? '1' : undefined}
@@ -411,12 +411,7 @@ export default function ActionModal({
             <button
               type="button"
               onClick={onClose}
-              className={cn(
-                'px-4 py-2 rounded-lg',
-                'text-celeste-sm font-medium text-txt-secondary',
-                'hover:text-txt-primary hover:bg-surface-hover',
-                'transition-colors'
-              )}
+              className="btn-ghost"
               disabled={isSubmitting}
             >
               Cancel
@@ -425,14 +420,7 @@ export default function ActionModal({
               type="submit"
               data-testid="action-submit"
               disabled={isSubmitting}
-              className={cn(
-                'px-4 py-2 rounded-lg',
-                'text-celeste-sm font-medium text-celeste-text-title',
-                'bg-celeste-accent hover:bg-celeste-accent/80',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-                'transition-colors',
-                'inline-flex items-center gap-2'
-              )}
+              className="btn-primary"
             >
               {isSubmitting ? (
                 <>

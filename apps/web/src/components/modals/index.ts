@@ -48,6 +48,9 @@ export { LogDeliveryReceivedModal } from './LogDeliveryReceivedModal';
 // Phase 5 - Shipyard Worklist Modal
 export { AddWorklistTaskModal } from './AddWorklistTaskModal';
 
+// Equipment Maintenance Modal
+export { ScheduleMaintenanceModal } from './ScheduleMaintenanceModal';
+
 // SHOP-03 - Shopping List Lens Modals
 export { CreateShoppingListItemModal } from './CreateShoppingListItemModal';
 export { ApproveShoppingListItemModal } from './ApproveShoppingListItemModal';
@@ -76,6 +79,7 @@ export { RejectShoppingListItemModal } from './RejectShoppingListItemModal';
  * EQUIPMENT (6 actions):
  * - add_equipment_note: AddNoteModal (entity_type='equipment')
  * - edit_equipment_details: EditEquipmentDetailsModal
+ * - schedule_maintenance: ScheduleMaintenanceModal
  *
  * INVENTORY (9 actions):
  * - add_part: AddPartModal

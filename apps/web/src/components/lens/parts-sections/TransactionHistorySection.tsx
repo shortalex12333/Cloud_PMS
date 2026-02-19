@@ -185,7 +185,7 @@ function TransactionRow({ tx }: TransactionRowProps) {
             onClick={() => setIsExpanded(!isExpanded)}
             className={cn(
               'mt-1 text-[12px] font-medium text-txt-tertiary',
-              'hover:text-txt-secondary transition-colors duration-150',
+              'hover:text-txt-secondary transition-colors duration-fast',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm'
             )}
             aria-expanded={isExpanded}

@@ -93,7 +93,7 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={handleCancel}
         aria-hidden="true"
       />
@@ -105,7 +105,7 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
         aria-labelledby="add-note-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           // Surface tokens
           'bg-surface-elevated border border-surface-border',
           // Shape
@@ -118,11 +118,11 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
         <div className="px-6 pt-6 pb-4 border-b border-surface-border">
           <h2
             id="add-note-title"
-            className="text-[16px] font-semibold text-txt-primary leading-[1.4]"
+            className="text-heading text-txt-primary"
           >
             Add Note
           </h2>
-          <p className="mt-1 text-[13px] text-txt-secondary leading-[1.4]">
+          <p className="mt-1 text-label text-txt-secondary">
             Document progress, findings, or observations.
           </p>
         </div>
@@ -132,7 +132,7 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
           <div className="px-6 py-4">
             <label
               htmlFor="note-text"
-              className="block text-[13px] font-medium text-txt-primary mb-2"
+              className="block text-label text-txt-primary mb-2"
             >
               Note content
             </label>
@@ -147,11 +147,11 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
                 'w-full',
                 'bg-surface-primary border rounded-md',
                 'px-3 py-2',
-                'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
+                'text-body text-txt-primary placeholder:text-txt-tertiary',
                 'leading-[1.6]',
                 'resize-y',
                 'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                'transition-colors duration-150',
+                'transition-colors duration-fast',
                 isOverLimit
                   ? 'border-status-critical'
                   : 'border-surface-border hover:border-surface-border-focus'
@@ -161,7 +161,7 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
             <div className="flex justify-end mt-1">
               <span
                 className={cn(
-                  'text-[12px] leading-[1.4]',
+                  'text-caption',
                   isOverLimit ? 'text-status-critical' : 'text-txt-tertiary'
                 )}
               >

@@ -75,7 +75,7 @@ export function RejectClaimModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -87,7 +87,7 @@ export function RejectClaimModal({
         aria-labelledby="reject-claim-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           'bg-surface-elevated border border-surface-border',
           'rounded-lg shadow-lg',
           'w-full max-w-md mx-4'
@@ -139,7 +139,7 @@ export function RejectClaimModal({
                   'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
                   'leading-[1.6] resize-y',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
             </div>
@@ -157,7 +157,7 @@ export function RejectClaimModal({
               className={cn(
                 'px-4 py-2 min-h-[36px] rounded-md text-[13px] font-semibold',
                 'text-txt-inverse bg-status-critical',
-                'hover:opacity-90 transition-opacity duration-150',
+                'hover:opacity-90 transition-opacity duration-fast',
                 'focus:outline-none focus:ring-2 focus:ring-status-critical focus:ring-offset-2',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}

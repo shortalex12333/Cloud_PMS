@@ -78,7 +78,7 @@ export function AttachmentsSection({
       {attachments.length === 0 ? (
         // Contextual empty state per UI_SPEC.md language rules
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="text-body text-txt-secondary">
             No attachments. Add photos or documents to this work order.
           </p>
           {canAddFile && (

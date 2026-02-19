@@ -88,7 +88,7 @@ export function Pagination({
   if (totalItems === 0) {
     return (
       <div className={cn('flex items-center justify-center py-4', className)}>
-        <p className="text-sm text-muted-foreground">No items to display</p>
+        <p className="text-body text-muted-foreground">No items to display</p>
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function Pagination({
     <div className={cn('flex items-center justify-between py-4', className)}>
       {/* Items info and per-page selector */}
       <div className="flex items-center gap-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Showing <span className="font-medium">{startItem}</span> to{' '}
           <span className="font-medium">{endItem}</span> of{' '}
           <span className="font-medium">{totalItems}</span> results
@@ -105,7 +105,7 @@ export function Pagination({
 
         {showItemsPerPage && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Items per page:</span>
+            <span className="text-body text-muted-foreground">Items per page:</span>
             <Select
               value={String(itemsPerPage)}
               onValueChange={(val) => onItemsPerPageChange(Number(val))}
@@ -146,7 +146,7 @@ export function Pagination({
               return (
                 <span
                   key={`ellipsis-${index}`}
-                  className="flex h-8 w-8 items-center justify-center text-sm text-muted-foreground"
+                  className="flex h-8 w-8 items-center justify-center text-body text-muted-foreground"
                 >
                   ...
                 </span>

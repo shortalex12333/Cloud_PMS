@@ -47,7 +47,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.c
  * useWorkOrderActions
  *
  * Returns typed action helpers for all work order operations.
- * Each helper calls POST /v1/work-orders/{endpoint} with JWT auth.
+ * Each helper calls POST /v1/actions/execute with action name and JWT auth.
  *
  * @param workOrderId - UUID of the work order in scope
  */
@@ -61,7 +61,7 @@ export function useWorkOrderActions(workOrderId: string) {
   // -------------------------------------------------------------------------
 
   const execute = useCallback(
-    async (endpoint: string, payload: Record<string, unknown>): Promise<ActionResult> => {
+    async (actionName: string, payload: Record<string, unknown>): Promise<ActionResult> => {
       if (!session?.access_token) {
         return { success: false, error: 'Not authenticated' };
       }
@@ -70,16 +70,20 @@ export function useWorkOrderActions(workOrderId: string) {
       setError(null);
 
       try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        // Use unified action router endpoint - /v1/actions/execute
+        const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            yacht_id: user?.yachtId,
-            work_order_id: workOrderId,
-            ...payload,
+            action: actionName,
+            context: {
+              yacht_id: user?.yachtId,
+              work_order_id: workOrderId,
+            },
+            payload,
           }),
         });
 
@@ -112,88 +116,88 @@ export function useWorkOrderActions(workOrderId: string) {
   /** add_wo_note — add a text note to the work order */
   const addNote = useCallback(
     (noteText: string) =>
-      execute('/v1/work-orders/add-note', { note_text: noteText }),
+      execute('add_note_to_work_order', { note_text: noteText }),
     [execute]
   );
 
   /** close_work_order — mark the WO as closed (HOD+) */
   const closeWorkOrder = useCallback(
     (completionNotes?: string) =>
-      execute('/v1/work-orders/close', { completion_notes: completionNotes }),
+      execute('mark_work_order_complete', { completion_notes: completionNotes }),
     [execute]
   );
 
   /** start_work_order — transition from open → in_progress */
   const startWorkOrder = useCallback(
-    () => execute('/v1/work-orders/start', {}),
+    () => execute('start_work_order', {}),
     [execute]
   );
 
   /** cancel_work_order — cancel the work order (HOD+) */
   const cancelWorkOrder = useCallback(
-    (reason?: string) => execute('/v1/work-orders/cancel', { reason }),
+    (reason?: string) => execute('cancel_work_order', { reason }),
     [execute]
   );
 
   /** add_wo_part — attach a part to the work order */
   const addPart = useCallback(
     (partId: string, quantity: number, unit?: string) =>
-      execute('/v1/work-orders/add-part', { part_id: partId, quantity, unit }),
+      execute('add_part_to_work_order', { part_id: partId, quantity, unit }),
     [execute]
   );
 
   /** add_parts_to_work_order — bulk add parts */
   const addParts = useCallback(
     (parts: Array<{ part_id: string; quantity: number }>) =>
-      execute('/v1/work-orders/add-parts', { parts }),
+      execute('add_parts_to_work_order', { parts }),
     [execute]
   );
 
   /** add_work_order_photo — attach a photo (signed storage URL) */
   const addPhoto = useCallback(
     (photoUrl: string, caption?: string) =>
-      execute('/v1/work-orders/add-photo', { photo_url: photoUrl, caption }),
+      execute('add_work_order_photo', { photo_url: photoUrl, caption }),
     [execute]
   );
 
   /** assign_work_order — assign to a crew member */
   const assignWorkOrder = useCallback(
     (assignedTo: string) =>
-      execute('/v1/work-orders/assign', { assigned_to: assignedTo }),
+      execute('assign_work_order', { assigned_to: assignedTo }),
     [execute]
   );
 
   /** reassign_work_order — signed reassignment with reason */
   const reassignWorkOrder = useCallback(
     (assigneeId: string, reason: string, signature: Record<string, unknown>) =>
-      execute('/v1/work-orders/reassign', { assignee_id: assigneeId, reason, signature }),
+      execute('reassign_work_order', { assignee_id: assigneeId, reason, signature }),
     [execute]
   );
 
   /** update_work_order — update editable fields (title, priority, due_date, etc.) */
   const updateWorkOrder = useCallback(
     (changes: Record<string, unknown>) =>
-      execute('/v1/work-orders/update', changes),
+      execute('update_work_order', changes),
     [execute]
   );
 
   /** archive_work_order — signed archive with deletion reason */
   const archiveWorkOrder = useCallback(
     (deletionReason: string, signature: Record<string, unknown>) =>
-      execute('/v1/work-orders/archive', { deletion_reason: deletionReason, signature }),
+      execute('archive_work_order', { deletion_reason: deletionReason, signature }),
     [execute]
   );
 
   /** add_wo_hours — log hours worked on the work order */
   const addHours = useCallback(
     (hours: number, notes?: string) =>
-      execute('/v1/work-orders/add-hours', { hours, notes }),
+      execute('add_wo_hours', { hours, notes }),
     [execute]
   );
 
   /** view_work_order_checklist — fetch checklist items (read-only) */
   const viewChecklist = useCallback(
-    () => execute('/v1/work-orders/checklist', {}),
+    () => execute('view_work_order_checklist', {}),
     [execute]
   );
 

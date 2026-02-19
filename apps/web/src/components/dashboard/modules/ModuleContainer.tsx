@@ -91,7 +91,7 @@ export default function ModuleContainer({
         'rounded-[20px]',
         'shadow-[0_2px_8px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)]',
         'hover:shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
-        'transition-all duration-300 ease-out',
+        'transition-all duration-slow ease-out',
         isExpanded && 'shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
         className
       )}
@@ -104,7 +104,7 @@ export default function ModuleContainer({
           'px-4 py-3',
           'text-left',
           'hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50',
-          'transition-colors duration-150'
+          'transition-colors duration-fast'
         )}
       >
         {/* Icon */}
@@ -167,7 +167,7 @@ export default function ModuleContainer({
       {/* Expanded content */}
       <div
         className={cn(
-          'overflow-hidden transition-all duration-300 ease-out',
+          'overflow-hidden transition-all duration-slow ease-out',
           isExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
         )}
       >
@@ -224,7 +224,7 @@ export function ModuleItem({
         'flex items-center gap-3',
         'px-3 py-2 -mx-3 rounded-xl',
         onClick && 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80',
-        'transition-colors duration-150',
+        'transition-colors duration-fast',
         'group',
         className
       )}
@@ -260,7 +260,7 @@ export function ModuleItem({
       )}
 
       {actions && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-fast">
           {actions}
         </div>
       )}

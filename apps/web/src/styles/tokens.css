@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   CELESTE DESIGN TOKENS
-   Source: CLAUDE.md — ChatGPT + Apple visual standard for maritime operations
+   CELESTE DESIGN TOKENS — UI_SPEC.md Complete Implementation
+   Source: UI_SPEC.md + CLAUDE.md — ChatGPT + Apple visual standard
 
    Rules:
    - Use semantic tokens ONLY in components. Zero raw hex.
@@ -31,7 +31,7 @@
   --text-disabled: #3A3A3A;          /* Disabled states */
   --text-inverse: #111111;           /* Text on colored backgrounds */
 
-  /* Shadows — visible on dark, soft and diffused */
+  /* Shadows — visible on dark, soft and diffused (UI_SPEC.md exact) */
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
   --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
   --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
@@ -126,6 +126,154 @@
   --z-modal: 40;
   --z-search: 50;
   --z-toast: 60;
+
+  /* ═══════════════════════════════════════════════════════
+     TYPOGRAPHY SCALE — UI_SPEC.md exact specification
+     Weight creates hierarchy, not size.
+     ═══════════════════════════════════════════════════════ */
+
+  /* Display — 28px / 700 / 1.15 / -0.02em (Lens title on mobile) */
+  --font-size-display: 28px;
+  --font-weight-display: 700;
+  --line-height-display: 1.15;
+  --letter-spacing-display: -0.02em;
+
+  /* Title — 24px / 600 / 1.2 / -0.01em (Entity name / lens title) */
+  --font-size-title: 24px;
+  --font-weight-title: 600;
+  --line-height-title: 1.2;
+  --letter-spacing-title: -0.01em;
+
+  /* Heading — 18px / 600 / 1.3 / 0 (Major section breaks) */
+  --font-size-heading: 18px;
+  --font-weight-heading: 600;
+  --line-height-heading: 1.3;
+  --letter-spacing-heading: 0;
+
+  /* Section — 14px / 600 / 1.4 / 0 (Sticky section headers) */
+  --font-size-section: 14px;
+  --font-weight-section: 600;
+  --line-height-section: 1.4;
+  --letter-spacing-section: 0;
+
+  /* Body — 14px / 400 / 1.6 / 0 (Note content, descriptions) */
+  --font-size-body: 14px;
+  --font-weight-body: 400;
+  --line-height-body: 1.6;
+  --letter-spacing-body: 0;
+
+  /* Body Strong — 14px / 500 / 1.6 / 0 (Emphasis within body) */
+  --font-weight-body-strong: 500;
+
+  /* Label — 13px / 500 / 1.4 / 0 (Vital sign labels, form labels) */
+  --font-size-label: 13px;
+  --font-weight-label: 500;
+  --line-height-label: 1.4;
+  --letter-spacing-label: 0;
+
+  /* Caption — 12px / 400 / 1.4 / 0 (Timestamps, file sizes) */
+  --font-size-caption: 12px;
+  --font-weight-caption: 400;
+  --line-height-caption: 1.4;
+  --letter-spacing-caption: 0;
+
+  /* Overline — 11px / 500 / 1.2 / 0.08em / uppercase (Entity type label) */
+  --font-size-overline: 11px;
+  --font-weight-overline: 500;
+  --line-height-overline: 1.2;
+  --letter-spacing-overline: 0.08em;
+
+  /* Action — 13px / 500 / 1 / 0 (Ghost button text, inline links) */
+  --font-size-action: 13px;
+  --font-weight-action: 500;
+  --line-height-action: 1;
+  --letter-spacing-action: 0;
+
+  /* ═══════════════════════════════════════════════════════
+     LAYOUT PROPORTIONS — UI_SPEC.md exact specification
+     ═══════════════════════════════════════════════════════ */
+
+  /* Lens */
+  --lens-max-width: 800px;
+  --lens-padding-desktop: 40px;
+  --lens-padding-tablet: 24px;
+  --lens-padding-mobile: 16px;
+  --lens-body-max-line: 680px;
+
+  /* Sidebar */
+  --sidebar-width: 420px;
+
+  /* Search bar */
+  --search-max-width: 720px;
+  --search-height: 48px;
+
+  /* Modal */
+  --modal-max-width: 480px;
+  --modal-padding: 32px;
+
+  /* Navigation header */
+  --header-height: 56px;
+
+  /* ═══════════════════════════════════════════════════════
+     COMPONENT DIMENSIONS — UI_SPEC.md exact specification
+     Touch targets: 44px minimum (Apple standard)
+     ═══════════════════════════════════════════════════════ */
+
+  /* Touch targets */
+  --touch-target-min: 44px;
+  --touch-target-mobile: 48px;
+
+  /* Buttons */
+  --button-height-ghost: 36px;
+  --button-height-primary: 40px;
+  --button-padding-ghost-x: 12px;
+  --button-padding-ghost-y: 8px;
+  --button-padding-primary-x: 24px;
+  --button-padding-primary-y: 12px;
+  --button-icon-only-size: 36px;
+
+  /* Status pill */
+  --pill-height: 24px;
+  --pill-padding-x: 12px;
+  --pill-padding-y: 4px;
+  --pill-dot-size: 6px;
+
+  /* Inputs */
+  --input-height: 40px;
+  --input-padding-x: 12px;
+  --input-padding-y: 10px;
+
+  /* Section header */
+  --section-header-height: 44px;
+
+  /* List row */
+  --list-row-min-height: 44px;
+  --list-row-padding-y: 12px;
+  --list-row-padding-x: 20px;
+
+  /* Vital signs row */
+  --vital-signs-height: 40px;
+
+  /* Cards */
+  --card-padding-x: 20px;
+  --card-padding-y: 16px;
+
+  /* File preview card */
+  --file-preview-height: 48px;
+
+  /* Media preview */
+  --media-preview-max-height: 240px;
+
+  /* Toast */
+  --toast-max-width: 400px;
+  --toast-padding: 16px;
+
+  /* Gaps */
+  --gap-sections: 24px;
+  --gap-title-vitals: 12px;
+  --gap-overline-title: 4px;
+  --gap-section-content: 12px;
+  --gap-vital-items: 16px;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -147,4 +295,509 @@
 
 .animate-toast-in {
   animation: toast-in 200ms var(--ease-out) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY UTILITY CLASSES — UI_SPEC.md exact specification
+   Usage: class="text-display", class="text-title", etc.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Display — Lens title on mobile when space is tight */
+.text-display {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-display);
+  line-height: var(--line-height-display);
+  letter-spacing: var(--letter-spacing-display);
+  color: var(--text-primary);
+}
+
+/* Title — Entity name / lens title (largest text on screen) */
+.text-title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-title);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--text-primary);
+}
+
+/* Heading — Major section breaks if needed */
+.text-heading {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-heading);
+  letter-spacing: var(--letter-spacing-heading);
+  color: var(--text-primary);
+}
+
+/* Section — Sticky section headers (Notes, Parts, History) */
+.text-section {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-section);
+  line-height: var(--line-height-section);
+  letter-spacing: var(--letter-spacing-section);
+  color: var(--text-secondary);
+}
+
+/* Body — Note content, descriptions, general text */
+.text-body {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--text-primary);
+}
+
+/* Body Strong — Emphasis within body text (use sparingly) */
+.text-body-strong {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body-strong);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--text-primary);
+}
+
+/* Label — Vital sign labels, form labels, metadata labels */
+.text-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  line-height: var(--line-height-label);
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--text-secondary);
+}
+
+/* Caption — Timestamps, file sizes, secondary metadata */
+.text-caption {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-caption);
+  line-height: var(--line-height-caption);
+  letter-spacing: var(--letter-spacing-caption);
+  color: var(--text-tertiary);
+}
+
+/* Overline — Entity type label (WORK ORDER, FAULT, CERTIFICATE) */
+.text-overline {
+  font-size: var(--font-size-overline);
+  font-weight: var(--font-weight-overline);
+  line-height: var(--line-height-overline);
+  letter-spacing: var(--letter-spacing-overline);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Action — Ghost button text, inline action links */
+.text-action {
+  font-size: var(--font-size-action);
+  font-weight: var(--font-weight-action);
+  line-height: var(--line-height-action);
+  letter-spacing: var(--letter-spacing-action);
+  color: var(--brand-interactive);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTON COMPONENT CLASSES — UI_SPEC.md exact specification
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ghost Button (default action button) */
+.btn-ghost {
+  background: transparent;
+  color: var(--brand-interactive);
+  font-size: var(--font-size-action);
+  font-weight: var(--font-weight-action);
+  padding: var(--button-padding-ghost-y) var(--button-padding-ghost-x);
+  border-radius: var(--radius-sm);
+  border: none;
+  min-height: var(--button-height-ghost);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.btn-ghost:hover {
+  background: var(--brand-muted);
+}
+
+.btn-ghost:active {
+  background: rgba(43,143,179,0.18);
+}
+
+.btn-ghost:disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* Primary Button (confirmations, sign & submit) */
+.btn-primary {
+  background: var(--brand-interactive);
+  color: var(--text-inverse);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-section);
+  padding: var(--button-padding-primary-y) var(--button-padding-primary-x);
+  border-radius: var(--radius-sm);
+  border: none;
+  min-height: var(--button-height-primary);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.btn-primary:hover {
+  background: var(--brand-hover);
+}
+
+.btn-primary:active {
+  background: #1E8AAB;
+}
+
+.btn-primary:disabled {
+  background: var(--surface-hover);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+/* Danger Button (destructive actions — delete, reject) */
+.btn-danger {
+  background: transparent;
+  color: var(--status-critical);
+  font-size: var(--font-size-action);
+  font-weight: var(--font-weight-action);
+  padding: var(--button-padding-ghost-y) var(--button-padding-ghost-x);
+  border: 1px solid var(--status-critical);
+  border-radius: var(--radius-sm);
+  min-height: var(--button-height-ghost);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.btn-danger:hover {
+  background: var(--status-critical-bg);
+}
+
+/* Danger confirmation state (after first click) */
+.btn-danger-confirm {
+  background: var(--status-critical);
+  color: var(--text-inverse);
+  border-color: var(--status-critical);
+}
+
+/* Icon-Only Button (close, back, forward, settings) */
+.btn-icon {
+  width: var(--button-icon-only-size);
+  height: var(--button-icon-only-size);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.btn-icon:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATUS PILL CLASSES — UI_SPEC.md exact specification
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--pill-padding-y) var(--pill-padding-x);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-action);
+  height: var(--pill-height);
+}
+
+.status-pill-neutral {
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral);
+}
+
+.status-pill-warning {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+}
+
+.status-pill-success {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+
+.status-pill-critical {
+  background: var(--status-critical-bg);
+  color: var(--status-critical);
+}
+
+/* Status dot (prefix for pills) */
+.status-dot {
+  width: var(--pill-dot-size);
+  height: var(--pill-dot-size);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-neutral {
+  background: var(--status-neutral);
+}
+
+.status-dot-warning {
+  background: var(--status-warning);
+}
+
+.status-dot-success {
+  background: var(--status-success);
+}
+
+.status-dot-critical {
+  background: var(--status-critical);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INPUT CLASSES — UI_SPEC.md exact specification
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.input-field {
+  height: var(--input-height);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.input-field::placeholder {
+  color: var(--text-disabled);
+}
+
+.input-field:focus {
+  border-color: var(--brand-interactive);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-muted);
+}
+
+.input-field-error {
+  border-color: var(--status-critical);
+  box-shadow: 0 0 0 3px var(--status-critical-bg);
+}
+
+.input-field:disabled {
+  background: var(--surface-hover);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+/* Textarea */
+.textarea-field {
+  min-height: 100px;
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-body);
+  color: var(--text-primary);
+  background: var(--surface-base);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.textarea-field:focus {
+  border-color: var(--brand-interactive);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARD CLASSES — UI_SPEC.md exact specification
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Section Container (building block of every lens) */
+.section-container {
+  background: var(--surface-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--gap-sections);
+}
+
+/* Entity Card (in lists: parts, equipment, search results) */
+.entity-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-md);
+  padding: var(--card-padding-y) var(--card-padding-x);
+  min-height: var(--touch-target-min);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.entity-card:hover {
+  background: var(--surface-hover);
+}
+
+/* File Preview Card (documents, not media) */
+.file-preview-card {
+  background: var(--surface-primary);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  height: var(--file-preview-height);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.file-preview-card:hover {
+  background: var(--surface-hover);
+}
+
+.file-preview-card .file-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.file-preview-card .file-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-action);
+  color: var(--text-primary);
+}
+
+.file-preview-card .file-size {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-caption);
+  color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT UTILITY CLASSES — UI_SPEC.md exact specification
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Lens container */
+.lens-container {
+  max-width: var(--lens-max-width);
+  margin: 0 auto;
+  padding-left: var(--lens-padding-desktop);
+  padding-right: var(--lens-padding-desktop);
+}
+
+@media (max-width: 1024px) {
+  .lens-container {
+    padding-left: var(--lens-padding-tablet);
+    padding-right: var(--lens-padding-tablet);
+  }
+}
+
+@media (max-width: 768px) {
+  .lens-container {
+    padding-left: var(--lens-padding-mobile);
+    padding-right: var(--lens-padding-mobile);
+  }
+}
+
+/* Body text max width (readability: ~75 chars) */
+.text-readable {
+  max-width: var(--lens-body-max-line);
+}
+
+/* Touch target enforcement */
+.touch-target {
+  min-height: var(--touch-target-min);
+}
+
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: var(--touch-target-mobile);
+  }
+}
+
+/* Section spacing */
+.section-gap {
+  margin-bottom: var(--gap-sections);
+}
+
+/* List row base */
+.list-row {
+  min-height: var(--list-row-min-height);
+  padding: var(--list-row-padding-y) var(--list-row-padding-x);
+}
+
+/* Vital signs row */
+.vital-signs {
+  height: var(--vital-signs-height);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-vital-items);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SKELETON LOADING — UI_SPEC.md specification
+   Use everywhere instead of spinners
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.skeleton {
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.5; }
+}
+
+/* Skeleton shapes per UI_SPEC */
+.skeleton-title {
+  width: 60%;
+  height: 24px;
+}
+
+.skeleton-body-line {
+  width: 100%;
+  height: 14px;
+}
+
+.skeleton-vital-signs {
+  width: 80%;
+  height: 20px;
+}
+
+.skeleton-section-header {
+  width: 40%;
+  height: 14px;
+}
+
+.skeleton-entity-card {
+  width: 100%;
+  height: 56px;
+}
+
+.skeleton-media-preview {
+  width: 100%;
+  height: 160px;
+}
+
+.skeleton-status-pill {
+  width: 64px;
+  height: var(--pill-height);
+  border-radius: var(--radius-full);
 }

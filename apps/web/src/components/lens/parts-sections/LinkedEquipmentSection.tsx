@@ -42,7 +42,7 @@ function EquipmentRow({ eq }: EquipmentRowProps) {
         {/* Equipment name as teal link — navigates to equipment lens */}
         <a
           href={`/equipment/${eq.id}`}
-          className="text-[14px] font-medium text-brand-interactive hover:text-brand-hover transition-colors duration-[var(--duration-fast)] hover:underline underline-offset-2"
+          className="text-[14px] font-medium text-brand-interactive hover:text-brand-hover transition-colors duration-fast hover:underline underline-offset-2"
         >
           {eq.name}
         </a>

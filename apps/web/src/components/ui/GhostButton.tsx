@@ -25,24 +25,7 @@ export const GhostButton = React.forwardRef<HTMLButtonElement, GhostButtonProps>
         ref={ref}
         disabled={isDisabled}
         className={cn(
-          // Base layout
-          'inline-flex items-center justify-center gap-2',
-          // Size: min-height 36px, 8px 12px padding
-          'min-h-[36px] px-3 py-2',
-          // Typography: 13px font, weight 500
-          'text-[13px] font-medium',
-          // Color: transparent bg, brand interactive text
-          'bg-transparent text-brand-interactive',
-          // Hover: 10% teal background
-          'hover:bg-brand-muted',
-          // Transitions
-          'transition-colors duration-150',
-          // Border radius
-          'rounded-sm',
-          // Focus state
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive focus-visible:ring-offset-2',
-          // Disabled state
-          'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+          'btn-ghost',
           className
         )}
         {...props}

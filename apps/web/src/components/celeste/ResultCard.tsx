@@ -82,7 +82,7 @@ export default function ResultCard({
           {primaryAction && (
             <button
               onClick={primaryAction.onAction}
-              className="text-celeste-base text-celeste-text-muted hover:text-celeste-text-primary transition-colors"
+              className="btn-ghost"
             >
               {primaryAction.label}
             </button>
@@ -93,7 +93,7 @@ export default function ResultCard({
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="p-1 text-celeste-text-disabled hover:text-celeste-text-muted transition-colors"
+                className="btn-icon"
                 aria-label="More actions"
               >
                 <ChevronDown className="w-4 h-4" />

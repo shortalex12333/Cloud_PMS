@@ -238,7 +238,7 @@ function DailyLogRow({ entry }: DailyLogRowProps) {
         {entry.rest_periods.length > 0 && (
           <span
             className={cn(
-              'text-txt-tertiary text-[12px] flex-shrink-0 transition-transform duration-150',
+              'text-txt-tertiary text-[12px] flex-shrink-0 transition-transform duration-fast',
               expanded && 'rotate-90'
             )}
             aria-hidden="true"

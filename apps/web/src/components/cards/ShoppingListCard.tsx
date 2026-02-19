@@ -121,31 +121,31 @@ function mapStatusToColor(
  */
 function getUrgencyConfig(urgency?: ShoppingListItemData['urgency']): {
   label: string;
-  color: string;
+  pillClass: string;
   icon?: React.ReactNode;
 } {
   switch (urgency) {
     case 'critical':
       return {
         label: 'Critical',
-        color: 'text-red-600 bg-red-50 border-red-200',
+        pillClass: 'status-pill status-pill-critical',
         icon: <AlertTriangle className="h-3 w-3" />,
       };
     case 'high':
       return {
         label: 'High',
-        color: 'text-orange-600 bg-orange-50 border-orange-200',
+        pillClass: 'status-pill status-pill-warning',
       };
     case 'normal':
       return {
         label: 'Normal',
-        color: 'text-blue-600 bg-blue-50 border-blue-200',
+        pillClass: 'status-pill status-pill-neutral',
       };
     case 'low':
     default:
       return {
         label: 'Low',
-        color: 'text-gray-600 bg-gray-50 border-gray-200',
+        pillClass: 'status-pill status-pill-neutral',
       };
   }
 }
@@ -261,12 +261,7 @@ export function ShoppingListCard({
               showDot={isPending}
             />
             {item.urgency && item.urgency !== 'normal' && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
-                  urgencyConfig.color
-                )}
-              >
+              <span className={urgencyConfig.pillClass}>
                 {urgencyConfig.icon}
                 {urgencyConfig.label}
               </span>
@@ -435,12 +430,7 @@ export function ShoppingListCard({
                 {onApprove && (
                   <button
                     onClick={onApprove}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
-                      'text-sm font-medium',
-                      'bg-green-600 text-white hover:bg-green-700',
-                      'transition-colors'
-                    )}
+                    className="btn-primary"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     Approve
@@ -449,12 +439,7 @@ export function ShoppingListCard({
                 {onReject && (
                   <button
                     onClick={onReject}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
-                      'text-sm font-medium',
-                      'bg-red-600 text-white hover:bg-red-700',
-                      'transition-colors'
-                    )}
+                    className="btn-danger"
                   >
                     <XCircle className="h-4 w-4" />
                     Reject
@@ -467,12 +452,7 @@ export function ShoppingListCard({
             {canBePromoted && onPromote && (
               <button
                 onClick={onPromote}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
-                  'text-sm font-medium',
-                  'bg-amber-500 text-white hover:bg-amber-600',
-                  'transition-colors'
-                )}
+                className="btn-primary"
               >
                 <Sparkles className="h-4 w-4" />
                 Add to Catalog
@@ -483,13 +463,7 @@ export function ShoppingListCard({
             {onViewHistory && (
               <button
                 onClick={onViewHistory}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm',
-                  'text-sm font-medium',
-                  'text-txt-secondary hover:text-txt-primary',
-                  'bg-surface-hover hover:bg-surface-hover',
-                  'transition-colors'
-                )}
+                className="btn-ghost"
               >
                 <Clock className="h-4 w-4" />
                 History
