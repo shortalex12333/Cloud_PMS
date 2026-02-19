@@ -36,6 +36,8 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useActionHandler } from '@/hooks/useActionHandler';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 import {
   ShoppingCart,
   Loader2,
@@ -90,6 +92,7 @@ interface PartSuggestion {
   part_number?: string;
   manufacturer?: string;
   stock_quantity?: number;
+  location?: string;
 }
 
 interface CreateShoppingListItemModalProps {
@@ -161,6 +164,7 @@ export function CreateShoppingListItemModal({
   onSuccess,
 }: CreateShoppingListItemModalProps) {
   const { executeAction, isLoading } = useActionHandler();
+  const { user } = useAuth();
   const [linkExistingPart, setLinkExistingPart] = useState(false);
   const [partSearch, setPartSearch] = useState('');
   const [partSuggestions, setPartSuggestions] = useState<PartSuggestion[]>([]);
@@ -206,25 +210,49 @@ export function CreateShoppingListItemModal({
     }
   }, [open, context, reset]);
 
-  // Simulate part search (would call API in real implementation)
+  // Search parts via Supabase pms_parts table
   useEffect(() => {
-    if (!partSearch || partSearch.length < 2) {
+    if (!partSearch || partSearch.length < 2 || !user?.yachtId) {
       setPartSuggestions([]);
       return;
     }
 
     const searchTimeout = setTimeout(async () => {
       setIsSearching(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/parts/search?q=${encodeURIComponent(partSearch)}`);
-      // const data = await response.json();
-      // setPartSuggestions(data.parts);
-      setPartSuggestions([]); // Placeholder
-      setIsSearching(false);
+      try {
+        const searchTerm = partSearch.toLowerCase().trim();
+        const { data: parts, error } = await supabase
+          .from('pms_parts')
+          .select('part_id, part_name, part_number, manufacturer, on_hand, location')
+          .eq('yacht_id', user.yachtId)
+          .or(`part_name.ilike.%${searchTerm}%,part_number.ilike.%${searchTerm}%,manufacturer.ilike.%${searchTerm}%`)
+          .limit(10);
+
+        if (error) {
+          console.error('[CreateShoppingListItemModal] Parts search error:', error);
+          setPartSuggestions([]);
+        } else if (parts) {
+          // Map database fields to PartSuggestion interface
+          const suggestions: PartSuggestion[] = parts.map((part: any) => ({
+            id: part.part_id,
+            part_name: part.part_name || `Part ${part.part_number}`,
+            part_number: part.part_number,
+            manufacturer: part.manufacturer,
+            stock_quantity: part.on_hand || 0,
+            location: part.location,
+          }));
+          setPartSuggestions(suggestions);
+        }
+      } catch (err) {
+        console.error('[CreateShoppingListItemModal] Parts search failed:', err);
+        setPartSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
     }, 300);
 
     return () => clearTimeout(searchTimeout);
-  }, [partSearch]);
+  }, [partSearch, user?.yachtId]);
 
   const onSubmit = async (data: CreateShoppingListItemFormData) => {
     // Build parameters for the action
@@ -360,7 +388,7 @@ export function CreateShoppingListItemModal({
 
               {/* Part Suggestions */}
               {partSuggestions.length > 0 && (
-                <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
+                <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
                   {partSuggestions.map((part) => (
                     <button
                       key={part.id}
@@ -370,12 +398,25 @@ export function CreateShoppingListItemModal({
                     >
                       <p className="font-medium typo-body">{part.part_name}</p>
                       <p className="typo-meta text-txt-tertiary">
-                        {part.part_number && `P/N: ${part.part_number}`}
-                        {part.manufacturer && ` | ${part.manufacturer}`}
+                        {[
+                          part.part_number && `P/N: ${part.part_number}`,
+                          part.manufacturer,
+                          part.stock_quantity !== undefined && `Stock: ${part.stock_quantity}`,
+                          part.location && `Loc: ${part.location}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' | ')}
                       </p>
                     </button>
                   ))}
                 </div>
+              )}
+
+              {/* No results message */}
+              {partSearch.length >= 2 && !isSearching && partSuggestions.length === 0 && (
+                <p className="typo-meta text-txt-tertiary py-2 text-center">
+                  No parts found matching "{partSearch}"
+                </p>
               )}
 
               {/* Selected Part */}
