@@ -92,7 +92,7 @@ export function ApproveClaimModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/60"
+        className="fixed inset-0 z-sidebar bg-black/60"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -104,7 +104,7 @@ export function ApproveClaimModal({
         aria-labelledby="approve-claim-title"
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'z-[var(--z-modal)]',
+          'z-modal',
           'bg-surface-elevated border border-surface-border',
           'rounded-lg shadow-lg',
           'w-full max-w-md mx-4'
@@ -155,7 +155,7 @@ export function ApproveClaimModal({
                   'px-3 py-2',
                   'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
               {amountDiffers && (
@@ -186,7 +186,7 @@ export function ApproveClaimModal({
                   'text-[14px] text-txt-primary placeholder:text-txt-tertiary',
                   'leading-[1.6] resize-y',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
-                  'transition-colors duration-150'
+                  'transition-colors duration-fast'
                 )}
               />
             </div>

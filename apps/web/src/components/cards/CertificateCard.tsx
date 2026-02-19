@@ -110,37 +110,32 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
     switch (status) {
       case 'valid':
         return {
-          bg: 'bg-status-success-bg',
-          text: 'text-status-success',
-          icon: <CheckCircle2 className="h-5 w-5 text-status-success" />,
+          pillClass: 'status-pill status-pill-success',
+          icon: <CheckCircle2 className="h-5 w-5" />,
           label: 'Valid',
         };
       case 'expiring_soon':
         return {
-          bg: 'bg-status-warning-bg',
-          text: 'text-status-warning',
-          icon: <AlertTriangle className="h-5 w-5 text-status-warning" />,
+          pillClass: 'status-pill status-pill-warning',
+          icon: <AlertTriangle className="h-5 w-5" />,
           label: 'Expiring Soon',
         };
       case 'expired':
         return {
-          bg: 'bg-status-critical-bg',
-          text: 'text-status-critical',
-          icon: <XCircle className="h-5 w-5 text-status-critical" />,
+          pillClass: 'status-pill status-pill-critical',
+          icon: <XCircle className="h-5 w-5" />,
           label: 'Expired',
         };
       case 'superseded':
         return {
-          bg: 'bg-txt-tertiary/10',
-          text: 'text-txt-tertiary',
-          icon: <Archive className="h-5 w-5 text-txt-tertiary" />,
+          pillClass: 'status-pill status-pill-neutral',
+          icon: <Archive className="h-5 w-5" />,
           label: 'Superseded',
         };
       default:
         return {
-          bg: 'bg-txt-tertiary/10',
-          text: 'text-txt-tertiary',
-          icon: <FileCheck className="h-5 w-5 text-txt-tertiary" />,
+          pillClass: 'status-pill status-pill-neutral',
+          icon: <FileCheck className="h-5 w-5" />,
           label: 'Unknown',
         };
     }
@@ -210,10 +205,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
       <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
         {/* Status & Type Row */}
         <div className="flex items-center gap-ds-2 mb-ds-4">
-          <span className={cn(
-            'inline-flex items-center gap-ds-1 px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
-            status.bg, status.text
-          )}>
+          <span className={status.pillClass}>
             {status.icon}
             {status.label}
           </span>

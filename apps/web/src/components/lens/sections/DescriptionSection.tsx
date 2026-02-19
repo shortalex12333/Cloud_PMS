@@ -31,7 +31,7 @@ export function DescriptionSection({ description, stickyTop }: DescriptionSectio
       stickyTop={stickyTop}
     >
       <p
-        className="text-[14px] font-normal text-txt-primary leading-[1.6] whitespace-pre-wrap"
+        className="text-body text-txt-primary whitespace-pre-wrap"
       >
         {description}
       </p>

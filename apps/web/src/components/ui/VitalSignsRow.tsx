@@ -73,13 +73,13 @@ const VitalSignItem = ({ sign }: { sign: VitalSign }) => {
           onClick={handleClick}
           className={cn(
             // Typography: 14px / weight 500
-            'text-[14px] font-medium leading-none',
+            'text-body-strong leading-none',
             // Interactive color with hover
             'text-brand-interactive hover:text-brand-hover',
             // Cursor and transition
             'cursor-pointer transition-colors',
             // Duration from design tokens
-            'duration-[var(--duration-fast)]'
+            'duration-fast'
           )}
         >
           {displayValue}
@@ -89,7 +89,7 @@ const VitalSignItem = ({ sign }: { sign: VitalSign }) => {
 
     // Plain text value
     return (
-      <span className="text-[14px] font-medium leading-none text-txt-primary">
+      <span className="text-body-strong leading-none text-txt-primary">
         {displayValue}
       </span>
     );
@@ -98,7 +98,7 @@ const VitalSignItem = ({ sign }: { sign: VitalSign }) => {
   return (
     <div className="flex items-center gap-1.5">
       {/* Label: 13px / secondary color */}
-      <span className="text-[13px] font-normal leading-none text-txt-secondary">
+      <span className="text-label leading-none text-txt-secondary">
         {label}:
       </span>
       {renderValue()}
@@ -111,7 +111,7 @@ const VitalSignItem = ({ sign }: { sign: VitalSign }) => {
  */
 const Separator = () => (
   <span
-    className="text-txt-tertiary text-[14px] leading-none select-none"
+    className="text-txt-tertiary text-body leading-none select-none"
     aria-hidden="true"
   >
     {'\u00B7'}

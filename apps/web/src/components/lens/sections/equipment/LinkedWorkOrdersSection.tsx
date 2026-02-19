@@ -114,20 +114,20 @@ function WorkOrderRow({ wo }: WorkOrderRowProps) {
     >
       {/* Left: title + meta */}
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-txt-primary leading-[1.4] group-hover:text-brand-interactive transition-colors truncate">
+        <p className="text-body-strong text-txt-primary group-hover:text-brand-interactive transition-colors truncate">
           {displayTitle}
         </p>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-[12px] text-txt-tertiary">
+          <span className="text-caption text-txt-tertiary">
             {formatDate(wo.created_at)}
           </span>
           {wo.assigned_to_name && (
-            <span className="text-[12px] text-txt-tertiary">
+            <span className="text-caption text-txt-tertiary">
               · {wo.assigned_to_name}
             </span>
           )}
           {wo.due_date && (
-            <span className="text-[12px] text-txt-tertiary">
+            <span className="text-caption text-txt-tertiary">
               · Due {formatDate(wo.due_date)}
             </span>
           )}
@@ -187,7 +187,7 @@ export function LinkedWorkOrdersSection({
     >
       {sorted.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="text-body text-txt-secondary">
             No work orders found for this equipment.
           </p>
         </div>

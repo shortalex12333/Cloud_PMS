@@ -122,11 +122,11 @@ function DocumentCard({ doc }: DocumentCardProps) {
 
       {/* Title + meta */}
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-txt-primary leading-[1.4] truncate">
+        <p className="text-body-strong text-txt-primary truncate">
           {doc.title}
         </p>
         {meta && (
-          <p className="text-[12px] text-txt-tertiary mt-0.5">{meta}</p>
+          <p className="text-caption text-txt-tertiary mt-0.5">{meta}</p>
         )}
       </div>
 
@@ -183,7 +183,7 @@ export function DocumentsSection({
     >
       {documents.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="text-body text-txt-secondary">
             No documents attached. Manuals and certificates appear here.
           </p>
           {canLinkDocument && onLinkDocument && (

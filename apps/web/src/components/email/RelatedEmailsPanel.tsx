@@ -40,7 +40,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   // Not connected state - no watcher configured
   if (watcherStatus && !watcherStatus.is_connected) {
     return (
-      <div className={cn('celeste-card p-3', className)}>
+      <div className={cn('section-container p-3', className)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-zinc-400">
             <Mail className="h-4 w-4" />
@@ -62,7 +62,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
   const hasThreads = threads.length > 0;
 
   return (
-    <div className={cn('celeste-card', className)}>
+    <div className={cn('section-container', className)}>
       {/* Header - Collapsible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

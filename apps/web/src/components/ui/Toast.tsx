@@ -42,9 +42,9 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
             // Fixed position at bottom center
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             // Z-index for toast layer
-            'z-[var(--z-toast)]',
+            'z-toast',
             // Fade out animation
-            'opacity-0 transform translate-y-2 transition-all duration-200',
+            'opacity-0 transform translate-y-2 transition-all duration-normal',
             className
           )}
         >
@@ -60,7 +60,7 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
           // Fixed position at bottom center
           'fixed bottom-6 left-1/2 -translate-x-1/2',
           // Z-index for toast layer
-          'z-[var(--z-toast)]',
+          'z-toast',
           // Slide up + fade in animation
           'animate-toast-in',
           className
@@ -96,7 +96,7 @@ function ToastContent({
         'bg-surface-elevated border border-surface-border',
         'rounded-md shadow-sm',
         // Text
-        'text-[13px] text-txt-primary'
+        'text-label text-txt-primary'
       )}
       role="alert"
     >
@@ -105,12 +105,7 @@ function ToastContent({
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className={cn(
-            'text-txt-tertiary hover:text-txt-secondary',
-            'transition-colors duration-150',
-            'p-1 -mr-1 rounded-sm',
-            'hover:bg-surface-hover'
-          )}
+          className="btn-icon"
           aria-label="Dismiss"
         >
           <CloseIcon className="w-4 h-4" />

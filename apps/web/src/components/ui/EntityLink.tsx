@@ -65,7 +65,7 @@ export const EntityLink = React.forwardRef<HTMLSpanElement, EntityLinkProps>(
           // Focus state for accessibility
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive focus-visible:ring-offset-1 focus-visible:rounded-sm',
           // Transitions
-          'transition-colors duration-150',
+          'transition-colors duration-fast',
           className
         )}
         data-entity-type={entityType}

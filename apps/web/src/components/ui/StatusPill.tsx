@@ -16,11 +16,18 @@ export interface StatusPillProps {
   className?: string;
 }
 
-const statusStyles = {
-  critical: 'bg-status-critical-bg text-status-critical',
-  warning: 'bg-status-warning-bg text-status-warning',
-  success: 'bg-status-success-bg text-status-success',
-  neutral: 'bg-status-neutral-bg text-status-neutral',
+const statusPillVariants = {
+  critical: 'status-pill-critical',
+  warning: 'status-pill-warning',
+  success: 'status-pill-success',
+  neutral: 'status-pill-neutral',
+} as const;
+
+const statusDotVariants = {
+  critical: 'status-dot-critical',
+  warning: 'status-dot-warning',
+  success: 'status-dot-success',
+  neutral: 'status-dot-neutral',
 } as const;
 
 export const StatusPill = React.forwardRef<HTMLSpanElement, StatusPillProps>(
@@ -29,24 +36,16 @@ export const StatusPill = React.forwardRef<HTMLSpanElement, StatusPillProps>(
       <span
         ref={ref}
         className={cn(
-          // Base styles: 24px height, 4px 12px padding, full radius
-          'inline-flex items-center h-6 px-3 py-1 rounded-full',
-          // Typography: 12px / weight 500
-          'text-[12px] font-medium leading-none',
-          // Status-specific colors
-          statusStyles[status],
+          'status-pill',
+          statusPillVariants[status],
           className
         )}
       >
         {showDot && (
           <span
             className={cn(
-              // 6px dot with matching status color
-              'w-1.5 h-1.5 rounded-full mr-2',
-              status === 'critical' && 'bg-status-critical',
-              status === 'warning' && 'bg-status-warning',
-              status === 'success' && 'bg-status-success',
-              status === 'neutral' && 'bg-status-neutral'
+              'status-dot',
+              statusDotVariants[status]
             )}
           />
         )}
