@@ -749,8 +749,9 @@ async def search(
 
         # Call f1_search_fusion with structured filters
         # Note: Supabase RPC accepts dict for jsonb, handles serialization
+        # F1 OPTIMIZATION: Pass reduced candidate counts from fusion_params
         fusion_start = time.time()
-        result = client.rpc('f1_search_fusion', {
+        rpc_params = {
             'p_yacht_id': yacht_id,
             'p_query_text': request.query,
             'p_query_embedding': vec_literal,
@@ -763,7 +764,16 @@ async def search(
             'p_offset': 0,
             'p_debug': False,
             'p_filters': p_filters,  # Pass dict directly, not JSON string
-        }).execute()
+        }
+        # Add F1 optimization params if present
+        if 'p_m_text' in fusion_params:
+            rpc_params['p_m_text'] = fusion_params['p_m_text']
+        if 'p_m_vec' in fusion_params:
+            rpc_params['p_m_vec'] = fusion_params['p_m_vec']
+        if 'p_m_trgm' in fusion_params:
+            rpc_params['p_m_trgm'] = fusion_params['p_m_trgm']
+
+        result = client.rpc('f1_search_fusion', rpc_params).execute()
         fusion_ms = (time.time() - fusion_start) * 1000
 
         # Process results
