@@ -68,6 +68,7 @@ export function useEquipmentActions(equipmentId: string) {
 
       try {
         // Use unified action router endpoint - /v1/actions/execute
+        // IMPORTANT: equipment_id must be in payload (backend validation checks payload, not context)
         const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
@@ -80,7 +81,10 @@ export function useEquipmentActions(equipmentId: string) {
               yacht_id: user?.yachtId,
               equipment_id: equipmentId,
             },
-            payload,
+            payload: {
+              equipment_id: equipmentId,
+              ...payload,
+            },
           }),
         });
 
