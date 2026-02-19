@@ -53,7 +53,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.c
  * usePartActions
  *
  * Returns typed action helpers for all parts/inventory operations.
- * Each helper calls POST /v1/parts/{endpoint} with JWT auth.
+ * Each helper calls POST /v1/actions/execute with action name and JWT auth.
  *
  * @param partId - UUID of the part in scope
  */
@@ -67,7 +67,7 @@ export function usePartActions(partId: string) {
   // -------------------------------------------------------------------------
 
   const execute = useCallback(
-    async (endpoint: string, payload: Record<string, unknown>): Promise<ActionResult> => {
+    async (actionName: string, payload: Record<string, unknown>): Promise<ActionResult> => {
       if (!session?.access_token) {
         return { success: false, error: 'Not authenticated' };
       }
@@ -76,16 +76,20 @@ export function usePartActions(partId: string) {
       setError(null);
 
       try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        // Use unified action router endpoint - /v1/actions/execute
+        const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            yacht_id: user?.yachtId,
-            part_id: partId,
-            ...payload,
+            action: actionName,
+            context: {
+              yacht_id: user?.yachtId,
+              part_id: partId,
+            },
+            payload,
           }),
         });
 
@@ -118,49 +122,49 @@ export function usePartActions(partId: string) {
 
   /** view_part — fetch part details (read-only) */
   const viewPart = useCallback(
-    () => execute('/v1/parts/view', {}),
+    () => execute('view_part', {}),
     [execute]
   );
 
   /** consume_part — record stock consumption (crew can do this) */
   const consumePart = useCallback(
     (quantity: number, notes?: string) =>
-      execute('/v1/parts/consume', { quantity, notes }),
+      execute('consume_part', { quantity, notes }),
     [execute]
   );
 
   /** receive_part — add incoming stock (HOD+) */
   const receivePart = useCallback(
     (quantity: number, notes?: string) =>
-      execute('/v1/parts/receive', { quantity, notes }),
+      execute('receive_part', { quantity, notes }),
     [execute]
   );
 
   /** transfer_part — move stock between locations (HOD+) */
   const transferPart = useCallback(
     (quantity: number, targetLocation: string, notes?: string) =>
-      execute('/v1/parts/transfer', { quantity, target_location: targetLocation, notes }),
+      execute('transfer_part', { quantity, target_location: targetLocation, notes }),
     [execute]
   );
 
   /** adjust_stock — manual correction of stock level (HOD+) */
   const adjustStock = useCallback(
     (newQuantity: number, reason: string) =>
-      execute('/v1/parts/adjust', { new_quantity: newQuantity, reason }),
+      execute('adjust_stock', { new_quantity: newQuantity, reason }),
     [execute]
   );
 
   /** write_off — write off damaged/expired stock (HOD+) */
   const writeOff = useCallback(
     (quantity: number, reason: string) =>
-      execute('/v1/parts/write-off', { quantity, reason }),
+      execute('write_off_part', { quantity, reason }),
     [execute]
   );
 
   /** add_to_shopping_list — add this part to the procurement shopping list */
   const addToShoppingList = useCallback(
     (quantity?: number, notes?: string) =>
-      execute('/v1/parts/add-to-shopping-list', { quantity, notes }),
+      execute('add_part_to_shopping_list', { quantity, notes }),
     [execute]
   );
 

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LensHeader, LensTitleBlock } from './LensHeader';
 import { VitalSignsRow, type VitalSign } from '@/components/ui/VitalSignsRow';
@@ -8,6 +9,8 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SectionContainer } from '@/components/ui/SectionContainer';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { GhostButton } from '@/components/ui/GhostButton';
+import { ReportFaultModal } from '@/components/modals/ReportFaultModal';
+import { ScheduleMaintenanceModal } from '@/components/modals/ScheduleMaintenanceModal';
 
 export interface EquipmentLensContentProps {
   id: string;
@@ -29,6 +32,9 @@ function mapStatusToColor(status: string): 'critical' | 'warning' | 'success' | 
 }
 
 export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLensContentProps) {
+  const [reportFaultOpen, setReportFaultOpen] = useState(false);
+  const [scheduleMaintenanceOpen, setScheduleMaintenanceOpen] = useState(false);
+
   const name = (data.name as string) || 'Equipment';
   const equipment_type = (data.equipment_type as string) || (data.category as string) || 'General';
   const manufacturer = data.manufacturer as string | undefined;
@@ -59,8 +65,8 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
         </div>
         <div className="mt-3"><VitalSignsRow signs={vitalSigns} /></div>
         <div className="mt-4 flex items-center gap-2">
-          <PrimaryButton onClick={() => console.log('[EquipmentLens] Report fault:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Report Fault</PrimaryButton>
-          <GhostButton onClick={() => console.log('[EquipmentLens] Schedule maintenance:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Schedule Maintenance</GhostButton>
+          <PrimaryButton onClick={() => setReportFaultOpen(true)} className="text-[13px] min-h-[36px] px-4 py-2">Report Fault</PrimaryButton>
+          <GhostButton onClick={() => setScheduleMaintenanceOpen(true)} className="text-[13px] min-h-[36px] px-4 py-2">Schedule Maintenance</GhostButton>
         </div>
         <div className="mt-6 border-t border-surface-border" aria-hidden="true" />
         <div className="mt-6">
@@ -74,6 +80,24 @@ export function EquipmentLensContent({ id, data, onBack, onClose }: EquipmentLen
           </SectionContainer>
         </div>
       </main>
+
+      <ReportFaultModal
+        open={reportFaultOpen}
+        onOpenChange={setReportFaultOpen}
+        context={{
+          equipment_id: id,
+          equipment_name: name,
+        }}
+      />
+
+      <ScheduleMaintenanceModal
+        open={scheduleMaintenanceOpen}
+        onOpenChange={setScheduleMaintenanceOpen}
+        context={{
+          equipment_id: id,
+          equipment_name: name,
+        }}
+      />
     </div>
   );
 }
