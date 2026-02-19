@@ -143,7 +143,7 @@ class PrefillResponse(BaseModel):
 
 class UploadImageRequest(BaseModel):
     """Request to upload part image."""
-    yacht_id: str
+    # Note: yacht_id comes from JWT auth context, not request body
     part_id: str
     file_name: str
     mime_type: str
@@ -164,7 +164,7 @@ class UploadImageResponse(BaseModel):
 
 class UpdateImageRequest(BaseModel):
     """Request to update part image metadata."""
-    yacht_id: str
+    # Note: yacht_id comes from JWT auth context, not request body
     image_id: str  # Actually part_id for MVP
     description: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -180,7 +180,7 @@ class UpdateImageResponse(BaseModel):
 
 class DeleteImageRequest(BaseModel):
     """Request to delete part image (SIGNED action)."""
-    yacht_id: str
+    # Note: yacht_id comes from JWT auth context, not request body
     image_id: str  # Actually part_id for MVP
     reason: str
     signature: Dict[str, Any]
@@ -769,7 +769,6 @@ async def get_low_stock(
 async def upload_part_image(
     file: UploadFile = File(...),
     part_id: str = Form(...),
-    yacht_id: str = Form(...),
     description: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     authorization: str = Header(...),
@@ -793,6 +792,11 @@ async def upload_part_image(
 
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
+
+        # SECURITY: yacht_id ONLY from auth context - never trust request body
+        yacht_id = jwt_result.context.get("yacht_id") if jwt_result.context else None
+        if not yacht_id:
+            raise HTTPException(status_code=401, detail="Missing yacht_id in JWT context")
 
         # Validate yacht isolation
         tenant_info = lookup_tenant_for_user(user_id)
@@ -866,10 +870,15 @@ async def update_part_image(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
 
+        # Get yacht_id from JWT context (security: never trust request body)
+        yacht_id = jwt_result.context.get("yacht_id") if jwt_result.context else None
+        if not yacht_id:
+            raise HTTPException(status_code=401, detail="Missing yacht_id in JWT context")
+
         # Validate yacht isolation
         tenant_info = lookup_tenant_for_user(user_id)
         tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
-        yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, jwt_result.context if jwt_result.context else {})
+        yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
         if not yacht_validation.valid:
             raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
@@ -885,7 +894,7 @@ async def update_part_image(
 
         # Call handler
         result = await handlers["update_part_image"](
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id,
             image_id=request.image_id,
             description=request.description,
@@ -929,10 +938,15 @@ async def delete_part_image(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid or missing JWT")
 
+        # Get yacht_id from JWT context (security: never trust request body)
+        yacht_id = jwt_result.context.get("yacht_id") if jwt_result.context else None
+        if not yacht_id:
+            raise HTTPException(status_code=401, detail="Missing yacht_id in JWT context")
+
         # Validate yacht isolation
         tenant_info = lookup_tenant_for_user(user_id)
         tenant_key_alias = tenant_info.get("tenant_key_alias") if tenant_info else None
-        yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, jwt_result.context if jwt_result.context else {})
+        yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, jwt_result.context if jwt_result.context else {})
         if not yacht_validation.valid:
             raise HTTPException(status_code=403, detail=yacht_validation.error.message if yacht_validation.error else "Yacht access denied")
 
@@ -948,7 +962,7 @@ async def delete_part_image(
 
         # Call handler (signature validation done in handler)
         result = await handlers["delete_part_image"](
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id,
             image_id=request.image_id,
             reason=request.reason,
