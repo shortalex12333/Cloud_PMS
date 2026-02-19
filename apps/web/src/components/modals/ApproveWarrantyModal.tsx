@@ -160,7 +160,7 @@ export function ApproveWarrantyModal({
               <FileWarning className="h-5 w-5 text-celeste-accent" />
               <span className="font-semibold">{context.claim_number}</span>
             </div>
-            <p className="text-sm text-celeste-text-secondary">
+            <p className="typo-body text-celeste-text-secondary">
               {context.claim_title}
             </p>
           </div>
@@ -181,12 +181,12 @@ export function ApproveWarrantyModal({
               />
             </div>
             {context.claimed_amount && approvedAmount !== context.claimed_amount && (
-              <p className="text-xs text-amber-600">
+              <p className="typo-meta text-amber-600">
                 Different from claimed: {context.currency} {context.claimed_amount.toFixed(2)}
               </p>
             )}
             {errors.approved_amount && (
-              <p className="text-xs text-red-600">{errors.approved_amount.message}</p>
+              <p className="typo-meta text-red-600">{errors.approved_amount.message}</p>
             )}
           </div>
 

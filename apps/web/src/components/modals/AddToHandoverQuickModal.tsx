@@ -226,7 +226,7 @@ export function AddToHandoverQuickModal({
         {prefillLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-celeste-accent" />
-            <span className="ml-3 text-sm text-celeste-text-secondary">Loading context...</span>
+            <span className="ml-3 typo-body text-celeste-text-secondary">Loading context...</span>
           </div>
         ) : prefillError ? (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -240,7 +240,7 @@ export function AddToHandoverQuickModal({
             {/* Entity Type Indicator */}
             <div className="flex items-center gap-2 px-3 py-2 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
               <EntityIcon className="h-4 w-4 text-celeste-accent" />
-              <span className="text-sm font-medium text-celeste-accent capitalize">
+              <span className="typo-body font-medium text-celeste-accent capitalize">
                 {entityType.replace('_', ' ')}
               </span>
             </div>
@@ -254,7 +254,7 @@ export function AddToHandoverQuickModal({
                 placeholder="Handover item title"
               />
               {errors.title && (
-                <p className="text-sm text-red-600">{errors.title.message}</p>
+                <p className="typo-body text-red-600">{errors.title.message}</p>
               )}
             </div>
 
@@ -277,7 +277,7 @@ export function AddToHandoverQuickModal({
                 </SelectContent>
               </Select>
               {errors.category && (
-                <p className="text-sm text-red-600">{errors.category.message}</p>
+                <p className="typo-body text-red-600">{errors.category.message}</p>
               )}
             </div>
 
@@ -311,7 +311,7 @@ export function AddToHandoverQuickModal({
                 </SelectContent>
               </Select>
               {errors.priority && (
-                <p className="text-sm text-red-600">{errors.priority.message}</p>
+                <p className="typo-body text-red-600">{errors.priority.message}</p>
               )}
             </div>
 
@@ -319,7 +319,7 @@ export function AddToHandoverQuickModal({
             <div className="space-y-2">
               <Label htmlFor="summary_text">
                 Details / Your Note
-                <span className="text-xs text-celeste-text-disabled ml-2">
+                <span className="typo-meta text-celeste-text-disabled ml-2">
                   (Add your observation or instructions below)
                 </span>
               </Label>
@@ -328,15 +328,15 @@ export function AddToHandoverQuickModal({
                 {...register('summary_text')}
                 placeholder="Pre-filled context will appear here. Add your note below."
                 rows={8}
-                className="font-mono text-sm"
+                className="font-mono typo-body"
               />
               <div className="flex justify-between items-center">
                 <div>
                   {errors.summary_text && (
-                    <p className="text-sm text-red-600">{errors.summary_text.message}</p>
+                    <p className="typo-body text-red-600">{errors.summary_text.message}</p>
                   )}
                 </div>
-                <span className="text-xs text-celeste-text-disabled">
+                <span className="typo-meta text-celeste-text-disabled">
                   {watch('summary_text')?.length || 0} / 2000 characters
                 </span>
               </div>

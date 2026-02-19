@@ -11,7 +11,7 @@ export default function AuthCallbackPage() {
         <div className="min-h-screen flex items-center justify-center bg-surface-base">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-celeste-blue border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-white text-lg">Loading...</p>
+            <p className="text-white typo-title">Loading...</p>
           </div>
         </div>
       }

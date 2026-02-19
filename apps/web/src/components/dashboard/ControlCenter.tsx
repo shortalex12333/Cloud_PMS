@@ -96,10 +96,10 @@ export default function ControlCenter() {
       <header className="max-w-7xl mx-auto mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+            <h1 className="typo-title font-semibold text-zinc-900 dark:text-zinc-100">
               Control Center
             </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+            <p className="typo-body text-zinc-500 dark:text-zinc-400 mt-1">
               Holistic yacht operational overview
             </p>
           </div>
@@ -107,7 +107,7 @@ export default function ControlCenter() {
             <button
               onClick={expandAll}
               className={cn(
-                'px-3 py-1.5 rounded-lg',
+                'px-3 py-1.5 rounded-[10px]',
                 'typo-meta font-medium',
                 'bg-zinc-100 dark:bg-zinc-800',
                 'text-zinc-600 dark:text-zinc-300',
@@ -120,7 +120,7 @@ export default function ControlCenter() {
             <button
               onClick={collapseAll}
               className={cn(
-                'px-3 py-1.5 rounded-lg',
+                'px-3 py-1.5 rounded-[10px]',
                 'typo-meta font-medium',
                 'bg-zinc-100 dark:bg-zinc-800',
                 'text-zinc-600 dark:text-zinc-300',

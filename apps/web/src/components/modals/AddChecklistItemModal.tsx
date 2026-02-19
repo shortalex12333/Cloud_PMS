@@ -121,7 +121,7 @@ export function AddChecklistItemModal({
                 <p className="font-medium text-txt-primary truncate">
                   {context.work_order_title}
                 </p>
-                <p className="text-sm text-txt-tertiary truncate">
+                <p className="typo-body text-txt-tertiary truncate">
                   ID: {context.work_order_id.slice(0, 8)}...
                 </p>
               </div>
@@ -138,7 +138,7 @@ export function AddChecklistItemModal({
               className={errors.title ? 'border-red-500' : ''}
             />
             {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
+              <p className="typo-body text-red-600">{errors.title.message}</p>
             )}
           </div>
 

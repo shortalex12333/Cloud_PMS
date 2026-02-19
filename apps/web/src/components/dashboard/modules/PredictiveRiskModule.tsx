@@ -81,11 +81,11 @@ export default function PredictiveRiskModule({
             <div className="flex items-center gap-6">
               <div>
                 <p className="typo-meta text-zinc-500 dark:text-zinc-400">Active Alerts</p>
-                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{activeAlerts}</p>
+                <p className="typo-title font-semibold text-zinc-900 dark:text-zinc-100">{activeAlerts}</p>
               </div>
               <div>
                 <p className="typo-meta text-zinc-500 dark:text-zinc-400">High Priority</p>
-                <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">{highRiskCount}</p>
+                <p className="typo-title font-semibold text-amber-600 dark:text-amber-400">{highRiskCount}</p>
               </div>
             </div>
             <div className={cn(
@@ -103,8 +103,8 @@ export default function PredictiveRiskModule({
               <div
                 key={risk.id}
                 className={cn(
-                  'p-3 rounded-xl',
-                  'bg-zinc-50 dark:bg-zinc-800/50',
+                  'p-3 rounded-[10px]',
+                  'bg-zinc-50 dark:bg-[#323232]',
                   'border border-zinc-200/60 dark:border-zinc-700/60',
                   'hover:bg-zinc-100 dark:hover:bg-zinc-800',
                   'cursor-pointer transition-colors'
@@ -127,7 +127,7 @@ export default function PredictiveRiskModule({
                     )} />
                   </div>
                   <span className={cn(
-                    'text-xl font-bold tabular-nums',
+                    'typo-title font-bold tabular-nums',
                     risk.probability >= 80 ? 'text-red-500' :
                     risk.probability >= 60 ? 'text-amber-500' :
                     'text-celeste-text-muted'

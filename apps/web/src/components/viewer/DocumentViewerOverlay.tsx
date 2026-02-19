@@ -178,14 +178,14 @@ export default function DocumentViewerOverlay({
       onClick={handleBackdropClick}
       data-testid="document-viewer-overlay"
     >
-      <div className="absolute inset-4 md:inset-8 lg:inset-12 rounded-lg bg-surface-base overflow-hidden shadow-celeste-lg flex flex-col">
+      <div className="absolute inset-4 md:inset-8 lg:inset-12 rounded-[16px] bg-surface-base overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-surface-elevated">
           <div className="flex items-center gap-3 min-w-0">
             {getFileIcon(contentType)}
             <div className="min-w-0">
-              <div className="text-sm font-medium text-zinc-200 truncate">{fileName}</div>
-              <div className="text-xs text-zinc-500">{contentType}</div>
+              <div className="typo-body font-medium text-zinc-200 truncate">{fileName}</div>
+              <div className="typo-meta text-zinc-500">{contentType}</div>
             </div>
           </div>
 
@@ -223,7 +223,7 @@ export default function DocumentViewerOverlay({
                 </button>
 
                 {showActionsMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-surface-elevated border border-surface-border rounded-lg shadow-xl z-50 py-1">
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-surface-elevated border border-surface-border rounded-[10px] z-50 py-1">
                     <button
                       onClick={() => handleMicroAction('add_to_handover')}
                       className="btn-ghost w-full justify-start"
@@ -252,10 +252,10 @@ export default function DocumentViewerOverlay({
 
             <button
               onClick={onClose}
-              className="btn-icon"
+              className="btn-icon h-8 w-8"
               aria-label="Close viewer"
             >
-              <X className="h-5 w-5" />
+              <X className="w-[18px] h-[18px]" />
             </button>
           </div>
         </div>
@@ -295,10 +295,10 @@ export default function DocumentViewerOverlay({
             // Fallback for unsupported types or errors
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               {getFileIcon(contentType)}
-              <h3 className="text-lg font-medium text-zinc-300 mt-4 mb-2">
+              <h3 className="typo-title font-medium text-zinc-300 mt-4 mb-2">
                 Preview not available
               </h3>
-              <p className="text-sm text-zinc-500 mb-6 max-w-md">
+              <p className="typo-body text-zinc-500 mb-6 max-w-md">
                 This file type ({contentType}) cannot be previewed in the browser.
                 {outlookUrl
                   ? ' You can open it in Outlook or download it.'

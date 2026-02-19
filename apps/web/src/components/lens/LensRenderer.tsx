@@ -139,7 +139,7 @@ export function LensRenderer({
       return (
         <div className="p-6 text-celeste-text-muted">
           <p>Unknown entity type: {entityType}</p>
-          <p className="text-xs mt-2 text-celeste-text-disabled">
+          <p className="typo-meta mt-2 text-celeste-text-disabled">
             Supported types: work_order, fault, equipment, part, inventory, receiving,
             certificate, handover, handover_export, hours_of_rest, warranty, shopping_list, document
           </p>

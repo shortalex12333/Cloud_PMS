@@ -152,7 +152,7 @@ export function ShowManualSectionModal({
               <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               <div>
                 <h4 className="font-medium text-red-800">Unable to load manual</h4>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <p className="typo-body text-red-700 mt-1">{error}</p>
               </div>
             </div>
           </div>
@@ -167,7 +167,7 @@ export function ShowManualSectionModal({
                   <FileText className="h-5 w-5 text-celeste-accent mt-0.5" />
                   <div>
                     <h4 className="font-medium text-celeste-accent">{document.title}</h4>
-                    <p className="text-sm text-celeste-accent mt-0.5">
+                    <p className="typo-body text-celeste-accent mt-0.5">
                       {document.manufacturer} {document.model}
                     </p>
                   </div>
@@ -190,11 +190,11 @@ export function ShowManualSectionModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-celeste-black">{section.title}</h3>
-                <span className="text-sm text-celeste-text-disabled">Page {section.page_number}</span>
+                <span className="typo-body text-celeste-text-disabled">Page {section.page_number}</span>
               </div>
               <div className="p-4 bg-celeste-bg-primary border border-celeste-border rounded-lg">
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-celeste-text-secondary">
+                  <pre className="whitespace-pre-wrap font-sans typo-body text-celeste-text-secondary">
                     {section.text_preview}
                   </pre>
                 </div>
@@ -204,7 +204,7 @@ export function ShowManualSectionModal({
             {/* Related Sections */}
             {relatedSections.length > 0 && (
               <div className="space-y-2">
-                <h3 className="font-semibold text-celeste-black text-sm">Related Sections</h3>
+                <h3 className="font-semibold text-celeste-black typo-body">Related Sections</h3>
                 <div className="space-y-1">
                   {relatedSections.map((related) => (
                     <button
@@ -213,9 +213,9 @@ export function ShowManualSectionModal({
                       disabled={isLoading}
                       className="w-full p-2 text-left bg-white border border-celeste-border rounded hover:bg-celeste-bg-primary transition-colors flex items-center justify-between disabled:opacity-50"
                     >
-                      <span className="text-sm text-celeste-text-secondary">{related.title}</span>
+                      <span className="typo-body text-celeste-text-secondary">{related.title}</span>
                       <div className="flex items-center gap-2 text-celeste-text-muted">
-                        <span className="text-xs">Page {related.page_number}</span>
+                        <span className="typo-meta">Page {related.page_number}</span>
                         <ChevronRight className="h-4 w-4" />
                       </div>
                     </button>

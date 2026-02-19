@@ -169,7 +169,7 @@ export function EditFaultDetailsModal({
                 <AlertTriangle className="h-5 w-5 text-red-700 mt-0.5" />
                 <div>
                   <p className="font-semibold text-red-900">Reopening Closed Fault</p>
-                  <p className="text-sm text-red-800 mt-1">
+                  <p className="typo-body text-red-800 mt-1">
                     You are reopening a fault that was previously closed. You MUST provide a
                     detailed reason below (minimum 15 characters).
                   </p>
@@ -185,7 +185,7 @@ export function EditFaultDetailsModal({
                 <AlertTriangle className="h-5 w-5 text-orange-700 mt-0.5" />
                 <div>
                   <p className="font-semibold text-orange-900">Severity Increase</p>
-                  <p className="text-sm text-orange-800 mt-1">
+                  <p className="typo-body text-orange-800 mt-1">
                     You are increasing the severity from{' '}
                     <span className="font-bold uppercase">{context.current_severity}</span> to{' '}
                     <span className="font-bold uppercase">{severity}</span>. This may trigger
@@ -207,10 +207,10 @@ export function EditFaultDetailsModal({
               className={errors.title ? 'border-red-500' : ''}
             />
             {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
+              <p className="typo-body text-red-600">{errors.title.message}</p>
             )}
             {changes.title && (
-              <p className="text-xs text-orange-600">
+              <p className="typo-meta text-orange-600">
                 Changed from: "{context.current_title}"
               </p>
             )}
@@ -228,10 +228,10 @@ export function EditFaultDetailsModal({
               className={errors.description ? 'border-red-500' : ''}
             />
             {errors.description && (
-              <p className="text-sm text-red-600">{errors.description.message}</p>
+              <p className="typo-body text-red-600">{errors.description.message}</p>
             )}
             {changes.description && (
-              <p className="text-xs text-orange-600">Description has been modified</p>
+              <p className="typo-meta text-orange-600">Description has been modified</p>
             )}
           </div>
 
@@ -254,7 +254,7 @@ export function EditFaultDetailsModal({
               </SelectContent>
             </Select>
             {changes.severity && (
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 typo-meta">
                 <span className="text-muted-foreground">Previous:</span>
                 <span className={`font-medium ${getSeverityTextColor(context.current_severity)}`}>
                   {context.current_severity.toUpperCase()}
@@ -286,7 +286,7 @@ export function EditFaultDetailsModal({
               </SelectContent>
             </Select>
             {changes.status && (
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 typo-meta">
                 <span className="text-muted-foreground">Previous:</span>
                 <span className={`font-medium ${getStatusTextColor(context.current_status)}`}>
                   {context.current_status.toUpperCase().replace('_', ' ')}
@@ -313,7 +313,7 @@ export function EditFaultDetailsModal({
                 className="border-red-300"
               />
               {reopeningReason && reopeningReason.length < 15 && (
-                <p className="text-sm text-red-600">
+                <p className="typo-body text-red-600">
                   Reason must be at least 15 characters ({reopeningReason.length}/15)
                 </p>
               )}
@@ -332,7 +332,7 @@ export function EditFaultDetailsModal({
               }`}
             >
               <p
-                className={`text-sm font-medium ${
+                className={`typo-body font-medium ${
                   isReopening
                     ? 'text-red-900'
                     : isSeverityIncreasing

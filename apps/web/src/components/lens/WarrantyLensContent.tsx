@@ -105,7 +105,7 @@ export function WarrantyLensContent({
         {coverage && (
           <div className="mt-6">
             <SectionContainer title="Coverage" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary whitespace-pre-wrap">{coverage}</p>
+              <p className="typo-body text-celeste-text-primary whitespace-pre-wrap">{coverage}</p>
             </SectionContainer>
           </div>
         )}
@@ -113,14 +113,14 @@ export function WarrantyLensContent({
         {terms && (
           <div className="mt-6">
             <SectionContainer title="Terms & Conditions" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary whitespace-pre-wrap">{terms}</p>
+              <p className="typo-body text-celeste-text-primary whitespace-pre-wrap">{terms}</p>
             </SectionContainer>
           </div>
         )}
 
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-2 gap-4 typo-body">
               {supplier && (
                 <>
                   <dt className="text-celeste-text-muted">Supplier</dt>

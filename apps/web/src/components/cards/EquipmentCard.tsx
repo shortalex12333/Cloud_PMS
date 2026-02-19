@@ -64,34 +64,34 @@ export function EquipmentCard({ equipment, actions = [] }: EquipmentCardProps) {
           </div>
 
           {/* Type & Model */}
-          <p className="text-sm text-muted-foreground mb-1">
+          <p className="typo-body text-muted-foreground mb-1">
             <span className="font-medium">{equipment.equipment_type}</span>
             {equipment.manufacturer && ` · ${equipment.manufacturer}`}
             {equipment.model && ` ${equipment.model}`}
           </p>
 
           {/* Location */}
-          <p className="text-sm text-muted-foreground mb-2">
+          <p className="typo-body text-muted-foreground mb-2">
             <span className="font-medium">Location:</span> {equipment.location}
           </p>
 
           {/* Serial Number */}
           {equipment.serial_number && (
-            <p className="text-xs text-muted-foreground mb-2">
+            <p className="typo-meta text-muted-foreground mb-2">
               S/N: {equipment.serial_number}
             </p>
           )}
 
           {/* Maintenance Info */}
           {equipment.last_maintenance && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+            <div className="flex items-center gap-1.5 typo-body text-muted-foreground mb-2">
               <Calendar className="h-4 w-4" />
               <span>Last maintained: {formatDate(equipment.last_maintenance)}</span>
             </div>
           )}
 
           {/* Stats */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+          <div className="flex items-center gap-4 typo-meta text-muted-foreground mb-3">
             {equipment.fault_count !== undefined && (
               <div className="flex items-center gap-1">
                 <AlertCircle className="h-3.5 w-3.5" />

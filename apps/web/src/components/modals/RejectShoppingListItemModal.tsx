@@ -240,14 +240,14 @@ export function RejectShoppingListItemModal({
                 <p className="font-semibold text-red-900">
                   {context.part_name}
                 </p>
-                <div className="flex items-center gap-2 mt-1 text-sm text-red-700">
+                <div className="flex items-center gap-2 mt-1 typo-body text-red-700">
                   <Package className="h-4 w-4" />
                   <span>
                     Requested: {context.quantity_requested} {context.unit || 'units'}
                   </span>
                 </div>
                 {context.requester_name && (
-                  <p className="text-xs text-red-600 mt-1">
+                  <p className="typo-meta text-red-600 mt-1">
                     Requested by {context.requester_name}
                   </p>
                 )}
@@ -258,7 +258,7 @@ export function RejectShoppingListItemModal({
             {context.urgency && context.urgency !== 'normal' && (
               <div
                 className={cn(
-                  'inline-flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full text-xs font-medium border',
+                  'inline-flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full typo-meta font-medium border',
                   getUrgencyColor(context.urgency)
                 )}
               >
@@ -291,7 +291,7 @@ export function RejectShoppingListItemModal({
                       <SelectItem key={reason.value} value={reason.value}>
                         <div className="flex flex-col">
                           <span className="font-medium">{reason.label}</span>
-                          <span className="text-xs text-txt-tertiary">
+                          <span className="typo-meta text-txt-tertiary">
                             {reason.description}
                           </span>
                         </div>
@@ -302,12 +302,12 @@ export function RejectShoppingListItemModal({
               )}
             />
             {errors.rejection_reason && (
-              <p className="text-sm text-red-600">
+              <p className="typo-body text-red-600">
                 {errors.rejection_reason.message}
               </p>
             )}
             {selectedReason && (
-              <p className="text-xs text-txt-tertiary">
+              <p className="typo-meta text-txt-tertiary">
                 {selectedReason.description}
               </p>
             )}
@@ -334,12 +334,12 @@ export function RejectShoppingListItemModal({
               }
             />
             {rejectionReason === 'other' && !watch('rejection_notes') && (
-              <p className="text-xs text-amber-600">
+              <p className="typo-meta text-amber-600">
                 Please provide details when selecting "Other"
               </p>
             )}
             {errors.rejection_notes && (
-              <p className="text-sm text-red-600">
+              <p className="typo-body text-red-600">
                 {errors.rejection_notes.message}
               </p>
             )}
@@ -349,9 +349,9 @@ export function RejectShoppingListItemModal({
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-              <div className="text-sm text-amber-700">
+              <div className="typo-body text-amber-700">
                 <p className="font-medium">This action cannot be undone</p>
-                <p className="text-xs mt-1">
+                <p className="typo-meta mt-1">
                   The requester will be notified of the rejection and reason provided.
                 </p>
               </div>

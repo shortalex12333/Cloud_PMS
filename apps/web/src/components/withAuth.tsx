@@ -87,7 +87,7 @@ export function withAuth<P extends object>(
         <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-txt-secondary">
+            <p className="typo-body text-txt-secondary">
               {loading ? 'Loading...' : 'Connecting...'}
             </p>
           </div>
@@ -101,7 +101,7 @@ export function withAuth<P extends object>(
         <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-txt-secondary">Redirecting...</p>
+            <p className="typo-body text-txt-secondary">Redirecting...</p>
           </div>
         </div>
       );
@@ -113,7 +113,7 @@ export function withAuth<P extends object>(
         <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-txt-secondary">Redirecting...</p>
+            <p className="typo-body text-txt-secondary">Redirecting...</p>
           </div>
         </div>
       );
@@ -126,8 +126,8 @@ export function withAuth<P extends object>(
         <div className="min-h-screen bg-surface-base flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-            <p className="text-sm text-txt-secondary">Reconnecting...</p>
-            <p className="text-xs text-txt-tertiary">Please wait...</p>
+            <p className="typo-body text-txt-secondary">Reconnecting...</p>
+            <p className="typo-meta text-txt-tertiary">Please wait...</p>
           </div>
         </div>
       );

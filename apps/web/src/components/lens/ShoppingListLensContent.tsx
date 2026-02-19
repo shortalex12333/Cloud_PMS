@@ -102,7 +102,7 @@ export function ShoppingListLensContent({
         <div className="mt-6">
           <SectionContainer title={`Items (${items.length})`} stickyTop={56}>
             {items.length === 0 ? (
-              <p className="text-sm text-celeste-text-muted">No items added yet.</p>
+              <p className="typo-body text-celeste-text-muted">No items added yet.</p>
             ) : (
               <ul className="space-y-3">
                 {items.map((item, index) => {
@@ -113,29 +113,29 @@ export function ShoppingListLensContent({
                   return (
                     <li key={item.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
                       <div>
-                        <span className="text-sm text-celeste-text-primary">{item.part_name}</span>
-                        <span className="ml-2 text-sm text-celeste-text-muted">
+                        <span className="typo-body text-celeste-text-primary">{item.part_name}</span>
+                        <span className="ml-2 typo-body text-celeste-text-muted">
                           × {item.quantity_requested}{item.unit ? ` ${item.unit}` : ''}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         {item.urgency && item.urgency !== 'normal' && (
-                          <span className={cn('text-xs uppercase', urgencyColor)}>{item.urgency}</span>
+                          <span className={cn('typo-meta uppercase', urgencyColor)}>{item.urgency}</span>
                         )}
-                        <span className={cn('text-xs uppercase', itemStatusColor)}>
+                        <span className={cn('typo-meta uppercase', itemStatusColor)}>
                           {item.status.replace(/_/g, ' ')}
                         </span>
                         {(item.status === 'candidate' || item.status === 'under_review') && (
                           <div className="flex gap-1">
                             <button
                               onClick={() => console.log('[ShoppingListLens] Approve item:', item.id)}
-                              className="text-xs px-2 py-1 bg-status-success/20 text-status-success rounded hover:bg-status-success/30"
+                              className="typo-meta px-2 py-1 bg-status-success/20 text-status-success rounded hover:bg-status-success/30"
                             >
                               Approve
                             </button>
                             <button
                               onClick={() => console.log('[ShoppingListLens] Reject item:', item.id)}
-                              className="text-xs px-2 py-1 bg-status-critical/20 text-status-critical rounded hover:bg-status-critical/30"
+                              className="typo-meta px-2 py-1 bg-status-critical/20 text-status-critical rounded hover:bg-status-critical/30"
                             >
                               Reject
                             </button>
@@ -153,7 +153,7 @@ export function ShoppingListLensContent({
         {approved_at && (
           <div className="mt-6">
             <SectionContainer title="Approval" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="typo-body text-celeste-text-muted">
                 Approved {formatRelativeTime(approved_at)}
                 {approver_name && ` by ${approver_name}`}
               </p>

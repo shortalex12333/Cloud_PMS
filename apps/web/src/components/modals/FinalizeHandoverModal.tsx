@@ -128,7 +128,7 @@ export function FinalizeHandoverModal({
             <h3 className="font-semibold text-celeste-text-primary">
               {context.handover_title}
             </h3>
-            <div className="mt-2 text-sm text-celeste-text-secondary">
+            <div className="mt-2 typo-body text-celeste-text-secondary">
               <div className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" />
                 <span>{context.items_count} items to hand over</span>
@@ -140,7 +140,7 @@ export function FinalizeHandoverModal({
           </div>
 
           {/* Warning */}
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded typo-body text-amber-800">
             Finalizing will lock this handover for signature. You will not be able to edit items after finalizing.
           </div>
         </div>

@@ -137,7 +137,7 @@ export function AddPartModal({
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
           'bg-surface-elevated border border-surface-border',
-          'rounded-lg shadow-lg',
+          'rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]',
           'w-full max-w-md mx-4'
         )}
       >
@@ -178,7 +178,7 @@ export function AddPartModal({
                 placeholder="Search by name or part number..."
                 className={cn(
                   'w-full',
-                  'bg-surface-primary border border-surface-border rounded-md',
+                  'bg-surface-primary border border-surface-border rounded-[10px]',
                   'px-3 py-2',
                   'text-body text-txt-primary placeholder:text-txt-tertiary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',
@@ -191,8 +191,8 @@ export function AddPartModal({
                 <div
                   className={cn(
                     'mt-1 max-h-[160px] overflow-y-auto',
-                    'bg-surface-elevated border border-surface-border rounded-md',
-                    'shadow-md'
+                    'bg-surface-elevated border border-surface-border rounded-[10px]',
+                    'border border-[#e7e7e7] dark:border-[#404040]'
                   )}
                 >
                   {filteredParts.slice(0, 8).map((part) => (
@@ -256,7 +256,7 @@ export function AddPartModal({
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 className={cn(
                   'w-24',
-                  'bg-surface-primary border border-surface-border rounded-md',
+                  'bg-surface-primary border border-surface-border rounded-[10px]',
                   'px-3 py-2',
                   'text-body text-txt-primary',
                   'focus:outline-none focus:ring-2 focus:ring-brand-interactive',

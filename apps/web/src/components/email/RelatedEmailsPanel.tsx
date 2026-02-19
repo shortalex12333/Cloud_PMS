@@ -66,7 +66,7 @@ export function RelatedEmailsPanel({ objectType, objectId, className }: RelatedE
       {/* Header - Collapsible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+        className="w-full flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-[#323232] transition-colors"
       >
         <div className="flex items-center gap-2">
           <Mail className="h-4 w-4 text-zinc-500" />
@@ -225,7 +225,7 @@ interface ThreadItemProps {
 
 function ThreadItem({ thread, isSelected, onClick, objectType, objectId }: ThreadItemProps) {
   return (
-    <div className="p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+    <div className="p-3 hover:bg-zinc-50 dark:hover:bg-[#323232] transition-colors">
       <button
         onClick={onClick}
         className="w-full text-left"

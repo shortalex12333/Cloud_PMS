@@ -213,7 +213,7 @@ export function EditHandoverSectionModal({
               className={errors.section_name ? 'border-red-500' : ''}
             />
             {errors.section_name && (
-              <p className="text-sm text-red-600">{errors.section_name.message}</p>
+              <p className="typo-body text-red-600">{errors.section_name.message}</p>
             )}
           </div>
 
@@ -222,7 +222,7 @@ export function EditHandoverSectionModal({
             <div className="flex items-center justify-between">
               <Label>Items ({fields.length})</Label>
               {hasChanges && (
-                <span className="text-xs text-amber-600">Unsaved changes</span>
+                <span className="typo-meta text-amber-600">Unsaved changes</span>
               )}
             </div>
 
@@ -230,8 +230,8 @@ export function EditHandoverSectionModal({
               {fields.length === 0 ? (
                 <div className="p-4 text-center text-celeste-text-disabled">
                   <Users className="h-8 w-8 mx-auto mb-2 text-celeste-border" />
-                  <p className="text-sm">No items in this section</p>
-                  <p className="text-xs text-celeste-text-muted">Add items below</p>
+                  <p className="typo-body">No items in this section</p>
+                  <p className="typo-meta text-celeste-text-muted">Add items below</p>
                 </div>
               ) : (
                 fields.map((field, index) => {
@@ -250,10 +250,10 @@ export function EditHandoverSectionModal({
                       <Icon className={cn('h-5 w-5 mt-0.5', config.color)} />
 
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-celeste-black text-sm">
+                        <p className="font-medium text-celeste-black typo-body">
                           {field.title}
                         </p>
-                        <p className="text-sm text-celeste-text-secondary mt-0.5">
+                        <p className="typo-body text-celeste-text-secondary mt-0.5">
                           {field.summary}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -261,7 +261,7 @@ export function EditHandoverSectionModal({
                             value={field.importance}
                             onChange={(e) => handleImportanceChange(index, e.target.value as any)}
                             className={cn(
-                              'text-xs px-2 py-0.5 rounded border appearance-none cursor-pointer',
+                              'typo-meta px-2 py-0.5 rounded border appearance-none cursor-pointer',
                               getImportanceBadge(field.importance)
                             )}
                           >
@@ -269,7 +269,7 @@ export function EditHandoverSectionModal({
                             <option value="normal">Normal</option>
                             <option value="high">High</option>
                           </select>
-                          <span className="text-xs text-celeste-text-muted">{field.type}</span>
+                          <span className="typo-meta text-celeste-text-muted">{field.type}</span>
                         </div>
                       </div>
 

@@ -306,7 +306,7 @@ export function AddToHandoverModal({
             </Label>
 
             {errors.selected_entities && (
-              <p className="text-sm text-red-600">{errors.selected_entities.message}</p>
+              <p className="typo-body text-red-600">{errors.selected_entities.message}</p>
             )}
 
             <div className="border border-celeste-border rounded-lg max-h-80 overflow-y-auto">
@@ -335,14 +335,14 @@ export function AddToHandoverModal({
                                 {entity.name}
                               </h4>
                               {entity.description && (
-                                <p className="text-sm text-celeste-text-secondary mt-0.5">
+                                <p className="typo-body text-celeste-text-secondary mt-0.5">
                                   {entity.description}
                                 </p>
                               )}
                               <div className="flex items-center gap-2 mt-1">
                                 {entity.status && (
                                   <span
-                                    className={`text-xs px-2 py-0.5 rounded ${getStatusColor(
+                                    className={`typo-meta px-2 py-0.5 rounded ${getStatusColor(
                                       entity.status
                                     )}`}
                                   >
@@ -350,7 +350,7 @@ export function AddToHandoverModal({
                                   </span>
                                 )}
                                 {entity.metadata && (
-                                  <span className="text-xs text-celeste-text-disabled">{entity.metadata}</span>
+                                  <span className="typo-meta text-celeste-text-disabled">{entity.metadata}</span>
                                 )}
                               </div>
                             </div>
@@ -385,7 +385,7 @@ export function AddToHandoverModal({
           {/* Selected Items Preview */}
           {selectedEntities.length > 0 && (
             <div className="p-4 bg-celeste-accent-line border border-celeste-accent-line rounded-lg">
-              <p className="text-sm font-semibold text-celeste-accent mb-2">
+              <p className="typo-body font-semibold text-celeste-accent mb-2">
                 Selected Items ({selectedEntities.length})
               </p>
               <div className="flex flex-wrap gap-2">
@@ -395,7 +395,7 @@ export function AddToHandoverModal({
                   return (
                     <div
                       key={id}
-                      className="flex items-center gap-1 px-2 py-1 bg-white border border-celeste-accent rounded text-sm"
+                      className="flex items-center gap-1 px-2 py-1 bg-white border border-celeste-accent rounded typo-body"
                     >
                       {getEntityIcon(entityType)}
                       <span className="text-celeste-black">{entity.name}</span>

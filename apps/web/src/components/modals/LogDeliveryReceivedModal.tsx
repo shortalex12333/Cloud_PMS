@@ -218,11 +218,11 @@ export function LogDeliveryReceivedModal({
                   <p className="font-medium text-celeste-accent">
                     PO #{context.purchase_order_number}
                   </p>
-                  <p className="text-sm text-celeste-accent">{context.supplier_name}</p>
+                  <p className="typo-body text-celeste-accent">{context.supplier_name}</p>
                 </div>
               </div>
               {context.expected_date && (
-                <div className="text-right text-sm text-celeste-accent">
+                <div className="text-right typo-body text-celeste-accent">
                   <p>Expected: {context.expected_date}</p>
                 </div>
               )}
@@ -310,26 +310,26 @@ export function LogDeliveryReceivedModal({
                       )} />
 
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-celeste-black text-sm">
+                        <p className="font-medium text-celeste-black typo-body">
                           {item.part_name}
                         </p>
-                        <p className="text-xs text-celeste-text-disabled">
+                        <p className="typo-meta text-celeste-text-disabled">
                           P/N: {item.part_number}
                         </p>
 
                         <div className="mt-2 flex items-center gap-3">
                           {/* Quantity Input */}
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-celeste-text-disabled">Qty:</span>
+                            <span className="typo-meta text-celeste-text-disabled">Qty:</span>
                             <Input
                               type="number"
                               min={0}
                               max={item.ordered_qty}
                               value={item.received_qty}
                               onChange={(e) => updateItemQty(index, parseInt(e.target.value) || 0)}
-                              className="w-16 h-8 text-sm"
+                              className="w-16 h-8 typo-body"
                             />
-                            <span className="text-xs text-celeste-text-disabled">/ {item.ordered_qty}</span>
+                            <span className="typo-meta text-celeste-text-disabled">/ {item.ordered_qty}</span>
                           </div>
 
                           {/* Condition Select */}
@@ -337,7 +337,7 @@ export function LogDeliveryReceivedModal({
                             value={item.condition}
                             onChange={(e) => updateItemCondition(index, e.target.value as any)}
                             className={cn(
-                              'text-xs px-2 py-1 rounded border',
+                              'typo-meta px-2 py-1 rounded border',
                               getConditionBadge(item.condition)
                             )}
                           >
@@ -363,16 +363,16 @@ export function LogDeliveryReceivedModal({
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 bg-emerald-50 rounded-lg text-center">
-              <p className="text-xl font-bold text-emerald-700">{summary.complete}</p>
-              <p className="text-xs text-emerald-600">Complete</p>
+              <p className="typo-title font-bold text-emerald-700">{summary.complete}</p>
+              <p className="typo-meta text-emerald-600">Complete</p>
             </div>
             <div className="p-3 bg-amber-50 rounded-lg text-center">
-              <p className="text-xl font-bold text-amber-700">{summary.partial}</p>
-              <p className="text-xs text-amber-600">Partial</p>
+              <p className="typo-title font-bold text-amber-700">{summary.partial}</p>
+              <p className="typo-meta text-amber-600">Partial</p>
             </div>
             <div className="p-3 bg-red-50 rounded-lg text-center">
-              <p className="text-xl font-bold text-red-700">{summary.issues}</p>
-              <p className="text-xs text-red-600">Issues</p>
+              <p className="typo-title font-bold text-red-700">{summary.issues}</p>
+              <p className="typo-meta text-red-600">Issues</p>
             </div>
           </div>
 
@@ -385,7 +385,7 @@ export function LogDeliveryReceivedModal({
             />
             <Label
               htmlFor="update_inventory"
-              className="text-sm font-normal cursor-pointer flex items-center gap-2"
+              className="typo-body font-normal cursor-pointer flex items-center gap-2"
             >
               <Package className="h-4 w-4 text-emerald-500" />
               Automatically update inventory stock levels

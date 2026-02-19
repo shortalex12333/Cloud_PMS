@@ -124,7 +124,7 @@ function NoteRow({ note }: NoteRowProps) {
             className={cn(
               'mt-1 text-action text-brand-interactive',
               'hover:text-brand-hover transition-colors duration-fast',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-lg'
             )}
           >
             {isExpanded ? 'Show less' : 'Show more'}

@@ -85,7 +85,7 @@ export function FilterBar({ activeFilters, onClearAll, children, className }: Fi
       {/* Active Filter Badges */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-sm text-muted-foreground">Active filters:</span>
+          <span className="typo-body text-muted-foreground">Active filters:</span>
           {displayFilters.map(([key, value]) => {
             const displayValue = formatFilterValue(key, value);
             if (!displayValue) return null;
@@ -106,7 +106,7 @@ export function FilterBar({ activeFilters, onClearAll, children, className }: Fi
             variant="ghost"
             size="sm"
             onClick={onClearAll}
-            className="text-xs"
+            className="typo-meta"
           >
             Clear All
           </Button>

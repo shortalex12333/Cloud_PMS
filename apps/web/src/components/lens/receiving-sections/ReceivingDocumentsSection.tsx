@@ -185,7 +185,7 @@ function DocumentCard({ doc }: DocumentCardProps) {
           className={cn(
             'w-12 h-12 rounded flex items-center justify-center flex-shrink-0',
             'bg-surface-elevated border border-surface-border',
-            'text-[11px] font-bold text-txt-tertiary tracking-wide'
+            'typo-meta font-bold text-txt-tertiary tracking-wide'
           )}
           aria-hidden="true"
         >
@@ -195,14 +195,14 @@ function DocumentCard({ doc }: DocumentCardProps) {
 
       {/* Document info */}
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-txt-primary leading-[1.4] truncate">
+        <p className="typo-label font-medium text-txt-primary truncate">
           {doc.filename || typeLabel}
         </p>
         {metaLine && (
-          <p className="text-[12px] text-txt-tertiary mt-0.5">{metaLine}</p>
+          <p className="typo-meta text-txt-tertiary mt-0.5">{metaLine}</p>
         )}
         {doc.comment && (
-          <p className="text-[12px] text-txt-secondary mt-1 line-clamp-1 italic">
+          <p className="typo-meta text-txt-secondary mt-1 line-clamp-1 italic">
             "{doc.comment}"
           </p>
         )}
@@ -274,7 +274,7 @@ export function ReceivingDocumentsSection({
       {documents.length === 0 ? (
         // Contextual empty state
         <div className="py-8 text-center">
-          <p className="text-[14px] text-txt-secondary leading-[1.6]">
+          <p className="typo-label text-txt-secondary">
             No documents attached. Add invoices, packing slips, or photos.
           </p>
           {canAddDocument && onAddDocument && (
@@ -287,7 +287,7 @@ export function ReceivingDocumentsSection({
         <>
           {/* Summary line showing document type breakdown */}
           {(invoiceCount > 0 || packingSlipCount > 0 || photoCount > 0) && (
-            <div className="pb-2 text-[12px] text-txt-tertiary">
+            <div className="pb-2 typo-meta text-txt-tertiary">
               {[
                 invoiceCount > 0 && `${invoiceCount} invoice${invoiceCount !== 1 ? 's' : ''}`,
                 packingSlipCount > 0 && `${packingSlipCount} packing slip${packingSlipCount !== 1 ? 's' : ''}`,

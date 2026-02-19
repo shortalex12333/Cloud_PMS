@@ -144,7 +144,7 @@ export function OrderPartModal({
                   <Package className="h-4 w-4" />
                   {context.part_name}
                 </h3>
-                <p className="text-sm text-celeste-accent">
+                <p className="typo-body text-celeste-accent">
                   P/N: {context.part_number}
                 </p>
               </div>
@@ -153,16 +153,16 @@ export function OrderPartModal({
             {/* Stock Status */}
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
               <div>
-                <p className="text-xs text-celeste-accent">Current Stock</p>
-                <p className={`text-lg font-bold ${
+                <p className="typo-meta text-celeste-accent">Current Stock</p>
+                <p className={`typo-title font-bold ${
                   isOutOfStock ? 'text-red-700' : isLowStock ? 'text-orange-700' : 'text-celeste-accent'
                 }`}>
                   {context.current_stock}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">Min Level</p>
-                <p className="text-lg font-bold text-celeste-accent">
+                <p className="typo-meta text-celeste-accent">Min Level</p>
+                <p className="typo-title font-bold text-celeste-accent">
                   {context.min_stock_level}
                 </p>
               </div>
@@ -172,7 +172,7 @@ export function OrderPartModal({
             {isOutOfStock && (
               <div className="flex items-center gap-2 p-2 bg-red-100 border border-red-300 rounded mt-2">
                 <AlertTriangle className="h-4 w-4 text-red-700" />
-                <p className="text-sm text-red-700 font-medium">
+                <p className="typo-body text-red-700 font-medium">
                   OUT OF STOCK - Order immediately
                 </p>
               </div>
@@ -180,7 +180,7 @@ export function OrderPartModal({
             {isLowStock && !isOutOfStock && (
               <div className="flex items-center gap-2 p-2 bg-orange-100 border border-orange-300 rounded mt-2">
                 <AlertTriangle className="h-4 w-4 text-orange-700" />
-                <p className="text-sm text-orange-700 font-medium">
+                <p className="typo-body text-orange-700 font-medium">
                   LOW STOCK - Below minimum level
                 </p>
               </div>
@@ -203,9 +203,9 @@ export function OrderPartModal({
                   className={errors.quantity ? 'border-red-500' : ''}
                 />
                 {errors.quantity && (
-                  <p className="text-sm text-red-600">{errors.quantity.message}</p>
+                  <p className="typo-body text-red-600">{errors.quantity.message}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="typo-meta text-muted-foreground">
                   Suggested: {Math.max(context.min_stock_level * 2 - context.current_stock, 1)} units
                 </p>
               </div>
@@ -215,11 +215,11 @@ export function OrderPartModal({
                 <div className="space-y-2">
                   <Label>Estimated Cost</Label>
                   <div className="h-10 px-3 py-2 rounded-md border border-celeste-border bg-celeste-bg-primary">
-                    <p className="text-lg font-semibold text-celeste-black">
+                    <p className="typo-title font-semibold text-celeste-black">
                       ${estimatedCost}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="typo-meta text-muted-foreground">
                     ${context.unit_cost} × {quantity} units
                   </p>
                 </div>
@@ -251,7 +251,7 @@ export function OrderPartModal({
                 </SelectContent>
               </Select>
               {errors.supplier && (
-                <p className="text-sm text-red-600">{errors.supplier.message}</p>
+                <p className="typo-body text-red-600">{errors.supplier.message}</p>
               )}
             </div>
 

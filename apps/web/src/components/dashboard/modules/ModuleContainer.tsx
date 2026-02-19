@@ -85,14 +85,10 @@ export default function ModuleContainer({
     <div
       className={cn(
         'relative overflow-hidden',
-        'bg-white/95 dark:bg-zinc-900/95',
-        'backdrop-blur-[16px]',
+        'bg-white dark:bg-zinc-900',
         'border border-zinc-200/60 dark:border-zinc-700/60',
         'rounded-[20px]',
-        'shadow-[0_2px_8px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)]',
-        'hover:shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
         'transition-all duration-slow ease-out',
-        isExpanded && 'shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
         className
       )}
     >
@@ -103,14 +99,14 @@ export default function ModuleContainer({
           'w-full flex items-center gap-3',
           'px-4 py-3',
           'text-left',
-          'hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50',
+          'hover:bg-[#f8f8f8] dark:hover:bg-[#323232]',
           'transition-colors duration-fast'
         )}
       >
         {/* Icon */}
         <div className={cn(
           'flex items-center justify-center',
-          'w-9 h-9 rounded-xl',
+          'w-9 h-9 rounded-[10px]',
           styles.bg
         )}>
           {icon}
@@ -222,8 +218,8 @@ export function ModuleItem({
       onClick={onClick}
       className={cn(
         'flex items-center gap-3',
-        'px-3 py-2 -mx-3 rounded-xl',
-        onClick && 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80',
+        'px-3 py-2 -mx-3 rounded-[10px]',
+        onClick && 'cursor-pointer hover:bg-[#eeeeee] dark:hover:bg-[#323232]',
         'transition-colors duration-fast',
         'group',
         className
@@ -232,7 +228,7 @@ export function ModuleItem({
       {icon && (
         <div className={cn(
           'flex items-center justify-center',
-          'w-8 h-8 rounded-lg',
+          'w-8 h-8 rounded-[10px]',
           styles.bg
         )}>
           {icon}
@@ -343,8 +339,8 @@ export function StatCard({
 
   return (
     <div className={cn(
-      'px-3 py-2 rounded-xl',
-      'bg-zinc-100/50 dark:bg-zinc-800/50',
+      'px-3 py-2 rounded-[10px]',
+      'bg-[#f8f8f8] dark:bg-[#323232]',
       className
     )}>
       <p className="typo-meta text-zinc-500 dark:text-zinc-400">
@@ -352,7 +348,7 @@ export function StatCard({
       </p>
       <div className="flex items-end gap-1.5 mt-0.5">
         <span className={cn(
-          'text-xl font-semibold tabular-nums',
+          'typo-title font-semibold tabular-nums',
           styles.text.replace('text-', 'text-zinc-900 dark:text-zinc-100')
         )}>
           {value}

@@ -183,7 +183,7 @@ export function FaultHistoryModal({
               <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               <div>
                 <h4 className="font-medium text-red-800">Unable to load history</h4>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <p className="typo-body text-red-700 mt-1">{error}</p>
               </div>
             </div>
           </div>
@@ -193,20 +193,20 @@ export function FaultHistoryModal({
         {summary && (
           <div className="grid grid-cols-4 gap-3 p-3 bg-celeste-bg-primary rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-celeste-black">{summary.total}</div>
-              <div className="text-xs text-celeste-text-disabled">Total</div>
+              <div className="typo-title font-bold text-celeste-black">{summary.total}</div>
+              <div className="typo-meta text-celeste-text-disabled">Total</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{summary.by_severity.critical}</div>
-              <div className="text-xs text-celeste-text-disabled">Critical</div>
+              <div className="typo-title font-bold text-red-600">{summary.by_severity.critical}</div>
+              <div className="typo-meta text-celeste-text-disabled">Critical</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{summary.by_severity.high}</div>
-              <div className="text-xs text-celeste-text-disabled">High</div>
+              <div className="typo-title font-bold text-orange-600">{summary.by_severity.high}</div>
+              <div className="typo-meta text-celeste-text-disabled">High</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{summary.total - summary.active}</div>
-              <div className="text-xs text-celeste-text-disabled">Resolved</div>
+              <div className="typo-title font-bold text-green-600">{summary.total - summary.active}</div>
+              <div className="typo-meta text-celeste-text-disabled">Resolved</div>
             </div>
           </div>
         )}
@@ -227,11 +227,11 @@ export function FaultHistoryModal({
                         {fault.title || fault.fault_code || 'Fault'}
                       </h4>
                       {fault.description && (
-                        <p className="text-sm text-celeste-text-secondary mt-0.5 line-clamp-2">
+                        <p className="typo-body text-celeste-text-secondary mt-0.5 line-clamp-2">
                           {fault.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 mt-1 text-xs text-celeste-text-disabled">
+                      <div className="flex items-center gap-3 mt-1 typo-meta text-celeste-text-disabled">
                         <span>Detected: {formatDate(fault.detected_at)}</span>
                         {fault.resolved_at && (
                           <span className="flex items-center gap-1">
@@ -244,16 +244,16 @@ export function FaultHistoryModal({
                   </div>
                   <div className="flex items-center gap-2">
                     {fault.is_active ? (
-                      <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded">
+                      <span className="px-2 py-0.5 typo-meta font-medium bg-red-100 text-red-700 rounded">
                         Active
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                      <span className="px-2 py-0.5 typo-meta font-medium bg-green-100 text-green-700 rounded">
                         Resolved
                       </span>
                     )}
                     {fault.days_open !== undefined && fault.days_open > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-celeste-text-disabled">
+                      <span className="flex items-center gap-1 typo-meta text-celeste-text-disabled">
                         <Clock className="h-3 w-3" />
                         {fault.days_open}d
                       </span>

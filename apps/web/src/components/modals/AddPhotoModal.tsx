@@ -223,7 +223,7 @@ export function AddPhotoModal({
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-celeste-black truncate">{context.entity_title}</p>
                 {context.entity_subtitle && (
-                  <p className="text-sm text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
+                  <p className="typo-body text-celeste-text-secondary truncate">{context.entity_subtitle}</p>
                 )}
               </div>
             </div>
@@ -237,7 +237,7 @@ export function AddPhotoModal({
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'border-2 border-dashed rounded-xl p-8',
+                'border-2 border-dashed rounded-[10px] p-8',
                 'flex flex-col items-center justify-center gap-3',
                 'cursor-pointer transition-colors',
                 isDragging
@@ -255,10 +255,10 @@ export function AddPhotoModal({
                 )} />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-celeste-text-secondary">
+                <p className="typo-body font-medium text-celeste-text-secondary">
                   {isDragging ? 'Drop photo here' : 'Click or drag photo to upload'}
                 </p>
-                <p className="text-xs text-celeste-text-disabled mt-1">
+                <p className="typo-meta text-celeste-text-disabled mt-1">
                   JPEG, PNG, WebP up to 10MB
                 </p>
               </div>
@@ -283,14 +283,14 @@ export function AddPhotoModal({
                   'text-white transition-colors'
                 )}
               >
-                <X className="h-4 w-4" />
+                <X className="w-[18px] h-[18px]" />
               </button>
               <div className="absolute bottom-2 left-2 right-2">
                 <div className="bg-black/60 rounded-lg px-3 py-1.5">
-                  <div className="flex items-center gap-2 text-white text-sm">
+                  <div className="flex items-center gap-2 text-white typo-body">
                     <FileImage className="h-4 w-4" />
                     <span className="truncate flex-1">{selectedFile?.name}</span>
-                    <span className="text-white/70 text-xs">
+                    <span className="text-white/70 typo-meta">
                       {selectedFile && (selectedFile.size / 1024 / 1024).toFixed(1)}MB
                     </span>
                   </div>
@@ -309,7 +309,7 @@ export function AddPhotoModal({
 
           {uploadError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700 flex items-center gap-2">
+              <p className="typo-body text-red-700 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
                 {uploadError}
               </p>
@@ -326,7 +326,7 @@ export function AddPhotoModal({
               className={errors.caption ? 'border-red-500' : ''}
             />
             {errors.caption && (
-              <p className="text-sm text-red-600">{errors.caption.message}</p>
+              <p className="typo-body text-red-600">{errors.caption.message}</p>
             )}
           </div>
 

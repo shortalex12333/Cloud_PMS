@@ -61,7 +61,7 @@ export function LocationFilter({
   return (
     <div className="flex items-end gap-2">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label className="typo-meta text-muted-foreground">
           <MapPin className="h-3 w-3 inline mr-1" />
           Location
         </Label>

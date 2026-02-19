@@ -223,23 +223,23 @@ export function ApproveShoppingListItemModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Item Summary */}
-          <div className="p-4 bg-surface-elevated rounded-lg border border-surface-border">
+          <div className="p-4 bg-surface-elevated rounded-[10px] border border-surface-border">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-brand-muted rounded-lg">
+              <div className="p-2 bg-brand-muted rounded-[10px]">
                 <ShoppingCart className="h-5 w-5 text-brand-interactive" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-txt-primary">
                   {context.part_name}
                 </p>
-                <div className="flex items-center gap-2 mt-1 text-sm text-txt-secondary">
+                <div className="flex items-center gap-2 mt-1 typo-body text-txt-secondary">
                   <Package className="h-4 w-4" />
                   <span>
                     Requested: {context.quantity_requested} {context.unit || 'units'}
                   </span>
                 </div>
                 {context.requester_name && (
-                  <p className="text-xs text-txt-tertiary mt-1">
+                  <p className="typo-meta text-txt-tertiary mt-1">
                     Requested by {context.requester_name}
                   </p>
                 )}
@@ -250,7 +250,7 @@ export function ApproveShoppingListItemModal({
             {context.urgency && context.urgency !== 'normal' && (
               <div
                 className={cn(
-                  'inline-flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full text-xs font-medium border',
+                  'inline-flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full typo-meta font-medium border',
                   getUrgencyColor(context.urgency)
                 )}
               >
@@ -280,19 +280,19 @@ export function ApproveShoppingListItemModal({
                 )}
               />
               {context.unit && (
-                <span className="text-sm text-txt-tertiary min-w-[60px]">
+                <span className="typo-body text-txt-tertiary min-w-[60px]">
                   {context.unit}
                 </span>
               )}
             </div>
             {quantityApproved !== context.quantity_requested && (
-              <p className="text-xs text-amber-600 flex items-center gap-1">
+              <p className="typo-meta text-amber-600 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 Different from requested quantity ({context.quantity_requested})
               </p>
             )}
             {errors.quantity_approved && (
-              <p className="text-sm text-red-600">
+              <p className="typo-body text-red-600">
                 {errors.quantity_approved.message}
               </p>
             )}
@@ -310,7 +310,7 @@ export function ApproveShoppingListItemModal({
               rows={3}
             />
             {errors.approval_notes && (
-              <p className="text-sm text-red-600">
+              <p className="typo-body text-red-600">
                 {errors.approval_notes.message}
               </p>
             )}
@@ -318,7 +318,7 @@ export function ApproveShoppingListItemModal({
 
           {/* Info Box */}
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700">
+            <p className="typo-body text-green-700">
               <strong>Note:</strong> Approving this item will allow it to be
               ordered from suppliers. Your signature will be recorded for audit
               purposes.

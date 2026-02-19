@@ -61,12 +61,12 @@ export function AddRelatedModal({ anchorType, anchorId, onClose }: AddRelatedMod
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-semibold mb-4">Add Related Artifact</h3>
+      <div className="bg-white rounded-[16px] p-6 max-w-md w-full">
+        <h3 className="typo-title font-semibold mb-4">Add Related Artifact</h3>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Artifact Type</label>
+            <label className="block typo-body font-medium mb-2">Artifact Type</label>
             <select
               value={toArtifactType}
               onChange={(e) => setToArtifactType(e.target.value)}
@@ -86,7 +86,7 @@ export function AddRelatedModal({ anchorType, anchorId, onClose }: AddRelatedMod
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Artifact ID</label>
+            <label className="block typo-body font-medium mb-2">Artifact ID</label>
             <input
               type="text"
               value={toArtifactId}
@@ -97,7 +97,7 @@ export function AddRelatedModal({ anchorType, anchorId, onClose }: AddRelatedMod
             />
           </div>
 
-          {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
+          {error && <div className="mb-4 text-red-600 typo-body">{error}</div>}
 
           <div className="flex gap-2 justify-end">
             <button

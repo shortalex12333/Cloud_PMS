@@ -212,7 +212,7 @@ export function LinkEmailModal({
                         'w-full flex items-center gap-3 p-3 text-left transition-colors',
                         isSelected
                           ? 'bg-celeste-accent-subtle'
-                          : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                          : 'hover:bg-zinc-50 dark:hover:bg-[#323232]'
                       )}
                     >
                       <TypeIcon className={cn(

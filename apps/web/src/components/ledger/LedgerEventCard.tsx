@@ -118,10 +118,10 @@ export function LedgerEventCard({ event }: LedgerEventCardProps) {
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-txt-primary">
+          <p className="typo-body text-txt-primary">
             {event.change_summary || event.event_type}
           </p>
-          <p className="text-xs text-txt-tertiary mt-1">
+          <p className="typo-meta text-txt-tertiary mt-1">
             {formatRelativeTime(event.created_at)}
           </p>
         </div>

@@ -87,7 +87,7 @@ interface EmptyStateCTAProps {
 function EmptyStateCTA({ icon, title, description }: EmptyStateCTAProps) {
   return (
     <div className="flex flex-col items-center justify-center py-ds-6 px-ds-4 text-center">
-      <div className="w-12 h-12 rounded-md bg-surface-hover flex items-center justify-center mb-ds-3">
+      <div className="w-12 h-12 rounded-[10px] bg-surface-hover flex items-center justify-center mb-ds-3">
         {icon}
       </div>
       <p className="text-txt-primary font-medium mb-ds-1">
@@ -202,7 +202,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
       {/* ================================================================
           HEADER SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         {/* Status & Type Row */}
         <div className="flex items-center gap-ds-2 mb-ds-4">
           <span className={status.pillClass}>
@@ -210,7 +210,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
             {status.label}
           </span>
           <span className={cn(
-            'inline-flex items-center px-ds-3 py-ds-1 rounded-sm typo-meta font-medium',
+            'inline-flex items-center px-ds-3 py-ds-1 rounded-md typo-meta font-medium',
             certType.bg, certType.text
           )}>
             {certType.label}
@@ -218,7 +218,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
         </div>
 
         {/* Certificate Name */}
-        <h1 className="text-2xl font-semibold text-txt-primary mb-ds-2">
+        <h1 className="typo-title font-semibold text-txt-primary mb-ds-2">
           {certificate.certificate_name}
         </h1>
 
@@ -232,7 +232,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
         {/* Expiry Countdown Indicator */}
         {expiryCountdown && (
           <div className={cn(
-            'inline-flex items-center gap-ds-2 px-ds-3 py-ds-2 rounded-sm mb-ds-4',
+            'inline-flex items-center gap-ds-2 px-ds-3 py-ds-2 rounded-md mb-ds-4',
             expiryCountdown.bg
           )}>
             <Clock className={cn('h-4 w-4', expiryCountdown.color)} />
@@ -323,7 +323,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
       {/* ================================================================
           DOCUMENTS SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center justify-between mb-ds-3">
           <div className="flex items-center gap-ds-2">
             <FileText className="h-5 w-5 text-txt-secondary" />
@@ -345,10 +345,10 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="flex items-center justify-between p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
+                className="flex items-center justify-between p-ds-3 bg-surface-elevated rounded-[10px] border border-surface-border"
               >
                 <div className="flex items-center gap-ds-3">
-                  <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center">
                     <FileText className="h-4 w-4 text-txt-tertiary" />
                   </div>
                   <div>
@@ -372,7 +372,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
       {/* ================================================================
           AUDIT HISTORY SECTION
           ================================================================ */}
-      <div className="bg-surface-primary rounded-md p-ds-6 border border-surface-border">
+      <div className="bg-surface-primary rounded-[10px] p-ds-6 border border-surface-border">
         <div className="flex items-center gap-ds-2 mb-ds-3">
           <History className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">Activity</h3>
@@ -416,7 +416,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
               return (
                 <div
                   key={entry.id}
-                  className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
+                  className="p-ds-3 bg-surface-elevated rounded-[10px] border border-surface-border"
                 >
                   <div className="flex items-start justify-between gap-ds-2">
                     <p className="text-txt-primary font-medium typo-meta">

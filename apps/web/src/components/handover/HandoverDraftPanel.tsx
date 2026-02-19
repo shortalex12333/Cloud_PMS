@@ -194,26 +194,26 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
   return (
     <div className="fixed inset-0 z-modal flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 className="text-lg font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
+      <div className="relative bg-surface-elevated border border-surface-border rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] w-full max-w-md mx-4 p-6">
+        <h3 className="typo-title font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-txt-secondary mb-1">Summary</label>
+              <label className="block typo-body font-medium text-txt-secondary mb-1">Summary</label>
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-interactive"
+                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-[10px] text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
                 placeholder="Describe the handover note..."
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-txt-secondary mb-1">Category</label>
+              <label className="block typo-body font-medium text-txt-secondary mb-1">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-brand-interactive"
+                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-[10px] text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
               >
                 <option value="fyi">FYI</option>
                 <option value="urgent">Urgent</option>
@@ -230,7 +230,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
                   onChange={(e) => setIsCritical(e.target.checked)}
                   className="w-4 h-4 rounded border-surface-border text-status-critical focus:ring-status-critical"
                 />
-                <span className="text-sm text-txt-secondary">Critical</span>
+                <span className="typo-body text-txt-secondary">Critical</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -239,7 +239,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
                   onChange={(e) => setRequiresAction(e.target.checked)}
                   className="w-4 h-4 rounded border-surface-border text-status-warning focus:ring-status-warning"
                 />
-                <span className="text-sm text-txt-secondary">Requires Action</span>
+                <span className="typo-body text-txt-secondary">Requires Action</span>
               </label>
             </div>
           </div>
@@ -247,14 +247,14 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-txt-secondary hover:text-txt-primary transition-colors duration-fast"
+              className="px-4 py-2 typo-body font-medium text-txt-secondary hover:text-txt-primary transition-colors duration-fast"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium bg-brand-interactive text-white rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 typo-body font-medium bg-brand-interactive text-white rounded-[10px] hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -527,7 +527,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
           'w-full max-w-md',
           'bg-surface-base border-l border-surface-border',
           'flex flex-col',
-          'shadow-2xl'
+          ''
         )}
       >
         {/* Header */}
@@ -535,8 +535,8 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
           <div className="flex items-center gap-3">
             <FileText className="w-5 h-5 text-txt-secondary" />
             <div>
-              <h2 className="text-lg font-semibold text-txt-primary">My Handover Draft</h2>
-              <p className="text-xs text-txt-tertiary">
+              <h2 className="typo-title font-semibold text-txt-primary">My Handover Draft</h2>
+              <p className="typo-meta text-txt-tertiary">
                 {items.length} item{items.length !== 1 ? 's' : ''} pending
                 {criticalCount > 0 && <span className="text-status-critical ml-2">{criticalCount} critical</span>}
                 {actionCount > 0 && <span className="text-status-warning ml-2">{actionCount} action</span>}
@@ -545,10 +545,10 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-md text-txt-secondary hover:text-txt-primary hover:bg-surface-hover transition-colors duration-fast"
+            className="btn-icon h-8 w-8"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-[18px] h-[18px]" />
           </button>
         </div>
 
@@ -594,7 +594,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
             <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
               <FileText className="w-12 h-12 text-txt-tertiary mb-4" />
               <p className="text-txt-secondary font-medium">No handover items</p>
-              <p className="text-txt-tertiary text-sm mt-1">
+              <p className="text-txt-tertiary typo-body mt-1">
                 Add notes from faults, work orders, or equipment to include in your handover.
               </p>
             </div>
@@ -612,8 +612,8 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
                     ) : (
                       <ChevronRight className="w-4 h-4 text-txt-tertiary" />
                     )}
-                    <span className="text-sm font-medium text-txt-secondary">{group.displayDate}</span>
-                    <span className="text-xs text-txt-tertiary">({group.items.length})</span>
+                    <span className="typo-body font-medium text-txt-secondary">{group.displayDate}</span>
+                    <span className="typo-meta text-txt-tertiary">({group.items.length})</span>
                   </button>
 
                   {/* Day Items */}
@@ -642,7 +642,7 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
                               onClick={() => handleItemClick(item)}
                             >
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-txt-tertiary uppercase">
+                                <span className="typo-meta font-medium text-txt-tertiary uppercase">
                                   {getEntityLabel(item.entity_type)}
                                 </span>
                                 {item.is_critical && (
@@ -656,16 +656,16 @@ export function HandoverDraftPanel({ isOpen, onClose }: HandoverDraftPanelProps)
                                   </span>
                                 )}
                               </div>
-                              <p className="text-sm text-txt-primary line-clamp-2 mt-0.5">
+                              <p className="typo-body text-txt-primary line-clamp-2 mt-0.5">
                                 {item.summary || 'No summary'}
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Clock className="w-3 h-3 text-txt-tertiary" />
-                                <span className="text-xs text-txt-tertiary">
+                                <span className="typo-meta text-txt-tertiary">
                                   {formatTime(item.created_at)}
                                 </span>
                                 {item.category && (
-                                  <span className="text-xs text-txt-tertiary px-1.5 py-0.5 bg-surface-hover rounded">
+                                  <span className="typo-meta text-txt-tertiary px-1.5 py-0.5 bg-surface-hover rounded">
                                     {item.category}
                                   </span>
                                 )}

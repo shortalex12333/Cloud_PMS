@@ -217,11 +217,11 @@ export function ShoppingListCard({
   return (
     <div
       className={cn(
-        'bg-surface-primary rounded-md p-ds-4 border',
+        'bg-surface-primary rounded-[10px] p-ds-4 border',
         isRejected
           ? 'border-red-200 bg-red-50/30'
           : 'border-surface-border',
-        'hover:shadow-sm transition-shadow'
+        'transition-colors'
       )}
       data-testid="shopping-list-card"
       data-entity-type="shopping_list_item"
@@ -231,7 +231,7 @@ export function ShoppingListCard({
         {/* Icon */}
         <div
           className={cn(
-            'mt-0.5 p-2 rounded-sm',
+            'mt-0.5 p-2 rounded-lg',
             isRejected
               ? 'bg-red-100 text-red-600'
               : isApproved
@@ -272,7 +272,7 @@ export function ShoppingListCard({
           <div className="space-y-ds-1 mb-ds-3">
             {/* Part Number & Manufacturer */}
             {(item.part_number || item.manufacturer) && (
-              <p className="text-sm text-txt-secondary">
+              <p className="typo-body text-txt-secondary">
                 {item.part_number && (
                   <span className="font-medium">P/N: {item.part_number}</span>
                 )}
@@ -282,7 +282,7 @@ export function ShoppingListCard({
             )}
 
             {/* Quantity */}
-            <div className="flex items-center gap-ds-4 text-sm">
+            <div className="flex items-center gap-ds-4 typo-body">
               <span className="text-txt-primary">
                 <span className="font-medium">Requested:</span>{' '}
                 <span className="text-brand-interactive font-semibold">
@@ -310,7 +310,7 @@ export function ShoppingListCard({
             </div>
 
             {/* Source Type */}
-            <div className="flex items-center gap-ds-2 text-xs text-txt-tertiary">
+            <div className="flex items-center gap-ds-2 typo-meta text-txt-tertiary">
               <FileText className="h-3.5 w-3.5" />
               <span>Source: {sourceLabel}</span>
               {item.source_work_order_id && (
@@ -320,7 +320,7 @@ export function ShoppingListCard({
                     entityType="work_order"
                     entityId={item.source_work_order_id}
                     label="View Work Order"
-                    className="text-xs"
+                    className="typo-meta"
                   />
                 </>
               )}
@@ -328,7 +328,7 @@ export function ShoppingListCard({
 
             {/* Candidate Part Badge */}
             {item.is_candidate_part && !item.candidate_promoted_to_part_id && (
-              <div className="flex items-center gap-ds-1 text-xs text-amber-600">
+              <div className="flex items-center gap-ds-1 typo-meta text-amber-600">
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Candidate part (not in catalog)</span>
               </div>
@@ -336,20 +336,20 @@ export function ShoppingListCard({
 
             {/* Linked Part */}
             {item.part_id && !item.is_candidate_part && (
-              <div className="flex items-center gap-ds-2 text-xs">
+              <div className="flex items-center gap-ds-2 typo-meta">
                 <Package className="h-3.5 w-3.5 text-txt-tertiary" />
                 <EntityLink
                   entityType="part"
                   entityId={item.part_id}
                   label="View Part"
-                  className="text-xs"
+                  className="typo-meta"
                 />
               </div>
             )}
 
             {/* Source Notes */}
             {item.source_notes && (
-              <p className="text-sm text-txt-secondary italic mt-1">
+              <p className="typo-body text-txt-secondary italic mt-1">
                 "{item.source_notes}"
               </p>
             )}
@@ -357,8 +357,8 @@ export function ShoppingListCard({
 
           {/* Approval Info */}
           {isApproved && item.approved_at && (
-            <div className="p-ds-3 bg-green-50 rounded-sm border border-green-200 mb-ds-3">
-              <div className="flex items-center gap-ds-2 text-sm text-green-700">
+            <div className="p-ds-3 bg-green-50 rounded-md border border-green-200 mb-ds-3">
+              <div className="flex items-center gap-ds-2 typo-body text-green-700">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="font-medium">Approved</span>
                 {item.approved_by_name && (
@@ -372,7 +372,7 @@ export function ShoppingListCard({
                 </span>
               </div>
               {item.approval_notes && (
-                <p className="text-sm text-green-600 mt-1 pl-6">
+                <p className="typo-body text-green-600 mt-1 pl-6">
                   {item.approval_notes}
                 </p>
               )}
@@ -381,8 +381,8 @@ export function ShoppingListCard({
 
           {/* Rejection Info */}
           {isRejected && item.rejected_at && (
-            <div className="p-ds-3 bg-red-50 rounded-sm border border-red-200 mb-ds-3">
-              <div className="flex items-center gap-ds-2 text-sm text-red-700">
+            <div className="p-ds-3 bg-red-50 rounded-md border border-red-200 mb-ds-3">
+              <div className="flex items-center gap-ds-2 typo-body text-red-700">
                 <XCircle className="h-4 w-4" />
                 <span className="font-medium">Rejected</span>
                 {item.rejected_by_name && (
@@ -396,12 +396,12 @@ export function ShoppingListCard({
                 </span>
               </div>
               {item.rejection_reason && (
-                <p className="text-sm text-red-700 mt-1 pl-6 font-medium">
+                <p className="typo-body text-red-700 mt-1 pl-6 font-medium">
                   Reason: {item.rejection_reason}
                 </p>
               )}
               {item.rejection_notes && (
-                <p className="text-sm text-red-600 mt-1 pl-6">
+                <p className="typo-body text-red-600 mt-1 pl-6">
                   {item.rejection_notes}
                 </p>
               )}
@@ -409,7 +409,7 @@ export function ShoppingListCard({
           )}
 
           {/* Metadata Row */}
-          <div className="flex items-center gap-ds-4 text-xs text-txt-tertiary mb-ds-3">
+          <div className="flex items-center gap-ds-4 typo-meta text-txt-tertiary mb-ds-3">
             {item.created_by_name && (
               <div className="flex items-center gap-1">
                 <User className="h-3.5 w-3.5" />

@@ -152,15 +152,15 @@ export function EditPartQuantityModal({
               <Package className="h-4 w-4" />
               {context.part_name}
             </h3>
-            <p className="text-sm text-celeste-accent">P/N: {context.part_number}</p>
+            <p className="typo-body text-celeste-accent">P/N: {context.part_number}</p>
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-celeste-accent-line">
               <div>
-                <p className="text-xs text-celeste-accent">Min Stock Level</p>
-                <p className="text-lg font-bold text-celeste-accent">{context.min_stock_level}</p>
+                <p className="typo-meta text-celeste-accent">Min Stock Level</p>
+                <p className="typo-title font-bold text-celeste-accent">{context.min_stock_level}</p>
               </div>
               <div>
-                <p className="text-xs text-celeste-accent">Current Stock</p>
-                <p className="text-lg font-bold text-celeste-accent">{context.current_quantity}</p>
+                <p className="typo-meta text-celeste-accent">Current Stock</p>
+                <p className="typo-title font-bold text-celeste-accent">{context.current_quantity}</p>
               </div>
             </div>
           </div>
@@ -213,7 +213,7 @@ export function EditPartQuantityModal({
                 className={errors.new_quantity ? 'border-red-500' : ''}
               />
               {errors.new_quantity && (
-                <p className="text-sm text-red-600">{errors.new_quantity.message}</p>
+                <p className="typo-body text-red-600">{errors.new_quantity.message}</p>
               )}
             </div>
           </div>
@@ -229,15 +229,15 @@ export function EditPartQuantityModal({
             }`}>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Change:</span>
-                  <span className={`text-lg font-bold ${getChangeColor()}`}>
+                  <span className="typo-body font-medium">Change:</span>
+                  <span className={`typo-title font-bold ${getChangeColor()}`}>
                     {isIncrease && '+'}
                     {difference} units
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">New Stock:</span>
-                  <span className={`text-lg font-bold ${getChangeColor()}`}>
+                  <span className="typo-body font-medium">New Stock:</span>
+                  <span className={`typo-title font-bold ${getChangeColor()}`}>
                     {newQuantity} units
                   </span>
                 </div>
@@ -253,7 +253,7 @@ export function EditPartQuantityModal({
                   <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                   <div>
                     <p className="font-semibold text-red-900">Stock will be depleted</p>
-                    <p className="text-sm text-red-700">
+                    <p className="typo-body text-red-700">
                       This adjustment will result in zero stock. Consider ordering more immediately.
                     </p>
                   </div>
@@ -264,7 +264,7 @@ export function EditPartQuantityModal({
                   <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
                   <div>
                     <p className="font-semibold text-orange-900">Stock will be low</p>
-                    <p className="text-sm text-orange-700">
+                    <p className="typo-body text-orange-700">
                       New stock ({newQuantity}) will be below minimum level ({context.min_stock_level}).
                       Consider reordering soon.
                     </p>
@@ -287,16 +287,16 @@ export function EditPartQuantityModal({
               className={errors.adjustment_reason ? 'border-red-500' : ''}
             />
             {errors.adjustment_reason && (
-              <p className="text-sm text-red-600">{errors.adjustment_reason.message}</p>
+              <p className="typo-body text-red-600">{errors.adjustment_reason.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="typo-meta text-muted-foreground">
               This reason will be permanently recorded in the audit log with MEDIUM severity.
             </p>
           </div>
 
           {/* Audit Notice */}
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm text-yellow-800">
+            <p className="typo-body text-yellow-800">
               📋 This adjustment will create an audit log entry with details of the quantity change,
               adjustment type, and your justification.
             </p>

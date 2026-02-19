@@ -102,7 +102,7 @@ export function CertificateLensContent({
 
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-2 gap-4 typo-body">
               {certificate_number && (
                 <>
                   <dt className="text-celeste-text-muted">Certificate Number</dt>
@@ -136,7 +136,7 @@ export function CertificateLensContent({
         {notes && (
           <div className="mt-6">
             <SectionContainer title="Notes" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary">{notes}</p>
+              <p className="typo-body text-celeste-text-primary">{notes}</p>
             </SectionContainer>
           </div>
         )}

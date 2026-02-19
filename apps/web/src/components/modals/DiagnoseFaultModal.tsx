@@ -274,17 +274,17 @@ Repair (if pump): 4-6 hours`;
               <AlertCircle className="h-5 w-5 text-orange-700 mt-0.5" />
               <div className="flex-1">
                 <h3 className="font-semibold text-orange-900">{context.fault_title}</h3>
-                <p className="text-sm text-orange-800 mt-1">{context.fault_description}</p>
+                <p className="typo-body text-orange-800 mt-1">{context.fault_description}</p>
                 <div className="flex items-center gap-3 mt-2">
                   <span
-                    className={`text-xs px-2 py-0.5 rounded border ${getSeverityColor(
+                    className={`typo-meta px-2 py-0.5 rounded border ${getSeverityColor(
                       context.severity
                     )}`}
                   >
                     {context.severity.toUpperCase()} SEVERITY
                   </span>
                   {context.equipment_name && (
-                    <span className="text-sm text-orange-700">
+                    <span className="typo-body text-orange-700">
                       Equipment: {context.equipment_name}
                     </span>
                   )}
@@ -305,7 +305,7 @@ Repair (if pump): 4-6 hours`;
                 placeholder="Add any additional observations, recent changes, or environmental factors..."
                 rows={3}
               />
-              <p className="text-xs text-celeste-text-disabled">
+              <p className="typo-meta text-celeste-text-disabled">
                 More context helps the AI provide better diagnosis
               </p>
             </div>
@@ -325,7 +325,7 @@ Repair (if pump): 4-6 hours`;
                 className="p-4 bg-purple-50 border border-purple-200 rounded-lg max-h-96 overflow-y-auto"
               >
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-celeste-bg-tertiary">
+                  <pre className="whitespace-pre-wrap font-sans typo-body text-celeste-bg-tertiary">
                     {streamedDiagnosis}
                     {isStreaming && <span className="animate-pulse">▊</span>}
                   </pre>
@@ -353,16 +353,16 @@ Repair (if pump): 4-6 hours`;
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h4 className="font-medium text-celeste-accent">{fault.title}</h4>
-                        <p className="text-sm text-celeste-accent mt-1">
+                        <p className="typo-body text-celeste-accent mt-1">
                           <span className="font-medium">Resolution:</span> {fault.resolution}
                         </p>
-                        <p className="text-xs text-celeste-accent mt-1">
+                        <p className="typo-meta text-celeste-accent mt-1">
                           Resolved {fault.resolved_days_ago} days ago
                         </p>
                       </div>
                       <div className="ml-3 text-right">
-                        <div className="text-xs text-celeste-accent">Match</div>
-                        <div className="text-lg font-bold text-celeste-accent">
+                        <div className="typo-meta text-celeste-accent">Match</div>
+                        <div className="typo-title font-bold text-celeste-accent">
                           {(fault.similarity_score * 100).toFixed(0)}%
                         </div>
                       </div>
@@ -392,14 +392,14 @@ Repair (if pump): 4-6 hours`;
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h4 className="font-medium text-green-900">{part.part_name}</h4>
-                        <p className="text-sm text-green-700 mt-0.5">P/N: {part.part_number}</p>
-                        <p className="text-sm text-green-800 mt-1">
+                        <p className="typo-body text-green-700 mt-0.5">P/N: {part.part_number}</p>
+                        <p className="typo-body text-green-800 mt-1">
                           <span className="font-medium">Why:</span> {part.reason}
                         </p>
                       </div>
                       <div className="ml-3 text-right">
-                        <div className="text-xs text-green-600">Confidence</div>
-                        <div className="text-lg font-bold text-green-700">
+                        <div className="typo-meta text-green-600">Confidence</div>
+                        <div className="typo-title font-bold text-green-700">
                           {(part.confidence * 100).toFixed(0)}%
                         </div>
                       </div>
@@ -423,7 +423,7 @@ Repair (if pump): 4-6 hours`;
               <div className="p-3 bg-celeste-bg-primary border border-celeste-border rounded-lg">
                 <ul className="space-y-1">
                   {manualReferences.map((ref, index) => (
-                    <li key={index} className="text-sm text-celeste-text-secondary flex items-start gap-2">
+                    <li key={index} className="typo-body text-celeste-text-secondary flex items-start gap-2">
                       <Info className="h-4 w-4 text-celeste-text-disabled mt-0.5" />
                       {ref}
                     </li>
@@ -446,14 +446,14 @@ Repair (if pump): 4-6 hours`;
                 />
                 <Label
                   htmlFor="create_work_order_from_diagnosis"
-                  className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                  className="typo-body font-normal cursor-pointer flex items-center gap-2"
                 >
                   <Wrench className="h-4 w-4 text-celeste-accent" />
                   Create work order with this diagnosis
                 </Label>
               </div>
               {createWorkOrder && (
-                <p className="text-xs text-celeste-accent ml-6">
+                <p className="typo-meta text-celeste-accent ml-6">
                   A work order will be created with the AI diagnosis and suggested parts pre-filled
                 </p>
               )}

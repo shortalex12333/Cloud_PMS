@@ -233,7 +233,7 @@ export function LinkPartsToWorkOrderModal({
               <Wrench className="h-5 w-5 text-celeste-accent mt-0.5" />
               <div className="flex-1">
                 <h3 className="font-semibold text-celeste-accent">{context.work_order_title}</h3>
-                <p className="text-sm text-celeste-accent mt-1">
+                <p className="typo-body text-celeste-accent mt-1">
                   Work Order ID: {context.work_order_id.slice(0, 8)}
                   {context.work_order_type && (
                     <span className="ml-2">
@@ -264,7 +264,7 @@ export function LinkPartsToWorkOrderModal({
             </div>
 
             {errors.parts && (
-              <p className="text-sm text-red-600">{errors.parts.message as string}</p>
+              <p className="typo-body text-red-600">{errors.parts.message as string}</p>
             )}
 
             {/* Part Selector (shown when Add Part is clicked) */}
@@ -295,7 +295,7 @@ export function LinkPartsToWorkOrderModal({
                 <div className="border border-celeste-border rounded-lg max-h-60 overflow-y-auto bg-white">
                   {filteredParts.length === 0 ? (
                     <div className="p-4 text-center text-celeste-text-disabled">
-                      <p className="text-sm">No parts found</p>
+                      <p className="typo-body">No parts found</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-celeste-border">
@@ -317,10 +317,10 @@ export function LinkPartsToWorkOrderModal({
                                 <Package className="h-5 w-5 text-celeste-text-secondary mt-1" />
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-medium text-celeste-black">{part.part_name}</h4>
-                                  <p className="text-sm text-celeste-text-secondary">P/N: {part.part_number}</p>
+                                  <p className="typo-body text-celeste-text-secondary">P/N: {part.part_number}</p>
                                   <div className="flex items-center gap-3 mt-1">
                                     <p
-                                      className={`text-sm font-medium ${
+                                      className={`typo-body font-medium ${
                                         isOutOfStock
                                           ? 'text-red-700'
                                           : isLowStock
@@ -330,7 +330,7 @@ export function LinkPartsToWorkOrderModal({
                                     >
                                       Stock: {part.stock_quantity}
                                     </p>
-                                    <p className="text-xs text-celeste-text-disabled">{part.location}</p>
+                                    <p className="typo-meta text-celeste-text-disabled">{part.location}</p>
                                   </div>
                                 </div>
                               </div>
@@ -351,8 +351,8 @@ export function LinkPartsToWorkOrderModal({
             {fields.length === 0 ? (
               <div className="p-8 text-center text-celeste-text-disabled border border-dashed border-celeste-border rounded-lg">
                 <Package className="h-12 w-12 mx-auto mb-2 text-celeste-border" />
-                <p className="text-sm">No parts selected yet</p>
-                <p className="text-xs text-celeste-text-muted mt-1">Click "Add Part" to select parts</p>
+                <p className="typo-body">No parts selected yet</p>
+                <p className="typo-meta text-celeste-text-muted mt-1">Click "Add Part" to select parts</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -375,8 +375,8 @@ export function LinkPartsToWorkOrderModal({
                           <Package className="h-5 w-5 text-celeste-text-secondary mt-1" />
                           <div className="flex-1">
                             <h4 className="font-medium text-celeste-black">{part.part_name}</h4>
-                            <p className="text-sm text-celeste-text-secondary">P/N: {part.part_number}</p>
-                            <p className="text-xs text-celeste-text-disabled mt-1">{part.location}</p>
+                            <p className="typo-body text-celeste-text-secondary">P/N: {part.part_number}</p>
+                            <p className="typo-meta text-celeste-text-disabled mt-1">{part.location}</p>
                           </div>
                         </div>
                         <Button
@@ -392,10 +392,10 @@ export function LinkPartsToWorkOrderModal({
 
                       <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">Available Stock</Label>
+                          <Label className="typo-meta">Available Stock</Label>
                           <div className="h-9 px-3 py-2 rounded-md border bg-white">
                             <p
-                              className={`text-sm font-semibold ${
+                              className={`typo-body font-semibold ${
                                 part.stock_quantity === 0
                                   ? 'text-red-700'
                                   : part.stock_quantity < part.min_stock_level
@@ -409,7 +409,7 @@ export function LinkPartsToWorkOrderModal({
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs">Qty Required *</Label>
+                          <Label className="typo-meta">Qty Required *</Label>
                           <Input
                             type="number"
                             min="1"
@@ -419,10 +419,10 @@ export function LinkPartsToWorkOrderModal({
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs">Remaining</Label>
+                          <Label className="typo-meta">Remaining</Label>
                           <div className="h-9 px-3 py-2 rounded-md border bg-white">
                             <p
-                              className={`text-sm font-semibold ${
+                              className={`typo-body font-semibold ${
                                 exceedsStock || part.stock_quantity - quantityRequired < 0
                                   ? 'text-red-700'
                                   : willBeLowStock
@@ -438,7 +438,7 @@ export function LinkPartsToWorkOrderModal({
 
                       {/* Warnings */}
                       {exceedsStock && (
-                        <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                        <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded typo-meta text-red-800">
                           <AlertTriangle className="h-4 w-4 text-red-700 mt-0.5" />
                           <p>
                             Quantity exceeds available stock. Only {part.stock_quantity} available.
@@ -446,7 +446,7 @@ export function LinkPartsToWorkOrderModal({
                         </div>
                       )}
                       {!exceedsStock && willBeLowStock && (
-                        <div className="flex items-start gap-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
+                        <div className="flex items-start gap-2 p-2 bg-orange-50 border border-orange-200 rounded typo-meta text-orange-800">
                           <AlertTriangle className="h-4 w-4 text-orange-700 mt-0.5" />
                           <p>Using this quantity will bring stock below minimum level.</p>
                         </div>
@@ -454,12 +454,12 @@ export function LinkPartsToWorkOrderModal({
 
                       {/* Notes */}
                       <div className="space-y-1">
-                        <Label className="text-xs">Notes (Optional)</Label>
+                        <Label className="typo-meta">Notes (Optional)</Label>
                         <Textarea
                           {...register(`parts.${index}.notes`)}
                           placeholder="Any specific notes for this part..."
                           rows={2}
-                          className="text-sm"
+                          className="typo-body"
                         />
                       </div>
                     </div>
@@ -480,13 +480,13 @@ export function LinkPartsToWorkOrderModal({
                 />
                 <Label
                   htmlFor="reserve_parts"
-                  className="text-sm font-normal cursor-pointer"
+                  className="typo-body font-normal cursor-pointer"
                 >
                   Reserve these parts (reduce available quantity)
                 </Label>
               </div>
               {reserveParts && (
-                <p className="text-xs text-orange-600 ml-6">
+                <p className="typo-meta text-orange-600 ml-6">
                   ⚠️ Parts will be reserved and unavailable for other work orders until used or
                   unreserved
                 </p>
