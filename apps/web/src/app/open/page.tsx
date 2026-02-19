@@ -78,7 +78,7 @@ function OpenTokenResolver() {
 
   return (
     <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
-      <div className="bg-celeste-bg-tertiary rounded-[16px] p-8 max-w-md w-full border border-[#e7e7e7] dark:border-[#404040]">
+      <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full border border-surface-border">
         {status === 'loading' && (
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
@@ -114,7 +114,7 @@ function OpenTokenResolver() {
             </p>
             <button
               onClick={() => router.replace('/app')}
-              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-[10px] transition-colors"
+              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
             >
               Go to App
             </button>

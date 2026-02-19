@@ -100,8 +100,8 @@ export default function CrewNotesModule({
                 <div
                   key={note.id}
                   className={cn(
-                    'p-3 rounded-[10px]',
-                    'bg-zinc-50 dark:bg-[#323232]',
+                    'p-3 rounded-md',
+                    'bg-zinc-50 dark:bg-surface-active',
                     note.status === 'new' && 'ring-1 ring-celeste-accent-muted dark:ring-celeste-accent-muted'
                   )}
                 >

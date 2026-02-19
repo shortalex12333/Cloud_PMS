@@ -101,7 +101,7 @@ export function EmailThreadViewer({ threadId, onClose }: EmailThreadViewerProps)
   if (!thread) return null;
 
   return (
-    <div className="bg-zinc-50 dark:bg-[#171717]">
+    <div className="bg-zinc-50 dark:bg-surface-primary">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800">
         <div>

@@ -152,7 +152,7 @@ export function AuthDebug() {
   const okClass = (v: boolean) => v ? 'text-green-400' : 'text-red-400';
 
   return (
-    <div className="fixed bottom-4 right-4 bg-surface-base border border-[#e7e7e7] dark:border-[#404040] rounded-lg typo-meta text-txt-primary font-mono max-w-[320px] z-50">
+    <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg typo-meta text-txt-primary font-mono max-w-[320px] z-50">
       <div
         className="flex items-center justify-between p-2 border-b border-surface-border cursor-pointer"
         onClick={() => setExpanded(!expanded)}

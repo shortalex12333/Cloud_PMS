@@ -106,7 +106,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
       {/* Error State */}
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-[10px]">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-md">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
             <div>
@@ -141,7 +141,7 @@ export function EmailInboxView({ className }: EmailInboxViewProps) {
 
       {/* Thread List */}
       {!isLoading && !error && threads.length > 0 && (
-        <div className="border border-zinc-200 dark:border-zinc-700 rounded-[10px] divide-y divide-zinc-100 dark:divide-zinc-800" data-testid="email-list">
+        <div className="border border-zinc-200 dark:border-zinc-700 rounded-md divide-y divide-zinc-100 dark:divide-zinc-800" data-testid="email-list">
           {threads.map((thread) => (
             <ThreadRow
               key={thread.id}
@@ -208,7 +208,7 @@ interface ThreadRowProps {
 function ThreadRow({ thread, onLinkClick, onOpenClick }: ThreadRowProps) {
   return (
     <div
-      className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-[#323232] transition-colors cursor-pointer"
+      className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-surface-active transition-colors cursor-pointer"
       data-testid="email-thread-item"
       onClick={onOpenClick}
     >

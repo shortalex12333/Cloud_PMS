@@ -56,7 +56,7 @@ interface StockInfoRowProps {
 
 function StockInfoRow({ label, value, warning, critical }: StockInfoRowProps) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px] px-5">
+    <div className="flex items-center justify-between py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11 px-5">
       <span className="text-[13px] font-normal text-txt-secondary leading-[1.4]">
         {label}
       </span>

@@ -33,7 +33,7 @@ function EquipmentRow({ eq }: EquipmentRowProps) {
   return (
     <div
       className={cn(
-        'px-5 py-3 min-h-[44px]',
+        'px-5 py-3 min-h-11',
         'border-b border-surface-border-subtle last:border-b-0',
         'flex items-center justify-between gap-3'
       )}

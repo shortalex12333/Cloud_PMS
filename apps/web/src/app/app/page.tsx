@@ -47,7 +47,7 @@ function SurfaceContent() {
         {/* Center - Spotlight Search (email inline beneath search bar per UX doctrine) */}
         <div className="flex-1 flex items-start justify-center pt-[15vh]">
           <div className="w-full max-w-2xl px-4">
-            <Suspense fallback={<div className="h-14 bg-celeste-bg-tertiary/50 rounded-[16px]" />}>
+            <Suspense fallback={<div className="h-14 bg-celeste-bg-tertiary/50 rounded-lg" />}>
               <SpotlightSearch />
             </Suspense>
           </div>

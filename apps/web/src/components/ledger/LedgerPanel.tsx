@@ -313,8 +313,8 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
       <div
         className={cn(
           'relative w-full max-w-[var(--celeste-max-width-search)]',
-          'bg-surface-primary rounded-[16px]',
-          'border border-[#e7e7e7] dark:border-[#404040] overflow-hidden',
+          'bg-surface-primary rounded-lg',
+          'border border-surface-border overflow-hidden',
           'flex flex-col max-h-[70vh]'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -397,7 +397,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                   onClick={() => toggleDay(group.date)}
                   className={cn(
                     'w-full flex items-center justify-between px-3 py-2',
-                    'rounded-[10px]',
+                    'rounded-md',
                     'bg-celeste-panel text-celeste-text-primary',
                     'hover:bg-celeste-bg-tertiary transition-colors',
                     'sticky top-0 z-10'
@@ -485,7 +485,7 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
     <div
       className={cn(
         'flex items-start gap-3 px-3 py-2',
-        'rounded-[10px]',
+        'rounded-md',
         'hover:bg-celeste-panel transition-colors cursor-pointer'
       )}
       onClick={() => onItemClick(event)}

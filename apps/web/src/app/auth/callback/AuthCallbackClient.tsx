@@ -184,7 +184,7 @@ export default function AuthCallbackClient() {
         <p className="text-celeste-text-muted typo-body mb-4">{error}</p>
         <a
           href="https://auth.celeste7.ai"
-          className="inline-block px-6 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-[10px] text-white transition-colors"
+          className="inline-block px-6 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-white transition-colors"
         >
           Return to Login
         </a>

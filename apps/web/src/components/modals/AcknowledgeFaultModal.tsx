@@ -112,7 +112,7 @@ export function AcknowledgeFaultModal({
 
         <div className="space-y-4 py-4">
           {/* Fault Info */}
-          <div className="rounded-lg bg-zinc-50 dark:bg-[#323232] p-3">
+          <div className="rounded-lg bg-zinc-50 dark:bg-surface-active p-3">
             <div className="flex items-start gap-2">
               <AlertTriangle className={cn('h-5 w-5 mt-0.5', getSeverityColor(context.severity))} />
               <div>

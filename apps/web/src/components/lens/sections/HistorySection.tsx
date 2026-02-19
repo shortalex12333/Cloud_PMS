@@ -103,7 +103,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
     <div
       className={cn(
         // Row layout: 20px horizontal, 12px vertical per UI_SPEC.md
-        'px-5 py-3 min-h-[44px]',
+        'px-5 py-3 min-h-11',
         // Subtle internal divider (not full-width per Apple pattern)
         'border-b border-surface-border-subtle last:border-b-0'
       )}

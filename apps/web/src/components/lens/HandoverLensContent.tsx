@@ -82,7 +82,7 @@ export function HandoverLensContent({
 
         {status === 'pending' && (
           <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[HandoverLens] Acknowledge:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Acknowledge Handover</PrimaryButton>
+            <PrimaryButton onClick={() => console.log('[HandoverLens] Acknowledge:', id)} className="text-[13px] min-h-9 px-4 py-2">Acknowledge Handover</PrimaryButton>
           </div>
         )}
 

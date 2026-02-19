@@ -196,7 +196,7 @@ export default function LoginContent() {
       <div className="w-full max-w-[280px]">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-[16px] bg-gradient-to-b from-surface-border to-surface-base flex items-center justify-center">
+          <div className="w-12 h-12 rounded-lg bg-gradient-to-b from-surface-border to-surface-base flex items-center justify-center">
             <span className="text-white typo-title font-semibold">C</span>
           </div>
         </div>
@@ -213,7 +213,7 @@ export default function LoginContent() {
         <form onSubmit={handleLogin} className="space-y-3">
           {/* Error */}
           {displayError && (
-            <div className="px-3 py-2 rounded-[10px] bg-red-500/10 border border-red-500/20">
+            <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20">
               <p className="typo-body text-red-500 text-center">{displayError}</p>
             </div>
           )}
@@ -227,7 +227,7 @@ export default function LoginContent() {
             required
             autoComplete="email"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-[10px] bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
+            className="w-full h-11 px-4 rounded-md bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
           />
 
           {/* Password */}
@@ -239,14 +239,14 @@ export default function LoginContent() {
             required
             autoComplete="current-password"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-[10px] bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
+            className="w-full h-11 px-4 rounded-md bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
           />
 
           {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[44px] rounded-[10px] bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed typo-label font-medium text-white transition-colors flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-md bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed typo-label font-medium text-white transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

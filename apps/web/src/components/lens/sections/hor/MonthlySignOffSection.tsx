@@ -151,7 +151,7 @@ function SignOffConfirmPanel({ month, onConfirm, onCancel, isLoading }: SignOffC
         <PrimaryButton
           onClick={onConfirm}
           disabled={isLoading}
-          className="text-[13px] min-h-[36px] px-4 py-2"
+          className="text-[13px] min-h-9 px-4 py-2"
         >
           {isLoading ? 'Signing...' : 'Confirm Signature'}
         </PrimaryButton>
@@ -159,7 +159,7 @@ function SignOffConfirmPanel({ month, onConfirm, onCancel, isLoading }: SignOffC
           onClick={onCancel}
           disabled={isLoading}
           className={cn(
-            'text-[13px] px-4 py-2 rounded-md min-h-[36px]',
+            'text-[13px] px-4 py-2 rounded-md min-h-9',
             'text-txt-secondary hover:text-txt-primary',
             'hover:bg-surface-raised transition-colors duration-fast',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive',

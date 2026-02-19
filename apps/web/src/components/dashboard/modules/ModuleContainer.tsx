@@ -87,7 +87,7 @@ export default function ModuleContainer({
         'relative overflow-hidden',
         'bg-white dark:bg-zinc-900',
         'border border-zinc-200/60 dark:border-zinc-700/60',
-        'rounded-[20px]',
+        'rounded-xl',
         'transition-all duration-slow ease-out',
         className
       )}
@@ -99,14 +99,14 @@ export default function ModuleContainer({
           'w-full flex items-center gap-3',
           'px-4 py-3',
           'text-left',
-          'hover:bg-[#f8f8f8] dark:hover:bg-[#323232]',
+          'hover:bg-surface-hover',
           'transition-colors duration-fast'
         )}
       >
         {/* Icon */}
         <div className={cn(
           'flex items-center justify-center',
-          'w-9 h-9 rounded-[10px]',
+          'w-9 h-9 rounded-md',
           styles.bg
         )}>
           {icon}
@@ -218,8 +218,8 @@ export function ModuleItem({
       onClick={onClick}
       className={cn(
         'flex items-center gap-3',
-        'px-3 py-2 -mx-3 rounded-[10px]',
-        onClick && 'cursor-pointer hover:bg-[#eeeeee] dark:hover:bg-[#323232]',
+        'px-3 py-2 -mx-3 rounded-md',
+        onClick && 'cursor-pointer hover:bg-surface-active',
         'transition-colors duration-fast',
         'group',
         className
@@ -228,7 +228,7 @@ export function ModuleItem({
       {icon && (
         <div className={cn(
           'flex items-center justify-center',
-          'w-8 h-8 rounded-[10px]',
+          'w-8 h-8 rounded-md',
           styles.bg
         )}>
           {icon}
@@ -339,8 +339,8 @@ export function StatCard({
 
   return (
     <div className={cn(
-      'px-3 py-2 rounded-[10px]',
-      'bg-[#f8f8f8] dark:bg-[#323232]',
+      'px-3 py-2 rounded-md',
+      'bg-surface-active',
       className
     )}>
       <p className="typo-meta text-zinc-500 dark:text-zinc-400">

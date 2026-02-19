@@ -783,9 +783,9 @@ export default function SpotlightSearch({
             // ChatGPT-style pill shape with tokenized dimensions
             'w-full font-body',
             'bg-surface-elevated',
-            'rounded-[10px]',
+            'rounded-md',
             // Border only - NO shadow (design spec)
-            'border border-[#e7e7e7] dark:border-[#404040]',
+            'border border-surface-border',
             'animate-spotlight-in',
             // Email scope: accent ring only (no border)
             emailScopeActive && 'bg-brand-interactive/20 ring-2 ring-brand-interactive/40'
@@ -1150,10 +1150,9 @@ export default function SpotlightSearch({
               align="center"
               sideOffset={8}
               className={cn(
-                'min-w-[160px] rounded-[16px] p-2',
+                'min-w-[160px] rounded-lg p-2',
                 'bg-surface-elevated',
-                'border border-surface-border',
-                'border border-[#e7e7e7] dark:border-[#404040]'
+                'border border-surface-border'
               )}
             >
               <DropdownMenuItem

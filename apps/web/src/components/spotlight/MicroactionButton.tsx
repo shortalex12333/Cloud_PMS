@@ -210,7 +210,7 @@ export function MicroactionGroup({
                 'mt-1 p-1 rounded-celeste-md',
                 'bg-celeste-bg-secondary',
                 'border border-celeste-border',
-                'border border-[#e7e7e7] dark:border-[#404040]',
+                'border border-surface-border',
                 'min-w-[140px]'
               )}
             >

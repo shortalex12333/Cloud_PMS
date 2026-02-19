@@ -109,7 +109,7 @@ function WorkOrderRow({ wo }: WorkOrderRowProps) {
   return (
     <a
       href={`/work-orders/${wo.id}`}
-      className="flex items-start justify-between gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px] hover:bg-surface-hover transition-colors group"
+      className="flex items-start justify-between gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11 hover:bg-surface-hover transition-colors group"
       aria-label={`View work order: ${displayTitle}`}
     >
       {/* Left: title + meta */}

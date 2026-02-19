@@ -94,7 +94,7 @@ export function CertificateLensContent({
 
         {statusColor !== 'success' && (
           <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[CertificateLens] Renew:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Renew Certificate</PrimaryButton>
+            <PrimaryButton onClick={() => console.log('[CertificateLens] Renew:', id)} className="text-[13px] min-h-9 px-4 py-2">Renew Certificate</PrimaryButton>
           </div>
         )}
 

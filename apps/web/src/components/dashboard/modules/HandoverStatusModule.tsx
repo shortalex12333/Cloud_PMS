@@ -125,7 +125,7 @@ export default function HandoverStatusModule({
           </div>
 
           {/* Overall progress */}
-          <div className="mt-4 p-3 rounded-[10px] bg-zinc-100 dark:bg-zinc-800">
+          <div className="mt-4 p-3 rounded-md bg-zinc-100 dark:bg-zinc-800">
             <div className="flex items-center justify-between mb-2">
               <span className="typo-meta font-medium text-zinc-700 dark:text-zinc-300">
                 Overall Progress

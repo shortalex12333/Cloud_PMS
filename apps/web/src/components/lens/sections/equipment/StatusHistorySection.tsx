@@ -205,7 +205,7 @@ function StatusHistoryEntryRow({
   const colors = STATUS_COLORS[entry.new_status] ?? STATUS_COLORS.operational;
 
   return (
-    <div className="flex gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px]">
+    <div className="flex gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11">
       {/* Timeline dot + line */}
       <div className="flex flex-col items-center shrink-0 pt-1.5">
         <div

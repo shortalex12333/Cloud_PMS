@@ -92,7 +92,7 @@ function FaultRow({ fault }: FaultRowProps) {
   return (
     <a
       href={`/faults/${fault.id}`}
-      className="flex items-start justify-between gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px] hover:bg-surface-hover transition-colors group"
+      className="flex items-start justify-between gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11 hover:bg-surface-hover transition-colors group"
       aria-label={`View fault: ${fault.title}`}
     >
       {/* Left: title + meta */}

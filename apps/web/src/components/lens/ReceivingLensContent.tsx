@@ -92,9 +92,9 @@ export function ReceivingLensContent({
 
         {canModify && (
           <div className="mt-4 flex items-center gap-2">
-            <PrimaryButton onClick={() => console.log('[ReceivingLens] Add item:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Add Item</PrimaryButton>
-            <GhostButton onClick={() => console.log('[ReceivingLens] Accept:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Accept</GhostButton>
-            <GhostButton onClick={() => console.log('[ReceivingLens] Reject:', id)} className="text-[13px] min-h-[36px] px-4 py-2 text-status-critical">Reject</GhostButton>
+            <PrimaryButton onClick={() => console.log('[ReceivingLens] Add item:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Item</PrimaryButton>
+            <GhostButton onClick={() => console.log('[ReceivingLens] Accept:', id)} className="text-[13px] min-h-9 px-4 py-2">Accept</GhostButton>
+            <GhostButton onClick={() => console.log('[ReceivingLens] Reject:', id)} className="text-[13px] min-h-9 px-4 py-2 text-status-critical">Reject</GhostButton>
           </div>
         )}
 

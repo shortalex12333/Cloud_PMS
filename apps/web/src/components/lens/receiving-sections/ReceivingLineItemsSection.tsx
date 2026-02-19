@@ -142,7 +142,7 @@ function LineItemRow({ item }: LineItemRowProps) {
       className={cn(
         // Entity card layout: 20px horizontal, 12px vertical per UI_SPEC.md
         'flex items-center justify-between',
-        'px-5 py-3 min-h-[48px]',
+        'px-5 py-3 min-h-12',
         // Subtle internal divider between rows
         'border-b border-surface-border-subtle last:border-b-0',
         // Hover state for interactive rows

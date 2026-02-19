@@ -223,9 +223,9 @@ export function ApproveShoppingListItemModal({
 
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-5">
           {/* Item Summary */}
-          <div className="p-4 bg-surface-elevated rounded-[10px] border border-surface-border">
+          <div className="p-4 bg-surface-elevated rounded-md border border-surface-border">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-brand-muted rounded-[10px]">
+              <div className="p-2 bg-brand-muted rounded-md">
                 <ShoppingCart className="h-5 w-5 text-brand-interactive" />
               </div>
               <div className="flex-1 min-w-0">

@@ -194,7 +194,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
   return (
     <div className="fixed inset-0 z-modal flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-surface-elevated border border-surface-border rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] w-full max-w-md mx-4 p-6">
+      <div className="relative bg-surface-elevated border border-surface-border rounded-lg shadow-modal w-full max-w-md mx-4 p-6">
         <h3 className="typo-title font-semibold text-txt-primary mb-4">Edit Handover Note</h3>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -204,7 +204,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-[10px] text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
+                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
                 placeholder="Describe the handover note..."
               />
             </div>
@@ -213,7 +213,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-[10px] text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
+                className="w-full px-3 py-2 bg-surface-primary border border-surface-border rounded-md text-txt-primary typo-body focus:outline-none focus:ring-2 focus:ring-brand-interactive"
               >
                 <option value="fyi">FYI</option>
                 <option value="urgent">Urgent</option>
@@ -254,7 +254,7 @@ function EditModal({ item, onSave, onClose }: EditModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 typo-body font-medium bg-brand-interactive text-white rounded-[10px] hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 typo-body font-medium bg-brand-interactive text-white rounded-md hover:bg-brand-interactive/90 transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>

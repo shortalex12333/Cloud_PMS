@@ -83,8 +83,8 @@ export function HoursOfRestLensContent({
 
         {status !== 'verified' && (
           <div className="mt-4 flex items-center gap-2">
-            <PrimaryButton onClick={() => console.log('[HoursOfRestLens] Verify:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Verify Record</PrimaryButton>
-            <GhostButton onClick={() => console.log('[HoursOfRestLens] Add rest period:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Add Rest Period</GhostButton>
+            <PrimaryButton onClick={() => console.log('[HoursOfRestLens] Verify:', id)} className="text-[13px] min-h-9 px-4 py-2">Verify Record</PrimaryButton>
+            <GhostButton onClick={() => console.log('[HoursOfRestLens] Add rest period:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Rest Period</GhostButton>
           </div>
         )}
 

@@ -61,7 +61,7 @@ export function AddRelatedModal({ anchorType, anchorId, onClose }: AddRelatedMod
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-[16px] p-6 max-w-md w-full">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <h3 className="typo-title font-semibold mb-4">Add Related Artifact</h3>
 
         <form onSubmit={handleSubmit}>

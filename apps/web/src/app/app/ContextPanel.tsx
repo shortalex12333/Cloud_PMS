@@ -148,7 +148,7 @@ export default function ContextPanel() {
         'absolute inset-y-0 right-0 bg-surface-base',
         'flex flex-col',
         'transform transition-all duration-300 ease-out z-[10001]',
-        'border-l border-[#e7e7e7] dark:border-[#404040]',
+        'border-l border-surface-border',
         'w-[calc(100vw-80px)]', // Full-screen minus left nav
         visible ? 'translate-x-0' : 'translate-x-full'
       )}

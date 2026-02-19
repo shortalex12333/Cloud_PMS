@@ -89,7 +89,7 @@ function DocumentCard({ doc }: DocumentCardProps) {
           window.open(doc.url, '_blank', 'noopener,noreferrer');
         }
       }}
-      className="flex items-center gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px] hover:bg-surface-hover transition-colors cursor-pointer"
+      className="flex items-center gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11 hover:bg-surface-hover transition-colors cursor-pointer"
       aria-label={`Open document: ${doc.title}`}
     >
       {/* Document icon */}

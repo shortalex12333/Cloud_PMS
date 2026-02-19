@@ -59,7 +59,7 @@ interface SpecRowProps {
 
 function SpecRow({ label, value }: SpecRowProps) {
   return (
-    <div className="flex items-start justify-between gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-[44px]">
+    <div className="flex items-start justify-between gap-4 px-5 py-3 border-b border-surface-border-subtle last:border-b-0 min-h-11">
       <span className="text-[13px] font-medium text-txt-tertiary leading-[1.4] shrink-0">
         {label}
       </span>
