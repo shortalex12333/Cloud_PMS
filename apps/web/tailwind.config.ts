@@ -193,25 +193,38 @@ const config: Config = {
       },
 
       // =========================================================================
-      // TYPOGRAPHY - Eloquia with system fallbacks
+      // TYPOGRAPHY - Per Spec Font Stack
+      // ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial
       // =========================================================================
       fontFamily: {
-        'display': [
-          'Eloquia Display',
+        'sans': [
+          'ui-sans-serif',
+          'system-ui',
           '-apple-system',
-          'BlinkMacSystemFont',
-          'SF Pro Display',
           'Segoe UI',
           'Roboto',
+          'Helvetica',
+          'Arial',
+          'sans-serif',
+        ],
+        'display': [
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica',
+          'Arial',
           'sans-serif',
         ],
         'body': [
-          'Eloquia Text',
+          'ui-sans-serif',
+          'system-ui',
           '-apple-system',
-          'BlinkMacSystemFont',
-          'SF Pro Text',
           'Segoe UI',
           'Roboto',
+          'Helvetica',
+          'Arial',
           'sans-serif',
         ],
         'mono': [

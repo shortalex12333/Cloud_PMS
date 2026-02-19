@@ -46,9 +46,9 @@ interface MicroactionButtonProps {
 // ============================================================================
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-6 min-w-6 px-1.5 text-celeste-xs gap-1',
-  md: 'h-7 min-w-7 px-2 text-celeste-sm gap-1.5',
-  lg: 'h-8 min-w-8 px-2.5 text-celeste-base gap-1.5',
+  sm: 'h-6 min-w-6 px-1.5 typo-meta gap-1',
+  md: 'h-7 min-w-7 px-2 typo-meta gap-1.5',
+  lg: 'h-8 min-w-8 px-2.5 typo-body gap-1.5',
 };
 
 const iconSizes: Record<ButtonSize, number> = {
@@ -230,7 +230,7 @@ export function MicroactionGroup({
                     className={cn(
                       'w-full flex items-center gap-2',
                       'px-2 py-1.5 rounded-celeste-sm',
-                      'text-left text-celeste-base',
+                      'text-left typo-body',
                       'text-celeste-text-primary',
                       'hover:bg-celeste-bg-tertiary',
                       'transition-colors duration-celeste-fast'

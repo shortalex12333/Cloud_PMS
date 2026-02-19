@@ -99,10 +99,10 @@ export default function SpotlightPreviewPane({
             <IconComponent className={cn('h-5 w-5', config.color)} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-celeste-lg font-semibold text-celeste-text-title-light dark:text-celeste-text-title truncate">
+            <h3 className="typo-title font-semibold text-celeste-text-title-light dark:text-celeste-text-title truncate">
               {result.title}
             </h3>
-            <p className="text-celeste-sm text-celeste-text-secondary truncate">
+            <p className="typo-meta text-celeste-text-secondary truncate">
               {result.subtitle}
             </p>
           </div>
@@ -174,7 +174,7 @@ export default function SpotlightPreviewPane({
           <div className="mt-2 space-y-3">
             {Object.entries(actionsByCluster).map(([cluster, actions]) => (
               <div key={cluster}>
-                <span className="text-celeste-xs text-celeste-text-muted capitalize">
+                <span className="typo-meta text-celeste-text-muted capitalize">
                   {cluster.replace(/_/g, ' ')}
                 </span>
                 <div className="mt-1 flex flex-wrap gap-1.5">
@@ -200,14 +200,14 @@ export default function SpotlightPreviewPane({
         'bg-celeste-panel-light/80 dark:bg-celeste-panel/80',
         'flex items-center justify-between'
       )}>
-        <span className="text-celeste-xs text-celeste-text-muted">
-          Press <kbd className="px-1 py-0.5 rounded bg-celeste-bg-secondary-light dark:bg-celeste-bg-tertiary text-celeste-xs font-medium">Tab</kbd> to cycle actions
+        <span className="typo-meta text-celeste-text-muted">
+          Press <kbd className="px-1 py-0.5 rounded bg-celeste-bg-secondary-light dark:bg-celeste-bg-tertiary typo-meta font-medium">Tab</kbd> to cycle actions
         </span>
         <button
           className={cn(
             'px-3 py-1.5 rounded-md',
             'bg-celeste-accent hover:bg-celeste-accent-hover',
-            'text-celeste-sm font-medium text-white',
+            'typo-meta font-medium text-white',
             'transition-colors'
           )}
         >

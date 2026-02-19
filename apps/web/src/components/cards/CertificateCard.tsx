@@ -93,7 +93,7 @@ function EmptyStateCTA({ icon, title, description }: EmptyStateCTAProps) {
       <p className="text-txt-primary font-medium mb-ds-1">
         {title}
       </p>
-      <p className="text-txt-tertiary text-celeste-sm">
+      <p className="text-txt-tertiary typo-meta">
         {description}
       </p>
     </div>
@@ -210,7 +210,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
             {status.label}
           </span>
           <span className={cn(
-            'inline-flex items-center px-ds-3 py-ds-1 rounded-sm text-celeste-sm font-medium',
+            'inline-flex items-center px-ds-3 py-ds-1 rounded-sm typo-meta font-medium',
             certType.bg, certType.text
           )}>
             {certType.label}
@@ -236,7 +236,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
             expiryCountdown.bg
           )}>
             <Clock className={cn('h-4 w-4', expiryCountdown.color)} />
-            <span className={cn('text-celeste-sm font-medium', expiryCountdown.color)}>
+            <span className={cn('typo-meta font-medium', expiryCountdown.color)}>
               {expiryCountdown.text}
             </span>
           </div>
@@ -246,7 +246,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
         <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4 pt-ds-4 border-t border-surface-border">
           {/* Certificate Type */}
           <div>
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Type</p>
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Type</p>
             <div className="flex items-center gap-ds-1">
               <FileCheck className="h-4 w-4 text-txt-secondary" />
               <span className="text-txt-primary capitalize">{certificate.certificate_type}</span>
@@ -255,7 +255,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
 
           {/* Issue Date */}
           <div>
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Issue Date</p>
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Issue Date</p>
             <div className="flex items-center gap-ds-1">
               <Calendar className="h-4 w-4 text-txt-secondary" />
               <span className="text-txt-primary">{formatDate(certificate.issue_date)}</span>
@@ -264,7 +264,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
 
           {/* Expiry Date */}
           <div>
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Expiry Date</p>
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Expiry Date</p>
             <div className="flex items-center gap-ds-1">
               <Calendar className="h-4 w-4 text-txt-secondary" />
               <span className={cn(
@@ -279,7 +279,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
 
           {/* Issuing Authority */}
           <div>
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Issuing Authority</p>
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Issuing Authority</p>
             <div className="flex items-center gap-ds-1">
               <Building2 className="h-4 w-4 text-txt-secondary" />
               <span className="text-txt-primary">{certificate.issuing_authority}</span>
@@ -290,7 +290,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
         {/* Crew Member Name (for crew certificates) */}
         {certificate.certificate_type === 'crew' && certificate.crew_member_name && (
           <div className="mt-ds-4 pt-ds-4 border-t border-surface-border">
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Crew Member</p>
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Crew Member</p>
             <div className="flex items-center gap-ds-2">
               <User className="h-4 w-4 text-txt-secondary" />
               <span className="text-txt-primary font-medium">{certificate.crew_member_name}</span>
@@ -312,8 +312,8 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
               />
             ))}
             {actions.length > 4 && (
-              <button className="h-8 px-ds-2 text-celeste-sm text-txt-tertiary hover:text-txt-primary transition-colors">
-                <ChevronRight className="h-4 w-4" />
+              <button className="h-9 px-ds-2 typo-meta text-txt-tertiary hover:text-txt-primary transition-colors">
+                <ChevronRight className="h-[18px] w-[18px]" />
               </button>
             )}
           </div>
@@ -329,7 +329,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
             <FileText className="h-5 w-5 text-txt-secondary" />
             <h3 className="text-txt-primary font-semibold">Linked Documents</h3>
             {documents.length > 0 && (
-              <span className="text-txt-tertiary text-celeste-sm">({documents.length})</span>
+              <span className="text-txt-tertiary typo-meta">({documents.length})</span>
             )}
           </div>
         </div>
@@ -352,10 +352,10 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
                     <FileText className="h-4 w-4 text-txt-tertiary" />
                   </div>
                   <div>
-                    <p className="text-txt-primary font-medium text-celeste-sm">
+                    <p className="text-txt-primary font-medium typo-meta">
                       {doc.name}
                     </p>
-                    <div className="flex items-center gap-ds-2 text-celeste-xs text-txt-tertiary">
+                    <div className="flex items-center gap-ds-2 typo-meta text-txt-tertiary">
                       {doc.file_type && <span>{doc.file_type.toUpperCase()}</span>}
                       {doc.file_type && doc.created_at && <span>-</span>}
                       {doc.created_at && <span>{formatDate(doc.created_at)}</span>}
@@ -377,7 +377,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
           <History className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">Activity</h3>
           {auditHistory.length > 0 && (
-            <span className="text-txt-tertiary text-celeste-sm">({auditHistory.length})</span>
+            <span className="text-txt-tertiary typo-meta">({auditHistory.length})</span>
           )}
         </div>
 
@@ -419,15 +419,15 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
                   className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
                 >
                   <div className="flex items-start justify-between gap-ds-2">
-                    <p className="text-txt-primary font-medium text-celeste-sm">
+                    <p className="text-txt-primary font-medium typo-meta">
                       {label}
                     </p>
-                    <span className="text-celeste-xs text-txt-tertiary whitespace-nowrap">
+                    <span className="typo-meta text-txt-tertiary whitespace-nowrap">
                       {formatDate(entry.created_at)}
                     </span>
                   </div>
                   {summary && (
-                    <p className="text-celeste-sm text-txt-secondary mt-1 line-clamp-2">
+                    <p className="typo-meta text-txt-secondary mt-1 line-clamp-2">
                       {summary}
                     </p>
                   )}
@@ -435,7 +435,7 @@ export function CertificateCard({ certificate, actions = [] }: CertificateCardPr
               );
             })}
             {auditHistory.length > 10 && (
-              <p className="text-celeste-xs text-txt-tertiary text-center pt-2">
+              <p className="typo-meta text-txt-tertiary text-center pt-2">
                 +{auditHistory.length - 10} more activities
               </p>
             )}

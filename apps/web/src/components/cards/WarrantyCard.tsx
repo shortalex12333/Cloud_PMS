@@ -240,7 +240,7 @@ export function WarrantyCard({
         {/* Claim Number */}
         <div className="flex items-center gap-ds-2 mb-ds-2">
           <Hash className="h-4 w-4 text-txt-tertiary" />
-          <span className="text-txt-tertiary text-celeste-sm font-mono">
+          <span className="text-txt-tertiary typo-meta font-mono">
             {warrantyClaim.claim_number}
           </span>
         </div>
@@ -271,8 +271,8 @@ export function WarrantyCard({
               />
             ))}
             {actions.length > 4 && (
-              <button className="h-8 px-ds-2 text-celeste-sm text-txt-tertiary hover:text-txt-primary transition-colors">
-                <ChevronRight className="h-4 w-4" />
+              <button className="h-9 px-ds-2 typo-meta text-txt-tertiary hover:text-txt-primary transition-colors">
+                <ChevronRight className="h-[18px] w-[18px]" />
               </button>
             )}
           </div>
@@ -294,7 +294,7 @@ export function WarrantyCard({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-ds-4">
             {warrantyClaim.equipment_name && (
               <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
-                <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+                <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                   Equipment
                 </p>
                 <p className="text-txt-primary font-medium">
@@ -305,7 +305,7 @@ export function WarrantyCard({
 
             {warrantyClaim.fault_code && (
               <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
-                <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+                <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                   Fault Reference
                 </p>
                 <div className="flex items-center gap-ds-2">
@@ -334,7 +334,7 @@ export function WarrantyCard({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4">
           {warrantyClaim.vendor_name && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Vendor
               </p>
               <span className="text-txt-primary">
@@ -345,7 +345,7 @@ export function WarrantyCard({
 
           {warrantyClaim.manufacturer && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Manufacturer
               </p>
               <span className="text-txt-primary">
@@ -356,7 +356,7 @@ export function WarrantyCard({
 
           {warrantyClaim.part_number && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Part Number
               </p>
               <span className="text-txt-primary font-mono">
@@ -367,7 +367,7 @@ export function WarrantyCard({
 
           {warrantyClaim.serial_number && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Serial Number
               </p>
               <span className="text-txt-primary font-mono">
@@ -391,7 +391,7 @@ export function WarrantyCard({
 
         <div className="grid grid-cols-2 gap-ds-4">
           <div className="p-ds-4 bg-surface-elevated rounded-sm border border-surface-border">
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
               Claimed Amount
             </p>
             <p className="text-xl font-semibold text-txt-primary">
@@ -401,7 +401,7 @@ export function WarrantyCard({
 
           {warrantyClaim.status === 'approved' && (
             <div className="p-ds-4 bg-status-success/5 rounded-sm border border-status-success/20">
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Approved Amount
               </p>
               <p className="text-xl font-semibold text-status-success">
@@ -436,7 +436,7 @@ export function WarrantyCard({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4">
           {warrantyClaim.purchase_date && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Purchase Date
               </p>
               <span className="text-txt-primary">
@@ -447,7 +447,7 @@ export function WarrantyCard({
 
           {warrantyClaim.warranty_expiry && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Warranty Expiry
               </p>
               <span className={cn(
@@ -462,7 +462,7 @@ export function WarrantyCard({
 
           {warrantyClaim.drafted_at && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Drafted
               </p>
               <span className="text-txt-primary">
@@ -473,7 +473,7 @@ export function WarrantyCard({
 
           {warrantyClaim.submitted_at && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Submitted
               </p>
               <span className="text-txt-primary">
@@ -484,7 +484,7 @@ export function WarrantyCard({
 
           {warrantyClaim.approved_at && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Approved
               </p>
               <span className="text-status-success">
@@ -509,7 +509,7 @@ export function WarrantyCard({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-ds-4">
           {warrantyClaim.drafted_by && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Drafted By
               </p>
               <span className="text-txt-primary">
@@ -520,7 +520,7 @@ export function WarrantyCard({
 
           {warrantyClaim.submitted_by && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Submitted By
               </p>
               <span className="text-txt-primary">
@@ -531,7 +531,7 @@ export function WarrantyCard({
 
           {warrantyClaim.approved_by && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">
                 Approved By
               </p>
               <span className="text-status-success">
@@ -567,7 +567,7 @@ export function WarrantyCard({
           <History className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">Activity</h3>
           {auditHistory.length > 0 && (
-            <span className="text-txt-tertiary text-celeste-sm">({auditHistory.length})</span>
+            <span className="text-txt-tertiary typo-meta">({auditHistory.length})</span>
           )}
         </div>
 
@@ -608,15 +608,15 @@ export function WarrantyCard({
                   className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
                 >
                   <div className="flex items-start justify-between gap-ds-2">
-                    <p className="text-txt-primary font-medium text-celeste-sm">
+                    <p className="text-txt-primary font-medium typo-meta">
                       {label}
                     </p>
-                    <span className="text-celeste-xs text-txt-tertiary whitespace-nowrap">
+                    <span className="typo-meta text-txt-tertiary whitespace-nowrap">
                       {formatDate(entry.created_at)}
                     </span>
                   </div>
                   {summary && (
-                    <p className="text-celeste-sm text-txt-secondary mt-1 line-clamp-2">
+                    <p className="typo-meta text-txt-secondary mt-1 line-clamp-2">
                       {summary}
                     </p>
                   )}
@@ -624,7 +624,7 @@ export function WarrantyCard({
               );
             })}
             {auditHistory.length > 10 && (
-              <p className="text-celeste-xs text-txt-tertiary text-center pt-2">
+              <p className="typo-meta text-txt-tertiary text-center pt-2">
                 +{auditHistory.length - 10} more activities
               </p>
             )}

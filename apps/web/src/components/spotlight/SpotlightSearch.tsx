@@ -814,7 +814,7 @@ export default function SpotlightSearch({
 
             {/* Email Scope Badge */}
             {emailScopeActive && (
-              <div className="px-2 py-0.5 bg-brand-interactive text-txt-primary rounded text-celeste-xs font-semibold whitespace-nowrap">
+              <div className="px-2 py-0.5 bg-brand-interactive text-txt-primary rounded typo-meta font-semibold whitespace-nowrap">
                 Email
               </div>
             )}
@@ -839,7 +839,7 @@ export default function SpotlightSearch({
                 className={cn(
                   'w-full h-full',
                   'bg-transparent border-none outline-none',
-                  'text-celeste-xl',
+                  'typo-title',
                   'text-txt-primary',
                   'font-normal tracking-[-0.01em]',
                   'caret-txt-primary',
@@ -856,7 +856,7 @@ export default function SpotlightSearch({
                 <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
                   <span
                     className={cn(
-                      'text-celeste-xl text-txt-tertiary font-normal tracking-[-0.01em]',
+                      'typo-title text-txt-tertiary font-normal tracking-[-0.01em]',
                       'transition-all duration-celeste-deliberate ease-out',
                       isAnimating ? 'opacity-0 -translate-y-3' : 'opacity-100 translate-y-0'
                     )}
@@ -1048,7 +1048,7 @@ export default function SpotlightSearch({
                         {(hasMoreInDomain || (group.totalCount > 4 && !isExpanded)) && (
                           <button
                             onClick={() => toggleDomainExpansion(group.domain)}
-                            className="w-full px-4 py-2 text-left text-celeste-sm text-celeste-accent hover:bg-celeste-bg-tertiary transition-colors flex items-center gap-2"
+                            className="w-full px-4 py-2 text-left typo-meta text-celeste-accent hover:bg-celeste-bg-tertiary transition-colors flex items-center gap-2"
                           >
                             <ChevronDown
                               className={cn(
@@ -1077,16 +1077,16 @@ export default function SpotlightSearch({
 
               {showNoResults && (
                 <div className="py-10 text-center" data-testid="no-results">
-                  <p className="text-celeste-lg text-celeste-text-secondary">No Results</p>
+                  <p className="typo-title text-celeste-text-secondary">No Results</p>
                 </div>
               )}
 
               {error && (
                 <div className="py-10 text-center" data-testid="search-error">
-                  <p className="text-celeste-lg text-celeste-text-secondary">{error}</p>
+                  <p className="typo-title text-celeste-text-secondary">{error}</p>
                   <button
                     onClick={() => search(query)}
-                    className="mt-2 text-celeste-md text-celeste-accent hover:text-celeste-accent-hover"
+                    className="mt-2 typo-label text-celeste-accent hover:text-celeste-accent-hover"
                   >
                     Try again
                   </button>
@@ -1245,7 +1245,7 @@ export default function SpotlightSearch({
               Log Receiving
             </DialogTitle>
           </DialogHeader>
-          <p className="text-celeste-sm text-celeste-text-secondary mb-4">
+          <p className="typo-meta text-celeste-text-secondary mb-4">
             Capture or upload an invoice, packing slip, or photo of received goods.
             We'll extract the details automatically.
           </p>

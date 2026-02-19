@@ -378,7 +378,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           flexDirection: 'row',
           background: 'var(--settings-bg-main, #ffffff)',
           border: '1px solid var(--settings-border, #e7e7e7)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
           fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -397,19 +397,19 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
             flexDirection: 'column',
           }}
         >
-          {/* Close button - 28x28 */}
+          {/* Close button - SPEC: 32x32, 18-20px icon */}
           <button
             onClick={onClose}
             className="settings-close-button"
             style={{
-              width: '28px',
-              height: '28px',
+              width: '32px',
+              height: '32px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               background: 'transparent',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               color: 'var(--settings-text-secondary, #5a5a5a)',
               cursor: 'pointer',
               marginBottom: '12px',
@@ -430,13 +430,13 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                   onClick={() => setActivePage(item.id)}
                   style={{
                     width: '100%',
-                    height: '36px',
-                    borderRadius: '8px',
-                    padding: '0 10px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    padding: '0 12px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    fontSize: '13px',
+                    gap: '12px',
+                    fontSize: '14px',
                     fontWeight: isActive ? 600 : 500,
                     lineHeight: '20px',
                     color: 'var(--settings-text-primary, #111111)',
@@ -446,7 +446,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                     textAlign: 'left',
                   }}
                 >
-                  <Icon style={{ width: '16px', height: '16px', flexShrink: 0, color: 'var(--settings-text-secondary, #5a5a5a)' }} />
+                  <Icon style={{ width: '18px', height: '18px', flexShrink: 0, color: 'var(--settings-text-secondary, #5a5a5a)' }} />
                   <span>{item.label}</span>
                 </button>
               );

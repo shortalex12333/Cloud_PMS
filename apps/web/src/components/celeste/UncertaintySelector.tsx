@@ -50,7 +50,7 @@ export default function UncertaintySelector({
         className
       )}
     >
-      <div className="text-celeste-sm text-celeste-text-muted mb-2">
+      <div className="typo-meta text-celeste-text-muted mb-2">
         Which did you mean?
       </div>
 
@@ -62,7 +62,7 @@ export default function UncertaintySelector({
             className={cn(
               'w-full text-left',
               'px-3 py-2',
-              'text-celeste-base text-celeste-text-primary',
+              'typo-body text-celeste-text-primary',
               'bg-celeste-bg-secondary hover:bg-celeste-bg-tertiary',
               'rounded-celeste-md',
               'transition-colors'

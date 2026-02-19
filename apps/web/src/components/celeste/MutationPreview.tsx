@@ -49,10 +49,10 @@ export default function MutationPreview({
       <div className="space-y-3">
         {diffs.map((diff, i) => (
           <div key={i}>
-            <div className="text-celeste-xs text-celeste-text-muted mb-1">
+            <div className="typo-meta text-celeste-text-muted mb-1">
               {diff.field}
             </div>
-            <div className="text-celeste-md font-mono">
+            <div className="typo-label font-mono">
               <span className="text-celeste-text-secondary">{String(diff.before)}</span>
               <span className="text-celeste-text-disabled mx-2">→</span>
               <span className="text-celeste-text-primary">{String(diff.after)}</span>

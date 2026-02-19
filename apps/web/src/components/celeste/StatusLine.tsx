@@ -33,7 +33,7 @@ export default function StatusLine({
   return (
     <div
       className={cn(
-        'text-celeste-sm text-celeste-text-muted',
+        'typo-meta text-celeste-text-muted',
         'font-body',
         'transition-opacity duration-celeste-fast',
         className

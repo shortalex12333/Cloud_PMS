@@ -130,7 +130,7 @@ function EmptyStateCTA({ icon, title, description, actionLabel, action, context 
       <p className="text-txt-primary font-medium mb-ds-1">
         {title}
       </p>
-      <p className="text-txt-tertiary text-celeste-sm mb-ds-4">
+      <p className="text-txt-tertiary typo-meta mb-ds-4">
         {description}
       </p>
       <ActionButton
@@ -167,7 +167,7 @@ function SectionHeader({ icon, title, count, action, actionLabel, context }: Sec
           {title}
         </h3>
         {count !== undefined && count > 0 && (
-          <span className="text-txt-tertiary text-celeste-sm">
+          <span className="text-txt-tertiary typo-meta">
             ({count})
           </span>
         )}
@@ -293,7 +293,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-ds-4 pt-ds-4 border-t border-surface-border">
           {workOrder.assigned_to_name && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Assigned To</p>
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Assigned To</p>
               <div className="flex items-center gap-ds-1">
                 <User className="h-4 w-4 text-txt-secondary" />
                 <span className="text-txt-primary">{workOrder.assigned_to_name}</span>
@@ -301,18 +301,18 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             </div>
           )}
           <div>
-            <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Created</p>
+            <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Created</p>
             <span className="text-txt-primary">{formatDate(workOrder.created_at)}</span>
           </div>
           {workOrder.due_date && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Due Date</p>
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Due Date</p>
               <span className="text-status-warning">{formatDate(workOrder.due_date)}</span>
             </div>
           )}
           {workOrder.completed_at && (
             <div>
-              <p className="text-txt-tertiary text-celeste-xs uppercase tracking-wide mb-1">Completed</p>
+              <p className="text-txt-tertiary typo-meta uppercase tracking-wide mb-1">Completed</p>
               <span className="text-status-success">{formatDate(workOrder.completed_at)}</span>
             </div>
           )}
@@ -367,7 +367,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             <MessageSquare className="h-5 w-5 text-txt-secondary" />
             <h3 className="text-txt-primary font-semibold">Notes</h3>
             {notes.length > 0 && (
-              <span className="text-txt-tertiary text-celeste-sm">({notes.length})</span>
+              <span className="text-txt-tertiary typo-meta">({notes.length})</span>
             )}
           </div>
           {notes.length > 0 && (
@@ -391,7 +391,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             <p className="text-txt-primary font-medium mb-ds-1">
               No notes yet
             </p>
-            <p className="text-txt-tertiary text-celeste-sm mb-ds-4">
+            <p className="text-txt-tertiary typo-meta mb-ds-4">
               Add notes to track progress, issues, or important observations.
             </p>
             <Button
@@ -414,7 +414,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
                 <p className="text-txt-primary whitespace-pre-wrap">
                   {note.note_text}
                 </p>
-                <div className="flex items-center gap-ds-2 mt-ds-2 text-celeste-xs text-txt-tertiary">
+                <div className="flex items-center gap-ds-2 mt-ds-2 typo-meta text-txt-tertiary">
                   {note.created_by && <span>{note.created_by}</span>}
                   {note.created_by && note.created_at && <span>•</span>}
                   {note.created_at && <span>{formatDate(note.created_at)}</span>}
@@ -434,7 +434,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             <Package className="h-5 w-5 text-txt-secondary" />
             <h3 className="text-txt-primary font-semibold">Parts Used</h3>
             {parts.length > 0 && (
-              <span className="text-txt-tertiary text-celeste-sm">({parts.length})</span>
+              <span className="text-txt-tertiary typo-meta">({parts.length})</span>
             )}
           </div>
           {parts.length > 0 && (
@@ -458,7 +458,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             <p className="text-txt-primary font-medium mb-ds-1">
               No parts linked
             </p>
-            <p className="text-txt-tertiary text-celeste-sm mb-ds-4">
+            <p className="text-txt-tertiary typo-meta mb-ds-4">
               Track parts used for this work order to maintain accurate inventory.
             </p>
             <Button
@@ -482,7 +482,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
                   <p className="text-txt-primary font-medium">
                     {part.pms_parts?.name || 'Unknown Part'}
                   </p>
-                  <div className="flex items-center gap-ds-2 text-celeste-xs text-txt-tertiary">
+                  <div className="flex items-center gap-ds-2 typo-meta text-txt-tertiary">
                     {part.pms_parts?.part_number && (
                       <span>#{part.pms_parts.part_number}</span>
                     )}
@@ -514,7 +514,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             <ClipboardList className="h-5 w-5 text-txt-secondary" />
             <h3 className="text-txt-primary font-semibold">Checklist</h3>
             {checklist.length > 0 && (
-              <span className="text-txt-tertiary text-celeste-sm">({checklist.length})</span>
+              <span className="text-txt-tertiary typo-meta">({checklist.length})</span>
             )}
           </div>
           {checklist.length > 0 && (
@@ -538,7 +538,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             <p className="text-txt-primary font-medium mb-ds-1">
               No checklist items
             </p>
-            <p className="text-txt-tertiary text-celeste-sm mb-ds-4">
+            <p className="text-txt-tertiary typo-meta mb-ds-4">
               Add checklist items to ensure all steps are completed.
             </p>
             <Button
@@ -556,7 +556,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
             {/* Progress bar */}
             {checklist.length > 0 && (
               <div className="mb-ds-4">
-                <div className="flex items-center justify-between text-celeste-sm mb-ds-1">
+                <div className="flex items-center justify-between typo-meta mb-ds-1">
                   <span className="text-txt-tertiary">Progress</span>
                   <span className="text-txt-primary">
                     {checklist.filter(c => c.is_completed).length} / {checklist.length}
@@ -601,12 +601,12 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
                     {item.title}
                   </p>
                   {item.description && (
-                    <p className="text-celeste-sm text-txt-tertiary mt-1">
+                    <p className="typo-meta text-txt-tertiary mt-1">
                       {item.description}
                     </p>
                   )}
                   {item.completed_at && (
-                    <p className="text-celeste-xs text-txt-tertiary mt-1">
+                    <p className="typo-meta text-txt-tertiary mt-1">
                       Completed {formatDate(item.completed_at)}
                       {item.completed_by && ` by ${item.completed_by}`}
                     </p>
@@ -626,7 +626,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
           <History className="h-5 w-5 text-txt-secondary" />
           <h3 className="text-txt-primary font-semibold">Activity</h3>
           {auditHistory.length > 0 && (
-            <span className="text-txt-tertiary text-celeste-sm">({auditHistory.length})</span>
+            <span className="text-txt-tertiary typo-meta">({auditHistory.length})</span>
           )}
         </div>
 
@@ -669,15 +669,15 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
                   className="p-ds-3 bg-surface-elevated rounded-sm border border-surface-border"
                 >
                   <div className="flex items-start justify-between gap-ds-2">
-                    <p className="text-txt-primary font-medium text-celeste-sm">
+                    <p className="text-txt-primary font-medium typo-meta">
                       {label}
                     </p>
-                    <span className="text-celeste-xs text-txt-tertiary whitespace-nowrap">
+                    <span className="typo-meta text-txt-tertiary whitespace-nowrap">
                       {formatDate(entry.created_at)}
                     </span>
                   </div>
                   {summary && (
-                    <p className="text-celeste-sm text-txt-secondary mt-1 line-clamp-2">
+                    <p className="typo-meta text-txt-secondary mt-1 line-clamp-2">
                       {summary}
                     </p>
                   )}
@@ -685,7 +685,7 @@ export function WorkOrderCard({ workOrder, actions = [] }: WorkOrderCardProps) {
               );
             })}
             {auditHistory.length > 10 && (
-              <p className="text-celeste-xs text-txt-tertiary text-center pt-2">
+              <p className="typo-meta text-txt-tertiary text-center pt-2">
                 +{auditHistory.length - 10} more activities
               </p>
             )}

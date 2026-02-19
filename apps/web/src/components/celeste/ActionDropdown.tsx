@@ -102,7 +102,7 @@ export default function ActionDropdown({
           }}
           className={cn(
             'w-full px-3 py-1.5 text-left',
-            'text-celeste-base text-celeste-text-primary',
+            'typo-body text-celeste-text-primary',
             'hover:bg-celeste-bg-tertiary',
             'transition-colors'
           )}
@@ -126,7 +126,7 @@ export default function ActionDropdown({
           }}
           className={cn(
             'w-full px-3 py-1.5 text-left',
-            'text-celeste-base text-celeste-text-muted', // Lower visual priority
+            'typo-body text-celeste-text-muted', // Lower visual priority
             'hover:bg-celeste-bg-tertiary hover:text-celeste-text-primary',
             'transition-colors'
           )}

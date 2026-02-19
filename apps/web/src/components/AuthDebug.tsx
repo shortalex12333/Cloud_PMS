@@ -142,7 +142,7 @@ export function AuthDebug() {
 
   if (!debug) {
     return (
-      <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg p-3 text-celeste-xs text-txt-primary font-mono">
+      <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg p-3 typo-meta text-txt-primary font-mono">
         Diagnosing...
       </div>
     );
@@ -152,7 +152,7 @@ export function AuthDebug() {
   const okClass = (v: boolean) => v ? 'text-green-400' : 'text-red-400';
 
   return (
-    <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg text-celeste-xs text-txt-primary font-mono max-w-[320px] shadow-xl z-50">
+    <div className="fixed bottom-4 right-4 bg-surface-base border border-surface-border rounded-lg typo-meta text-txt-primary font-mono max-w-[320px] shadow-xl z-50">
       <div
         className="flex items-center justify-between p-2 border-b border-surface-border cursor-pointer"
         onClick={() => setExpanded(!expanded)}
@@ -210,7 +210,7 @@ export function AuthDebug() {
           </div>
 
           {/* Timestamp */}
-          <div className="text-txt-tertiary text-celeste-xs pt-2 border-t border-surface-border">
+          <div className="text-txt-tertiary typo-meta pt-2 border-t border-surface-border">
             Last check: {debug.timestamp.split('T')[1].split('.')[0]}
           </div>
         </div>

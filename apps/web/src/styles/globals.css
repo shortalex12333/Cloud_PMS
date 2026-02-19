@@ -612,6 +612,61 @@
 }
 
 /* ============================================================================
+   CELESTE TYPOGRAPHY SYSTEM - Per Spec
+
+   | Element                | Size | Weight           | Line Height |
+   | Title / Section Header | 18px | 600              | 24px        |
+   | Nav Item               | 14px | 500 / 600 active | 20px        |
+   | Labels                 | 14px | 500              | 20px        |
+   | Body / Helper          | 13px | 400              | 18px        |
+   | Small Meta             | 12px | 400              | 16px        |
+
+   Font Stack: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial
+   No italics, no decorative weights, numbers tabular-stable
+   ============================================================================ */
+
+:root {
+  /* Typography System - Core Font Stack */
+  --typo-font-stack: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+
+  /* Title / Section Header: 18px/600/24px - text-lg leading-6 font-semibold */
+  --typo-title-size: 18px;
+  --typo-title-weight: 600;
+  --typo-title-lh: 24px;
+
+  /* Nav Item: 14px/500/20px (600 when active) - text-sm leading-5 font-medium/semibold */
+  --typo-nav-size: 14px;
+  --typo-nav-weight: 500;
+  --typo-nav-weight-active: 600;
+  --typo-nav-lh: 20px;
+
+  /* Labels: 14px/500/20px - text-sm leading-5 font-medium */
+  --typo-label-size: 14px;
+  --typo-label-weight: 500;
+  --typo-label-lh: 20px;
+
+  /* Body / Helper: 13px/400/18px - text-[13px] leading-[18px] font-normal */
+  --typo-body-size: 13px;
+  --typo-body-weight: 400;
+  --typo-body-lh: 18px;
+
+  /* Small Meta: 12px/400/16px - text-xs leading-4 font-normal */
+  --typo-meta-size: 12px;
+  --typo-meta-weight: 400;
+  --typo-meta-lh: 16px;
+
+  /* Text Colors - Light Mode */
+  --text-primary: #111111;
+  --text-secondary: #5a5a5a;
+}
+
+.dark {
+  /* Text Colors - Dark Mode */
+  --text-primary: #f2f2f2;
+  --text-secondary: #b5b5b5;
+}
+
+/* ============================================================================
    SETTINGS MODAL - ChatGPT Spec Replica
    Modal: 1040px × 720px
    Left nav: 280px | Right content: flex
@@ -736,7 +791,7 @@
   flex-direction: column;
 }
 
-/* Close button - 32x32 hit area, 20px icon */
+/* Close button - 32x32 hit area, 20px icon, 8px radius per spec */
 .settings-close-button {
   width: 32px;
   height: 32px;
@@ -745,7 +800,7 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--settings-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1108,10 +1163,10 @@
 
 .settings-button-danger {
   height: 36px;
-  padding: 0 16px;
-  background: #ef4444;
+  padding: 0 12px;
+  background: #dc2626;
   color: #ffffff;
-  border: none;
+  border: 1px solid #dc2626;
   border-radius: 10px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
   font-size: 13px;
@@ -1121,7 +1176,8 @@
 }
 
 .settings-button-danger:hover {
-  background: #dc2626;
+  background: #b91c1c;
+  border-color: #b91c1c;
 }
 
 /* ============================================================================
@@ -1705,4 +1761,91 @@
   height: 1px;
   background: var(--wo-border-default);
   margin: var(--wo-section-gap) 0;
+}
+
+/* ============================================================================
+   CELESTE TYPOGRAPHY UTILITY CLASSES - Per Spec
+   Source: TYPOGRAPHY_SPEC.md
+
+   | Element                | Size | Weight           | Line Height |
+   | Title / Section Header | 18px | 600              | 24px        |
+   | Nav Item               | 14px | 500 / 600 active | 20px        |
+   | Labels                 | 14px | 500              | 20px        |
+   | Body / Helper          | 13px | 400              | 18px        |
+   | Small Meta             | 12px | 400              | 16px        |
+
+   Tailwind Equivalents:
+   - 18px/24px = text-lg leading-6 font-semibold
+   - 14px/20px = text-sm leading-5 font-medium/semibold
+   - 13px/18px = text-[13px] leading-[18px] font-normal
+   - 12px/16px = text-xs leading-4 font-normal
+   ============================================================================ */
+
+/* Title / Section Header: 18px/600/24px */
+.typo-title {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-title-size);
+  font-weight: var(--typo-title-weight);
+  line-height: var(--typo-title-lh);
+  color: var(--text-primary);
+}
+
+/* Nav Item: 14px/500/20px */
+.typo-nav {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-nav-size);
+  font-weight: var(--typo-nav-weight);
+  line-height: var(--typo-nav-lh);
+  color: var(--text-primary);
+}
+
+/* Nav Item Active: 14px/600/20px */
+.typo-nav-active {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-nav-size);
+  font-weight: var(--typo-nav-weight-active);
+  line-height: var(--typo-nav-lh);
+  color: var(--text-primary);
+}
+
+/* Labels: 14px/500/20px */
+.typo-label {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-label-size);
+  font-weight: var(--typo-label-weight);
+  line-height: var(--typo-label-lh);
+  color: var(--text-primary);
+}
+
+/* Body / Helper: 13px/400/18px */
+.typo-body {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-body-size);
+  font-weight: var(--typo-body-weight);
+  line-height: var(--typo-body-lh);
+  color: var(--text-primary);
+}
+
+/* Body Secondary (helper text): 13px/400/18px with secondary color */
+.typo-helper {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-body-size);
+  font-weight: var(--typo-body-weight);
+  line-height: var(--typo-body-lh);
+  color: var(--text-secondary);
+}
+
+/* Small Meta: 12px/400/16px */
+.typo-meta {
+  font-family: var(--typo-font-stack);
+  font-size: var(--typo-meta-size);
+  font-weight: var(--typo-meta-weight);
+  line-height: var(--typo-meta-lh);
+  color: var(--text-secondary);
+}
+
+/* Tabular Numbers - for numeric data stability */
+.typo-tabular {
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
