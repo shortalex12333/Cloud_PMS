@@ -69,6 +69,7 @@ export function useFaultActions(faultId: string) {
 
       try {
         // Use unified action router endpoint - /v1/actions/execute
+        // IMPORTANT: fault_id must be in payload (backend validation checks payload, not context)
         const response = await fetch(`${API_BASE}/v1/actions/execute`, {
           method: 'POST',
           headers: {
@@ -81,7 +82,10 @@ export function useFaultActions(faultId: string) {
               yacht_id: user?.yachtId,
               fault_id: faultId,
             },
-            payload,
+            payload: {
+              fault_id: faultId,
+              ...payload,
+            },
           }),
         });
 
