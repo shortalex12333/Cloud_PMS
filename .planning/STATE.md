@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.1 — F1 Search Pipeline Hardening |
-| Phase | C-post-deploy-validation |
+| Phase | D-compare-and-report |
 | Plan | 01 (complete) |
-| Status | Phase C complete, ready for Phase D |
-| Last activity | 2026-02-20 — Post-deploy metrics captured: Recall@3 3.62% |
+| Status | Phase D complete, Phase E required |
+| Last activity | 2026-02-20 — Comparison complete: Recall@3 3.62% (86.38% below target) |
 
 ---
 
@@ -35,7 +35,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
 | A | Baseline | Run truth sets against current production | SRCH-01 | ✓ Complete |
 | B | Deploy | Push clean codebase to main | SRCH-02 | ✓ Complete |
 | C | Validate | Run truth sets against new production | SRCH-03, SRCH-04 | ✓ Complete |
-| D | Compare | Diff baseline vs post-deploy | SRCH-04, SRCH-05 | ○ Pending |
+| D | Compare | Diff baseline vs post-deploy | SRCH-04, SRCH-05 | ✓ Complete |
 | E | Iterate | Fix any regressions | All | ○ Pending |
 
 ---
@@ -52,6 +52,8 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
 | Merged PR #365 despite failing CI checks | Vercel deployments succeeded - Backend Validation passed | 2026-02-20 |
 | Auto-removed 1,332 test artifacts | Necessary to achieve clean deployment state | 2026-02-20 |
 | Used sed to modify harness output directory | Simple find/replace approach for post-deploy validation | 2026-02-20 |
+| Phase E iteration required - Recall@3 at 3.62% vs 90% target | 86.38% gap identified in comparison analysis | 2026-02-20 |
+| Latency improved 15.14% (no performance regression concern) | P95 latency reduced from 19.5s to 16.6s | 2026-02-20 |
 
 ---
 
@@ -120,9 +122,14 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
   - Recall@3: 3.62% (vs baseline 3.58%)
   - All metrics show slight improvement
   - Ready for Phase D: Comparison analysis
+- **Phase D complete:** Comparison analysis complete (see D-01-SUMMARY.md)
+  - Generated diff.json, failures.jsonl, report.md
+  - 2 queries improved, 1 regressed, 85 unchanged hits, 2,312 unchanged misses
+  - Acceptance criteria: Recall@3 NOT MET (3.62% vs 90% target), Latency MET (-15.14%)
+  - Verdict: Phase E iteration required to address 86.38% gap to target
 
 ---
 
 ## Next Single Action
 
-**Execute Phase D: Compare baseline vs post-deploy metrics to identify improvements and regressions.**
+**Plan Phase E: Investigate root causes of low Recall@3 (3.62% vs 90% target) and design iteration strategy.**
