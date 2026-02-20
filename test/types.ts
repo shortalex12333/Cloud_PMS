@@ -54,15 +54,30 @@ export interface AggregateMetrics {
 }
 
 /**
- * Search API request body
+ * Search API request body (matching production API requirements)
  */
 export interface SearchRequest {
   query: string;
   query_type: "free-text";
   limit: number;
-  auth: {
-    yacht_id: string;
+  auth?: {
+    user_id?: string;
+    yacht_id: string | null;
+    role?: string;
+    email?: string;
+    yacht_signature?: string;
   };
+  context: {
+    client_ts: number;
+    stream_id: string;
+    session_id: string;
+    source: string;
+    client_version: string;
+    locale: string;
+    timezone: string;
+    platform: string;
+  };
+  stream?: boolean;
 }
 
 /**

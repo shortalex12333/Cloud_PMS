@@ -8,6 +8,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { createClient } from '@supabase/supabase-js';
 import type {
   TruthSetItem,
   QueryResult,
@@ -23,6 +24,14 @@ const SEARCH_ENDPOINT = 'https://pipeline-core.int.celeste7.ai/webhook/search';
 const TEST_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598'; // Cloud_PMS tenant
 const REQUEST_DELAY_MS = 100; // Delay between requests to avoid rate limiting
 const OUTPUT_DIR = '/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/test/baseline';
+
+// Supabase configuration (from .env.local)
+const MASTER_SUPABASE_URL = 'https://qvzmkaamzaqxpzbewjxe.supabase.co';
+const MASTER_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw';
+
+// Test user credentials (from .env.local)
+const TEST_USER_EMAIL = 'crew.test@alex-short.com';
+const TEST_USER_PASSWORD = 'Password2!';
 
 // Truth set files
 const TRUTH_SET_FILES = [
@@ -63,26 +72,69 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Global state
+let authToken: string | null = null;
+const SESSION_ID = `harness-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 /**
- * Call production search endpoint
+ * Authenticate with Supabase and get JWT token
+ */
+async function authenticate(): Promise<string> {
+  console.log('Authenticating with Supabase...');
+
+  const supabase = createClient(MASTER_SUPABASE_URL, MASTER_SUPABASE_ANON_KEY);
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: TEST_USER_EMAIL,
+    password: TEST_USER_PASSWORD,
+  });
+
+  if (error || !data.session) {
+    throw new Error(`Authentication failed: ${error?.message || 'No session'}`);
+  }
+
+  console.log(`✓ Authenticated as ${TEST_USER_EMAIL}`);
+  return data.session.access_token;
+}
+
+/**
+ * Call production search endpoint with correct payload structure
  */
 async function searchQuery(query: string): Promise<{ ids: string[], latency_ms: number }> {
   const startTime = Date.now();
 
+  // Build payload matching production API requirements
   const request: SearchRequest = {
     query,
     query_type: "free-text",
     limit: 10,
     auth: {
-      yacht_id: TEST_YACHT_ID
-    }
+      yacht_id: TEST_YACHT_ID,
+      role: "crew", // Default role for testing
+    },
+    context: {
+      client_ts: Math.floor(Date.now() / 1000),
+      stream_id: `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      session_id: SESSION_ID,
+      source: 'test-harness',
+      client_version: '1.0.0',
+      locale: 'en-US',
+      timezone: 'UTC',
+      platform: 'node',
+    },
+    stream: false,
   };
+
+  if (!authToken) {
+    throw new Error('Not authenticated - call authenticate() first');
+  }
 
   try {
     const response = await fetch(SEARCH_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify(request),
     });
@@ -90,7 +142,11 @@ async function searchQuery(query: string): Promise<{ ids: string[], latency_ms: 
     const latency_ms = Date.now() - startTime;
 
     if (!response.ok) {
-      console.error(`API error: ${response.status} ${response.statusText}`);
+      // Log first error with full response for debugging
+      if (startTime === Date.now() - latency_ms) {
+        const errorText = await response.text();
+        console.error(`API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
       return { ids: [], latency_ms };
     }
 
@@ -137,6 +193,15 @@ async function main() {
   console.log('='.repeat(80));
   console.log('Search Harness - Baseline Metrics Collection');
   console.log('='.repeat(80));
+  console.log();
+
+  // Authenticate
+  try {
+    authToken = await authenticate();
+  } catch (error) {
+    console.error('FATAL: Authentication failed:', error);
+    process.exit(1);
+  }
   console.log();
 
   // Create output directory
