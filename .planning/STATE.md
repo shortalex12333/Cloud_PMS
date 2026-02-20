@@ -11,10 +11,10 @@
 | Field | Value |
 |-------|-------|
 | Milestone | v1.1 — F1 Search Pipeline Hardening |
-| Phase | B-deploy-clean-codebase |
+| Phase | C-post-deploy-validation |
 | Plan | 01 (complete) |
-| Status | Phase B complete, ready for Phase C |
-| Last activity | 2026-02-20 — Deployed 25 commits to production via PR #365 |
+| Status | Phase C complete, ready for Phase D |
+| Last activity | 2026-02-20 — Post-deploy metrics captured: Recall@3 3.62% |
 
 ---
 
@@ -34,7 +34,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
 |---|-------|------|--------------|--------|
 | A | Baseline | Run truth sets against current production | SRCH-01 | ✓ Complete |
 | B | Deploy | Push clean codebase to main | SRCH-02 | ✓ Complete |
-| C | Validate | Run truth sets against new production | SRCH-03, SRCH-04 | ○ Pending |
+| C | Validate | Run truth sets against new production | SRCH-03, SRCH-04 | ✓ Complete |
 | D | Compare | Diff baseline vs post-deploy | SRCH-04, SRCH-05 | ○ Pending |
 | E | Iterate | Fix any regressions | All | ○ Pending |
 
@@ -51,6 +51,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
 | GSD agents for execution | User directive: orchestrate, don't execute directly | 2026-02-19 |
 | Merged PR #365 despite failing CI checks | Vercel deployments succeeded - Backend Validation passed | 2026-02-20 |
 | Auto-removed 1,332 test artifacts | Necessary to achieve clean deployment state | 2026-02-20 |
+| Used sed to modify harness output directory | Simple find/replace approach for post-deploy validation | 2026-02-20 |
 
 ---
 
@@ -114,10 +115,14 @@ See: `.planning/PROJECT.md` (updated 2026-02-19)
   - Auto-fixed: Removed 1,332 test artifacts blocking clean deployment
   - Merged despite CI test failures (Vercel succeeded, Backend Validation passed)
   - Production health checks passing
-- Ready for Phase C: Post-deploy validation
+- **Phase C complete:** Post-deploy validation metrics captured (see C-01-SUMMARY.md)
+  - Ran 2,400 queries against production endpoint
+  - Recall@3: 3.62% (vs baseline 3.58%)
+  - All metrics show slight improvement
+  - Ready for Phase D: Comparison analysis
 
 ---
 
 ## Next Single Action
 
-**Execute Phase C: Run truth sets against new production deployment for post-deploy validation.**
+**Execute Phase D: Compare baseline vs post-deploy metrics to identify improvements and regressions.**
