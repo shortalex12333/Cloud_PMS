@@ -336,6 +336,11 @@ Plans:
 
 **Requirements:** BASE-01, BASE-02, BASE-03, BASE-04
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] A-01-PLAN.md — Create and run search test harness for baseline metrics
+
 **Success Criteria:**
 1. Test harness script exists in `/test/` that loads truth set JSONL files
 2. Harness calls current production search endpoint with all 2,700 queries
@@ -443,4 +448,4 @@ Plans:
 ---
 
 *Created: 2026-02-17*
-*Updated: 2026-02-19 — v1.1 Search Pipeline Hardening added*
+*Updated: 2026-02-19 — v1.1 Search Pipeline Hardening added, Phase A planned*
