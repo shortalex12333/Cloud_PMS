@@ -207,7 +207,7 @@ export function HandoverExportLens({
         </div>
 
         {/* Mode indicator */}
-        <div className={`px-4 py-2 text-sm ${mode === 'edit' ? 'bg-brand-surface text-brand-interactive' : 'bg-surface-secondary text-txt-secondary'}`}>
+        <div className={`px-4 py-2 typo-body ${mode === 'edit' ? 'bg-brand-surface text-brand-interactive' : 'bg-surface-secondary text-txt-secondary'}`}>
           {mode === 'edit'
             ? 'Edit Mode — You can modify sections and sign'
             : 'Review Mode — Read-only, countersign to approve'}

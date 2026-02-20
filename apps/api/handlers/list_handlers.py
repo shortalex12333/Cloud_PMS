@@ -56,7 +56,7 @@ from .schema_mapping import (
 
 # Import conjunction handling from pipeline contract
 try:
-    from pipeline_contract import ConjunctionType, ConjunctionRule
+    from pipeline_contract import ConjunctionType
     from query_classifier import QueryClassification
     CONJUNCTIONS_AVAILABLE = True
 except ImportError:

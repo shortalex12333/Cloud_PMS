@@ -17,19 +17,15 @@ const IMAGE_MIME_PREFIX = 'image/';
 const VIDEO_MIME_PREFIX = 'video/';
 
 /** Media file extensions per UI_SPEC.md */
-export const IMAGE_EXTENSIONS = new Set([
+const IMAGE_EXTENSIONS = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.heic', '.webp',
 ]);
 
-export const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.webm']);
+const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.webm']);
 
-export const MEDIA_EXTENSIONS = new Set([
+const MEDIA_EXTENSIONS = new Set([
   ...IMAGE_EXTENSIONS,
   ...VIDEO_EXTENSIONS,
-]);
-
-export const DOCUMENT_EXTENSIONS = new Set([
-  '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt', '.txt', '.csv',
 ]);
 
 // ============================================================================
@@ -44,21 +40,6 @@ export const DOCUMENT_EXTENSIONS = new Set([
 export function getFileCategory(mimeType: string): 'image' | 'video' | 'document' {
   if (mimeType.startsWith(IMAGE_MIME_PREFIX)) return 'image';
   if (mimeType.startsWith(VIDEO_MIME_PREFIX)) return 'video';
-  return 'document';
-}
-
-/**
- * Determine the media category from filename extension.
- *
- * Used when MIME type is unreliable (e.g. from signed storage URLs).
- * Returns 'image', 'video', or 'document'.
- */
-export function getFileCategoryFromExtension(
-  filename: string
-): 'image' | 'video' | 'document' {
-  const ext = ('.' + filename.split('.').pop()?.toLowerCase()) as string;
-  if (IMAGE_EXTENSIONS.has(ext)) return 'image';
-  if (VIDEO_EXTENSIONS.has(ext)) return 'video';
   return 'document';
 }
 

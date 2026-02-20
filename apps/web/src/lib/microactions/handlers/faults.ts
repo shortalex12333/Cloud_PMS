@@ -68,7 +68,7 @@ function calculateDaysOpen(fault: FaultData): number {
 /**
  * View fault details
  */
-export async function viewFault(
+async function viewFault(
   context: ActionContext,
   params?: { fault_id?: string }
 ): Promise<ActionResult> {
@@ -143,7 +143,7 @@ export async function viewFault(
 /**
  * Diagnose fault - get analysis and suggested remedies
  */
-export async function diagnoseFault(
+async function diagnoseFault(
   context: ActionContext,
   params?: { fault_id?: string }
 ): Promise<ActionResult> {
@@ -268,7 +268,7 @@ export async function diagnoseFault(
 /**
  * View fault history for equipment or specific fault
  */
-export async function viewFaultHistory(
+async function viewFaultHistory(
   context: ActionContext,
   params?: { offset?: number; limit?: number }
 ): Promise<ActionResult> {
@@ -345,7 +345,7 @@ export async function viewFaultHistory(
 /**
  * Suggest parts needed for fault repair
  */
-export async function suggestParts(
+async function suggestParts(
   context: ActionContext,
   params?: { fault_id?: string }
 ): Promise<ActionResult> {
@@ -461,7 +461,7 @@ export async function suggestParts(
 /**
  * Add note to fault
  */
-export async function addFaultNote(
+async function addFaultNote(
   context: ActionContext,
   params: { fault_id: string; note_text: string }
 ): Promise<ActionResult> {
@@ -525,7 +525,7 @@ export async function addFaultNote(
 /**
  * Add photo to fault
  */
-export async function addFaultPhoto(
+async function addFaultPhoto(
   context: ActionContext,
   params: {
     fault_id?: string;
@@ -606,7 +606,7 @@ export async function addFaultPhoto(
 /**
  * Create work order from fault
  */
-export async function createWorkOrderFromFault(
+async function createWorkOrderFromFault(
   context: ActionContext,
   params: {
     fault_id: string;
@@ -700,7 +700,7 @@ export async function createWorkOrderFromFault(
  * Show manual section for equipment/fault context
  * Matches Python handler: manual_handlers.py show_manual_section_execute
  */
-export async function showManualSection(
+async function showManualSection(
   context: ActionContext,
   params?: {
     equipment_id?: string;

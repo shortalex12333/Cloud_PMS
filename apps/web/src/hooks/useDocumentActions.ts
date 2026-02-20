@@ -12,6 +12,7 @@
 import { useState, useCallback } from 'react';
 import type { ActionResult } from '@/types/actions';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface DocumentPermissions {
   canView: boolean;
@@ -83,12 +84,31 @@ export function useDocumentActions(documentId: string) {
     }
   }, [documentId]);
 
-  const deleteDocument = useCallback(async (): Promise<ActionResult> => {
+  const deleteDocument = useCallback(async (reason?: string): Promise<ActionResult> => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Implement document deletion
-      console.log('[useDocumentActions] Delete document:', documentId);
+      // Get current session for user ID
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error('Not authenticated');
+      }
+
+      // Soft delete: set deleted_at, deleted_by, deleted_reason
+      const { error: updateError } = await supabase
+        .from('doc_metadata')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: session.user.id,
+          deleted_reason: reason || 'Deleted by user',
+        })
+        .eq('id', documentId);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      console.log('[useDocumentActions] Document soft-deleted:', documentId);
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete document';
@@ -103,8 +123,25 @@ export function useDocumentActions(documentId: string) {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Implement document reclassification
-      console.log('[useDocumentActions] Reclassify document:', documentId, 'to', newClassification);
+      // Get current session for authentication check
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error('Not authenticated');
+      }
+
+      // Update doc_type column
+      const { error: updateError } = await supabase
+        .from('doc_metadata')
+        .update({
+          doc_type: newClassification,
+        })
+        .eq('id', documentId);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      console.log('[useDocumentActions] Document reclassified:', documentId, 'to', newClassification);
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to reclassify document';
@@ -125,4 +162,3 @@ export function useDocumentActions(documentId: string) {
   };
 }
 
-export default useDocumentActions;

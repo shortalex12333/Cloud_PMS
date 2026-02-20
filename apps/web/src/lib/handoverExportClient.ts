@@ -11,7 +11,7 @@ import { getValidJWT } from './authHelpers';
 const HANDOVER_EXPORT_API_BASE = process.env.NEXT_PUBLIC_HANDOVER_EXPORT_API_BASE || 'https://handover-export.onrender.com';
 
 // Entity type constants for validation
-export const SUPPORTED_ENTITY_TYPES = [
+const SUPPORTED_ENTITY_TYPES = [
   'work_order',
   'fault',
   'equipment',
@@ -24,7 +24,7 @@ export const SUPPORTED_ENTITY_TYPES = [
   'handover_export',
 ] as const;
 
-export const UNSUPPORTED_ENTITY_TYPES = [
+const UNSUPPORTED_ENTITY_TYPES = [
   'inventory',
   'purchase_order',
   'voyage',
@@ -35,11 +35,11 @@ export const UNSUPPORTED_ENTITY_TYPES = [
 export type SupportedEntityType = typeof SUPPORTED_ENTITY_TYPES[number];
 export type UnsupportedEntityType = typeof UNSUPPORTED_ENTITY_TYPES[number];
 
-export function isSupportedEntityType(type: string): type is SupportedEntityType {
+function isSupportedEntityType(type: string): type is SupportedEntityType {
   return SUPPORTED_ENTITY_TYPES.includes(type as SupportedEntityType);
 }
 
-export function isUnsupportedEntityType(type: string): type is UnsupportedEntityType {
+function isUnsupportedEntityType(type: string): type is UnsupportedEntityType {
   return UNSUPPORTED_ENTITY_TYPES.includes(type as UnsupportedEntityType);
 }
 
@@ -192,7 +192,7 @@ export async function resolveOpenToken(token: string): Promise<ResolveResponse> 
 /**
  * Check if handover export service is available
  */
-export async function checkServiceHealth(): Promise<boolean> {
+async function checkServiceHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/health`, {
       method: 'GET',
@@ -222,7 +222,7 @@ export interface PipelineJobResponse {
 /**
  * Start an export pipeline job for a handover
  */
-export async function startExportJob(handoverId: string, yachtId: string): Promise<PipelineRunResponse> {
+async function startExportJob(handoverId: string, yachtId: string): Promise<PipelineRunResponse> {
   const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -235,7 +235,7 @@ export async function startExportJob(handoverId: string, yachtId: string): Promi
 /**
  * Check the status of a pipeline export job
  */
-export async function checkJobStatus(jobId: string): Promise<PipelineJobResponse> {
+async function checkJobStatus(jobId: string): Promise<PipelineJobResponse> {
   const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/job/${jobId}`);
   if (!response.ok) throw new Error('Failed to check job status');
   return response.json();
@@ -244,7 +244,7 @@ export async function checkJobStatus(jobId: string): Promise<PipelineJobResponse
 /**
  * Retrieve the HTML report for a completed pipeline job
  */
-export async function getReportHtml(jobId: string): Promise<string> {
+async function getReportHtml(jobId: string): Promise<string> {
   const response = await fetch(`${HANDOVER_EXPORT_API_BASE}/api/pipeline/report/${jobId}`);
   if (!response.ok) throw new Error('Failed to get report');
   return response.text();

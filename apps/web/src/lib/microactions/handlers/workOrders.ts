@@ -71,7 +71,7 @@ function calculateDaysOpen(wo: WorkOrderData): number {
 /**
  * View work order details
  */
-export async function viewWorkOrder(
+async function viewWorkOrder(
   context: ActionContext,
   params?: { work_order_id?: string }
 ): Promise<ActionResult> {
@@ -174,7 +174,7 @@ export async function viewWorkOrder(
 /**
  * View work order history (audit log)
  */
-export async function viewWorkOrderHistory(
+async function viewWorkOrderHistory(
   context: ActionContext,
   params?: { work_order_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
@@ -279,7 +279,7 @@ function formatChanges(
 /**
  * Create a new work order
  */
-export async function createWorkOrder(
+async function createWorkOrder(
   context: ActionContext,
   params: {
     title: string;
@@ -353,7 +353,7 @@ export async function createWorkOrder(
 /**
  * Mark work order as complete
  */
-export async function markWorkOrderComplete(
+async function markWorkOrderComplete(
   context: ActionContext,
   params: {
     work_order_id: string;
@@ -451,7 +451,7 @@ export async function markWorkOrderComplete(
 /**
  * Add note to work order
  */
-export async function addWorkOrderNote(
+async function addWorkOrderNote(
   context: ActionContext,
   params: { work_order_id: string; note_text: string }
 ): Promise<ActionResult> {
@@ -514,7 +514,7 @@ export async function addWorkOrderNote(
 /**
  * Assign work order to user
  */
-export async function assignWorkOrder(
+async function assignWorkOrder(
   context: ActionContext,
   params: { work_order_id: string; assignee_id: string }
 ): Promise<ActionResult> {
@@ -572,7 +572,7 @@ export async function assignWorkOrder(
 /**
  * Add photo to work order
  */
-export async function addWorkOrderPhoto(
+async function addWorkOrderPhoto(
   context: ActionContext,
   params: { work_order_id: string; photo_url: string; caption?: string }
 ): Promise<ActionResult> {
@@ -665,7 +665,7 @@ export async function addWorkOrderPhoto(
 /**
  * Add parts to work order
  */
-export async function addPartsToWorkOrder(
+async function addPartsToWorkOrder(
   context: ActionContext,
   params: { work_order_id: string; part_id: string; quantity: number; notes?: string }
 ): Promise<ActionResult> {
@@ -832,7 +832,7 @@ export async function addPartsToWorkOrder(
 /**
  * View work order checklist
  */
-export async function viewWorkOrderChecklist(
+async function viewWorkOrderChecklist(
   context: ActionContext,
   params?: { work_order_id?: string }
 ): Promise<ActionResult> {
@@ -908,7 +908,7 @@ export async function viewWorkOrderChecklist(
 /**
  * Mark checklist item complete
  */
-export async function markChecklistItemComplete(
+async function markChecklistItemComplete(
   context: ActionContext,
   params: { checklist_item_id: string; notes?: string }
 ): Promise<ActionResult> {
@@ -969,7 +969,7 @@ export async function markChecklistItemComplete(
 /**
  * Add note to checklist item
  */
-export async function addChecklistNote(
+async function addChecklistNote(
   context: ActionContext,
   params: { checklist_item_id: string; note_text: string }
 ): Promise<ActionResult> {
@@ -1030,7 +1030,7 @@ export async function addChecklistNote(
 /**
  * Add photo to checklist item
  */
-export async function addChecklistPhoto(
+async function addChecklistPhoto(
   context: ActionContext,
   params: { checklist_item_id: string; photo_url: string; caption?: string }
 ): Promise<ActionResult> {
@@ -1094,7 +1094,7 @@ export async function addChecklistPhoto(
 /**
  * View worklist (shipyard work items)
  */
-export async function viewWorklist(
+async function viewWorklist(
   context: ActionContext,
   params?: { worklist_id?: string }
 ): Promise<ActionResult> {
@@ -1169,7 +1169,7 @@ export async function viewWorklist(
 /**
  * Add task to worklist
  */
-export async function addWorklistTask(
+async function addWorklistTask(
   context: ActionContext,
   params: {
     worklist_id?: string;
@@ -1241,7 +1241,7 @@ export async function addWorklistTask(
 /**
  * Update worklist progress
  */
-export async function updateWorklistProgress(
+async function updateWorklistProgress(
   context: ActionContext,
   params: { worklist_item_id: string; progress_percent: number; status?: string; notes?: string }
 ): Promise<ActionResult> {
@@ -1341,7 +1341,7 @@ export async function updateWorklistProgress(
 /**
  * Export worklist
  */
-export async function exportWorklist(
+async function exportWorklist(
   context: ActionContext,
   params?: { worklist_id?: string; format?: 'json' | 'csv' }
 ): Promise<ActionResult> {

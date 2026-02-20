@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 /**
  * View part stock details
  */
-export async function viewPartStock(
+async function viewPartStock(
   context: ActionContext,
   params?: { part_id?: string }
 ): Promise<ActionResult> {
@@ -82,7 +82,7 @@ export async function viewPartStock(
 /**
  * View part location
  */
-export async function viewPartLocation(
+async function viewPartLocation(
   context: ActionContext,
   params?: { part_id?: string }
 ): Promise<ActionResult> {
@@ -146,7 +146,7 @@ export async function viewPartLocation(
 /**
  * Order part - create purchase request
  */
-export async function orderPart(
+async function orderPart(
   context: ActionContext,
   params: {
     part_id: string;
@@ -237,7 +237,7 @@ export async function orderPart(
 /**
  * Log part usage from work order
  */
-export async function logPartUsage(
+async function logPartUsage(
   context: ActionContext,
   params: {
     part_id: string;
@@ -314,7 +314,7 @@ export async function logPartUsage(
 /**
  * View part usage history
  */
-export async function viewPartUsage(
+async function viewPartUsage(
   context: ActionContext,
   params?: { part_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
@@ -406,7 +406,7 @@ export async function viewPartUsage(
 /**
  * Scan part barcode - identify part by barcode
  */
-export async function scanPartBarcode(
+async function scanPartBarcode(
   context: ActionContext,
   params: { barcode: string }
 ): Promise<ActionResult> {
@@ -476,7 +476,7 @@ export async function scanPartBarcode(
 /**
  * View equipment linked to part
  */
-export async function viewLinkedEquipment(
+async function viewLinkedEquipment(
   context: ActionContext,
   params?: { part_id?: string }
 ): Promise<ActionResult> {

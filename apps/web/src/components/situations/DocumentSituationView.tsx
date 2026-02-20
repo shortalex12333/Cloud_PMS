@@ -426,13 +426,13 @@ export default function DocumentSituationView({
           className="flex items-center gap-2 px-3 py-1.5 rounded-md text-celeste-text-title hover:bg-celeste-surface transition-colors duration-fast"
         >
           <X className="w-4 h-4" />
-          <span className="text-sm font-medium">Back to Search</span>
+          <span className="typo-body font-medium">Back to Search</span>
         </button>
 
         {/* Center: Document Title */}
         <div className="flex-1 flex items-center justify-center gap-2 mx-4">
           <FileText className="w-4 h-4 text-txt-secondary" />
-          <h1 className="text-sm font-medium text-celeste-text-title truncate max-w-md">
+          <h1 className="typo-body font-medium text-celeste-text-title truncate max-w-md">
             {documentTitle}
           </h1>
         </div>
@@ -449,7 +449,7 @@ export default function DocumentSituationView({
             title="Find in document (Cmd+F)"
           >
             <Search className="w-4 h-4" />
-            <span className="text-sm hidden sm:inline">Find</span>
+            <span className="typo-body hidden sm:inline">Find</span>
           </button>
 
           {/* Reload */}
@@ -459,7 +459,7 @@ export default function DocumentSituationView({
             title="Reload document"
           >
             <RefreshCw className="w-4 h-4" />
-            <span className="text-sm hidden sm:inline">Reload</span>
+            <span className="typo-body hidden sm:inline">Reload</span>
           </button>
 
           {/* Download */}
@@ -479,7 +479,7 @@ export default function DocumentSituationView({
               title="Add to handover"
             >
               <Plus className="w-4 h-4" />
-              <span className="text-sm hidden sm:inline">Add to Handover</span>
+              <span className="typo-body hidden sm:inline">Add to Handover</span>
             </button>
           )}
         </div>
@@ -490,25 +490,25 @@ export default function DocumentSituationView({
         {isLoading && (
           <div className="h-full flex flex-col items-center justify-center">
             <div className="w-8 h-8 border-2 border-celeste-blue border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-sm text-txt-secondary">Loading document...</p>
+            <p className="typo-body text-txt-secondary">Loading document...</p>
           </div>
         )}
 
         {error && (
           <div className="h-full flex flex-col items-center justify-center px-4">
             <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-6 max-w-md">
-              <h2 className="text-lg font-semibold text-red-500 mb-2">Failed to Load Document</h2>
-              <p className="text-sm text-txt-secondary mb-4">{error}</p>
+              <h2 className="typo-title font-semibold text-red-500 mb-2">Failed to Load Document</h2>
+              <p className="typo-body text-txt-secondary mb-4">{error}</p>
               <div className="flex gap-3">
                 <button
                   onClick={handleReload}
-                  className="flex-1 px-4 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-celeste-text-title text-sm transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-celeste-blue hover:bg-celeste-blue-secondary rounded-md text-celeste-text-title typo-body transition-colors font-medium"
                 >
                   Resume
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-2 bg-celeste-surface hover:bg-celeste-surface-hover rounded-md text-celeste-text-title text-sm transition-colors duration-fast"
+                  className="flex-1 px-4 py-2 bg-celeste-surface hover:bg-celeste-surface-hover rounded-md text-celeste-text-title typo-body transition-colors duration-fast"
                 >
                   Back to Search
                 </button>
@@ -528,7 +528,7 @@ export default function DocumentSituationView({
       </div>
 
       {/* Footer - Document Classification Info */}
-      <div className="flex-shrink-0 h-8 bg-surface-elevated border-t border-surface-border px-4 flex items-center justify-between text-xs text-txt-secondary">
+      <div className="flex-shrink-0 h-8 bg-surface-elevated border-t border-surface-border px-4 flex items-center justify-between typo-meta text-txt-secondary">
         <span>
           {classification === 'operational' ? '📖 Operational Document' : '🔒 Compliance Document'}
         </span>
@@ -539,14 +539,14 @@ export default function DocumentSituationView({
       {showFindDialog && (
         <div
           className={cn(
-            'fixed top-20 right-4 bg-surface-elevated border border-surface-border rounded-lg p-3',
-            'shadow-celeste-lg animate-in fade-in slide-in-from-top-2 duration-normal'
+            'fixed top-20 right-4 bg-surface-elevated border border-surface-border rounded-md p-3',
+            'border border-surface-border animate-in fade-in slide-in-from-top-2 duration-normal'
           )}
         >
-          <p className="text-sm text-celeste-text-title">
-            <kbd className="px-2 py-1 bg-surface-active rounded text-xs mr-1">Cmd</kbd>
+          <p className="typo-body text-celeste-text-title">
+            <kbd className="px-2 py-1 bg-surface-active rounded typo-meta mr-1">Cmd</kbd>
             <span className="text-txt-secondary">+</span>
-            <kbd className="px-2 py-1 bg-surface-active rounded text-xs ml-1">F</kbd>
+            <kbd className="px-2 py-1 bg-surface-active rounded typo-meta ml-1">F</kbd>
             <span className="text-txt-secondary ml-2">to find in document</span>
           </p>
         </div>

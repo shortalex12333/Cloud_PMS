@@ -361,7 +361,7 @@ export async function downloadDocument(
 /**
  * Get document metadata without loading full file
  */
-export async function getDocumentMetadata(
+async function getDocumentMetadata(
   storagePath: string,
   bucketName: string = 'documents'
 ): Promise<DocumentLoadResult['metadata'] | null> {

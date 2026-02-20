@@ -131,7 +131,7 @@ export const VitalSignsRow = React.forwardRef<HTMLDivElement, VitalSignsRowProps
           // Layout: horizontal flex with 16px gap, wraps on mobile
           'flex flex-wrap items-center gap-x-4 gap-y-2',
           // Height: ~40px (min-height to allow wrapping)
-          'min-h-[40px]',
+          'min-h-10',
           className
         )}
       >
@@ -149,4 +149,3 @@ export const VitalSignsRow = React.forwardRef<HTMLDivElement, VitalSignsRowProps
 
 VitalSignsRow.displayName = 'VitalSignsRow';
 
-export default VitalSignsRow;

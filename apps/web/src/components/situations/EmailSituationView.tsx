@@ -44,7 +44,7 @@ export default function EmailSituationView({
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-celeste-lg p-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-modal p-8">
           <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto" />
           <p className="mt-4 text-zinc-600 dark:text-zinc-400 text-center">
             Loading email thread...
@@ -58,12 +58,12 @@ export default function EmailSituationView({
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-celeste-lg p-8 max-w-md">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-modal p-8 max-w-md">
           <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
           <p className="mt-4 text-zinc-800 dark:text-zinc-200 text-center font-medium">
             Failed to load email thread
           </p>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400 text-center text-sm">
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400 text-center typo-body">
             {error instanceof Error ? error.message : 'Unknown error'}
           </p>
           <button
@@ -89,7 +89,7 @@ export default function EmailSituationView({
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-3xl mx-4">
-        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-celeste-lg overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-celeste-lg shadow-modal overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-purple-50 dark:bg-purple-900/20">
             <div className="flex items-center gap-3">
@@ -97,10 +97,10 @@ export default function EmailSituationView({
                 <Mail className="h-5 w-5 text-celeste-text-title" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                <h2 className="typo-title font-semibold text-zinc-900 dark:text-zinc-100">
                   Email Thread
                 </h2>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                <p className="typo-body text-zinc-500 dark:text-zinc-400">
                   {thread.message_count} message{thread.message_count !== 1 ? 's' : ''}
                   {thread.has_attachments && ' • Has attachments'}
                 </p>
@@ -108,9 +108,9 @@ export default function EmailSituationView({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+              className="btn-icon h-8 w-8"
             >
-              <X className="h-5 w-5 text-zinc-500" />
+              <X className="w-[18px] h-[18px]" />
             </button>
           </div>
 
@@ -123,7 +123,7 @@ export default function EmailSituationView({
           <LinkedObjectsSection threadId={threadId} onAction={onAction} />
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+          <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-surface-primary">
             <button
               onClick={onClose}
               className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
@@ -154,13 +154,13 @@ function LinkedObjectsSection({ threadId, onAction }: LinkedObjectsSectionProps)
     <div className="px-5 py-4 border-t border-zinc-200 dark:border-zinc-800">
       <div className="flex items-center gap-2 mb-3">
         <Link2 className="h-4 w-4 text-zinc-400" />
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        <span className="typo-body font-medium text-zinc-700 dark:text-zinc-300">
           Linked Objects
         </span>
       </div>
 
       {/* Placeholder - would show actual linked objects */}
-      <div className="text-sm text-zinc-500 dark:text-zinc-400 italic">
+      <div className="typo-body text-zinc-500 dark:text-zinc-400 italic">
         No linked objects yet. Email threads can be linked to work orders, equipment, and faults.
       </div>
     </div>

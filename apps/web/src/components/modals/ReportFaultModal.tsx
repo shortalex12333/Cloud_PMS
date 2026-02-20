@@ -145,7 +145,7 @@ export function ReportFaultModal({
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
             <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">
-              <p className="text-sm font-medium text-celeste-accent">
+              <p className="typo-body font-medium text-celeste-accent">
                 Equipment: {context.equipment_name}
               </p>
             </div>
@@ -163,7 +163,7 @@ export function ReportFaultModal({
               className={errors.title ? 'input-field-error' : ''}
             />
             {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
+              <p className="typo-body text-red-600">{errors.title.message}</p>
             )}
           </div>
 
@@ -180,9 +180,9 @@ export function ReportFaultModal({
               className={errors.description ? 'input-field-error' : ''}
             />
             {errors.description && (
-              <p className="text-sm text-red-600">{errors.description.message}</p>
+              <p className="typo-body text-red-600">{errors.description.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="typo-meta text-muted-foreground">
               Include details like when it started, frequency, conditions, etc.
             </p>
           </div>
@@ -261,7 +261,7 @@ export function ReportFaultModal({
             />
             <Label
               htmlFor="create_work_order"
-              className="text-sm font-normal cursor-pointer"
+              className="typo-body font-normal cursor-pointer"
             >
               Automatically create a work order for this fault
             </Label>

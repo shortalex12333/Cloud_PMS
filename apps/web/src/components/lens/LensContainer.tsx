@@ -143,4 +143,3 @@ export const LensContainer = React.forwardRef<
 
 LensContainer.displayName = 'LensContainer';
 
-export default LensContainer;

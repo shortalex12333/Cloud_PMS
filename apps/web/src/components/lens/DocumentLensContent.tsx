@@ -104,7 +104,7 @@ export function DocumentLensContent({
           <div className="mt-4">
             <GhostButton
               onClick={() => window.open(url, '_blank')}
-              className="text-[13px] min-h-[36px] px-4 py-2"
+              className="text-[13px] min-h-9 px-4 py-2"
             >
               Download
             </GhostButton>
@@ -117,7 +117,7 @@ export function DocumentLensContent({
         <div className="mt-6">
           <SectionContainer title="Preview" stickyTop={56}>
             {!url ? (
-              <p className="text-sm text-celeste-text-muted">No preview available.</p>
+              <p className="typo-body text-celeste-text-muted">No preview available.</p>
             ) : isMedia ? (
               // Render media inline
               mime_type.startsWith('image/') ? (
@@ -143,7 +143,7 @@ export function DocumentLensContent({
             ) : (
               // Link to open in new tab
               <div className="p-4 bg-surface-secondary rounded-lg">
-                <p className="text-sm text-celeste-text-muted mb-3">
+                <p className="typo-body text-celeste-text-muted mb-3">
                   This file type cannot be previewed inline.
                 </p>
                 {thumbnail_url && (
@@ -157,7 +157,7 @@ export function DocumentLensContent({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-celeste-blue hover:text-celeste-blue-hover text-sm"
+                  className="text-celeste-blue hover:text-celeste-blue-hover typo-body"
                 >
                   Open in new tab →
                 </a>
@@ -169,14 +169,14 @@ export function DocumentLensContent({
         {description && (
           <div className="mt-6">
             <SectionContainer title="Description" stickyTop={56}>
-              <p className="text-sm text-celeste-text-primary">{description}</p>
+              <p className="typo-body text-celeste-text-primary">{description}</p>
             </SectionContainer>
           </div>
         )}
 
         <div className="mt-6">
           <SectionContainer title="Details" stickyTop={56}>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-2 gap-4 typo-body">
               <dt className="text-celeste-text-muted">Filename</dt>
               <dd className="text-celeste-text-primary break-all">{filename}</dd>
               <dt className="text-celeste-text-muted">MIME Type</dt>
@@ -201,4 +201,3 @@ export function DocumentLensContent({
   );
 }
 
-export default DocumentLensContent;

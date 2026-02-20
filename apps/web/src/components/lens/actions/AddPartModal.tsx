@@ -137,7 +137,7 @@ export function AddPartModal({
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
           'bg-surface-elevated border border-surface-border',
-          'rounded-lg shadow-lg',
+          'rounded-lg shadow-modal',
           'w-full max-w-md mx-4'
         )}
       >
@@ -192,7 +192,7 @@ export function AddPartModal({
                   className={cn(
                     'mt-1 max-h-[160px] overflow-y-auto',
                     'bg-surface-elevated border border-surface-border rounded-md',
-                    'shadow-md'
+                    'border border-surface-border'
                   )}
                 >
                   {filteredParts.slice(0, 8).map((part) => (
@@ -298,4 +298,3 @@ export function AddPartModal({
   );
 }
 
-export default AddPartModal;

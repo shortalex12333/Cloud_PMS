@@ -306,7 +306,7 @@ export function WorkOrderLensContent({
               <PrimaryButton
                 onClick={handleStartWork}
                 disabled={actions.isLoading}
-                className="text-[13px] min-h-[36px] px-4 py-2"
+                className="text-[13px] min-h-9 px-4 py-2"
               >
                 {actions.isLoading ? 'Starting...' : 'Start Work'}
               </PrimaryButton>
@@ -316,7 +316,7 @@ export function WorkOrderLensContent({
               <PrimaryButton
                 onClick={() => setMarkCompleteOpen(true)}
                 disabled={actions.isLoading}
-                className="text-[13px] min-h-[36px] px-4 py-2"
+                className="text-[13px] min-h-9 px-4 py-2"
               >
                 Mark Complete
               </PrimaryButton>
@@ -326,7 +326,7 @@ export function WorkOrderLensContent({
               <GhostButton
                 onClick={() => setEditOpen(true)}
                 disabled={actions.isLoading}
-                className="text-[13px] min-h-[36px] px-4 py-2"
+                className="text-[13px] min-h-9 px-4 py-2"
               >
                 Edit
               </GhostButton>
@@ -336,7 +336,7 @@ export function WorkOrderLensContent({
               <GhostButton
                 onClick={() => setAddHoursOpen(true)}
                 disabled={actions.isLoading}
-                className="text-[13px] min-h-[36px] px-4 py-2"
+                className="text-[13px] min-h-9 px-4 py-2"
               >
                 Log Hours
               </GhostButton>
@@ -345,7 +345,7 @@ export function WorkOrderLensContent({
               <GhostButton
                 onClick={() => setReassignOpen(true)}
                 disabled={actions.isLoading}
-                className="text-[13px] min-h-[36px] px-4 py-2"
+                className="text-[13px] min-h-9 px-4 py-2"
               >
                 Reassign
               </GhostButton>
@@ -354,7 +354,7 @@ export function WorkOrderLensContent({
               <GhostButton
                 onClick={() => setArchiveOpen(true)}
                 disabled={actions.isLoading}
-                className="text-[13px] min-h-[36px] px-4 py-2 text-status-critical hover:text-status-critical"
+                className="text-[13px] min-h-9 px-4 py-2 text-status-critical hover:text-status-critical"
               >
                 Archive
               </GhostButton>
@@ -467,4 +467,3 @@ export function WorkOrderLensContent({
   );
 }
 
-export default WorkOrderLensContent;

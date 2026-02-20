@@ -7,24 +7,11 @@ Logs all action executions to Supabase for audit trail and analytics.
 from typing import Dict, Any, Optional
 import os
 from datetime import datetime
-from supabase import create_client, Client
+from supabase import Client
 import json
 
-
-def get_supabase_client() -> Client:
-    """Get TENANT Supabase client for action logging.
-
-    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
-    """
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        raise ValueError(f"{default_yacht}_SUPABASE_URL and {default_yacht}_SUPABASE_SERVICE_KEY must be set")
-
-    return create_client(url, key)
+# Import centralized Supabase client factory
+from integrations.supabase import get_supabase_client
 
 
 def sanitize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:

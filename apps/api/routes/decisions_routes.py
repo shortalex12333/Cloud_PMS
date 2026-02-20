@@ -27,21 +27,10 @@ from middleware.auth import get_authenticated_user
 from services.decision_engine import evaluate_decisions, get_decision_engine
 from services.decision_audit_service import get_decision_audit_service
 
-import os
-from supabase import create_client
+# Import centralized Supabase client factory
+from integrations.supabase import get_tenant_client
 
 logger = logging.getLogger(__name__)
-
-
-def get_tenant_client(tenant_key_alias: str):
-    """Get Supabase client for tenant DB."""
-    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
-    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
-
-    if not url or not key:
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    return create_client(url, key)
 
 # ============================================================================
 # REQUEST/RESPONSE MODELS

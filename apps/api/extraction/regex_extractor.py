@@ -28,7 +28,6 @@ try:
         get_equipment_gazetteer,
         get_diagnostic_patterns,
         calculate_weight as calculate_entity_weight,
-        get_pattern_metadata,
         CORE_BRANDS,
         CORE_EQUIPMENT,
         CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching
@@ -40,7 +39,6 @@ except ModuleNotFoundError:
         get_equipment_gazetteer,
         get_diagnostic_patterns,
         calculate_weight as calculate_entity_weight,
-        get_pattern_metadata,
         CORE_BRANDS,
         CORE_EQUIPMENT,
         CORE_FUZZY_TERMS,  # Phase 2 Fix: Extended fuzzy matching

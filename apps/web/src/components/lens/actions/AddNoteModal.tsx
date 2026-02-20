@@ -108,8 +108,8 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
           'z-modal',
           // Surface tokens
           'bg-surface-elevated border border-surface-border',
-          // Shape
-          'rounded-lg shadow-lg',
+          // Shape - modal gets shadow per spec
+          'rounded-lg shadow-modal',
           // Width
           'w-full max-w-md mx-4'
         )}
@@ -202,4 +202,3 @@ export function AddNoteModal({ open, onClose, onSubmit, isLoading = false }: Add
   );
 }
 
-export default AddNoteModal;

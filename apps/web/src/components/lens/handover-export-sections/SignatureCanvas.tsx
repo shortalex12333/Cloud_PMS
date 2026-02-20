@@ -109,7 +109,7 @@ export function SignatureCanvas({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-txt-secondary">{label}</label>
+      <label className="typo-body font-medium text-txt-secondary">{label}</label>
       <div className="relative border border-surface-border rounded-lg bg-surface-primary">
         <canvas
           ref={canvasRef}
@@ -134,7 +134,7 @@ export function SignatureCanvas({
         <button
           type="button"
           onClick={clearSignature}
-          className="self-end text-sm text-brand-interactive hover:underline"
+          className="self-end typo-body text-brand-interactive hover:underline"
         >
           Clear signature
         </button>

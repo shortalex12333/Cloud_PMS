@@ -313,8 +313,8 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
       <div
         className={cn(
           'relative w-full max-w-[var(--celeste-max-width-search)]',
-          'bg-surface-primary rounded-xl',
-          'shadow-2xl overflow-hidden',
+          'bg-surface-primary rounded-lg',
+          'border border-surface-border overflow-hidden',
           'flex flex-col max-h-[70vh]'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -331,7 +331,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             <button
               onClick={() => setViewMode('me')}
               className={cn(
-                'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+                'px-4 py-1.5 rounded-full typo-body font-medium transition-colors',
                 viewMode === 'me'
                   ? 'bg-celeste-accent text-celeste-white'
                   : 'text-celeste-text-muted hover:text-celeste-text-secondary'
@@ -343,7 +343,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             <button
               onClick={() => setViewMode('department')}
               className={cn(
-                'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+                'px-4 py-1.5 rounded-full typo-body font-medium transition-colors',
                 viewMode === 'department'
                   ? 'bg-celeste-accent text-celeste-white'
                   : 'text-celeste-text-muted hover:text-celeste-text-secondary'
@@ -359,7 +359,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             <button
               onClick={() => setShowReads(!showReads)}
               className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors',
+                'flex items-center gap-2 px-3 py-1.5 rounded-full typo-body transition-colors',
                 showReads
                   ? 'bg-celeste-accent text-celeste-white'
                   : 'text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-panel'
@@ -371,10 +371,10 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-full text-celeste-text-muted hover:text-celeste-text-secondary hover:bg-celeste-panel transition-colors"
+              className="btn-icon h-8 w-8"
               aria-label="Close ledger"
             >
-              <X className="w-5 h-5" strokeWidth={1.5} />
+              <X className="w-[18px] h-[18px]" strokeWidth={1.5} />
             </button>
           </div>
         </div>
@@ -411,7 +411,7 @@ export function LedgerPanel({ isOpen, onClose }: LedgerPanelProps) {
                     )}
                     <span className="font-medium">{group.displayDate}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm">
+                  <div className="flex items-center gap-3 typo-body">
                     <span className="flex items-center gap-1 text-celeste-green">
                       <Edit3 className="w-3.5 h-3.5" />
                       {group.mutationCount}
@@ -485,7 +485,7 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
     <div
       className={cn(
         'flex items-start gap-3 px-3 py-2',
-        'rounded-sm',
+        'rounded-md',
         'hover:bg-celeste-panel transition-colors cursor-pointer'
       )}
       onClick={() => onItemClick(event)}
@@ -523,7 +523,7 @@ function LedgerEventRow({ event, onItemClick }: LedgerEventRowProps) {
           <span>{actionVerb}</span>
         </p>
         {/* Attribution */}
-        <p className="text-sm text-celeste-text-muted truncate">
+        <p className="typo-body text-celeste-text-muted truncate">
           {userName} · {time}
         </p>
       </div>
@@ -565,4 +565,3 @@ function formatActionVerb(eventName: string): string {
   return verbMap[eventName] || eventName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default LedgerPanel;

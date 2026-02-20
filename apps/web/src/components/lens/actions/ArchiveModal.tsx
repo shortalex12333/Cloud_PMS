@@ -94,7 +94,7 @@ export function ArchiveModal({
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
           'z-modal',
           'bg-surface-elevated border border-surface-border',
-          'rounded-lg shadow-lg',
+          'rounded-lg shadow-modal',
           'w-full max-w-md mx-4'
         )}
       >
@@ -200,4 +200,3 @@ export function ArchiveModal({
   );
 }
 
-export default ArchiveModal;

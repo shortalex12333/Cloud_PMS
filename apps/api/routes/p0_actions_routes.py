@@ -32,6 +32,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Import centralized Supabase client factory
+from integrations.supabase import get_supabase_client, get_tenant_client
+
 from handlers.work_order_mutation_handlers import WorkOrderMutationHandlers
 from handlers.inventory_handlers import InventoryHandlers
 from handlers.handover_handlers import HandoverHandlers
@@ -103,51 +106,22 @@ def build_ledger_event(
 
 
 # ============================================================================
-# SUPABASE CLIENT
+# SUPABASE CLIENT HELPERS
 # ============================================================================
-
-def get_supabase_client() -> Optional[Client]:
-    """Get TENANT Supabase client for yacht operations data.
-
-    Architecture:
-    - MASTER DB: User authentication, fleet_registry (read-heavy)
-    - TENANT DB: pms_faults, pms_work_orders, pms_equipment, pms_parts (read/write)
-
-    P0 handlers work with TENANT tables, so this returns the default tenant client.
-    Uses DEFAULT_YACHT_CODE env var (e.g., 'yTEST_YACHT_001') to construct env var names.
-
-    Returns None if credentials are missing (allows app to start without DB).
-    """
-    # Get default yacht code for tenant routing
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    # Try tenant-specific env vars first, then fall back to generic names
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        logger.warning(f"Missing TENANT Supabase credentials for {default_yacht} - handlers will be unavailable")
-        return None
-
-    try:
-        return create_client(url, key)
-    except Exception as e:
-        logger.error(f"Failed to create Supabase client: {e}")
-        return None
+# NOTE: get_supabase_client and get_tenant_client are imported from integrations.supabase
 
 
 def get_tenant_supabase_client(tenant_key_alias: str) -> Client:
     """Get tenant-specific Supabase client instance.
 
-    Uses the WORKING pipeline_service.get_tenant_client() function that powers /search.
+    Uses the centralized get_tenant_client() from integrations/supabase.py.
     This ensures consistent client behavior across all endpoints.
 
     Routing contract:
     - tenant_key_alias comes from MASTER DB fleet_registry (e.g., 'yTEST_YACHT_001')
     - Env vars on Render: {tenant_key_alias}_SUPABASE_URL, {tenant_key_alias}_SUPABASE_SERVICE_KEY
     """
-    from pipeline_service import get_tenant_client
-    logger.info(f"[P0Actions] Using pipeline_service.get_tenant_client for {tenant_key_alias}")
+    logger.info(f"[P0Actions] Using get_tenant_client for {tenant_key_alias}")
     return get_tenant_client(tenant_key_alias)
 
 

@@ -82,7 +82,7 @@ export function HandoverLensContent({
 
         {status === 'pending' && (
           <div className="mt-4">
-            <PrimaryButton onClick={() => console.log('[HandoverLens] Acknowledge:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Acknowledge Handover</PrimaryButton>
+            <PrimaryButton onClick={() => console.log('[HandoverLens] Acknowledge:', id)} className="text-[13px] min-h-9 px-4 py-2">Acknowledge Handover</PrimaryButton>
           </div>
         )}
 
@@ -93,7 +93,7 @@ export function HandoverLensContent({
             <SectionContainer title="Priority Items" stickyTop={56}>
               <ul className="space-y-2">
                 {priority_items.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm">
+                  <li key={index} className="flex items-start gap-2 typo-body">
                     <span className="text-status-warning">•</span>
                     <span className="text-celeste-text-primary">{item}</span>
                   </li>
@@ -105,7 +105,7 @@ export function HandoverLensContent({
 
         <div className="mt-6">
           <SectionContainer title="Notes" stickyTop={56}>
-            <p className="text-sm text-celeste-text-primary whitespace-pre-wrap">
+            <p className="typo-body text-celeste-text-primary whitespace-pre-wrap">
               {content || 'No notes provided.'}
             </p>
           </SectionContainer>
@@ -114,7 +114,7 @@ export function HandoverLensContent({
         {acknowledged_at && (
           <div className="mt-6">
             <SectionContainer title="Acknowledgement" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="typo-body text-celeste-text-muted">
                 Acknowledged {formatRelativeTime(acknowledged_at)}
                 {to_crew && ` by ${to_crew}`}
               </p>
@@ -126,4 +126,3 @@ export function HandoverLensContent({
   );
 }
 
-export default HandoverLensContent;
