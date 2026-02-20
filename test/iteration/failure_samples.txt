@@ -1,0 +1,108 @@
+=== certificate samples ===
+{"query":"show ism document of compliance certificate","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"status of ism document of compliance cert","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"when does ism document of compliance expire","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is ism document of compliance certificate stored","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder ism document of compliance cert labels","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add ism document of compliance certificate to checklist","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find ism document of compliance","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"sm document of compliance cert details","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"ism document of compliance certificate not insurance cert","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"is ism document of compliance certificate valid","expected_id":"05a1eb30-67d2-461e-9a22-b7589281338c","entity_type":"certificate","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== document samples ===
+{"query":"open document ballast_systems_reference_manual.pdf","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show ballast_systems_reference_manual.pdf pdf","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is ballast_systems_reference_manual.pdf file","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add ballast_systems_reference_manual.pdf to checklist","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder print of ballast_systems_reference_manual.pdf","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find ballast_systems_reference_man.pdf","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"bllast_systems_reference_manual.pdf doc","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need copy of ballast_systems_reference_manual.pdf","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"ballast_systems_reference_manual.pdf document not operations manual","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"is ballast_systems_reference_manual.pdf latest version","expected_id":"4a75998f-5b18-44bd-9d08-1b8ad75ee8dd","entity_type":"document","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== fault samples ===
+{"query":"show fault gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 7ab56d5f9ab9","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"status of fault gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is fault gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 noted","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 7ab56d5f9ab9 to repair list","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder parts for gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault 7ab56d5f9ab9","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"gps sgnal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault details","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need photos for gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault not different fault","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"has gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault been fixed","expected_id":"29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9","entity_type":"fault","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== inventory samples ===
+{"query":"show me test part fa10ad48","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"how many test part fa10ad48s do we have","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where are the test part fa10ad48","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder test part fa10ad48","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add test part fa10ad48 to shopping list","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find tst part fa10ad48","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"test part fa10ad48 not other item","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need test part fa10ad48 location","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where test part fa10ad48 stored","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show test part fa10ad48 onboard","expected_id":"fa10ad48-5f51-41ee-9ef3-c2127e77b06a","entity_type":"inventory","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== parts samples ===
+{"query":"show me ac compressor clutch","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"how many ac compressor clutchs do we have","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where are the ac compressor clutch","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder ac compressor clutch","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add ac compressor clutch to shopping list","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find c compressor clutch","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"ac compressor clutch not other item","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need ac compressor clutch location","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where ac compressor clutch stored","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show ac compressor clutch onboard","expected_id":"bcbe235c-70fd-4d8e-8db9-b02d457fd3dc","entity_type":"parts","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== receiving samples ===
+{"query":"show receiving chief_engineer-test-5ee59f34","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"status of receipt chief_engineer-test-5ee59f34","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"when received chief_engineer-test-5ee59f34","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is GRN chief_engineer-test-5ee59f34","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add chief_engineer-test-5ee59f34 to review list","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder label for chief_engineer-test-5ee59f34","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find chef_engineer-test-5ee59f34 receiving","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"chief_engineer-test-5ee59f34 receipt not different receipt","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need chief_engineer-test-5ee59f34 vendor","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show chief_engineer-test-5ee59f34 onboard","expected_id":"0fa6556b-b9ef-49d2-979d-30e0f0d15c0f","entity_type":"receiving","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== shopping_list samples ===
+{"query":"show shopping item fuel filter cf-2250 cummins","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"count shopping item fuel filter cf-2250 cummins","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is shopping item fuel filter cf-2250 cummins","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder shopping item fuel filter cf-2250 cummins","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add fuel filter cf-2250 cummins to shopping list","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find fel filter cf-2250 cummins","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"fuel filter cf-2250 cummins not different list item","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need fuel filter cf-2250 cummins location","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where fuel filter cf-2250 cummins stored","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show fuel filter cf-2250 cummins onboard","expected_id":"386121a0-1956-44af-b662-0274680024c2","entity_type":"shopping_list","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== work_order samples ===
+{"query":"show work order wo-test-1768420934823-014: test work order 14 - navigation maintenance","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"status of work order wo-test-1768420934823-014: test work order 14 - navigation maintenance","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is work order wo-test-1768420934823-014: test work order 14 - navigation maintenance","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder parts for work order wo-test-1768420934823-014: test work order 14 - navigation maintenance","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add wo-test-1768420934823-014: test work order 14 - navigation maintenance to W/O list","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find w-test-1768420934823-014: test work order 14 - navigation maintenance","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"wo-test-1768420934823-014: test work order 14 - navigation maintenance not different work order","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need wo-test-1768420934823-014: test work order 14 - navigation maintenance location","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where wo-test-1768420934823-014: test work order 14 - navigation maintenance stored","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show wo-test-1768420934823-014: test work order 14 - navigation maintenance onboard","expected_id":"19de511d-727c-48da-bbad-ef2691595531","entity_type":"work_order","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
+=== work_order_note samples ===
+{"query":"show work order note hours logged: 2.5h - work performed hours logged: 2.5h - work performed","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"count notes like hours logged: 2.5h - work performed hours logged: 2.5h - work performed","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where is note hours logged: 2.5h - work performed hours logged: 2.5h - work performed","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"reorder parts per note hours logged: 2.5h - work performed hours logged: 2.5h - work performed","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"add hours logged: 2.5h - work performed hours logged: 2.5h - work performed note to list","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"find hurs logged: 2.5h - work performed hours logged: 2.5h - work performed","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"hours logged: 2.5h - work performed hours logged: 2.5h - work performed not different work order note","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"need note hours logged: 2.5h - work performed hours logged: 2.5h - work performed location","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"where hours logged: 2.5h - work performed hours logged: 2.5h - work performed stored","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+{"query":"show hours logged: 2.5h - work performed hours logged: 2.5h - work performed onboard","expected_id":"1434dfff-17d9-4c25-b3c6-130b1f475ec8","entity_type":"work_order_note","baseline_rank":null,"postdeploy_rank":null,"status":"unchanged_miss"}
+
