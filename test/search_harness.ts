@@ -22,7 +22,8 @@ import type {
 const TRUTH_SET_DIR = '/Volumes/Backup/CELESTE';
 const SEARCH_ENDPOINT = 'https://pipeline-core.int.celeste7.ai/webhook/search';
 const TEST_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598'; // Cloud_PMS tenant
-const REQUEST_DELAY_MS = 100; // Delay between requests to avoid rate limiting
+const REQUEST_DELAY_MS = 10; // Delay between requests to avoid rate limiting
+const BATCH_SIZE = 10; // Number of parallel requests
 const OUTPUT_DIR = '/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/test/baseline';
 
 // Supabase configuration (from .env.local)
@@ -227,34 +228,51 @@ async function main() {
 
     console.log(`Loaded ${truthSet.length} items with ${truthSet.reduce((sum, item) => sum + item.queries.length, 0)} queries`);
 
-    // Process each item's queries
+    // Collect all queries for this entity type
+    const queries: Array<{ query: string; expected_id: string }> = [];
     for (const item of truthSet) {
       for (const queryDef of item.queries) {
-        totalQueries++;
-
-        const { ids: actualIds, latency_ms } = await searchQuery(queryDef.query);
-        const rank = calculateRank(queryDef.expected_target_id, actualIds);
-        const hit = rank !== null && rank <= 3;
-
-        const result: QueryResult = {
+        queries.push({
           query: queryDef.query,
           expected_id: queryDef.expected_target_id,
-          actual_ids: actualIds,
-          rank,
-          latency_ms,
-          hit,
-          entity_type: entityType,
-        };
+        });
+      }
+    }
 
+    // Process queries in batches
+    for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+      const batch = queries.slice(i, Math.min(i + BATCH_SIZE, queries.length));
+
+      // Execute batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (queryDef) => {
+          const { ids: actualIds, latency_ms } = await searchQuery(queryDef.query);
+          const rank = calculateRank(queryDef.expected_id, actualIds);
+          const hit = rank !== null && rank <= 3;
+
+          return {
+            query: queryDef.query,
+            expected_id: queryDef.expected_id,
+            actual_ids: actualIds,
+            rank,
+            latency_ms,
+            hit,
+            entity_type: entityType,
+          };
+        })
+      );
+
+      // Add results and log progress
+      for (const result of batchResults) {
+        totalQueries++;
         allResults.push(result);
 
-        // Progress indicator
-        const status = hit ? '✓ hit' : '✗ miss';
-        console.log(`Query ${totalQueries}: ${queryDef.query.substring(0, 50).padEnd(50)} -> ${status} (rank: ${rank || 'N/A'})`);
-
-        // Rate limiting
-        await sleep(REQUEST_DELAY_MS);
+        const status = result.hit ? '✓ hit' : '✗ miss';
+        console.log(`Query ${totalQueries}: ${result.query.substring(0, 50).padEnd(50)} -> ${status} (rank: ${result.rank || 'N/A'})`);
       }
+
+      // Rate limiting between batches
+      await sleep(REQUEST_DELAY_MS);
     }
   }
 
