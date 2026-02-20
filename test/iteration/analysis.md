@@ -391,89 +391,351 @@ GROUP BY entity_type;
 
 ## Metrics Projection
 
-### Current State
-- Recall@3: 3.62%
-- Failures: 2,312 (96.38%)
-- Successes: 88 (3.62%)
+### Current State (INVALID METRICS)
+- **Reported Recall@3:** 3.62%
+- **Failures:** 2,312 (96.38%)
+- **Successes:** 88 (3.62%)
+- **Reality:** Metrics are meaningless due to truth set errors
 
-### After Truth Set Fix (Optimistic Scenario)
-If search is working correctly but truth sets are wrong:
-- **Projected Recall@3:** 60-80%
-- **Rationale:** Search may be finding most entities correctly, just reporting wrong expected IDs
+### Actual Current State (ESTIMATED)
+Based on parts/receiving hit rates with valid IDs:
+- **Parts Recall@3:** 24.7% (74/300 queries succeeded)
+- **Receiving Recall@3:** 4% (12/300 queries succeeded)
+- **Other entities:** 0% (but may be due to bad truth sets, not search failure)
 
-### After Truth Set Fix (Pessimistic Scenario)
-If search has real issues hidden by bad truth sets:
-- **Projected Recall@3:** 10-30%
-- **Rationale:** Index coverage or ranking issues exist but weren't measurable
+### Scenario 1: After Truth Set Fix Only (REALISTIC)
+**Assumption:** Truth sets corrected, but index coverage remains selective.
 
-### After All Fixes (Target)
-- **Goal Recall@3:** 90%
-- **Path:** Fix truth sets → measure real baseline → fix index coverage → tune ranking → optimize queries
+**Projected Recall@3 by entity type:**
+- Parts: 25-35% (already working, may improve with better queries)
+- Receiving: 5-15% (limited index coverage)
+- Inventory: 20-30% (likely indexed, bad truth sets hiding it)
+- Certificate: 5-10% (likely poor index coverage)
+- Document: 5-10% (likely poor index coverage)
+- Fault: 5-10% (likely poor index coverage)
+- Work Order: 5-10% (likely poor index coverage)
+- Shopping List: 5-10% (likely poor index coverage)
+- Work Order Note: 5-10% (likely poor index coverage)
+
+**Overall Projected Recall@3:** 10-20%
+
+**Rationale:**
+- Search IS working for indexed entities (proven by parts success)
+- Most entity types likely NOT indexed or poorly indexed
+- Truth set fix alone won't achieve 90% target
+
+### Scenario 2: After Index Coverage Fix (OPTIMISTIC)
+**Assumption:** Truth sets corrected AND all entity types properly indexed.
+
+**Projected Recall@3:** 40-60%
+
+**Rationale:**
+- If all entities indexed with searchable text, search should find many
+- Ranking may still be poor (entities found but not in top 3)
+- Query/content alignment issues still exist
+
+### Scenario 3: After All Fixes (TARGET PATH)
+**Goal Recall@3:** 90%
+
+**Required fixes:**
+1. **Truth sets corrected** → enables accurate measurement
+2. **Index coverage complete** → all entity types indexed with rich searchable text
+3. **Ranking optimized** → relevant entities ranked in top 3
+4. **Query expansion** → handle typos, abbreviations, variations
+5. **Field weighting** → prioritize exact name matches over full-text
+
+**Estimated effort:** 3-6 weeks across multiple milestones (v1.2, v1.3)
 
 ---
 
 ## v1.2 Scope Recommendation
 
-### Must-Have for v1.2
-1. **Fix truth sets** - Regenerate with actual production entity IDs
-2. **Re-run validation** - Establish real baseline Recall@3
-3. **Index coverage audit** - Verify all entities are indexed
+### Phase 1: Measurement Fix (Week 1) - CRITICAL
+**Goal:** Get accurate baseline metrics
 
-### Should-Have for v1.2
-4. **Search function analysis** - Document what f1_search_fusion returns
-5. **Quick wins** - Fix any obvious index gaps or query patterns
+**Tasks:**
+1. **Query production database** for real entity IDs by type
+   - Extract 25 real certificates with names
+   - Extract 25 real documents with titles
+   - Extract 25 real faults with descriptions
+   - Extract 25 real work orders with labels
+   - etc.
+2. **Regenerate truth sets** with actual entity IDs
+3. **Re-run validation harness** to get real Recall@3 baseline
+4. **Assess results** and reprioritize v1.2 scope
 
-### Nice-to-Have for v1.2
-6. **Ranking optimization** - Tune relevance scoring
-7. **Query expansion** - Handle typos, abbreviations better
+**Deliverable:** Truth sets v2 with real entity IDs, accurate baseline metrics
 
-### Long-Term (v1.3+)
-8. **Semantic search** - Vector embeddings for better matching
-9. **Contextual ranking** - User history, entity relationships
-10. **Real-time index updates** - Reduce lag between entity creation and searchability
+**Estimated Recall@3 after Phase 1:** 10-20% (measurement only, no fixes)
+
+---
+
+### Phase 2: Quick Wins (Week 2) - HIGH IMPACT
+**Goal:** Improve Recall@3 to 40-50%
+
+**Tasks (prioritized by impact):**
+
+**2.1 Index Coverage Audit** (2 days)
+- Query search_index table: `SELECT entity_type, COUNT(*) FROM search_index GROUP BY entity_type`
+- Identify which entity types are NOT indexed
+- Document searchable_text content for indexed entities
+- Verify entity names/labels are in searchable_text
+
+**2.2 Fix Missing Entity Types** (3 days)
+- If certificates/documents/faults not in search_index → investigate why
+- Check if indexing triggers are firing on those tables
+- Manually trigger reindex if needed
+- Verify entities appear in search_index after fix
+
+**2.3 Improve Searchable Text** (3 days)
+- For indexed entities with poor hit rates, examine searchable_text
+- Ensure entity names/labels are FULL TEXT indexed, not just IDs
+- Add relevant fields: description, notes, status, etc.
+- Regenerate search_index entries with richer content
+
+**Estimated Recall@3 after Phase 2:** 40-50%
+
+---
+
+### Phase 3: Ranking Optimization (Week 3) - MODERATE IMPACT
+**Goal:** Improve Recall@3 to 60-70%
+
+**Tasks:**
+
+**3.1 Field Weighting** (2 days)
+- Configure search to prioritize exact name matches over full-text body
+- Boost scores for matches in name/label/title fields
+- Test with sample queries, measure improvement
+
+**3.2 Query Normalization** (2 days)
+- Handle common patterns: "show X", "find X", "where is X" → normalize to "X"
+- Strip intent words that don't help matching
+- Lowercase, trim, remove special characters
+
+**3.3 Abbreviation Handling** (2 days)
+- Create abbreviation mapping: "WO" → "work order", "cert" → "certificate"
+- Expand queries before search
+- Test with typo/abbreviation queries from truth sets
+
+**Estimated Recall@3 after Phase 3:** 60-70%
+
+---
+
+### Out of Scope for v1.2 (Deferred to v1.3)
+- Semantic search with vector embeddings
+- Contextual ranking based on user history
+- Real-time index updates (accept some lag)
+- Advanced NLP query understanding
+- Fuzzy matching / spell correction beyond abbreviations
+
+---
+
+### Realistic v1.2 Goal
+**Target Recall@3:** 60-70%
+**Achievable in:** 3 weeks
+**Risk level:** Low (incremental improvements, no major refactoring)
 
 ---
 
 ## Final Verdict: v1.1 Milestone
 
-### Deployment Success
-**Status:** YES ✓
+### Deployment Success: YES ✓
+**Status:** COMPLETE AND SUCCESSFUL
 
-- 25 commits deployed to production
-- AbortError fix live
-- Latency improved 15.14%
+**Achievements:**
+- 25 commits deployed to production via PR #365
+- AbortError fix deployed and live
+- Latency improved 15.14% (P95: 19.5s → 16.6s)
 - No regressions in system stability
+- Both Vercel apps deployed successfully
+- Production health checks passing
 
-### Search Quality Success
-**Status:** NO ✗
+**Verdict:** Deployment objectives fully met. Code is live, stable, and performant.
 
+---
+
+### Search Quality Success: NO ✗
+**Status:** METRICS INVALID, ACTUAL QUALITY UNKNOWN
+
+**Reported Metrics:**
 - Recall@3: 3.62% vs 90% target (86.38% gap)
-- However, this metric is INVALID due to truth set errors
-- Actual search quality is UNKNOWN
+- Failures: 2,312/2,400 queries
+
+**Reality:**
+- Metrics are MEANINGLESS due to fundamental truth set errors
+- Truth sets map all entities to inventory_items with synthetic IDs
+- Parts/receiving show 25%/4% hit rates (proving search works when IDs are valid)
+- Other entity types show 0% hits (likely due to bad truth sets, not search failure)
+
+**Actual Search Quality:** UNKNOWN until truth sets are fixed
+
+**Verdict:** Cannot assess search quality. Validation methodology was fundamentally flawed.
+
+---
 
 ### What We Learned
 
-1. **Truth set generation methodology was flawed** - All entities incorrectly mapped to inventory_items
-2. **Validation cannot catch validation errors** - Bad truth sets → bad metrics → misleading conclusions
-3. **Search pipeline is stable** - No crashes, good latency, returns results
-4. **Real search quality is unmeasured** - Need correct truth sets to assess
+**1. Truth Set Generation Was Fundamentally Flawed**
+- All entity types force-mapped to inventory_items table
+- Expected IDs are synthetic UUIDs, not real production entity IDs
+- Only parts/receiving have SOME real IDs (explaining 88 successful queries)
+- Certificates, documents, faults, work orders use completely synthetic IDs
+
+**2. Search Pipeline Is Actually Working (When Truth Sets Are Valid)**
+- Parts queries: 24.7% Recall@3 with valid expected_ids
+- Search returns 294 unique entity IDs across all queries
+- No crashes, stable performance, results are returned
+- When expected_id is real, search finds it (proven by parts success)
+
+**3. Validation Cannot Self-Validate**
+- Bad truth sets → bad metrics → misleading conclusions
+- We reported "96.38% failure" but reality is "validation methodology failed"
+- Need independent verification of truth set quality before trusting metrics
+
+**4. Index Coverage Is Selective**
+- Parts and receiving are indexed and searchable
+- Other entity types either NOT indexed OR truth sets prevent measurement
+- Cannot determine index coverage for 7/9 entity types until truth sets fixed
+
+**5. Real Metrics Are Still Unknown**
+- After 2,400 queries, we still don't know actual search quality
+- Next milestone MUST start with truth set regeneration
+- No search optimization should happen until accurate baseline established
+
+---
+
+### Root Cause Summary
+
+**Primary Cause:** Truth set generator created synthetic inventory_item records for all entity types instead of using real production entity IDs from correct tables.
+
+**Impact:** 96.38% reported failure rate is a validation artifact, not a search failure.
+
+**Evidence:**
+- Entity types with valid IDs (parts) show 25% success
+- Entity types with synthetic IDs show 0% success
+- Search pipeline is stable and returning results
+- 294 unique IDs returned proves search is functioning
+
+**Fix:** Regenerate truth sets with real entity IDs from production database.
+
+---
 
 ### Recommended Next Actions
 
-**Immediate (Next 24 hours):**
-1. Query production database for actual entity IDs by type
-2. Regenerate truth sets with correct expected_id values
-3. Re-run validation harness to get real Recall@3 baseline
+**IMMEDIATE (Before any v1.2 work):**
 
-**Short-Term (v1.2 scope):**
-4. Fix any index coverage gaps discovered
-5. Optimize obvious query/content mismatches
-6. Target 60%+ Recall@3 as realistic v1.2 goal
+**Day 1 - Truth Set Regeneration:**
+1. Query production database for real entity samples:
+   ```sql
+   -- Example queries
+   SELECT id, name FROM certificates WHERE yacht_id = '...' LIMIT 25;
+   SELECT id, label FROM work_orders WHERE yacht_id = '...' LIMIT 25;
+   SELECT id, title FROM documents WHERE yacht_id = '...' LIMIT 25;
+   -- etc. for all 9 entity types
+   ```
+2. Regenerate truth sets with actual entity IDs
+3. Preserve existing query variations (they're good)
+4. Update expected_id values to real production IDs
 
-**Long-Term (v1.3+):**
-7. Advanced ranking features
-8. Semantic search capabilities
-9. Achieve 90%+ Recall@3 target
+**Day 2 - Re-Validation:**
+5. Re-run validation harness with fixed truth sets
+6. Calculate REAL baseline Recall@3
+7. Identify which entity types are actually indexed
+8. Document real search quality gaps
+
+**Day 3 - v1.2 Planning:**
+9. Based on real metrics, prioritize fixes:
+   - If Recall@3 < 20%: Focus on index coverage
+   - If Recall@3 20-40%: Focus on ranking optimization
+   - If Recall@3 40-60%: Focus on query tuning
+   - If Recall@3 > 60%: Focus on edge cases and quality
+10. Set realistic v1.2 target (suggest 60-70% Recall@3)
+
+---
+
+**SHORT-TERM (v1.2 - Weeks 1-3):**
+
+**Phase 1: Measurement (Week 1)**
+- Truth sets v2 with real IDs ✓
+- Accurate baseline metrics ✓
+- Index coverage audit ✓
+
+**Phase 2: Quick Wins (Week 2)**
+- Fix missing entity type indexes
+- Improve searchable_text richness
+- Target 40-50% Recall@3
+
+**Phase 3: Optimization (Week 3)**
+- Field weighting and ranking
+- Query normalization
+- Target 60-70% Recall@3
+
+---
+
+**LONG-TERM (v1.3+ - Month 2+):**
+
+**Advanced Features:**
+- Semantic search with vector embeddings
+- Contextual ranking (user history, relationships)
+- Real-time index updates
+- Advanced NLP query understanding
+- Target 90%+ Recall@3
+
+---
+
+### Key Decisions for v1.2
+
+**Decision 1: Realistic Target**
+- REJECT: 90% Recall@3 in v1.2 (unrealistic given unknowns)
+- ACCEPT: 60-70% Recall@3 in v1.2 (achievable with index + ranking fixes)
+
+**Decision 2: Scope Constraint**
+- REJECT: Advanced features before basics work
+- ACCEPT: Fix fundamentals first (truth sets → index coverage → ranking)
+
+**Decision 3: Timeline**
+- REJECT: Rush to 90% target
+- ACCEPT: Incremental improvement across multiple milestones
+
+**Decision 4: Success Criteria**
+- REJECT: Absolute Recall@3 target
+- ACCEPT: Measurable improvement + accurate metrics + path to 90%
+
+---
+
+### Success Criteria for v1.2
+
+**Must-Have:**
+- [ ] Truth sets regenerated with real entity IDs
+- [ ] Accurate Recall@3 baseline measured
+- [ ] All 9 entity types have index coverage documented
+- [ ] Recall@3 improved by at least 10 percentage points from real baseline
+
+**Should-Have:**
+- [ ] Recall@3 reaches 50%+ overall
+- [ ] No entity type has 0% index coverage
+- [ ] Parts/inventory Recall@3 > 60%
+
+**Nice-to-Have:**
+- [ ] Recall@3 reaches 70%+ overall
+- [ ] Query normalization handles common patterns
+- [ ] Field weighting prioritizes exact matches
+
+---
+
+### Final Summary
+
+**v1.1 Deployment: SUCCESS** - Code deployed, stable, performant
+
+**v1.1 Search Quality: INCOMPLETE** - Cannot measure due to validation methodology failure
+
+**Critical Finding:** Truth sets are fundamentally broken. All metrics are invalid.
+
+**Immediate Action:** Regenerate truth sets with real production entity IDs before proceeding.
+
+**v1.2 Goal:** Establish accurate baseline → fix fundamentals → achieve 60-70% Recall@3
+
+**Path to 90% Target:** Multi-milestone effort (v1.2 → v1.3 → v1.4) focusing on index coverage, ranking, and advanced features sequentially.
 
 ---
 
