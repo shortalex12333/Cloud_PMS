@@ -150,7 +150,7 @@ async function searchQuery(query: string): Promise<{ ids: string[], latency_ms: 
       return { ids: [], latency_ms };
     }
 
-    const data: SearchResponse = await response.json();
+    const data = await response.json() as SearchResponse;
 
     if (data.error) {
       console.error(`Search error: ${data.error}`);
