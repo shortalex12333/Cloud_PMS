@@ -24,7 +24,7 @@ interface EquipmentData {
 /**
  * View equipment details
  */
-export async function viewEquipmentDetails(
+async function viewEquipmentDetails(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
@@ -101,7 +101,7 @@ export async function viewEquipmentDetails(
 /**
  * View equipment maintenance/work order history
  */
-export async function viewEquipmentHistory(
+async function viewEquipmentHistory(
   context: ActionContext,
   params?: { equipment_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
@@ -178,7 +178,7 @@ export async function viewEquipmentHistory(
 /**
  * View parts associated with equipment
  */
-export async function viewEquipmentParts(
+async function viewEquipmentParts(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
@@ -266,7 +266,7 @@ function computeStockStatus(part: { quantity?: number; min_quantity?: number }):
 /**
  * View faults linked to equipment
  */
-export async function viewLinkedFaults(
+async function viewLinkedFaults(
   context: ActionContext,
   params?: { equipment_id?: string; offset?: number; limit?: number }
 ): Promise<ActionResult> {
@@ -357,7 +357,7 @@ export async function viewLinkedFaults(
 /**
  * View equipment manual sections
  */
-export async function viewEquipmentManual(
+async function viewEquipmentManual(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
@@ -439,7 +439,7 @@ export async function viewEquipmentManual(
 /**
  * Run diagnostic on equipment
  */
-export async function runDiagnostic(
+async function runDiagnostic(
   context: ActionContext,
   params?: { equipment_id?: string }
 ): Promise<ActionResult> {
@@ -588,7 +588,7 @@ function computeHealthStatus(
 /**
  * Add note to equipment
  */
-export async function addEquipmentNote(
+async function addEquipmentNote(
   context: ActionContext,
   params: { equipment_id: string; note_text: string }
 ): Promise<ActionResult> {

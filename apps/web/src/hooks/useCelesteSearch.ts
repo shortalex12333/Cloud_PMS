@@ -24,6 +24,50 @@ const RECENT_QUERIES_KEY = 'celeste_recent_queries';
 const MAX_RECENT_QUERIES = 5;
 const CACHE_TTL = 5 * 60 * 1000;  // 5 minutes
 
+// F1 Architecture: L1/L2 Budget Enforcement
+const L1_TIMEOUT_MS = 3000;       // 3s timeout for primary search (includes network latency)
+const L2_TIMEOUT_MS = 5000;       // 5s timeout for fallback search
+const TOKEN_REFRESH_TIMEOUT_MS = 2000; // 2s timeout for token refresh
+
+/**
+ * Wrap a promise with a timeout - FIXES AbortError race condition
+ * @returns Promise that rejects with TimeoutError if timeout expires
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${operation} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+/**
+ * Safe token refresh with timeout - prevents indefinite hang
+ */
+async function safeEnsureFreshToken(): Promise<string | null> {
+  try {
+    return await withTimeout(
+      ensureFreshToken(),
+      TOKEN_REFRESH_TIMEOUT_MS,
+      'Token refresh'
+    );
+  } catch (error) {
+    console.warn('[useCelesteSearch] Token refresh failed/timed out, proceeding without:', error);
+    // Return null - search will proceed without auth (may fail with 401, but won't hang)
+    return null;
+  }
+}
+
 // Certificate action keywords - triggers action suggestions fetch
 const CERT_ACTION_KEYWORDS = [
   'add certificate',
@@ -409,8 +453,8 @@ async function* streamSearch(
 
   console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL, yachtId });
 
-  // Get fresh token (auto-refreshes if expiring soon)
-  const jwt = await ensureFreshToken();
+  // Get fresh token with timeout protection (prevents indefinite hang)
+  const jwt = await safeEnsureFreshToken();
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
@@ -487,9 +531,21 @@ async function* streamSearch(
       console.warn('[useCelesteSearch] ⚠️ No results array in response:', data);
     }
   } catch (e) {
+    // CRITICAL FIX: Check if primary was aborted - if so, don't attempt fallback
+    // This fixes "AbortError: signal is aborted without reason"
+    if (signal.aborted) {
+      console.log('[useCelesteSearch] ⏹️ Primary search aborted, skipping fallback');
+      return;
+    }
+
     console.warn('[useCelesteSearch] ⚠️ Pipeline search failed in stream, using fallback:', e);
 
     // FALLBACK: Use local database search when pipeline is down
+    // CRITICAL FIX: Create NEW AbortController for fallback with L2 timeout
+    // This prevents the fallback from immediately aborting due to reused signal
+    const fallbackController = new AbortController();
+    const fallbackTimeout = setTimeout(() => fallbackController.abort(), L2_TIMEOUT_MS);
+
     try {
       const fallbackHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -508,8 +564,10 @@ async function* streamSearch(
           yacht_id: yachtId,
           limit: 75, // Spotlight-style grouping needs domain diversity
         }),
-        signal,
+        signal: fallbackController.signal, // Use NEW controller, not original signal
       });
+
+      clearTimeout(fallbackTimeout);
 
       if (fallbackResponse.ok) {
         const fallbackData = await fallbackResponse.json();
@@ -518,10 +576,16 @@ async function* streamSearch(
           yield fallbackData.results;
         }
       } else {
-        console.error('[useCelesteSearch] ❌ Fallback search also failed');
+        console.error('[useCelesteSearch] ❌ Fallback search also failed:', fallbackResponse.status);
       }
     } catch (fallbackError) {
-      console.error('[useCelesteSearch] ❌ Fallback search failed:', fallbackError);
+      clearTimeout(fallbackTimeout);
+      // Suppress AbortError from our own timeout
+      if (fallbackError instanceof Error && fallbackError.name === 'AbortError') {
+        console.warn('[useCelesteSearch] ⏱️ Fallback search timed out after', L2_TIMEOUT_MS, 'ms');
+      } else {
+        console.error('[useCelesteSearch] ❌ Fallback search failed:', fallbackError);
+      }
     }
   }
 }
@@ -534,8 +598,8 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
 
-  // Get fresh token (auto-refreshes if expiring soon)
-  const jwt = await ensureFreshToken();
+  // Get fresh token with timeout protection (prevents indefinite hang)
+  const jwt = await safeEnsureFreshToken();
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
@@ -572,9 +636,19 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
     }
     return [];
   } catch (error) {
+    // CRITICAL FIX: Check if primary was aborted - if so, don't attempt fallback
+    if (signal.aborted) {
+      console.log('[useCelesteSearch] ⏹️ Primary search aborted, skipping fallback');
+      return [];
+    }
+
     console.warn('[useCelesteSearch] ⚠️ Pipeline search failed, using fallback:', error);
 
     // FALLBACK: Use local database search when pipeline is down
+    // CRITICAL FIX: Create NEW AbortController for fallback with L2 timeout
+    const fallbackController = new AbortController();
+    const fallbackTimeout = setTimeout(() => fallbackController.abort(), L2_TIMEOUT_MS);
+
     try {
       const fallbackHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -593,11 +667,13 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
           yacht_id: yachtId,
           limit: 75, // Spotlight-style grouping needs domain diversity
         }),
-        signal,
+        signal: fallbackController.signal, // Use NEW controller, not original signal
       });
 
+      clearTimeout(fallbackTimeout);
+
       if (!fallbackResponse.ok) {
-        console.error('[useCelesteSearch] ❌ Fallback search also failed');
+        console.error('[useCelesteSearch] ❌ Fallback search also failed:', fallbackResponse.status);
         return [];
       }
 
@@ -605,7 +681,13 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
       console.log('[useCelesteSearch] ✅ Using fallback search results:', fallbackData.total_count, 'results');
       return fallbackData.results || [];
     } catch (fallbackError) {
-      console.error('[useCelesteSearch] ❌ Fallback search failed:', fallbackError);
+      clearTimeout(fallbackTimeout);
+      // Suppress AbortError from our own timeout
+      if (fallbackError instanceof Error && fallbackError.name === 'AbortError') {
+        console.warn('[useCelesteSearch] ⏱️ Fallback search timed out after', L2_TIMEOUT_MS, 'ms');
+      } else {
+        console.error('[useCelesteSearch] ❌ Fallback search failed:', fallbackError);
+      }
       return [];
     }
   }

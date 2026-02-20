@@ -33,7 +33,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 
 # Vector fallback imports (Fix #5: Zero-entity semantic search - 2026-02-02)
-from gpt_extractor import GPTExtractor
+from extraction import GPTExtractor
 from integrations.supabase import vector_search
 
 logger = logging.getLogger(__name__)
@@ -260,6 +260,130 @@ class Pipeline:
                 'error': str(e),
             }
 
+    async def _pms_search_fallback(self, query: str, limit: int = 10) -> Dict[str, Any]:
+        """
+        Fix #7: PMS tables search fallback when other fallbacks return empty.
+
+        When vector search and text search return empty, fall back to searching
+        PMS tables (pms_faults, pms_work_orders, pms_equipment, pms_parts) directly
+        with text matching. This handles queries like "fault" or "work order" that
+        should return results from operational tables.
+
+        Args:
+            query: The original user query
+            limit: Max results to return (per table)
+
+        Returns:
+            Dict with PMS search results and metadata
+        """
+        try:
+            start = time.time()
+            results = []
+            query_lower = query.lower().strip()
+
+            # Define PMS tables and their searchable columns
+            pms_tables = [
+                {
+                    'table': 'pms_faults',
+                    'entity_type': 'fault',
+                    'columns': ['title', 'description', 'fault_code'],
+                    'title_col': 'title',
+                    'id_col': 'id',
+                },
+                {
+                    'table': 'pms_work_orders',
+                    'entity_type': 'work_order',
+                    'columns': ['title', 'description', 'wo_number'],
+                    'title_col': 'title',
+                    'id_col': 'id',
+                },
+                {
+                    'table': 'pms_equipment',
+                    'entity_type': 'equipment',
+                    'columns': ['name', 'make', 'model', 'serial_number'],
+                    'title_col': 'name',
+                    'id_col': 'id',
+                },
+                {
+                    'table': 'pms_parts',
+                    'entity_type': 'part',
+                    'columns': ['name', 'part_number', 'description'],
+                    'title_col': 'name',
+                    'id_col': 'id',
+                },
+            ]
+
+            # Calculate per-table limit to balance results
+            per_table_limit = max(3, limit // len(pms_tables))
+
+            for table_config in pms_tables:
+                table_name = table_config['table']
+                entity_type = table_config['entity_type']
+                columns = table_config['columns']
+                title_col = table_config['title_col']
+                id_col = table_config['id_col']
+
+                try:
+                    # Build OR filter for text matching across all searchable columns
+                    or_filters = ','.join([f'{col}.ilike.%{query_lower}%' for col in columns])
+
+                    # Query the table with text matching
+                    response = self.client.table(table_name) \
+                        .select('*') \
+                        .eq('yacht_id', self.yacht_id) \
+                        .or_(or_filters) \
+                        .limit(per_table_limit) \
+                        .execute()
+
+                    # Transform to pipeline result format
+                    for row in (response.data or []):
+                        result = {
+                            'id': row.get(id_col),
+                            'primary_id': row.get(id_col),
+                            'title': row.get(title_col) or row.get('name') or 'Untitled',
+                            'subtitle': row.get('description', '')[:200] if row.get('description') else '',
+                            'type': table_name,
+                            'source_table': table_name,
+                            'entity_type': entity_type,
+                            'score': 0.4,  # Lower score than text_search since this is broader fallback
+                            'source': 'pms_search',
+                            'metadata': {
+                                'source_table': table_name,
+                                'entity_type': entity_type,
+                                **{k: v for k, v in row.items() if k not in ['id', 'yacht_id']}
+                            },
+                        }
+                        results.append(result)
+
+                    logger.debug(f"PMS fallback: {table_name} returned {len(response.data or [])} results")
+
+                except Exception as table_error:
+                    logger.warning(f"PMS fallback failed for {table_name}: {table_error}")
+                    continue
+
+            search_ms = (time.time() - start) * 1000
+
+            logger.info(f"PMS fallback: query='{query}', results={len(results)}, "
+                       f"search_ms={search_ms:.1f}")
+
+            return {
+                'success': True,
+                'fallback_type': 'pms_search',
+                'results': results,
+                'count': len(results),
+                'search_ms': search_ms,
+            }
+
+        except Exception as e:
+            logger.error(f"PMS fallback failed: {e}")
+            return {
+                'success': False,
+                'fallback_type': 'pms_search',
+                'results': [],
+                'count': 0,
+                'error': str(e),
+            }
+
     async def search(self, query: str, limit: int = 20) -> PipelineResponse:
         """
         Execute a search query through the full pipeline (async).
@@ -320,10 +444,23 @@ class Pipeline:
                         response.error = "Using text search (embeddings not populated)"
                         logger.info(f"Text fallback returned {text_result['count']} results")
                     else:
-                        # All fallbacks failed - return empty
-                        response.success = True
-                        response.error = "No entities extracted and all search fallbacks returned no results"
-                        logger.info(f"All search fallbacks returned no results")
+                        # Text search returned empty - try PMS tables fallback
+                        logger.warning(f"Text search empty - trying PMS fallback for '{query}'")
+                        pms_result = await self._pms_search_fallback(query, limit)
+
+                        if pms_result.get('success') and pms_result.get('results'):
+                            # PMS search found results
+                            response.success = True
+                            response.results = pms_result['results']
+                            response.total_count = pms_result['count']
+                            response.extraction['fallback'] = pms_result
+                            response.error = "Using PMS table search"
+                            logger.info(f"PMS fallback returned {pms_result['count']} results")
+                        else:
+                            # All fallbacks failed - return empty
+                            response.success = True
+                            response.error = "No entities extracted and all search fallbacks returned no results"
+                            logger.info(f"All search fallbacks returned no results")
 
                 response.total_ms = (time.time() - start_total) * 1000
                 return response
@@ -1207,7 +1344,6 @@ class Pipeline:
             from execute.result_ranker import (
                 rank_results,
                 create_scoring_context,
-                group_results_by_domain
             )
 
             # Create scoring context from query and entities

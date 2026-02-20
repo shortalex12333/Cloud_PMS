@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
+import asyncio
 import time
 import logging
 import os
@@ -465,105 +466,18 @@ class HealthResponse(BaseModel):
 
 _pipeline = None
 _extractor = None
-_supabase_client = None
-_supabase_client_errors = 0
 
-def get_supabase_client(force_new: bool = False):
-    """
-    Lazy-load TENANT Supabase client with connection recovery.
-
-    If the client is stale (>3 consecutive errors), recreate it.
-    This handles connection pool exhaustion and timeout issues.
-
-    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
-    """
-    global _supabase_client, _supabase_client_errors
-
-    # Force recreation if too many errors (connection might be stale)
-    if _supabase_client_errors >= 3:
-        logger.warning(f"[Supabase] Resetting client after {_supabase_client_errors} consecutive errors")
-        _supabase_client = None
-        _supabase_client_errors = 0
-        force_new = True
-
-    if _supabase_client is None or force_new:
-        try:
-            from supabase import create_client
-            # Use tenant-specific env vars (e.g., yTEST_YACHT_001_SUPABASE_URL)
-            default_yacht = os.environ.get("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-            url = os.environ.get(f"{default_yacht}_SUPABASE_URL") or os.environ.get("SUPABASE_URL", "")
-            key = os.environ.get(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
-            if not url or not key:
-                logger.warning(f"TENANT Supabase credentials not set for {default_yacht}")
-                return None
-            _supabase_client = create_client(url, key)
-            _supabase_client_errors = 0  # Reset error count on successful creation
-            logger.info(f"[Supabase] TENANT client created for {default_yacht}")
-        except Exception as e:
-            logger.error(f"Failed to create Supabase client: {e}")
-            return None
-    return _supabase_client
-
-def mark_supabase_error():
-    """Track consecutive Supabase errors for connection recovery."""
-    global _supabase_client_errors
-    _supabase_client_errors += 1
-    logger.warning(f"[Supabase] Error count: {_supabase_client_errors}")
-
-def reset_supabase_error_count():
-    """Reset error count after successful operation."""
-    global _supabase_client_errors
-    if _supabase_client_errors > 0:
-        _supabase_client_errors = 0
-
-# ============================================================================
-# TENANT CLIENT FACTORY (Per-Yacht DB Routing)
-# ============================================================================
-
-_tenant_clients: Dict[str, Any] = {}
-
-def get_tenant_client(tenant_key_alias: str):
-    """
-    Get or create Supabase client for a specific tenant.
-
-    Loads credentials from environment variables:
-        {tenant_key_alias}_SUPABASE_URL
-        {tenant_key_alias}_SUPABASE_SERVICE_KEY
-
-    Args:
-        tenant_key_alias: e.g., 'yTEST_YACHT_001'
-
-    Returns:
-        Supabase client for the tenant's database
-
-    Raises:
-        ValueError: If tenant credentials not found in environment
-    """
-    global _tenant_clients
-
-    if tenant_key_alias in _tenant_clients:
-        return _tenant_clients[tenant_key_alias]
-
-    url_key = f'{tenant_key_alias}_SUPABASE_URL'
-    key_key = f'{tenant_key_alias}_SUPABASE_SERVICE_KEY'
-
-    tenant_url = os.environ.get(url_key)
-    tenant_key = os.environ.get(key_key)
-
-    if not tenant_url or not tenant_key:
-        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
-        logger.error(f"[TenantClient] Expected env vars: {url_key}, {key_key}")
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    try:
-        from supabase import create_client
-        client = create_client(tenant_url, tenant_key)
-        _tenant_clients[tenant_key_alias] = client
-        logger.info(f"[TenantClient] Created client for {tenant_key_alias}")
-        return client
-    except Exception as e:
-        logger.error(f"[TenantClient] Failed to create client for {tenant_key_alias}: {e}")
-        raise
+# Import centralized Supabase client factory from integrations/supabase.py
+# This consolidates all Supabase client creation in one place with:
+# - Error recovery (auto-reconnect after 3 consecutive errors)
+# - 5-second HTTP timeout for defense in depth
+# - Tenant-specific client caching
+from integrations.supabase import (
+    get_supabase_client,
+    get_tenant_client,
+    mark_supabase_error,
+    reset_supabase_error_count,
+)
 
 def get_extractor():
     """Lazy-load extraction orchestrator."""
@@ -718,9 +632,9 @@ async def search(
         raise HTTPException(status_code=500, detail="Tenant configuration error")
 
     try:
-        from action_surfacing import surface_actions_for_query, get_fusion_params_for_query
+        from services.action_surfacing import surface_actions_for_query, get_fusion_params_for_query
         from rag.context_builder import generate_query_embedding
-        from domain_microactions import get_detection_context
+        from services.domain_microactions import get_detection_context
 
         # Get detection context (domain, intent, mode with confidence scores)
         detection_ctx = get_detection_context(request.query)
@@ -748,8 +662,9 @@ async def search(
 
         # Call f1_search_fusion with structured filters
         # Note: Supabase RPC accepts dict for jsonb, handles serialization
+        # F1 OPTIMIZATION: Pass reduced candidate counts from fusion_params
         fusion_start = time.time()
-        result = client.rpc('f1_search_fusion', {
+        rpc_params = {
             'p_yacht_id': yacht_id,
             'p_query_text': request.query,
             'p_query_embedding': vec_literal,
@@ -762,7 +677,16 @@ async def search(
             'p_offset': 0,
             'p_debug': False,
             'p_filters': p_filters,  # Pass dict directly, not JSON string
-        }).execute()
+        }
+        # Add F1 optimization params if present
+        if 'p_m_text' in fusion_params:
+            rpc_params['p_m_text'] = fusion_params['p_m_text']
+        if 'p_m_vec' in fusion_params:
+            rpc_params['p_m_vec'] = fusion_params['p_m_vec']
+        if 'p_m_trgm' in fusion_params:
+            rpc_params['p_m_trgm'] = fusion_params['p_m_trgm']
+
+        result = client.rpc('f1_search_fusion', rpc_params).execute()
         fusion_ms = (time.time() - fusion_start) * 1000
 
         # Process results
@@ -898,37 +822,132 @@ async def webhook_search(
         # Execute search with tenant's DB
         from pipeline_v1 import Pipeline
         pipeline = Pipeline(client, yacht_id)
-        response = await pipeline.search(query, limit=limit)
+
+        # ----------------------------------------------------------------
+        # F1 Architecture timeout enforcement
+        #
+        # L1 (Fast Path) budget : 150 ms
+        # L2 (Resolvers) budget : 200 ms
+        # Total search budget   : 300 ms  (hard wall for DB round-trip)
+        # Network / API ceiling : 3 000 ms (asyncio.wait_for limit)
+        #
+        # If the pipeline exceeds 3 s we return a partial response so the
+        # client always receives a valid envelope rather than a 504/500.
+        #
+        # NOTE: Pipeline uses sync Supabase client (blocking I/O) wrapped
+        # in async coroutine. asyncio.wait_for raises TimeoutError at
+        # coroutine level. Defense in depth: Supabase client has 5s HTTP
+        # timeout (see integrations/supabase.py) to prevent hung connections.
+        # ----------------------------------------------------------------
+
+        # Timing constants (seconds)
+        _L1_BUDGET_S  = 0.150   # 150 ms
+        _L2_BUDGET_S  = 0.200   # 200 ms
+        _TOTAL_BUDGET_S = 0.300 # 300 ms
+        _TIMEOUT_S    = 3.0     # 3 s hard ceiling
+
+        search_start = time.time()
+        timed_out = False
+
+        try:
+            response = await asyncio.wait_for(
+                pipeline.search(query, limit=limit),
+                timeout=_TIMEOUT_S
+            )
+        except asyncio.TimeoutError:
+            elapsed_s = time.time() - search_start
+            elapsed_ms = elapsed_s * 1000
+            timed_out = True
+            logger.error(
+                f"[webhook/search:{request_id}] TIMEOUT after {elapsed_ms:.1f} ms "
+                f"(ceiling={_TIMEOUT_S * 1000:.0f} ms) — returning partial response"
+            )
+
+        search_elapsed_s = time.time() - search_start
+        search_elapsed_ms = search_elapsed_s * 1000
+
+        # --- Timing-violation logging ---
+        if search_elapsed_s > _TOTAL_BUDGET_S:
+            logger.warning(
+                f"[webhook/search:{request_id}] TIMING_VIOLATION total={search_elapsed_ms:.1f} ms "
+                f"exceeds 300 ms budget (L1={_L1_BUDGET_S * 1000:.0f} ms, "
+                f"L2={_L2_BUDGET_S * 1000:.0f} ms)"
+            )
+        elif search_elapsed_s > _L2_BUDGET_S:
+            logger.warning(
+                f"[webhook/search:{request_id}] TIMING_VIOLATION L2 total={search_elapsed_ms:.1f} ms "
+                f"exceeds L2 budget ({_L2_BUDGET_S * 1000:.0f} ms)"
+            )
+        elif search_elapsed_s > _L1_BUDGET_S:
+            logger.warning(
+                f"[webhook/search:{request_id}] TIMING_VIOLATION L1 total={search_elapsed_ms:.1f} ms "
+                f"exceeds L1 budget ({_L1_BUDGET_S * 1000:.0f} ms)"
+            )
 
         # Frontend expects newline-delimited JSON for streaming parser
         import json
 
-        response_data = {
-            "success": response.success,
-            "query": query,
-            "results": response.results,
-            "total_count": response.total_count,
-            "available_actions": response.available_actions,
-            "entities": response.extraction.get("entities", []),
-            "plans": response.prepare.get("plans", []),
-            "timing_ms": {
-                "extraction": response.extraction_ms,
-                "prepare": response.prepare_ms,
-                "execute": response.execute_ms,
-                "total": response.total_ms,
-            },
-            "results_by_domain": response.results_by_domain,
-            "error": response.error,
-            "request_id": request_id,
-            "ok": response.success,
-            # DEBUG: Include prepare debug info
-            "prepare_debug": response.prepare.get("debug", {}),
-            # Deployment verification
-            "code_version": "2026-01-31T02:30:00Z",
-        }
+        if timed_out:
+            # Partial response: empty results, error flag set, success=False so
+            # the client knows the payload is degraded but structurally valid.
+            response_data = {
+                "success": False,
+                "query": query,
+                "results": [],
+                "total_count": 0,
+                "available_actions": [],
+                "entities": [],
+                "plans": [],
+                "timing_ms": {
+                    "extraction": None,
+                    "prepare": None,
+                    "execute": None,
+                    "total": round(search_elapsed_ms, 2),
+                },
+                "results_by_domain": {},
+                "error": f"Search timed out after {_TIMEOUT_S:.0f}s — no results available",
+                "request_id": request_id,
+                "ok": False,
+                "partial": True,
+                "prepare_debug": {},
+                "code_version": "2026-01-31T02:30:00Z",
+            }
+        else:
+            response_data = {
+                "success": response.success,
+                "query": query,
+                "results": response.results,
+                "total_count": response.total_count,
+                "available_actions": response.available_actions,
+                "entities": response.extraction.get("entities", []),
+                "plans": response.prepare.get("plans", []),
+                "timing_ms": {
+                    "extraction": response.extraction_ms,
+                    "prepare": response.prepare_ms,
+                    "execute": response.execute_ms,
+                    "total": response.total_ms,
+                },
+                "results_by_domain": response.results_by_domain,
+                "error": response.error,
+                "request_id": request_id,
+                "ok": response.success,
+                # DEBUG: Include prepare debug info
+                "prepare_debug": response.prepare.get("debug", {}),
+                # Deployment verification
+                "code_version": "2026-01-31T02:30:00Z",
+            }
 
         json_str = json.dumps(response_data) + "\n"
-        logger.info(f"[webhook/search:{request_id}] Success: {response.success}, results: {response.total_count}")
+
+        if timed_out:
+            logger.warning(
+                f"[webhook/search:{request_id}] Partial response returned after timeout"
+            )
+        else:
+            logger.info(
+                f"[webhook/search:{request_id}] Success: {response.success}, "
+                f"results: {response.total_count}, elapsed: {search_elapsed_ms:.1f} ms"
+            )
 
         # Reset error count on success (connection is healthy)
         reset_supabase_error_count()
@@ -1087,8 +1106,8 @@ async def get_fault_entity(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         response = supabase.table('pms_faults').select('*').eq('id', fault_id).eq('yacht_id', yacht_id).single().execute()
 
@@ -1244,8 +1263,8 @@ async def get_equipment_entity(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Fixed: Use correct column name 'id' not 'equipment_id'
         response = supabase.table('pms_equipment').select('*').eq('id', equipment_id).eq('yacht_id', yacht_id).single().execute()
@@ -1292,8 +1311,8 @@ async def get_part_entity(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Fixed: Use correct column name 'id' not 'part_id'
         response = supabase.table('pms_parts').select('*').eq('id', part_id).eq('yacht_id', yacht_id).single().execute()
@@ -1344,8 +1363,8 @@ async def get_receiving_entity(
         tenant_key = auth['tenant_key_alias']
 
         # Get TENANT supabase client
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Fetch receiving from pms_receiving
         response = supabase.table('pms_receiving') \
@@ -1405,8 +1424,8 @@ async def get_email_threads(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         offset = (page - 1) * limit
 
@@ -1455,8 +1474,8 @@ async def get_email_thread(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Get thread
         thread_result = supabase.table('email_threads').select(
@@ -1505,8 +1524,8 @@ async def get_thread_links(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Get linked objects
         links_result = supabase.table('email_links').select(
@@ -1551,9 +1570,9 @@ async def link_email_to_entity(
         user_id = auth['user_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
         from datetime import datetime, timezone
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         # Validate thread exists
         thread_result = supabase.table('email_threads').select(
@@ -1654,8 +1673,8 @@ async def search_emails(
         yacht_id = auth['yacht_id']
         tenant_key = auth['tenant_key_alias']
 
-        from integrations.supabase import get_supabase_client
-        supabase = get_supabase_client(tenant_key)
+        # Use tenant-specific client for multi-tenant isolation
+        supabase = get_tenant_client(tenant_key)
 
         if limit > 100:
             limit = 100

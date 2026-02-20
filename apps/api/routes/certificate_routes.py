@@ -21,11 +21,13 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 import logging
 import os
-from supabase import create_client, Client
+from supabase import Client
 
 # Auth middleware
 from middleware.auth import get_authenticated_user
-from pipeline_service import get_tenant_client
+
+# Centralized Supabase client factory
+from integrations.supabase import get_supabase_client, get_tenant_client
 
 # Certificate handlers (optional - graceful degradation if schema_mapping incomplete)
 try:
@@ -81,21 +83,7 @@ class CertificatePipelineTestResponse(BaseModel):
 # =============================================================================
 # SUPABASE CLIENT
 # =============================================================================
-
-def get_supabase_client() -> Client:
-    """Get TENANT Supabase client for yacht certificates.
-
-    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
-    """
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        raise HTTPException(status_code=500, detail=f"TENANT Supabase config missing for {default_yacht}")
-
-    return create_client(url, key)
+# NOTE: get_supabase_client and get_tenant_client are imported from integrations.supabase
 
 
 def check_feature_flag() -> bool:
@@ -346,7 +334,7 @@ async def debug_certificate_pipeline(
     # =============================================================================
     entities_extracted = []
     try:
-        from module_b_entity_extractor import get_extractor
+        from extraction import get_extractor
         extractor = get_extractor()
         entities = extractor.extract_entities(query)
         entities_extracted = [e.to_dict() for e in entities]
@@ -361,7 +349,7 @@ async def debug_certificate_pipeline(
     # =============================================================================
     intent_detected = {}
     try:
-        from intent_parser import IntentParser
+        from services.intent_parser import IntentParser
         parser = IntentParser()
         parsed = parser.parse(query)
         intent_detected = parsed.to_dict()
@@ -375,7 +363,7 @@ async def debug_certificate_pipeline(
     # =============================================================================
     actions_detected = []
     try:
-        from module_a_action_detector import ActionDetector
+        from extraction import ActionDetector
         detector = ActionDetector()
         detected = detector.detect_actions(query)
         actions_detected = [

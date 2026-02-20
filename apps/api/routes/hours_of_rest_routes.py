@@ -38,7 +38,7 @@ from typing import Dict, Any, Optional
 import logging
 import os
 from datetime import datetime, timezone
-from supabase import create_client, Client
+from supabase import Client
 
 # Import handlers
 import sys
@@ -47,34 +47,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from handlers.hours_of_rest_handlers import HoursOfRestHandlers
 from action_router.validators import validate_jwt, validate_yacht_isolation
-from pipeline_service import get_tenant_client
+
+# Centralized Supabase client factory
+from integrations.supabase import get_supabase_client, get_tenant_client
 
 logger = logging.getLogger(__name__)
 
 # ============================================================================
 # SUPABASE CLIENT
 # ============================================================================
-
-def get_supabase_client() -> Optional[Client]:
-    """Get TENANT Supabase client for yacht operations data.
-
-    Uses DEFAULT_YACHT_CODE env var to construct tenant-specific credentials.
-    Falls back to generic SUPABASE_URL/SUPABASE_SERVICE_KEY if tenant vars missing.
-    """
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        logger.warning(f"Missing TENANT Supabase credentials for {default_yacht}")
-        return None
-
-    try:
-        return create_client(url, key)
-    except Exception as e:
-        logger.error(f"Failed to create Supabase client: {e}")
-        return None
+# NOTE: get_supabase_client and get_tenant_client are imported from integrations.supabase
 
 
 # ============================================================================
@@ -110,7 +92,8 @@ def get_hor_handlers(tenant_key_alias: str):
 
 class ViewHoursRequest(BaseModel):
     """Request body for view endpoint."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context for MUTATE actions
+    yacht_id: str = Field(..., description="Yacht ID (tenant isolation) - for GET queries only")
     user_id: Optional[str] = Field(None, description="User ID (defaults to auth user)")
     start_date: Optional[str] = Field(None, description="Start date YYYY-MM-DD (defaults to 7 days ago)")
     end_date: Optional[str] = Field(None, description="End date YYYY-MM-DD (defaults to today)")
@@ -118,7 +101,8 @@ class ViewHoursRequest(BaseModel):
 
 class UpdateHoursRequest(BaseModel):
     """Request body for upsert endpoint (MUTATE - signature optional)."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     record_date: str = Field(..., description="Record date YYYY-MM-DD")
     rest_periods: list = Field(..., description="Array of rest period objects")
     signature: Optional[Dict[str, Any]] = Field(None, description="Digital signature (optional, included in audit trail)")
@@ -127,7 +111,8 @@ class UpdateHoursRequest(BaseModel):
 
 class ExportHoursRequest(BaseModel):
     """Request body for export endpoint."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     user_id: Optional[str] = Field(None, description="User ID (defaults to auth user)")
     start_date: Optional[str] = Field(None, description="Start date YYYY-MM-DD")
     end_date: Optional[str] = Field(None, description="End date YYYY-MM-DD")
@@ -137,14 +122,16 @@ class ExportHoursRequest(BaseModel):
 # Monthly Sign-off Models
 class CreateMonthlySignoffRequest(BaseModel):
     """Request body for creating monthly sign-off."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     month: str = Field(..., description="Month in YYYY-MM format")
     department: str = Field(..., description="Department: engineering/deck/interior/galley/general")
 
 
 class SignMonthlySignoffRequest(BaseModel):
     """Request body for signing monthly sign-off."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     signoff_id: str = Field(..., description="Sign-off UUID")
     signature_level: str = Field(..., description="crew|hod|master")
     signature_data: Dict[str, Any] = Field(..., description="Signature data {name, timestamp, ip_address}")
@@ -154,7 +141,8 @@ class SignMonthlySignoffRequest(BaseModel):
 # Schedule Template Models
 class CreateCrewTemplateRequest(BaseModel):
     """Request body for creating schedule template."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     schedule_name: str = Field(..., description="Template name")
     description: Optional[str] = Field(None, description="Template description")
     schedule_template: Dict[str, Any] = Field(..., description="JSONB with 7 days schedule")
@@ -164,7 +152,8 @@ class CreateCrewTemplateRequest(BaseModel):
 
 class ApplyCrewTemplateRequest(BaseModel):
     """Request body for applying schedule template."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     week_start_date: str = Field(..., description="Week start date YYYY-MM-DD (Monday)")
     template_id: Optional[str] = Field(None, description="Template UUID (uses active if not provided)")
 
@@ -172,14 +161,16 @@ class ApplyCrewTemplateRequest(BaseModel):
 # Warning Models
 class AcknowledgeWarningRequest(BaseModel):
     """Request body for acknowledging warning."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     warning_id: str = Field(..., description="Warning UUID")
     crew_reason: Optional[str] = Field(None, description="Explanation text")
 
 
 class DismissWarningRequest(BaseModel):
     """Request body for dismissing warning (HOD+ only)."""
-    yacht_id: str = Field(..., description="Yacht ID (tenant isolation)")
+    # Note: yacht_id comes from JWT auth context, this field is ignored for security
+    yacht_id: Optional[str] = Field(None, description="DEPRECATED: yacht_id now from JWT context")
     warning_id: str = Field(..., description="Warning UUID")
     hod_justification: str = Field(..., description="Explanation required")
     dismissed_by_role: str = Field(..., description="hod|captain")
@@ -298,8 +289,13 @@ async def upsert_hours_of_rest_route(
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
 
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
     # Validate yacht isolation
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(
             status_code=403,
@@ -323,7 +319,7 @@ async def upsert_hours_of_rest_route(
     try:
         result = await hor_handlers.upsert_hours_of_rest(
             entity_id=user_id_from_jwt,  # HOR updates are for self
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={
                 "record_date": request.record_date,
@@ -380,8 +376,13 @@ async def export_hours_of_rest(
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
 
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
     # Validate yacht isolation
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(
             status_code=403,
@@ -414,7 +415,7 @@ async def export_hours_of_rest(
 
         result = await hor_handlers.get_hours_of_rest(
             entity_id=entity_id,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             params={
                 "user_id": entity_id,
                 "start_date": request.start_date,
@@ -432,7 +433,7 @@ async def export_hours_of_rest(
             "metadata": {
                 "exported_at": datetime.now(timezone.utc).isoformat(),
                 "exported_by": user_id_from_jwt,
-                "yacht_id": request.yacht_id
+                "yacht_id": yacht_id
             }
         }
 
@@ -555,7 +556,13 @@ async def create_monthly_signoff_route(
 
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
@@ -567,7 +574,7 @@ async def create_monthly_signoff_route(
     try:
         result = await hor_handlers.create_monthly_signoff(
             entity_id=user_id_from_jwt,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={"month": request.month, "department": request.department}
         )
@@ -598,7 +605,13 @@ async def sign_monthly_signoff_route(
 
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
@@ -610,7 +623,7 @@ async def sign_monthly_signoff_route(
     try:
         result = await hor_handlers.sign_monthly_signoff(
             entity_id=request.signoff_id,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={
                 "signoff_id": request.signoff_id,
@@ -691,7 +704,13 @@ async def create_crew_template_route(
 
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
@@ -703,7 +722,7 @@ async def create_crew_template_route(
     try:
         result = await hor_handlers.create_crew_template(
             entity_id=user_id_from_jwt,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={
                 "schedule_name": request.schedule_name,
@@ -737,7 +756,13 @@ async def apply_crew_template_route(
 
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
@@ -749,7 +774,7 @@ async def apply_crew_template_route(
     try:
         result = await hor_handlers.apply_crew_template(
             entity_id=user_id_from_jwt,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={"week_start_date": request.week_start_date, "template_id": request.template_id}
         )
@@ -825,7 +850,13 @@ async def acknowledge_warning_route(
 
     user_id_from_jwt = jwt_result.context.get("user_id") if jwt_result.context else None
     user_context = jwt_result.context or {}
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
@@ -837,7 +868,7 @@ async def acknowledge_warning_route(
     try:
         result = await hor_handlers.acknowledge_warning(
             entity_id=request.warning_id,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={"warning_id": request.warning_id, "crew_reason": request.crew_reason}
         )
@@ -876,7 +907,12 @@ async def dismiss_warning_route(
     if user_role.lower() not in hod_plus_roles:
         raise HTTPException(status_code=403, detail={"error": "FORBIDDEN", "message": f"Role '{user_role}' cannot dismiss warnings. HOD+ required."})
 
-    yacht_validation = validate_yacht_isolation({"yacht_id": request.yacht_id}, user_context)
+    # Get yacht_id from JWT context (security: never trust request body)
+    yacht_id = user_context.get("yacht_id")
+    if not yacht_id:
+        raise HTTPException(status_code=401, detail={"error": "UNAUTHORIZED", "message": "Missing yacht_id in JWT context"})
+
+    yacht_validation = validate_yacht_isolation({"yacht_id": yacht_id}, user_context)
     if not yacht_validation.valid:
         raise HTTPException(status_code=403, detail={"error": "YACHT_ISOLATION_VIOLATION", "message": yacht_validation.error.message if yacht_validation.error else "Yacht isolation failed"})
 
@@ -888,7 +924,7 @@ async def dismiss_warning_route(
     try:
         result = await hor_handlers.dismiss_warning(
             entity_id=request.warning_id,
-            yacht_id=request.yacht_id,
+            yacht_id=yacht_id,
             user_id=user_id_from_jwt,
             payload={
                 "warning_id": request.warning_id,

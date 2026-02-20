@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabaseClient';
  * After schema consolidation (2026-02-05), handover_items are standalone.
  * No parent container table - items are inserted directly into handover_items.
  */
-export async function addToHandover(
+async function addToHandover(
   context: ActionContext,
   params: {
     entity_id: string;
@@ -97,7 +97,7 @@ export async function addToHandover(
  * After schema consolidation (2026-02-05), exports are created from handover_items.
  * Items are fetched directly from handover_items table for the yacht.
  */
-export async function exportHandover(
+async function exportHandover(
   context: ActionContext,
   params?: { format?: 'pdf' | 'docx'; department?: string }
 ): Promise<ActionResult> {
@@ -186,7 +186,7 @@ export async function exportHandover(
  * After schema consolidation (2026-02-05), items are standalone.
  * Update by item_id directly, no parent handover_id needed.
  */
-export async function editHandoverSection(
+async function editHandoverSection(
   context: ActionContext,
   params: {
     item_id: string;
@@ -264,7 +264,7 @@ export async function editHandoverSection(
 /**
  * View document
  */
-export async function viewDocument(
+async function viewDocument(
   context: ActionContext,
   params?: { document_id?: string }
 ): Promise<ActionResult> {
@@ -335,7 +335,7 @@ export async function viewDocument(
 /**
  * Add document to handover
  */
-export async function addDocumentToHandover(
+async function addDocumentToHandover(
   context: ActionContext,
   params: {
     document_id: string;
@@ -366,7 +366,7 @@ export async function addDocumentToHandover(
 /**
  * Add predictive insight to handover
  */
-export async function addPredictiveInsightToHandover(
+async function addPredictiveInsightToHandover(
   context: ActionContext,
   params: {
     equipment_id: string;
@@ -430,7 +430,7 @@ export async function addPredictiveInsightToHandover(
  * After schema consolidation (2026-02-05), there's no parent handover record.
  * This generates a summary from all active handover_items for the yacht.
  */
-export async function regenerateHandoverSummary(
+async function regenerateHandoverSummary(
   context: ActionContext,
   params?: { department?: string }
 ): Promise<ActionResult> {
@@ -521,7 +521,7 @@ function generateHandoverSummary(
 /**
  * View related documents
  */
-export async function viewRelatedDocuments(
+async function viewRelatedDocuments(
   context: ActionContext,
   params?: { document_id?: string; equipment_id?: string; keyword?: string }
 ): Promise<ActionResult> {
@@ -642,7 +642,7 @@ export async function viewRelatedDocuments(
 /**
  * View specific document section
  */
-export async function viewDocumentSection(
+async function viewDocumentSection(
   context: ActionContext,
   params: { document_id: string; section_id?: string; page_number?: number }
 ): Promise<ActionResult> {

@@ -94,7 +94,7 @@ function ToastContent({
         'px-4 py-3 min-w-[280px] max-w-[400px]',
         // Surface styling
         'bg-surface-elevated border border-surface-border',
-        'rounded-md shadow-sm',
+        'rounded-md',
         // Text
         'text-label text-txt-primary'
       )}
@@ -105,10 +105,10 @@ function ToastContent({
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="btn-icon"
+          className="btn-icon h-8 w-8"
           aria-label="Dismiss"
         >
-          <CloseIcon className="w-4 h-4" />
+          <CloseIcon className="w-[18px] h-[18px]" />
         </button>
       )}
     </div>
@@ -200,4 +200,3 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-export default Toast;

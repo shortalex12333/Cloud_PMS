@@ -83,8 +83,8 @@ export function HoursOfRestLensContent({
 
         {status !== 'verified' && (
           <div className="mt-4 flex items-center gap-2">
-            <PrimaryButton onClick={() => console.log('[HoursOfRestLens] Verify:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Verify Record</PrimaryButton>
-            <GhostButton onClick={() => console.log('[HoursOfRestLens] Add rest period:', id)} className="text-[13px] min-h-[36px] px-4 py-2">Add Rest Period</GhostButton>
+            <PrimaryButton onClick={() => console.log('[HoursOfRestLens] Verify:', id)} className="text-[13px] min-h-9 px-4 py-2">Verify Record</PrimaryButton>
+            <GhostButton onClick={() => console.log('[HoursOfRestLens] Add rest period:', id)} className="text-[13px] min-h-9 px-4 py-2">Add Rest Period</GhostButton>
           </div>
         )}
 
@@ -93,15 +93,15 @@ export function HoursOfRestLensContent({
         <div className="mt-6">
           <SectionContainer title={`Rest Periods (${rest_periods.length})`} stickyTop={56}>
             {rest_periods.length === 0 ? (
-              <p className="text-sm text-celeste-text-muted">No rest periods recorded.</p>
+              <p className="typo-body text-celeste-text-muted">No rest periods recorded.</p>
             ) : (
               <ul className="space-y-3">
                 {rest_periods.map((period, index) => (
                   <li key={period.id || index} className="flex justify-between items-center p-3 bg-surface-secondary rounded-lg">
-                    <span className="text-sm text-celeste-text-primary">
+                    <span className="typo-body text-celeste-text-primary">
                       {new Date(period.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(period.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <span className="text-sm text-celeste-text-muted">
+                    <span className="typo-body text-celeste-text-muted">
                       {period.duration_hours.toFixed(1)} hours
                     </span>
                   </li>
@@ -114,7 +114,7 @@ export function HoursOfRestLensContent({
         {verified_at && (
           <div className="mt-6">
             <SectionContainer title="Verification" stickyTop={56}>
-              <p className="text-sm text-celeste-text-muted">
+              <p className="typo-body text-celeste-text-muted">
                 Verified {formatRelativeTime(verified_at)}
                 {verified_by && ` by ${verified_by}`}
               </p>
@@ -126,4 +126,3 @@ export function HoursOfRestLensContent({
   );
 }
 
-export default HoursOfRestLensContent;

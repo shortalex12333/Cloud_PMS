@@ -3,7 +3,7 @@ import '@/styles/globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { MicroactionsProvider } from '@/providers/MicroactionsProvider';
-import AuthDebug from '@/components/AuthDebug';
+import { AuthDebug } from '@/components/AuthDebug';
 
 export const metadata: Metadata = {
   title: 'CelesteOS - Engineering Intelligence for Yachts',

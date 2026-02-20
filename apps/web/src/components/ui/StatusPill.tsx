@@ -57,4 +57,3 @@ export const StatusPill = React.forwardRef<HTMLSpanElement, StatusPillProps>(
 
 StatusPill.displayName = 'StatusPill';
 
-export default StatusPill;

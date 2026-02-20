@@ -19,7 +19,7 @@ from typing import Optional, Callable, Dict
 from functools import wraps
 import jwt
 import time
-from fastapi import Request, HTTPException, Header, Depends
+from fastapi import HTTPException, Header, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 import logging
@@ -334,7 +334,7 @@ def lookup_tenant_for_user(user_id: str) -> Optional[Dict]:
         # The master DB user_accounts.role is not yacht-specific and MUST NOT be trusted
         tenant_role = None
         try:
-            from pipeline_service import get_tenant_client
+            from integrations.supabase import get_tenant_client
             tenant_client = get_tenant_client(tenant_key_alias)
             if not tenant_client:
                 logger.error(f"[Auth] SECURITY: Failed to get tenant client for {tenant_key_alias}")
@@ -475,39 +475,6 @@ def decode_jwt(token: str) -> dict:
     raise HTTPException(status_code=401, detail=f'Invalid token: Signature verification failed')
 
 
-def extract_yacht_id(token: str) -> str:
-    """
-    Extract yacht_id from JWT token.
-
-    DEPRECATED: DO NOT USE FOR APP ROUTES.
-
-    SECURITY WARNING: This function trusts JWT claims for yacht_id.
-    For app routes, use get_authenticated_user() which performs server-side
-    tenant lookup from MASTER DB (invariant #1: yacht_id from server, not client).
-
-    Only use for:
-    - Agent token validation (machine-to-machine)
-    - Legacy endpoints being migrated
-
-    Migration: Replace with get_authenticated_user() dependency.
-    """
-    import warnings
-    warnings.warn(
-        "extract_yacht_id() trusts JWT claims - use get_authenticated_user() for app routes",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    logger.warning("[SECURITY] extract_yacht_id() called - this trusts JWT claims, not server context")
-
-    payload = decode_jwt(token)
-    yacht_id = payload.get('yacht_id')
-
-    if not yacht_id:
-        raise HTTPException(status_code=403, detail='No yacht_id in token')
-
-    return yacht_id
-
-
 def extract_user_id(token: str) -> str:
     """
     Extract user_id from JWT token.
@@ -521,58 +488,9 @@ def extract_user_id(token: str) -> str:
     return user_id
 
 
-def extract_role(token: str) -> str:
-    """
-    Extract user role from JWT token.
-
-    DEPRECATED: DO NOT USE FOR APP ROUTES.
-
-    SECURITY WARNING: This function trusts JWT claims for role.
-    For app routes, use get_authenticated_user() which looks up the
-    authoritative role from TENANT DB auth_users_roles table.
-
-    JWT role can be stale or manipulated. TENANT DB role is authoritative.
-    """
-    import warnings
-    warnings.warn(
-        "extract_role() trusts JWT claims - use get_authenticated_user() for app routes",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    logger.warning("[SECURITY] extract_role() called - role from JWT is NOT authoritative")
-
-    payload = decode_jwt(token)
-    role = payload.get('role', 'crew')
-    return role
-
-
 # ============================================================================
 # MIDDLEWARE DEPENDENCIES
 # ============================================================================
-
-async def validate_user_jwt(
-    authorization: HTTPAuthorizationCredentials = Header(..., alias='Authorization')
-) -> dict:
-    """
-    FastAPI dependency to validate user JWT and return payload.
-    DEPRECATED: Use get_authenticated_user() for tenant lookup.
-
-    Usage:
-        @app.get('/endpoint')
-        async def endpoint(auth: dict = Depends(validate_user_jwt)):
-            user_id = auth['user_id']
-            yacht_id = auth['yacht_id']
-    """
-    token = authorization.credentials
-    payload = decode_jwt(token)
-
-    return {
-        'user_id': payload.get('sub') or payload.get('user_id'),
-        'yacht_id': payload.get('yacht_id'),
-        'role': payload.get('role', 'crew'),
-        'email': payload.get('email'),
-    }
-
 
 async def get_authenticated_user(
     authorization: str = Header(..., alias='Authorization')
@@ -643,36 +561,6 @@ async def get_authenticated_user(
         'role': tenant['role'],
         'yacht_name': tenant.get('yacht_name'),
     }
-
-
-async def inject_yacht_context(
-    authorization: HTTPAuthorizationCredentials = Header(..., alias='Authorization')
-) -> str:
-    """
-    FastAPI dependency to extract and return yacht_id.
-
-    DEPRECATED: DO NOT USE FOR APP ROUTES.
-
-    SECURITY WARNING: This function trusts JWT claims for yacht_id.
-    For app routes, use get_authenticated_user() which performs server-side
-    tenant lookup from MASTER DB (invariant #1: yacht_id from server, not client).
-
-    Migration:
-        # Old (INSECURE):
-        async def endpoint(yacht_id: str = Depends(inject_yacht_context)):
-
-        # New (SECURE):
-        async def endpoint(auth: dict = Depends(get_authenticated_user)):
-            yacht_id = auth['yacht_id']  # Server-resolved
-    """
-    import warnings
-    warnings.warn(
-        "inject_yacht_context() trusts JWT claims - use get_authenticated_user() for app routes",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    token = authorization.credentials
-    return extract_yacht_id(token)
 
 
 async def validate_agent_token(
@@ -804,7 +692,7 @@ def require_role(*allowed_roles: str):
     Usage:
         @app.get('/dashboard')
         @require_role('chief_engineer', 'manager')
-        async def dashboard(auth: dict = Depends(validate_user_jwt)):
+        async def dashboard(auth: dict = Depends(get_authenticated_user)):
             ...
     """
     def decorator(func: Callable):
@@ -828,20 +716,26 @@ def require_role(*allowed_roles: str):
 # YACHT ISOLATION ENFORCEMENT
 # ============================================================================
 
-async def enforce_yacht_isolation(
-    request: Request,
+def enforce_yacht_isolation(
     resource_yacht_id: str,
-    yacht_id: str = Header(..., alias='inject_yacht_context')
+    auth_yacht_id: str,
 ) -> None:
     """
     Ensure requested resource belongs to user's yacht.
 
+    Args:
+        resource_yacht_id: yacht_id of the resource being accessed
+        auth_yacht_id: yacht_id from the authenticated user context
+
     Usage:
-        yacht_id = Depends(inject_yacht_context)
+        auth = await get_authenticated_user(authorization)
         resource = db.get_resource(resource_id)
-        enforce_yacht_isolation(request, resource.yacht_id, yacht_id)
+        enforce_yacht_isolation(resource.yacht_id, auth['yacht_id'])
+
+    Raises:
+        HTTPException: 403 if yacht_ids don't match
     """
-    if resource_yacht_id != yacht_id:
+    if resource_yacht_id != auth_yacht_id:
         raise HTTPException(
             status_code=403,
             detail='Access denied: Resource belongs to different yacht'
@@ -878,13 +772,9 @@ def create_agent_token(yacht_signature: str, agent_id: str, expires_days: int = 
 __all__ = [
     # JWT functions
     'decode_jwt',
-    'extract_yacht_id',
     'extract_user_id',
-    'extract_role',
-    # Auth dependencies
-    'validate_user_jwt',
+    # Auth dependencies (get_authenticated_user is the single source of truth)
     'get_authenticated_user',
-    'inject_yacht_context',
     'validate_agent_token',
     # Tenant lookup
     'lookup_tenant_for_user',

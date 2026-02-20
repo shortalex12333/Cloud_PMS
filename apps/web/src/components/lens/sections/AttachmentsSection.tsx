@@ -139,4 +139,3 @@ export function AttachmentsSection({
   );
 }
 
-export default AttachmentsSection;

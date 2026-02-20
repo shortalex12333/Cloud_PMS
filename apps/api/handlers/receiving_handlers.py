@@ -32,8 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from supabase import Client
-from handlers.db_client import get_user_db, map_postgrest_error
-from utils.errors import error_response, success_response
+from handlers.db_client import map_postgrest_error
 
 logger = logging.getLogger(__name__)
 

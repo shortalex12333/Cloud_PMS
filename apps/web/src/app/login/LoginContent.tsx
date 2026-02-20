@@ -104,7 +104,7 @@ export default function LoginContent() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-txt-secondary">Loading...</p>
+          <p className="typo-body text-txt-secondary">Loading...</p>
         </div>
       </div>
     );
@@ -116,7 +116,7 @@ export default function LoginContent() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-txt-secondary">Loading your account...</p>
+          <p className="typo-body text-txt-secondary">Loading your account...</p>
         </div>
       </div>
     );
@@ -128,7 +128,7 @@ export default function LoginContent() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-txt-secondary">Redirecting...</p>
+          <p className="typo-body text-txt-secondary">Redirecting...</p>
         </div>
       </div>
     );
@@ -140,13 +140,13 @@ export default function LoginContent() {
       <div className="min-h-screen bg-black flex items-center justify-center p-6">
         <div className="w-full max-w-[320px] text-center">
           <div className="w-16 h-16 rounded-full bg-surface-base border border-surface-border flex items-center justify-center mx-auto mb-6">
-            <span className="text-2xl">⏳</span>
+            <span className="typo-title">⏳</span>
           </div>
-          <h1 className="text-xl font-semibold text-white mb-2">Awaiting Activation</h1>
-          <p className="text-sm text-txt-secondary mb-6">
+          <h1 className="typo-title font-semibold text-white mb-2">Awaiting Activation</h1>
+          <p className="typo-body text-txt-secondary mb-6">
             Your account is pending activation. Please contact your administrator to complete setup.
           </p>
-          <p className="text-xs text-txt-tertiary">
+          <p className="typo-meta text-txt-tertiary">
             Signed in as {user.email}
           </p>
         </div>
@@ -160,14 +160,14 @@ export default function LoginContent() {
       <div className="min-h-screen bg-black flex items-center justify-center p-6">
         <div className="w-full max-w-[320px] text-center">
           <div className="w-16 h-16 rounded-full bg-surface-base border border-surface-border flex items-center justify-center mx-auto mb-6">
-            <span className="text-2xl">🚢</span>
+            <span className="typo-title">🚢</span>
           </div>
-          <h1 className="text-xl font-semibold text-white mb-2">Yacht Inactive</h1>
-          <p className="text-sm text-txt-secondary mb-6">
+          <h1 className="typo-title font-semibold text-white mb-2">Yacht Inactive</h1>
+          <p className="typo-body text-txt-secondary mb-6">
             The yacht associated with your account is currently inactive.
             {user.yachtName && <span className="block mt-1">{user.yachtName}</span>}
           </p>
-          <p className="text-xs text-txt-tertiary">
+          <p className="typo-meta text-txt-tertiary">
             Contact support for assistance.
           </p>
         </div>
@@ -181,8 +181,8 @@ export default function LoginContent() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-celeste-accent animate-spin" />
-          <p className="text-sm text-txt-secondary">Connecting to server...</p>
-          <p className="text-xs text-txt-tertiary">Retrying...</p>
+          <p className="typo-body text-txt-secondary">Connecting to server...</p>
+          <p className="typo-meta text-txt-tertiary">Retrying...</p>
         </div>
       </div>
     );
@@ -196,16 +196,16 @@ export default function LoginContent() {
       <div className="w-full max-w-[280px]">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-b from-surface-border to-surface-base flex items-center justify-center">
-            <span className="text-white text-xl font-semibold">C</span>
+          <div className="w-12 h-12 rounded-lg bg-gradient-to-b from-surface-border to-surface-base flex items-center justify-center">
+            <span className="text-white typo-title font-semibold">C</span>
           </div>
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-semibold text-white text-center mb-1 tracking-tight">
+        <h1 className="typo-title font-semibold text-white text-center mb-1 tracking-tight">
           Sign in
         </h1>
-        <p className="text-base text-txt-secondary text-center mb-8">
+        <p className="typo-label text-txt-secondary text-center mb-8">
           CelesteOS
         </p>
 
@@ -213,8 +213,8 @@ export default function LoginContent() {
         <form onSubmit={handleLogin} className="space-y-3">
           {/* Error */}
           {displayError && (
-            <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
-              <p className="text-sm text-red-500 text-center">{displayError}</p>
+            <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20">
+              <p className="typo-body text-red-500 text-center">{displayError}</p>
             </div>
           )}
 
@@ -227,7 +227,7 @@ export default function LoginContent() {
             required
             autoComplete="email"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-lg bg-surface-base border border-surface-border text-base text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
+            className="w-full h-11 px-4 rounded-md bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
           />
 
           {/* Password */}
@@ -239,14 +239,14 @@ export default function LoginContent() {
             required
             autoComplete="current-password"
             disabled={loading}
-            className="w-full h-[44px] px-4 rounded-lg bg-surface-base border border-surface-border text-base text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
+            className="w-full h-11 px-4 rounded-md bg-surface-base border border-surface-border typo-label text-white placeholder:text-txt-tertiary focus:outline-none focus:border-brand-interactive transition-colors disabled:opacity-50"
           />
 
           {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[44px] rounded-lg bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-base font-medium text-white transition-colors flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-md bg-celeste-accent hover:bg-celeste-accent-hover disabled:opacity-50 disabled:cursor-not-allowed typo-label font-medium text-white transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -260,7 +260,7 @@ export default function LoginContent() {
         </form>
 
         {/* Footer */}
-        <p className="mt-8 text-xs text-txt-tertiary text-center">
+        <p className="mt-8 typo-meta text-txt-tertiary text-center">
           Secure crew access only
         </p>
       </div>

@@ -174,11 +174,3 @@ export interface TriggerContext {
   environment?: 'at_sea' | 'port' | 'shipyard' | 'guest_trip';
 }
 
-// Trigger rule definition
-export interface TriggerRule {
-  action_name: string;
-  // Returns true if action should be visible
-  condition: (ctx: TriggerContext) => boolean;
-  // If true, action auto-executes when card mounts
-  auto_run?: boolean;
-}

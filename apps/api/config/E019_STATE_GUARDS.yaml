@@ -17,12 +17,20 @@ locked_at: "2026-01-21T12:00:00Z"
 
 work_order:
   states:
+    - planned  # Initial state from database
     - open
     - in_progress
     - completed
     - cancelled
 
   transitions:
+    planned:
+      - to: in_progress
+        action: start_work_order
+      - to: cancelled
+        action: cancel_work_order
+        requires: user_is_hod
+
     open:
       - to: in_progress
         action: start_work_order
@@ -47,7 +55,7 @@ work_order:
 
   state_guards:
     start_work_order:
-      requires_state: open
+      requires_state: [planned, open]
       blocks:
         - close_work_order
         - cancel_work_order  # Can coexist but different outcomes
@@ -65,6 +73,16 @@ work_order:
 
   # Actions allowed in each state
   state_allowed_actions:
+    planned:
+      - start_work_order
+      - cancel_work_order
+      - view_work_order_detail
+      - view_work_order_checklist
+      - add_note_to_work_order
+      - add_wo_note
+      - update_work_order
+      - assign_work_order
+
     open:
       - start_work_order
       - cancel_work_order

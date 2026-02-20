@@ -317,11 +317,11 @@ export function ReceivingDocumentUpload({
           <FileText className="h-6 w-6 text-primary" />
         )}
         <div>
-          <h3 className="text-lg font-semibold text-foreground">
+          <h3 className="typo-title font-semibold text-foreground">
             {isNewReceiving ? 'Log New Receiving' : 'Add Document'}
           </h3>
           {isNewReceiving && (
-            <p className="text-sm text-muted-foreground">
+            <p className="typo-body text-muted-foreground">
               Take a photo of your invoice, packing slip, or delivered items
             </p>
           )}
@@ -330,7 +330,7 @@ export function ReceivingDocumentUpload({
 
       {/* Document Type Selector */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Document Type</label>
+        <label className="typo-body font-medium text-foreground">Document Type</label>
         <select
           value={docType}
           onChange={(e) => setDocType(e.target.value as any)}
@@ -346,7 +346,7 @@ export function ReceivingDocumentUpload({
 
       {/* Comment (Optional) */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Comment (Optional)</label>
+        <label className="typo-body font-medium text-foreground">Comment (Optional)</label>
         <input
           type="text"
           value={comment}
@@ -418,11 +418,11 @@ export function ReceivingDocumentUpload({
       {selectedFile && !extractedData && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{selectedFile.name}</span>
+            <span className="typo-body text-muted-foreground">{selectedFile.name}</span>
             <button
               onClick={reset}
               disabled={status === 'uploading' || status === 'retrying'}
-              className="text-sm text-destructive hover:underline"
+              className="typo-body text-destructive hover:underline"
             >
               Remove
             </button>
@@ -455,21 +455,21 @@ export function ReceivingDocumentUpload({
       {error && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive">
           <XCircle className="h-5 w-5" />
-          <span className="text-sm">{error}</span>
+          <span className="typo-body">{error}</span>
         </div>
       )}
 
       {status === 'retrying' && (
         <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-yellow-700 dark:text-yellow-400">
           <RefreshCw className="h-5 w-5 animate-spin" />
-          <span className="text-sm">Service starting up, retrying in 30s...</span>
+          <span className="typo-body">Service starting up, retrying in 30s...</span>
         </div>
       )}
 
       {status === 'success' && !extractedData && (
         <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-md text-green-700 dark:text-green-400">
           <CheckCircle className="h-5 w-5" />
-          <span className="text-sm">Upload successful</span>
+          <span className="typo-body">Upload successful</span>
         </div>
       )}
 
@@ -483,7 +483,7 @@ export function ReceivingDocumentUpload({
 
           {/* Display extracted data in table format */}
           <div className="bg-background border border-border rounded-md overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full typo-body">
               <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-2 text-left font-medium">Field</th>
@@ -509,7 +509,7 @@ export function ReceivingDocumentUpload({
           {saveSuccess && (
             <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-md text-green-700 dark:text-green-400">
               <CheckCircle className="h-5 w-5" />
-              <span className="text-sm">Data saved successfully</span>
+              <span className="typo-body">Data saved successfully</span>
             </div>
           )}
 

@@ -78,14 +78,14 @@ function OpenTokenResolver() {
 
   return (
     <div className="min-h-screen bg-celeste-black flex items-center justify-center p-4">
-      <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full shadow-xl border border-celeste-text-secondary">
+      <div className="bg-celeste-bg-tertiary rounded-lg p-8 max-w-md w-full border border-surface-border">
         {status === 'loading' && (
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-celeste-accent animate-spin mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">
+            <h2 className="typo-title font-semibold text-white mb-2">
               Opening Link
             </h2>
-            <p className="text-celeste-text-muted text-sm">
+            <p className="text-celeste-text-muted typo-body">
               Resolving handover reference...
             </p>
           </div>
@@ -94,10 +94,10 @@ function OpenTokenResolver() {
         {status === 'success' && (
           <div className="text-center">
             <ExternalLink className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">
+            <h2 className="typo-title font-semibold text-white mb-2">
               Link Resolved
             </h2>
-            <p className="text-celeste-text-muted text-sm">
+            <p className="text-celeste-text-muted typo-body">
               Redirecting to item...
             </p>
           </div>
@@ -106,15 +106,15 @@ function OpenTokenResolver() {
         {status === 'error' && (
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">
+            <h2 className="typo-title font-semibold text-white mb-2">
               Unable to Open Link
             </h2>
-            <p className="text-celeste-text-muted text-sm mb-4">
+            <p className="text-celeste-text-muted typo-body mb-4">
               {errorMessage}
             </p>
             <button
               onClick={() => router.replace('/app')}
-              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-celeste-accent hover:bg-celeste-accent-hover text-white rounded-md transition-colors"
             >
               Go to App
             </button>

@@ -61,15 +61,15 @@ export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelPr
   return (
     <div className="related-panel p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Related Artifacts</h2>
-        <button className="btn-secondary text-sm" onClick={() => setShowAddModal(true)}>
+        <h2 className="typo-title font-semibold">Related Artifacts</h2>
+        <button className="btn-secondary typo-body" onClick={() => setShowAddModal(true)}>
           + Add Related
         </button>
       </div>
 
       {relatedGroups.map((group) => (
         <section key={group.domain} className="domain-group mb-6">
-          <h3 className="text-lg font-medium mb-3 capitalize text-celeste-text-secondary">
+          <h3 className="typo-title font-medium mb-3 capitalize text-celeste-text-secondary">
             {group.domain.replace('_', ' ')}
           </h3>
           <ul className="space-y-2">
@@ -80,7 +80,7 @@ export function RelatedPanel({ anchorType, anchorId, contextId }: RelatedPanelPr
                 onClick={() => pushViewer(item.artefact_type, item.artefact_id)}
               >
                 <div className="font-medium">{item.title}</div>
-                {item.subtitle && <div className="text-sm text-celeste-text-secondary">{item.subtitle}</div>}
+                {item.subtitle && <div className="typo-body text-celeste-text-secondary">{item.subtitle}</div>}
               </li>
             ))}
           </ul>

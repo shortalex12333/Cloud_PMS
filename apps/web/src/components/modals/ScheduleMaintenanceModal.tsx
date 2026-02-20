@@ -108,7 +108,7 @@ export function ScheduleMaintenanceModal({
           {/* Equipment (if pre-selected) */}
           {context.equipment_name && (
             <div className="p-3 bg-celeste-accent-subtle border border-celeste-accent-line rounded-md">
-              <p className="text-sm font-medium text-celeste-accent">
+              <p className="typo-body font-medium text-celeste-accent">
                 Equipment: {context.equipment_name}
               </p>
             </div>
@@ -126,7 +126,7 @@ export function ScheduleMaintenanceModal({
               className={errors.title ? 'input-field-error' : ''}
             />
             {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
+              <p className="typo-body text-red-600">{errors.title.message}</p>
             )}
           </div>
 
@@ -165,7 +165,7 @@ export function ScheduleMaintenanceModal({
               className={errors.scheduled_date ? 'input-field-error' : ''}
             />
             {errors.scheduled_date && (
-              <p className="text-sm text-red-600">{errors.scheduled_date.message}</p>
+              <p className="typo-body text-red-600">{errors.scheduled_date.message}</p>
             )}
           </div>
 
@@ -192,7 +192,7 @@ export function ScheduleMaintenanceModal({
               className={errors.description ? 'input-field-error' : ''}
             />
             {errors.description && (
-              <p className="text-sm text-red-600">{errors.description.message}</p>
+              <p className="typo-body text-red-600">{errors.description.message}</p>
             )}
           </div>
 

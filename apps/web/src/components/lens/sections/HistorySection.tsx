@@ -103,7 +103,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
     <div
       className={cn(
         // Row layout: 20px horizontal, 12px vertical per UI_SPEC.md
-        'px-5 py-3 min-h-[44px]',
+        'px-5 py-3 min-h-11',
         // Subtle internal divider (not full-width per Apple pattern)
         'border-b border-surface-border-subtle last:border-b-0'
       )}
@@ -139,7 +139,7 @@ function HistoryEntryRow({ entry }: HistoryEntryRowProps) {
             className={cn(
               'mt-1 text-caption font-medium text-txt-tertiary',
               'hover:text-txt-secondary transition-colors duration-fast',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-sm'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive rounded-lg'
             )}
             aria-expanded={isExpanded}
           >
@@ -247,4 +247,3 @@ export function HistorySection({
   );
 }
 
-export default HistorySection;

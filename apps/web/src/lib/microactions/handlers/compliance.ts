@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 /**
  * View hours of rest for a crew member
  */
-export async function viewHoursOfRest(
+async function viewHoursOfRest(
   context: ActionContext,
   params?: { user_id?: string; date?: string }
 ): Promise<ActionResult> {
@@ -88,7 +88,7 @@ export async function viewHoursOfRest(
 /**
  * Update hours of rest
  */
-export async function updateHoursOfRest(
+async function updateHoursOfRest(
   context: ActionContext,
   params: {
     user_id: string;
@@ -161,7 +161,7 @@ export async function updateHoursOfRest(
 /**
  * Export hours of rest report
  */
-export async function exportHoursOfRest(
+async function exportHoursOfRest(
   context: ActionContext,
   params?: {
     user_id?: string;
@@ -260,7 +260,7 @@ export async function exportHoursOfRest(
 /**
  * View overall compliance status
  */
-export async function viewComplianceStatus(
+async function viewComplianceStatus(
   context: ActionContext,
   params?: { days?: number }
 ): Promise<ActionResult> {
@@ -354,7 +354,7 @@ export async function viewComplianceStatus(
 /**
  * Tag item for survey inspection
  */
-export async function tagForSurvey(
+async function tagForSurvey(
   context: ActionContext,
   params: {
     entity_id: string;

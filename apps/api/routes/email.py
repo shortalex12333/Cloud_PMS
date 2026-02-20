@@ -47,7 +47,7 @@ _cache_lock = Lock()
 
 # Local imports
 from middleware.auth import get_authenticated_user
-from integrations.supabase import get_supabase_client  # Deprecated for email routes
+from integrations.supabase import get_supabase_client, get_tenant_client
 from supabase import create_client
 from integrations.feature_flags import check_email_feature
 from integrations.graph_client import (
@@ -109,19 +109,9 @@ def outlook_auth_error(
 
 
 # ============================================================================
-# TENANT CLIENT (Avoids circular import from pipeline_service)
+# TENANT CLIENT
 # ============================================================================
-
-def get_tenant_client(tenant_key_alias: str):
-    """Get Supabase client for tenant DB using tenant-prefixed env vars."""
-    url = os.environ.get(f'{tenant_key_alias}_SUPABASE_URL')
-    key = os.environ.get(f'{tenant_key_alias}_SUPABASE_SERVICE_KEY')
-
-    if not url or not key:
-        logger.error(f"[TenantClient] Missing credentials for {tenant_key_alias}")
-        raise ValueError(f'Missing credentials for tenant {tenant_key_alias}')
-
-    return create_client(url, key)
+# NOTE: get_tenant_client is imported from integrations.supabase at top of file
 
 
 # ============================================================================
@@ -965,7 +955,7 @@ async def get_thread(
             'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, '
             'has_attachments, participant_hashes, source, first_message_at, last_activity_at, '
             'last_inbound_at, last_outbound_at, created_at, updated_at, extracted_tokens, '
-            'suggestions_generated_at, active_message_count'
+            'suggestions_generated_at, active_message_count, is_read'
         ).eq('id', thread_id).eq('yacht_id', yacht_id).limit(1).execute()
 
         if not thread_result.data or len(thread_result.data) == 0:
@@ -1036,6 +1026,55 @@ async def get_thread(
                 "thread_id": thread_id
             }
         )
+
+
+# ============================================================================
+# POST /email/thread/:thread_id/mark-read
+# ============================================================================
+
+@router.post("/thread/{thread_id}/mark-read")
+async def mark_thread_read(
+    thread_id: str,
+    auth: dict = Depends(get_authenticated_user),
+):
+    """
+    Mark a thread as read.
+
+    Called when user views a thread to update read state.
+    Tenant-scoped by yacht_id from auth context.
+    """
+    enabled, error_msg = check_email_feature('thread')
+    if not enabled:
+        raise HTTPException(status_code=503, detail=error_msg)
+
+    yacht_id = auth['yacht_id']
+    supabase = get_tenant_client(auth['tenant_key_alias'])
+
+    # Validate thread_id is a valid UUID
+    import uuid as uuid_module
+    try:
+        uuid_module.UUID(thread_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid thread ID format")
+
+    try:
+        # Update thread read state (yacht_id filter ensures tenant isolation)
+        result = supabase.table('email_threads').update({
+            'is_read': True,
+            'updated_at': datetime.utcnow().isoformat(),
+        }).eq('id', thread_id).eq('yacht_id', yacht_id).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        logger.debug(f"[email/thread] Marked as read: thread_id={thread_id}")
+        return {"success": True, "thread_id": thread_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[email/thread/mark-read] Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to mark thread as read")
 
 
 # ============================================================================
@@ -2184,7 +2223,7 @@ async def get_inbox_threads(
         # Use last_inbound_at/last_outbound_at to filter by thread direction.
         # Filter by watcher_id for per-user isolation (or yacht_id for legacy data)
         base_query = supabase.table('email_threads').select(
-            'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at',
+            'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at, is_read',
             count='exact'
         ).eq('yacht_id', yacht_id)
 
@@ -2223,7 +2262,7 @@ async def get_inbox_threads(
             if not result or not result.data:
                 # Filter by watcher_id for per-user isolation
                 fallback_query = supabase.table('email_threads').select(
-                    'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at'
+                    'id, yacht_id, watcher_id, provider_conversation_id, latest_subject, message_count, has_attachments, source, last_activity_at, created_at, last_inbound_at, last_outbound_at, is_read'
                 ).eq('yacht_id', yacht_id)
 
                 # NOTE: watcher_id filtering removed - yacht_id filter is sufficient

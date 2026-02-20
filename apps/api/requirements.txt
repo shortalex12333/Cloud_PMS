@@ -19,7 +19,6 @@ cryptography==44.0.0
 
 # HTTP Clients
 httpx==0.28.1
-requests==2.32.3  # Used by CORS verification tests
 
 # JSON Schema Validation
 jsonschema==4.23.0

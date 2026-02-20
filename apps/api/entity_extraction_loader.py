@@ -56,7 +56,6 @@ try:
         extract_diagnostic_entities, # Helper function for diagnostic extraction
         extract_equipment_entities,  # Helper function for equipment extraction
         extract_all_entities,        # Combined extraction function
-        lookup_term,                 # Find a specific term
         get_compiled_regex           # Get compiled regex for a pattern
     )
     PATTERNS_AVAILABLE = True  # Flag: patterns loaded successfully
@@ -70,7 +69,6 @@ except ImportError:
             extract_diagnostic_entities,
             extract_equipment_entities,
             extract_all_entities,
-            lookup_term,
             get_compiled_regex
         )
         PATTERNS_AVAILABLE = True

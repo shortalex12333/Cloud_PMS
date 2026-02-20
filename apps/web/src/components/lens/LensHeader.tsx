@@ -147,9 +147,9 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
     ref
   ) => {
     const iconButtonClasses = cn(
-      // Icon-only button: 36x36, radius-sm
-      'w-9 h-9 flex items-center justify-center',
-      'rounded-sm',
+      // Icon-only button: 32x32 per spec, radius-sm
+      'w-8 h-8 flex items-center justify-center',
+      'rounded-lg',
       // Colors: secondary text at rest
       'text-txt-secondary bg-transparent',
       // Hover: surface-hover bg, primary text
@@ -228,7 +228,7 @@ export const LensHeader = React.forwardRef<HTMLElement, LensHeaderProps>(
               aria-label="Show related artifacts"
               className={cn(
                 'h-9 px-3 flex items-center gap-1.5',
-                'rounded-sm',
+                'rounded-lg',
                 'text-txt-secondary bg-transparent',
                 'hover:bg-surface-hover hover:text-txt-primary',
                 'transition-colors duration-fast ease-out',
@@ -331,4 +331,3 @@ export const LensTitleBlock = React.forwardRef<
 
 LensTitleBlock.displayName = 'LensTitleBlock';
 
-export default LensHeader;

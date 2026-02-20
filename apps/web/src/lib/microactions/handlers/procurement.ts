@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 /**
  * Create purchase request
  */
-export async function createPurchaseRequest(
+async function createPurchaseRequest(
   context: ActionContext,
   params: {
     title: string;
@@ -83,7 +83,7 @@ export async function createPurchaseRequest(
 /**
  * Add item to purchase request
  */
-export async function addItemToPurchase(
+async function addItemToPurchase(
   context: ActionContext,
   params: {
     purchase_request_id: string;
@@ -182,7 +182,7 @@ export async function addItemToPurchase(
 /**
  * Approve purchase request
  */
-export async function approvePurchase(
+async function approvePurchase(
   context: ActionContext,
   params: { purchase_request_id: string; notes?: string }
 ): Promise<ActionResult> {
@@ -273,7 +273,7 @@ export async function approvePurchase(
 /**
  * Upload invoice for purchase
  */
-export async function uploadInvoice(
+async function uploadInvoice(
   context: ActionContext,
   params: {
     purchase_request_id: string;
@@ -354,7 +354,7 @@ export async function uploadInvoice(
 /**
  * Track delivery status
  */
-export async function trackDelivery(
+async function trackDelivery(
   context: ActionContext,
   params: { purchase_request_id: string }
 ): Promise<ActionResult> {
@@ -441,7 +441,7 @@ export async function trackDelivery(
 /**
  * Log delivery received
  */
-export async function logDeliveryReceived(
+async function logDeliveryReceived(
   context: ActionContext,
   params: {
     purchase_request_id: string;
@@ -539,7 +539,7 @@ export async function logDeliveryReceived(
 /**
  * Update purchase request status
  */
-export async function updatePurchaseStatus(
+async function updatePurchaseStatus(
   context: ActionContext,
   params: {
     purchase_request_id: string;

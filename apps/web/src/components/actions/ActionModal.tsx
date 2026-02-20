@@ -181,7 +181,7 @@ export default function ActionModal({
       <div
         className={cn(
           'relative z-10 w-full max-w-md mx-4',
-          'bg-surface-elevated rounded-2xl shadow-celeste-lg',
+          'bg-surface-elevated rounded-lg shadow-modal',
           'border border-surface-border',
           'animate-in fade-in-0 zoom-in-95 duration-normal'
         )}
@@ -207,10 +207,10 @@ export default function ActionModal({
           </div>
           <button
             onClick={onClose}
-            className="btn-icon"
+            className="btn-icon h-8 w-8"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-[18px] h-[18px]" />
           </button>
         </div>
 
@@ -246,7 +246,7 @@ export default function ActionModal({
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
-                        'w-full px-3 py-2.5 rounded-lg',
+                        'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
@@ -261,7 +261,7 @@ export default function ActionModal({
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       rows={3}
                       className={cn(
-                        'w-full px-3 py-2.5 rounded-lg resize-none',
+                        'w-full px-3 py-2.5 rounded-md resize-none',
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
@@ -277,7 +277,7 @@ export default function ActionModal({
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
-                        'w-full px-3 py-2.5 rounded-lg',
+                        'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
@@ -299,7 +299,7 @@ export default function ActionModal({
                       value={formData[field] || 'manual_add'}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
-                        'w-full px-3 py-2.5 rounded-lg',
+                        'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
@@ -322,7 +322,7 @@ export default function ActionModal({
                       value={formData[field] || ''}
                       onChange={(e) => handleFieldChange(field, e.target.value)}
                       className={cn(
-                        'w-full px-3 py-2.5 rounded-lg',
+                        'w-full px-3 py-2.5 rounded-md',
                         'bg-surface-base border border-surface-border',
                         'typo-body text-celeste-text-title placeholder:text-txt-tertiary',
                         'focus:outline-none focus:ring-2 focus:ring-celeste-accent-muted focus:border-transparent',
@@ -341,7 +341,7 @@ export default function ActionModal({
 
             {/* Storage Confirmation Section */}
             {action.storage_options && (
-              <div className="p-3 rounded-lg bg-surface-base border border-surface-border space-y-3">
+              <div className="p-3 rounded-md bg-surface-base border border-surface-border space-y-3">
                 <div className="flex items-center gap-2 typo-meta font-medium text-txt-secondary">
                   <FolderOpen className="w-4 h-4" />
                   Storage Location
@@ -400,7 +400,7 @@ export default function ActionModal({
 
             {/* Error message */}
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 typo-meta text-red-400">
+              <div className="p-3 rounded-md bg-red-500/10 border border-red-500/30 typo-meta text-red-400">
                 {error}
               </div>
             )}

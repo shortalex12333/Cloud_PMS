@@ -144,7 +144,7 @@ export function EditableSectionRenderer({
                   <h2 className="text-[14px] font-semibold text-txt-primary">{section.title}</h2>
                 )}
                 {section.is_critical && (
-                  <span className="px-2 py-0.5 text-xs rounded bg-status-critical/20 text-status-critical font-medium">
+                  <span className="px-2 py-0.5 typo-meta rounded bg-status-critical/20 text-status-critical font-medium">
                     CRITICAL
                   </span>
                 )}
@@ -164,7 +164,7 @@ export function EditableSectionRenderer({
             <div className="px-4 pb-4 pt-3">
               {/* Critical checkbox (edit mode only) */}
               {isEditable && (
-                <label className="flex items-center gap-2 text-sm text-txt-secondary mb-3">
+                <label className="flex items-center gap-2 typo-body text-txt-secondary mb-3">
                   <input
                     type="checkbox"
                     checked={section.is_critical}
@@ -193,7 +193,7 @@ export function EditableSectionRenderer({
               <div className="mt-4 flex flex-col gap-2">
                 {section.items.map((item) => (
                   <div key={item.id} className="flex items-start gap-2 p-2 bg-surface-secondary rounded">
-                    <span className={`px-2 py-0.5 text-xs rounded flex-shrink-0 ${getPriorityBadgeColor(item.priority)}`}>
+                    <span className={`px-2 py-0.5 typo-meta rounded flex-shrink-0 ${getPriorityBadgeColor(item.priority)}`}>
                       {item.priority || 'fyi'}
                     </span>
                     {isEditable ? (
@@ -221,7 +221,7 @@ export function EditableSectionRenderer({
                 {isEditable && (
                   <button
                     onClick={() => addItem(section.id)}
-                    className="self-start text-sm text-brand-interactive hover:underline"
+                    className="self-start typo-body text-brand-interactive hover:underline"
                   >
                     + Add item
                   </button>

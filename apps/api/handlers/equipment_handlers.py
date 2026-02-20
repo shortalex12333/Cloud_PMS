@@ -39,7 +39,6 @@ from handlers.equipment_utils import (
     validate_status_transition,
     validate_work_order_for_oos,
     is_prepare_mode,
-    is_execute_mode,
     generate_confirmation_token,
     VALID_EQUIPMENT_STATUSES,
     OOS_STATUS,

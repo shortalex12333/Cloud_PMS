@@ -10,7 +10,10 @@ from typing import Dict, Any, Callable
 import os
 import logging
 from datetime import datetime
-from supabase import create_client, Client
+from supabase import Client
+
+# Import centralized Supabase client factory
+from integrations.supabase import get_supabase_client
 
 # SECURITY FIX P1-005: Logger for audit failures
 logger = logging.getLogger(__name__)
@@ -159,26 +162,10 @@ def _get_hours_of_rest_handlers():
     return _hours_of_rest_handlers
 
 
-def get_supabase_client() -> Client:
-    """Get TENANT Supabase client for action dispatch.
-
-    Uses DEFAULT_YACHT_CODE env var to route to correct tenant DB.
-    Actions work with pms_* tables which are in TENANT.
-    """
-    default_yacht = os.getenv("DEFAULT_YACHT_CODE", "yTEST_YACHT_001")
-
-    url = os.getenv(f"{default_yacht}_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-    key = os.getenv(f"{default_yacht}_SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
-
-    if not url or not key:
-        raise ValueError(f"{default_yacht}_SUPABASE_URL and {default_yacht}_SUPABASE_SERVICE_KEY must be set")
-
-    return create_client(url, key)
-
-
 # ============================================================================
 # ACTION HANDLERS
 # ============================================================================
+# NOTE: get_supabase_client is imported from integrations.supabase
 
 
 async def add_note(params: Dict[str, Any]) -> Dict[str, Any]:

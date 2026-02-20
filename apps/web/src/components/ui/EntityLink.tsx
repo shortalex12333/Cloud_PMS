@@ -63,7 +63,7 @@ export const EntityLink = React.forwardRef<HTMLSpanElement, EntityLinkProps>(
           // Cursor
           'cursor-pointer',
           // Focus state for accessibility
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive focus-visible:ring-offset-1 focus-visible:rounded-sm',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-interactive focus-visible:ring-offset-1 focus-visible:rounded-lg',
           // Transitions
           'transition-colors duration-fast',
           className
@@ -79,4 +79,3 @@ export const EntityLink = React.forwardRef<HTMLSpanElement, EntityLinkProps>(
 
 EntityLink.displayName = 'EntityLink';
 
-export default EntityLink;
