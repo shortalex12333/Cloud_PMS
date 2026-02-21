@@ -1,87 +1,90 @@
 #!/usr/bin/env node
 /**
- * Pilot Test - Focused Subset Validation
+ * Pilot Test: Truth Set Validation (F1 Streaming Endpoint)
  *
- * Runs a sample of queries (first 10 from each entity type = 90 queries)
- * against production search endpoint to validate test infrastructure
- * and collect initial performance metrics.
+ * Runs first 3 items from each entity type against F1 streaming search endpoint.
+ * Total: 9 entity types × 3 items × 12 queries = 324 queries
+ *
+ * SURGICAL STRIKE: Pivoted from /webhook/search (hard tiers) to /api/f1/search/stream (RRF)
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import type {
-  TruthSetItem,
-  QueryResult,
-  EntityMetrics,
-  AggregateMetrics,
-  SearchRequest,
-  SearchResponse
-} from '../types';
 
 // Configuration
-const TRUTH_SET_DIR = '/Volumes/Backup/CELESTE';
-const SEARCH_ENDPOINT = 'https://pipeline-core.int.celeste7.ai/webhook/search';
-const TEST_YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598'; // Cloud_PMS tenant
-const REQUEST_DELAY_MS = 10; // Delay between requests to avoid rate limiting
-const BATCH_SIZE = 10; // Number of parallel requests
-const OUTPUT_DIR = '/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/test/pilot';
-const QUERIES_PER_ENTITY = 10; // Sample size per entity type
+const TRUTH_SETS_DIR = '/Volumes/Backup/CELESTE';
+const SEARCH_ENDPOINT = 'https://pipeline-core.int.celeste7.ai/api/f1/search/stream';
+const YACHT_ID = '85fe1119-b04c-41ac-80f1-829d23322598';
+const DELAY_MS = 100;
+const ITEMS_PER_TYPE = 3;
 
-// Supabase configuration (from .env.local)
+// Supabase configuration
 const MASTER_SUPABASE_URL = 'https://qvzmkaamzaqxpzbewjxe.supabase.co';
 const MASTER_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2em1rYWFtemFxeHB6YmV3anhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzkwNDYsImV4cCI6MjA3OTU1NTA0Nn0.MMzzsRkvbug-u19GBUnD0qLDtMVWEbOf6KE8mAADaxw';
 
-// Test user credentials (from .env.local)
+// Test user credentials
 const TEST_USER_EMAIL = 'crew.test@alex-short.com';
 const TEST_USER_PASSWORD = 'Password2!';
 
-// Truth set files
-const TRUTH_SET_FILES = [
-  'truthset_certificate.jsonl',
-  'truthset_document.jsonl',
-  'truthset_fault.jsonl',
-  'truthset_inventory.jsonl',
-  'truthset_parts.jsonl',
-  'truthset_receiving.jsonl',
-  'truthset_shopping_list.jsonl',
-  'truthset_work_order_note.jsonl',
-  'truthset_work_order.jsonl',
+const ENTITY_TYPES = [
+  'certificate',
+  'document',
+  'fault',
+  'inventory',
+  'parts',
+  'receiving',
+  'shopping_list',
+  'work_order_note',
+  'work_order'
 ];
 
-/**
- * Load truth set from JSONL file
- */
-function loadTruthSet(filename: string): TruthSetItem[] {
-  const filepath = path.join(TRUTH_SET_DIR, filename);
-  const content = fs.readFileSync(filepath, 'utf-8');
-  const lines = content.trim().split('\n');
-  return lines.map(line => JSON.parse(line));
+// Map truth set entity_type to database object_type(s)
+// Some entity types map to multiple DB types (e.g., inventory items may be stored as 'part')
+const ENTITY_TO_DB_TYPES: Record<string, string[]> = {
+  'certificate': ['certificate'],
+  'document': ['document'],
+  'fault': ['fault'],
+  'inventory': ['inventory', 'part'],  // Inventory items may be stored as 'part'
+  'parts': ['part', 'inventory'],       // Parts may be stored as either
+  'receiving': ['receiving'],
+  'shopping_list': ['shopping_item'],   // DB uses 'shopping_item' not 'shopping_list'
+  'work_order_note': ['work_order_note'],
+  'work_order': ['work_order']
+};
+
+interface TruthSetItem {
+  title: string;
+  canonical: {
+    target_type: string;
+    target_id: string;
+    primary_table: string;
+  };
+  queries: Array<{
+    query: string;
+    intent_type: string;
+    implied_filters: string[];
+    expected_target_id: string;
+  }>;
 }
 
-/**
- * Extract entity type from filename
- * e.g., "truthset_certificate.jsonl" -> "certificate"
- */
-function extractEntityType(filename: string): string {
-  const match = filename.match(/truthset_(.+)\.jsonl/);
-  return match ? match[1] : 'unknown';
+interface TestResult {
+  entity_type: string;
+  item_index: number;
+  query_index: number;
+  query: string;
+  expected_id: string;
+  actual_ids: string[];
+  hit: boolean;
+  latency_ms: number;
+  error?: string;
 }
 
-/**
- * Sleep for specified milliseconds
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Global state
+// Global auth state
 let authToken: string | null = null;
 const SESSION_ID = `pilot-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-/**
- * Authenticate with Supabase and get JWT token
- */
+// Authenticate with Supabase
 async function authenticate(): Promise<string> {
   console.log('Authenticating with Supabase...');
 
@@ -96,304 +99,281 @@ async function authenticate(): Promise<string> {
     throw new Error(`Authentication failed: ${error?.message || 'No session'}`);
   }
 
-  console.log(`✓ Authenticated as ${TEST_USER_EMAIL}`);
+  console.log(`✓ Authenticated as ${TEST_USER_EMAIL}\n`);
   return data.session.access_token;
 }
 
-/**
- * Call production search endpoint with correct payload structure
- */
-async function searchQuery(query: string): Promise<{ ids: string[], latency_ms: number, error?: string }> {
+// Sleep utility
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+interface SearchResultItem {
+  id: string;
+  object_type: string;
+}
+
+// Parse SSE stream and extract result IDs with object_type
+async function parseSSEStream(response: Response): Promise<SearchResultItem[]> {
+  const results: SearchResultItem[] = [];
+
+  if (!response.body) {
+    return results;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Parse SSE event format
+        if (trimmed.startsWith('data:')) {
+          const jsonStr = trimmed.substring(5).trim();
+          if (jsonStr && jsonStr !== '[DONE]') {
+            try {
+              const event = JSON.parse(jsonStr);
+              // F1 streaming sends result_batch events with items array
+              if (event.items && Array.isArray(event.items)) {
+                for (const item of event.items) {
+                  if (item.object_id && item.object_type) {
+                    results.push({ id: item.object_id, object_type: item.object_type });
+                  }
+                }
+              }
+              // Also handle single result events
+              if (event.object_id && event.object_type) {
+                results.push({ id: event.object_id, object_type: event.object_type });
+              }
+            } catch {
+              // Skip malformed JSON
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return results;
+}
+
+// Call F1 search streaming endpoint
+async function searchQuery(query: string): Promise<{ results: SearchResultItem[]; latency_ms: number }> {
   const startTime = Date.now();
 
-  // Build payload matching production API requirements
-  const request: SearchRequest = {
-    query,
-    query_type: "free-text",
-    limit: 10,
-    auth: {
-      yacht_id: TEST_YACHT_ID,
-      role: "crew", // Default role for testing
-    },
-    context: {
-      client_ts: Math.floor(Date.now() / 1000),
-      stream_id: `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      session_id: SESSION_ID,
-      source: 'pilot-test',
-      client_version: '1.0.0',
-      locale: 'en-US',
-      timezone: 'UTC',
-      platform: 'node',
-    },
-    stream: false,
-  };
-
   if (!authToken) {
-    throw new Error('Not authenticated - call authenticate() first');
+    throw new Error('Not authenticated');
   }
 
   try {
-    const response = await fetch(SEARCH_ENDPOINT, {
-      method: 'POST',
+    // F1 endpoint uses GET with query params
+    const params = new URLSearchParams({
+      q: query,
+    });
+
+    const url = `${SEARCH_ENDPOINT}?${params.toString()}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken}`,
+        'Accept': 'text/event-stream',
       },
-      body: JSON.stringify(request),
     });
 
     const latency_ms = Date.now() - startTime;
 
     if (!response.ok) {
       const errorText = await response.text();
-      return { ids: [], latency_ms, error: `${response.status} ${response.statusText}: ${errorText}` };
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json() as SearchResponse;
+    // Parse SSE stream to extract results with object_type
+    const results = await parseSSEStream(response);
 
-    if (data.error) {
-      return { ids: [], latency_ms, error: data.error };
-    }
-
-    const ids = (data.results || []).map(r => r.id);
-    return { ids, latency_ms };
-
+    return { results, latency_ms };
   } catch (error) {
     const latency_ms = Date.now() - startTime;
-    return { ids: [], latency_ms, error: error instanceof Error ? error.message : String(error) };
+    throw { error: error instanceof Error ? error.message : String(error), latency_ms };
   }
 }
 
-/**
- * Calculate rank of expected ID in results (1-based)
- * Returns null if not found
- */
-function calculateRank(expectedId: string, actualIds: string[]): number | null {
-  const index = actualIds.indexOf(expectedId);
-  return index === -1 ? null : index + 1;
+// Load first N items from a truth set file
+function loadTruthSetItems(entityType: string, limit: number): TruthSetItem[] {
+  const filePath = path.join(TRUTH_SETS_DIR, `truthset_${entityType}.jsonl`);
+
+  if (!fs.existsSync(filePath)) {
+    console.warn(`Warning: Truth set file not found: ${filePath}`);
+    return [];
+  }
+
+  const lines = fs.readFileSync(filePath, 'utf-8').trim().split('\n');
+  const items: TruthSetItem[] = [];
+
+  for (let i = 0; i < Math.min(limit, lines.length); i++) {
+    try {
+      items.push(JSON.parse(lines[i]));
+    } catch (error) {
+      console.warn(`Warning: Failed to parse line ${i + 1} in ${entityType}: ${error}`);
+    }
+  }
+
+  return items;
 }
 
-/**
- * Calculate p95 percentile
- */
-function calculateP95(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const index = Math.ceil(sorted.length * 0.95) - 1;
-  return sorted[Math.max(0, index)];
+// Calculate metrics
+function calculateMetrics(results: TestResult[]): void {
+  const hits = results.filter(r => r.hit).length;
+  const total = results.length;
+  const recall = (hits / total * 100).toFixed(2);
+
+  const avgLatency = results.reduce((sum, r) => sum + r.latency_ms, 0) / total;
+  const errors = results.filter(r => r.error).length;
+
+  console.log('\n' + '='.repeat(60));
+  console.log('PILOT TEST RESULTS (F1 Streaming Endpoint)');
+  console.log('='.repeat(60));
+  console.log(`Recall@3: ${recall}% (${hits}/${total} hits)`);
+  console.log(`Average Latency: ${avgLatency.toFixed(0)}ms`);
+  console.log(`Errors: ${errors}`);
+  console.log('='.repeat(60));
+
+  // Breakdown by entity type
+  console.log('\nBreakdown by Entity Type:');
+  for (const entityType of ENTITY_TYPES) {
+    const typeResults = results.filter(r => r.entity_type === entityType);
+    const typeHits = typeResults.filter(r => r.hit).length;
+    const typeTotal = typeResults.length;
+    const typeRecall = typeTotal > 0 ? (typeHits / typeTotal * 100).toFixed(1) : 'N/A';
+    console.log(`  ${entityType.padEnd(20)} ${typeRecall}% (${typeHits}/${typeTotal})`);
+  }
 }
 
-/**
- * Main execution
- */
-async function main() {
-  console.log('='.repeat(80));
-  console.log('Pilot Test - Focused Subset Validation');
-  console.log(`Sample: First ${QUERIES_PER_ENTITY} queries from each entity type`);
-  console.log('='.repeat(80));
-  console.log();
+// Main test execution
+async function runPilotTest(): Promise<void> {
+  console.log('Starting Pilot Test (F1 Streaming Endpoint)...');
+  console.log(`Endpoint: ${SEARCH_ENDPOINT}`);
+  console.log(`Yacht ID: ${YACHT_ID}`);
+  console.log(`Items per type: ${ITEMS_PER_TYPE}`);
+  console.log(`Delay between requests: ${DELAY_MS}ms\n`);
 
-  // Authenticate
+  // Authenticate first
   try {
     authToken = await authenticate();
   } catch (error) {
     console.error('FATAL: Authentication failed:', error);
     process.exit(1);
   }
-  console.log();
 
-  const allResults: QueryResult[] = [];
+  const results: TestResult[] = [];
   let totalQueries = 0;
-  let errorCount = 0;
-  let timeoutCount = 0;
-  const errors: Array<{ query: string; error: string; entity_type: string }> = [];
+  let completedQueries = 0;
 
-  // Load and process each truth set (sample only)
-  for (const filename of TRUTH_SET_FILES) {
-    const entityType = extractEntityType(filename);
-    console.log(`\nLoading ${filename} (${entityType})...`);
+  // Calculate total queries
+  for (const entityType of ENTITY_TYPES) {
+    const items = loadTruthSetItems(entityType, ITEMS_PER_TYPE);
+    totalQueries += items.reduce((sum, item) => sum + item.queries.length, 0);
+  }
 
-    let truthSet: TruthSetItem[];
-    try {
-      truthSet = loadTruthSet(filename);
-    } catch (error) {
-      console.error(`Failed to load ${filename}: ${error instanceof Error ? error.message : String(error)}`);
-      continue;
-    }
+  console.log(`Total queries to run: ${totalQueries}\n`);
 
-    // Collect all queries for this entity type
-    const queries: Array<{ query: string; expected_id: string }> = [];
-    for (const item of truthSet) {
-      for (const queryDef of item.queries) {
-        queries.push({
-          query: queryDef.query,
-          expected_id: queryDef.expected_target_id,
-        });
-      }
-    }
+  // Execute tests
+  for (const entityType of ENTITY_TYPES) {
+    console.log(`\nProcessing entity type: ${entityType}`);
+    const items = loadTruthSetItems(entityType, ITEMS_PER_TYPE);
+    console.log(`  Loaded ${items.length} items`);
 
-    // Sample first N queries
-    const sampledQueries = queries.slice(0, QUERIES_PER_ENTITY);
-    console.log(`Sampled ${sampledQueries.length} queries (from ${queries.length} total)`);
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+      const item = items[itemIndex];
+      console.log(`  Item ${itemIndex + 1}/${items.length}: ${item.title}`);
 
-    // Process queries in batches
-    for (let i = 0; i < sampledQueries.length; i += BATCH_SIZE) {
-      const batch = sampledQueries.slice(i, Math.min(i + BATCH_SIZE, sampledQueries.length));
+      for (let queryIndex = 0; queryIndex < item.queries.length; queryIndex++) {
+        const queryObj = item.queries[queryIndex];
+        completedQueries++;
 
-      // Execute batch in parallel
-      const batchResults = await Promise.all(
-        batch.map(async (queryDef) => {
-          const { ids: actualIds, latency_ms, error } = await searchQuery(queryDef.query);
-          const rank = calculateRank(queryDef.expected_id, actualIds);
-          const hit = rank !== null && rank <= 3;
+        process.stdout.write(`    Query ${queryIndex + 1}/12: "${queryObj.query.substring(0, 40)}..." `);
 
-          // Track errors
-          if (error) {
-            errorCount++;
-            errors.push({ query: queryDef.query, error, entity_type: entityType });
-            if (error.includes('timeout') || latency_ms > 30000) {
-              timeoutCount++;
+        try {
+          const { results: searchResults, latency_ms } = await searchQuery(queryObj.query);
+
+          // Group results by object_type for category-aware Recall@3
+          const resultsByCategory: Record<string, string[]> = {};
+          for (const result of searchResults) {
+            if (!resultsByCategory[result.object_type]) {
+              resultsByCategory[result.object_type] = [];
             }
+            resultsByCategory[result.object_type].push(result.id);
           }
 
-          return {
-            query: queryDef.query,
-            expected_id: queryDef.expected_id,
-            actual_ids: actualIds,
-            rank,
-            latency_ms,
-            hit,
+          // Check if expected_id is in top 3 of its mapped DB categories
+          // Use ENTITY_TO_DB_TYPES mapping since truth set entity types may differ from DB object_types
+          const dbTypes = ENTITY_TO_DB_TYPES[entityType] || [entityType];
+          let categoryResults: string[] = [];
+          for (const dbType of dbTypes) {
+            categoryResults = categoryResults.concat(resultsByCategory[dbType] || []);
+          }
+          const hit = categoryResults.slice(0, 3).includes(queryObj.expected_target_id); // Category-aware Recall@3
+
+          results.push({
             entity_type: entityType,
-          };
-        })
-      );
+            item_index: itemIndex,
+            query_index: queryIndex,
+            query: queryObj.query,
+            expected_id: queryObj.expected_target_id,
+            actual_ids: categoryResults.slice(0, 3),
+            hit,
+            latency_ms,
+          });
 
-      // Add results and log progress
-      for (const result of batchResults) {
-        totalQueries++;
-        allResults.push(result);
+          console.log(`${hit ? '✓' : '✗'} ${latency_ms}ms [${completedQueries}/${totalQueries}]`);
+        } catch (err: any) {
+          results.push({
+            entity_type: entityType,
+            item_index: itemIndex,
+            query_index: queryIndex,
+            query: queryObj.query,
+            expected_id: queryObj.expected_target_id,
+            actual_ids: [],
+            hit: false,
+            latency_ms: err.latency_ms || 0,
+            error: err.error || String(err),
+          });
 
-        const status = result.hit ? '✓ hit' : '✗ miss';
-        const queryDisplay = result.query.substring(0, 45).padEnd(45);
-        console.log(`  ${totalQueries.toString().padStart(3)}. ${queryDisplay} -> ${status} (rank: ${result.rank || 'N/A'}, ${result.latency_ms}ms)`);
+          console.log(`✗ ERROR: ${err.error || err} [${completedQueries}/${totalQueries}]`);
+        }
+
+        // Delay between requests
+        if (completedQueries < totalQueries) {
+          await sleep(DELAY_MS);
+        }
       }
-
-      // Rate limiting between batches
-      await sleep(REQUEST_DELAY_MS);
     }
   }
 
-  console.log();
-  console.log('='.repeat(80));
-  console.log('Computing metrics...');
-  console.log('='.repeat(80));
-
-  // Calculate aggregate metrics
-  const hits = allResults.filter(r => r.hit).length;
-  const recall_at_3 = allResults.length > 0 ? hits / allResults.length : 0;
-
-  const mrr = allResults.length > 0 ? allResults.reduce((sum, r) => {
-    return sum + (r.rank !== null ? 1 / r.rank : 0);
-  }, 0) / allResults.length : 0;
-
-  const latencies = allResults.map(r => r.latency_ms);
-  const p95_latency_ms = calculateP95(latencies);
-  const avg_latency_ms = latencies.length > 0 ? latencies.reduce((sum, l) => sum + l, 0) / latencies.length : 0;
-
-  // Calculate per-entity metrics
-  const byEntity: EntityMetrics[] = [];
-  const entityTypes = [...new Set(allResults.map(r => r.entity_type))];
-
-  for (const entityType of entityTypes) {
-    const entityResults = allResults.filter(r => r.entity_type === entityType);
-    const entityHits = entityResults.filter(r => r.hit).length;
-    const entityRecall = entityResults.length > 0 ? entityHits / entityResults.length : 0;
-    const entityMrr = entityResults.length > 0 ? entityResults.reduce((sum, r) => {
-      return sum + (r.rank !== null ? 1 / r.rank : 0);
-    }, 0) / entityResults.length : 0;
-    const entityLatencies = entityResults.map(r => r.latency_ms);
-    const avgLatency = entityLatencies.length > 0 ? entityLatencies.reduce((sum, l) => sum + l, 0) / entityLatencies.length : 0;
-
-    byEntity.push({
-      entity_type: entityType,
-      total_queries: entityResults.length,
-      recall_at_3: entityRecall,
-      mrr: entityMrr,
-      avg_latency_ms: avgLatency,
-    });
-  }
-
-  const aggregateMetrics: AggregateMetrics = {
-    timestamp: new Date().toISOString(),
-    total_queries: allResults.length,
-    recall_at_3,
-    mrr,
-    p95_latency_ms,
-    by_entity: byEntity,
-  };
+  // Calculate and display metrics
+  calculateMetrics(results);
 
   // Save results
-  const resultsPath = path.join(OUTPUT_DIR, 'results.json');
-  const resultsData = {
-    metadata: {
-      test_type: 'pilot',
-      sample_size: QUERIES_PER_ENTITY,
-      timestamp: new Date().toISOString(),
-      endpoint: SEARCH_ENDPOINT,
-      yacht_id: TEST_YACHT_ID,
-    },
-    metrics: aggregateMetrics,
-    error_summary: {
-      total_errors: errorCount,
-      timeout_count: timeoutCount,
-      error_rate: allResults.length > 0 ? errorCount / allResults.length : 0,
-    },
-    errors: errors,
-    results: allResults,
-  };
-
-  fs.writeFileSync(resultsPath, JSON.stringify(resultsData, null, 2));
-
-  console.log();
-  console.log('PILOT TEST SUMMARY');
-  console.log('='.repeat(80));
-  console.log(`Total Queries:   ${aggregateMetrics.total_queries.toLocaleString()}`);
-  console.log(`Success Rate:    ${((1 - (errorCount / allResults.length)) * 100).toFixed(2)}%`);
-  console.log(`Error Count:     ${errorCount} (${timeoutCount} timeouts)`);
-  console.log(`Recall@3:        ${(aggregateMetrics.recall_at_3 * 100).toFixed(2)}%`);
-  console.log(`MRR:             ${aggregateMetrics.mrr.toFixed(4)}`);
-  console.log(`Avg Latency:     ${avg_latency_ms.toFixed(0)}ms`);
-  console.log(`p95 Latency:     ${aggregateMetrics.p95_latency_ms.toFixed(0)}ms`);
-  console.log();
-  console.log('PER-ENTITY BREAKDOWN');
-  console.log('-'.repeat(80));
-  console.log('Entity Type'.padEnd(25) + 'Queries'.padEnd(12) + 'Recall@3'.padEnd(12) + 'MRR'.padEnd(12) + 'Avg Latency');
-  console.log('-'.repeat(80));
-
-  for (const entity of byEntity) {
-    console.log(
-      entity.entity_type.padEnd(25) +
-      entity.total_queries.toString().padEnd(12) +
-      `${(entity.recall_at_3 * 100).toFixed(1)}%`.padEnd(12) +
-      entity.mrr.toFixed(4).padEnd(12) +
-      `${entity.avg_latency_ms.toFixed(0)}ms`
-    );
-  }
-
-  console.log('='.repeat(80));
-  console.log();
-  console.log(`Results saved to: ${resultsPath}`);
-  console.log();
-
-  // Exit with error code if high error rate
-  if (errorCount / allResults.length > 0.1) {
-    console.error('WARNING: Error rate exceeds 10% - check logs');
-    process.exit(1);
-  }
+  const outputPath = path.join('/Volumes/Backup/CELESTE/BACK_BUTTON_CLOUD_PMS/test/pilot', 'pilot_results.json');
+  fs.writeFileSync(outputPath, JSON.stringify(results, null, 2));
+  console.log(`\nResults saved to: ${outputPath}`);
 }
 
-// Execute
-main().catch(error => {
+// Run the test
+runPilotTest().catch(error => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
