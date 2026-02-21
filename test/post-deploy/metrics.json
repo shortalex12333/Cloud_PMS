@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-02-20T03:41:39.285Z",
+  "total_queries": 2400,
+  "recall_at_3": 0.03625,
+  "mrr": 0.02743931878306877,
+  "p95_latency_ms": 16585,
+  "by_entity": [
+    {
+      "entity_type": "certificate",
+      "total_queries": 60,
+      "recall_at_3": 0,
+      "mrr": 0,
+      "avg_latency_ms": 6633.866666666667
+    },
+    {
+      "entity_type": "document",
+      "total_queries": 240,
+      "recall_at_3": 0,
+      "mrr": 0,
+      "avg_latency_ms": 5733.4875
+    },
+    {
+      "entity_type": "fault",
+      "total_queries": 300,
+      "recall_at_3": 0,
+      "mrr": 0,
+      "avg_latency_ms": 10549.03
+    },
+    {
+      "entity_type": "inventory",
+      "total_queries": 300,
+      "recall_at_3": 0,
+      "mrr": 0,
+      "avg_latency_ms": 7074.07
+    },
+    {
+      "entity_type": "parts",
+      "total_queries": 300,
+      "recall_at_3": 0.24666666666666667,
+      "mrr": 0.17156216931216933,
+      "avg_latency_ms": 8666.336666666666
+    },
+    {
+      "entity_type": "receiving",
+      "total_queries": 300,
+      "recall_at_3": 0.04,
+      "mrr": 0.04,
+      "avg_latency_ms": 4827.823333333334
+    },
+    {
+      "entity_type": "shopping_list",
+      "total_queries": 300,
+      "recall_at_3": 0,
+      "mrr": 0.0009523809523809524,
+      "avg_latency_ms": 7853.24
+    },
+    {
+      "entity_type": "work_order_note",
+      "total_queries": 300,
+      "recall_at_3": 0,
+      "mrr": 0,
+      "avg_latency_ms": 5704.183333333333
+    },
+    {
+      "entity_type": "work_order",
+      "total_queries": 300,
+      "recall_at_3": 0.0033333333333333335,
+      "mrr": 0.007000000000000002,
+      "avg_latency_ms": 4880.803333333333
+    }
+  ]
+}

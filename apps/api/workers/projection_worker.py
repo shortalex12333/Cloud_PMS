@@ -2,8 +2,9 @@
 """
 F1 Search - Projection Worker (Production-Grade, Render-Ready)
 
-Consumes search_projection_queue and maintains search_index + search_document_chunks.
-Single writer pattern for consistent indexing with Hard Tiers support.
+Processes search_index rows with pending/processing embedding_status and maintains
+search_index + search_document_chunks. Single writer pattern for consistent indexing
+with Hard Tiers support.
 
 Key Features:
 - Atomic chunk replacement for documents (DELETE → INSERT in one transaction)
@@ -296,7 +297,13 @@ def truncate_text(text: str, max_len: int) -> str:
 # =============================================================================
 
 def build_search_text(row: Dict, mapping: Dict) -> str:
-    """Build search_text from configured columns."""
+    """
+    Build search_text from configured columns.
+
+    Includes Dense Payload Fallback: if the initial text is too short (<100 chars),
+    parse the row's payload/source data and extract semantic fields to enrich it.
+    This handles inventory/purchase_order rows that only have UUIDs in search_text_cols.
+    """
     cols = mapping.get('search_text_cols', [])
     parts = []
 
@@ -312,8 +319,32 @@ def build_search_text(row: Dict, mapping: Dict) -> str:
             else:
                 parts.append(str(val))
 
-    text = ' '.join(parts)
-    return truncate_text(text.strip(), CONFIG.max_search_text)
+    text = ' '.join(parts).strip()
+
+    # Dense Payload Fallback: enrich sparse search_text from semantic fields
+    if len(text) < 100:
+        semantic_fields = [
+            'name', 'title', 'description', 'category', 'location',
+            'sku', 'manufacturer', 'part_number', 'model', 'brand',
+            'notes', 'content'
+        ]
+        seen = set(text.lower().split())
+        fallback_parts = []
+
+        for field in semantic_fields:
+            val = row.get(field)
+            if val and isinstance(val, str) and val.strip():
+                # Deduplicate: only add tokens not already present
+                tokens = val.strip().split()
+                new_tokens = [t for t in tokens if t.lower() not in seen]
+                if new_tokens:
+                    fallback_parts.append(' '.join(new_tokens))
+                    seen.update(t.lower() for t in new_tokens)
+
+        if fallback_parts:
+            text = f"{text} {' '.join(fallback_parts)}".strip()
+
+    return truncate_text(text, CONFIG.max_search_text)
 
 def build_filters(row: Dict, mapping: Dict) -> Dict[str, Any]:
     """Build filters JSONB from filter_map."""
@@ -560,25 +591,77 @@ def emit_cache_invalidation(cur, org_id: str, yacht_id: str,
         logger.error(f"Error emitting cache invalidation: {e}")
 
 # =============================================================================
-# QUEUE OPERATIONS
+# QUEUE OPERATIONS (using search_index.embedding_status)
 # =============================================================================
 
-def claim_batch(cur) -> List[Dict]:
-    """Claim a batch of queue items using spq_claim_batch RPC."""
+def claim_batch(cur, object_types: Optional[List[str]] = None) -> List[Dict]:
+    """
+    Claim a batch of items from search_index with pending/processing embedding_status.
+
+    Args:
+        cur: Database cursor
+        object_types: Optional list of object_types to filter (worker scope).
+                      If None, processes all object types.
+
+    Returns:
+        List of search_index rows to process, with embedding_status set to 'processing'.
+    """
     start = time.perf_counter()
-    cur.execute("SELECT * FROM spq_claim_batch(%s)", (CONFIG.batch_size,))
+
+    # Build WHERE clause for object_type filtering
+    type_filter = ""
+    params = [CONFIG.batch_size]
+    if object_types:
+        placeholders = ','.join(['%s'] * len(object_types))
+        type_filter = f"AND object_type IN ({placeholders})"
+        params = list(object_types) + [CONFIG.batch_size]
+
+    # Claim rows by updating embedding_status to 'processing' and returning them
+    # Use FOR UPDATE SKIP LOCKED for concurrent worker safety
+    query = f"""
+        WITH claimed AS (
+            SELECT id, object_type, object_id, org_id, yacht_id,
+                   payload->>'source_table' as source_table,
+                   COALESCE(source_version, 0) as source_version
+            FROM search_index
+            WHERE embedding_status IN ('pending', 'processing')
+            {type_filter}
+            ORDER BY updated_at ASC
+            LIMIT %s
+            FOR UPDATE SKIP LOCKED
+        )
+        UPDATE search_index si
+        SET embedding_status = 'processing',
+            updated_at = now()
+        FROM claimed c
+        WHERE si.id = c.id
+        RETURNING c.id, c.object_type, c.object_id, c.org_id, c.yacht_id,
+                  c.source_table, c.source_version
+    """
+
+    cur.execute(query, params)
     items = cur.fetchall()
     METRICS.last_claim_ms = (time.perf_counter() - start) * 1000
     METRICS.last_batch_size = len(items)
     return items
 
-def mark_done(cur, queue_id: int) -> None:
-    """Mark queue item as done."""
-    cur.execute("SELECT spq_mark_done(%s)", (queue_id,))
+def mark_done(cur, object_type: str, object_id: str) -> None:
+    """Mark search_index item as indexed (embedding complete)."""
+    cur.execute("""
+        UPDATE search_index
+        SET embedding_status = 'indexed', updated_at = now()
+        WHERE object_type = %s AND object_id = %s
+    """, (object_type, object_id))
 
-def mark_failed(cur, queue_id: int, error: str) -> None:
-    """Mark queue item as failed."""
-    cur.execute("SELECT spq_mark_failed(%s, %s)", (queue_id, error[:500]))
+def mark_failed(cur, object_type: str, object_id: str, error: str) -> None:
+    """Mark search_index item as failed."""
+    cur.execute("""
+        UPDATE search_index
+        SET embedding_status = 'failed',
+            payload = jsonb_set(COALESCE(payload, '{}'::jsonb), '{embedding_error}', %s::jsonb),
+            updated_at = now()
+        WHERE object_type = %s AND object_id = %s
+    """, (json.dumps(error[:500]), object_type, object_id))
 
 # =============================================================================
 # ITEM PROCESSING
@@ -586,34 +669,42 @@ def mark_failed(cur, queue_id: int, error: str) -> None:
 
 def process_item(cur, item: Dict) -> Tuple[bool, str]:
     """
-    Process a single queue item.
+    Process a single search_index item for embedding generation.
+    Items are claimed from search_index WHERE embedding_status IN ('pending', 'processing').
     Returns (success, error_message).
     """
     start = time.perf_counter()
-    source_table = item['source_table']
-    op = item['op']
+    source_table = item.get('source_table')
+    object_type = item['object_type']
+    object_id = str(item['object_id'])
+    yacht_id = str(item['yacht_id'])
+    org_id = str(item.get('org_id') or yacht_id)
+
+    # If no source_table in payload, use object_type to find mapping
+    if not source_table:
+        # Find mapping by object_type
+        for table, mapping in MAPPINGS.items():
+            if mapping.get('object_type') == object_type:
+                source_table = table
+                break
+
+    if not source_table:
+        # No source table needed for embedding - item already exists in search_index
+        # Just mark as processed (embedding would be handled by embedding worker)
+        METRICS.last_process_ms = (time.perf_counter() - start) * 1000
+        return True, ""
 
     # Get mapping for this source table
     mapping = MAPPINGS.get(source_table)
     if not mapping:
-        return False, f"No mapping for table: {source_table}"
-
-    object_type = mapping['object_type']
-    object_id = str(item['object_id'])
-    org_id = None
-    yacht_id = str(item['yacht_id'])
-
-    # Handle DELETE
-    if op == 'D':
-        success = delete_search_index(cur, object_type, object_id)
-        if success:
-            emit_cache_invalidation(cur, yacht_id, yacht_id, object_type, object_id, "delete")
+        # No mapping but item exists - proceed with embedding
         METRICS.last_process_ms = (time.perf_counter() - start) * 1000
-        return success, "" if success else "Delete failed"
+        return True, ""
 
-    # Fetch source row for INSERT/UPDATE
+    # Fetch source row to refresh search_index data if needed
     row = fetch_source_row(cur, source_table, object_id)
     if not row:
+        # Source row may have been deleted - mark as failed
         return False, f"Source row not found: {source_table}/{object_id}"
 
     org_id = str(row.get('org_id') or yacht_id)
@@ -625,7 +716,7 @@ def process_item(cur, item: Dict) -> Tuple[bool, str]:
         chunk_keywords = aggregate_chunk_keywords(cur, object_id, CONFIG.chunk_keywords_top_k)
         METRICS.last_chunk_ms = (time.perf_counter() - chunk_start) * 1000
 
-    # Upsert search_index
+    # Upsert search_index (refresh data before embedding)
     upsert_start = time.perf_counter()
     success, was_updated = upsert_search_index(cur, item, row, mapping, chunk_keywords)
     METRICS.last_upsert_ms = (time.perf_counter() - upsert_start) * 1000
@@ -688,18 +779,19 @@ def run_worker():
             logger.info(f"Processing {len(items)} items...")
 
             for item in items:
-                queue_id = item['id']
-                source = f"{item['source_table']}/{str(item['object_id'])[:8]}..."
+                object_type = item['object_type']
+                object_id = str(item['object_id'])
+                source = f"{item.get('source_table', object_type)}/{object_id[:8]}..."
 
                 try:
                     success, error = process_item(cur, item)
 
                     if success:
-                        mark_done(cur, queue_id)
+                        mark_done(cur, object_type, object_id)
                         METRICS.total_processed += 1
                         logger.debug(f"  OK: {source}")
                     else:
-                        mark_failed(cur, queue_id, error)
+                        mark_failed(cur, object_type, object_id, error)
                         METRICS.total_failed += 1
                         METRICS.record_error(f"{source}: {error}")
                         logger.warning(f"  FAIL: {source}: {error}")
@@ -708,7 +800,7 @@ def run_worker():
 
                 except Exception as e:
                     conn.rollback()
-                    mark_failed(cur, queue_id, str(e))
+                    mark_failed(cur, object_type, object_id, str(e))
                     conn.commit()
                     METRICS.total_failed += 1
                     METRICS.record_error(f"{source}: {e}")
@@ -746,10 +838,13 @@ def process_once():
     load_mappings(cur)
     conn.commit()
 
-    # Check queue depth
-    cur.execute("SELECT COUNT(*) as cnt FROM search_projection_queue WHERE status = 'queued'")
+    # Check queue depth (items needing embedding processing)
+    cur.execute("""
+        SELECT COUNT(*) as cnt FROM search_index
+        WHERE embedding_status IN ('pending', 'processing')
+    """)
     queued = cur.fetchone()['cnt']
-    logger.info(f"Queue depth: {queued} items")
+    logger.info(f"Queue depth: {queued} items pending embedding")
 
     if queued == 0:
         logger.info("Nothing to process.")
@@ -764,21 +859,22 @@ def process_once():
     logger.info(f"Processing {len(items)} items...")
 
     for item in items:
-        queue_id = item['id']
-        source = f"{item['source_table']}/{str(item['object_id'])[:8]}..."
+        object_type = item['object_type']
+        object_id = str(item['object_id'])
+        source = f"{item.get('source_table', object_type)}/{object_id[:8]}..."
 
         try:
             success, error = process_item(cur, item)
             if success:
-                mark_done(cur, queue_id)
+                mark_done(cur, object_type, object_id)
                 logger.info(f"  OK: {source}")
             else:
-                mark_failed(cur, queue_id, error)
+                mark_failed(cur, object_type, object_id, error)
                 logger.warning(f"  FAIL: {source}: {error}")
             conn.commit()
         except Exception as e:
             conn.rollback()
-            mark_failed(cur, queue_id, str(e))
+            mark_failed(cur, object_type, object_id, str(e))
             conn.commit()
             logger.error(f"  ERROR: {source}: {e}")
 

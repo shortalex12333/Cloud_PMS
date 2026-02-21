@@ -55,8 +55,25 @@ from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
 # Cortex rewrites
 from cortex.rewrites import generate_rewrites, Rewrite, RewriteResult
 
+# Domain detection for object_type filtering
+from services.domain_microactions import detect_domain_from_query
+
 # Extraction pipeline
 from extraction.regex_extractor import RegexExtractor
+
+# ExtractionOrchestrator for entity extraction and object_type mapping
+try:
+    from extraction.orchestrator import ExtractionOrchestrator
+    ORCHESTRATOR_AVAILABLE = True
+except ImportError:
+    # Fallback for workers with different import paths
+    try:
+        from api.extraction.orchestrator import ExtractionOrchestrator
+        ORCHESTRATOR_AVAILABLE = True
+    except ImportError:
+        ORCHESTRATOR_AVAILABLE = False
+        ExtractionOrchestrator = None
+        logger.warning("[F1Search] ExtractionOrchestrator not available - entity extraction disabled")
 
 # Reranker (lazy-loaded, feature-flagged)
 from rankers import rerank as rerank_items
@@ -68,7 +85,177 @@ logger = logging.getLogger(__name__)
 tracer = get_tracer("f1.search")
 
 # Feature flags
-RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "false").lower() == "true"
+RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").lower() == "true"
+
+# ============================================================================
+# Domain → Object Type Mapping
+# ============================================================================
+
+# Maps detected domain from query to database object_types for filtering
+DOMAIN_TO_OBJECT_TYPES: Dict[str, List[str]] = {
+    'document': ['document'],
+    'certificate': ['certificate'],
+    'fault': ['fault'],
+    'work_order': ['work_order'],
+    'work_order_note': ['work_order_note'],
+    'equipment': ['equipment'],
+    'inventory': ['inventory', 'part'],
+    'parts': ['part', 'inventory'],
+    'shopping_list': ['shopping_item'],
+    'purchase': ['purchase_order', 'shopping_item'],
+    'receiving': ['receiving'],
+    'handover': ['handover', 'handover_item'],
+    'crew': ['crew', 'crew_member'],
+    'hours_of_rest': ['hours_of_rest'],
+    'checklist': ['checklist'],
+}
+
+# ============================================================================
+# Entity Type → Object Type Mapping (from ExtractionOrchestrator)
+# ============================================================================
+
+# Maps extracted entity types to database object_types for search filtering
+# This enables query-aware search: "MTU manual" → document, "oil filter stock" → inventory
+ENTITY_TO_OBJECT_TYPES: Dict[str, List[str]] = {
+    # Document-related entities
+    'document_type': ['document'],
+    'manual': ['document'],
+
+    # Equipment and parts (inventory/parts domain)
+    'stock': ['inventory'],
+    'inventory': ['inventory'],
+    'part': ['inventory', 'part'],
+    'brand': ['inventory', 'part', 'equipment', 'document'],
+    'model': ['inventory', 'part', 'equipment', 'document'],
+    'equipment': ['equipment', 'inventory', 'part'],
+
+    # Work orders and maintenance
+    'order': ['work_order', 'purchase_order'],
+    'work_order': ['work_order'],
+    'work_order_note': ['work_order_note'],
+    'purchase_order': ['purchase_order'],
+    'action': ['work_order'],  # "replace", "inspect" suggest work orders
+
+    # Faults and diagnostics
+    'fault_code': ['fault', 'work_order'],
+    'symptom': ['fault', 'work_order'],
+    'fault': ['fault'],
+
+    # Certificates and compliance
+    'certificate': ['certificate'],
+    'certificate_status': ['certificate'],
+
+    # Crew and personnel
+    'person': ['crew', 'crew_member'],
+    'crew': ['crew', 'crew_member'],
+
+    # Location-based (storage/inventory)
+    'location': ['inventory'],
+
+    # Measurements suggest technical documents or faults
+    'measurement': ['document', 'fault', 'equipment'],
+}
+
+
+# ============================================================================
+# Orchestrator Singleton
+# ============================================================================
+
+_orchestrator: Optional[ExtractionOrchestrator] = None
+
+
+def get_orchestrator() -> Optional[ExtractionOrchestrator]:
+    """Get or create singleton ExtractionOrchestrator instance."""
+    global _orchestrator
+    if not ORCHESTRATOR_AVAILABLE:
+        return None
+    if _orchestrator is None:
+        _orchestrator = ExtractionOrchestrator()
+    return _orchestrator
+
+
+def map_entities_to_object_types(entities: Dict[str, List]) -> Optional[List[str]]:
+    """
+    Map extracted entities to database object_types for search filtering.
+
+    Uses ENTITY_TO_OBJECT_TYPES mapping with priority heuristics:
+    - document_type entity takes priority (explicit document request)
+    - part/equipment entities suggest inventory domain
+    - fault_code/symptom entities suggest fault/work_order domain
+    - Returns None if no mappings found (search all types)
+
+    Args:
+        entities: Dict of entity_type -> list of values from orchestrator
+
+    Returns:
+        List of object_type strings to filter by, or None for all types
+    """
+    if not entities:
+        return None
+
+    # Collect all mapped object_types with deduplication
+    mapped_types: set = set()
+
+    # Priority order: more specific entity types first
+    priority_order = [
+        'document_type', 'manual',  # Explicit document requests
+        'certificate', 'certificate_status',  # Compliance domain
+        'fault_code', 'fault', 'symptom',  # Diagnostics domain
+        'work_order', 'order',  # Work order domain
+        'part', 'stock', 'inventory',  # Parts/inventory domain
+        'equipment', 'brand', 'model',  # Equipment domain
+        'person', 'crew',  # Personnel domain
+        'location',  # Storage domain
+        'action', 'measurement',  # Secondary signals
+    ]
+
+    for entity_type in priority_order:
+        if entity_type in entities and entities[entity_type]:
+            object_types = ENTITY_TO_OBJECT_TYPES.get(entity_type)
+            if object_types:
+                mapped_types.update(object_types)
+                # If we found a high-priority entity, prioritize its types
+                if entity_type in ('document_type', 'manual'):
+                    return ['document']  # Strong signal for document search
+                if entity_type == 'certificate':
+                    return ['certificate']  # Strong signal for certificate search
+
+    if not mapped_types:
+        return None
+
+    # Return unique sorted list
+    return sorted(list(mapped_types))
+
+
+def detect_target_object_types(query: str) -> Optional[List[str]]:
+    """
+    Detect target object_types from query intent.
+
+    Uses domain detection to map query intent to searchable object_types.
+    Returns None if no specific intent detected (search all types).
+
+    Args:
+        query: User search query
+
+    Returns:
+        List of object_type strings to filter by, or None for all types
+    """
+    result = detect_domain_from_query(query)
+    if not result:
+        return None
+
+    domain, confidence = result
+
+    # Only apply object_type filter if confidence is high enough
+    # Low confidence = explore mode (search all types)
+    if confidence < 0.6:
+        return None
+
+    object_types = DOMAIN_TO_OBJECT_TYPES.get(domain)
+    if object_types:
+        logger.debug(f"[F1Search] Intent detected: domain={domain}, object_types={object_types}")
+
+    return object_types
 
 # Org UUIDs allowed to use F1 streaming search (CSV)
 # Example: STREAMING_ENABLED_ORGS=85fe1119-b04c-41ac-80f1-829d23322598,uuid2,uuid3
@@ -284,6 +471,7 @@ async def call_hyper_search_multi(
     ctx: UserContext,
     rrf_k: int = 60,
     page_limit: int = 20,
+    object_types: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Call hyper_search_multi RPC via asyncpg (single round-trip).
@@ -292,6 +480,14 @@ async def call_hyper_search_multi(
     - Must have ctx.org_id (RLS requirement)
     - Max 3 rewrites
     - statement_timeout enforced by connection
+
+    Args:
+        conn: asyncpg connection
+        rewrites: List of Rewrite objects (max 3)
+        ctx: UserContext with org_id and yacht_id
+        rrf_k: RRF smoothing constant (default 60)
+        page_limit: Max results to return (default 20)
+        object_types: Optional list of object_types to filter results
     """
     # Ensure max 3 rewrites
     rewrites = rewrites[:3]
@@ -314,10 +510,11 @@ async def call_hyper_search_multi(
     trgm_limit = 0.07 if len(original_query.strip()) <= 6 else 0.15
 
     # Use f1_search_cards wrapper (unambiguous name, avoids overload collision)
+    # Pass object_types as 8th parameter (NULL = search all types)
     rows = await conn.fetch(
         """
         SELECT object_type, object_id, payload, fused_score, best_rewrite_idx, ranks, components
-        FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real)
+        FROM f1_search_cards($1::text[], $2::vector(1536)[], $3::uuid, $4::uuid, $5::int, $6::int, $7::real, $8::text[])
         """,
         texts,
         vec_literals,
@@ -326,6 +523,7 @@ async def call_hyper_search_multi(
         rrf_k,
         page_limit,
         trgm_limit,
+        object_types,
     )
 
     # Convert asyncpg Records to dicts
@@ -444,9 +642,62 @@ async def f1_search_stream(
                 return
 
             # ================================================================
-            # Phase 3: Check cache OR call hyper_search_multi
+            # Phase 2.5: Entity extraction + object_type mapping (ANALYTICS ONLY)
+            # NOTE: We extract entities and detect intent for analytics/diagnostics,
+            # but we do NOT use them to filter the search. This ensures unbiased
+            # global search - if we guess wrong on intent, we don't hide results.
             # ================================================================
 
+            detected_object_types = None  # For analytics only, NOT passed to search
+            extraction_result = None
+            extracted_entities = {}
+
+            # Try ExtractionOrchestrator first (richer entity extraction)
+            orchestrator = get_orchestrator()
+            if orchestrator:
+                with tracer.start_as_current_span("extraction.orchestrator") as span:
+                    span.set_attribute("search_id", search_id)
+                    try:
+                        extraction_result = await orchestrator.extract(q)
+                        extracted_entities = extraction_result.get('entities', {})
+                        span.set_attribute("entity_types", ",".join(extracted_entities.keys()))
+                        span.set_attribute("needs_ai", extraction_result.get('metadata', {}).get('needs_ai', False))
+
+                        # Map extracted entities to object_types (for analytics only)
+                        detected_object_types = map_entities_to_object_types(extracted_entities)
+
+                        if detected_object_types:
+                            logger.info(
+                                f"[F1Search] Orchestrator detected (analytics only): search_id={search_id[:8]}..., "
+                                f"entities={list(extracted_entities.keys())}, "
+                                f"detected_types={detected_object_types}"
+                            )
+                        else:
+                            logger.debug(
+                                f"[F1Search] Orchestrator: no object_type mapping for entities={list(extracted_entities.keys())}"
+                            )
+
+                    except Exception as e:
+                        logger.warning(f"[F1Search] Orchestrator extraction failed: {e}")
+                        span.set_attribute("error", str(e))
+
+            # Fallback to domain detection if orchestrator didn't produce mappings
+            if not detected_object_types:
+                detected_object_types = detect_target_object_types(q)
+
+            if detected_object_types:
+                logger.info(
+                    f"[F1Search] Intent detected (analytics only): search_id={search_id[:8]}..., "
+                    f"detected_types={detected_object_types}, searching ALL types globally"
+                )
+
+            # ================================================================
+            # Phase 3: Check cache OR call hyper_search_multi
+            # IMPORTANT: Always search globally (object_types=None) to avoid
+            # intent bias. We never filter by detected object_types.
+            # ================================================================
+
+            # No object_type suffix in cache key - we always search globally
             cache_key = make_cache_key(q, ctx.org_id, ctx.yacht_id)
             redis_conn = await get_redis()
             result_cache_hit = False
@@ -466,15 +717,25 @@ async def f1_search_stream(
                     else:
                         span.set_attribute("cache_hit", False)
 
-            # Cache miss - call DB
+            # Cache miss - call DB with global search (object_types=None)
             if rows is None:
                 with tracer.start_as_current_span("db.hyper_search_multi") as span:
                     span.set_attribute("search_id", search_id)
                     span.set_attribute("org_id", ctx.org_id)
                     span.set_attribute("rewrite_count", len(rewrites))
+                    span.set_attribute("global_search", True)  # Always global
+                    if detected_object_types:
+                        # Log detected types for analytics, but don't filter by them
+                        span.set_attribute("detected_object_types", ",".join(detected_object_types))
                     conn = await get_db_connection()
                     try:
-                        rows = await call_hyper_search_multi(conn, rewrites, ctx, rrf_k=60, page_limit=20)
+                        # CRITICAL: Always pass object_types=None for unbiased global search
+                        rows = await call_hyper_search_multi(
+                            conn, rewrites, ctx,
+                            rrf_k=60,
+                            page_limit=20,
+                            object_types=None  # ALWAYS search all types globally
+                        )
                     finally:
                         await conn.close()
                     span.set_attribute("result_count", len(rows))
@@ -569,6 +830,16 @@ async def f1_search_stream(
 
             latency_ms = int((time.time() - start) * 1000)
 
+            # Build extraction metadata for diagnostics
+            extraction_metadata = {}
+            if extraction_result:
+                extraction_metadata = {
+                    "entities": extracted_entities,
+                    "needs_ai": extraction_result.get('metadata', {}).get('needs_ai', False),
+                    "coverage": extraction_result.get('metadata', {}).get('coverage', 1.0),
+                    "latency_ms": extraction_result.get('metadata', {}).get('latency_ms', {}).get('total', 0),
+                }
+
             yield sse_event("finalized", {
                 "search_id": search_id,
                 "latency_ms": latency_ms,
@@ -579,6 +850,11 @@ async def f1_search_stream(
                 "early_win": early_win,
                 "reranked": reranked,
                 "status": "early_win" if early_win else "completed",
+                "extraction": extraction_metadata if extraction_metadata else None,
+                # Report detected types for analytics, but note we always search globally
+                "detected_object_types": detected_object_types,  # Analytics only
+                "object_types_filter": None,  # Always None - we search all types globally
+                "global_search": True,  # Explicit flag showing unbiased search
             })
 
             logger.info(
