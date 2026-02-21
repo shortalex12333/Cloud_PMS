@@ -897,6 +897,22 @@ COMPOUND_ANCHORS: Dict[str, List[str]] = {
         r'\bpreventive\s+maintenance\b',
         r'\bcorrective\s+maintenance\b',
     ],
+    # work_order_note compounds - FIX 2026-02-21: Added work_order_note domain anchors
+    # This enables Work Order Note entity extraction for queries containing note-specific patterns
+    'work_order_note': [
+        r'\bwork\s+order\s+note\b',
+        r'\bworkorder\s+note\b',
+        r'\bwo\s+note\b',
+        r'\bwo[-\s]?notes?\b',
+        r'\bmaintenance\s+notes?\b',
+        r'\bwork\s+notes?\b',
+        r'\bjob\s+notes?\b',
+        r'\btechnician\s+notes?\b',
+        r'\bhours\s+logged\b',
+        r'\bwork\s+performed\b',
+        r'\blabor\s+hours?\b',
+        r'\bnote\s+id\s*:\s*[a-f0-9-]+\b',  # Pattern for note ID references
+    ],
     # document compounds
     'document': [
         r'\bmanual\b',  # "manual" alone is strong signal for document
@@ -1246,7 +1262,8 @@ def detect_domain_from_query(query: str) -> Optional[tuple]:
     print(f"[DETECT_DOMAIN_RESULT] Multiple matches ({len(matches)}): {[d for d, _ in matches]}")
     # Priority order based on specificity
     # FIX 2026-02-08: Added shopping_list with high priority (after receiving, before hours_of_rest)
-    priority = ['work_order', 'receiving', 'shopping_list', 'hours_of_rest', 'equipment', 'part', 'fault', 'document', 'certificate', 'crew', 'checklist', 'handover', 'purchase']
+    # FIX 2026-02-21: Added work_order_note BEFORE work_order (more specific wins)
+    priority = ['work_order_note', 'work_order', 'receiving', 'shopping_list', 'hours_of_rest', 'equipment', 'part', 'fault', 'document', 'certificate', 'crew', 'checklist', 'handover', 'purchase']
     for p in priority:
         for domain, _ in matches:
             if domain == p:
