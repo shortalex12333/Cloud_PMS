@@ -54,6 +54,13 @@ import yaml
 import psycopg2
 import psycopg2.extras
 
+# Maritime entity extraction for intelligent keyword extraction
+try:
+    from extraction.entity_extractor import get_extractor
+    ENTITY_EXTRACTOR_AVAILABLE = True
+except ImportError:
+    ENTITY_EXTRACTOR_AVAILABLE = False
+
 # Graceful shutdown flag
 _shutdown = False
 
@@ -265,19 +272,50 @@ def compute_content_hash(text: str, context: str = "") -> str:
 
 def extract_keywords(text: str, top_k: int = 20) -> List[str]:
     """
-    Extract top-K keywords from text using simple frequency.
-    TODO: Replace with tf-idf for better ranking.
+    Extract top-K keywords from text using MaritimeEntityExtractor.
+
+    Extracts canonical values of 'hard' entities (parts, equipment, brands,
+    faults, models, measurements, certificates) for high-quality search keywords.
+    Falls back to simple frequency-based extraction if extractor unavailable.
     """
-    import re
-    # Tokenize: lowercase, split on non-alphanumeric
+    if not text or not text.strip():
+        return []
+
+    # Use MaritimeEntityExtractor for intelligent keyword extraction
+    if ENTITY_EXTRACTOR_AVAILABLE:
+        extractor = get_extractor()
+        entities = extractor.extract_entities(text)
+
+        # Extract canonical values from hard entities only
+        # Hard entities: fault_code, measurement, model, brand, part, equipment, certificate
+        hard_keywords = [
+            entity.canonical
+            for entity in entities
+            if entity.is_hard and entity.canonical
+        ]
+
+        # Deduplicate while preserving order (higher confidence entities first)
+        seen = set()
+        unique_keywords = []
+        for kw in hard_keywords:
+            kw_lower = kw.lower()
+            if kw_lower not in seen:
+                seen.add(kw_lower)
+                unique_keywords.append(kw)
+                if len(unique_keywords) >= top_k:
+                    break
+
+        return unique_keywords
+
+    # Fallback: simple frequency-based extraction
     words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-    # Filter common stopwords
-    stopwords = {'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had',
-                 'her', 'was', 'one', 'our', 'out', 'has', 'have', 'been', 'were', 'they',
-                 'their', 'this', 'that', 'with', 'from', 'will', 'would', 'there', 'what',
-                 'which', 'when', 'where', 'who', 'how', 'than', 'then', 'these', 'those'}
+    stopwords = {
+        'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had',
+        'her', 'was', 'one', 'our', 'out', 'has', 'have', 'been', 'were', 'they',
+        'their', 'this', 'that', 'with', 'from', 'will', 'would', 'there', 'what',
+        'which', 'when', 'where', 'who', 'how', 'than', 'then', 'these', 'those',
+    }
     words = [w for w in words if w not in stopwords]
-    # Count and return top-K
     counts = Counter(words)
     return [word for word, _ in counts.most_common(top_k)]
 
@@ -503,6 +541,20 @@ def upsert_search_index(cur, item: Dict, row: Dict, mapping: Dict,
                 payload['ident_norm'] = ident_norm
 
         # Upsert with source_version guard
+        #
+        # LAW 9: PROJECTION IMMUTABILITY
+        # ==============================
+        # This upsert deliberately EXCLUDES the following columns:
+        #   - learned_keywords (owned by nightly_feedback_loop.py)
+        #   - learned_at (owned by nightly_feedback_loop.py)
+        #   - embedding_1536 (owned by embedding_worker_1536.py)
+        #   - embedding_status (owned by embedding_worker_1536.py)
+        #
+        # If you add any of these columns to the UPDATE SET, you will
+        # destroy machine learning state or cause embedding re-runs.
+        # The tsv column is a GENERATED column that auto-includes
+        # both search_text AND learned_keywords.
+        #
         cur.execute("""
             INSERT INTO search_index (
                 object_type, object_id, org_id, yacht_id,

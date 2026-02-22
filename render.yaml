@@ -129,3 +129,40 @@ services:
         value: "hod.test@alex-short.com"
       - key: LOG_LEVEL
         value: "INFO"
+
+  # ============================================================================
+  # Nightly Counterfactual Feedback Loop - Self-Healing Search
+  # ============================================================================
+  # LAW 8: Learns yacht-specific vocabulary from click telemetry
+  # LAW 9: Updates learned_keywords without touching search_text
+  #
+  # This cron job aggregates search clicks and teaches the search engine
+  # each yacht's unique dialect. If Yacht A's crew searches "watermaker"
+  # and clicks "Desalinator Unit 1" repeatedly, the system learns that
+  # association FOR THAT YACHT ONLY.
+  #
+  - type: cron
+    name: nightly-feedback-loop
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "0 3 * * *"  # 3:00 AM UTC daily
+    buildCommand: cd apps/api && pip install psycopg2-binary
+    startCommand: cd apps/api && python -m workers.nightly_feedback_loop
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+      # DATABASE_URL uses Supavisor pooler port 6543 for connection pooling
+      # Format: postgresql://postgres.{project_ref}:{password}@aws-0-us-west-1.pooler.supabase.com:6543/postgres
+      - key: DATABASE_URL
+        sync: false  # Set in Render dashboard - contains credentials
+      # Feedback loop configuration
+      - key: MIN_CLICKS
+        value: "3"
+      - key: LOOKBACK_DAYS
+        value: "30"
+      - key: BATCH_SIZE
+        value: "100"
+      - key: LOG_LEVEL
+        value: "INFO"
