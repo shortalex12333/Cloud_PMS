@@ -439,7 +439,76 @@ async function buildSearchPayload(query: string, streamId: string, yachtId: stri
 }
 
 /**
- * Abortable streaming fetch
+ * Parse SSE stream from F1 search endpoint
+ * Handles event: data: format per SSE spec
+ */
+async function* parseSSEStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal
+): AsyncGenerator<SearchResult[], void, unknown> {
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      if (signal.aborted) break;
+
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process complete SSE events (separated by double newlines)
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || ''; // Keep incomplete event in buffer
+
+      for (const event of events) {
+        if (!event.trim()) continue;
+
+        // Parse SSE format: "event: <type>\ndata: <json>"
+        const lines = event.split('\n');
+        let eventType = 'message';
+        let eventData = '';
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventType = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            eventData = line.slice(5).trim();
+          }
+        }
+
+        if (!eventData) continue;
+
+        try {
+          const parsed = JSON.parse(eventData);
+
+          // Handle different SSE event types from F1 endpoint
+          if (eventType === 'result_batch' && parsed.results) {
+            console.log('[useCelesteSearch] 📦 SSE batch received:', parsed.results.length, 'results');
+            yield parsed.results;
+          } else if (eventType === 'exact_match_win' && parsed.result) {
+            console.log('[useCelesteSearch] 🎯 SSE exact match:', parsed.result.title);
+            yield [parsed.result];
+          } else if (eventType === 'finalized') {
+            console.log('[useCelesteSearch] ✅ SSE finalized:', parsed.latency_ms, 'ms');
+          } else if (eventType === 'diagnostics') {
+            console.log('[useCelesteSearch] 🔍 SSE diagnostics:', parsed.search_id);
+          } else if (eventType === 'error') {
+            console.error('[useCelesteSearch] ❌ SSE error:', parsed.message);
+          }
+        } catch (parseError) {
+          console.warn('[useCelesteSearch] ⚠️ Failed to parse SSE data:', eventData);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Abortable streaming fetch via F1 SSE endpoint
  * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  */
 async function* streamSearch(
@@ -447,21 +516,22 @@ async function* streamSearch(
   signal: AbortSignal,
   yachtId: string | null
 ): AsyncGenerator<SearchResult[], void, unknown> {
-  console.log('[useCelesteSearch] 🎬 streamSearch STARTED');
+  console.log('[useCelesteSearch] 🎬 streamSearch STARTED (F1 SSE)');
+
+  // F1 Architecture: Pipeline-core backend, configurable via env var
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
   const streamId = crypto.randomUUID();
 
-  console.log('[useCelesteSearch] 🔍 Streaming search:', { query, API_URL, yachtId });
+  console.log('[useCelesteSearch] 🔍 F1 SSE search:', { query, API_URL, yachtId });
 
   // Get fresh token with timeout protection (prevents indefinite hang)
   const jwt = await safeEnsureFreshToken();
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
-  const payload = await buildSearchPayload(query, streamId, yachtId);
-
+  // Build headers for GET request (no Content-Type for GET)
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
   };
 
   if (jwt) {
@@ -471,74 +541,73 @@ async function* streamSearch(
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  // POST to API_URL/webhook/search endpoint
-  const searchUrl = `${API_URL}/webhook/search`;
-  console.log('[useCelesteSearch] 📤 Sending request to:', searchUrl);
-  console.log('[useCelesteSearch] 📤 Payload:', payload);
+  // F1 SSE endpoint: GET /api/f1/search/stream?q=<query>
+  const searchUrl = new URL(`${API_URL}/api/f1/search/stream`);
+  searchUrl.searchParams.set('q', query);
+
+  console.log('[useCelesteSearch] 📤 F1 SSE request to:', searchUrl.toString());
 
   let response;
-  let data;
 
   try {
-    response = await fetch(searchUrl, {
-      method: 'POST',
+    response = await fetch(searchUrl.toString(), {
+      method: 'GET',
       headers,
-      body: JSON.stringify({ ...payload, stream: true }),
       signal,
     });
 
-    console.log('[useCelesteSearch] 📥 Response status:', response.status);
+    console.log('[useCelesteSearch] 📥 F1 SSE response status:', response.status);
 
     if (!response.ok) {
-      throw new Error(`Search failed: ${response.status}`);
+      throw new Error(`F1 search failed: ${response.status}`);
     }
 
-    // SIMPLIFIED: Backend sends complete JSON response, not streaming chunks
-    // Parse the full response as JSON
-    data = await response.json();
-    console.log('[useCelesteSearch] ✅ Parsed response:', {
-      success: data.success,
-      hasResults: !!data.results,
-      resultCount: data.results?.length || 0,
-      totalCount: data.total_count,
-      timing: data.timing_ms
-    });
+    // Parse SSE stream
+    if (!response.body) {
+      throw new Error('No response body for SSE stream');
+    }
 
-    if (data.results && Array.isArray(data.results)) {
-      // DEBUG: Log first result structure to diagnose rendering issue
-      if (data.results.length > 0) {
-        const firstResult = data.results[0];
-        console.log('[useCelesteSearch] 🔬 First result structure:', {
-          keys: Object.keys(firstResult),
+    const reader = response.body.getReader();
 
-          // Frontend expected fields
-          id: firstResult.id,
-          type: firstResult.type,
-          title: firstResult.title,
-          subtitle: firstResult.subtitle,
+    // Yield results as they arrive via SSE
+    for await (const results of parseSSEStream(reader, signal)) {
+      if (signal.aborted) break;
 
-          // Backend field names
-          primary_id: firstResult.primary_id,
-          source_table: firstResult.source_table,
-          snippet: firstResult.snippet,
+      // Map F1 backend fields to frontend expected fields
+      // Backend sends: primary_id, source_table, snippet, rrf_score
+      // Frontend expects: id, type, subtitle, score
+      const mappedResults: SearchResult[] = results.map((result) => {
+        const backendResult = result as SearchResult & { primary_id?: string; source_table?: string; snippet?: string; rrf_score?: number };
+        return {
+          ...backendResult,
+          id: backendResult.primary_id || backendResult.id,
+          type: (backendResult.source_table || backendResult.type) as SearchResult['type'],
+          title: backendResult.title,
+          subtitle: backendResult.snippet || backendResult.subtitle,
+          score: backendResult.rrf_score ?? backendResult.score ?? 0,
+          actions: backendResult.actions || [],
+        };
+      });
 
-          // Full object
-          fullResult: firstResult
+      if (mappedResults.length > 0) {
+        console.log('[useCelesteSearch] 🔬 First mapped result:', {
+          id: mappedResults[0].id,
+          type: mappedResults[0].type,
+          title: mappedResults[0].title,
         });
       }
-      yield data.results;
-    } else {
-      console.warn('[useCelesteSearch] ⚠️ No results array in response:', data);
+
+      yield mappedResults;
     }
   } catch (e) {
     // CRITICAL FIX: Check if primary was aborted - if so, don't attempt fallback
     // This fixes "AbortError: signal is aborted without reason"
     if (signal.aborted) {
-      console.log('[useCelesteSearch] ⏹️ Primary search aborted, skipping fallback');
+      console.log('[useCelesteSearch] ⏹️ F1 SSE search aborted, skipping fallback');
       return;
     }
 
-    console.warn('[useCelesteSearch] ⚠️ Pipeline search failed in stream, using fallback:', e);
+    console.warn('[useCelesteSearch] ⚠️ F1 SSE search failed, using fallback:', e);
 
     // FALLBACK: Use local database search when pipeline is down
     // CRITICAL FIX: Create NEW AbortController for fallback with L2 timeout
@@ -591,22 +660,22 @@ async function* streamSearch(
 }
 
 /**
- * Non-streaming fallback fetch
+ * Non-streaming fallback fetch via F1 endpoint
+ * Collects all SSE results into a single array
  * @param yachtId - yacht_id from AuthContext (NOT from deprecated getYachtId())
  */
 async function fetchSearch(query: string, signal: AbortSignal, yachtId: string | null): Promise<SearchResult[]> {
+  // F1 Architecture: Pipeline-core backend, configurable via env var
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pipeline-core.int.celeste7.ai';
-  const streamId = crypto.randomUUID();
 
   // Get fresh token with timeout protection (prevents indefinite hang)
   const jwt = await safeEnsureFreshToken();
   // Use yacht_id from AuthContext, not from user_metadata (which is never set)
   const yachtSignature = await getYachtSignature(yachtId);
 
-  const payload = await buildSearchPayload(query, streamId, yachtId);
-
+  // Build headers for GET request
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
   };
 
   if (jwt) {
@@ -616,33 +685,55 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
     headers['X-Yacht-Signature'] = yachtSignature;
   }
 
-  const searchUrl = `${API_URL}/webhook/search`;
+  // F1 SSE endpoint: GET /api/f1/search/stream?q=<query>
+  const searchUrl = new URL(`${API_URL}/api/f1/search/stream`);
+  searchUrl.searchParams.set('q', query);
 
   try {
-    const response = await fetch(searchUrl, {
-      method: 'POST',
+    const response = await fetch(searchUrl.toString(), {
+      method: 'GET',
       headers,
-      body: JSON.stringify({ ...payload, stream: false }),
       signal,
     });
 
     if (!response.ok) {
-      throw new Error(`Search failed: ${response.status}`);
+      throw new Error(`F1 search failed: ${response.status}`);
     }
 
-    const data = await response.json();
-    if (data.results && Array.isArray(data.results)) {
-      return data.results;
+    if (!response.body) {
+      throw new Error('No response body for SSE stream');
     }
-    return [];
+
+    // Collect all results from SSE stream
+    const allResults: SearchResult[] = [];
+    const reader = response.body.getReader();
+
+    for await (const results of parseSSEStream(reader, signal)) {
+      // Map F1 backend fields to frontend expected fields
+      const mappedResults: SearchResult[] = results.map((result) => {
+        const backendResult = result as SearchResult & { primary_id?: string; source_table?: string; snippet?: string; rrf_score?: number };
+        return {
+          ...backendResult,
+          id: backendResult.primary_id || backendResult.id,
+          type: (backendResult.source_table || backendResult.type) as SearchResult['type'],
+          title: backendResult.title,
+          subtitle: backendResult.snippet || backendResult.subtitle,
+          score: backendResult.rrf_score ?? backendResult.score ?? 0,
+          actions: backendResult.actions || [],
+        };
+      });
+      allResults.push(...mappedResults);
+    }
+
+    return allResults;
   } catch (error) {
     // CRITICAL FIX: Check if primary was aborted - if so, don't attempt fallback
     if (signal.aborted) {
-      console.log('[useCelesteSearch] ⏹️ Primary search aborted, skipping fallback');
+      console.log('[useCelesteSearch] ⏹️ F1 search aborted, skipping fallback');
       return [];
     }
 
-    console.warn('[useCelesteSearch] ⚠️ Pipeline search failed, using fallback:', error);
+    console.warn('[useCelesteSearch] ⚠️ F1 search failed, using fallback:', error);
 
     // FALLBACK: Use local database search when pipeline is down
     // CRITICAL FIX: Create NEW AbortController for fallback with L2 timeout
