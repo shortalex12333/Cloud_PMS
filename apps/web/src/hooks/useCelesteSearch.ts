@@ -484,9 +484,10 @@ async function* parseSSEStream(
           const parsed = JSON.parse(eventData);
 
           // Handle different SSE event types from F1 endpoint
-          if (eventType === 'result_batch' && parsed.results) {
-            console.log('[useCelesteSearch] 📦 SSE batch received:', parsed.results.length, 'results');
-            yield parsed.results;
+          // NOTE: Backend sends "items" not "results" in result_batch
+          if (eventType === 'result_batch' && parsed.items) {
+            console.log('[useCelesteSearch] 📦 SSE batch received:', parsed.items.length, 'results');
+            yield parsed.items;
           } else if (eventType === 'exact_match_win' && parsed.result) {
             console.log('[useCelesteSearch] 🎯 SSE exact match:', parsed.result.title);
             yield [parsed.result];
@@ -574,18 +575,31 @@ async function* streamSearch(
       if (signal.aborted) break;
 
       // Map F1 backend fields to frontend expected fields
-      // Backend sends: primary_id, source_table, snippet, rrf_score
-      // Frontend expects: id, type, subtitle, score
+      // Backend sends: object_id, object_type, payload, fused_score
+      // Frontend expects: id, type, title, subtitle, score
       const mappedResults: SearchResult[] = results.map((result) => {
-        const backendResult = result as SearchResult & { primary_id?: string; source_table?: string; snippet?: string; rrf_score?: number };
+        const backendResult = result as {
+          object_id?: string;
+          object_type?: string;
+          payload?: { name?: string; title?: string; part_name?: string; code?: string; status?: string; source_table?: string };
+          fused_score?: number;
+          // Legacy field names (fallback)
+          primary_id?: string;
+          source_table?: string;
+          snippet?: string;
+          rrf_score?: number;
+        } & SearchResult;
+
+        const payload = backendResult.payload || {};
         return {
           ...backendResult,
-          id: backendResult.primary_id || backendResult.id,
-          type: (backendResult.source_table || backendResult.type) as SearchResult['type'],
-          title: backendResult.title,
-          subtitle: backendResult.snippet || backendResult.subtitle,
-          score: backendResult.rrf_score ?? backendResult.score ?? 0,
+          id: backendResult.object_id || backendResult.primary_id || backendResult.id,
+          type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
+          title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
+          subtitle: payload.code || payload.status || backendResult.snippet || backendResult.subtitle,
+          score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
+          metadata: { ...backendResult.metadata, payload },
         };
       });
 
@@ -711,15 +725,27 @@ async function fetchSearch(query: string, signal: AbortSignal, yachtId: string |
     for await (const results of parseSSEStream(reader, signal)) {
       // Map F1 backend fields to frontend expected fields
       const mappedResults: SearchResult[] = results.map((result) => {
-        const backendResult = result as SearchResult & { primary_id?: string; source_table?: string; snippet?: string; rrf_score?: number };
+        const backendResult = result as {
+          object_id?: string;
+          object_type?: string;
+          payload?: { name?: string; title?: string; part_name?: string; code?: string; status?: string; source_table?: string };
+          fused_score?: number;
+          primary_id?: string;
+          source_table?: string;
+          snippet?: string;
+          rrf_score?: number;
+        } & SearchResult;
+
+        const payload = backendResult.payload || {};
         return {
           ...backendResult,
-          id: backendResult.primary_id || backendResult.id,
-          type: (backendResult.source_table || backendResult.type) as SearchResult['type'],
-          title: backendResult.title,
-          subtitle: backendResult.snippet || backendResult.subtitle,
-          score: backendResult.rrf_score ?? backendResult.score ?? 0,
+          id: backendResult.object_id || backendResult.primary_id || backendResult.id,
+          type: (backendResult.object_type || payload.source_table || backendResult.source_table || backendResult.type) as SearchResult['type'],
+          title: payload.name || payload.title || payload.part_name || backendResult.title || 'Untitled',
+          subtitle: payload.code || payload.status || backendResult.snippet || backendResult.subtitle,
+          score: backendResult.fused_score ?? backendResult.rrf_score ?? backendResult.score ?? 0,
           actions: backendResult.actions || [],
+          metadata: { ...backendResult.metadata, payload },
         };
       });
       allResults.push(...mappedResults);
