@@ -5,9 +5,14 @@ F1 Search - Embedding Worker (1536-dim, OpenAI text-embedding-3-small)
 Generates 1536-dim embeddings for search_index rows using OpenAI API.
 Writes to embedding_1536 column with delta tracking via content_hash.
 
+ARCHITECTURE:
+- Claims jobs from embedding_jobs table (queue-driven)
+- Fetches search_text from search_index for claimed jobs
+- Writes embeddings back to search_index
+- Updates job status (done/failed) in embedding_jobs
+
 GUARDRAILS:
 - 1536-dim embeddings for HNSW cosine similarity
-- Delta embedding: only when embedding_hash != content_hash OR embedding_version <> 3
 - Batch processing with rate limiting
 - Uses Supavisor port 6543 for connection pooling
 
@@ -25,13 +30,7 @@ Environment:
     ERROR_SLEEP_SEC - Sleep on error (default: 2.0)
     REQUEST_TIMEOUT_SEC - API timeout (default: 30)
     LOG_LEVEL - Logging level (default: INFO)
-
-Delta Policy:
-    Only re-embed when:
-    - embedding_1536 IS NULL (never embedded)
-    - embedding_hash IS NULL (no hash recorded)
-    - embedding_hash != content_hash (content changed)
-    - embedding_version IS NULL OR embedding_version < 3 (old schema)
+    WORKER_ID - Unique worker identifier (default: auto-generated)
 """
 
 from __future__ import annotations
@@ -43,9 +42,8 @@ import logging
 import math
 import hashlib
 import signal
-import json
-from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Callable
+import uuid
+from typing import List, Dict, Any
 
 import psycopg2
 import psycopg2.extras
@@ -64,15 +62,16 @@ BATCH_SLEEP_SEC = float(os.getenv("BATCH_SLEEP_SEC", "0.1"))
 ERROR_SLEEP_SEC = float(os.getenv("ERROR_SLEEP_SEC", "2.0"))
 REQUEST_TIMEOUT_SEC = int(os.getenv("REQUEST_TIMEOUT_SEC", "30"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+WORKER_ID = os.getenv("WORKER_ID", f"worker-{uuid.uuid4().hex[:8]}")
 
 # OpenAI limits
 MAX_CHARS_PER_TEXT = 8000  # Safe limit for embedding
+MAX_EMBEDDING_CHARS = 24000  # ~8000 tokens * 3 chars/token safety margin for large scraped content
 
 # Circuit breaker configuration (prevents death spiral during OpenAI outages)
 CIRCUIT_BREAKER_THRESHOLD = 5      # Consecutive failures before circuit opens
 CIRCUIT_BREAKER_RESET_SEC = 60     # Seconds to wait before trying again
-MAX_RETRY_COUNT = 3                # Max retries per row before moving to DLQ
-DLQ_TABLE = "search_embedding_dlq" # Dead letter queue table
+MAX_RETRY_COUNT = 3                # Max retries per row before marking as DLQ
 
 # Logging setup
 logging.basicConfig(
@@ -138,6 +137,26 @@ def compute_content_hash(text: str) -> str:
     return hashlib.sha256(text.encode('utf-8')).hexdigest()[:32]
 
 
+def truncate_at_word_boundary(text: str, max_chars: int) -> str:
+    """
+    Truncate text to max_chars while respecting word boundaries.
+
+    If the text exceeds max_chars, finds the last space before the limit
+    and truncates there to avoid slicing words in half.
+    """
+    if not text or len(text) <= max_chars:
+        return text
+
+    # Find the last space before the character limit
+    last_space = text.rfind(' ', 0, max_chars)
+
+    if last_space > 0:
+        return text[:last_space]
+
+    # No space found - fall back to hard truncation
+    return text[:max_chars]
+
+
 def check_circuit_breaker() -> bool:
     """
     Check if circuit breaker allows requests.
@@ -188,6 +207,7 @@ def embed_texts_batch(texts: List[str]) -> List[List[float]]:
     Generate embeddings for multiple texts via OpenAI API.
 
     HARDENED: Includes circuit breaker pattern to prevent death spiral.
+    Truncates text to MAX_EMBEDDING_CHARS before API call to prevent 400 errors.
 
     Returns list of normalized 1536-dim vectors.
     Raises CircuitBreakerOpen if circuit is open.
@@ -198,8 +218,16 @@ def embed_texts_batch(texts: List[str]) -> List[List[float]]:
 
     client = get_client()
 
-    # Truncate long texts
-    truncated = [t[:MAX_CHARS_PER_TEXT] if len(t) > MAX_CHARS_PER_TEXT else t for t in texts]
+    # Log and truncate large texts BEFORE sending to OpenAI to prevent 400 errors
+    for i, t in enumerate(texts):
+        if t and len(t) > MAX_EMBEDDING_CHARS:
+            logger.warning(f"Truncating text from {len(t)} to {MAX_EMBEDDING_CHARS} chars")
+
+    # Truncate to prevent API errors on large scraped content
+    safe_texts = [t[:MAX_EMBEDDING_CHARS] if t else "" for t in texts]
+
+    # Additional safety truncation (legacy limit) - respects word boundaries
+    truncated = [truncate_at_word_boundary(t, MAX_CHARS_PER_TEXT) for t in safe_texts]
 
     max_retries = 3
     for attempt in range(max_retries):
@@ -246,45 +274,101 @@ class CircuitBreakerOpenError(Exception):
 
 
 # ============================================================================
-# Database Operations
+# Database Operations - Job Queue
 # ============================================================================
 
-def fetch_batch_needing_embedding(cur, batch_size: int) -> List[Dict[str, Any]]:
+def claim_embedding_jobs(cur, batch_size: int, worker_id: str) -> List[Dict]:
     """
-    Fetch rows that need 1536-dim embedding (delta policy).
+    Claim batch from embedding_jobs WHERE status='queued'.
 
-    Returns rows where:
-    1. embedding_1536 IS NULL (never embedded), OR
-    2. embedding_hash IS NULL (no hash recorded), OR
-    3. embedding_hash != content_hash (content changed), OR
-    4. embedding_version IS NULL OR < 3 (old schema)
+    Uses FOR UPDATE SKIP LOCKED to allow concurrent workers.
+    Orders by priority DESC (higher priority first), then queued_at ASC (oldest first).
 
-    CRITICAL FIX: Excludes rows in DLQ to prevent poisoned message loops.
-    Uses FOR UPDATE SKIP LOCKED for concurrent worker safety.
+    Returns list of dicts with job_id, object_type, object_id, yacht_id.
     """
     cur.execute("""
-        SELECT id, object_type, object_id, search_text, content_hash
-        FROM search_index si
-        WHERE si.search_text IS NOT NULL
-          AND si.search_text != ''
-          AND (
-              si.embedding_1536 IS NULL
-              OR si.embedding_hash IS NULL
-              OR si.embedding_hash != si.content_hash
-              OR si.embedding_version IS NULL
-              OR si.embedding_version < %s
-          )
-          AND NOT EXISTS (
-              SELECT 1 FROM search_embedding_dlq dlq
-              WHERE dlq.source_table = 'search_index'
-                AND dlq.source_id = si.id
-          )
-        ORDER BY si.updated_at DESC
-        FOR UPDATE SKIP LOCKED
-        LIMIT %s
-    """, (EMBED_VERSION, batch_size))
-    return [dict(r) for r in cur.fetchall()]
+        WITH claimed AS (
+            SELECT id, object_type, object_id, yacht_id
+            FROM embedding_jobs
+            WHERE status = 'queued'
+            ORDER BY priority DESC NULLS LAST, queued_at ASC
+            LIMIT %s
+            FOR UPDATE SKIP LOCKED
+        )
+        UPDATE embedding_jobs ej
+        SET status = 'processing',
+            started_at = NOW(),
+            worker_id = %s,
+            attempts = COALESCE(attempts, 0) + 1
+        FROM claimed c
+        WHERE ej.id = c.id
+        RETURNING ej.id AS job_id, ej.object_type, ej.object_id, ej.yacht_id
+    """, (batch_size, worker_id))
+    return [dict(row) for row in cur.fetchall()]
 
+
+def fetch_search_text_for_jobs(cur, jobs: List[Dict]) -> List[Dict]:
+    """
+    Fetch search_text from search_index for claimed jobs.
+
+    Returns list of dicts with id, object_type, object_id, search_text, content_hash, job_id.
+    Jobs without matching search_index rows are excluded from results.
+
+    NOTE: search_text is concatenated with learned_keywords to ensure embeddings
+    include yacht-specific vocabulary learned from the nightly feedback loop.
+    This implements LAW 8 (Strict Linguistic Isolation) at the embedding level.
+    """
+    if not jobs:
+        return []
+
+    # Build VALUES clause for proper tuple matching
+    # Concatenate search_text with learned_keywords to include yacht-specific vocabulary
+    # in the embedding. The tsv (tsvector) column already does this for FTS, but
+    # vector embeddings need explicit concatenation here.
+    values_clause = ", ".join(
+        cur.mogrify("(%s, %s)", (j['object_type'], str(j['object_id']))).decode()
+        for j in jobs
+    )
+    cur.execute(f"""
+        SELECT id, object_type, object_id,
+               COALESCE(search_text, '') || ' ' || COALESCE(learned_keywords, '') AS search_text,
+               content_hash
+        FROM search_index
+        WHERE (object_type, object_id::text) IN ({values_clause})
+    """)
+
+    rows = {(r['object_type'], str(r['object_id'])): dict(r) for r in cur.fetchall()}
+
+    # Merge job_id into results
+    for job in jobs:
+        key = (job['object_type'], str(job['object_id']))
+        if key in rows:
+            rows[key]['job_id'] = job['job_id']
+
+    return list(rows.values())
+
+
+def complete_job(cur, job_id: str):
+    """Mark an embedding job as successfully completed."""
+    cur.execute("""
+        UPDATE embedding_jobs
+        SET status = 'done', completed_at = NOW(), last_error = NULL
+        WHERE id = %s
+    """, (job_id,))
+
+
+def fail_job(cur, job_id: str, error: str):
+    """Mark an embedding job as failed with error message."""
+    cur.execute("""
+        UPDATE embedding_jobs
+        SET status = 'failed', completed_at = NOW(), last_error = %s
+        WHERE id = %s
+    """, (error[:2000], job_id))
+
+
+# ============================================================================
+# Database Operations - Search Index
+# ============================================================================
 
 def write_embeddings_batch(
     cur,
@@ -292,7 +376,10 @@ def write_embeddings_batch(
     embeddings: List[List[float]]
 ) -> int:
     """
-    Write 1536-dim embeddings to search_index.
+    Write 1536-dim embeddings to search_index using bulk UPDATE.
+
+    Uses psycopg2.extras.execute_values for a single high-performance
+    bulk update instead of N separate UPDATE statements.
 
     Updates:
     - embedding_1536: the 1536-dim vector
@@ -307,27 +394,32 @@ def write_embeddings_batch(
     if not rows or not embeddings:
         return 0
 
-    updated = 0
+    # Build values list for bulk update
+    values = []
     for row, vec in zip(rows, embeddings):
-        # Compute hash from the text we embedded
         new_hash = compute_content_hash(row['search_text'])
-
-        # Format as PostgreSQL vector literal
         vec_str = f"[{','.join(str(x) for x in vec)}]"
+        values.append((row['id'], vec_str, EMBED_MODEL, EMBED_VERSION, new_hash))
 
-        cur.execute(f"""
-            UPDATE search_index
-            SET embedding_1536 = %s::vector({EMBED_DIMS}),
-                embedding_model = %s,
-                embedding_version = %s,
-                embedding_hash = %s,
-                content_hash = %s,
-                updated_at = NOW()
-            WHERE id = %s
-        """, (vec_str, EMBED_MODEL, EMBED_VERSION, new_hash, new_hash, row['id']))
-        updated += cur.rowcount
+    # Bulk update using execute_values with UPDATE FROM pattern
+    psycopg2.extras.execute_values(
+        cur,
+        f"""
+        UPDATE search_index AS si
+        SET embedding_1536 = v.vec::vector({EMBED_DIMS}),
+            embedding_model = v.model,
+            embedding_version = v.version,
+            embedding_hash = v.hash,
+            content_hash = v.hash,
+            updated_at = NOW()
+        FROM (VALUES %s) AS v(id, vec, model, version, hash)
+        WHERE si.id = v.id::uuid
+        """,
+        values,
+        template="(%s, %s, %s, %s, %s)"
+    )
 
-    return updated
+    return len(values)
 
 
 def get_embedding_stats(cur) -> Dict[str, Any]:
@@ -354,311 +446,93 @@ def get_embedding_stats(cur) -> Dict[str, Any]:
     }
 
 
-# ============================================================================
-# Queue-Based Entity Handlers
-# ============================================================================
-
-def handle_handover_export(entity_id: str, cur) -> dict:
-    """
-    Process a handover export for search indexing.
-
-    Extracts text from edited_content sections and creates searchable content.
-    Only indexes exports with review_status = 'complete'.
-    """
+def get_job_queue_stats(cur) -> Dict[str, Any]:
+    """Get embedding_jobs queue statistics."""
     cur.execute("""
-        SELECT id, handover_id, yacht_id, signed_storage_url,
-               edited_content, user_signature, hod_signature, review_status
-        FROM handover_exports
-        WHERE id = %s
-    """, (entity_id,))
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'queued') AS queued,
+            COUNT(*) FILTER (WHERE status = 'processing') AS processing,
+            COUNT(*) FILTER (WHERE status = 'done') AS done,
+            COUNT(*) FILTER (WHERE status = 'failed') AS failed
+        FROM embedding_jobs
+    """)
     row = cur.fetchone()
-
-    if not row:
-        raise ValueError(f"Handover export {entity_id} not found")
-
-    export_data = dict(row)
-
-    # Only index complete exports
-    if export_data["review_status"] != "complete":
-        return {"skipped": True, "reason": "Not complete"}
-
-    # Extract searchable text
-    text_parts = []
-
-    # Add section content from edited_content JSONB
-    edited_content = export_data.get("edited_content") or {}
-    if isinstance(edited_content, str):
-        try:
-            edited_content = json.loads(edited_content)
-        except (json.JSONDecodeError, TypeError):
-            edited_content = {}
-
-    sections = edited_content.get("sections", [])
-    for section in sections:
-        text_parts.append(f"## {section.get('title', '')}")
-        text_parts.append(section.get("content", ""))
-
-        for item in section.get("items", []):
-            priority = item.get("priority", "")
-            content = item.get("content", "")
-            text_parts.append(f"[{priority}] {content}")
-
-    # Add signature info
-    user_signature = export_data.get("user_signature") or {}
-    if isinstance(user_signature, str):
-        try:
-            user_signature = json.loads(user_signature)
-        except (json.JSONDecodeError, TypeError):
-            user_signature = {}
-
-    hod_signature = export_data.get("hod_signature") or {}
-    if isinstance(hod_signature, str):
-        try:
-            hod_signature = json.loads(hod_signature)
-        except (json.JSONDecodeError, TypeError):
-            hod_signature = {}
-
-    if user_signature:
-        text_parts.append(
-            f"Signed by: {user_signature.get('signer_name')} on {user_signature.get('signed_at')}"
-        )
-
-    if hod_signature:
-        text_parts.append(
-            f"Approved by: {hod_signature.get('signer_name')} on {hod_signature.get('signed_at')}"
-        )
-
-    full_text = "\n".join(filter(None, text_parts))
-
-    # Generate embedding via OpenAI
-    embedding = embed_texts_batch([full_text])[0]
-    vec_str = f"[{','.join(str(x) for x in embedding)}]"
-    content_hash = compute_content_hash(full_text)
-    now_utc = datetime.now(timezone.utc).isoformat()
-
-    metadata = {
-        "handover_id": str(export_data["handover_id"]) if export_data.get("handover_id") else None,
-        "section_count": len(sections),
-        "signed_at": user_signature.get("signed_at") if user_signature else None,
-        "approved_at": hod_signature.get("signed_at") if hod_signature else None,
-    }
-
-    # Upsert into search_index (ON CONFLICT on entity_type + entity_id)
-    cur.execute(f"""
-        INSERT INTO search_index (
-            entity_type, entity_id, yacht_id, content,
-            embedding_1536, embedding_model, embedding_version, embedding_hash, content_hash,
-            metadata, indexed_at, updated_at
-        ) VALUES (
-            'handover_export', %s, %s, %s,
-            %s::vector({EMBED_DIMS}), %s, %s, %s, %s,
-            %s::jsonb, %s, NOW()
-        )
-        ON CONFLICT (entity_type, entity_id) DO UPDATE SET
-            content = EXCLUDED.content,
-            embedding_1536 = EXCLUDED.embedding_1536,
-            embedding_model = EXCLUDED.embedding_model,
-            embedding_version = EXCLUDED.embedding_version,
-            embedding_hash = EXCLUDED.embedding_hash,
-            content_hash = EXCLUDED.content_hash,
-            metadata = EXCLUDED.metadata,
-            indexed_at = EXCLUDED.indexed_at,
-            updated_at = NOW()
-    """, (
-        entity_id,
-        str(export_data["yacht_id"]) if export_data.get("yacht_id") else None,
-        full_text[:10000],
-        vec_str,
-        EMBED_MODEL,
-        EMBED_VERSION,
-        content_hash,
-        content_hash,
-        json.dumps(metadata),
-        now_utc,
-    ))
-
     return {
-        "indexed": True,
-        "text_length": len(full_text),
-        "section_count": len(sections),
+        'queued': row['queued'] or 0,
+        'processing': row['processing'] or 0,
+        'done': row['done'] or 0,
+        'failed': row['failed'] or 0,
     }
-
-
-# Registry of queue-based entity type handlers.
-# Maps entity_type string to handler function(entity_id, cur) -> dict.
-ENTITY_HANDLERS: Dict[str, Callable[[str, Any], dict]] = {
-    "handover_export": handle_handover_export,
-}
-
-
-# ============================================================================
-# Queue-Based Processing (search_index_queue)
-# ============================================================================
-
-def process_queue_batch(conn) -> int:
-    """
-    Process one batch of items from search_index_queue.
-
-    Fetches up to BATCH_SIZE pending items, processes each via ENTITY_HANDLERS,
-    and marks items as complete or failed. Returns count of items processed.
-    """
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        # Fetch pending items ordered by priority DESC (higher priority first)
-        cur.execute("""
-            SELECT id, entity_type, entity_id, yacht_id
-            FROM search_index_queue
-            WHERE status = 'pending'
-            ORDER BY priority DESC, created_at ASC
-            LIMIT %s
-            FOR UPDATE SKIP LOCKED
-        """, (BATCH_SIZE,))
-        items = [dict(r) for r in cur.fetchall()]
-
-        if not items:
-            conn.commit()
-            return 0
-
-        logger.info(f"Queue: processing {len(items)} pending item(s)...")
-        processed = 0
-
-        for item in items:
-            item_id = item["id"]
-            entity_type = item["entity_type"]
-            entity_id = str(item["entity_id"])
-
-            # Mark as processing
-            cur.execute("""
-                UPDATE search_index_queue
-                SET status = 'processing',
-                    started_at = NOW()
-                WHERE id = %s
-            """, (item_id,))
-
-            handler = ENTITY_HANDLERS.get(entity_type)
-            if not handler:
-                cur.execute("""
-                    UPDATE search_index_queue
-                    SET status = 'failed',
-                        error = %s
-                    WHERE id = %s
-                """, (f"Unknown entity type: {entity_type}", item_id))
-                logger.warning(f"Queue: unknown entity type '{entity_type}' for item {item_id}")
-                processed += 1
-                continue
-
-            try:
-                result = handler(entity_id, cur)
-                result_json = json.dumps(result)
-                cur.execute("""
-                    UPDATE search_index_queue
-                    SET status = 'complete',
-                        completed_at = NOW(),
-                        result = %s::jsonb
-                    WHERE id = %s
-                """, (result_json, item_id))
-                logger.info(f"Queue: {entity_type}/{entity_id} indexed — {result}")
-                processed += 1
-
-            except Exception as e:
-                error_msg = str(e)[:2000]
-                cur.execute("""
-                    UPDATE search_index_queue
-                    SET status = 'failed',
-                        error = %s
-                    WHERE id = %s
-                """, (error_msg, item_id))
-                logger.error(f"Queue: failed to index {entity_type}/{entity_id}: {e}")
-                processed += 1
-
-        conn.commit()
-        return processed
 
 
 # ============================================================================
 # Main Processing
 # ============================================================================
 
-def ensure_dlq_table(cur):
-    """
-    Ensure dead letter queue table exists.
-
-    HARDENED: Creates DLQ table if missing for poisoned message isolation.
-    """
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS search_embedding_dlq (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            source_table TEXT NOT NULL,
-            source_id UUID NOT NULL,
-            error_message TEXT,
-            retry_count INT DEFAULT 0,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            last_attempt_at TIMESTAMPTZ DEFAULT NOW(),
-            UNIQUE(source_table, source_id)
-        )
-    """)
-
-
-def move_to_dlq(cur, row: Dict[str, Any], error: str, retry_count: int = 0):
-    """
-    Move a poisoned row to dead letter queue.
-
-    HARDENED: Prevents infinite retry loops for bad data.
-    """
-    try:
-        cur.execute("""
-            INSERT INTO search_embedding_dlq (source_table, source_id, error_message, retry_count, last_attempt_at)
-            VALUES ('search_index', %s, %s, %s, NOW())
-            ON CONFLICT (source_table, source_id) DO UPDATE SET
-                error_message = EXCLUDED.error_message,
-                retry_count = search_embedding_dlq.retry_count + 1,
-                last_attempt_at = NOW()
-        """, (row['id'], error[:2000], retry_count))
-        logger.warning(f"Moved row {row['id']} to DLQ: {error[:200]}")
-    except Exception as dlq_error:
-        logger.error(f"Failed to move row {row['id']} to DLQ: {dlq_error}")
-
-
 def process_batch(conn) -> int:
     """
-    Process one batch of rows.
+    Process one batch of jobs from embedding_jobs queue.
 
     HARDENED: Per-row error isolation prevents one bad row from crashing batch.
 
     Returns count of rows processed, or 0 if queue is empty.
     """
-    # Check circuit breaker before even fetching rows
+    # Check circuit breaker before even fetching jobs
     if check_circuit_breaker():
         logger.warning("Circuit breaker open, skipping batch")
         time.sleep(CIRCUIT_BREAKER_RESET_SEC / 2)  # Wait before next attempt
         return 0
 
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        # Ensure DLQ table exists
-        try:
-            ensure_dlq_table(cur)
-            conn.commit()
-        except Exception as e:
-            logger.warning(f"Could not ensure DLQ table: {e}")
-            conn.rollback()
+        # Claim jobs from the queue
+        jobs = claim_embedding_jobs(cur, BATCH_SIZE, WORKER_ID)
+        conn.commit()
 
-        rows = fetch_batch_needing_embedding(cur, BATCH_SIZE)
-
-        if not rows:
-            conn.commit()
+        if not jobs:
             return 0
 
-        logger.info(f"Processing batch of {len(rows)} rows...")
+        logger.info(f"Claimed {len(jobs)} jobs from queue...")
+
+        # Fetch search_text for claimed jobs
+        rows = fetch_search_text_for_jobs(cur, jobs)
+
+        if not rows:
+            # Jobs claimed but no matching search_index rows - mark as failed
+            for job in jobs:
+                fail_job(cur, job['job_id'], "No matching search_index row found")
+            conn.commit()
+            logger.warning(f"No search_index rows found for {len(jobs)} claimed jobs")
+            return len(jobs)
+
+        logger.info(f"Fetched search_text for {len(rows)} rows...")
+
+        # Build lookup for jobs without search_index rows
+        rows_by_key = {(r['object_type'], str(r['object_id'])): r for r in rows}
 
         # HARDENED: Process rows individually to isolate failures
         updated = 0
         failed = 0
 
-        for row in rows:
+        for job in jobs:
+            job_id = job['job_id']
+            key = (job['object_type'], str(job['object_id']))
+            row = rows_by_key.get(key)
+
+            if not row:
+                # No search_index row for this job
+                fail_job(cur, job_id, "No matching search_index row found")
+                conn.commit()
+                failed += 1
+                continue
+
             try:
                 # Extract text for single row
                 text = row.get('search_text', '')
                 if not text:
-                    logger.warning(f"Row {row['id']} has empty search_text, skipping")
+                    fail_job(cur, job_id, "Empty search_text")
+                    conn.commit()
+                    logger.warning(f"Job {job_id} has empty search_text, marking failed")
+                    failed += 1
                     continue
 
                 # Generate embedding for single row
@@ -671,37 +545,41 @@ def process_batch(conn) -> int:
 
                 # Verify dimension
                 if len(emb) != EMBED_DIMS:
-                    logger.error(f"Bad embedding dimension {len(emb)} for row {row['id']}")
+                    logger.error(f"Bad embedding dimension {len(emb)} for job {job_id}")
                     emb = [0.0] * EMBED_DIMS  # Fallback
 
-                # Write single row
+                # Write single row to search_index
                 row_updated = write_embeddings_batch(cur, [row], [emb])
+
+                # Mark job as complete
+                complete_job(cur, job_id)
                 conn.commit()
                 updated += row_updated
 
             except CircuitBreakerOpenError as cbe:
                 # Circuit breaker opened mid-batch - stop processing
+                # Don't mark as failed - job will be retried when circuit closes
                 logger.warning(f"Circuit breaker opened during batch: {cbe}")
                 conn.rollback()
                 break
 
             except Exception as e:
-                # HARDENED: Isolate failure to this row only
+                # HARDENED: Isolate failure to this job only
                 conn.rollback()
                 failed += 1
-                logger.error(f"Failed to embed row {row['id']}: {e}")
+                error_msg = str(e)[:2000]
+                logger.error(f"Failed to embed job {job_id}: {e}")
 
-                # Move to DLQ after MAX_RETRY_COUNT failures
-                # (In production, track retry count in a column or separate table)
-                move_to_dlq(cur, row, str(e))
+                # Mark job as failed
+                fail_job(cur, job_id, error_msg)
                 conn.commit()
 
         if failed > 0:
-            logger.warning(f"Batch complete with errors: {updated} embedded, {failed} failed (moved to DLQ)")
+            logger.warning(f"Batch complete with errors: {updated} embedded, {failed} failed")
         else:
             logger.info(f"Batch complete: {updated} rows embedded")
 
-        return updated
+        return updated + failed
 
 
 def _open_connection() -> psycopg2.extensions.connection:
@@ -748,6 +626,7 @@ def main():
         return 1
 
     logger.info("Embedding worker 1536 starting")
+    logger.info(f"  Worker ID:  {WORKER_ID}")
     logger.info(f"  Model:      {EMBED_MODEL}")
     logger.info(f"  Dimensions: {EMBED_DIMS}")
     logger.info(f"  Version:    {EMBED_VERSION}")
@@ -797,11 +676,23 @@ def main():
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 stats = get_embedding_stats(cur)
                 logger.info(
-                    f"Stats: total={stats['total']}, "
+                    f"Search index stats: total={stats['total']}, "
                     f"with_1536={stats['with_1536']}, "
                     f"needs={stats['needs_embedding']}, "
                     f"coverage={stats['coverage_pct']}%"
                 )
+
+                # Also log job queue stats
+                try:
+                    queue_stats = get_job_queue_stats(cur)
+                    logger.info(
+                        f"Job queue stats: queued={queue_stats['queued']}, "
+                        f"processing={queue_stats['processing']}, "
+                        f"done={queue_stats['done']}, "
+                        f"failed={queue_stats['failed']}"
+                    )
+                except Exception as qe:
+                    logger.debug(f"Could not fetch queue stats (table may not exist): {qe}")
         except Exception as e:
             logger.warning(f"Could not fetch initial stats: {e}")
             try:
@@ -824,22 +715,11 @@ def main():
                         pass
                     break  # exit inner loop → outer loop will reconnect
 
-                # Process direct search_index embeddings (delta policy).
+                # Process jobs from embedding_jobs queue
                 processed = process_batch(conn)
 
-                # Process queue-based entity indexing (handover_export, etc.).
-                queue_processed = 0
-                try:
-                    queue_processed = process_queue_batch(conn)
-                except psycopg2.ProgrammingError as qe:
-                    # search_index_queue table may not exist yet; log and skip.
-                    conn.rollback()
-                    logger.debug(f"Queue processing skipped (table may not exist): {qe}")
-
-                total_in_cycle = processed + queue_processed
-
-                if total_in_cycle > 0:
-                    total_processed += total_in_cycle
+                if processed > 0:
+                    total_processed += processed
                     empty_batches = 0
 
                     if total_processed % 500 == 0:
@@ -851,7 +731,7 @@ def main():
                     time.sleep(BATCH_SLEEP_SEC)
                 else:
                     empty_batches += 1
-                    # Exponential back-off when both queues are empty.
+                    # Exponential back-off when queue is empty.
                     sleep_time = min(BATCH_SLEEP_SEC * (2 ** empty_batches), 30)
                     time.sleep(sleep_time)
 

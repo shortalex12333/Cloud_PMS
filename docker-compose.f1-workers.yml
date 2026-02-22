@@ -1,10 +1,18 @@
 version: '3.8'
 
-# F1 Search Workers - Local Testing
+# ============================================================================
+# F1 Search Workers - Local Testing (LAW 7 & LAW 10 Compliant)
+# ============================================================================
 # Usage: docker-compose -f docker-compose.f1-workers.yml up --build
+#
+# LAW 7: 512MB memory limit per worker (Render starter plan constraint)
+# LAW 10: Physical truth over mocked tests - this cluster simulates production
+# ============================================================================
 
 services:
+  # ==========================================================================
   # API Service (pipeline_service with F1 search routes)
+  # ==========================================================================
   api:
     build:
       context: ./apps/api
@@ -33,8 +41,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
+  # ==========================================================================
   # Cache Invalidation Listener (pg_notify -> Redis eviction)
+  # ==========================================================================
   cache-listener:
     build:
       context: ./apps/api
@@ -46,19 +62,84 @@ services:
       - LOG_LEVEL=INFO
     command: ["python", "cache/invalidation_listener.py"]
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
-  # Embedding Worker (process embedding jobs via OpenAI)
+  # ==========================================================================
+  # Worker 4: Projection Worker (CDC -> search_index)
+  # LAW 9: Only writes search_text, never touches learned_keywords
+  # ==========================================================================
+  projection-worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
+      - F1_PROJECTION_WORKER_ENABLED=true
+      - PROJECTION_BATCH_SIZE=50
+      - PROJECTION_POLL_INTERVAL=5
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    command: ["python", "workers/projection_worker.py"]
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ==========================================================================
+  # Worker 5: Embedding Worker (search_index -> 1536-dim vectors)
+  # ==========================================================================
   embedding-worker:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
     environment:
-      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:5432/postgres?sslmode=require
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - EMBED_MODEL=text-embedding-3-small
       - EMBED_DIM=1536
       - EMBED_PROVIDER=openai
+      - BATCH_SIZE=100
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=INFO
-    command: ["python", "workers/embedding_worker.py"]
+    command: ["python", "workers/embedding_worker_1536.py"]
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ==========================================================================
+  # Nightly Feedback Loop (LAW 8: Tenant-isolated learning)
+  # Aggregates clicks -> learned_keywords (for manual triggering in tests)
+  # ==========================================================================
+  nightly-feedback-loop:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:%40-Ei-9Pa.uENn6g@db.vzsohavtuotocgrfkfyd.supabase.co:6543/postgres
+      - MIN_CLICKS=1
+      - LOOKBACK_DAYS=30
+      - BATCH_SIZE=100
+      - DRY_RUN=false
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=DEBUG
+    command: ["python", "workers/nightly_feedback_loop.py"]
+    profiles:
+      - manual  # Only runs when explicitly called: docker-compose run nightly-feedback-loop
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
