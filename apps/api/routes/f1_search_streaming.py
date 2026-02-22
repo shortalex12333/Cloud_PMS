@@ -918,8 +918,10 @@ async def f1_search_stream(
 
 
 # ============================================================================
-# Click Tracking Endpoint
+# Click Tracking Endpoint (Counterfactual Feedback Loop)
 # ============================================================================
+# LAW 8: yacht_id is ALWAYS extracted from server-side context, never trusted
+# from client payload. This prevents cross-tenant vocabulary pollution.
 
 @router.post("/click")
 async def f1_search_click(
@@ -927,42 +929,80 @@ async def f1_search_click(
     auth: dict = Depends(get_authenticated_user),
 ):
     """
-    Record search result click for popularity feedback.
+    Record search result click for counterfactual learning.
 
-    Body: {"search_id": "...", "object_type": "...", "object_id": "..."}
+    This endpoint powers the self-healing search loop:
+    1. User searches "watermaker" and clicks "Desalinator Unit 1"
+    2. Click is recorded with full context (yacht_id from JWT, query_text, rank)
+    3. Nightly aggregator learns: on THIS yacht, "watermaker" → Desalinator
+    4. Learned keywords are appended to search_index.learned_keywords
+    5. Future searches benefit from yacht-specific vocabulary
+
+    Body: {
+        "search_id": "uuid",          # Required: correlates to search session
+        "object_type": "part",        # Required: type of clicked result
+        "object_id": "uuid",          # Required: ID of clicked result
+        "query_text": "watermaker",   # Required: the original search query
+        "result_rank": 3,             # Optional: position in result list (1-indexed)
+        "fused_score": 0.87           # Optional: RRF score at time of click
+    }
+
+    Security: yacht_id is extracted from server-side JWT context, NOT from
+    the request body. This enforces LAW 8 (Strict Linguistic Isolation).
     """
     ctx = build_user_context(auth)
+
+    # LAW 8: Require yacht_id for tenant isolation
+    if not ctx.yacht_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Click tracking requires yacht context"
+        )
 
     body = await request.json()
     search_id = body.get("search_id")
     object_type = body.get("object_type")
     object_id = body.get("object_id")
+    query_text = body.get("query_text")
+    result_rank = body.get("result_rank")  # Optional
+    fused_score = body.get("fused_score")  # Optional
 
-    if not all([search_id, object_type, object_id]):
+    if not all([search_id, object_type, object_id, query_text]):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing required fields: search_id, object_type, object_id"
+            detail="Missing required fields: search_id, object_type, object_id, query_text"
         )
+
+    # Sanitize query_text (prevent injection, limit length)
+    query_text = str(query_text).strip()[:500]
 
     try:
         conn = await get_db_connection()
         try:
             await conn.execute(
                 """
-                INSERT INTO search_clicks (search_id, user_id, org_id, yacht_id, object_type, object_id)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO search_click_events (
+                    search_id, user_id, org_id, yacht_id,
+                    object_type, object_id, query_text,
+                    result_rank, fused_score
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (search_id, object_type, object_id) DO NOTHING
                 """,
                 uuid.UUID(search_id),
                 uuid.UUID(ctx.user_id),
                 uuid.UUID(ctx.org_id),
-                uuid.UUID(ctx.yacht_id) if ctx.yacht_id else None,
+                uuid.UUID(ctx.yacht_id),  # LAW 8: From server context, not client
                 object_type,
                 uuid.UUID(object_id),
+                query_text,
+                result_rank,
+                fused_score,
             )
         finally:
             await conn.close()
 
-        return {"status": "recorded"}
+        return {"status": "recorded", "yacht_id": ctx.yacht_id}
 
     except Exception as e:
         logger.error(f"[F1Search] Click error: {e}")
