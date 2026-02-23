@@ -108,8 +108,9 @@ export default function ContextPanel() {
     };
 
     if (visible) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      // Use capture phase to ensure we catch the event before child components
+      window.addEventListener('keydown', handleKeyDown, true);
+      return () => window.removeEventListener('keydown', handleKeyDown, true);
     }
   }, [visible, hideContext]);
 
@@ -150,12 +151,14 @@ export default function ContextPanel() {
         'transform transition-all duration-300 ease-out z-[10001]',
         'border-l border-surface-border',
         'w-[calc(100vw-80px)]', // Full-screen minus left nav
-        visible ? 'translate-x-0' : 'translate-x-full'
+        visible ? 'translate-x-0' : 'translate-x-full pointer-events-none'
       )}
       data-testid="context-panel"
       data-entity-type={entityType}
       data-entity-id={entityId}
       data-expanded="true"
+      data-visible={visible}
+      aria-hidden={!visible}
     >
       {/* No separate header - LensRenderer includes LensHeader */}
       {/* This prevents duplicate headers and UUID display */}

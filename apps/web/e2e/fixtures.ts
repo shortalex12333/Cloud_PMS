@@ -303,8 +303,16 @@ export class ContextPanelPO {
   }
 
   async close(): Promise<void> {
+    // Press Escape key to close panel
     await this.page.keyboard.press('Escape');
-    await this.panel.waitFor({ state: 'hidden' });
+    // Wait for panel to be hidden (check data-visible attribute)
+    await this.page.waitForFunction(
+      () => {
+        const panel = document.querySelector('[data-testid="context-panel"]');
+        return !panel || panel.getAttribute('data-visible') === 'false';
+      },
+      { timeout: 10000 }
+    );
   }
 }
 
