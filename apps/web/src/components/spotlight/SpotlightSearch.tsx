@@ -434,22 +434,19 @@ export default function SpotlightSearch({
     return () => clearTimeout(timer);
   }, []);
 
-  // Rolling placeholder animation - cycle every 3 seconds
-  useEffect(() => {
-    if (query) return; // Don't animate when user is typing
-
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-
-      // After animation starts, change the text
-      setTimeout(() => {
-        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_SUGGESTIONS.length);
-        setIsAnimating(false);
-      }, 200); // Half of transition duration
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [query]);
+  // Rolling placeholder animation - DISABLED for E2E stability
+  // Was cycling every 3 seconds, causing test flakiness
+  // useEffect(() => {
+  //   if (query) return;
+  //   const interval = setInterval(() => {
+  //     setIsAnimating(true);
+  //     setTimeout(() => {
+  //       setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDER_SUGGESTIONS.length);
+  //       setIsAnimating(false);
+  //     }, 200);
+  //   }, 3000);
+  //   return () => clearInterval(interval);
+  // }, [query]);
 
   useEffect(() => {
     setSelectedIndex(0);
