@@ -300,6 +300,7 @@ async def get_db_pool() -> asyncpg.Pool:
             min_size=2,
             max_size=10,
             command_timeout=0.5,  # 500ms max
+            statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
             init=_init_connection,  # Set statement_timeout after connection
         )
     return _pool
@@ -309,7 +310,10 @@ async def get_db_connection() -> asyncpg.Connection:
     """Get single connection with statement_timeout (for non-pooled use)."""
     if not READ_DSN:
         raise ValueError("READ_DB_DSN or DATABASE_URL not configured")
-    conn = await asyncpg.connect(READ_DSN)
+    conn = await asyncpg.connect(
+        READ_DSN,
+        statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
+    )
     # Set statement_timeout after connection (Supabase doesn't support as startup param)
     await conn.execute("SET statement_timeout = '800ms'")
     return conn
