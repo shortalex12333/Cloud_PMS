@@ -110,7 +110,10 @@ async def listen_and_evict():
         return
 
     logger.info(f"Connecting to database: {mask_dsn(READ_DSN)}")
-    conn = await asyncpg.connect(READ_DSN)
+    conn = await asyncpg.connect(
+        READ_DSN,
+        statement_cache_size=0,  # LAW 14: Disable statement caching for pgbouncer/Supavisor compatibility
+    )
 
     logger.info("Connecting to Redis...")
     _redis = await redis_async.from_url(REDIS_URL, decode_responses=True)

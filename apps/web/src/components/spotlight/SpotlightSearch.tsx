@@ -255,12 +255,24 @@ export default function SpotlightSearch({
   const [placeholderIndex, setPlaceholderIndex] = useState(-1); // -1 = not mounted yet
   const [isAnimating, setIsAnimating] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  // GHOST TYPIST KILL SWITCH: Once user interacts, animations are permanently disabled
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
 
   // Fix hydration: only show placeholder after mount
   useEffect(() => {
     setIsMounted(true);
     setPlaceholderIndex(0);
   }, []);
+
+  // Kill switch handler - permanently disables any demo/animation behavior
+  const handleUserInteraction = useCallback(() => {
+    if (!userHasInteracted) {
+      setUserHasInteracted(true);
+      // Lock placeholder to first suggestion (static)
+      setPlaceholderIndex(0);
+      setIsAnimating(false);
+    }
+  }, [userHasInteracted]);
   const [showSettings, setShowSettings] = useState(false);
   const [showLedger, setShowLedger] = useState(false);
   const [showHandoverDraft, setShowHandoverDraft] = useState(false);
@@ -821,7 +833,9 @@ export default function SpotlightSearch({
                 ref={inputRef}
                 type="search"
                 value={query}
+                onFocus={handleUserInteraction}
                 onChange={(e) => {
+                  handleUserInteraction(); // Kill any demo/animation on first keystroke
                   handleQueryChange(e.target.value);
                   if (e.target.value && showEmailList && !emailScopeActive) {
                     toggleEmailScope(false);
