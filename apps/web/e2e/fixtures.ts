@@ -64,6 +64,9 @@ export const test = base.extend<CelesteFixtures>({
   // Search and verify results count
   searchAndVerify: async ({ page }, use) => {
     const searchAndVerify = async (query: string, expectedMinResults: number) => {
+      // Wait for bootstrap to complete (yacht context must be loaded)
+      await page.waitForSelector('text=✓ yacht:', { timeout: 10_000 });
+
       // GHOST TYPIST DEFENSE: Click to focus, wait for UI stabilization, then fill
       const searchInput = page.getByTestId('search-input');
       await searchInput.click();
@@ -71,14 +74,14 @@ export const test = base.extend<CelesteFixtures>({
       await searchInput.fill(query);
 
       // Wait for results to load
-      await page.waitForTimeout(1500); // Debounce + API call
+      await page.waitForTimeout(2500); // Debounce (80ms) + SSE API (~1-2s)
 
       // Verify results container appears
       const resultsContainer = page.getByTestId('search-results-grouped');
       await expect(resultsContainer).toBeVisible({ timeout: 10_000 });
 
       // Count result rows (each result has a specific structure)
-      const resultRows = resultsContainer.locator('[data-result-index]');
+      const resultRows = resultsContainer.locator('[data-testid="search-result-item"]');
       const count = await resultRows.count();
 
       expect(count).toBeGreaterThanOrEqual(expectedMinResults);
@@ -91,7 +94,7 @@ export const test = base.extend<CelesteFixtures>({
   openResultAndVerifyDrawer: async ({ page }, use) => {
     const openResultAndVerifyDrawer = async (resultIndex: number, expectedEntityType: string) => {
       // Click the result
-      const resultRows = page.getByTestId('search-results-grouped').locator('[data-result-index]');
+      const resultRows = page.getByTestId('search-results-grouped').locator('[data-testid="search-result-item"]');
       await resultRows.nth(resultIndex).click();
 
       // Wait for context panel to slide in
@@ -244,21 +247,25 @@ export class SpotlightSearchPO {
   }
 
   async search(query: string): Promise<void> {
+    // Wait for bootstrap to complete (yacht context must be loaded)
+    await this.page.waitForSelector('text=✓ yacht:', { timeout: 10_000 });
+
     // GHOST TYPIST DEFENSE: Click to focus, wait for UI to stabilize, then fill
     // This ensures React state updates complete before Playwright types
     await this.searchInput.click();
     await this.page.waitForTimeout(200); // Mechanical sympathy: let React re-render
     await this.searchInput.fill(query);
-    await this.page.waitForTimeout(1500); // Wait for debounce + API
+    await this.page.waitForTimeout(2500); // Wait for debounce (80ms) + SSE API (~1-2s)
   }
 
   async getResultCount(): Promise<number> {
-    const results = this.resultsContainer.locator('[data-result-index]');
+    // Match the actual component: data-testid="search-result-item"
+    const results = this.resultsContainer.locator('[data-testid="search-result-item"]');
     return results.count();
   }
 
   async clickResult(index: number): Promise<void> {
-    const results = this.resultsContainer.locator('[data-result-index]');
+    const results = this.resultsContainer.locator('[data-testid="search-result-item"]');
     await results.nth(index).click();
   }
 }
