@@ -270,7 +270,15 @@ router = APIRouter(prefix="/api/f1/search", tags=["f1-search"])
 
 # READ_DSN: Use read replica if available, otherwise primary
 # Format: postgresql://service_role:...@db.xxx.supabase.co:6543/postgres
-READ_DSN = os.getenv("READ_DB_DSN") or os.getenv("DATABASE_URL")
+_raw_dsn = os.getenv("READ_DB_DSN") or os.getenv("DATABASE_URL")
+
+# Ensure we use Supavisor pooler (port 6543) not direct connection (port 5432)
+# Direct connections exhaust PostgreSQL slots under SSE streaming load
+if _raw_dsn and ":5432" in _raw_dsn:
+    READ_DSN = _raw_dsn.replace(":5432", ":6543")
+    logger.warning("[F1Search] Switched port 5432 → 6543 (Supavisor pooler for connection safety)")
+else:
+    READ_DSN = _raw_dsn
 
 # Connection pool (lazy init)
 _pool: Optional[asyncpg.Pool] = None
@@ -727,8 +735,8 @@ async def f1_search_stream(
                     if detected_object_types:
                         # Log detected types for analytics, but don't filter by them
                         span.set_attribute("detected_object_types", ",".join(detected_object_types))
-                    conn = await get_db_connection()
-                    try:
+                    pool = await get_db_pool()
+                    async with pool.acquire() as conn:
                         # CRITICAL: Always pass object_types=None for unbiased global search
                         rows = await call_hyper_search_multi(
                             conn, rewrites, ctx,
@@ -736,8 +744,6 @@ async def f1_search_stream(
                             page_limit=20,
                             object_types=None  # ALWAYS search all types globally
                         )
-                    finally:
-                        await conn.close()
                     span.set_attribute("result_count", len(rows))
 
             total_results = len(rows)
@@ -977,8 +983,8 @@ async def f1_search_click(
     query_text = str(query_text).strip()[:500]
 
     try:
-        conn = await get_db_connection()
-        try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
             await conn.execute(
                 """
                 INSERT INTO search_click_events (
@@ -999,8 +1005,6 @@ async def f1_search_click(
                 result_rank,
                 fused_score,
             )
-        finally:
-            await conn.close()
 
         return {"status": "recorded", "yacht_id": ctx.yacht_id}
 
