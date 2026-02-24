@@ -380,6 +380,140 @@ async def mark_work_order_complete_prefill(
     return result
 
 
+@router.post("/work_order/create/prepare")
+async def prepare_create_work_order(
+    request: PreviewRequest,
+    authorization: str = Header(None)
+):
+    """
+    Phase 1: Generate mutation preview for work order creation.
+
+    This endpoint returns a mutation preview with pre-filled fields based on NLP
+    entity extraction and planning document specifications.
+
+    Returns:
+    - mutation_preview: Pre-filled payload based on extracted entities
+    - missing_required: List of required fields not auto-populated
+    - warnings: List of ambiguities (equipment not found, etc.)
+    - validation_status: "ready" | "incomplete"
+    """
+    # Validate JWT
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+
+    user_context = jwt_result.context
+
+    # Validate yacht isolation
+    yacht_result = validate_yacht_isolation(request.context, user_context)
+    if not yacht_result.valid:
+        raise HTTPException(status_code=403, detail=yacht_result.error.message)
+
+    yacht_id = request.context["yacht_id"]
+    user_id = user_context["user_id"]
+
+    # Get tenant key for handler lookup
+    tenant_key_alias = await lookup_tenant_for_user(user_id)
+    if not tenant_key_alias:
+        raise HTTPException(status_code=400, detail="Unable to determine tenant for user")
+
+    # Get handlers for tenant
+    handlers = get_handlers_for_tenant(tenant_key_alias)
+    wo_handlers = handlers.get("wo_handlers")
+    if not wo_handlers:
+        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
+
+    # Call the prepare handler
+    result = await wo_handlers.prepare_create_work_order(
+        query_text=request.payload.get("query_text", ""),
+        extracted_entities=request.payload.get("extracted_entities", {}),
+        yacht_id=yacht_id,
+        user_id=user_id
+    )
+
+    if result.get("status") == "error":
+        status_code = 400
+        if result.get("error_code") == "INTERNAL_ERROR":
+            status_code = 500
+        raise HTTPException(status_code=status_code, detail=result.get("message"))
+
+    return result
+
+
+@router.post("/work_order/create/commit")
+async def commit_create_work_order(
+    request: PreviewRequest,
+    authorization: str = Header(None)
+):
+    """
+    Phase 2: Execute work order creation after user confirms preview.
+
+    The user has reviewed and possibly edited the mutation_preview.
+    This endpoint:
+    1. Re-validates all required fields
+    2. Validates foreign key constraints (equipment_id, assigned_to)
+    3. Executes INSERT with RLS
+    4. Writes audit log entry (signature NOT NULL, uses {} for non-signed)
+    5. Returns entity ID for frontend to refresh
+
+    Required fields: title, priority, type
+    Optional fields: equipment_id, description, assigned_to, due_date
+    """
+    # Validate JWT
+    jwt_result = validate_jwt(authorization)
+    if not jwt_result.valid:
+        raise HTTPException(status_code=401, detail=jwt_result.error.message)
+
+    user_context = jwt_result.context
+
+    # Validate yacht isolation
+    yacht_result = validate_yacht_isolation(request.context, user_context)
+    if not yacht_result.valid:
+        raise HTTPException(status_code=403, detail=yacht_result.error.message)
+
+    yacht_id = request.context["yacht_id"]
+    user_id = user_context["user_id"]
+
+    # Get tenant key for handler lookup
+    tenant_key_alias = await lookup_tenant_for_user(user_id)
+    if not tenant_key_alias:
+        raise HTTPException(status_code=400, detail="Unable to determine tenant for user")
+
+    # Get handlers for tenant
+    handlers = get_handlers_for_tenant(tenant_key_alias)
+    wo_handlers = handlers.get("wo_handlers")
+    if not wo_handlers:
+        raise HTTPException(status_code=500, detail="Work order handlers not initialized")
+
+    # Extract payload and signature
+    payload = request.payload
+    signature = payload.get("signature")  # Optional for non-signed actions
+
+    # Call the commit handler
+    result = await wo_handlers.commit_create_work_order(
+        payload=payload,
+        signature=signature,
+        yacht_id=yacht_id,
+        user_id=user_id
+    )
+
+    if result.get("status") == "error":
+        # Map error codes to HTTP status codes
+        error_code = result.get("error_code")
+        status_code_map = {
+            "MISSING_REQUIRED_FIELDS": 400,
+            "INVALID_UUID": 400,
+            "EQUIPMENT_NOT_FOUND": 404,
+            "USER_NOT_FOUND": 404,
+            "INSERT_FAILED": 500,
+            "INTERNAL_ERROR": 500,
+        }
+        status_code = status_code_map.get(error_code, 400)
+        raise HTTPException(status_code=status_code, detail=result.get("message"))
+
+    return result
+
+
 # ============================================================================
 # PREVIEW ENDPOINTS
 # ============================================================================

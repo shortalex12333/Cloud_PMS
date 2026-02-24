@@ -44,6 +44,334 @@ class WorkOrderMutationHandlers:
         self.db = supabase_client
 
     # =========================================================================
+    # WORK ORDER FIELD METADATA (for two-phase mutations)
+    # =========================================================================
+
+    WORK_ORDER_FIELD_METADATA = {
+        "title": {
+            "classification": "REQUIRED",
+            "auto_populate_from": "equipment+symptom",
+            "compose_template": "{equipment} - {symptom}",
+        },
+        "equipment_id": {
+            "classification": "REQUIRED",
+            "auto_populate_from": "equipment",
+            "lookup_required": True,
+        },
+        "description": {
+            "classification": "OPTIONAL",
+            "auto_populate_from": "symptom",
+            "compose_template": "User reported: {symptom}",
+        },
+        "priority": {
+            "classification": "REQUIRED",
+            "auto_populate_from": "priority_indicator",
+            "value_map": {"urgent": "emergency", "important": "urgent", "asap": "urgent"},
+            "default": "routine",
+        },
+        "type": {
+            "classification": "REQUIRED",
+            "default": "unplanned",
+        },
+        "status": {
+            "classification": "BACKEND_AUTO",
+        },
+        "yacht_id": {
+            "classification": "BACKEND_AUTO",
+        },
+    }
+
+    # =========================================================================
+    # TWO-PHASE MUTATION: create_work_order/prepare
+    # =========================================================================
+
+    async def prepare_create_work_order(
+        self,
+        query_text: str,
+        extracted_entities: Dict,
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        Phase 1: Generate mutation preview for work order creation.
+
+        Uses generic prefill engine to generate previews based on field_metadata.
+
+        Args:
+            query_text: Original user query
+            extracted_entities: Dict of extracted entities from NLP
+            yacht_id: User's yacht ID (from JWT)
+            user_id: User ID (from JWT)
+
+        Returns:
+            {
+                "mutation_preview": {...},
+                "missing_required": [...],
+                "warnings": [...],
+                "validation_status": "ready" | "incomplete"
+            }
+        """
+        try:
+            # Use generic prefill engine to build mutation preview
+            preview, missing, warnings = await self._build_mutation_preview(
+                query_text=query_text,
+                extracted_entities=extracted_entities,
+                field_metadata=self.WORK_ORDER_FIELD_METADATA,
+                yacht_id=yacht_id,
+                user_id=user_id
+            )
+
+            return {
+                "status": "success",
+                "mutation_preview": preview,
+                "missing_required": missing,
+                "warnings": warnings,
+                "validation_status": "ready" if not missing else "incomplete"
+            }
+
+        except Exception as e:
+            logger.error(f"prepare_create_work_order failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    async def _build_mutation_preview(
+        self,
+        query_text: str,
+        extracted_entities: Dict,
+        field_metadata: Dict,
+        yacht_id: str,
+        user_id: str
+    ) -> tuple:
+        """
+        Generic prefill engine that applies field_metadata to generate mutation preview.
+
+        This is the core auto-population logic that:
+        1. Processes each field based on its metadata
+        2. Performs yacht-scoped lookups for entity resolution
+        3. Composes field values from templates
+        4. Applies value mappings and defaults
+        5. Generates warnings for ambiguous entities
+
+        Returns:
+            Tuple of (preview_dict, missing_required_list, warnings_list)
+        """
+        preview = {}
+        missing_required = []
+        warnings = []
+
+        for field_name, meta in field_metadata.items():
+            classification = meta.get("classification")
+
+            # Skip BACKEND_AUTO fields (handled by database)
+            if classification == "BACKEND_AUTO":
+                continue
+
+            # Track required fields
+            is_required = classification == "REQUIRED"
+
+            # Handle auto-population
+            auto_populate_from = meta.get("auto_populate_from")
+            if auto_populate_from:
+                # Check for composed fields (e.g., "equipment+symptom")
+                if "+" in auto_populate_from:
+                    # Compose from multiple entities
+                    source_entities = auto_populate_from.split("+")
+                    template = meta.get("compose_template", "")
+
+                    # Extract values for template
+                    template_values = {}
+                    for entity_type in source_entities:
+                        entity_value = extracted_entities.get(entity_type.strip(), "")
+                        template_values[entity_type.strip()] = entity_value
+
+                    # Only compose if we have at least one value
+                    if any(template_values.values()):
+                        composed_value = template.format(**template_values)
+                        preview[field_name] = composed_value.strip(" -")
+                        continue
+
+                # Single entity auto-population
+                entity_value = extracted_entities.get(auto_populate_from)
+
+                if entity_value:
+                    # Check if lookup is required
+                    if meta.get("lookup_required"):
+                        # Perform yacht-scoped lookup
+                        lookup_result = await self._lookup_entity(
+                            entity_type=auto_populate_from,
+                            entity_value=entity_value,
+                            yacht_id=yacht_id
+                        )
+
+                        if lookup_result["found"]:
+                            preview[field_name] = lookup_result["id"]
+                            preview[f"{field_name}_label"] = lookup_result["label"]
+                        elif lookup_result.get("ambiguous"):
+                            warnings.append(f"Multiple {auto_populate_from} matches found for '{entity_value}'")
+                            preview[f"{field_name}_options"] = lookup_result.get("options", [])
+                        else:
+                            warnings.append(f"{auto_populate_from.capitalize()} '{entity_value}' not found")
+                        continue
+
+                    # Check for value mapping
+                    value_map = meta.get("value_map")
+                    if value_map:
+                        mapped_value = value_map.get(entity_value.lower())
+                        if mapped_value:
+                            preview[field_name] = mapped_value
+                            continue
+
+                    # Check for compose template
+                    compose_template = meta.get("compose_template")
+                    if compose_template:
+                        composed = compose_template.format(**{auto_populate_from: entity_value})
+                        preview[field_name] = composed
+                        continue
+
+                    # Direct assignment
+                    preview[field_name] = entity_value
+                    continue
+
+            # Apply defaults for missing fields
+            default = meta.get("default")
+            if default is not None and field_name not in preview:
+                preview[field_name] = default
+
+            # Track missing required fields
+            if is_required and field_name not in preview:
+                missing_required.append(field_name)
+
+        return preview, missing_required, warnings
+
+    async def _lookup_entity(
+        self,
+        entity_type: str,
+        entity_value: str,
+        yacht_id: str
+    ) -> Dict:
+        """
+        Yacht-scoped entity lookup for resolving entity names to IDs.
+
+        Args:
+            entity_type: Type of entity ("equipment", "fault", "person")
+            entity_value: Name/identifier to look up
+            yacht_id: Yacht ID for scoping
+
+        Returns:
+            {
+                "found": bool,
+                "id": uuid (if found and unique),
+                "label": str (if found),
+                "ambiguous": bool (if multiple matches),
+                "options": list (if ambiguous)
+            }
+        """
+        try:
+            if entity_type == "equipment":
+                # Lookup equipment by name
+                result = self.db.table("pms_equipment").select(
+                    "id, name, model, location"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{entity_value}%").execute()
+
+                if not result.data:
+                    return {"found": False}
+
+                if len(result.data) == 1:
+                    equipment = result.data[0]
+                    label = f"{equipment['name']}"
+                    if equipment.get('model'):
+                        label += f" ({equipment['model']})"
+                    return {
+                        "found": True,
+                        "id": equipment["id"],
+                        "label": label
+                    }
+
+                # Multiple matches - ambiguous
+                return {
+                    "found": False,
+                    "ambiguous": True,
+                    "options": [
+                        {
+                            "id": eq["id"],
+                            "label": f"{eq['name']}" + (f" ({eq['model']})" if eq.get('model') else "")
+                        }
+                        for eq in result.data
+                    ]
+                }
+
+            elif entity_type == "fault":
+                # Lookup fault by code or title
+                result = self.db.table("pms_faults").select(
+                    "id, fault_code, title"
+                ).eq("yacht_id", yacht_id).or_(
+                    f"fault_code.ilike.%{entity_value}%,title.ilike.%{entity_value}%"
+                ).execute()
+
+                if not result.data:
+                    return {"found": False}
+
+                if len(result.data) == 1:
+                    fault = result.data[0]
+                    return {
+                        "found": True,
+                        "id": fault["id"],
+                        "label": f"{fault.get('fault_code', '')} - {fault['title']}"
+                    }
+
+                return {
+                    "found": False,
+                    "ambiguous": True,
+                    "options": [
+                        {
+                            "id": f["id"],
+                            "label": f"{f.get('fault_code', '')} - {f['title']}"
+                        }
+                        for f in result.data
+                    ]
+                }
+
+            elif entity_type == "person":
+                # Lookup user by name
+                result = self.db.table("auth_users_profiles").select(
+                    "id, name, email"
+                ).eq("yacht_id", yacht_id).ilike("name", f"%{entity_value}%").execute()
+
+                if not result.data:
+                    return {"found": False}
+
+                if len(result.data) == 1:
+                    user = result.data[0]
+                    return {
+                        "found": True,
+                        "id": user["id"],
+                        "label": user["name"]
+                    }
+
+                return {
+                    "found": False,
+                    "ambiguous": True,
+                    "options": [
+                        {
+                            "id": u["id"],
+                            "label": f"{u['name']} ({u.get('email', '')})"
+                        }
+                        for u in result.data
+                    ]
+                }
+
+            else:
+                logger.warning(f"Unknown entity type for lookup: {entity_type}")
+                return {"found": False}
+
+        except Exception as e:
+            logger.error(f"Entity lookup failed for {entity_type} '{entity_value}': {e}")
+            return {"found": False, "error": str(e)}
+
+    # =========================================================================
     # P0 ACTION #2: create_work_order_from_fault
     # =========================================================================
 
@@ -1748,6 +2076,243 @@ class WorkOrderMutationHandlers:
             }
 
     # =========================================================================
+    # P0 ACTION: create_work_order (Two-Phase MUTATE)
+    # =========================================================================
+
+    async def prepare_create_work_order(
+        self,
+        query_text: str,
+        extracted_entities: Dict,
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        Phase 1: Prepare work order creation (preview).
+
+        Generates mutation_preview with:
+        - Pre-filled fields from extracted entities
+        - Resolved UUIDs for equipment, assignee
+        - Missing required fields
+        - Warnings for ambiguities
+
+        Returns mutation_preview for user to review/edit.
+        """
+        try:
+            mutation_preview = {
+                "title": "",
+                "equipment_id": None,
+                "description": query_text,
+                "priority": "routine",  # default
+                "type": "unplanned",     # default
+                "assigned_to": None,
+                "due_date": None,
+            }
+            missing_required = []
+            warnings = []
+
+            # Extract title from query or equipment + symptom
+            if "equipment" in extracted_entities:
+                equipment_name = extracted_entities["equipment"].get("canonical_name")
+                symptom = extracted_entities.get("symptom", {}).get("canonical_name", "issue")
+                mutation_preview["title"] = f"{equipment_name} - {symptom}"
+            elif query_text:
+                mutation_preview["title"] = query_text[:100]  # Use query as title
+            else:
+                missing_required.append("title")
+
+            # Resolve equipment_id
+            if "equipment" in extracted_entities:
+                equipment_canonical = extracted_entities["equipment"].get("canonical_name")
+                if equipment_canonical:
+                    eq_result = self.db.table("pms_equipment").select(
+                        "id, name"
+                    ).eq("yacht_id", yacht_id).ilike("name", f"%{equipment_canonical}%").limit(1).execute()
+
+                    if eq_result.data and len(eq_result.data) > 0:
+                        mutation_preview["equipment_id"] = eq_result.data[0]["id"]
+                    else:
+                        warnings.append(f"Equipment '{equipment_canonical}' not found")
+
+            # Map symptom severity to priority
+            if "symptom" in extracted_entities:
+                symptom_severity = extracted_entities["symptom"].get("severity")
+                severity_to_priority = {
+                    "critical": "emergency",
+                    "high": "urgent",
+                    "medium": "routine",
+                    "low": "routine"
+                }
+                mutation_preview["priority"] = severity_to_priority.get(symptom_severity, "routine")
+
+            # Resolve assigned_to (person)
+            if "person" in extracted_entities:
+                person_name = extracted_entities["person"].get("canonical_name")
+                if person_name:
+                    user_result = self.db.table("auth_users_profiles").select(
+                        "id, name"
+                    ).eq("yacht_id", yacht_id).ilike("name", f"%{person_name}%").limit(1).execute()
+
+                    if user_result.data and len(user_result.data) > 0:
+                        mutation_preview["assigned_to"] = user_result.data[0]["id"]
+                    else:
+                        warnings.append(f"Person '{person_name}' not found")
+
+            # Validate required fields
+            if not mutation_preview["title"]:
+                missing_required.append("title")
+            if not mutation_preview["priority"]:
+                missing_required.append("priority")
+            if not mutation_preview["type"]:
+                missing_required.append("type")
+
+            validation_status = "ready" if len(missing_required) == 0 else "incomplete"
+
+            return {
+                "status": "success",
+                "mutation_preview": mutation_preview,
+                "missing_required": missing_required,
+                "warnings": warnings,
+                "validation_status": validation_status
+            }
+
+        except Exception as e:
+            logger.error(f"prepare_create_work_order failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    async def commit_create_work_order(
+        self,
+        payload: Dict,
+        signature: Optional[Dict],
+        yacht_id: str,
+        user_id: str
+    ) -> Dict:
+        """
+        Phase 2: Execute work order creation after user confirms preview.
+
+        Steps:
+        1. Re-validate payload (user might have edited)
+        2. Execute INSERT with RLS
+        3. Write audit log (signature NOT NULL, use {} for non-signed)
+        4. Return entity ID
+
+        Required fields: title, priority, type
+        Optional fields: equipment_id, description, assigned_to, due_date
+        """
+        try:
+            # Re-validate required fields
+            required_fields = ["title", "priority", "type"]
+            missing = [f for f in required_fields if not payload.get(f)]
+            if missing:
+                return {
+                    "status": "error",
+                    "error_code": "MISSING_REQUIRED_FIELDS",
+                    "message": f"Missing required fields: {', '.join(missing)}"
+                }
+
+            # Validate UUID fields if provided
+            uuid_fields = ["equipment_id", "assigned_to"]
+            for field in uuid_fields:
+                if payload.get(field):
+                    try:
+                        # Validate UUID format
+                        import uuid as uuid_lib
+                        uuid_lib.UUID(payload[field])
+                    except (ValueError, AttributeError):
+                        return {
+                            "status": "error",
+                            "error_code": "INVALID_UUID",
+                            "message": f"Invalid UUID format for {field}: {payload[field]}"
+                        }
+
+            # Validate equipment exists if provided
+            if payload.get("equipment_id"):
+                eq_result = self.db.table("pms_equipment").select("id").eq(
+                    "id", payload["equipment_id"]
+                ).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not eq_result.data:
+                    return {
+                        "status": "error",
+                        "error_code": "EQUIPMENT_NOT_FOUND",
+                        "message": f"Equipment not found: {payload['equipment_id']}"
+                    }
+
+            # Validate assignee exists if provided
+            if payload.get("assigned_to"):
+                user_result = self.db.table("auth_users_profiles").select("id").eq(
+                    "id", payload["assigned_to"]
+                ).eq("yacht_id", yacht_id).maybe_single().execute()
+
+                if not user_result.data:
+                    return {
+                        "status": "error",
+                        "error_code": "USER_NOT_FOUND",
+                        "message": f"User not found: {payload['assigned_to']}"
+                    }
+
+            # Generate work order number
+            wo_number = await self._generate_wo_number(yacht_id)
+
+            # Execute INSERT with RLS
+            now = datetime.now(timezone.utc).isoformat()
+            wo_data = {
+                "yacht_id": yacht_id,
+                "wo_number": wo_number,
+                "title": payload["title"],
+                "description": payload.get("description"),
+                "equipment_id": payload.get("equipment_id"),
+                "priority": payload["priority"],
+                "type": payload["type"],
+                "status": "planned",
+                "assigned_to": payload.get("assigned_to"),
+                "due_date": payload.get("due_date"),
+                "created_by": user_id,
+                "created_at": now,
+                "updated_at": now
+            }
+
+            result = self.db.table("pms_work_orders").insert(wo_data).execute()
+
+            if not result.data:
+                return {
+                    "status": "error",
+                    "error_code": "INSERT_FAILED",
+                    "message": "Failed to create work order"
+                }
+
+            work_order = result.data[0]
+
+            # Write audit log (signature NOT NULL, use {} for non-signed)
+            await self._create_audit_log(
+                yacht_id=yacht_id,
+                action="create_work_order",
+                entity_type="work_order",
+                entity_id=work_order["id"],
+                user_id=user_id,
+                new_values=work_order,
+                signature=signature or {}  # {} for non-signed actions
+            )
+
+            return {
+                "status": "success",
+                "id": work_order["id"],
+                "wo_number": work_order.get("wo_number"),
+                "message": f"Work order {wo_number} created"
+            }
+
+        except Exception as e:
+            logger.error(f"commit_create_work_order failed: {e}", exc_info=True)
+            return {
+                "status": "error",
+                "error_code": "INTERNAL_ERROR",
+                "message": str(e)
+            }
+
+    # =========================================================================
     # HELPER METHODS
     # =========================================================================
 
@@ -1884,6 +2449,10 @@ def get_work_order_mutation_handlers(supabase_client) -> Dict[str, callable]:
     handlers = WorkOrderMutationHandlers(supabase_client)
 
     return {
+        # create_work_order (two-phase)
+        "prepare_create_work_order": handlers.prepare_create_work_order,
+        "commit_create_work_order": handlers.commit_create_work_order,
+
         # create_work_order_from_fault
         "create_work_order_from_fault_prefill": handlers.create_work_order_from_fault_prefill,
         "create_work_order_from_fault_preview": handlers.create_work_order_from_fault_preview,
