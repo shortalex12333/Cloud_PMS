@@ -906,6 +906,118 @@ async def get_fault_entity(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _is_user_hod(user_id: str, yacht_id: str, supabase) -> bool:
+    """
+    Check if user has Head of Department (HOD) role.
+
+    HOD roles include: chief_engineer, chief_officer, captain, purser
+
+    Args:
+        user_id: User UUID
+        yacht_id: Yacht UUID
+        supabase: Supabase client
+
+    Returns:
+        True if user is HOD, False otherwise
+    """
+    try:
+        # Query auth_users_roles table for HOD roles
+        result = supabase.table('auth_users_roles').select('role').eq(
+            'user_id', user_id
+        ).eq(
+            'yacht_id', yacht_id
+        ).eq(
+            'is_active', True
+        ).in_(
+            'role', ['chief_engineer', 'chief_officer', 'captain', 'purser']
+        ).maybe_single().execute()
+
+        return bool(result.data)
+    except Exception as e:
+        logger.warning(f"Failed to check HOD status for user {user_id}: {e}")
+        return False
+
+
+def _determine_available_actions(
+    work_order: Dict,
+    user_role: str,
+    is_hod: bool
+) -> List[Dict]:
+    """
+    Determine which actions are available based on work order state.
+
+    Business Rules:
+    - status=planned: Can start, cancel
+    - status=in_progress: Can add part, add note, complete (HOD only)
+    - status=completed: Can reopen
+    - status=cancelled: No actions
+
+    Args:
+        work_order: Work order data dict
+        user_role: User's role (from JWT)
+        is_hod: Whether user is Head of Department
+
+    Returns:
+        List of available action dicts (max 6 per lens convention)
+    """
+    actions = []
+    status = work_order.get('status', '').lower()
+
+    # Status: planned - can start or cancel
+    if status == 'planned':
+        actions.append({
+            "name": "Start Work Order",
+            "endpoint": "/v1/actions/work_order/start",
+            "requires_signature": False,
+            "method": "POST"
+        })
+        actions.append({
+            "name": "Cancel",
+            "endpoint": "/v1/actions/work_order/cancel",
+            "requires_signature": False,
+            "method": "POST"
+        })
+
+    # Status: in_progress - can add parts/notes, complete (HOD only)
+    elif status == 'in_progress':
+        actions.append({
+            "name": "Add Part",
+            "endpoint": "/v1/actions/work_order/add_part",
+            "requires_signature": False,
+            "method": "POST"
+        })
+        actions.append({
+            "name": "Add Note",
+            "endpoint": "/v1/actions/work_order/add_note",
+            "requires_signature": False,
+            "method": "POST"
+        })
+
+        # Only HOD can complete work orders
+        if is_hod:
+            actions.append({
+                "name": "Complete",
+                "endpoint": "/v1/actions/work_order/complete",
+                "requires_signature": True,  # HOD signature required
+                "method": "POST"
+            })
+
+    # Status: completed - can reopen
+    elif status == 'completed':
+        actions.append({
+            "name": "Reopen",
+            "endpoint": "/v1/actions/work_order/reopen",
+            "requires_signature": False,
+            "method": "POST"
+        })
+
+    # Status: cancelled - no actions available
+    # (actions list remains empty)
+
+    # Max 6 actions per lens (from planning docs)
+    return actions[:6]
+
+
 @app.get("/v1/entity/work_order/{work_order_id}")
 async def get_work_order_entity(
     work_order_id: str,
@@ -920,12 +1032,15 @@ async def get_work_order_entity(
     - Parts used (from pms_work_order_parts with joined part details)
     - Checklist items (from pms_work_order_checklist)
     - Audit history (from pms_audit_log)
+    - Available actions (state-dependent action buttons)
 
     Empty arrays [] are returned when no related data exists,
     enabling frontend to show empty states with CTAs.
     """
     try:
         yacht_id = auth['yacht_id']
+        user_id = auth['user_id']
+        user_role = auth.get('role', 'crew')
 
         # Use local get_supabase_client (uses DEFAULT_YACHT_CODE env var)
         supabase = get_supabase_client()
@@ -974,7 +1089,15 @@ async def get_work_order_entity(
         ).eq('entity_type', 'work_order').eq('entity_id', wo_id).eq('yacht_id', yacht_id).order('created_at', desc=True).limit(50).execute()
         audit_history = audit_response.data if audit_response.data else []
 
-        # 6. Build enriched response
+        # 6. Determine available actions based on work order state and user role
+        is_hod = await _is_user_hod(user_id, yacht_id, supabase)
+        available_actions = _determine_available_actions(
+            work_order=data,
+            user_role=user_role,
+            is_hod=is_hod
+        )
+
+        # 7. Build enriched response
         return {
             # Core work order data
             "id": wo_id,
@@ -1014,6 +1137,9 @@ async def get_work_order_entity(
             "parts_count": len(parts),
             "checklist_count": len(checklist),
             "checklist_completed": len([c for c in checklist if c.get('is_completed')]),
+
+            # === AVAILABLE ACTIONS (state-dependent) ===
+            "available_actions": available_actions,
         }
     except HTTPException:
         raise
