@@ -202,9 +202,10 @@ function mapAPIResult(result: APISearchResult): SpotlightResult {
     '';
 
   return {
-    // CRITICAL: Backend returns primary_id (chunk ID) - prioritize it over id field
-    // id field might be document_id from raw_data, which is WRONG for DocumentSituationView
-    id: result.primary_id || result.id || crypto.randomUUID(),
+    // CRITICAL: useCelesteSearch already mapped object_id → id correctly (line 596)
+    // DO NOT re-map here - just use the id field that was already set
+    // The hook prioritizes: object_id || primary_id || id
+    id: result.id || crypto.randomUUID(),
     type: result.type || result.source_table || 'document',
     title: title.trim(),
     subtitle: subtitle.trim(),
@@ -1006,7 +1007,7 @@ export default function SpotlightSearch({
                           })
                           .slice(0, 12)
                           .map(r => ({
-                            id: r.primary_id || r.id || '',
+                            id: r.id || '',
                             type: r.type || r.source_table || '',
                             title: r.title || (r as any).name || '',
                             subtitle: r.subtitle || r.snippet || '',
