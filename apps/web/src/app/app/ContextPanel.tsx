@@ -16,7 +16,7 @@
  * - Cross-lens navigation via NavigationContext
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { useSurface } from '@/contexts/SurfaceContext';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -73,7 +73,12 @@ export default function ContextPanel() {
             throw new Error('Unauthorized: Entity belongs to different yacht');
           }
 
-          setEntityData(freshData);
+          // Normalize payload structure - F1 may return data in nested payload
+          const normalizedData = freshData.payload
+            ? { ...freshData.payload, ...freshData, payload: undefined }
+            : freshData;
+
+          setEntityData(normalizedData);
         } else {
           console.warn('[ContextPanel] Failed to fetch entity, using cached data:', response.status);
           setEntityData(initialData);
@@ -98,21 +103,33 @@ export default function ContextPanel() {
   }, [initialData]);
 
   // Handle ESC key to close panel
+  // Use ref to avoid stale closure issues with hideContext
+  const hideContextRef = useRef(hideContext);
   useEffect(() => {
+    hideContextRef.current = hideContext;
+  }, [hideContext]);
+
+  useEffect(() => {
+    if (!visible) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && visible) {
+      if (e.key === 'Escape') {
+        console.log('[ContextPanel] 🔑 Escape pressed, closing panel');
         e.preventDefault();
         e.stopPropagation();
-        hideContext();
+        hideContextRef.current();
       }
     };
 
-    if (visible) {
-      // Use capture phase to ensure we catch the event before child components
-      window.addEventListener('keydown', handleKeyDown, true);
-      return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }
-  }, [visible, hideContext]);
+    // Use document instead of window to ensure global capture
+    document.addEventListener('keydown', handleKeyDown, true);
+    console.log('[ContextPanel] ✅ Escape listener attached, visible:', visible);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      console.log('[ContextPanel] ❌ Escape listener removed');
+    };
+  }, [visible]); // Only depend on visible, not hideContext
 
   // Refresh handler for lens actions
   const handleRefresh = useCallback(async () => {
@@ -135,7 +152,13 @@ export default function ContextPanel() {
 
       if (response.ok) {
         const freshData = await response.json();
-        setEntityData(freshData);
+
+        // Normalize payload structure - F1 may return data in nested payload
+        const normalizedData = freshData.payload
+          ? { ...freshData.payload, ...freshData, payload: undefined }
+          : freshData;
+
+        setEntityData(normalizedData);
       }
     } catch (err) {
       console.error('[ContextPanel] Refresh failed:', err);
