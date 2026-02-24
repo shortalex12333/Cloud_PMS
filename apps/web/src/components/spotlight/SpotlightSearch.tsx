@@ -555,8 +555,27 @@ export default function SpotlightSearch({
     };
 
     if (surfaceContext) {
-      console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', entityType, result.id);
-      surfaceContext.showContext(entityType, result.id, contextMetadata);
+      const entityId = result.id;
+
+      if (!entityId) {
+        console.error('[SpotlightSearch] ❌ Missing entity ID for result:', {
+          resultId: result.id,
+          title: result.title,
+          type: result.type,
+          fullResult: result
+        });
+        return;
+      }
+
+      console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', {
+        entityType,
+        entityId,
+        resultId: result.id,
+        title: result.title,
+        hasMetadata: !!contextMetadata
+      });
+
+      surfaceContext.showContext(entityType, entityId, contextMetadata);
 
       // Record ledger event for artefact opened
       recordLedgerEvent('artefact_opened', {
