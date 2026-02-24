@@ -73,7 +73,12 @@ export default function ContextPanel() {
             throw new Error('Unauthorized: Entity belongs to different yacht');
           }
 
-          setEntityData(freshData);
+          // Normalize payload structure - F1 may return data in nested payload
+          const normalizedData = freshData.payload
+            ? { ...freshData.payload, ...freshData, payload: undefined }
+            : freshData;
+
+          setEntityData(normalizedData);
         } else {
           console.warn('[ContextPanel] Failed to fetch entity, using cached data:', response.status);
           setEntityData(initialData);
@@ -147,7 +152,13 @@ export default function ContextPanel() {
 
       if (response.ok) {
         const freshData = await response.json();
-        setEntityData(freshData);
+
+        // Normalize payload structure - F1 may return data in nested payload
+        const normalizedData = freshData.payload
+          ? { ...freshData.payload, ...freshData, payload: undefined }
+          : freshData;
+
+        setEntityData(normalizedData);
       }
     } catch (err) {
       console.error('[ContextPanel] Refresh failed:', err);

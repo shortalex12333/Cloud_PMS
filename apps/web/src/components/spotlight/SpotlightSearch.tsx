@@ -555,6 +555,8 @@ export default function SpotlightSearch({
     };
 
     if (surfaceContext) {
+      // CRITICAL FIX: useCelesteSearch already maps object_id -> id at line 596
+      // result.id is the authoritative entity identifier after mapping
       const entityId = result.id;
 
       if (!entityId) {
@@ -570,7 +572,6 @@ export default function SpotlightSearch({
       console.log('[SpotlightSearch] 📍 Opening in ContextPanel:', {
         entityType,
         entityId,
-        resultId: result.id,
         title: result.title,
         hasMetadata: !!contextMetadata
       });
