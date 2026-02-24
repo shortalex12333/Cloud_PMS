@@ -413,9 +413,11 @@ async def prepare_create_work_order(
     user_id = user_context["user_id"]
 
     # Get tenant key for handler lookup
-    tenant_key_alias = await lookup_tenant_for_user(user_id)
-    if not tenant_key_alias:
+    tenant_info = lookup_tenant_for_user(user_id)
+    if not tenant_info:
         raise HTTPException(status_code=400, detail="Unable to determine tenant for user")
+
+    tenant_key_alias = tenant_info.get("tenant_key_alias")
 
     # Get handlers for tenant
     handlers = get_handlers_for_tenant(tenant_key_alias)
@@ -475,9 +477,11 @@ async def commit_create_work_order(
     user_id = user_context["user_id"]
 
     # Get tenant key for handler lookup
-    tenant_key_alias = await lookup_tenant_for_user(user_id)
-    if not tenant_key_alias:
+    tenant_info = lookup_tenant_for_user(user_id)
+    if not tenant_info:
         raise HTTPException(status_code=400, detail="Unable to determine tenant for user")
+
+    tenant_key_alias = tenant_info.get("tenant_key_alias")
 
     # Get handlers for tenant
     handlers = get_handlers_for_tenant(tenant_key_alias)
