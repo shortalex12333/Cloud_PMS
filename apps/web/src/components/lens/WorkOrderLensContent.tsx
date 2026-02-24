@@ -148,22 +148,24 @@ export function WorkOrderLensContent({
   const perms = useWorkOrderPermissions();
 
   // Map data to typed structure
-  const wo_number = data.wo_number as string | undefined;
-  const title = (data.title as string) || 'Work Order';
-  const description = data.description as string | undefined;
-  const status = (data.status as string) || 'draft';
-  const priority = (data.priority as string) || 'medium';
-  const equipment_id = data.equipment_id as string | undefined;
-  const equipment_name = data.equipment_name as string | undefined;
-  const assigned_to = data.assigned_to as string | undefined;
-  const created_at = (data.created_at as string) || new Date().toISOString();
-  const parts_count = data.parts_count as number | undefined;
+  // Handle both flat and nested payload structures from F1
+  const payload = (data.payload as Record<string, unknown>) || {};
+  const wo_number = (data.wo_number || payload.wo_number) as string | undefined;
+  const title = (data.title || payload.title) as string || 'Work Order';
+  const description = (data.description || payload.description) as string | undefined;
+  const status = (data.status || payload.status) as string || 'draft';
+  const priority = (data.priority || payload.priority) as string || 'medium';
+  const equipment_id = (data.equipment_id || payload.equipment_id) as string | undefined;
+  const equipment_name = (data.equipment_name || payload.equipment_name) as string | undefined;
+  const assigned_to = (data.assigned_to || payload.assigned_to) as string | undefined;
+  const created_at = (data.created_at || payload.created_at) as string || new Date().toISOString();
+  const parts_count = (data.parts_count || payload.parts_count) as number | undefined;
 
-  // Section data
-  const notes = (data.notes as WorkOrderNote[]) || [];
-  const parts = (data.parts as WorkOrderPart[]) || [];
-  const attachments = (data.attachments as Attachment[]) || [];
-  const history = (data.audit_history as AuditLogEntry[]) || (data.history as AuditLogEntry[]) || [];
+  // Section data - handle both flat and nested payload structures
+  const notes = (data.notes || payload.notes) as WorkOrderNote[] || [];
+  const parts = (data.parts || payload.parts) as WorkOrderPart[] || [];
+  const attachments = (data.attachments || payload.attachments) as Attachment[] || [];
+  const history = (data.audit_history || payload.audit_history || data.history || payload.history) as AuditLogEntry[] || [];
 
   // Available options for modals
   const availableParts: PartOption[] = [];
@@ -459,8 +461,8 @@ export function WorkOrderLensContent({
           title: title,
           description: description,
           priority: priority,
-          due_date: data.due_date as string | undefined,
-          type: data.type as string | undefined,
+          due_date: (data.due_date || payload.due_date) as string | undefined,
+          type: (data.type || payload.type) as string | undefined,
         }}
       />
     </div>

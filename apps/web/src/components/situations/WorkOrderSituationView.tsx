@@ -319,15 +319,17 @@ export default function WorkOrderSituationView({
                     </div>
                   )}
 
-                  <div className="flex items-start gap-2">
-                    <Calendar className="h-4 w-4 text-zinc-400 mt-0.5" />
-                    <div>
-                      <p className="typo-meta text-zinc-500 dark:text-zinc-400">Created</p>
-                      <p className="typo-body text-zinc-900 dark:text-zinc-100">
-                        {new Date(workOrder.created_at).toLocaleDateString()}
-                      </p>
+                  {workOrder.created_at && (
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-zinc-400 mt-0.5" />
+                      <div>
+                        <p className="typo-meta text-zinc-500 dark:text-zinc-400">Created</p>
+                        <p className="typo-body text-zinc-900 dark:text-zinc-100">
+                          {new Date(workOrder.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Notes */}

@@ -128,9 +128,16 @@ export function SurfaceProvider({ children }: SurfaceProviderProps) {
 
   // Hide context panel
   const hideContext = useCallback(() => {
-    setContextPanel({ visible: false, expanded: false });
-    setState(emailPanel.visible ? 'email-present' : 'search-dominant');
-  }, [emailPanel.visible]);
+    console.log('[SurfaceContext] 🚪 hideContext called');
+    setContextPanel((prev) => {
+      console.log('[SurfaceContext] Panel state before:', prev.visible, '→ false');
+      return { visible: false, expanded: false };
+    });
+    // Access emailPanel from outer scope - it's stable in this closure
+    const newState = emailPanel.visible ? 'email-present' : 'search-dominant';
+    console.log('[SurfaceContext] State transition: →', newState);
+    setState(newState);
+  }, []); // Empty deps to stabilize reference - emailPanel access is intentional
 
   // Expand context panel to full-screen
   const expandContext = useCallback(() => {
