@@ -242,6 +242,24 @@ ABBREVIATION_MAP: Dict[str, str] = {
     "mfg": "manufacturer",
 }
 
+# PostgreSQL English FTS stop words that need rewriting
+# These words are filtered out by to_tsvector('english', ...) causing 0 FTS matches
+FTS_STOPWORDS = {
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
+    'has', 'he', 'in', 'is', 'it', 'of', 'on', 'or', 'part', 'that',
+    'the', 'to', 'was', 'will', 'with'
+}
+
+# Domain-specific compound term templates for common stopwords
+STOPWORD_COMPOUND_TEMPLATES: Dict[str, List[Tuple[str, float]]] = {
+    'part': [
+        ('spare part', 1.5),        # Inventory language
+        ('part number', 1.4),       # Identifier pattern
+        ('replacement part', 1.3),  # Alternative phrasing
+    ],
+    # Add more as needed for other stopwords
+}
+
 
 # ============================================================================
 # Rewrite Generation
@@ -319,6 +337,51 @@ def _generate_prefix_expansion(query: str) -> Optional[Rewrite]:
     return None
 
 
+def _generate_stopword_rewrites(query: str) -> List[Rewrite]:
+    """
+    Generate rewrites for PostgreSQL English FTS stop words.
+
+    Stop words are filtered out by to_tsvector('english', ...) causing 0 FTS matches.
+    This function generates variations that bypass the stop word filter:
+    - x+1: Plural form (e.g., "part" -> "parts")
+    - n±n: Compound terms (e.g., "part" -> "spare part", "part number")
+
+    Returns up to 3 rewrites with weighted confidence for RRF scoring.
+    """
+    query_lower = query.lower().strip()
+
+    # Check if query is a stopword (or starts/ends with one)
+    words = query_lower.split()
+    if not words:
+        return []
+
+    # Single-word stopword queries
+    if len(words) == 1 and words[0] in FTS_STOPWORDS:
+        stopword = words[0]
+        rewrites = []
+
+        # x+1: Plural form (if not already plural)
+        if not stopword.endswith('s'):
+            rewrites.append(Rewrite(
+                text=f"{stopword}s",
+                source="stopword_plural",
+                confidence=1.2,  # Higher confidence - better trigram overlap
+            ))
+
+        # n±n: Domain-specific compound terms
+        if stopword in STOPWORD_COMPOUND_TEMPLATES:
+            for compound, confidence in STOPWORD_COMPOUND_TEMPLATES[stopword]:
+                rewrites.append(Rewrite(
+                    text=compound,
+                    source="stopword_compound",
+                    confidence=confidence,
+                ))
+
+        return rewrites[:3]  # Cap at 3 per F1 spec
+
+    return []
+
+
 async def generate_rewrites(
     query: str,
     ctx: UserContext,
@@ -373,6 +436,33 @@ async def generate_rewrites(
     # Check time budget
     def _time_remaining_ms() -> int:
         return budget_ms - int((time.time() - start_time) * 1000)
+
+    # PRIORITY 1: Generate stopword rewrites (bypasses FTS stop word filter)
+    # If query is a stopword, generate variations that work with FTS
+    if _time_remaining_ms() > 5:
+        stopword_rewrites = _generate_stopword_rewrites(query)
+        if stopword_rewrites:
+            # Stopword rewrites take precedence - add all and skip other rewrites
+            for sr in stopword_rewrites:
+                if len(rewrites) >= 3:
+                    break
+                if sr.text not in [r.text for r in rewrites]:
+                    rewrites.append(sr)
+            # Cap at 3 and skip other rewrites for stopwords
+            rewrites = rewrites[:3]
+            logger.info(
+                f"[Cortex] Stopword detected: '{query}' -> {len(rewrites)} rewrites "
+                f"(bypassing FTS stop word filter)"
+            )
+            # Early return for stopword queries
+            await _set_cached_rewrites(cache_key, rewrites)
+            latency_ms = int((time.time() - start_time) * 1000)
+            return RewriteResult(
+                rewrites=rewrites,
+                cache_hit=False,
+                latency_ms=latency_ms,
+                budget_remaining_ms=budget_ms - latency_ms,
+            )
 
     # Generate abbreviation expansion
     if _time_remaining_ms() > 10:
