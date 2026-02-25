@@ -1,0 +1,231 @@
+[
+  {
+    "title": "Bilge Pump Float Switch (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "bilj pump flote swich",
+    "expected_signal": "trigram",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 1489,
+    "attribution": null
+  },
+  {
+    "title": "Air Filter Element (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "racor air filtr elemnt",
+    "expected_signal": "trigram",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 196,
+    "attribution": null
+  },
+  {
+    "title": "High Exhaust Temperature (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "exaust temperture hihg E047",
+    "expected_signal": "trigram",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 211,
+    "attribution": null
+  },
+  {
+    "title": "Generator Low Coolant (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "generatr colant lvl low G012",
+    "expected_signal": "trigram",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 134,
+    "attribution": null
+  },
+  {
+    "title": "SOLAS Certificate (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "sollas safty certficate",
+    "expected_signal": "trigram",
+    "expected_id": "fdd53619-89c6-46b1-8e9f-4211e3c16fae",
+    "hit": true,
+    "hit_rank": 1,
+    "latency_ms": 168,
+    "attribution": {
+      "winning_signal": "trigram",
+      "trigram_rank": 1,
+      "vector_rank": null,
+      "fts_rank": null,
+      "trigram_score": 0.3478,
+      "vector_score": null,
+      "fts_score": null,
+      "analysis": "TRIGRAM won with rank 1 (score: 0.348)"
+    }
+  },
+  {
+    "title": "Navigation Light Bulb (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "navigaton lite blub 12v",
+    "expected_signal": "trigram",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 207,
+    "attribution": null
+  },
+  {
+    "title": "AC Compressor Clutch (Misspelled)",
+    "category": "severe_misspelling",
+    "query": "compresser clutsh air conditioning",
+    "expected_signal": "trigram",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 175,
+    "attribution": null
+  },
+  {
+    "title": "Fresh Water Manual (Semantic)",
+    "category": "semantic_description",
+    "query": "documentation for the machine that makes drinking water from seawater",
+    "expected_signal": "vector",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 146,
+    "attribution": null
+  },
+  {
+    "title": "Ballast Systems Manual (Semantic)",
+    "category": "semantic_description",
+    "query": "manual for the system that fills tanks to adjust vessel stability",
+    "expected_signal": "vector",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 133,
+    "attribution": null
+  },
+  {
+    "title": "Bilge Float Switch (Semantic)",
+    "category": "semantic_description",
+    "query": "the sensor that detects when water collects in the bottom of the hull",
+    "expected_signal": "vector",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 212,
+    "attribution": null
+  },
+  {
+    "title": "High Exhaust Temperature (Semantic)",
+    "category": "semantic_description",
+    "query": "alarm when the smoke pipe gets too hot on the port propulsion unit",
+    "expected_signal": "vector",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 120,
+    "attribution": null
+  },
+  {
+    "title": "Generator Vibration Fault (Semantic)",
+    "category": "semantic_description",
+    "query": "issue when the power maker is shaking more than normal",
+    "expected_signal": "vector",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 194,
+    "attribution": null
+  },
+  {
+    "title": "ISM Compliance Certificate (Semantic)",
+    "category": "semantic_description",
+    "query": "the paper that proves we follow international safety management rules",
+    "expected_signal": "vector",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 132,
+    "attribution": null
+  },
+  {
+    "title": "Generator Oil Filter (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "cat oil strainer genset",
+    "expected_signal": "both",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 124,
+    "attribution": null
+  },
+  {
+    "title": "Lloyds Register Certificate (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "class society approval document",
+    "expected_signal": "both",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 109,
+    "attribution": null
+  },
+  {
+    "title": "AC Compressor Clutch (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "cold air machine engagement part Marine Air",
+    "expected_signal": "both",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 112,
+    "attribution": null
+  },
+  {
+    "title": "Generator Low Coolant (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "genset antifreeze alarm low",
+    "expected_signal": "both",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 128,
+    "attribution": null
+  },
+  {
+    "title": "HYDROFOIL Work Order Note (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "Morrison job ticket note turbine service",
+    "expected_signal": "both",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 106,
+    "attribution": null
+  },
+  {
+    "title": "Main Engine Starboard Service (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "right side propulsion unit 500 hour maintenance task",
+    "expected_signal": "both",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 126,
+    "attribution": null
+  },
+  {
+    "title": "Navigation Light Bulb (Wrong Name)",
+    "category": "wrong_name_right_idea",
+    "query": "running light lamp replacement Blue Sea",
+    "expected_signal": "both",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "hit": false,
+    "hit_rank": null,
+    "latency_ms": 130,
+    "attribution": null
+  }
+]

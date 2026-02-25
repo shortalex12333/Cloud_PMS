@@ -286,13 +286,14 @@ class LinkingLadder:
 
         logger.debug(f"[LinkingLadder] L2.5: query_text='{query_text[:100]}...' embedding={'present' if query_embedding else 'missing'}")
 
-        # Query search_index - filter to linkable PMS object types only
+        # Query search_index - search across ALL entity types in the index
+        # The RPC handles object_types=None by searching all types
         candidates = await self.candidate_finder.find_search_index_candidates(
             yacht_id=yacht_id,
             query_text=query_text,
             query_embedding=query_embedding,
             role=user_role,
-            object_types=['work_order', 'equipment', 'part'],  # Only PMS objects
+            object_types=None,  # Search all entity types (work_order, equipment, part, fault, document, etc.)
             days_back=365,
             limit=20
         )
