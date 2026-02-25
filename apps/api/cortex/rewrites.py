@@ -196,51 +196,32 @@ async def _set_cached_rewrites(key: str, rewrites: List[Rewrite]) -> None:
 # Synonym Expansion Rules
 # ============================================================================
 
-# Domain-specific synonyms for maritime/yacht context
-SYNONYM_MAP: Dict[str, List[str]] = {
-    # Equipment
-    "filter": ["element", "strainer", "cartridge"],
-    "pump": ["impeller", "motor pump"],
-    "engine": ["motor", "powerplant", "main engine"],
-    "generator": ["genset", "gen", "alternator"],
-    "watermaker": ["desalinator", "reverse osmosis", "ro system"],
+# ==============================================================================
+# LAW 19: NO HARDCODED SYNONYM DICTIONARIES
+# ==============================================================================
+# REMOVED: SYNONYM_MAP and ABBREVIATION_MAP
+#
+# Previous implementation tried to predict user intent via hardcoded mappings:
+#   "cat" -> ["caterpillar"]
+#   "dirty water" -> "bilge"  (hypothetical)
+#   "er" -> "engine room"
+#
+# This does NOT scale to 134 yachts with unique slang:
+#   - Yacht A calls it "ER", Yacht B calls it "machinery space"
+#   - Yacht A's "cat" is Caterpillar, Yacht B's "cat" is a ship's cat
+#   - Brand aliases vary by region and crew background
+#
+# The math should do the work instead:
+#   1. Vectors capture semantic similarity (filter ~ element ~ strainer)
+#   2. Trigram matching handles typos and variations
+#   3. Feedback loop learns yacht-specific terminology over time
+#
+# If you're tempted to add synonyms here, STOP and ask:
+#   "Will this work for ALL 134 yachts, or am I guessing?"
+# ==============================================================================
+SYNONYM_MAP: Dict[str, List[str]] = {}  # Intentionally empty - vectors handle semantics
 
-    # Parts
-    "gasket": ["seal", "o-ring"],
-    "bearing": ["bushing"],
-    "belt": ["v-belt", "serpentine belt", "drive belt"],
-    "impeller": ["pump impeller", "water impeller"],
-
-    # Brands (expand abbreviations)
-    "cat": ["caterpillar"],
-    "cummins": ["qsm"],
-    "volvo": ["volvo penta"],
-    "nl": ["northern lights"],
-
-    # Actions/Status
-    "replace": ["change", "swap", "install"],
-    "repair": ["fix", "service", "overhaul"],
-    "low stock": ["below minimum", "needs reorder"],
-    "out of stock": ["zero quantity", "none available"],
-
-    # Locations
-    "engine room": ["er", "machinery space"],
-    "bridge": ["wheelhouse", "pilothouse"],
-    "lazarette": ["stern locker", "aft storage"],
-}
-
-# Abbreviation expansions
-ABBREVIATION_MAP: Dict[str, str] = {
-    "er": "engine room",
-    "me": "main engine",
-    "gen": "generator",
-    "wo": "work order",
-    "po": "purchase order",
-    "qty": "quantity",
-    "min": "minimum",
-    "loc": "location",
-    "mfg": "manufacturer",
-}
+ABBREVIATION_MAP: Dict[str, str] = {}  # Intentionally empty - vectors handle semantics
 
 # PostgreSQL English FTS stop words that need rewriting
 # These words are filtered out by to_tsvector('english', ...) causing 0 FTS matches
@@ -269,50 +250,23 @@ def _generate_synonyms(query: str) -> List[Rewrite]:
     """
     Generate synonym-based rewrites.
 
-    Returns up to 2 synonym rewrites.
+    LAW 19: DEPRECATED - Returns empty list.
+    Synonym expansion is now handled by vector similarity search.
+    Hardcoded synonyms don't scale to 134 yachts with unique terminology.
     """
-    rewrites = []
-    query_lower = query.lower()
-
-    for term, synonyms in SYNONYM_MAP.items():
-        if term in query_lower:
-            for syn in synonyms[:2]:  # Max 2 synonyms per term
-                rewritten = query_lower.replace(term, syn)
-                if rewritten != query_lower:
-                    rewrites.append(Rewrite(
-                        text=rewritten,
-                        source="synonym",
-                        confidence=0.85,
-                    ))
-                if len(rewrites) >= 2:
-                    return rewrites
-
-    return rewrites
+    # Vectors handle semantic similarity - no hardcoded synonyms
+    return []
 
 
 def _expand_abbreviations(query: str) -> Optional[Rewrite]:
     """
     Expand abbreviations in query.
 
-    Returns single expansion rewrite if any abbreviation found.
+    LAW 19: DEPRECATED - Returns None.
+    Abbreviation expansion is now handled by vector similarity and trigram matching.
+    Hardcoded abbreviations don't scale to 134 yachts with unique terminology.
     """
-    query_lower = query.lower()
-    expanded = query_lower
-
-    for abbrev, expansion in ABBREVIATION_MAP.items():
-        # Match whole word only
-        import re
-        pattern = r'\b' + re.escape(abbrev) + r'\b'
-        if re.search(pattern, expanded):
-            expanded = re.sub(pattern, expansion, expanded)
-
-    if expanded != query_lower:
-        return Rewrite(
-            text=expanded,
-            source="abbreviation",
-            confidence=0.9,
-        )
-
+    # Vectors + trigrams handle abbreviations - no hardcoded mappings
     return None
 
 
@@ -320,20 +274,15 @@ def _generate_prefix_expansion(query: str) -> Optional[Rewrite]:
     """
     Add context prefix for short queries.
 
-    Example: "3512C" -> "caterpillar 3512C engine"
+    LAW 19: DEPRECATED - Returns None.
+    Previously assumed model numbers like "3512C" meant "caterpillar 3512C engine".
+    This is exactly the kind of semantic guessing that doesn't scale:
+      - "3512C" could be a Caterpillar engine model
+      - "3512C" could be a part bin location
+      - "3512C" could be a crew cabin number
+    Let vectors find the semantic match based on yacht-specific data.
     """
-    query_lower = query.lower().strip()
-
-    # Model numbers often benefit from brand/type context
-    import re
-    if re.match(r'^[a-z]?\d{3,4}[a-z]?$', query_lower, re.I):
-        # Looks like a model number
-        return Rewrite(
-            text=f"{query_lower} engine part",
-            source="expansion",
-            confidence=0.7,
-        )
-
+    # Vectors handle model number context - no hardcoded assumptions
     return None
 
 

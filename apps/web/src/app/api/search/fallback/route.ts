@@ -71,9 +71,11 @@ export async function POST(request: NextRequest) {
 
     const searchTerm = query.toLowerCase().trim();
     const results: SearchResult[] = [];
+    const seenPartIds = new Set<string>();
 
     // ====================================================================
     // PARTS SEARCH (Inventory Lens)
+    // Phase 1: ILIKE substring search (fast, exact)
     // ====================================================================
     const { data: parts, error: partsError } = await supabase
       .from('pms_parts')
@@ -84,6 +86,7 @@ export async function POST(request: NextRequest) {
 
     if (!partsError && parts) {
       parts.forEach((part: any) => {
+        seenPartIds.add(part.part_id);
         results.push({
           id: part.part_id,
           primary_id: part.part_id,
@@ -104,8 +107,53 @@ export async function POST(request: NextRequest) {
     }
 
     // ====================================================================
-    // EQUIPMENT SEARCH
+    // PARTS SEARCH Phase 2: pg_trgm fuzzy search (handles typos)
+    // LAW 20: Universal trigram matching - "mantenance" finds "maintenance"
     // ====================================================================
+    if (parts?.length === 0 || (parts?.length || 0) < 5) {
+      try {
+        const { data: fuzzyParts, error: fuzzyError } = await supabase.rpc('search_parts_fuzzy', {
+          p_yacht_id: yacht_id,
+          p_query: searchTerm,
+          p_threshold: 0.3,
+          p_limit: limit,
+        });
+
+        if (!fuzzyError && fuzzyParts) {
+          fuzzyParts.forEach((part: any) => {
+            if (!seenPartIds.has(part.part_id)) {
+              seenPartIds.add(part.part_id);
+              results.push({
+                id: part.part_id,
+                primary_id: part.part_id,
+                type: 'part',
+                source_table: 'parts',
+                title: part.part_name || `Part ${part.part_number}`,
+                subtitle: [
+                  part.part_number && `P/N: ${part.part_number}`,
+                  part.manufacturer && `Mfr: ${part.manufacturer}`,
+                  part.location && `Location: ${part.location}`,
+                  `Stock: ${part.on_hand || 0}`,
+                  part.similarity && `Match: ${Math.round(part.similarity * 100)}%`,
+                ]
+                  .filter(Boolean)
+                  .join(' | '),
+                metadata: { ...part, fuzzy_match: true },
+              });
+            }
+          });
+          console.log(`[Search Fallback] Trigram found ${fuzzyParts.length} fuzzy matches for "${searchTerm}"`);
+        }
+      } catch (fuzzyErr) {
+        console.warn('[Search Fallback] Trigram search unavailable:', fuzzyErr);
+      }
+    }
+
+    // ====================================================================
+    // EQUIPMENT SEARCH
+    // Phase 1: ILIKE substring search
+    // ====================================================================
+    const seenEquipmentIds = new Set<string>();
     const { data: equipment, error: equipmentError } = await supabase
       .from('pms_equipment')
       .select('*')
@@ -115,6 +163,7 @@ export async function POST(request: NextRequest) {
 
     if (!equipmentError && equipment) {
       equipment.forEach((eq: any) => {
+        seenEquipmentIds.add(eq.equipment_id);
         results.push({
           id: eq.equipment_id,
           primary_id: eq.equipment_id,
@@ -133,9 +182,49 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Phase 2: pg_trgm fuzzy search for equipment
+    if (equipment?.length === 0 || (equipment?.length || 0) < 5) {
+      try {
+        const { data: fuzzyEquipment, error: fuzzyEqError } = await supabase.rpc('search_equipment_fuzzy', {
+          p_yacht_id: yacht_id,
+          p_query: searchTerm,
+          p_threshold: 0.3,
+          p_limit: limit,
+        });
+
+        if (!fuzzyEqError && fuzzyEquipment) {
+          fuzzyEquipment.forEach((eq: any) => {
+            if (!seenEquipmentIds.has(eq.equipment_id)) {
+              seenEquipmentIds.add(eq.equipment_id);
+              results.push({
+                id: eq.equipment_id,
+                primary_id: eq.equipment_id,
+                type: 'equipment',
+                source_table: 'equipment',
+                title: eq.equipment_name || 'Unnamed Equipment',
+                subtitle: [
+                  eq.equipment_type && `Type: ${eq.equipment_type}`,
+                  eq.manufacturer && `Mfr: ${eq.manufacturer}`,
+                  eq.location && `Location: ${eq.location}`,
+                  eq.similarity && `Match: ${Math.round(eq.similarity * 100)}%`,
+                ]
+                  .filter(Boolean)
+                  .join(' | '),
+                metadata: { ...eq, fuzzy_match: true },
+              });
+            }
+          });
+        }
+      } catch (fuzzyErr) {
+        console.warn('[Search Fallback] Equipment trigram search unavailable:', fuzzyErr);
+      }
+    }
+
     // ====================================================================
     // WORK ORDERS SEARCH
+    // Phase 1: ILIKE substring search
     // ====================================================================
+    const seenWorkOrderIds = new Set<string>();
     const { data: workOrders, error: workOrdersError } = await supabase
       .from('pms_work_orders')
       .select('*')
@@ -145,6 +234,7 @@ export async function POST(request: NextRequest) {
 
     if (!workOrdersError && workOrders) {
       workOrders.forEach((wo: any) => {
+        seenWorkOrderIds.add(wo.work_order_id);
         results.push({
           id: wo.work_order_id,
           primary_id: wo.work_order_id,
@@ -163,9 +253,49 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Phase 2: pg_trgm fuzzy search for work orders
+    if (workOrders?.length === 0 || (workOrders?.length || 0) < 5) {
+      try {
+        const { data: fuzzyWO, error: fuzzyWOError } = await supabase.rpc('search_work_orders_fuzzy', {
+          p_yacht_id: yacht_id,
+          p_query: searchTerm,
+          p_threshold: 0.3,
+          p_limit: limit,
+        });
+
+        if (!fuzzyWOError && fuzzyWO) {
+          fuzzyWO.forEach((wo: any) => {
+            if (!seenWorkOrderIds.has(wo.work_order_id)) {
+              seenWorkOrderIds.add(wo.work_order_id);
+              results.push({
+                id: wo.work_order_id,
+                primary_id: wo.work_order_id,
+                type: 'work_order',
+                source_table: 'work_orders',
+                title: wo.title || `Work Order ${wo.work_order_number}`,
+                subtitle: [
+                  wo.status && `Status: ${wo.status}`,
+                  wo.priority && `Priority: ${wo.priority}`,
+                  wo.assigned_to_name && `Assigned to: ${wo.assigned_to_name}`,
+                  wo.similarity && `Match: ${Math.round(wo.similarity * 100)}%`,
+                ]
+                  .filter(Boolean)
+                  .join(' | '),
+                metadata: { ...wo, fuzzy_match: true },
+              });
+            }
+          });
+        }
+      } catch (fuzzyErr) {
+        console.warn('[Search Fallback] Work order trigram search unavailable:', fuzzyErr);
+      }
+    }
+
     // ====================================================================
     // SHOPPING LIST ITEMS
+    // Phase 1: ILIKE substring search
     // ====================================================================
+    const seenShoppingIds = new Set<string>();
     const { data: shoppingItems, error: shoppingError } = await supabase
       .from('pms_shopping_list_items')
       .select('*')
@@ -175,9 +305,10 @@ export async function POST(request: NextRequest) {
 
     if (!shoppingError && shoppingItems) {
       shoppingItems.forEach((item: any) => {
+        seenShoppingIds.add(item.shopping_list_item_id || item.id);
         results.push({
-          id: item.shopping_list_item_id,
-          primary_id: item.shopping_list_item_id,
+          id: item.shopping_list_item_id || item.id,
+          primary_id: item.shopping_list_item_id || item.id,
           type: 'shopping_list_item',
           source_table: 'shopping_list_items',
           title: item.part_name || 'Unnamed Part',
@@ -191,11 +322,51 @@ export async function POST(request: NextRequest) {
           metadata: item,
         });
       });
+
+      // Phase 2: pg_trgm fuzzy search for shopping list
+      if (shoppingItems.length < 5) {
+        try {
+          const { data: fuzzyItems, error: fuzzyShoppingError } = await supabase.rpc('search_shopping_list_fuzzy', {
+            p_yacht_id: yacht_id,
+            p_query: searchTerm,
+            p_threshold: 0.3,
+            p_limit: limit,
+          });
+
+          if (!fuzzyShoppingError && fuzzyItems) {
+            fuzzyItems.forEach((item: any) => {
+              if (!seenShoppingIds.has(item.shopping_list_item_id)) {
+                seenShoppingIds.add(item.shopping_list_item_id);
+                results.push({
+                  id: item.shopping_list_item_id,
+                  primary_id: item.shopping_list_item_id,
+                  type: 'shopping_list_item',
+                  source_table: 'shopping_list_items',
+                  title: item.part_name || 'Unnamed Part',
+                  subtitle: [
+                    item.part_number && `P/N: ${item.part_number}`,
+                    item.status && `Status: ${item.status}`,
+                    item.quantity && `Qty: ${item.quantity}`,
+                    item.similarity && `Match: ${Math.round(item.similarity * 100)}%`,
+                  ]
+                    .filter(Boolean)
+                    .join(' | '),
+                  metadata: { ...item, fuzzy_match: true },
+                });
+              }
+            });
+          }
+        } catch (fuzzyErr) {
+          console.warn('[Search Fallback] Shopping list trigram search unavailable:', fuzzyErr);
+        }
+      }
     }
 
     // ====================================================================
     // DOCUMENTS SEARCH
+    // Phase 1: ILIKE substring search
     // ====================================================================
+    const seenDocIds = new Set<string>();
     try {
       const { data: documents, error: documentsError } = await supabase
         .from('doc_metadata')
@@ -211,6 +382,7 @@ export async function POST(request: NextRequest) {
 
       if (!documentsError && documents) {
         documents.forEach((doc: any) => {
+          seenDocIds.add(doc.id);
           results.push({
             id: doc.id,
             primary_id: doc.id,
@@ -227,6 +399,44 @@ export async function POST(request: NextRequest) {
             metadata: doc,
           });
         });
+
+        // Phase 2: pg_trgm fuzzy search for documents
+        if (documents.length < 5) {
+          try {
+            const { data: fuzzyDocs, error: fuzzyDocError } = await supabase.rpc('search_documents_fuzzy', {
+              p_yacht_id: yacht_id,
+              p_query: searchTerm,
+              p_threshold: 0.3,
+              p_limit: limit,
+            });
+
+            if (!fuzzyDocError && fuzzyDocs) {
+              fuzzyDocs.forEach((doc: any) => {
+                if (!seenDocIds.has(doc.id)) {
+                  seenDocIds.add(doc.id);
+                  results.push({
+                    id: doc.id,
+                    primary_id: doc.id,
+                    type: 'document',
+                    source_table: 'documents',
+                    title: doc.filename || 'Unnamed Document',
+                    subtitle: [
+                      doc.doc_type && `Type: ${doc.doc_type}`,
+                      doc.content_type && `Format: ${doc.content_type}`,
+                      doc.created_at && `Uploaded: ${new Date(doc.created_at).toLocaleDateString()}`,
+                      doc.similarity && `Match: ${Math.round(doc.similarity * 100)}%`,
+                    ]
+                      .filter(Boolean)
+                      .join(' | '),
+                    metadata: { ...doc, fuzzy_match: true },
+                  });
+                }
+              });
+            }
+          } catch (fuzzyErr) {
+            console.warn('[Search Fallback] Document trigram search unavailable:', fuzzyErr);
+          }
+        }
       }
     } catch (docError) {
       // Don't fail entire search if documents fail - gracefully degrade

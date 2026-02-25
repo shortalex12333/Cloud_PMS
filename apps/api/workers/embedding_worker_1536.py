@@ -732,7 +732,9 @@ def main():
                 else:
                     empty_batches += 1
                     # Exponential back-off when queue is empty.
-                    sleep_time = min(BATCH_SLEEP_SEC * (2 ** empty_batches), 30)
+                    # Cap empty_batches to prevent overflow (2**10 = 1024, well under 30s cap)
+                    capped_batches = min(empty_batches, 10)
+                    sleep_time = min(BATCH_SLEEP_SEC * (2 ** capped_batches), 30)
                     time.sleep(sleep_time)
 
             except CircuitBreakerOpenError as cbe:
