@@ -52,8 +52,8 @@ from middleware.auth import get_authenticated_user
 # F1 Search types and services
 from services.types import UserContext, SearchBudget, DEFAULT_BUDGET
 
-# Cortex rewrites
-from cortex.rewrites import generate_rewrites, Rewrite, RewriteResult
+# Cortex rewrites and embeddings
+from cortex.rewrites import generate_rewrites, generate_embeddings, Rewrite, RewriteResult
 
 # Domain detection for object_type filtering
 from services.domain_microactions import detect_domain_from_query
@@ -474,6 +474,181 @@ def build_user_context(auth: Dict[str, Any]) -> UserContext:
 
 
 # ============================================================================
+# RRF (Reciprocal Rank Fusion) for merging text and vector results
+# ============================================================================
+
+def reciprocal_rank_fusion(
+    text_results: List[Dict[str, Any]],
+    vector_results: List[Dict[str, Any]],
+    rrf_k: int = 60,
+    page_limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """
+    Merge text search and vector search results using Reciprocal Rank Fusion.
+
+    RRF Formula: score(d) = sum(1 / (k + rank_in_list))
+
+    This allows text matches (trigram, exact) and semantic matches (vector)
+    to compete fairly regardless of their native scoring scales.
+
+    Args:
+        text_results: Results from hyper_search_multi (trigram/text search)
+        vector_results: Results from match_search_index (vector/semantic search)
+        rrf_k: Smoothing constant (default 60, standard in literature)
+        page_limit: Max results to return
+
+    Returns:
+        Fused results sorted by RRF score, with component scores preserved
+    """
+    # Build score accumulator keyed by (object_type, object_id)
+    scores: Dict[tuple, Dict[str, Any]] = {}
+
+    # Process text results (from hyper_search_multi)
+    for rank, item in enumerate(text_results, start=1):
+        key = (item.get('object_type'), str(item.get('object_id')))
+        rrf_contribution = 1.0 / (rrf_k + rank)
+
+        if key not in scores:
+            scores[key] = {
+                'object_type': item.get('object_type'),
+                'object_id': item.get('object_id'),
+                'payload': item.get('payload'),
+                'rrf_score': 0.0,
+                'text_rank': None,
+                'vector_rank': None,
+                'text_score': None,
+                'vector_similarity': None,
+                'best_rewrite_idx': item.get('best_rewrite_idx'),
+                'ranks': item.get('ranks', {}),
+                'components': item.get('components', {}),
+            }
+
+        scores[key]['rrf_score'] += rrf_contribution
+        scores[key]['text_rank'] = rank
+        scores[key]['text_score'] = item.get('fused_score')
+        # Preserve original ranks/components from text search
+        if item.get('ranks'):
+            scores[key]['ranks'] = item.get('ranks')
+        if item.get('components'):
+            scores[key]['components'] = item.get('components')
+
+    # Process vector results (from match_search_index)
+    for rank, item in enumerate(vector_results, start=1):
+        key = (item.get('object_type'), str(item.get('object_id')))
+        rrf_contribution = 1.0 / (rrf_k + rank)
+
+        if key not in scores:
+            scores[key] = {
+                'object_type': item.get('object_type'),
+                'object_id': item.get('object_id'),
+                'payload': item.get('payload'),
+                'rrf_score': 0.0,
+                'text_rank': None,
+                'vector_rank': None,
+                'text_score': None,
+                'vector_similarity': None,
+                'best_rewrite_idx': None,
+                'ranks': {},
+                'components': {},
+            }
+
+        scores[key]['rrf_score'] += rrf_contribution
+        scores[key]['vector_rank'] = rank
+        scores[key]['vector_similarity'] = item.get('similarity')
+        # Use vector payload if text didn't provide one
+        if not scores[key].get('payload') and item.get('payload'):
+            scores[key]['payload'] = item.get('payload')
+
+    # Sort by RRF score descending
+    fused = sorted(scores.values(), key=lambda x: x['rrf_score'], reverse=True)
+
+    # Build final result format
+    results = []
+    for item in fused[:page_limit]:
+        # Combine ranks from both sources
+        combined_ranks = dict(item.get('ranks') or {})
+        if item.get('vector_rank'):
+            combined_ranks['vector'] = item['vector_rank']
+        if item.get('text_rank'):
+            combined_ranks['text'] = item['text_rank']
+
+        # Combine components from both sources
+        combined_components = dict(item.get('components') or {})
+        if item.get('vector_similarity'):
+            combined_components['vector'] = item['vector_similarity']
+        if item.get('text_score'):
+            combined_components['text'] = item['text_score']
+
+        results.append({
+            'object_type': item['object_type'],
+            'object_id': item['object_id'],
+            'payload': item.get('payload'),
+            'fused_score': item['rrf_score'],
+            'best_rewrite_idx': item.get('best_rewrite_idx'),
+            'ranks': combined_ranks,
+            'components': combined_components,
+        })
+
+    return results
+
+
+# ============================================================================
+# match_search_index RPC Call (vector/semantic search)
+# ============================================================================
+
+async def call_match_search_index(
+    conn: asyncpg.Connection,
+    query_embedding: List[float],
+    yacht_id: str,
+    match_threshold: float = 0.70,
+    match_count: int = 20,
+    object_type: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Call match_search_index RPC for vector similarity search.
+
+    This searches the search_index table using embedding_1536 column
+    with cosine similarity.
+
+    Args:
+        conn: asyncpg connection
+        query_embedding: 1536-dimensional embedding vector
+        yacht_id: Yacht ID for tenant isolation (required)
+        match_threshold: Minimum similarity score (default 0.70)
+        match_count: Max results to return (default 20)
+        object_type: Optional filter by object_type (None = all types)
+
+    Returns:
+        List of dicts with object_type, object_id, search_text, payload, similarity
+    """
+    # Convert embedding to pgvector format
+    vec_literal = f"[{','.join(str(x) for x in query_embedding)}]"
+
+    rows = await conn.fetch(
+        """
+        SELECT object_type, object_id, search_text, payload, similarity
+        FROM match_search_index($1::uuid, $2::vector(1536), $3::float, $4::int, $5::text)
+        """,
+        uuid.UUID(yacht_id),
+        vec_literal,
+        match_threshold,
+        match_count,
+        object_type,  # None = search all types
+    )
+
+    # Convert asyncpg Records to dicts
+    results = []
+    for r in rows:
+        item = dict(r)
+        # Parse JSONB payload if needed
+        if 'payload' in item and isinstance(item['payload'], str):
+            item['payload'] = json.loads(item['payload'])
+        results.append(item)
+
+    return results
+
+
+# ============================================================================
 # hyper_search_multi RPC Call (asyncpg - single round-trip)
 # ============================================================================
 
@@ -642,7 +817,31 @@ async def f1_search_stream(
 
             # Fallback: if no rewrites, use original query
             if not rewrites:
-                rewrites = [SimpleNamespace(text=q, embedding=None)]
+                rewrites = [Rewrite(text=q, source="original", embedding=None)]
+
+            # ================================================================
+            # Phase 2b: Generate embeddings for semantic search (GOD MODE)
+            # ================================================================
+            # CRITICAL: Embeddings enable semantic matching via embedding_1536
+            # Without embeddings, f1_search_cards only uses trigram + FTS
+            # With embeddings, queries like "thing that makes drinking water"
+            # find "Watermaker/Desalinator" via vector similarity
+            with tracer.start_as_current_span("cortex.embeddings") as span:
+                span.set_attribute("search_id", search_id)
+                span.set_attribute("rewrite_count", len(rewrites))
+                # Budget: 100ms for embedding generation (remaining from rewrite budget)
+                embed_budget_ms = max(50, rewrite_result.budget_remaining_ms)
+                rewrites = await generate_embeddings(
+                    rewrites,
+                    budget_ms=embed_budget_ms,
+                    org_id=ctx.org_id,
+                )
+                embeddings_generated = sum(1 for r in rewrites if r.embedding is not None)
+                span.set_attribute("embeddings_generated", embeddings_generated)
+                logger.info(
+                    f"[F1Search] Embeddings: {embeddings_generated}/{len(rewrites)} generated "
+                    f"(budget: {embed_budget_ms}ms)"
+                )
 
             logger.debug(
                 f"[F1Search] Rewrites: {len(rewrites)} in {rewrite_result.latency_ms}ms"
@@ -704,16 +903,16 @@ async def f1_search_stream(
                 )
 
             # ================================================================
-            # Phase 3: Check cache OR call hyper_search_multi
-            # IMPORTANT: Always search globally (object_types=None) to avoid
-            # intent bias. We never filter by detected object_types.
+            # Phase 3: Hybrid Search - Text + Vector with RRF Fusion
+            # Calls both hyper_search_multi (text/trigram) and match_search_index (vector)
+            # in parallel, then merges results using Reciprocal Rank Fusion.
+            # NO object_type filtering - ALL entities compete globally.
             # ================================================================
 
-            # No object_type suffix in cache key - we always search globally
             cache_key = make_cache_key(q, ctx.org_id, ctx.yacht_id)
             redis_conn = await get_redis()
             result_cache_hit = False
-            rows = None
+            items = None  # Final fused results
 
             # Check cache first
             if redis_conn:
@@ -722,54 +921,99 @@ async def f1_search_stream(
                     cached_items = await get_cached_results(redis_conn, cache_key)
                     if cached_items is not None:
                         result_cache_hit = True
-                        # Convert cached items back to row format
-                        rows = cached_items
+                        items = cached_items
                         span.set_attribute("cache_hit", True)
                         logger.info(f"[F1Search] Cache HIT: {search_id[:8]}..., key={cache_key[:30]}...")
                     else:
                         span.set_attribute("cache_hit", False)
 
-            # Cache miss - call DB with global search (object_types=None)
-            if rows is None:
-                with tracer.start_as_current_span("db.hyper_search_multi") as span:
-                    span.set_attribute("search_id", search_id)
-                    span.set_attribute("org_id", ctx.org_id)
-                    span.set_attribute("rewrite_count", len(rewrites))
-                    span.set_attribute("global_search", True)  # Always global
-                    if detected_object_types:
-                        # Log detected types for analytics, but don't filter by them
-                        span.set_attribute("detected_object_types", ",".join(detected_object_types))
-                    pool = await get_db_pool()
-                    async with pool.acquire() as conn:
-                        # CRITICAL: Always pass object_types=None for unbiased global search
-                        rows = await call_hyper_search_multi(
-                            conn, rewrites, ctx,
-                            rrf_k=60,
-                            page_limit=20,
-                            object_types=None  # ALWAYS search all types globally
-                        )
-                    span.set_attribute("result_count", len(rows))
+            # Cache miss - run hybrid search (text + vector in parallel)
+            text_results = []
+            vector_results = []
+            processed_text_results = []
+            processed_vector_results = []
+            vector_search_performed = False
 
-            total_results = len(rows)
+            if items is None:
+                pool = await get_db_pool()
+                async with pool.acquire() as conn:
+                    # Get embedding from first rewrite for vector search
+                    query_embedding = None
+                    for r in rewrites:
+                        if r.embedding is not None:
+                            query_embedding = r.embedding
+                            break
 
-            # ================================================================
-            # Phase 4: Early win check (deterministic) + emit results
-            # ================================================================
+                    # Run text search and vector search in parallel
+                    async def run_text_search():
+                        with tracer.start_as_current_span("db.hyper_search_multi") as span:
+                            span.set_attribute("search_id", search_id)
+                            span.set_attribute("org_id", ctx.org_id)
+                            span.set_attribute("rewrite_count", len(rewrites))
+                            span.set_attribute("global_search", True)
+                            # NO object_type filter - all entities compete
+                            results = await call_hyper_search_multi(
+                                conn, rewrites, ctx,
+                                rrf_k=60,
+                                page_limit=30,  # Fetch more for RRF fusion
+                                object_types=None  # ALL types compete globally
+                            )
+                            span.set_attribute("result_count", len(results))
+                            return results
 
-            items = []
-            if result_cache_hit:
-                # Cache hit: rows are already processed items
-                items = rows
-            else:
-                # Cache miss: process raw DB rows
-                for r in rows:
+                    async def run_vector_search():
+                        if not query_embedding:
+                            return []
+                        if not ctx.yacht_id:
+                            logger.warning(f"[F1Search] Vector search skipped: no yacht_id")
+                            return []
+                        with tracer.start_as_current_span("db.match_search_index") as span:
+                            span.set_attribute("search_id", search_id)
+                            span.set_attribute("yacht_id", ctx.yacht_id)
+                            span.set_attribute("embedding_dim", len(query_embedding))
+                            # NO object_type filter - all entities compete
+                            results = await call_match_search_index(
+                                conn,
+                                query_embedding,
+                                ctx.yacht_id,
+                                match_threshold=0.65,  # Lower threshold for recall
+                                match_count=30,  # Fetch more for RRF fusion
+                                object_type=None  # ALL types compete globally
+                            )
+                            span.set_attribute("result_count", len(results))
+                            return results
+
+                    # Execute both searches in parallel
+                    text_task = asyncio.create_task(run_text_search())
+                    vector_task = asyncio.create_task(run_vector_search())
+
+                    text_results, vector_results = await asyncio.gather(
+                        text_task, vector_task, return_exceptions=True
+                    )
+
+                    # Handle any exceptions from parallel tasks
+                    if isinstance(text_results, Exception):
+                        logger.error(f"[F1Search] Text search failed: {text_results}")
+                        text_results = []
+                    if isinstance(vector_results, Exception):
+                        logger.error(f"[F1Search] Vector search failed: {vector_results}")
+                        vector_results = []
+
+                    vector_search_performed = len(vector_results) > 0
+
+                    logger.info(
+                        f"[F1Search] Hybrid search: search_id={search_id[:8]}..., "
+                        f"text_results={len(text_results)}, vector_results={len(vector_results)}"
+                    )
+
+                # Process text results into standard format
+                processed_text_results = []
+                for r in text_results:
                     item = dict(r)
-                    # Parse JSONB fields (asyncpg returns them as strings)
                     for key in ('payload', 'ranks', 'components'):
                         if key in item and isinstance(item[key], str):
                             item[key] = json.loads(item[key])
-
-                    items.append({
+                    processed_text_results.append({
                         "object_type": item.get('object_type'),
                         "object_id": str(item.get('object_id')),
                         "payload": item.get('payload'),
@@ -779,9 +1023,40 @@ async def f1_search_stream(
                         "components": item.get('components'),
                     })
 
-                # Cache the processed items (only on cache miss, successful result)
+                # Process vector results into standard format
+                processed_vector_results = []
+                for r in vector_results:
+                    processed_vector_results.append({
+                        "object_type": r.get('object_type'),
+                        "object_id": str(r.get('object_id')),
+                        "payload": r.get('payload'),
+                        "similarity": r.get('similarity'),
+                        "search_text": r.get('search_text'),
+                    })
+
+                # Fuse text and vector results using RRF
+                with tracer.start_as_current_span("fusion.rrf") as span:
+                    span.set_attribute("text_count", len(processed_text_results))
+                    span.set_attribute("vector_count", len(processed_vector_results))
+                    items = reciprocal_rank_fusion(
+                        processed_text_results,
+                        processed_vector_results,
+                        rrf_k=60,
+                        page_limit=20
+                    )
+                    span.set_attribute("fused_count", len(items))
+
+                logger.info(
+                    f"[F1Search] RRF fusion: search_id={search_id[:8]}..., "
+                    f"text={len(processed_text_results)}, vector={len(processed_vector_results)}, "
+                    f"fused={len(items)}"
+                )
+
+                # Cache the fused results
                 if redis_conn and len(items) > 0:
                     await set_cached_results(redis_conn, cache_key, items)
+
+            total_results = len(items) if items else 0
 
             # Check for exact win on first item
             if len(items) > 0 and is_exact_win(items[0]):
@@ -850,11 +1125,19 @@ async def f1_search_stream(
                     "latency_ms": extraction_result.get('metadata', {}).get('latency_ms', {}).get('total', 0),
                 }
 
+            # Count embeddings for metrics
+            embeddings_count = sum(1 for r in rewrites if r.embedding is not None)
+
+            # Count text and vector results (only available on cache miss)
+            text_count = len(processed_text_results) if not result_cache_hit else None
+            vector_count = len(processed_vector_results) if not result_cache_hit else None
+
             yield sse_event("finalized", {
                 "search_id": search_id,
                 "latency_ms": latency_ms,
                 "total_results": total_results,
                 "rewrites_count": len(rewrites),
+                "embeddings_count": embeddings_count,  # GOD MODE: semantic search enabled
                 "rewrite_cache_hit": rewrite_result.cache_hit if hasattr(rewrite_result, 'cache_hit') else False,
                 "result_cache_hit": result_cache_hit,
                 "early_win": early_win,
@@ -865,6 +1148,14 @@ async def f1_search_stream(
                 "detected_object_types": detected_object_types,  # Analytics only
                 "object_types_filter": None,  # Always None - we search all types globally
                 "global_search": True,  # Explicit flag showing unbiased search
+                "semantic_search_enabled": embeddings_count > 0,  # GOD MODE active
+                # Hybrid search metrics (GOD MODE)
+                "hybrid_search": {
+                    "text_results": text_count,
+                    "vector_results": vector_count,
+                    "vector_search_performed": vector_search_performed if not result_cache_hit else None,
+                    "rrf_k": 60,
+                },
             })
 
             logger.info(
@@ -1050,6 +1341,11 @@ async def f1_search_health():
             "embedding_pipeline",
             "hnsw_vector_search",
             "click_tracking",
+            "semantic_search_god_mode",  # Natural language -> embedding -> vector similarity
+            "match_search_index_rpc",  # Direct vector search against search_index.embedding_1536
+            "hybrid_text_vector_search",  # Parallel text + vector search
+            "rrf_fusion",  # Reciprocal Rank Fusion merging
+            "global_entity_competition",  # ALL entity types compete, no object_type restrictions
         ],
     }
 
