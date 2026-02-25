@@ -184,6 +184,8 @@ class PlanExecutor:
     async def _execute_vector(self, query: VectorQuery) -> List[Dict[str, Any]]:
         """
         Execute vector similarity search.
+
+        LAW 21: Vector searches must query search_index table with embedding_1536 column.
         """
         try:
             # Generate embedding for input text
@@ -191,8 +193,35 @@ class PlanExecutor:
             if not embedding:
                 return []
 
-            # Use Supabase match function
-            if query.table == 'email_messages':
+            # LAW 21: Primary vector search against search_index table
+            if query.table == 'search_index':
+                result = self.client.rpc(
+                    'match_search_index',
+                    {
+                        'p_yacht_id': self.yacht_id,
+                        'p_query_embedding': embedding,
+                        'p_match_threshold': query.threshold,
+                        'p_match_count': query.top_k,
+                        'p_object_type': query.filters.get('object_type'),
+                    }
+                ).execute()
+
+                # Transform results to include similarity score and standard fields
+                results = []
+                for item in (result.data or []):
+                    results.append({
+                        'id': item.get('object_id'),
+                        'object_type': item.get('object_type'),
+                        'object_id': item.get('object_id'),
+                        'search_text': item.get('search_text'),
+                        'payload': item.get('payload'),
+                        'similarity': item.get('similarity'),
+                        '_source': 'vector',
+                    })
+                return results
+
+            # Use Supabase match function for legacy tables
+            elif query.table == 'email_messages':
                 result = self.client.rpc(
                     'match_email_messages',
                     {
@@ -364,7 +393,7 @@ class PlanExecutor:
         return result.data or []
 
     async def _query_work_orders(self, params: Dict) -> List[Dict]:
-        """Query pms_work_orders table."""
+        """Query pms_work_orders table with ILIKE + trigram fallback."""
         query = self.client.table('pms_work_orders').select(
             'id, wo_number, title, status, priority, equipment_id, created_at, updated_at'
         ).eq('yacht_id', self.yacht_id)
@@ -376,10 +405,40 @@ class PlanExecutor:
 
         query = query.order('updated_at', desc=True).limit(params.get('limit', 30))
         result = query.execute()
-        return result.data or []
+        results = result.data or []
+
+        # Phase 2: pg_trgm fuzzy search if ILIKE found few results
+        # LAW 20: Universal trigram matching
+        if len(results) < 5 and params.get('query') and not params.get('wo_ids'):
+            try:
+                fuzzy_result = self.client.rpc('search_work_orders_fuzzy', {
+                    'p_yacht_id': self.yacht_id,
+                    'p_query': params['query'].replace('%', ''),
+                    'p_threshold': 0.3,
+                    'p_limit': params.get('limit', 30)
+                }).execute()
+
+                if fuzzy_result.data:
+                    seen_ids = {r['id'] for r in results}
+                    for item in fuzzy_result.data:
+                        if item.get('work_order_id') not in seen_ids:
+                            results.append({
+                                'id': item['work_order_id'],
+                                'wo_number': item.get('work_order_number'),
+                                'title': item.get('title'),
+                                'status': item.get('status'),
+                                'priority': item.get('priority'),
+                                '_fuzzy_match': True,
+                                '_similarity': item.get('similarity')
+                            })
+                    logger.info(f"[Executor] Trigram found {len(fuzzy_result.data)} fuzzy matches for work orders")
+            except Exception as e:
+                logger.warning(f"[Executor] Work orders trigram search failed: {e}")
+
+        return results
 
     async def _query_equipment(self, params: Dict) -> List[Dict]:
-        """Query pms_equipment table."""
+        """Query pms_equipment table with ILIKE + trigram fallback."""
         query = self.client.table('pms_equipment').select(
             'id, name, system_type, serial_number, model, manufacturer, status'
         ).eq('yacht_id', self.yacht_id)
@@ -391,10 +450,41 @@ class PlanExecutor:
 
         query = query.order('name').limit(params.get('limit', 30))
         result = query.execute()
-        return result.data or []
+        results = result.data or []
+
+        # Phase 2: pg_trgm fuzzy search if ILIKE found few results
+        # LAW 20: Universal trigram matching
+        if len(results) < 5 and params.get('query') and not params.get('eq_ids'):
+            try:
+                fuzzy_result = self.client.rpc('search_equipment_fuzzy', {
+                    'p_yacht_id': self.yacht_id,
+                    'p_query': params['query'].replace('%', ''),
+                    'p_threshold': 0.3,
+                    'p_limit': params.get('limit', 30)
+                }).execute()
+
+                if fuzzy_result.data:
+                    seen_ids = {r['id'] for r in results}
+                    for item in fuzzy_result.data:
+                        if item.get('equipment_id') not in seen_ids:
+                            results.append({
+                                'id': item['equipment_id'],
+                                'name': item.get('equipment_name'),
+                                'serial_number': item.get('serial_number'),
+                                'manufacturer': item.get('manufacturer'),
+                                'model': item.get('model'),
+                                '_fuzzy_match': True,
+                                '_similarity': item.get('similarity')
+                            })
+                    logger.info(f"[Executor] Trigram found {len(fuzzy_result.data)} fuzzy matches for equipment")
+            except Exception as e:
+                logger.warning(f"[Executor] Equipment trigram search failed: {e}")
+
+        return results
 
     async def _query_parts(self, params: Dict) -> List[Dict]:
-        """Query pms_parts table."""
+        """Query pms_parts table with ILIKE + trigram fallback."""
+        # Phase 1: ILIKE substring search (fast, indexed)
         query = self.client.table('pms_parts').select(
             'id, name, part_number, quantity_on_hand, minimum_quantity, location'
         ).eq('yacht_id', self.yacht_id)
@@ -404,7 +494,37 @@ class PlanExecutor:
 
         query = query.order('name').limit(params.get('limit', 30))
         result = query.execute()
-        return result.data or []
+        results = result.data or []
+
+        # Phase 2: pg_trgm fuzzy search if ILIKE found few results
+        # LAW 20: Universal trigram matching for typo tolerance
+        if len(results) < 5 and params.get('query'):
+            try:
+                fuzzy_result = self.client.rpc('search_parts_fuzzy', {
+                    'p_yacht_id': self.yacht_id,
+                    'p_query': params['query'].replace('%', ''),
+                    'p_threshold': 0.3,
+                    'p_limit': params.get('limit', 30)
+                }).execute()
+
+                if fuzzy_result.data:
+                    seen_ids = {r['id'] for r in results}
+                    for item in fuzzy_result.data:
+                        if item.get('part_id') not in seen_ids:
+                            results.append({
+                                'id': item['part_id'],
+                                'name': item.get('part_name'),
+                                'part_number': item.get('part_number'),
+                                'quantity_on_hand': item.get('on_hand'),
+                                'location': item.get('location'),
+                                '_fuzzy_match': True,
+                                '_similarity': item.get('similarity')
+                            })
+                    logger.info(f"[Executor] Trigram found {len(fuzzy_result.data)} fuzzy matches for parts")
+            except Exception as e:
+                logger.warning(f"[Executor] Parts trigram search failed: {e}")
+
+        return results
 
     async def _query_faults(self, params: Dict) -> List[Dict]:
         """Query pms_faults table."""
