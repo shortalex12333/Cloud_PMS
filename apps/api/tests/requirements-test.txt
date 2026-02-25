@@ -1,0 +1,36 @@
+# Celeste OS F1 Search Pipeline - Test Dependencies
+#
+# Install with: pip install -r apps/api/tests/requirements-test.txt
+#
+# Run tests with: pytest apps/api/tests/ -v
+
+# Core testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-timeout>=2.2.0
+
+# HTTP client for API testing
+httpx>=0.27.0
+
+# Database testing
+asyncpg>=0.29.0
+
+# JWT handling
+PyJWT>=2.8.0
+
+# Mocking
+pytest-mock>=3.12.0
+
+# Coverage (optional)
+pytest-cov>=4.1.0
+coverage>=7.4.0
+
+# Code quality (optional)
+ruff>=0.2.0
+mypy>=1.8.0
+
+# Type stubs
+types-PyJWT>=1.7.0
+
+# Performance testing (optional)
+pytest-benchmark>=4.0.0

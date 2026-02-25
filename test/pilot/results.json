@@ -1,0 +1,1708 @@
+{
+  "metadata": {
+    "test_type": "pilot",
+    "sample_size": 10,
+    "timestamp": "2026-02-20T12:00:42.806Z",
+    "endpoint": "https://pipeline-core.int.celeste7.ai/webhook/search",
+    "yacht_id": "85fe1119-b04c-41ac-80f1-829d23322598"
+  },
+  "metrics": {
+    "timestamp": "2026-02-20T12:00:42.805Z",
+    "total_queries": 90,
+    "recall_at_3": 0,
+    "mrr": 0.0024691358024691358,
+    "p95_latency_ms": 22006,
+    "by_entity": [
+      {
+        "entity_type": "certificate",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 8438.1
+      },
+      {
+        "entity_type": "document",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 6954
+      },
+      {
+        "entity_type": "fault",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 22005.4
+      },
+      {
+        "entity_type": "inventory",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 15768
+      },
+      {
+        "entity_type": "parts",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 8906.2
+      },
+      {
+        "entity_type": "receiving",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 16526.4
+      },
+      {
+        "entity_type": "shopping_list",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0.02222222222222222,
+        "avg_latency_ms": 14765.9
+      },
+      {
+        "entity_type": "work_order_note",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 10575
+      },
+      {
+        "entity_type": "work_order",
+        "total_queries": 10,
+        "recall_at_3": 0,
+        "mrr": 0,
+        "avg_latency_ms": 11013.5
+      }
+    ]
+  },
+  "error_summary": {
+    "total_errors": 7,
+    "timeout_count": 0,
+    "error_rate": 0.07777777777777778
+  },
+  "errors": [
+    {
+      "query": "find tst part fa10ad48",
+      "error": "No capabilities matched the extracted entities",
+      "entity_type": "inventory"
+    },
+    {
+      "query": "show hours logged: 2.5h - work performed hours logged: 2.5h - work performed onboard",
+      "error": "No entities extracted and all search fallbacks returned no results",
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "where hours logged: 2.5h - work performed hours logged: 2.5h - work performed stored",
+      "error": "No entities extracted and all search fallbacks returned no results",
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "where is note hours logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "error": "No capabilities matched the extracted entities",
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "need note hours logged: 2.5h - work performed hours logged: 2.5h - work performed location",
+      "error": "No capabilities matched the extracted entities",
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "find hurs logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "error": "No capabilities matched the extracted entities",
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "count notes like hours logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "error": "No entities extracted and all search fallbacks returned no results",
+      "entity_type": "work_order_note"
+    }
+  ],
+  "results": [
+    {
+      "query": "show ism document of compliance certificate",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [
+        "e4144864-1a61-4f21-ba0d-01ec97f012fb",
+        "732327ef-0ff9-4cdd-a38b-523cb4ba7bdd",
+        "a2464117-6e5e-4ffa-814a-b66beb9b45e6"
+      ],
+      "rank": null,
+      "latency_ms": 9018,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "status of ism document of compliance cert",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 9007,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "when does ism document of compliance expire",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 9016,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "where is ism document of compliance certificate stored",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [
+        "e4144864-1a61-4f21-ba0d-01ec97f012fb",
+        "732327ef-0ff9-4cdd-a38b-523cb4ba7bdd",
+        "a2464117-6e5e-4ffa-814a-b66beb9b45e6"
+      ],
+      "rank": null,
+      "latency_ms": 9010,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "reorder ism document of compliance cert labels",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 9009,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "add ism document of compliance certificate to checklist",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [
+        "e4144864-1a61-4f21-ba0d-01ec97f012fb",
+        "4b3a1921-2240-4111-8e73-aef35b27498d",
+        "732327ef-0ff9-4cdd-a38b-523cb4ba7bdd",
+        "9849a6cc-7913-4f7f-b197-9911b8eeb72e",
+        "0837fa67-978f-4716-a953-b1f2aa1dc9f9",
+        "fb36aa33-46b1-45f8-992a-f0d0e3983c3f",
+        "b0822647-bc4f-4762-9bb1-154fefdfef04",
+        "8e192db8-c9f1-496a-a77e-ed8b47d47b6c",
+        "48bc2a49-cb27-412f-94d3-f4e970e9202a",
+        "a2464117-6e5e-4ffa-814a-b66beb9b45e6"
+      ],
+      "rank": null,
+      "latency_ms": 9021,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "find ism document of compliance",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 3252,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "sm document of compliance cert details",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 9018,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "ism document of compliance certificate not insurance cert",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [
+        "e4144864-1a61-4f21-ba0d-01ec97f012fb",
+        "732327ef-0ff9-4cdd-a38b-523cb4ba7bdd",
+        "dadc9fee-55c5-4145-bf46-3cabb02e783c",
+        "beef470e-ea35-4482-89de-570da6323790",
+        "0f60b47d-ecef-451e-b39d-6b3040d523c0",
+        "752121be-9f71-479e-ab1f-2a2d9a9e12ae",
+        "4e028a57-ca52-4bf3-9fbf-56b3303fa45a",
+        "a2464117-6e5e-4ffa-814a-b66beb9b45e6"
+      ],
+      "rank": null,
+      "latency_ms": 9015,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "is ism document of compliance certificate valid",
+      "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "actual_ids": [
+        "e4144864-1a61-4f21-ba0d-01ec97f012fb",
+        "732327ef-0ff9-4cdd-a38b-523cb4ba7bdd",
+        "a2464117-6e5e-4ffa-814a-b66beb9b45e6"
+      ],
+      "rank": null,
+      "latency_ms": 9015,
+      "hit": false,
+      "entity_type": "certificate"
+    },
+    {
+      "query": "open document ballast_systems_reference_manual.pdf",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "f9eb9cc3-7269-4e66-8b1b-ee1199adbba4"
+      ],
+      "rank": null,
+      "latency_ms": 7980,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "show ballast_systems_reference_manual.pdf pdf",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "65d971c2-4834-436d-92aa-5ac36fabf2cd"
+      ],
+      "rank": null,
+      "latency_ms": 4562,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "where is ballast_systems_reference_manual.pdf file",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "65d971c2-4834-436d-92aa-5ac36fabf2cd",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5"
+      ],
+      "rank": null,
+      "latency_ms": 4562,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "add ballast_systems_reference_manual.pdf to checklist",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "2657af06-cb32-48f5-8365-2f9ff67f3733",
+        "9b27a476-21c1-4de6-9c8f-572203f572f7",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "fb36aa33-46b1-45f8-992a-f0d0e3983c3f"
+      ],
+      "rank": null,
+      "latency_ms": 7980,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "reorder print of ballast_systems_reference_manual.pdf",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "65d971c2-4834-436d-92aa-5ac36fabf2cd"
+      ],
+      "rank": null,
+      "latency_ms": 7978,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "find ballast_systems_reference_man.pdf",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "f9eb9cc3-7269-4e66-8b1b-ee1199adbba4",
+        "c3d34a62-0a50-41b0-ad33-88b39d02f7ba",
+        "ac413f66-0b39-4949-8273-81aa172b43ac",
+        "35035932-7f24-412c-a654-4f13ca57f461",
+        "ff66a095-d345-46ea-abcb-5d49e4451376",
+        "fbf6031e-ebbb-48e8-8a5c-949fdd0a7f4b"
+      ],
+      "rank": null,
+      "latency_ms": 7980,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "bllast_systems_reference_manual.pdf doc",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327"
+      ],
+      "rank": null,
+      "latency_ms": 7978,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "need copy of ballast_systems_reference_manual.pdf",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "65d971c2-4834-436d-92aa-5ac36fabf2cd"
+      ],
+      "rank": null,
+      "latency_ms": 4561,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "ballast_systems_reference_manual.pdf document not operations manual",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "f9eb9cc3-7269-4e66-8b1b-ee1199adbba4"
+      ],
+      "rank": null,
+      "latency_ms": 7980,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "is ballast_systems_reference_manual.pdf latest version",
+      "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "actual_ids": [
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "18bc3b28-8c10-426f-86e6-803ed23a95b0",
+        "943a8bb2-c4cc-45c7-8dc1-3762b509c2dc",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "64e3ca02-2441-4bc8-b7fc-8bc8cbe86338",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "38f67c87-087e-4525-b336-0d4865d912c5",
+        "fe6b9953-979f-4b8d-9847-3d836bd4fabb",
+        "bf6199b0-ce7d-4b81-ac79-245faab70327",
+        "65d971c2-4834-436d-92aa-5ac36fabf2cd"
+      ],
+      "rank": null,
+      "latency_ms": 7979,
+      "hit": false,
+      "entity_type": "document"
+    },
+    {
+      "query": "show fault gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 7ab56d5f9ab9",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "fc5aea84-490f-445b-9f1a-a829bf3b1845",
+        "dccede87-841e-4376-b4b8-0e522e14f751",
+        "63d0556c-3c89-4448-8fe4-a6cb58c6b8eb",
+        "633f6b7a-41a7-47a3-a17c-1823f3604282",
+        "f2dc91c7-65e8-4e53-8f8f-17b5e9c3b2e4",
+        "c709ac8a-df35-4b4a-8989-2e4c53048e53",
+        "24073bd6-8cd9-43eb-bd12-1cad695a49e9",
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8"
+      ],
+      "rank": null,
+      "latency_ms": 22006,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "status of fault gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "fc5aea84-490f-445b-9f1a-a829bf3b1845",
+        "dccede87-841e-4376-b4b8-0e522e14f751",
+        "63d0556c-3c89-4448-8fe4-a6cb58c6b8eb",
+        "633f6b7a-41a7-47a3-a17c-1823f3604282",
+        "f2dc91c7-65e8-4e53-8f8f-17b5e9c3b2e4",
+        "c709ac8a-df35-4b4a-8989-2e4c53048e53",
+        "24073bd6-8cd9-43eb-bd12-1cad695a49e9",
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8"
+      ],
+      "rank": null,
+      "latency_ms": 22005,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "where is fault gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 noted",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "fc5aea84-490f-445b-9f1a-a829bf3b1845",
+        "dccede87-841e-4376-b4b8-0e522e14f751",
+        "63d0556c-3c89-4448-8fe4-a6cb58c6b8eb",
+        "633f6b7a-41a7-47a3-a17c-1823f3604282",
+        "f2dc91c7-65e8-4e53-8f8f-17b5e9c3b2e4",
+        "c709ac8a-df35-4b4a-8989-2e4c53048e53",
+        "24073bd6-8cd9-43eb-bd12-1cad695a49e9",
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8"
+      ],
+      "rank": null,
+      "latency_ms": 22005,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "add gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 7ab56d5f9ab9 to repair list",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22004,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "reorder parts for gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22007,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "find gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault 7ab56d5f9ab9",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22004,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "gps sgnal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault details",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22006,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "need photos for gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22005,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault not different fault",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22006,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "has gps signal lost updated description via e2e test at 2026-01-16t12:18:01.742z gps signal lost | updated description via e2e test at 2026-01-16t12:18:01.742z e032 fault been fixed",
+      "expected_id": "29c6f2d0-69c2-4263-87ad-7ab56d5f9ab9",
+      "actual_ids": [
+        "29b05202-0e94-44b1-9a20-b2c747d666de",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002"
+      ],
+      "rank": null,
+      "latency_ms": 22006,
+      "hit": false,
+      "entity_type": "fault"
+    },
+    {
+      "query": "show me test part fa10ad48",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15766,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "how many test part fa10ad48s do we have",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15767,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "where are the test part fa10ad48",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15773,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "reorder test part fa10ad48",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15766,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "add test part fa10ad48 to shopping list",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15766,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "find tst part fa10ad48",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 15762,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "test part fa10ad48 not other item",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15769,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "need test part fa10ad48 location",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15776,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "where test part fa10ad48 stored",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15762,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "show test part fa10ad48 onboard",
+      "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 15773,
+      "hit": false,
+      "entity_type": "inventory"
+    },
+    {
+      "query": "show me ac compressor clutch",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4"
+      ],
+      "rank": null,
+      "latency_ms": 10479,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "how many ac compressor clutchs do we have",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e"
+      ],
+      "rank": null,
+      "latency_ms": 10474,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "where are the ac compressor clutch",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4"
+      ],
+      "rank": null,
+      "latency_ms": 10478,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "reorder ac compressor clutch",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4",
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760"
+      ],
+      "rank": null,
+      "latency_ms": 1559,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "add ac compressor clutch to shopping list",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4",
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760"
+      ],
+      "rank": null,
+      "latency_ms": 10468,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "find c compressor clutch",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4",
+        "7af06f1e-bc62-45c8-afa1-4fed79a8c818",
+        "79ef6bd7-2880-4c61-a4af-f57c47d8b694",
+        "65f4c625-5d3c-413a-b3c1-83fcd11cb286",
+        "60fedd21-b3fd-4c87-9614-49741e8496bc",
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "37518078-97f7-4476-9c86-98cf5227c02c",
+        "33f9205b-5d39-4585-b537-f55315116984"
+      ],
+      "rank": null,
+      "latency_ms": 10478,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "ac compressor clutch not other item",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e"
+      ],
+      "rank": null,
+      "latency_ms": 10472,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "need ac compressor clutch location",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4"
+      ],
+      "rank": null,
+      "latency_ms": 3710,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "where ac compressor clutch stored",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e"
+      ],
+      "rank": null,
+      "latency_ms": 10467,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "show ac compressor clutch onboard",
+      "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+      "actual_ids": [
+        "516f3582-8507-484f-82ee-83edb492a7df",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "33f9205b-5d39-4585-b537-f55315116984",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "093e9d4f-2cb2-4632-9236-088a46e22c8f",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "131223ed-ed6f-4495-bed1-65bf25f5a51e",
+        "d2b461e3-0e85-44db-9647-ce4add42636d",
+        "c7d86982-0300-4d6c-a854-be6a3714e760",
+        "7b814184-d858-4937-9ef7-fb089af9c5d4"
+      ],
+      "rank": null,
+      "latency_ms": 10477,
+      "hit": false,
+      "entity_type": "parts"
+    },
+    {
+      "query": "show receiving chief_engineer-test-5ee59f34",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "00000000-0000-4000-8000-000000000003",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16530,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "status of receipt chief_engineer-test-5ee59f34",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "6e6851a6-a090-4eee-9a2e-8e6c1ce9438c",
+        "870418e4-a979-47a4-b359-f5448471b95e",
+        "fe545a99-02e9-48d2-af95-d06be5035946",
+        "f33d572d-a5dd-4d5f-8ea2-f2f2c20307e0",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "c0640b2a-de0f-4c43-8386-28e3587927ee",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "490f971d-9cae-4da4-9090-461d31cc4c16",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357"
+      ],
+      "rank": null,
+      "latency_ms": 16522,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "when received chief_engineer-test-5ee59f34",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16530,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "where is GRN chief_engineer-test-5ee59f34",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16531,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "add chief_engineer-test-5ee59f34 to review list",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16522,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "reorder label for chief_engineer-test-5ee59f34",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16529,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "find chef_engineer-test-5ee59f34 receiving",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "00000000-0000-4000-8000-000000000003",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16530,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "chief_engineer-test-5ee59f34 receipt not different receipt",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "6e6851a6-a090-4eee-9a2e-8e6c1ce9438c",
+        "870418e4-a979-47a4-b359-f5448471b95e",
+        "fe545a99-02e9-48d2-af95-d06be5035946",
+        "f33d572d-a5dd-4d5f-8ea2-f2f2c20307e0",
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "c0640b2a-de0f-4c43-8386-28e3587927ee",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "490f971d-9cae-4da4-9090-461d31cc4c16",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357"
+      ],
+      "rank": null,
+      "latency_ms": 16529,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "need chief_engineer-test-5ee59f34 vendor",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16521,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "show chief_engineer-test-5ee59f34 onboard",
+      "expected_id": "0fa6556b-b9ef-49d2-979d-30e0f0d15c0f",
+      "actual_ids": [
+        "f24e41a2-ea59-4cdc-b39d-2e26bb76c7e8",
+        "98697e5c-daad-4a25-8894-2e0f14f0a0a8",
+        "6aa6cb49-def4-4ed8-8f93-ffda743260b1",
+        "2962d05e-5800-4fc6-b5b3-289ec39d6357",
+        "1e2a1f75-06ca-4e53-b5f0-d9c357e4e377",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "rank": null,
+      "latency_ms": 16520,
+      "hit": false,
+      "entity_type": "receiving"
+    },
+    {
+      "query": "show shopping item fuel filter cf-2250 cummins",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 17454,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "count shopping item fuel filter cf-2250 cummins",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 17452,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "where is shopping item fuel filter cf-2250 cummins",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 17453,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "reorder shopping item fuel filter cf-2250 cummins",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "802b13d3-4dd9-49c5-831d-48cd331f2bba",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "2efe6693-cc2f-4a81-9304-45055beb27d0",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "99748dfe-ad54-448a-9f0a-48152263fbb5",
+        "470fc78d-656f-4ec8-ae61-97caa3014444",
+        "386121a0-1956-44af-b662-0274680024c2",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc"
+      ],
+      "rank": 9,
+      "latency_ms": 17454,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "add fuel filter cf-2250 cummins to shopping list",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "802b13d3-4dd9-49c5-831d-48cd331f2bba",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "2efe6693-cc2f-4a81-9304-45055beb27d0",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "99748dfe-ad54-448a-9f0a-48152263fbb5",
+        "470fc78d-656f-4ec8-ae61-97caa3014444",
+        "386121a0-1956-44af-b662-0274680024c2",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc"
+      ],
+      "rank": 9,
+      "latency_ms": 4020,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "find fel filter cf-2250 cummins",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "f7913ad1-6832-4169-b816-4538c8b7a417",
+        "ee1f54c1-cddc-40ec-bad8-bd589864da20",
+        "e3fb59d0-94bd-4ca2-beba-fa588338599f",
+        "d8e76f54-1be3-428f-b9f9-c72ea1109cb0",
+        "c192b448-00d7-4c49-a811-37db7df13768",
+        "b9b3522c-aa91-43e8-83ed-3e09f5211cbb",
+        "8e6e536d-735b-441a-aec3-d5676361caa4",
+        "80f1a14d-458e-4365-8213-14c70e5ff924",
+        "411769fa-ce62-4c93-a306-4e0177096056",
+        "3efa5c45-cfb7-4421-be82-69105cae6006"
+      ],
+      "rank": null,
+      "latency_ms": 17453,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "fuel filter cf-2250 cummins not different list item",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 17453,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "need fuel filter cf-2250 cummins location",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 4016,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "where fuel filter cf-2250 cummins stored",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 17452,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "show fuel filter cf-2250 cummins onboard",
+      "expected_id": "386121a0-1956-44af-b662-0274680024c2",
+      "actual_ids": [
+        "92e3042e-1368-45d7-9d31-b1709a2e7870",
+        "3809f22d-b1c3-4a57-bb23-55570440e12a",
+        "1d2ef6ff-c2d2-4117-a6f7-8b1130f27b68",
+        "b6ac9998-3529-4b68-94df-0343f8b0cccc",
+        "8b3dc06c-616c-439b-b499-3416c727dcd3",
+        "83c3f1e3-59a9-4de3-87b2-20cb29aa7d26",
+        "821bbdd2-e06d-4f8f-9447-e1dea6dbcb01",
+        "5700e12a-87ab-4c12-af9e-bd86b202a824",
+        "313bf308-7937-4d58-a128-01bff3c2f855",
+        "035fb653-c01c-4e17-9676-1da55bfc9192"
+      ],
+      "rank": null,
+      "latency_ms": 17452,
+      "hit": false,
+      "entity_type": "shopping_list"
+    },
+    {
+      "query": "show work order note hours logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10570,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "count notes like hours logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10584,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "where is note hours logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10578,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "reorder parts per note hours logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10570,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "add hours logged: 2.5h - work performed hours logged: 2.5h - work performed note to list",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10579,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "find hurs logged: 2.5h - work performed hours logged: 2.5h - work performed",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10578,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "hours logged: 2.5h - work performed hours logged: 2.5h - work performed not different work order note",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10574,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "need note hours logged: 2.5h - work performed hours logged: 2.5h - work performed location",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10578,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "where hours logged: 2.5h - work performed hours logged: 2.5h - work performed stored",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10570,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "show hours logged: 2.5h - work performed hours logged: 2.5h - work performed onboard",
+      "expected_id": "1434dfff-17d9-4c25-b3c6-130b1f475ec8",
+      "actual_ids": [],
+      "rank": null,
+      "latency_ms": 10569,
+      "hit": false,
+      "entity_type": "work_order_note"
+    },
+    {
+      "query": "show work order wo-test-1768420934823-014: test work order 14 - navigation maintenance",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11018,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "status of work order wo-test-1768420934823-014: test work order 14 - navigation maintenance",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11012,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "where is work order wo-test-1768420934823-014: test work order 14 - navigation maintenance",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11008,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "reorder parts for work order wo-test-1768420934823-014: test work order 14 - navigation maintenance",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11019,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "add wo-test-1768420934823-014: test work order 14 - navigation maintenance to W/O list",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11016,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "find w-test-1768420934823-014: test work order 14 - navigation maintenance",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11018,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "wo-test-1768420934823-014: test work order 14 - navigation maintenance not different work order",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11008,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "need wo-test-1768420934823-014: test work order 14 - navigation maintenance location",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11018,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "where wo-test-1768420934823-014: test work order 14 - navigation maintenance stored",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11008,
+      "hit": false,
+      "entity_type": "work_order"
+    },
+    {
+      "query": "show wo-test-1768420934823-014: test work order 14 - navigation maintenance onboard",
+      "expected_id": "19de511d-727c-48da-bbad-ef2691595531",
+      "actual_ids": [
+        "fadae267-777a-402f-9d6a-1e24a9c75e22",
+        "df8c0d96-1c30-4f68-8b75-e92000e878aa",
+        "60a35200-593d-45cd-acdb-99a0fe10bc8f",
+        "40664920-0256-4d5b-986b-8c3f8e07fcd9",
+        "90279eb0-22e3-4820-a778-2fa1f01ce102",
+        "4290a831-7aea-44e5-b7b2-0159c03cc84c",
+        "334663fe-392b-4528-a2e0-2d63507c88d8",
+        "e021d1be-fd70-46c9-87ba-315bfe95bd7e",
+        "74954d32-099d-4ba7-981c-fa327a110941",
+        "13cadfa4-33b0-4963-a39a-dacfa4323b26"
+      ],
+      "rank": null,
+      "latency_ms": 11010,
+      "hit": false,
+      "entity_type": "work_order"
+    }
+  ]
+}
