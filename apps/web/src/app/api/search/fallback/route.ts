@@ -109,8 +109,9 @@ export async function POST(request: NextRequest) {
     // ====================================================================
     // PARTS SEARCH Phase 2: pg_trgm fuzzy search (handles typos)
     // LAW 20: Universal trigram matching - "mantenance" finds "maintenance"
+    // Trigger when ILIKE returns < 3 results for broad recall on misspellings
     // ====================================================================
-    if (parts?.length === 0 || (parts?.length || 0) < 5) {
+    if ((parts?.length || 0) < 3) {
       try {
         const { data: fuzzyParts, error: fuzzyError } = await supabase.rpc('search_parts_fuzzy', {
           p_yacht_id: yacht_id,
@@ -183,7 +184,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Phase 2: pg_trgm fuzzy search for equipment
-    if (equipment?.length === 0 || (equipment?.length || 0) < 5) {
+    // Trigger when ILIKE returns < 3 results for broad recall on misspellings
+    if ((equipment?.length || 0) < 3) {
       try {
         const { data: fuzzyEquipment, error: fuzzyEqError } = await supabase.rpc('search_equipment_fuzzy', {
           p_yacht_id: yacht_id,
@@ -254,7 +256,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Phase 2: pg_trgm fuzzy search for work orders
-    if (workOrders?.length === 0 || (workOrders?.length || 0) < 5) {
+    // Trigger when ILIKE returns < 3 results for broad recall on misspellings
+    if ((workOrders?.length || 0) < 3) {
       try {
         const { data: fuzzyWO, error: fuzzyWOError } = await supabase.rpc('search_work_orders_fuzzy', {
           p_yacht_id: yacht_id,
@@ -322,43 +325,45 @@ export async function POST(request: NextRequest) {
           metadata: item,
         });
       });
+    }
 
-      // Phase 2: pg_trgm fuzzy search for shopping list
-      if (shoppingItems.length < 5) {
-        try {
-          const { data: fuzzyItems, error: fuzzyShoppingError } = await supabase.rpc('search_shopping_list_fuzzy', {
-            p_yacht_id: yacht_id,
-            p_query: searchTerm,
-            p_threshold: 0.3,
-            p_limit: limit,
+    // Phase 2: pg_trgm fuzzy search for shopping list
+    // Trigger when ILIKE returns < 3 results for broad recall on misspellings
+    if ((shoppingItems?.length || 0) < 3) {
+      try {
+        const { data: fuzzyItems, error: fuzzyShoppingError } = await supabase.rpc('search_shopping_list_fuzzy', {
+          p_yacht_id: yacht_id,
+          p_query: searchTerm,
+          p_threshold: 0.3,
+          p_limit: limit,
+        });
+
+        if (!fuzzyShoppingError && fuzzyItems) {
+          fuzzyItems.forEach((item: any) => {
+            if (!seenShoppingIds.has(item.shopping_list_item_id)) {
+              seenShoppingIds.add(item.shopping_list_item_id);
+              results.push({
+                id: item.shopping_list_item_id,
+                primary_id: item.shopping_list_item_id,
+                type: 'shopping_list_item',
+                source_table: 'shopping_list_items',
+                title: item.part_name || 'Unnamed Part',
+                subtitle: [
+                  item.part_number && `P/N: ${item.part_number}`,
+                  item.status && `Status: ${item.status}`,
+                  item.quantity && `Qty: ${item.quantity}`,
+                  item.similarity && `Match: ${Math.round(item.similarity * 100)}%`,
+                ]
+                  .filter(Boolean)
+                  .join(' | '),
+                metadata: { ...item, fuzzy_match: true },
+              });
+            }
           });
-
-          if (!fuzzyShoppingError && fuzzyItems) {
-            fuzzyItems.forEach((item: any) => {
-              if (!seenShoppingIds.has(item.shopping_list_item_id)) {
-                seenShoppingIds.add(item.shopping_list_item_id);
-                results.push({
-                  id: item.shopping_list_item_id,
-                  primary_id: item.shopping_list_item_id,
-                  type: 'shopping_list_item',
-                  source_table: 'shopping_list_items',
-                  title: item.part_name || 'Unnamed Part',
-                  subtitle: [
-                    item.part_number && `P/N: ${item.part_number}`,
-                    item.status && `Status: ${item.status}`,
-                    item.quantity && `Qty: ${item.quantity}`,
-                    item.similarity && `Match: ${Math.round(item.similarity * 100)}%`,
-                  ]
-                    .filter(Boolean)
-                    .join(' | '),
-                  metadata: { ...item, fuzzy_match: true },
-                });
-              }
-            });
-          }
-        } catch (fuzzyErr) {
-          console.warn('[Search Fallback] Shopping list trigram search unavailable:', fuzzyErr);
+          console.log(`[Search Fallback] Shopping list trigram found ${fuzzyItems.length} fuzzy matches for "${searchTerm}"`);
         }
+      } catch (fuzzyErr) {
+        console.warn('[Search Fallback] Shopping list trigram search unavailable:', fuzzyErr);
       }
     }
 
@@ -399,43 +404,45 @@ export async function POST(request: NextRequest) {
             metadata: doc,
           });
         });
+      }
 
-        // Phase 2: pg_trgm fuzzy search for documents
-        if (documents.length < 5) {
-          try {
-            const { data: fuzzyDocs, error: fuzzyDocError } = await supabase.rpc('search_documents_fuzzy', {
-              p_yacht_id: yacht_id,
-              p_query: searchTerm,
-              p_threshold: 0.3,
-              p_limit: limit,
+      // Phase 2: pg_trgm fuzzy search for documents
+      // Trigger when ILIKE returns < 3 results for broad recall on misspellings
+      if ((documents?.length || 0) < 3) {
+        try {
+          const { data: fuzzyDocs, error: fuzzyDocError } = await supabase.rpc('search_documents_fuzzy', {
+            p_yacht_id: yacht_id,
+            p_query: searchTerm,
+            p_threshold: 0.3,
+            p_limit: limit,
+          });
+
+          if (!fuzzyDocError && fuzzyDocs) {
+            fuzzyDocs.forEach((doc: any) => {
+              if (!seenDocIds.has(doc.id)) {
+                seenDocIds.add(doc.id);
+                results.push({
+                  id: doc.id,
+                  primary_id: doc.id,
+                  type: 'document',
+                  source_table: 'documents',
+                  title: doc.filename || 'Unnamed Document',
+                  subtitle: [
+                    doc.doc_type && `Type: ${doc.doc_type}`,
+                    doc.content_type && `Format: ${doc.content_type}`,
+                    doc.created_at && `Uploaded: ${new Date(doc.created_at).toLocaleDateString()}`,
+                    doc.similarity && `Match: ${Math.round(doc.similarity * 100)}%`,
+                  ]
+                    .filter(Boolean)
+                    .join(' | '),
+                  metadata: { ...doc, fuzzy_match: true },
+                });
+              }
             });
-
-            if (!fuzzyDocError && fuzzyDocs) {
-              fuzzyDocs.forEach((doc: any) => {
-                if (!seenDocIds.has(doc.id)) {
-                  seenDocIds.add(doc.id);
-                  results.push({
-                    id: doc.id,
-                    primary_id: doc.id,
-                    type: 'document',
-                    source_table: 'documents',
-                    title: doc.filename || 'Unnamed Document',
-                    subtitle: [
-                      doc.doc_type && `Type: ${doc.doc_type}`,
-                      doc.content_type && `Format: ${doc.content_type}`,
-                      doc.created_at && `Uploaded: ${new Date(doc.created_at).toLocaleDateString()}`,
-                      doc.similarity && `Match: ${Math.round(doc.similarity * 100)}%`,
-                    ]
-                      .filter(Boolean)
-                      .join(' | '),
-                    metadata: { ...doc, fuzzy_match: true },
-                  });
-                }
-              });
-            }
-          } catch (fuzzyErr) {
-            console.warn('[Search Fallback] Document trigram search unavailable:', fuzzyErr);
+            console.log(`[Search Fallback] Document trigram found ${fuzzyDocs.length} fuzzy matches for "${searchTerm}"`);
           }
+        } catch (fuzzyErr) {
+          console.warn('[Search Fallback] Document trigram search unavailable:', fuzzyErr);
         }
       }
     } catch (docError) {
@@ -443,7 +450,11 @@ export async function POST(request: NextRequest) {
       console.warn('[Search Fallback] Document search exception:', docError);
     }
 
-    // Sort results by relevance (simple: exact matches first, then contains)
+    // Sort results by relevance:
+    // 1. Exact matches first
+    // 2. Starts with search term
+    // 3. Contains search term (ILIKE matches)
+    // 4. Fuzzy matches sorted by similarity score (highest first)
     results.sort((a, b) => {
       const aTitle = a.title.toLowerCase();
       const bTitle = b.title.toLowerCase();
@@ -451,11 +462,34 @@ export async function POST(request: NextRequest) {
       const bExact = bTitle === searchTerm;
       const aStarts = aTitle.startsWith(searchTerm);
       const bStarts = bTitle.startsWith(searchTerm);
+      const aContains = aTitle.includes(searchTerm);
+      const bContains = bTitle.includes(searchTerm);
+      const aFuzzy = a.metadata?.fuzzy_match === true;
+      const bFuzzy = b.metadata?.fuzzy_match === true;
+      const aSimilarity = a.metadata?.similarity || 0;
+      const bSimilarity = b.metadata?.similarity || 0;
 
+      // Exact matches first
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
+
+      // Starts with search term
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
+
+      // Contains search term (ILIKE matches) before fuzzy matches
+      if (aContains && !bContains) return -1;
+      if (!aContains && bContains) return 1;
+
+      // If both are fuzzy matches, sort by similarity (descending)
+      if (aFuzzy && bFuzzy) {
+        return bSimilarity - aSimilarity;
+      }
+
+      // Non-fuzzy before fuzzy
+      if (!aFuzzy && bFuzzy) return -1;
+      if (aFuzzy && !bFuzzy) return 1;
+
       return 0;
     });
 

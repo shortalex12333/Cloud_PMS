@@ -1,0 +1,4066 @@
+[
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "ISM-2026-UPDATED",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 436
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "ISM-2026-UPDATED Document",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "ISM-2026-UPDATED Compliance",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 1796
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "ISM Document UPDATED",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 310
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "ISM-2026-UPDATED Flag",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "ISM UPDATED Flag",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 140
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "ISM UPDATED Document",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 132
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "UPDATED ISM Compliance",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "Document UPDATED ISM",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 154
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "ISM 2026 UPDATED",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 124
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "Compliance UPDATED Flag",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 143
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "ISM-2026-UPDATED Compliance Document",
+    "expected_id": "05a1eb30-67d2-461e-9a22-b7589281338c",
+    "actual_ids": [
+      "05a1eb30-67d2-461e-9a22-b7589281338c",
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 152
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "ISM-2026-RENEWED",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "2026 RENEWED ISM",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "RENEWED ISM Document",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 148
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "ISM-2026-RENEWED Document",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 154
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "ISM-2026-RENEWED Compliance",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "ISM RENEWED Flag",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 138
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "ISM RENEWED Document",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 221
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "ISM-2026-RENEWED ISM Compliance",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+      "05a1eb30-67d2-461e-9a22-b7589281338c"
+    ],
+    "hit": true,
+    "latency_ms": 3331
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "Document RENEWED ISM",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 137
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "ISM 2026 RENEWED",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 134
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "Compliance RENEWED Flag",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 147
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "Flag State RENEWED",
+    "expected_id": "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b",
+    "actual_ids": [
+      "7c1b1ab7-f0bb-401c-825f-eeb7e6d2a64b"
+    ],
+    "hit": true,
+    "latency_ms": 180
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "LR-2026-001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "LR-2026-001 Lloyds",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 134
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "001 Lloyds Register",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 136
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "LR-2026-001 Register",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 141
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "LR-2026-001 Class",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 119
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "Lloyds Register 001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 159
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "Lloyds Class 001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 169
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "Register Class 001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 112
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "LR 2026 001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7"
+    ],
+    "hit": true,
+    "latency_ms": 214
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "Class LR-2026-001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "Register LR-2026-001",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 166
+  },
+  {
+    "entity_type": "certificate",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "Lloyds 001 Class",
+    "expected_id": "31ee8205-8838-4c8e-ad7d-b404663110c7",
+    "actual_ids": [
+      "31ee8205-8838-4c8e-ad7d-b404663110c7",
+      "ea34bee1-0a8b-41dd-a9fa-2d270bb0beea"
+    ],
+    "hit": true,
+    "latency_ms": 134
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "Ballast_Systems_Reference_Manual",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "Ballast_Systems_Reference_Manual.pdf",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "d57733df-c723-4cfa-9b2f-5868e94a4622"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "Ballast_Systems Reference_Manual",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 133
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "ballast_systems Reference_Manual",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 111
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "Reference_Manual ballast_systems",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 124
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "ballast_systems system_manuals",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd"
+    ],
+    "hit": true,
+    "latency_ms": 124
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "system_manuals Ballast_Systems",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "Ballast_Systems system_manuals",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd"
+    ],
+    "hit": true,
+    "latency_ms": 112
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "Ballast_Systems_Reference",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "3dccdba7-14b7-4266-927e-07059bfc4684",
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "52a83985-841c-4fde-ab59-ca682ef49be6"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "Ballast_Systems Reference_Manual pdf",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 127
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "ballast_systems Reference",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "3dccdba7-14b7-4266-927e-07059bfc4684",
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "52a83985-841c-4fde-ab59-ca682ef49be6"
+    ],
+    "hit": true,
+    "latency_ms": 135
+  },
+  {
+    "entity_type": "document",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "Ballast_Systems_Reference_Manual pdf",
+    "expected_id": "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+    "actual_ids": [
+      "4a75998f-5b18-44bd-9d08-1b8ad75ee8dd",
+      "641ff6af-0b26-4435-a359-c05b11874619",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "Fresh_Water_Reference_Manual",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 115
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "Fresh_Water_Reference_Manual.pdf",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "9811149c-563a-4023-9623-d1306d8e9d22"
+    ],
+    "hit": true,
+    "latency_ms": 133
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "Fresh_Water Reference_Manual",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 115
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "fresh_water Reference_Manual",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "Reference_Manual fresh_water",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "Fresh_Water_Reference_Manual",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 135
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "Fresh_Water_Reference_Manual.pdf parts",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 136
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "fresh_water Reference_Manual",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "Fresh_Water_Reference_Manual fresh_water",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 150
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "fresh_water Reference_Manual parts",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 117
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "Fresh_Water_Reference_Manual parts",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 134
+  },
+  {
+    "entity_type": "document",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "Fresh_Water_Reference_Manual pdf",
+    "expected_id": "887c70a7-4e15-448a-82a8-4c07b45112f0",
+    "actual_ids": [
+      "2c491daa-1c6b-4684-b628-d675291b2234",
+      "887c70a7-4e15-448a-82a8-4c07b45112f0",
+      "9bc47dea-b15d-4591-b407-0d87f7e19b03"
+    ],
+    "hit": true,
+    "latency_ms": 246
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "Generic_ballast_systems Document",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "320d7473-441d-4f8d-a831-ff1ed704506a",
+      "3dcf327a-dec8-4960-bd56-618e24d4f4bb",
+      "2be71f26-db70-42c4-bd0e-83abdc438a66"
+    ],
+    "hit": false,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "Document_3 ballast",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "55ffee2a-0fe9-479c-841d-a3eda696a186",
+      "1c5e0cf2-1c42-4f46-81df-338435da8de2",
+      "991791e7-59d8-4895-9e05-639852ff86bf"
+    ],
+    "hit": false,
+    "latency_ms": 209
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "ballast_systems Document_3 pdf",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "1031e72a-1d3e-4e2c-bd29-eb2fd649a932",
+      "3dcf327a-dec8-4960-bd56-618e24d4f4bb",
+      "2be71f26-db70-42c4-bd0e-83abdc438a66"
+    ],
+    "hit": false,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "ballast_systems Document_3",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "1031e72a-1d3e-4e2c-bd29-eb2fd649a932",
+      "3dcf327a-dec8-4960-bd56-618e24d4f4bb",
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc"
+    ],
+    "hit": true,
+    "latency_ms": 110
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "Document_3 ballast_systems",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "1031e72a-1d3e-4e2c-bd29-eb2fd649a932",
+      "3dcf327a-dec8-4960-bd56-618e24d4f4bb",
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "Document_3 maintenance ballast",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+      "d9628a9f-4c8e-4e01-a735-c182828105e1",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "Generic_ballast_systems maintenance",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "d9628a9f-4c8e-4e01-a735-c182828105e1",
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+      "d441a98b-55fd-41b6-b88e-a4125581cf29"
+    ],
+    "hit": true,
+    "latency_ms": 140
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "ballast_systems_Document_3",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "1031e72a-1d3e-4e2c-bd29-eb2fd649a932",
+      "3dcf327a-dec8-4960-bd56-618e24d4f4bb",
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc"
+    ],
+    "hit": true,
+    "latency_ms": 135
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "ballast Document_3 maintenance",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+      "d9628a9f-4c8e-4e01-a735-c182828105e1",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 209
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "Document_3 ballast maintenance",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+      "d9628a9f-4c8e-4e01-a735-c182828105e1",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 140
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "ballast_systems Document_3 maintenance",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+      "d9628a9f-4c8e-4e01-a735-c182828105e1",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 132
+  },
+  {
+    "entity_type": "document",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "Document_3 ballast_systems maintenance",
+    "expected_id": "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+    "actual_ids": [
+      "8ec1ef9b-e1f4-414e-b957-323fb46dc2dc",
+      "d9628a9f-4c8e-4e01-a735-c182828105e1",
+      "ae103dea-e1a6-49eb-8cef-bc2af411a7f1"
+    ],
+    "hit": true,
+    "latency_ms": 145
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "E047",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "E047 exhaust",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 133
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "E047 temperature",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "E047 high",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 137
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "E047 cylinder",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 137
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "E047 port",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 189
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "E047 injector",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 149
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "E047 turbocharger",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "E047 reading",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 123
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "E047 normal",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "E047 efficiency",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 187
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "E047 50",
+    "expected_id": "f0000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "E2E-0002-000 vibration",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 184
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "E2E-0002-000 E2E",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000002",
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 151
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "E2E-0002-000 high",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 104
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "E2E-0002-000 detected",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001",
+      "c9d70ad4-8eec-4429-a6af-192b188dbd3d"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "E2E-0002-000 Vibration high",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 116
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "E2E-0002-000 vibration detected",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "fc7005a6-5a2a-4584-92f3-aefa00493893",
+      "e2e00002-0002-0002-0002-000000000001",
+      "4a20e53a-bc4c-4a3a-9ad3-5bc0dc6d051a"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "E2E-0002-000 Test",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000002",
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "E2E-0002-000 inspection",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "E2E-0002-000 Test vibration",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 110
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "E2E-0002-000 routine",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "E2E-0002-000 vibration E2E",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 210
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "E2E-0002-000 check",
+    "expected_id": "e2e00002-0002-0002-0002-000000000001",
+    "actual_ids": [
+      "e2e00002-0002-0002-0002-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 117
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "G012",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "G012 coolant",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 114
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "G012 low",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 106
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "G012 level",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 116
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "G012 expansion",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 169
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "G012 tank",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 124
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "G012 cooling",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "G012 system",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 226
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "G012 leaks",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 151
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "G012 minimum",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "G012 mark",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "fault",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "G012 below",
+    "expected_id": "f0000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "f0000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 174
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "TP-fa10ad48",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "fa10ad48",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "TP-fa10ad48 Test",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "fa994245-3363-4f40-9707-4111680b69c5"
+    ],
+    "hit": true,
+    "latency_ms": 115
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "fa10ad48 Part",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "24ce26fe-a6ac-4833-85a0-ab2236d10241"
+    ],
+    "hit": true,
+    "latency_ms": 157
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "Test fa10ad48",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "Part fa10ad48",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "24ce26fe-a6ac-4833-85a0-ab2236d10241"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "TP-fa10ad48 Part",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "fa994245-3363-4f40-9707-4111680b69c5",
+      "2fa1547b-6dbf-4c21-adad-3fbb7cceddf1"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "fa10ad48 TP-fa10ad48",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a"
+    ],
+    "hit": true,
+    "latency_ms": 164
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "TP-fa10ad48 room",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "fa10ad48 Test",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a"
+    ],
+    "hit": true,
+    "latency_ms": 215
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "fa10ad48 Part",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "24ce26fe-a6ac-4833-85a0-ab2236d10241"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "TP-fa10ad48 Part",
+    "expected_id": "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+    "actual_ids": [
+      "fa10ad48-5f51-41ee-9ef3-c2127e77b06a",
+      "fa994245-3363-4f40-9707-4111680b69c5",
+      "2fa1547b-6dbf-4c21-adad-3fbb7cceddf1"
+    ],
+    "hit": true,
+    "latency_ms": 133
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "ELC-0063-504",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "Bilge Float Switch",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "ELC-0063-504 Bilge",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 124
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "Victron ELC-0063-504",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "Victron Float",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "Victron Bilge",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 148
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "Switch ELC-0063-504",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 123
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "ELC-0063-504 Float",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 368
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "ELC-0063-504 Switch",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "Victron Bilge Switch",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 133
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "Bilge Float Victron",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "Float Switch Victron",
+    "expected_id": "6723f1d1-840e-48fa-8b0a-b15c74bd0c65",
+    "actual_ids": [
+      "6723f1d1-840e-48fa-8b0a-b15c74bd0c65"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "ELC-0053-760 Navigation",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 200
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "ELC-0053-760 Blue",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 147
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "ELC-0053-760 Navigation",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 117
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "Blue Sea Navigation Light",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 147
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "Blue Sea Navigation",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "Blue Sea Navigation",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 184
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "ELC-0053-760 Light",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 135
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "ELC-0053-760 Bulb",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "ELC-0053-760 12V",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 184
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "Blue Sea Bulb",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 160
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "Navigation Light Blue",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 162
+  },
+  {
+    "entity_type": "inventory",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "Light Bulb Blue",
+    "expected_id": "c7ac473c-cf02-4241-b901-42d322fc6920",
+    "actual_ids": [
+      "c7ac473c-cf02-4241-b901-42d322fc6920"
+    ],
+    "hit": true,
+    "latency_ms": 119
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "HVC-0106-314",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "HVC-0106-314 Marine",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "HVC-0106-314 Air",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 195
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "HVC-0106-314 Clutch",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "HVC-0106-314 Compressor",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 117
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "HVC-0106-314 AC",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 187
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "HVC-0106-314 Deck",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 105
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "Marine Air Clutch",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 136
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "Marine Air Compressor",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 205
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "Marine Air AC",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "349b06e2-6522-4e5f-a4ae-e7924ba108e9",
+      "0dbab1fe-9653-4566-a442-5f302db66181",
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 143
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "AC Clutch Marine",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 115
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "Compressor Marine Air",
+    "expected_id": "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc",
+    "actual_ids": [
+      "bcbe235c-70fd-4d8e-8db9-b02d457fd3dc"
+    ],
+    "hit": true,
+    "latency_ms": 112
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "FLT-0170-576",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "FLT-0170-576 Racor",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "FLT-0170-576 Air",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 180
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "FLT-0170-576 Element",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "Racor FLT-0170-576",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 123
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "Racor Air Element",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "e6c41677-4093-4381-bd0e-d879e32f2927",
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 3265
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "Racor Element",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "e6c41677-4093-4381-bd0e-d879e32f2927",
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 132
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "Racor FLT-0170 Air",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056",
+      "e6c41677-4093-4381-bd0e-d879e32f2927"
+    ],
+    "hit": true,
+    "latency_ms": 198
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "Air Element Racor",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "e6c41677-4093-4381-bd0e-d879e32f2927",
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 110
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "Element Racor Air",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "e6c41677-4093-4381-bd0e-d879e32f2927",
+      "411769fa-ce62-4c93-a306-4e0177096056"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "FLT-0170-576 Racor Air",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056",
+      "e6c41677-4093-4381-bd0e-d879e32f2927"
+    ],
+    "hit": true,
+    "latency_ms": 143
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "Racor FLT-0170 Element",
+    "expected_id": "411769fa-ce62-4c93-a306-4e0177096056",
+    "actual_ids": [
+      "411769fa-ce62-4c93-a306-4e0177096056",
+      "e6c41677-4093-4381-bd0e-d879e32f2927"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "CAT-1R0739-E2E",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "CAT-1R0739-E2E Caterpillar",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "CAT-1R0739-E2E Oil",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 200
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "CAT-1R0739-E2E C32",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 1066
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "1R0739 E2E",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 138
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "CAT-1R0739-E2E E2E",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 113
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "CAT 1R0739 Oil",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "Caterpillar C32 Oil",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "C32 1R0739 Oil",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "Caterpillar C32 ACERT",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 132
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "C32 ACERT Oil",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 170
+  },
+  {
+    "entity_type": "parts",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "E2E Oil Caterpillar",
+    "expected_id": "e2e00004-0004-0004-0004-000000000001",
+    "actual_ids": [
+      "e2e00004-0004-0004-0004-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "caf11a3d comprehensive",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "caf11a3d 6Hr",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "caf11a3d 6-hour test",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8"
+    ],
+    "hit": true,
+    "latency_ms": 171
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "6Hr caf11a3d comprehensive",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 139
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "6-hour comprehensive caf11a3d",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "caf11a3d Test comprehensive",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "caf11a3d comprehensive test",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 154
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "6Hr comprehensive caf11a3d",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 206
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "caf11a3d 6-hour",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8"
+    ],
+    "hit": true,
+    "latency_ms": 112
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "comprehensive 6Hr caf11a3d",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 132
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "caf11a3d",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8"
+    ],
+    "hit": true,
+    "latency_ms": 154
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "test comprehensive caf11a3d",
+    "expected_id": "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+    "actual_ids": [
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8",
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 127
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "d348696d",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "d348696d 6Hr",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 117
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "d348696d test",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215",
+      "5d77154e-d90f-433b-8349-63fedcea3e94",
+      "fb1e277a-9da9-4d97-b0ba-09678206d3a7"
+    ],
+    "hit": true,
+    "latency_ms": 135
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "6Hr d348696d",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 186
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "d348696d 6Hr test",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 102
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "test d348696d",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215",
+      "5d77154e-d90f-433b-8349-63fedcea3e94",
+      "fb1e277a-9da9-4d97-b0ba-09678206d3a7"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "6Hr test d348696d",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "d348696d 6Hr",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "comprehensive d348696d 6Hr",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215",
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8"
+    ],
+    "hit": true,
+    "latency_ms": 127
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "Test 6Hr d348696d",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "d348696d 6Hr Test",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215"
+    ],
+    "hit": true,
+    "latency_ms": 108
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "d348696d 6Hr comprehensive",
+    "expected_id": "d90de8d2-7833-4662-bcf8-da3d2279d215",
+    "actual_ids": [
+      "d90de8d2-7833-4662-bcf8-da3d2279d215",
+      "e41633a2-054b-4dd2-b7b6-100118ce85c8"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "ACCEPT-1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "de3a5de5-8525-49bc-8851-63e56b9ea6da"
+    ],
+    "hit": true,
+    "latency_ms": 197
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a"
+    ],
+    "hit": true,
+    "latency_ms": 111
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "1771274136669 Accept",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "de3a5de5-8525-49bc-8851-63e56b9ea6da"
+    ],
+    "hit": true,
+    "latency_ms": 229
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "1771274136669 Test",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "8021c5b3-c04a-4dad-ae5a-0c48c4a4dae1",
+      "42cf35f3-2d3e-4ffd-a563-69d5e89b5000"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "1771274136669 Vendor",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "8021c5b3-c04a-4dad-ae5a-0c48c4a4dae1",
+      "84c91e6e-4ca4-4600-a39a-a64af5b05d9c"
+    ],
+    "hit": true,
+    "latency_ms": 123
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "Accept 1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "de3a5de5-8525-49bc-8851-63e56b9ea6da"
+    ],
+    "hit": true,
+    "latency_ms": 134
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "Test 1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "8021c5b3-c04a-4dad-ae5a-0c48c4a4dae1",
+      "42cf35f3-2d3e-4ffd-a563-69d5e89b5000"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "Vendor 1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "8021c5b3-c04a-4dad-ae5a-0c48c4a4dae1",
+      "84c91e6e-4ca4-4600-a39a-a64af5b05d9c"
+    ],
+    "hit": true,
+    "latency_ms": 133
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "Accept Test 1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "de3a5de5-8525-49bc-8851-63e56b9ea6da"
+    ],
+    "hit": true,
+    "latency_ms": 139
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "1771274136669 receiving",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "40fef92e-a1ad-4070-b5bf-24dab1748445",
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "6c1efad3-0f6a-4b87-9551-92ac20a9a07f"
+    ],
+    "hit": true,
+    "latency_ms": 139
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "Accept Vendor 1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "de3a5de5-8525-49bc-8851-63e56b9ea6da",
+      "8021c5b3-c04a-4dad-ae5a-0c48c4a4dae1"
+    ],
+    "hit": true,
+    "latency_ms": 113
+  },
+  {
+    "entity_type": "receiving",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "Test Vendor 1771274136669",
+    "expected_id": "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+    "actual_ids": [
+      "5adab9ce-419f-4acd-bdb8-7703e89aea6a",
+      "8021c5b3-c04a-4dad-ae5a-0c48c4a4dae1",
+      "84c91e6e-4ca4-4600-a39a-a64af5b05d9c"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "FLT-0033-146",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "FLT-0033-146 Fleetguard",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 143
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "FLT-0033-146 Fuel",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "Fleetguard FLT-0033-146",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 156
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "FLT-0033-146 Fuel Fleetguard",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "FLT-0033-146 E2E",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 107
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "FLT-0033-146 E2E Fleetguard",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "FLT-0033-146 shopping",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 3401
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "FLT-0033-146 item",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 168
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "Fleetguard E2E item",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 110
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "E2E FLT-0033-146",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "item 4 Fleetguard",
+    "expected_id": "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+    "actual_ids": [
+      "9ff13791-0179-4bd0-922b-b8550b36a4b6",
+      "fe8bc13b-2e99-447b-9bf8-97969efe6ebc",
+      "2efe6693-cc2f-4a81-9304-45055beb27d0"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "1770818877655",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0"
+    ],
+    "hit": true,
+    "latency_ms": 1765
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "1770818877655 reject",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "fa50edfc-2dd5-44ca-9a0e-8c94281a4385",
+      "6f6d5651-cac2-4daa-9a54-83da439304bd"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "1770818877655 test",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "70fb18d0-33e8-40de-b607-8ae1d3a2ca38",
+      "d924a3c5-4217-4499-b2e4-8e1927e46887"
+    ],
+    "hit": true,
+    "latency_ms": 115
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "reject 1770818877655",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "fa50edfc-2dd5-44ca-9a0e-8c94281a4385",
+      "6f6d5651-cac2-4daa-9a54-83da439304bd"
+    ],
+    "hit": true,
+    "latency_ms": 176
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "test 1770818877655",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "70fb18d0-33e8-40de-b607-8ae1d3a2ca38",
+      "d924a3c5-4217-4499-b2e4-8e1927e46887"
+    ],
+    "hit": true,
+    "latency_ms": 160
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "1770818877655 item",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "reject test 1770818877655",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "e10078aa-5c25-4cbb-a6bc-284b0936344e",
+      "01720881-edbc-4055-ad26-a29d00e2a0c1"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "1770818877655 shopping",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "Test 1770818877655 Reject",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "e10078aa-5c25-4cbb-a6bc-284b0936344e",
+      "01720881-edbc-4055-ad26-a29d00e2a0c1"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "Reject 1770818877655 Test",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "e10078aa-5c25-4cbb-a6bc-284b0936344e",
+      "01720881-edbc-4055-ad26-a29d00e2a0c1"
+    ],
+    "hit": true,
+    "latency_ms": 125
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "Reject 1770818877655",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "fa50edfc-2dd5-44ca-9a0e-8c94281a4385",
+      "6f6d5651-cac2-4daa-9a54-83da439304bd"
+    ],
+    "hit": true,
+    "latency_ms": 195
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "1770818877655 Reject Test",
+    "expected_id": "3945c1df-868f-4528-b815-be9b02b646e0",
+    "actual_ids": [
+      "3945c1df-868f-4528-b815-be9b02b646e0",
+      "e10078aa-5c25-4cbb-a6bc-284b0936344e",
+      "01720881-edbc-4055-ad26-a29d00e2a0c1"
+    ],
+    "hit": true,
+    "latency_ms": 102
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "af629ea6-2d9e-4123-8b5d-ef4a690924ce",
+      "b290b994-5494-47ed-8881-f5887419e558"
+    ],
+    "hit": true,
+    "latency_ms": 124
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "1770680111366 low",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "242eb42a-4793-4884-8bae-ea78303bbe13",
+      "5509442c-9f16-4a46-a426-77b853a0382a"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "1770680111366 test",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "af629ea6-2d9e-4123-8b5d-ef4a690924ce",
+      "b290b994-5494-47ed-8881-f5887419e558"
+    ],
+    "hit": true,
+    "latency_ms": 176
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "low 1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "242eb42a-4793-4884-8bae-ea78303bbe13",
+      "5509442c-9f16-4a46-a426-77b853a0382a"
+    ],
+    "hit": true,
+    "latency_ms": 148
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "test 1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "af629ea6-2d9e-4123-8b5d-ef4a690924ce",
+      "b290b994-5494-47ed-8881-f5887419e558"
+    ],
+    "hit": true,
+    "latency_ms": 107
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "1770680111366 item",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42"
+    ],
+    "hit": true,
+    "latency_ms": 105
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "test low 1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "242eb42a-4793-4884-8bae-ea78303bbe13",
+      "5509442c-9f16-4a46-a426-77b853a0382a"
+    ],
+    "hit": true,
+    "latency_ms": 1741
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "1770680111366 shopping",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42"
+    ],
+    "hit": true,
+    "latency_ms": 149
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "item 1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42"
+    ],
+    "hit": true,
+    "latency_ms": 192
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "shopping 1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "1770680111366 list",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "af629ea6-2d9e-4123-8b5d-ef4a690924ce",
+      "b290b994-5494-47ed-8881-f5887419e558"
+    ],
+    "hit": true,
+    "latency_ms": 148
+  },
+  {
+    "entity_type": "shopping_list",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "low item 1770680111366",
+    "expected_id": "397bd06d-2916-4c80-a303-1a8d65920f42",
+    "actual_ids": [
+      "397bd06d-2916-4c80-a303-1a8d65920f42",
+      "91b9be61-dbc2-41d4-80f3-55eb89e706fd"
+    ],
+    "hit": true,
+    "latency_ms": 159
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "BRAVO7 turbine",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 137
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "HYDROFOIL turbine",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "turbine BRAVO7",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "Morrison checklist",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 149
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "BRAVO7 Morrison",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "Morrison bearing",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 196
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "BRAVO7 maintenance bearing",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "HYDROFOIL Chief Morrison",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 3316
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "Chief Morrison",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 159
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "HYDROFOIL bearing",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 202
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "HYDROFOIL inspection",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "Morrison turbine",
+    "expected_id": "9bfdf3b3-966c-4393-9ef0-f012875aec3b",
+    "actual_ids": [
+      "9bfdf3b3-966c-4393-9ef0-f012875aec3b"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "STARWING FOXTROT9 audit",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 173
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "STARWING audit",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "FOXTROT9 audit",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 185
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "STARWING quarterly",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "STARWING FOXTROT9",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 128
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "Wellington hull",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 227
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "Marine Surveyor",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "STARWING integrity",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 107
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "FOXTROT9 integrity",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "STARWING verified",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 126
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "FOXTROT9 verified",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "STARWING assessment",
+    "expected_id": "cb9b2153-7459-499c-840e-444334fa4342",
+    "actual_ids": [
+      "cb9b2153-7459-499c-840e-444334fa4342"
+    ],
+    "hit": true,
+    "latency_ms": 3305
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "MOONSAIL DELTA3",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 111
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "MOONSAIL propulsion",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "DELTA3 propulsion",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "MOONSAIL report",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 172
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "DELTA3 propulsion report",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "MOONSAIL thruster",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "DELTA3 thruster",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 109
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "MOONSAIL alignment",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "DELTA3 alignment",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 190
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "MOONSAIL calibration",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "DELTA3 MOONSAIL propulsion",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "work_order_note",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "MOONSAIL DELTA3 thruster",
+    "expected_id": "390129ea-68d7-4baa-a22a-f79bb3877bef",
+    "actual_ids": [
+      "390129ea-68d7-4baa-a22a-f79bb3877bef"
+    ],
+    "hit": true,
+    "latency_ms": 137
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 0,
+    "query": "WO-0009",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 157
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 1,
+    "query": "WO-0009 starboard",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 142
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 2,
+    "query": "WO-0009 500hr",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 162
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 3,
+    "query": "WO-0009 turbocharger",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 4,
+    "query": "WO-0009 oil",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 152
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 5,
+    "query": "WO-0009 starboard main",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 108
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 6,
+    "query": "WO-0009 tension",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 175
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 7,
+    "query": "WO-0009 inspect",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 221
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 8,
+    "query": "WO-0009 Perform",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 9,
+    "query": "WO-0009 500hr turbocharger",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 115
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 10,
+    "query": "starboard turbocharger 500hr",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 127
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 0,
+    "query_index": 11,
+    "query": "starboard 500hr service",
+    "expected_id": "10000001-0001-4001-8001-000000000002",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000002"
+    ],
+    "hit": true,
+    "latency_ms": 130
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 0,
+    "query": "WO-0010",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 127
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 1,
+    "query": "WO-0010 port",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 136
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 2,
+    "query": "port 500hr service",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 202
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 3,
+    "query": "port turbocharger",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 139
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 4,
+    "query": "WO-0010 oil",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 183
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 5,
+    "query": "WO-0010 fuel",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 2046
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 6,
+    "query": "WO-0010 tension",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 135
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 7,
+    "query": "WO-0010 inspect",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "e51d281b-f860-4117-af38-de3f15d2f8df",
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 118
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 8,
+    "query": "WO-0010 Perform",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 120
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 9,
+    "query": "WO-0010 500hr turbocharger",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 191
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 10,
+    "query": "WO-0010 service",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "7b814184-d858-4937-9ef7-fb089af9c5d4",
+      "f9259c65-3d20-4c84-9879-d37a6818eeaf",
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 144
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 1,
+    "query_index": 11,
+    "query": "port main 500hr",
+    "expected_id": "10000001-0001-4001-8001-000000000001",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000001"
+    ],
+    "hit": true,
+    "latency_ms": 193
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 0,
+    "query": "generator annual",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [],
+    "hit": false,
+    "latency_ms": 112
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 1,
+    "query": "WO-0003 annual",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "f9259c65-3d20-4c84-9879-d37a6818eeaf",
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 122
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 2,
+    "query": "WO-0003 coolant",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 108
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 3,
+    "query": "WO-0003 service",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "f9259c65-3d20-4c84-9879-d37a6818eeaf",
+      "7b814184-d858-4937-9ef7-fb089af9c5d4",
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 129
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 4,
+    "query": "WO-0003 injectors",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 190
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 5,
+    "query": "WO-0003 test",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "e2e00003-0003-0003-0003-000000000001",
+      "e2e00003-0003-0003-0003-000000000002",
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 127
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 6,
+    "query": "WO-0003 bank",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 132
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 7,
+    "query": "WO-0003 check",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "73adcd11-ab0b-40a3-8746-f9114047b7ff",
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 195
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 8,
+    "query": "annual load bank",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "0936e86d-dc51-490f-b706-b89805406665",
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 111
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 9,
+    "query": "WO-0003 inspect",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 131
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 10,
+    "query": "WO-0003 annual coolant",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 121
+  },
+  {
+    "entity_type": "work_order",
+    "item_index": 2,
+    "query_index": 11,
+    "query": "WO-0003 load",
+    "expected_id": "10000001-0001-4001-8001-000000000003",
+    "actual_ids": [
+      "10000001-0001-4001-8001-000000000003"
+    ],
+    "hit": true,
+    "latency_ms": 115
+  }
+]
