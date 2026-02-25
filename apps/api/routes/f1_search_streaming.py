@@ -820,31 +820,37 @@ async def f1_search_stream(
                 rewrites = [Rewrite(text=q, source="original", embedding=None)]
 
             # ================================================================
-            # Phase 2b: Generate embeddings for semantic search (GOD MODE)
+            # Phase 2b: LAW 23 - Dynamic Timeout Escalation for Embeddings
             # ================================================================
+            # L1 (Fast Path): Start embedding generation in background with short timeout
+            # L2 (Deep Path): If text search returns <3 hits, extend timeout for semantics
+            #
             # CRITICAL: Embeddings enable semantic matching via embedding_1536
             # Without embeddings, f1_search_cards only uses trigram + FTS
             # With embeddings, queries like "thing that makes drinking water"
             # find "Watermaker/Desalinator" via vector similarity
-            with tracer.start_as_current_span("cortex.embeddings") as span:
-                span.set_attribute("search_id", search_id)
-                span.set_attribute("rewrite_count", len(rewrites))
-                # Budget: 100ms for embedding generation (remaining from rewrite budget)
-                embed_budget_ms = max(50, rewrite_result.budget_remaining_ms)
-                rewrites = await generate_embeddings(
-                    rewrites,
-                    budget_ms=embed_budget_ms,
+
+            # LAW 23 Constants
+            L1_FAST_BUDGET_MS = 150  # Fast path: typical OpenAI latency with warm cache
+            L2_DEEP_BUDGET_MS = 800  # Deep path: wait for cold OpenAI if L1 fails
+            L1_MIN_RESULTS_THRESHOLD = 3  # Escalate to L2 if fewer than this many hits
+
+            # Start L1 embedding generation as background task
+            async def generate_embeddings_background():
+                """Background task for embedding generation with L1 budget."""
+                return await generate_embeddings(
+                    rewrites.copy(),  # Don't mutate original list
+                    budget_ms=L1_FAST_BUDGET_MS,
                     org_id=ctx.org_id,
                 )
-                embeddings_generated = sum(1 for r in rewrites if r.embedding is not None)
-                span.set_attribute("embeddings_generated", embeddings_generated)
-                logger.info(
-                    f"[F1Search] Embeddings: {embeddings_generated}/{len(rewrites)} generated "
-                    f"(budget: {embed_budget_ms}ms)"
-                )
+
+            embedding_task = asyncio.create_task(generate_embeddings_background())
+            embeddings_generated = 0
+            l2_escalation_used = False
 
             logger.debug(
-                f"[F1Search] Rewrites: {len(rewrites)} in {rewrite_result.latency_ms}ms"
+                f"[F1Search] Rewrites: {len(rewrites)} in {rewrite_result.latency_ms}ms, "
+                f"L1 embedding task started (budget: {L1_FAST_BUDGET_MS}ms)"
             )
 
             # Check disconnect
@@ -927,7 +933,7 @@ async def f1_search_stream(
                     else:
                         span.set_attribute("cache_hit", False)
 
-            # Cache miss - run hybrid search (text + vector in parallel)
+            # Cache miss - run hybrid search with LAW 23 dynamic escalation
             text_results = []
             vector_results = []
             processed_text_results = []
@@ -937,14 +943,9 @@ async def f1_search_stream(
             if items is None:
                 pool = await get_db_pool()
                 async with pool.acquire() as conn:
-                    # Get embedding from first rewrite for vector search
-                    query_embedding = None
-                    for r in rewrites:
-                        if r.embedding is not None:
-                            query_embedding = r.embedding
-                            break
-
-                    # Run text search and vector search in parallel
+                    # ============================================================
+                    # LAW 23: L1 Fast Path - Run text search first
+                    # ============================================================
                     async def run_text_search():
                         with tracer.start_as_current_span("db.hyper_search_multi") as span:
                             span.set_attribute("search_id", search_id)
@@ -955,11 +956,99 @@ async def f1_search_stream(
                             results = await call_hyper_search_multi(
                                 conn, rewrites, ctx,
                                 rrf_k=60,
-                                page_limit=30,  # Fetch more for RRF fusion
+                                page_limit=60,  # LAW 22: Fetch more for RRF candidate pool
                                 object_types=None  # ALL types compete globally
                             )
                             span.set_attribute("result_count", len(results))
                             return results
+
+                    # Run text search immediately
+                    with tracer.start_as_current_span("law23.l1_text_search") as span:
+                        span.set_attribute("search_id", search_id)
+                        text_results = await run_text_search()
+                        span.set_attribute("text_result_count", len(text_results))
+
+                    # ============================================================
+                    # LAW 23: L2 Deep Path - Escalate if text search has <3 hits
+                    # ============================================================
+                    # If text search returned few results, the user likely needs
+                    # semantic understanding. Wait for embeddings with extended budget.
+
+                    text_hit_count = len([r for r in text_results if r.get('fused_score', 0) > 0.01])
+
+                    if text_hit_count < L1_MIN_RESULTS_THRESHOLD:
+                        # L2 ESCALATION: Text search failed, wait for semantic embeddings
+                        l2_escalation_used = True
+                        logger.info(
+                            f"[F1Search] LAW 23 L2 ESCALATION: text_hits={text_hit_count} < {L1_MIN_RESULTS_THRESHOLD}, "
+                            f"extending embedding budget to {L2_DEEP_BUDGET_MS}ms"
+                        )
+
+                        with tracer.start_as_current_span("law23.l2_embedding_wait") as span:
+                            span.set_attribute("search_id", search_id)
+                            span.set_attribute("text_hit_count", text_hit_count)
+                            span.set_attribute("l2_budget_ms", L2_DEEP_BUDGET_MS)
+
+                            # Cancel L1 task and start fresh with L2 budget
+                            if not embedding_task.done():
+                                embedding_task.cancel()
+                                try:
+                                    await embedding_task
+                                except asyncio.CancelledError:
+                                    pass
+
+                            # Generate embeddings with L2 deep budget
+                            rewrites = await generate_embeddings(
+                                rewrites,
+                                budget_ms=L2_DEEP_BUDGET_MS,
+                                org_id=ctx.org_id,
+                            )
+                            embeddings_generated = sum(1 for r in rewrites if r.embedding is not None)
+                            span.set_attribute("embeddings_generated", embeddings_generated)
+                            logger.info(
+                                f"[F1Search] L2 embeddings: {embeddings_generated}/{len(rewrites)} generated "
+                                f"(deep budget: {L2_DEEP_BUDGET_MS}ms)"
+                            )
+                    else:
+                        # L1 FAST PATH: Text search has enough results, use L1 embeddings
+                        with tracer.start_as_current_span("law23.l1_embedding_collect") as span:
+                            span.set_attribute("search_id", search_id)
+                            span.set_attribute("text_hit_count", text_hit_count)
+
+                            # Wait for L1 embedding task (already started, should be fast)
+                            try:
+                                if not embedding_task.done():
+                                    # Give it a bit more time to complete
+                                    rewrites_with_embeddings = await asyncio.wait_for(
+                                        embedding_task,
+                                        timeout=0.2  # 200ms max additional wait
+                                    )
+                                    # Update rewrites with any embeddings we got
+                                    for i, r in enumerate(rewrites_with_embeddings):
+                                        if r.embedding is not None and rewrites[i].embedding is None:
+                                            rewrites[i].embedding = r.embedding
+                                else:
+                                    rewrites_with_embeddings = embedding_task.result()
+                                    for i, r in enumerate(rewrites_with_embeddings):
+                                        if r.embedding is not None and rewrites[i].embedding is None:
+                                            rewrites[i].embedding = r.embedding
+                            except (asyncio.TimeoutError, asyncio.CancelledError):
+                                logger.debug("[F1Search] L1 embedding task timed out, continuing with text results")
+                            except Exception as e:
+                                logger.warning(f"[F1Search] L1 embedding error: {e}")
+
+                            embeddings_generated = sum(1 for r in rewrites if r.embedding is not None)
+                            span.set_attribute("embeddings_generated", embeddings_generated)
+
+                    # ============================================================
+                    # Vector Search with LAW 22 compliant parameters
+                    # ============================================================
+                    # Get embedding from first rewrite for vector search
+                    query_embedding = None
+                    for r in rewrites:
+                        if r.embedding is not None:
+                            query_embedding = r.embedding
+                            break
 
                     async def run_vector_search():
                         if not query_embedding:
@@ -971,39 +1060,33 @@ async def f1_search_stream(
                             span.set_attribute("search_id", search_id)
                             span.set_attribute("yacht_id", ctx.yacht_id)
                             span.set_attribute("embedding_dim", len(query_embedding))
-                            # NO object_type filter - all entities compete
+                            span.set_attribute("law22_no_threshold", True)
+                            # LAW 22: NO threshold - let RRF handle ranking
+                            # LAW 22: Increased match_count for larger candidate pool
                             results = await call_match_search_index(
                                 conn,
                                 query_embedding,
                                 ctx.yacht_id,
-                                match_threshold=0.65,  # Lower threshold for recall
-                                match_count=30,  # Fetch more for RRF fusion
+                                match_threshold=0.0,  # LAW 22: NO THRESHOLD AMPUTATION
+                                match_count=60,  # LAW 22: Larger candidate pool for RRF
                                 object_type=None  # ALL types compete globally
                             )
                             span.set_attribute("result_count", len(results))
                             return results
 
-                    # Execute both searches in parallel
-                    text_task = asyncio.create_task(run_text_search())
-                    vector_task = asyncio.create_task(run_vector_search())
-
-                    text_results, vector_results = await asyncio.gather(
-                        text_task, vector_task, return_exceptions=True
-                    )
-
-                    # Handle any exceptions from parallel tasks
-                    if isinstance(text_results, Exception):
-                        logger.error(f"[F1Search] Text search failed: {text_results}")
-                        text_results = []
-                    if isinstance(vector_results, Exception):
-                        logger.error(f"[F1Search] Vector search failed: {vector_results}")
+                    # Run vector search
+                    try:
+                        vector_results = await run_vector_search()
+                    except Exception as e:
+                        logger.error(f"[F1Search] Vector search failed: {e}")
                         vector_results = []
 
                     vector_search_performed = len(vector_results) > 0
 
                     logger.info(
-                        f"[F1Search] Hybrid search: search_id={search_id[:8]}..., "
-                        f"text_results={len(text_results)}, vector_results={len(vector_results)}"
+                        f"[F1Search] LAW 22/23 Hybrid search: search_id={search_id[:8]}..., "
+                        f"text_results={len(text_results)}, vector_results={len(vector_results)}, "
+                        f"l2_escalation={l2_escalation_used}, embeddings={embeddings_generated}"
                     )
 
                 # Process text results into standard format
@@ -1155,6 +1238,13 @@ async def f1_search_stream(
                     "vector_results": vector_count,
                     "vector_search_performed": vector_search_performed if not result_cache_hit else None,
                     "rrf_k": 60,
+                },
+                # LAW 22 + LAW 23 compliance metrics
+                "law_compliance": {
+                    "law_22_no_threshold_amputation": True,
+                    "law_23_l2_escalation_used": l2_escalation_used if not result_cache_hit else None,
+                    "law_23_l1_budget_ms": L1_FAST_BUDGET_MS if not result_cache_hit else None,
+                    "law_23_l2_budget_ms": L2_DEEP_BUDGET_MS if not result_cache_hit else None,
                 },
             })
 
@@ -1346,6 +1436,8 @@ async def f1_search_health():
             "hybrid_text_vector_search",  # Parallel text + vector search
             "rrf_fusion",  # Reciprocal Rank Fusion merging
             "global_entity_competition",  # ALL entity types compete, no object_type restrictions
+            "law_22_no_threshold_amputation",  # RRF candidate freedom - no pre-fusion thresholds
+            "law_23_dynamic_timeout_escalation",  # L1/L2 escalation for semantic queries
         ],
     }
 
