@@ -25,3 +25,6 @@ export type { AddHoursModalProps } from './AddHoursModal';
 
 export { EditWorkOrderModal } from './EditWorkOrderModal';
 export type { EditWorkOrderModalProps, WorkOrderEditData } from './EditWorkOrderModal';
+
+export { WorkOrderCreateModal } from './WorkOrderCreateModal';
+export type { WorkOrderCreateModalProps } from './WorkOrderCreateModal';
