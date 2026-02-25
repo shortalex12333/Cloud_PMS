@@ -381,3 +381,220 @@ function useAction() {
     reset,
   };
 }
+
+// ============================================================================
+// Two-Phase Mutation Types
+// ============================================================================
+
+/**
+ * Field metadata from generic prefill engine
+ */
+export interface FieldMetadata {
+  source: 'user_input' | 'nlp_entity' | 'derived' | 'database';
+  confidence: number;
+  editable: boolean;
+  required: boolean;
+  label?: string;
+  options?: { value: string; label: string }[];
+}
+
+/**
+ * Mutation preview response from /prepare endpoint
+ */
+export interface MutationPreview {
+  title: string;
+  description?: string;
+  equipment_id?: string;
+  equipment_id_options?: { value: string; label: string }[];
+  priority: string;
+  assigned_to?: string;
+  assigned_to_options?: { value: string; label: string }[];
+  scheduled_date?: string;
+  field_metadata: Record<string, FieldMetadata>;
+}
+
+/**
+ * PrepareResponse from two-phase mutation
+ */
+export interface PrepareResponse {
+  success: boolean;
+  mutation_preview?: MutationPreview;
+  error?: string;
+}
+
+/**
+ * CommitResponse from two-phase mutation
+ */
+export interface CommitResponse {
+  success: boolean;
+  work_order_id?: string;
+  wo_number?: string;
+  error?: string;
+  message?: string;
+}
+
+// ============================================================================
+// Two-Phase Mutation API Client
+// ============================================================================
+
+/**
+ * Phase 1: Prepare work order creation
+ *
+ * Calls /v1/actions/work_order/create/prepare to get mutation preview
+ * with pre-filled fields based on NLP entity extraction.
+ *
+ * @param context - yacht_id, query_text, extracted_entities
+ * @returns Mutation preview with pre-filled form fields
+ */
+export async function prepareWorkOrderCreate(
+  context: {
+    yacht_id: string;
+    query_text?: string;
+    extracted_entities?: string[];
+  }
+): Promise<PrepareResponse> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    throw new ActionExecutionError(
+      'prepare_work_order',
+      'unauthenticated',
+      'Authentication required to prepare work order',
+      401
+    );
+  }
+
+  const request_body = {
+    context,
+    payload: {},
+  };
+
+  console.log('[actionClient] Preparing work order create:', {
+    yacht_id: context.yacht_id,
+    query_text: context.query_text,
+    entities_count: context.extracted_entities?.length,
+  });
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/actions/work_order/create/prepare`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(request_body),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new ActionExecutionError(
+        'prepare_work_order',
+        result.code || 'prepare_error',
+        result.error || result.detail || 'Failed to prepare work order',
+        response.status,
+        result
+      );
+    }
+
+    return result;
+  } catch (error) {
+    if (error instanceof ActionExecutionError) {
+      throw error;
+    }
+    console.error('[actionClient] Prepare work order failed:', error);
+    throw new ActionExecutionError(
+      'prepare_work_order',
+      'network_error',
+      error instanceof Error ? error.message : 'Network error',
+      undefined,
+      error
+    );
+  }
+}
+
+/**
+ * Phase 2: Commit work order creation
+ *
+ * Calls /v1/actions/work_order/create/commit with user-reviewed payload.
+ *
+ * @param context - yacht_id
+ * @param payload - User-reviewed form values
+ * @returns Created work order data
+ */
+export async function commitWorkOrderCreate(
+  context: { yacht_id: string },
+  payload: {
+    title: string;
+    equipment_id?: string;
+    priority: string;
+    assigned_to?: string;
+    description?: string;
+    scheduled_date?: string;
+  }
+): Promise<CommitResponse> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    throw new ActionExecutionError(
+      'commit_work_order',
+      'unauthenticated',
+      'Authentication required to create work order',
+      401
+    );
+  }
+
+  const request_body = {
+    context,
+    payload,
+  };
+
+  console.log('[actionClient] Committing work order create:', {
+    yacht_id: context.yacht_id,
+    title: payload.title,
+    priority: payload.priority,
+  });
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/actions/work_order/create/commit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(request_body),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new ActionExecutionError(
+        'commit_work_order',
+        result.code || 'commit_error',
+        result.error || result.detail || 'Failed to create work order',
+        response.status,
+        result
+      );
+    }
+
+    return result;
+  } catch (error) {
+    if (error instanceof ActionExecutionError) {
+      throw error;
+    }
+    console.error('[actionClient] Commit work order failed:', error);
+    throw new ActionExecutionError(
+      'commit_work_order',
+      'network_error',
+      error instanceof Error ? error.message : 'Network error',
+      undefined,
+      error
+    );
+  }
+}
